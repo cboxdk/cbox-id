@@ -129,6 +129,27 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
      * Sensitive actions require a fresh step-up ("sudo") confirmation. If it's
      * stale, remember where to return and send the user to re-authenticate.
      */
+    public function signOutOtherSessions(\Cbox\Id\Identity\Contracts\SessionManager $sessions): void
+    {
+        if ($this->requiresSudo()) {
+            return;
+        }
+
+        $me = app(CurrentUser::class);
+        $currentId = $me->session()?->id;
+
+        // Revoke every active session for this user except the one they're on —
+        // the "sign out everywhere else" control auditors and users expect.
+        \Cbox\Id\Identity\Models\Session::query()
+            ->where('user_id', $me->id())
+            ->whereNull('revoked_at')
+            ->when($currentId !== null, fn ($q) => $q->where('id', '!=', $currentId))
+            ->pluck('id')
+            ->each(fn (string $id) => $sessions->revoke($id));
+
+        session()->flash('status', 'Signed out of all other sessions.');
+    }
+
     private function requiresSudo(): bool
     {
         if (app(\App\Platform\Sudo::class)->confirmed()) {
@@ -155,6 +176,12 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             'me' => $me,
             'org' => $me->organization(),
             'session' => $me->session(),
+            'otherSessions' => $me->id() !== ''
+                ? \Cbox\Id\Identity\Models\Session::query()
+                    ->where('user_id', $me->id())->whereNull('revoked_at')
+                    ->when($me->session()?->id !== null, fn ($q) => $q->where('id', '!=', $me->session()?->id))
+                    ->count()
+                : 0,
             'twoFactorEnabled' => $me->id() !== '' && app(Mfa::class)->hasConfirmedTotp($me->id()),
             'recoveryRemaining' => $me->id() !== '' ? app(Mfa::class)->remainingRecoveryCodes($me->id()) : 0,
             'passkeys' => $me->id() !== ''
@@ -437,13 +464,21 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             <p class="text-sm" style="color:var(--faint)">No active session details are available.</p>
         @endif
 
-        <div class="mt-5 pt-4" style="border-top:1px solid var(--border)">
+        <div class="mt-5 pt-4 flex flex-wrap items-center gap-3" style="border-top:1px solid var(--border)">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="btn btn-danger">
                     <x-icon name="logout" class="w-4 h-4" /> Sign out
                 </button>
             </form>
+
+            @if ($otherSessions > 0)
+                <button type="button" wire:click="signOutOtherSessions"
+                        wire:confirm="Sign out of your {{ $otherSessions }} other session(s) on all devices?"
+                        class="btn btn-ghost" wire:loading.attr="disabled">
+                    <x-icon name="logout" class="w-4 h-4" /> Sign out other sessions ({{ $otherSessions }})
+                </button>
+            @endif
         </div>
     </section>
 </div>
