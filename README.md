@@ -37,6 +37,17 @@ Live platform endpoints (from the package): `/.well-known/openid-configuration`,
 `/.well-known/jwks.json`, `POST /oauth/token`, `POST /oauth/introspect`,
 `/scim/v2/Users`, `POST /sso/saml/{connection}/acs`.
 
+## Operator documentation
+
+Running or self-hosting this app? See [`docs/`](docs/index.md):
+
+- [Deployment](docs/deployment.md) — fresh server to a hardened instance.
+- [Configuration](docs/configuration.md) — env reference + secure defaults.
+- [Operations](docs/operations.md) — crypto-key backup, key rotation, upgrades, break-glass.
+
+Integrating *against* the platform (OAuth/OIDC/SCIM, entitlements, existing users)
+is the framework documentation in [`cboxdk/laravel-id`](../packages/laravel-id/docs/index.md).
+
 ## Develop
 
 ```bash
