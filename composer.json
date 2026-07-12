@@ -7,15 +7,17 @@
     "license": "proprietary",
     "repositories": [
         { "type": "path", "url": "../packages/laravel-id", "options": { "symlink": true } },
-        { "type": "path", "url": "../packages/laravel-id-client", "options": { "symlink": true } }
+        { "type": "path", "url": "../packages/laravel-id-client", "options": { "symlink": true } },
+        { "type": "path", "url": "../packages/laravel-ssrf", "options": { "symlink": true } },
+        { "type": "path", "url": "../packages/laravel-risk", "options": { "symlink": true } }
     ],
     "require": {
         "php": "^8.4",
         "cboxdk/laravel-id": "@dev",
-        "cboxdk/laravel-risk": "^1.0",
-        "laravel/framework": "^12.0",
+        "cboxdk/laravel-risk": "@dev",
+        "laravel/framework": "^13.0",
         "laravel/socialite": "^5.28",
-        "laravel/tinker": "^2.10.1",
+        "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.3",
         "livewire/volt": "^1.10",
         "socialiteproviders/microsoft": "^4.9"
@@ -27,8 +29,8 @@
         "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^3.5",
-        "phpunit/phpunit": "^11.5.50"
+        "pestphp/pest": "^4.0",
+        "phpunit/phpunit": "^12.0"
     },
     "autoload": {
         "psr-4": {
@@ -92,6 +94,6 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
