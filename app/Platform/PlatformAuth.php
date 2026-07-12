@@ -7,7 +7,9 @@ namespace App\Platform;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\Request;
 
@@ -24,6 +26,8 @@ final class PlatformAuth
     public const ORG_KEY = 'cbox.org';
 
     private const MFA_PENDING_KEY = 'cbox.mfa_pending';
+
+    private const PENDING_LINK_KEY = 'cbox.pending_link';
 
     public function __construct(
         private readonly SessionManager $sessions,
@@ -100,6 +104,8 @@ final class PlatformAuth
 
         // Rotate the id to defeat session fixation.
         session()->regenerate();
+
+        $this->applyPendingLink($subjectId);
     }
 
     /**
@@ -118,6 +124,55 @@ final class PlatformAuth
         }
 
         session()->regenerate();
+
+        $this->applyPendingLink($session->user_id);
+    }
+
+    /**
+     * Hold a verified social identity aside while the user proves control of the
+     * existing account by signing in. Linking then completes automatically.
+     */
+    public function startPendingLink(FederatedPrincipal $principal): void
+    {
+        session()->put(self::PENDING_LINK_KEY, [
+            'provider' => $principal->provider,
+            'subject' => $principal->subject,
+            'email' => $principal->email,
+            'name' => $principal->name,
+            'raw' => $principal->raw,
+        ]);
+    }
+
+    /**
+     * The human label of a provider awaiting linking (e.g. "Google"), or null.
+     */
+    public function pendingLinkLabel(): ?string
+    {
+        $pending = session()->get(self::PENDING_LINK_KEY);
+        $provider = is_array($pending) && is_string($pending['provider'] ?? null) ? $pending['provider'] : null;
+
+        return $provider === null ? null : SocialProviders::label(str_replace('social:', '', $provider));
+    }
+
+    private function applyPendingLink(string $subjectId): void
+    {
+        $pending = session()->pull(self::PENDING_LINK_KEY);
+
+        if (! is_array($pending) || ! is_string($pending['provider'] ?? null) || ! is_string($pending['subject'] ?? null)) {
+            return;
+        }
+
+        try {
+            $this->subjects->link($subjectId, new FederatedPrincipal(
+                provider: $pending['provider'],
+                subject: $pending['subject'],
+                email: is_string($pending['email'] ?? null) ? $pending['email'] : null,
+                name: is_string($pending['name'] ?? null) ? $pending['name'] : null,
+                raw: is_array($pending['raw'] ?? null) ? $pending['raw'] : [],
+            ));
+        } catch (IdentityAlreadyLinked) {
+            // The identity is already attached elsewhere — nothing to do.
+        }
     }
 
     public function switchOrganization(Request $request, string $organizationId): void
@@ -133,7 +188,7 @@ final class PlatformAuth
             $this->sessions->revoke($sessionId);
         }
 
-        session()->forget([self::SESSION_KEY, self::ORG_KEY, self::MFA_PENDING_KEY]);
+        session()->forget([self::SESSION_KEY, self::ORG_KEY, self::MFA_PENDING_KEY, self::PENDING_LINK_KEY]);
         session()->invalidate();
         session()->regenerateToken();
     }

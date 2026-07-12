@@ -49,10 +49,11 @@ final class SocialController extends Controller
         try {
             $subject = $subjects->provisionFederated($principal);
         } catch (AccountExistsForEmail) {
-            return redirect()->route('login')->with(
-                'error',
-                'An account already uses that email. Sign in with your existing method, then connect '.SocialProviders::label($provider).' from Settings.',
-            );
+            // Don't dead-end: hold the verified identity aside and ask the user to
+            // sign in to the existing account — linking then completes on login.
+            $auth->startPendingLink($principal);
+
+            return redirect()->route('login');
         }
 
         $auth->establish($request, $subject->id, ['social', $provider]);

@@ -26,12 +26,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
     public ?string $magicUrl = null;
 
+    public ?string $pendingLink = null;
+
     /**
      * Branded, per-organization login (/o/{slug}/login) themes the page with the
      * org's colour, logo and name.
      */
     public function mount(?string $slug = null): void
     {
+        $this->pendingLink = app(PlatformAuth::class)->pendingLinkLabel();
+
         if ($slug === null) {
             return;
         }
@@ -104,6 +108,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 <div>
     <h1 class="text-2xl font-semibold tracking-tight">Sign in</h1>
     <p class="mt-1.5 text-sm" style="color:var(--muted)">Welcome back. Access your organization's identity console.</p>
+
+    @if ($pendingLink)
+        <div class="mt-5 rounded-lg px-3.5 py-3 text-sm" style="background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
+            <b>Connect your {{ $pendingLink }} account.</b> Sign in below with your existing method and we'll link it to your account.
+        </div>
+    @endif
 
     @if (session('error'))
         <div class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">

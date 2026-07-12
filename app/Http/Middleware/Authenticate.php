@@ -47,12 +47,29 @@ final class Authenticate
             return redirect()->route('login');
         }
 
-        $organizationId = $request->session()->get(PlatformAuth::ORG_KEY) ?? $session->organization_id;
-        $organization = is_string($organizationId) ? $this->organizations->find($organizationId) : null;
+        // Resolve the active org — but ONLY honour one the subject is a member of.
+        // A tampered/stale org id in the cookie must never grant a view into
+        // another tenant, so an unauthorized id is ignored and we fall back to a
+        // real membership.
+        $requestedOrgId = $request->session()->get(PlatformAuth::ORG_KEY) ?? $session->organization_id;
 
-        $role = $organization !== null
-            ? $this->memberships->of($organization->id, $subject->id)?->role
-            : null;
+        $organization = null;
+        $role = null;
+
+        if (is_string($requestedOrgId) && ($membership = $this->memberships->of($requestedOrgId, $subject->id)) !== null) {
+            $organization = $this->organizations->find($requestedOrgId);
+            $role = $membership->role;
+        }
+
+        if ($organization === null) {
+            $fallbackOrgId = $this->memberships->forUser($subject->id)->value('organization_id');
+
+            if (is_string($fallbackOrgId)) {
+                $organization = $this->organizations->find($fallbackOrgId);
+                $role = $this->memberships->of($fallbackOrgId, $subject->id)?->role;
+                $request->session()->put(PlatformAuth::ORG_KEY, $fallbackOrgId);
+            }
+        }
 
         $this->current->set($subject, $session, $organization, $role);
 
