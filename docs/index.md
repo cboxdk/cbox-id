@@ -15,6 +15,8 @@ you self-host. It covers deploying, configuring, and operating the platform.
   the secure defaults this app ships with.
 - [Operations](operations.md) — day-2: **backing up the crypto key**, key rotation,
   the health check, audit/monitoring, upgrades, and break-glass.
+- [Compliance](compliance.md) — the system-level view (framework controls + what this
+  app adds + what remains yours), linking to the framework's control mapping.
 
 ## The two-minute version
 
