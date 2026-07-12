@@ -44,8 +44,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
             'organization' => ['required', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190'],
-            // Reject passwords found in known breaches (HIBP k-anonymity).
-            'password' => ['required', 'string', 'min:8', 'max:200', new NotBreached],
+            // NIST SP 800-63B favors length over composition: a 12-char minimum,
+            // no forced complexity, plus a known-breach screen (HIBP k-anonymity).
+            'password' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
         ];
     }
 
