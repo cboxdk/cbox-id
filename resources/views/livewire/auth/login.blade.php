@@ -123,9 +123,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         <button type="button" wire:click="sendMagicLink" class="btn btn-ghost w-full" wire:loading.attr="disabled" wire:target="sendMagicLink">
             Email me a magic link
         </button>
-        <button type="button" class="btn btn-ghost w-full" disabled title="Passkey sign-in ceremony">
+        <button type="button" data-passkey-login data-passkey-feedback="passkey-msg" data-passkey-only class="btn btn-ghost w-full">
             <x-icon name="key" class="w-4 h-4" /> Sign in with a passkey
         </button>
+        <p id="passkey-msg" class="text-xs text-center" style="min-height:1rem"></p>
     </div>
 
     <p class="mt-8 text-sm" style="color:var(--muted)">

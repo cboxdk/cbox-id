@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\Identity\Contracts\Mfa;
+use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -51,6 +52,16 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
         $this->resetErrorBag();
     }
 
+    public function removePasskey(string $id): void
+    {
+        WebAuthnCredential::query()
+            ->where('user_id', app(CurrentUser::class)->id())
+            ->where('id', $id)
+            ->delete();
+
+        session()->flash('status', 'Passkey removed.');
+    }
+
     public function with(): array
     {
         $me = app(CurrentUser::class);
@@ -60,6 +71,9 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             'org' => $me->organization(),
             'session' => $me->session(),
             'twoFactorEnabled' => $me->id() !== '' && app(Mfa::class)->hasConfirmedTotp($me->id()),
+            'passkeys' => $me->id() !== ''
+                ? WebAuthnCredential::query()->where('user_id', $me->id())->orderByDesc('created_at')->get()
+                : collect(),
         ];
     }
 }; ?>
@@ -159,6 +173,45 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                     <button type="button" wire:click="cancel" class="btn btn-ghost">Cancel</button>
                 </form>
             </div>
+        @endif
+    </section>
+
+    {{-- B2) Passkeys --}}
+    <section class="card p-5" data-passkey-only>
+        <div class="flex items-start gap-3 mb-4">
+            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+                <x-icon name="key" class="w-5 h-5" />
+            </span>
+            <div class="min-w-0 flex-1">
+                <h3 class="font-semibold">Passkeys</h3>
+                <p class="text-sm" style="color:var(--muted)">Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password.</p>
+            </div>
+            <button type="button" data-passkey-register data-passkey-name="{{ $me->name() }}'s device"
+                    data-passkey-feedback="passkey-settings-msg" class="btn btn-primary shrink-0">
+                <x-icon name="plus" class="w-4 h-4" /> Add passkey
+            </button>
+        </div>
+
+        <p id="passkey-settings-msg" class="text-xs mb-2" style="min-height:1rem"></p>
+
+        @if ($passkeys->isEmpty())
+            <p class="text-sm" style="color:var(--faint)">No passkeys registered yet.</p>
+        @else
+            <ul class="divide-y" style="border-color:var(--border)">
+                @foreach ($passkeys as $passkey)
+                    <li class="flex items-center justify-between gap-4 py-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <x-icon name="shield" class="w-4 h-4 shrink-0" style="color:var(--success)" />
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium truncate">{{ $passkey->name ?? 'Passkey' }}</p>
+                                <p class="text-xs" style="color:var(--faint)">Added {{ $passkey->created_at?->format('M j, Y') }} · sign-count {{ $passkey->sign_count }}</p>
+                            </div>
+                        </div>
+                        <button wire:click="removePasskey('{{ $passkey->id }}')" wire:confirm="Remove this passkey?"
+                                class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Remove</button>
+                    </li>
+                @endforeach
+            </ul>
         @endif
     </section>
 

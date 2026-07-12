@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\MagicLinkController;
+use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Platform\PlatformAuth;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,10 @@ Route::middleware('platform.guest')->group(function (): void {
     Volt::route('/login', 'auth.login')->name('login');
     Volt::route('/signup', 'auth.signup')->name('signup');
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
+
+    // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
+    Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
+    Route::post('/passkeys/login', [PasskeyController::class, 'login'])->name('passkeys.login');
 });
 
 // The MFA challenge sits between password and a full session, so it is neither
@@ -44,4 +49,8 @@ Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/settings', 'settings')->name('settings');
 
     Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->name('organization.switch');
+
+    // Passkey enrolment (adds a credential to the signed-in subject).
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->name('passkeys.register.options');
+    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->name('passkeys.register');
 });
