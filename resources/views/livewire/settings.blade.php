@@ -91,6 +91,10 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
     public function regenerateRecoveryCodes(Mfa $mfa): void
     {
+        if ($this->requiresSudo()) {
+            return;
+        }
+
         $me = app(CurrentUser::class);
 
         if (! $mfa->hasConfirmedTotp($me->id())) {
@@ -109,12 +113,32 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
     public function removePasskey(string $id): void
     {
+        if ($this->requiresSudo()) {
+            return;
+        }
+
         WebAuthnCredential::query()
             ->where('user_id', app(CurrentUser::class)->id())
             ->where('id', $id)
             ->delete();
 
         session()->flash('status', 'Passkey removed.');
+    }
+
+    /**
+     * Sensitive actions require a fresh step-up ("sudo") confirmation. If it's
+     * stale, remember where to return and send the user to re-authenticate.
+     */
+    private function requiresSudo(): bool
+    {
+        if (app(\App\Platform\Sudo::class)->confirmed()) {
+            return false;
+        }
+
+        session()->put('sudo.intended', route('settings'));
+        $this->redirectRoute('sudo', navigate: false);
+
+        return true;
     }
 
     public function unlinkProvider(string $provider, Subjects $subjects): void

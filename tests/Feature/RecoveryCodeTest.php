@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -49,6 +50,8 @@ it('regenerates recovery codes and invalidates the old set', function (): void {
 
     $old = $component->get('recoveryCodes');
 
+    // Regenerating is a sensitive action — confirm step-up first.
+    app(Sudo::class)->confirm();
     $component->call('regenerateRecoveryCodes');
     $new = $component->get('recoveryCodes');
 

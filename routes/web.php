@@ -58,6 +58,9 @@ Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/audit', 'audit')->name('audit');
     Volt::route('/settings', 'settings')->name('settings');
 
+    // Step-up re-authentication ("sudo mode") gate for sensitive actions.
+    Volt::route('/sudo', 'auth.sudo')->name('sudo');
+
     // Interactive OIDC/OAuth consent — Cbox ID as an identity provider.
     Volt::route('/oauth/authorize', 'oauth.consent')->name('oauth.authorize');
 
