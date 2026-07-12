@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\SocialProviders;
 use Cbox\Id\Identity\Contracts\Mfa;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Livewire\Attributes\Layout;
@@ -96,6 +98,12 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
         session()->flash('status', 'Passkey removed.');
     }
 
+    public function unlinkProvider(string $provider, Subjects $subjects): void
+    {
+        $subjects->unlink(app(CurrentUser::class)->id(), 'social:'.$provider);
+        session()->flash('status', ucfirst($provider).' disconnected.');
+    }
+
     public function with(): array
     {
         $me = app(CurrentUser::class);
@@ -108,6 +116,9 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             'passkeys' => $me->id() !== ''
                 ? WebAuthnCredential::query()->where('user_id', $me->id())->orderByDesc('created_at')->get()
                 : collect(),
+            'socialProviders' => SocialProviders::configured(),
+            'linkedProviders' => collect(app(Subjects::class)->linkedIdentities($me->id()))
+                ->pluck('provider')->all(),
         ];
     }
 }; ?>
@@ -283,6 +294,39 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             </ul>
         @endif
     </section>
+
+    {{-- B3) Connected accounts (explicit linking) --}}
+    @if (! empty($socialProviders))
+        <section class="card p-5">
+            <div class="flex items-start gap-3 mb-4">
+                <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+                    <x-icon name="connections" class="w-5 h-5" />
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold">Connected accounts</h3>
+                    <p class="text-sm" style="color:var(--muted)">Link a social account to sign in with it. Linking is deliberate — we never merge accounts by email automatically.</p>
+                </div>
+            </div>
+
+            <ul class="divide-y" style="border-color:var(--border)">
+                @foreach ($socialProviders as $key => $label)
+                    @php $isLinked = in_array('social:'.$key, $linkedProviders, true); @endphp
+                    <li class="flex items-center justify-between gap-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <span class="font-medium">{{ $label }}</span>
+                            @if ($isLinked) <span class="badge badge-success"><x-icon name="check" class="w-3 h-3" /> Connected</span> @endif
+                        </div>
+                        @if ($isLinked)
+                            <button wire:click="unlinkProvider('{{ $key }}')" wire:confirm="Disconnect {{ $label }}?"
+                                    class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Disconnect</button>
+                        @else
+                            <a href="{{ route('social.connect', $key) }}" class="btn btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.8rem">Connect</a>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     {{-- C) Current session --}}
     <section class="card p-5">

@@ -62,4 +62,8 @@ Route::middleware('platform.auth')->group(function (): void {
     // Passkey enrolment (adds a credential to the signed-in subject).
     Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->name('passkeys.register.options');
     Route::post('/passkeys/register', [PasskeyController::class, 'register'])->name('passkeys.register');
+
+    // Explicit account linking — connect a social provider to the signed-in user.
+    Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->name('social.connect');
+    Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])->name('social.connect.callback');
 });
