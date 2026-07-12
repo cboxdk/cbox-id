@@ -113,6 +113,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         }
 
         $me = app(CurrentUser::class);
+        $session = $me->session();
 
         $code = $codes->issue(
             $this->clientId,
@@ -123,6 +124,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $this->codeChallenge,
             $this->codeChallengeMethod,
             $this->nonce,
+            $session?->created_at?->getTimestamp(),
+            $session !== null ? array_values($session->amr) : [],
         );
 
         $params = ['code' => $code];
