@@ -8,6 +8,10 @@ you self-host. It covers deploying, configuring, and operating the platform.
 > [`cboxdk/laravel-id`](../../packages/laravel-id/docs/index.md) — start with
 > [Start here](../../packages/laravel-id/docs/start-here.md).
 
+## See it
+
+- [Screens](screens.md) — a visual tour of the admin console and sign-in surface.
+
 ## Run it
 
 - [Deployment](deployment.md) — from a fresh server to a running, hardened instance.
