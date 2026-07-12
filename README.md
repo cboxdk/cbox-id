@@ -10,7 +10,7 @@ adds the admin console + hosted-cloud concerns (UI, onboarding, billing).
 
 ## Stack
 
-- **Laravel 12**, PHP 8.4+
+- **Laravel 13**, PHP 8.4+
 - **Livewire + Volt + Tailwind v4** — server-rendered UI. Chosen for security:
   session-cookie auth (no tokens in the browser), a minimal JS surface, and a
   CSP-friendly footprint suit an identity console.
