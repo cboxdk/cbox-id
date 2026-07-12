@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -39,6 +40,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
     public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth): void
     {
         $this->validate();
+
+        // Throttle to blunt account-enumeration and automated signup abuse.
+        $key = 'signup|'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            $this->addError('email', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
+        RateLimiter::hit($key, 300);
 
         if ($subjects->findByEmail($this->email) !== null) {
             $this->addError('email', 'An account with this email already exists.');

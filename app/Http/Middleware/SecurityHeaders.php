@@ -45,7 +45,10 @@ final class SecurityHeaders
         ];
 
         if ($request->isSecure()) {
-            $headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+            // `preload` opts the domain into browser HSTS preload lists, closing
+            // the first-visit TOFU window. Requires includeSubDomains + a ≥1y
+            // max-age, both present here.
+            $headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains; preload';
         }
 
         foreach ($headers as $name => $value) {

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -24,12 +25,24 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
     {
         $this->validate();
 
+        // Throttle brute force of the 6-digit code (1M space) — keyed to the
+        // pending subject so an attacker can't grind it.
+        $key = 'mfa|'.($auth->pendingMfaSubject(request()) ?? request()->ip());
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError('code', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
         if (! $auth->completeMfa(request(), $this->code)) {
+            RateLimiter::hit($key, 60);
             $this->addError('code', 'That code is incorrect or has expired.');
 
             return;
         }
 
+        RateLimiter::clear($key);
         $this->redirectRoute('dashboard', navigate: false);
     }
 }; ?>

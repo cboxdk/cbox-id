@@ -42,7 +42,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
             return;
         }
 
-        $roles->grantPermission($roleId, $permission);
+        $roles->grantPermission($this->orgId(), $roleId, $permission);
 
         $this->permissionInput[$roleId] = '';
         session()->flash('status', 'Permission granted.');

@@ -11,6 +11,7 @@ use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Http\Request;
 
 /**
@@ -29,11 +30,15 @@ final class PlatformAuth
 
     private const PENDING_LINK_KEY = 'cbox.pending_link';
 
+    /** A precomputed hash so a login for a non-existent user still does the work. */
+    private static ?string $timingHash = null;
+
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly Subjects $subjects,
         private readonly Memberships $memberships,
         private readonly Mfa $mfa,
+        private readonly Hasher $hasher,
     ) {}
 
     /**
@@ -44,7 +49,15 @@ final class PlatformAuth
     {
         $subject = $this->subjects->findByEmail($email);
 
-        if ($subject === null || ! $this->subjects->verifyPassword($subject->id, $password)) {
+        if ($subject === null) {
+            // Do equivalent hashing work so a missing account isn't measurably
+            // faster than a wrong password — closes the email-enumeration oracle.
+            $this->hasher->check($password, self::timingHash());
+
+            return 'invalid';
+        }
+
+        if (! $this->subjects->verifyPassword($subject->id, $password)) {
             return 'invalid';
         }
 
@@ -57,6 +70,11 @@ final class PlatformAuth
         $this->establish($request, $subject->id, ['pwd']);
 
         return 'ok';
+    }
+
+    private function timingHash(): string
+    {
+        return self::$timingHash ??= $this->hasher->make('cbox-id-timing-equalizer');
     }
 
     public function pendingMfaSubject(Request $request): ?string

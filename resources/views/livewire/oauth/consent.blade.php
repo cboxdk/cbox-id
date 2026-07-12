@@ -122,6 +122,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $this->scopes,
             $this->codeChallenge,
             $this->codeChallengeMethod,
+            $this->nonce,
         );
 
         $params = ['code' => $code];

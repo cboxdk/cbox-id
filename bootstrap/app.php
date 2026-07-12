@@ -18,9 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [
-            SecurityHeaders::class,
-        ]);
+        // Global so security headers cover API/JSON + error responses too, not
+        // just the web group.
+        $middleware->append(SecurityHeaders::class);
 
         $middleware->alias([
             'platform.auth' => Authenticate::class,

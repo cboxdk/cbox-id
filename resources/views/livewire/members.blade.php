@@ -28,6 +28,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $this->authorizeAdmin();
         $this->validate();
 
+        // Only an owner may invite someone straight to owner.
+        abort_if($this->inviteRole === 'owner' && ! app(CurrentUser::class)->isOwner(), 403);
+
         $me = app(CurrentUser::class);
         $email = $this->inviteEmail;
 
@@ -49,7 +52,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     public function revokeInvitation(string $id, Invitations $invitations): void
     {
         $this->authorizeAdmin();
-        $invitations->revoke($id);
+        $invitations->revoke($this->orgId(), $id);
         session()->flash('status', 'Invitation revoked.');
     }
 
@@ -60,6 +63,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         if (! in_array($role, ['member', 'admin', 'owner'], true)) {
             return;
         }
+
+        // Only an owner may grant the owner role (prevents an admin self-promoting).
+        abort_if($role === 'owner' && ! app(CurrentUser::class)->isOwner(), 403);
 
         $memberships->changeRole($this->orgId(), $userId, $role);
     }

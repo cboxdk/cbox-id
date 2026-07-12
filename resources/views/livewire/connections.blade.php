@@ -68,7 +68,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
     {
         $this->authorizeAdmin();
 
-        $connections->activate($id);
+        $connections->activate($this->orgId(), $id);
         session()->flash('status', 'Connection activated.');
     }
 
