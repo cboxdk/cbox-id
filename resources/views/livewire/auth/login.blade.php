@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
+use App\Platform\RiskGuard;
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Support\Facades\Mail;
@@ -51,7 +52,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         }
     }
 
-    public function login(PlatformAuth $auth): void
+    public function login(PlatformAuth $auth, RiskGuard $risk): void
     {
         $this->validate();
 
@@ -59,6 +60,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $this->addError('email', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
+        // Risk-score the attempt (credential-stuffing / bot velocity, IP reputation,
+        // Tor). Logged for review; hard-blocks a Reject only under enforcement.
+        if ($risk->shouldBlock($risk->assess(request(), 'login', $this->email))) {
+            $this->addError('email', 'We could not process this request. Please try again later.');
 
             return;
         }

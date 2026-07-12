@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "27e5a34016edbc15ee56ca28193af494",
+    "content-hash": "a4598d1af6c170d4fda054f65b5a12f2",
     "packages": [
         {
             "name": "brick/math",
@@ -141,9 +141,10 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/laravel-id",
-                "reference": "66efaabd780dde04831fe5eebb427f00991c8626"
+                "reference": "5cec131e581f786688d038b78d08fcac04a2d6b0"
             },
             "require": {
+                "cboxdk/laravel-ssrf": "^1.0",
                 "ext-openssl": "*",
                 "ext-sodium": "*",
                 "firebase/php-jwt": "^7.0",
@@ -215,6 +216,145 @@
                 "symlink": true,
                 "relative": true
             }
+        },
+        {
+            "name": "cboxdk/laravel-risk",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-risk.git",
+                "reference": "da84c9342080a8d64917a74d9ae102ef950b30c9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-risk/zipball/da84c9342080a8d64917a74d9ae102ef950b30c9",
+                "reference": "da84c9342080a8d64917a74d9ae102ef950b30c9",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^12.0",
+                "illuminate/http": "^12.0",
+                "illuminate/support": "^12.0",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0",
+                "pestphp/pest": "^3.5"
+            },
+            "bin": [
+                "bin/check-licenses.php",
+                "bin/generate-sbom.php"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Cbox\\Risk\\RiskServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\Risk\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Cbox",
+                    "homepage": "https://cboxdk.com"
+                }
+            ],
+            "description": "Cbox Risk — an explainable, config-driven request risk-scoring pipeline for Laravel. Weights signals (IP reputation, geo, disposable email, velocity, bot timing) into a score and an outcome: allow, challenge, step-up, or reject.",
+            "keywords": [
+                "Abuse",
+                "anti-bot",
+                "fraud",
+                "laravel",
+                "risk",
+                "security",
+                "spam"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-risk/issues",
+                "security": "https://github.com/cboxdk/laravel-risk/security/policy",
+                "source": "https://github.com/cboxdk/laravel-risk"
+            },
+            "time": "2026-07-12T19:43:17+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-ssrf",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-ssrf.git",
+                "reference": "cb35490f6f4f6209bedd35095f1500ff36f88c4d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-ssrf/zipball/cb35490f6f4f6209bedd35095f1500ff36f88c4d",
+                "reference": "cb35490f6f4f6209bedd35095f1500ff36f88c4d",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^12.0",
+                "illuminate/http": "^12.0",
+                "illuminate/support": "^12.0",
+                "php": "^8.4",
+                "symfony/http-foundation": "^7.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0",
+                "pestphp/pest": "^3.5"
+            },
+            "bin": [
+                "bin/check-licenses.php",
+                "bin/generate-sbom.php"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Cbox\\Ssrf\\SsrfServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\Ssrf\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Cbox",
+                    "homepage": "https://cboxdk.com"
+                }
+            ],
+            "description": "Cbox SSRF — a hardened, config-driven guard against server-side request forgery for outbound URLs in Laravel. Blocks private/reserved/cloud-metadata targets, pins DNS, and refuses redirects.",
+            "keywords": [
+                "http",
+                "laravel",
+                "security",
+                "ssrf",
+                "url"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-ssrf/issues",
+                "security": "https://github.com/cboxdk/laravel-ssrf/security/policy",
+                "source": "https://github.com/cboxdk/laravel-ssrf"
+            },
+            "time": "2026-07-12T19:06:05+00:00"
         },
         {
             "name": "dflydev/dot-access-data",

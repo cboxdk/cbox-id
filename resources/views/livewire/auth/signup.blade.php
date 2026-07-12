@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use App\Platform\RiskGuard;
 use App\Rules\NotBreached;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -23,6 +24,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
 
     public string $password = '';
 
+    // Honeypot: a real user never fills `website`; `renderedAt` catches bots that
+    // submit implausibly fast. Both feed the risk scorer.
+    public string $website = '';
+
+    public int $renderedAt = 0;
+
+    public function mount(): void
+    {
+        $this->renderedAt = now()->timestamp;
+    }
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -37,7 +49,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         ];
     }
 
-    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth): void
+    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk): void
     {
         $this->validate();
 
@@ -51,6 +63,19 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         }
 
         RateLimiter::hit($key, 300);
+
+        // Risk-score the signup (bot/abuse detection). Logged for review; blocks a
+        // Reject only when enforcement is enabled.
+        $assessment = $risk->assess(request(), 'register', $this->email, [
+            'honeypot' => $this->website,
+            'form_rendered_at' => $this->renderedAt,
+        ]);
+
+        if ($risk->shouldBlock($assessment)) {
+            $this->addError('email', 'We could not process this request. Please try again later.');
+
+            return;
+        }
 
         if ($subjects->findByEmail($this->email) !== null) {
             $this->addError('email', 'An account with this email already exists.');
@@ -87,6 +112,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
     <p class="mt-1.5 text-sm" style="color:var(--muted)">Set up Cbox ID for your team in under a minute.</p>
 
     <form wire:submit="register" class="mt-6 space-y-4">
+        {{-- Honeypot: hidden from humans, tempting to bots. Must stay empty. --}}
+        <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px" tabindex="-1">
+            <label for="website">Website</label>
+            <input wire:model="website" id="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
         <div>
             <label class="label" for="organization">Organization name</label>
             <input wire:model="organization" id="organization" type="text" class="input" placeholder="Acme Inc." autofocus>
