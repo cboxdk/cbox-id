@@ -84,12 +84,19 @@ sign-out-everywhere).
 
 ![Settings](screenshots/settings.png)
 
+### Organization switcher
+
+A signed-in user who belongs to several organizations switches the active tenant
+from the sidebar card. The switch is server-verified against membership — you can
+only switch into an org you actually belong to — and the role updates with it
+(here: Owner in Acme, Admin in Globex).
+
+![Organization switcher](screenshots/org-switcher.png)
+
 ## Notes
 
 - Server-rendered (Livewire + Volt), session-cookie auth, minimal JS — chosen
   because this *is* the login surface. See the framework
   [security model](../../packages/laravel-id/docs/security.md).
-- The org card (top-left) is the **organization switcher** — a signed-in user who
-  belongs to several orgs switches the active tenant there.
 - To reproduce these locally: `php artisan migrate`, seed a demo org
   (`php artisan db:seed --class=DemoSeeder`), then sign in.

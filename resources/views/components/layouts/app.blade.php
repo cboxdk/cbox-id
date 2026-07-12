@@ -21,6 +21,22 @@
         ['route' => 'audit', 'label' => 'Audit log', 'icon' => 'audit'],
         ['route' => 'settings', 'label' => 'Settings', 'icon' => 'settings'],
     ];
+
+    // Organizations the signed-in subject belongs to, for the switcher.
+    $myOrgs = collect();
+    if ($me->check()) {
+        $orgRepo = app(\Cbox\Id\Organization\Contracts\Organizations::class);
+        $myOrgs = app(\Cbox\Id\Organization\Contracts\Memberships::class)
+            ->forUser($me->id())
+            ->map(fn ($m) => (object) [
+                'id' => $m->organization_id,
+                'role' => $m->role ?? null,
+                'name' => $orgRepo->find($m->organization_id)?->name,
+            ])
+            ->filter(fn ($o) => $o->name !== null)
+            ->values();
+    }
+    $activeOrgId = $me->organization()?->id;
 @endphp
 
 <div class="min-h-full lg:grid" style="grid-template-columns:15.5rem 1fr">
@@ -30,16 +46,51 @@
         </div>
 
         <div class="px-3 py-3">
-            <div class="flex items-center gap-2.5 rounded-lg px-2.5 py-2" style="background:var(--surface-2)">
-                <span class="grid place-items-center rounded-md text-xs font-bold"
-                      style="width:1.75rem;height:1.75rem;background:var(--accent);color:var(--accent-fg)">
-                    {{ strtoupper(substr($me->organization()?->name ?? 'C', 0, 1)) }}
-                </span>
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold truncate">{{ $me->organization()?->name ?? 'No organization' }}</p>
-                    <p class="text-xs truncate" style="color:var(--faint)">{{ $me->role() ? ucfirst($me->role()) : 'Member' }}</p>
-                </div>
-            </div>
+            @php $canSwitch = $myOrgs->count() > 1; @endphp
+            <details class="org-switcher relative" @if (! $canSwitch) open-disabled @endif>
+                <summary class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 list-none {{ $canSwitch ? 'cursor-pointer' : '' }}"
+                         style="background:var(--surface-2)" @if (! $canSwitch) onclick="return false" @endif>
+                    <span class="grid place-items-center rounded-md text-xs font-bold shrink-0"
+                          style="width:1.75rem;height:1.75rem;background:var(--accent);color:var(--accent-fg)">
+                        {{ strtoupper(substr($me->organization()?->name ?? 'C', 0, 1)) }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold truncate">{{ $me->organization()?->name ?? 'No organization' }}</p>
+                        <p class="text-xs truncate" style="color:var(--faint)">{{ $me->role() ? ucfirst($me->role()) : 'Member' }}</p>
+                    </div>
+                    @if ($canSwitch)
+                        <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
+                    @endif
+                </summary>
+
+                @if ($canSwitch)
+                    <div class="absolute left-0 right-0 mt-1 z-20 rounded-lg border p-1 shadow-lg"
+                         style="background:var(--surface);border-color:var(--border)">
+                        <p class="px-2 py-1 text-[0.68rem] font-medium uppercase tracking-wide" style="color:var(--faint)">Switch organization</p>
+                        @foreach ($myOrgs as $o)
+                            <form method="POST" action="{{ route('organization.switch') }}">
+                                @csrf
+                                <input type="hidden" name="organization" value="{{ $o->id }}">
+                                <button type="submit"
+                                        class="w-full flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:opacity-80"
+                                        style="{{ $o->id === $activeOrgId ? 'background:var(--surface-2)' : '' }}">
+                                    <span class="grid place-items-center rounded-md text-[0.65rem] font-bold shrink-0"
+                                          style="width:1.5rem;height:1.5rem;background:var(--accent);color:var(--accent-fg)">
+                                        {{ strtoupper(substr($o->name, 0, 1)) }}
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm truncate">{{ $o->name }}</span>
+                                        <span class="block text-xs truncate" style="color:var(--faint)">{{ $o->role ? ucfirst($o->role) : 'Member' }}</span>
+                                    </span>
+                                    @if ($o->id === $activeOrgId)
+                                        <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--accent)" />
+                                    @endif
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
+                @endif
+            </details>
         </div>
 
         <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto">
