@@ -82,6 +82,25 @@ it('routes a password login to MFA when the user has confirmed TOTP', function (
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
 
+it('throttles repeated failed password attempts', function () {
+    account();
+
+    foreach (range(1, 5) as $ignored) {
+        Volt::test('auth.login')->set('email', 'dana@acme.test')->set('password', 'wrong')->call('login');
+    }
+
+    Volt::test('auth.login')
+        ->set('email', 'dana@acme.test')->set('password', 'wrong')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    // Even the correct password is blocked while throttled.
+    Volt::test('auth.login')
+        ->set('email', 'dana@acme.test')->set('password', 'supersecret123')
+        ->call('login')
+        ->assertNoRedirect();
+});
+
 it('redirects guests away from the console', function () {
     $this->get('/dashboard')->assertRedirect(route('login'));
     $this->get('/members')->assertRedirect(route('login'));

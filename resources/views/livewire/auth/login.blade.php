@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -24,14 +26,24 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     {
         $this->validate();
 
+        $key = $this->throttleKey('login');
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError('email', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
         $result = $auth->attemptPassword(request(), $this->email, $this->password);
 
         if ($result === 'invalid') {
+            RateLimiter::hit($key, 60);
             $this->addError('email', 'Those credentials do not match our records.');
 
             return;
         }
 
+        RateLimiter::clear($key);
         $this->redirectRoute($result === 'mfa' ? 'mfa' : 'dashboard', navigate: false);
     }
 
@@ -39,11 +51,25 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     {
         $this->validateOnly('email');
 
+        $key = $this->throttleKey('magic');
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $this->addError('email', 'Too many requests. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
+        RateLimiter::hit($key, 120);
         $token = $links->request($this->email);
 
         // Production emails this link; in local dev we surface it directly.
         $this->magicUrl = app()->environment('production') ? null : route('magic.redeem', $token);
         $this->magicSent = true;
+    }
+
+    private function throttleKey(string $action): string
+    {
+        return $action.'|'.Str::lower($this->email).'|'.request()->ip();
     }
 }; ?>
 
