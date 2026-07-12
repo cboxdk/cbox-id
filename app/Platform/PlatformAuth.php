@@ -102,6 +102,25 @@ final class PlatformAuth
     }
 
     /**
+     * Complete the challenge with a one-time recovery code instead of a TOTP code
+     * — the escape hatch when the authenticator is unavailable. A recovery code is
+     * still a second factor, so the resulting session's amr records 'mfa'.
+     */
+    public function completeMfaWithRecoveryCode(Request $request, string $code): bool
+    {
+        $subjectId = $this->pendingMfaSubject($request);
+
+        if ($subjectId === null || ! $this->mfa->verifyRecoveryCode($subjectId, $code)) {
+            return false;
+        }
+
+        session()->forget(self::MFA_PENDING_KEY);
+        $this->establish($request, $subjectId, ['pwd', 'mfa']);
+
+        return true;
+    }
+
+    /**
      * Establish a browser session for an already-authenticated subject (also
      * used after magic-link and passkey login).
      *

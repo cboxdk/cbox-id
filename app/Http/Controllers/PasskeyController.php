@@ -30,10 +30,13 @@ final class PasskeyController extends Controller
 
     private const AUTH_CHALLENGE = 'passkey.auth_challenge';
 
+    /** Server-side lifetime of an issued challenge, in seconds. */
+    private const CHALLENGE_TTL = 120;
+
     public function registerOptions(Request $request, CurrentUser $me): JsonResponse
     {
         $challenge = random_bytes(32);
-        $request->session()->put(self::REG_CHALLENGE, base64_encode($challenge));
+        $this->putChallenge($request, self::REG_CHALLENGE, $challenge);
 
         $existing = WebAuthnCredential::query()
             ->where('user_id', $me->id())
@@ -53,7 +56,7 @@ final class PasskeyController extends Controller
                 ['type' => 'public-key', 'alg' => -7],
                 ['type' => 'public-key', 'alg' => -257],
             ],
-            'authenticatorSelection' => ['residentKey' => 'preferred', 'userVerification' => 'preferred'],
+            'authenticatorSelection' => ['residentKey' => 'preferred', 'userVerification' => 'required'],
             'excludeCredentials' => $existing,
             'timeout' => 60000,
             'attestation' => 'none',
@@ -84,12 +87,12 @@ final class PasskeyController extends Controller
     public function loginOptions(Request $request): JsonResponse
     {
         $challenge = random_bytes(32);
-        $request->session()->put(self::AUTH_CHALLENGE, base64_encode($challenge));
+        $this->putChallenge($request, self::AUTH_CHALLENGE, $challenge);
 
         return new JsonResponse([
             'challenge' => Base64Url::encode($challenge),
             'rpId' => $this->rpId(),
-            'userVerification' => 'preferred',
+            'userVerification' => 'required',
             'allowCredentials' => [],
             'timeout' => 60000,
         ]);
@@ -121,10 +124,30 @@ final class PasskeyController extends Controller
         return new JsonResponse(['redirect' => route('dashboard')]);
     }
 
+    private function putChallenge(Request $request, string $key, string $challenge): void
+    {
+        // Store the challenge with a server-side expiry so a challenge captured
+        // from a stale tab can't be replayed indefinitely (the client `timeout`
+        // is advisory only).
+        $request->session()->put($key, [
+            'c' => base64_encode($challenge),
+            'exp' => time() + self::CHALLENGE_TTL,
+        ]);
+    }
+
     private function pullChallenge(Request $request, string $key): ?string
     {
         $stored = $request->session()->pull($key);
-        $decoded = is_string($stored) ? base64_decode($stored, true) : false;
+
+        if (! is_array($stored) || ! is_string($stored['c'] ?? null) || ! is_int($stored['exp'] ?? null)) {
+            return null;
+        }
+
+        if ($stored['exp'] < time()) {
+            return null; // expired — single-use already enforced by pull()
+        }
+
+        $decoded = base64_decode($stored['c'], true);
 
         return $decoded === false ? null : $decoded;
     }

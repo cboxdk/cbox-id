@@ -56,6 +56,9 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
     #[Validate('required|digits:6')]
     public string $code = '';
 
+    /** @var list<string> Shown exactly once, right after generation. */
+    public array $recoveryCodes = [];
+
     public function enable(Mfa $mfa): void
     {
         $me = app(CurrentUser::class);
@@ -78,8 +81,24 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             return;
         }
 
+        // Issue recovery codes immediately so the user is never locked out if they
+        // lose the authenticator. Shown once, here and now.
+        $this->recoveryCodes = $mfa->generateRecoveryCodes(app(CurrentUser::class)->id());
+
         $this->reset('enrolling', 'secret', 'provisioningUri', 'code');
-        session()->flash('status', 'Two-factor authentication is now enabled.');
+        session()->flash('status', 'Two-factor authentication is now enabled. Save your recovery codes below.');
+    }
+
+    public function regenerateRecoveryCodes(Mfa $mfa): void
+    {
+        $me = app(CurrentUser::class);
+
+        if (! $mfa->hasConfirmedTotp($me->id())) {
+            return;
+        }
+
+        $this->recoveryCodes = $mfa->generateRecoveryCodes($me->id());
+        session()->flash('status', 'New recovery codes generated. Your previous codes no longer work.');
     }
 
     public function cancel(): void
@@ -113,6 +132,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             'org' => $me->organization(),
             'session' => $me->session(),
             'twoFactorEnabled' => $me->id() !== '' && app(Mfa::class)->hasConfirmedTotp($me->id()),
+            'recoveryRemaining' => $me->id() !== '' ? app(Mfa::class)->remainingRecoveryCodes($me->id()) : 0,
             'passkeys' => $me->id() !== ''
                 ? WebAuthnCredential::query()->where('user_id', $me->id())->orderByDesc('created_at')->get()
                 : collect(),
@@ -220,6 +240,30 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                 Your account is protected with an authenticator app. You will be asked for a
                 6-digit code at sign-in.
             </p>
+
+            <div class="mt-4 pt-4" style="border-top:1px solid var(--border)">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <h4 class="font-medium text-sm">Recovery codes</h4>
+                    <span class="badge">{{ $recoveryRemaining }} left</span>
+                </div>
+                <p class="text-sm" style="color:var(--muted)">
+                    Single-use codes to sign in if you lose your authenticator. Store them somewhere safe.
+                </p>
+
+                @if ($recoveryCodes !== [])
+                    <div class="mt-3 p-3 rounded-lg grid grid-cols-2 gap-x-6 gap-y-1 mono text-sm select-all" style="background:var(--surface-2);border:1px solid var(--border)">
+                        @foreach ($recoveryCodes as $rc)
+                            <span>{{ $rc }}</span>
+                        @endforeach
+                    </div>
+                    <p class="mt-1 text-xs" style="color:var(--danger,#b91c1c)">These are shown only once. Copy them now.</p>
+                @endif
+
+                <button wire:click="regenerateRecoveryCodes" wire:confirm="Generate new recovery codes? Your existing codes will stop working."
+                        class="btn btn-ghost mt-3" wire:loading.attr="disabled">
+                    <x-icon name="refresh" class="w-4 h-4" /> {{ $recoveryRemaining > 0 ? 'Regenerate codes' : 'Generate codes' }}
+                </button>
+            </div>
         @elseif (! $enrolling)
             <button wire:click="enable" class="btn btn-primary" wire:loading.attr="disabled">
                 <x-icon name="key" class="w-4 h-4" /> Enable 2FA

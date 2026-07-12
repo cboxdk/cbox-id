@@ -67,7 +67,7 @@ it('signs in with a verified passkey assertion and starts a session', function (
     [$subject, $org] = accountWithOrg('holder@acme.test');
     fakePasskeys($subject->id);
 
-    $this->withSession(['passkey.auth_challenge' => base64_encode(random_bytes(32))])
+    $this->withSession(['passkey.auth_challenge' => ['c' => base64_encode(random_bytes(32)), 'exp' => time() + 120]])
         ->postJson('/passkeys/login', [
             'id' => 'cred_'.$subject->id,
             'type' => 'public-key',
@@ -77,6 +77,22 @@ it('signs in with a verified passkey assertion and starts a session', function (
         ->assertJsonPath('redirect', route('dashboard'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeTrue();
+});
+
+it('rejects a passkey assertion whose challenge has expired', function () {
+    [$subject] = accountWithOrg('expired@acme.test');
+    fakePasskeys($subject->id);
+
+    // A challenge issued more than its TTL ago must not be accepted.
+    $this->withSession(['passkey.auth_challenge' => ['c' => base64_encode(random_bytes(32)), 'exp' => time() - 1]])
+        ->postJson('/passkeys/login', [
+            'id' => 'cred_'.$subject->id,
+            'type' => 'public-key',
+            'response' => ['clientDataJSON' => 'x', 'authenticatorData' => 'x', 'signature' => 'x'],
+        ])
+        ->assertStatus(422);
+
+    expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
 
 it('rejects a passkey assertion with no stored challenge', function () {
