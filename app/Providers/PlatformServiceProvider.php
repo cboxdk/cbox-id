@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Platform\CurrentUser;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
+use SocialiteProviders\Microsoft\MicrosoftExtendSocialite;
 
 final class PlatformServiceProvider extends ServiceProvider
 {
@@ -20,5 +23,8 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // Every view can read `$me` without each component wiring it up.
         View::share('me', $this->app->make(CurrentUser::class));
+
+        // Register the Microsoft Socialite driver (Google/GitHub are built in).
+        Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
     }
 }

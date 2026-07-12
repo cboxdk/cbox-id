@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -12,6 +13,39 @@ use Livewire\Volt\Component;
 new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends Component
 {
     public bool $enrolling = false;
+
+    public string $brandColor = '';
+
+    public string $brandLogoUrl = '';
+
+    public function mount(): void
+    {
+        $settings = app(CurrentUser::class)->organization()?->settings ?? [];
+        $this->brandColor = is_string($settings['brand_color'] ?? null) ? $settings['brand_color'] : '';
+        $this->brandLogoUrl = is_string($settings['brand_logo_url'] ?? null) ? $settings['brand_logo_url'] : '';
+    }
+
+    public function saveBranding(Organizations $organizations): void
+    {
+        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+
+        $this->validate([
+            'brandColor' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'brandLogoUrl' => ['nullable', 'url', 'max:500'],
+        ], [
+            'brandColor.regex' => 'Use a 6-digit hex colour, e.g. #4f46e5.',
+        ]);
+
+        $orgId = app(CurrentUser::class)->organizationId();
+
+        if ($orgId !== null) {
+            $organizations->updateSettings($orgId, [
+                'brand_color' => $this->brandColor ?: null,
+                'brand_logo_url' => $this->brandLogoUrl ?: null,
+            ]);
+            session()->flash('status', 'Branding saved.');
+        }
+    }
 
     public ?string $secret = null;
 
@@ -117,6 +151,41 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             <p class="text-sm" style="color:var(--faint)">No organization is associated with this session.</p>
         @endif
     </section>
+
+    {{-- A2) Login branding --}}
+    @if ($me->isAdmin() && $org)
+        <section class="card p-5">
+            <div class="flex items-start gap-3 mb-4">
+                <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+                    <x-icon name="shield" class="w-5 h-5" />
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold">Login branding</h3>
+                    <p class="text-sm" style="color:var(--muted)">Theme your organization's sign-in page. Your team signs in at
+                        <a href="{{ route('login.branded', $org->slug) }}" class="mono underline" style="color:var(--accent)">/o/{{ $org->slug }}/login</a>.</p>
+                </div>
+            </div>
+
+            <form wire:submit="saveBranding" class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="label" for="brandColor">Primary colour</label>
+                    <div class="flex items-center gap-2">
+                        <input wire:model="brandColor" id="brandColor" type="text" class="input mono" placeholder="#4f46e5" style="flex:1">
+                        <span class="rounded-md shrink-0" style="width:2.4rem;height:2.4rem;border:1px solid var(--border);background:{{ preg_match('/^#[0-9a-fA-F]{6}$/', $brandColor) ? $brandColor : 'var(--surface-2)' }}"></span>
+                    </div>
+                    @error('brandColor') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="label" for="brandLogoUrl">Logo URL (https)</label>
+                    <input wire:model="brandLogoUrl" id="brandLogoUrl" type="url" class="input" placeholder="https://acme.com/logo.svg">
+                    @error('brandLogoUrl') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+                <div class="sm:col-span-2">
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Save branding</button>
+                </div>
+            </form>
+        </section>
+    @endif
 
     {{-- B) Two-factor authentication --}}
     <section class="card p-5">

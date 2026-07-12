@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Mail\InvitationMail;
 use App\Platform\CurrentUser;
+use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -20,19 +23,27 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
     public bool $inviting = false;
 
-    public function invite(Subjects $subjects, Memberships $memberships): void
+    public function invite(Subjects $subjects, Memberships $memberships, MagicLink $links): void
     {
         $this->authorizeAdmin();
         $this->validate();
 
-        $orgId = $this->orgId();
+        $me = app(CurrentUser::class);
         $subject = $subjects->findByEmail($this->inviteEmail) ?? $subjects->create($this->inviteEmail);
 
-        $memberships->add($orgId, $subject->id, $this->inviteRole, invitedBy: app(CurrentUser::class)->id());
+        $memberships->add($me->organizationId() ?? '', $subject->id, $this->inviteRole, invitedBy: $me->id());
+
+        // Send an accept-invitation email with a single-use sign-in link.
+        $token = $links->request($subject->email ?? $this->inviteEmail);
+        Mail::to($subject->email ?? $this->inviteEmail)->send(new InvitationMail(
+            organization: $me->organization()?->name ?? 'your team',
+            inviter: $me->name(),
+            url: route('magic.redeem', $token),
+        ));
 
         $this->reset('inviteEmail', 'inviting');
         $this->inviteRole = 'member';
-        session()->flash('status', 'Invitation sent to '.$subject->email.'.');
+        session()->flash('status', 'Invitation sent to '.($subject->email ?? $this->inviteEmail).'.');
     }
 
     public function setRole(string $userId, string $role, Memberships $memberships): void

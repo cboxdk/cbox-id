@@ -3,28 +3,38 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use App\Rules\NotBreached;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])] class extends Component
 {
-    #[Validate('required|string|max:120')]
     public string $organization = '';
 
-    #[Validate('required|string|max:120')]
     public string $name = '';
 
-    #[Validate('required|email|max:190')]
     public string $email = '';
 
-    #[Validate('required|string|min:8|max:200')]
     public string $password = '';
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    protected function rules(): array
+    {
+        return [
+            'organization' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:190'],
+            // Reject passwords found in known breaches (HIBP k-anonymity).
+            'password' => ['required', 'string', 'min:8', 'max:200', new NotBreached],
+        ];
+    }
 
     public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth): void
     {

@@ -9,7 +9,11 @@ use Cbox\Id\Identity\Mfa\TotpAuthenticator;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
+
+// Signup validates against HaveIBeenPwned; keep tests offline + deterministic.
+beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
 function account(string $email = 'dana@acme.test', string $password = 'supersecret123'): array
 {

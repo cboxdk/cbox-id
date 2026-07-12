@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -21,6 +25,27 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     public bool $magicSent = false;
 
     public ?string $magicUrl = null;
+
+    /**
+     * Branded, per-organization login (/o/{slug}/login) themes the page with the
+     * org's colour, logo and name.
+     */
+    public function mount(?string $slug = null): void
+    {
+        if ($slug === null) {
+            return;
+        }
+
+        $org = app(Organizations::class)->bySlug($slug);
+
+        if ($org !== null) {
+            View::share('cboxBrand', [
+                'name' => $org->name,
+                'color' => is_string($org->settings['brand_color'] ?? null) ? $org->settings['brand_color'] : null,
+                'logo' => is_string($org->settings['brand_logo_url'] ?? null) ? $org->settings['brand_logo_url'] : null,
+            ]);
+        }
+    }
 
     public function login(PlatformAuth $auth): void
     {
@@ -61,9 +86,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
         RateLimiter::hit($key, 120);
         $token = $links->request($this->email);
+        $url = route('magic.redeem', $token);
 
-        // Production emails this link; in local dev we surface it directly.
-        $this->magicUrl = app()->environment('production') ? null : route('magic.redeem', $token);
+        Mail::to($this->email)->send(new MagicLinkMail($url));
+
+        // Also surface the link directly outside production, for local dev.
+        $this->magicUrl = app()->environment('production') ? null : $url;
         $this->magicSent = true;
     }
 
@@ -118,6 +146,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         OR
         <span class="flex-1 h-px" style="background:var(--border)"></span>
     </div>
+
+    <x-social-buttons class="mb-2.5" />
 
     <div class="space-y-2.5">
         <button type="button" wire:click="sendMagicLink" class="btn btn-ghost w-full" wire:loading.attr="disabled" wire:target="sendMagicLink">

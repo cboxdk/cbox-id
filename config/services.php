@@ -35,4 +35,27 @@ return [
         ],
     ],
 
+    /*
+     * Social login providers. The self-host operator configures their own OAuth
+     * apps; a provider only appears on the login screen once its credentials are
+     * set. Account linking is by provider-verified email (see SocialController).
+     */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => '/auth/google/callback',
+    ],
+
+    'github' => [
+        'client_id' => env('GITHUB_CLIENT_ID'),
+        'client_secret' => env('GITHUB_CLIENT_SECRET'),
+        'redirect' => '/auth/github/callback',
+    ],
+
+    'microsoft' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => '/auth/microsoft/callback',
+    ],
+
 ];

@@ -33,7 +33,8 @@ final class SecurityHeaders
                 // Alpine's CSP build is a follow-up.
                 "script-src 'self' 'unsafe-eval'",
                 "style-src 'self' 'unsafe-inline'",
-                "img-src 'self' data:",
+                // https: allows customer-hosted org logos on the branded login.
+                "img-src 'self' data: https:",
                 "font-src 'self' data:",
                 "connect-src 'self'",
                 "frame-ancestors 'none'",
