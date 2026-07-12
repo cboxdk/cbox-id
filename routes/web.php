@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
@@ -37,6 +38,9 @@ Route::middleware('platform.guest')->group(function (): void {
 // The MFA challenge sits between password and a full session, so it is neither
 // fully guest nor fully authenticated.
 Volt::route('/mfa', 'auth.mfa')->name('mfa');
+
+// Invitation acceptance — the token is the proof; accepting signs the invitee in.
+Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept');
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
@@ -28,7 +29,7 @@ function actingAsRole(string $role): array
     return [$subject->id, $org];
 }
 
-it('lets an admin invite a new member', function () {
+it('creates a pending invitation without granting membership', function () {
     [, $org] = actingAsRole('owner');
 
     Volt::test('members')
@@ -37,9 +38,10 @@ it('lets an admin invite a new member', function () {
         ->call('invite')
         ->assertHasNoErrors();
 
-    $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
-    expect($subject)->not->toBeNull()
-        ->and(app(Memberships::class)->of($org->id, $subject->id)?->role)->toBe('member');
+    expect(app(Invitations::class)->pending($org->id)->pluck('email'))
+        ->toContain('newbie@acme.test')
+        // Only the owner is a member — the invitee has not accepted yet.
+        ->and(app(Memberships::class)->forOrganization($org->id))->toHaveCount(1);
 });
 
 it('changes a member role and removes a member', function () {

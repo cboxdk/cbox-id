@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Platform\CurrentUser;
-use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
@@ -23,27 +23,34 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
     public bool $inviting = false;
 
-    public function invite(Subjects $subjects, Memberships $memberships, MagicLink $links): void
+    public function invite(Invitations $invitations): void
     {
         $this->authorizeAdmin();
         $this->validate();
 
         $me = app(CurrentUser::class);
-        $subject = $subjects->findByEmail($this->inviteEmail) ?? $subjects->create($this->inviteEmail);
+        $email = $this->inviteEmail;
 
-        $memberships->add($me->organizationId() ?? '', $subject->id, $this->inviteRole, invitedBy: $me->id());
+        // Create a PENDING invitation — membership is granted only when the
+        // invitee accepts via the emailed token. No one is added without consent.
+        $pending = $invitations->invite($me->organizationId() ?? '', $email, $this->inviteRole, invitedBy: $me->id());
 
-        // Send an accept-invitation email with a single-use sign-in link.
-        $token = $links->request($subject->email ?? $this->inviteEmail);
-        Mail::to($subject->email ?? $this->inviteEmail)->send(new InvitationMail(
+        Mail::to($email)->send(new InvitationMail(
             organization: $me->organization()?->name ?? 'your team',
             inviter: $me->name(),
-            url: route('magic.redeem', $token),
+            url: route('invitation.accept', $pending->token),
         ));
 
         $this->reset('inviteEmail', 'inviting');
         $this->inviteRole = 'member';
-        session()->flash('status', 'Invitation sent to '.($subject->email ?? $this->inviteEmail).'.');
+        session()->flash('status', 'Invitation sent to '.$email.'.');
+    }
+
+    public function revokeInvitation(string $id, Invitations $invitations): void
+    {
+        $this->authorizeAdmin();
+        $invitations->revoke($id);
+        session()->flash('status', 'Invitation revoked.');
     }
 
     public function setRole(string $userId, string $role, Memberships $memberships): void
@@ -84,7 +91,11 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                 'joined' => $m->created_at,
             ]);
 
-        return ['me' => $me, 'rows' => new Collection($rows)];
+        return [
+            'me' => $me,
+            'rows' => new Collection($rows),
+            'invitations' => $me->isAdmin() ? app(Invitations::class)->pending($this->orgId()) : collect(),
+        ];
     }
 
     private function orgId(): string
@@ -125,6 +136,29 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Send invite</button>
             <button type="button" wire:click="$set('inviting', false)" class="btn btn-ghost">Cancel</button>
         </form>
+    @endif
+
+    @if ($me->isAdmin() && $invitations->isNotEmpty())
+        <div class="card overflow-hidden mb-5">
+            <div class="px-5 py-3 border-b" style="border-color:var(--border)">
+                <h3 class="text-sm font-semibold">Pending invitations</h3>
+            </div>
+            <ul>
+                @foreach ($invitations as $invite)
+                    <li class="px-5 py-3 border-b flex items-center justify-between gap-4" style="border-color:var(--border)">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium truncate">{{ $invite->email }}</p>
+                            <p class="text-xs" style="color:var(--faint)">Invited as {{ ucfirst($invite->role) }} · expires {{ $invite->expires_at?->diffForHumans() }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-warn">Pending</span>
+                            <button wire:click="revokeInvitation('{{ $invite->id }}')" wire:confirm="Revoke this invitation?"
+                                    class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Revoke</button>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 
     <div class="card overflow-hidden">
