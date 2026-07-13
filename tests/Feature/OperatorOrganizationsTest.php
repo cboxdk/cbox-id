@@ -2,15 +2,24 @@
 
 declare(strict_types=1);
 
+use App\Platform\OperatorAuth;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
+
+// The operator console re-checks operator auth on every request (incl. Livewire
+// actions), so every test here operates as a signed-in operator.
+beforeEach(function (): void {
+    $op = app(PlatformOperators::class)->create('org-admin@platform.test', 'a-strong-operator-pass', 'Op');
+    session([OperatorAuth::SESSION_KEY => $op->id]);
+});
 
 it('creates organizations with a type and parent, laid out as a hierarchy', function (): void {
     $reseller = app(Organizations::class)->create(

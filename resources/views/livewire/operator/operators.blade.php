@@ -22,6 +22,12 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
 
     public string $password = '';
 
+    /** Re-check operator auth on every request, including Livewire actions. */
+    public function boot(OperatorAuth $auth): void
+    {
+        abort_unless($auth->check(), 403);
+    }
+
     public function create(PlatformOperators $operators): void
     {
         $this->validate([

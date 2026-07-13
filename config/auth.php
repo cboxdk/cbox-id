@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\User;
+use Cbox\Id\Identity\Models\User;
 
 return [
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\OperatorAuth;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -51,17 +52,28 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
     public function createFirst(PlatformOperators $operators, OperatorAuth $auth): void
     {
-        // Only ever while no operator exists — the bootstrap window closes the
-        // moment the first one is created.
-        abort_unless(! $operators->exists(), 403);
-
         $this->validate([
             'name' => 'required|string|max:190',
             'email' => 'required|email|max:190',
             'password' => 'required|string|min:12',
         ]);
 
-        $operators->create($this->email, $this->password, $this->name);
+        // Serialize the bootstrap so two concurrent first-run POSTs can't each
+        // slip past the "no operator exists" check and both claim root. The lock
+        // is process-wide; the exists() check is re-evaluated inside it.
+        $lock = Cache::lock('cbox:operator-bootstrap', 10);
+        abort_unless($lock->get(), 429);
+
+        try {
+            // Only ever while no operator exists — the window closes the moment
+            // the first one is created.
+            abort_unless(! $operators->exists(), 403);
+
+            $operators->create($this->email, $this->password, $this->name);
+        } finally {
+            $lock->release();
+        }
+
         $auth->attempt(request(), $this->email, $this->password);
 
         $this->redirect(route('operator.environments'), navigate: false);

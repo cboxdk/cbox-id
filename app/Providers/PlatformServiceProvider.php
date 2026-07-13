@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateOperator;
+use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Platform\CurrentUser;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Microsoft\MicrosoftExtendSocialite;
 
@@ -26,5 +30,16 @@ final class PlatformServiceProvider extends ServiceProvider
 
         // Register the Microsoft Socialite driver (Google/GitHub are built in).
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
+
+        // Livewire only re-runs *persistent* middleware on /livewire/update, so the
+        // route-level auth guards must be registered here — in source, not via a
+        // vendored edit that `composer install` would silently revert. Without this
+        // the org console loses CurrentUser on every action, and a suspended
+        // operator keeps full powers because AuthenticateOperator never re-checks.
+        Livewire::addPersistentMiddleware([
+            Authenticate::class,
+            AuthenticateOperator::class,
+            RedirectIfAuthenticated::class,
+        ]);
     }
 }

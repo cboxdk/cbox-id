@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\SetEnvironment;
+use App\Platform\OperatorAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
@@ -41,6 +42,16 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
     public string $adminEmail = '';
 
     public string $adminPassword = '';
+
+    /**
+     * Runs on every request — mount AND each Livewire action — so a suspended or
+     * signed-out operator is refused even on a wire:click, not just the initial
+     * GET (Livewire only re-runs persistent middleware on update requests).
+     */
+    public function boot(OperatorAuth $auth): void
+    {
+        abort_unless($auth->check(), 403);
+    }
 
     public function create(EnvironmentContext $context, KeyManager $keys): void
     {

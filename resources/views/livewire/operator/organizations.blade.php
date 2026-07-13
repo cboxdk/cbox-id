@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\OperatorAuth;
 use Cbox\Id\Organization\Contracts\OrganizationHierarchy;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
@@ -29,6 +30,12 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
     public string $type = 'customer';
 
     public ?string $parentId = null;
+
+    /** Re-check operator auth on every request, including Livewire actions. */
+    public function boot(OperatorAuth $auth): void
+    {
+        abort_unless($auth->check(), 403);
+    }
 
     public function create(Organizations $orgs): void
     {

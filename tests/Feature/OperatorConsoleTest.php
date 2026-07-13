@@ -110,6 +110,26 @@ it('bootstraps a plane with its first organization and admin', function (): void
     expect($orgExists)->toBeTrue()->and($adminExists)->toBeTrue();
 });
 
+it('treats a suspended operator as unauthenticated — the basis of the per-action boot re-check', function (): void {
+    $op = actingAsOperator('rogue@platform.test');
+    expect(app(OperatorAuth::class)->check())->toBeTrue();
+
+    // Suspended out-of-band by another operator; the session/CSRF stay valid, but
+    // every operator component's boot() calls check() on each request, so the
+    // suspended operator is refused on the next action (403), not just the next GET.
+    $op->update(['status' => 'suspended']);
+
+    expect(app(OperatorAuth::class)->check())->toBeFalse()
+        ->and(app(OperatorAuth::class)->current())->toBeNull();
+});
+
+it('redirects a suspended operator to sign-in on the next page load', function (): void {
+    $op = actingAsOperator('rogue2@platform.test');
+    $op->update(['status' => 'suspended']);
+
+    $this->get(route('operator.environments'))->assertRedirect(route('operator.login'));
+});
+
 it('creates operators and toggles their status, but never the current one', function (): void {
     $me = actingAsOperator('me@platform.test');
 
