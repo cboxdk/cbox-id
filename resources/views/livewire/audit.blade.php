@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -14,6 +13,13 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
     use WithPagination;
 
     public string $actionFilter = '';
+
+    public function mount(): void
+    {
+        // The audit log exposes every actor, target and action in the org — a
+        // sensitive, admin-only view. Members must not read it.
+        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+    }
 
     public function updatingActionFilter(): void
     {

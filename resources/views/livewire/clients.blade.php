@@ -7,7 +7,6 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -75,6 +74,13 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
     private function orgId(): string
     {
         return app(CurrentUser::class)->organizationId() ?? '';
+    }
+
+    public function mount(): void
+    {
+        // Read gate: these pages expose org-wide config (client secrets shown
+        // once, SSO connection settings, directory tokens, audit) — admins only.
+        $this->authorizeAdmin();
     }
 
     private function authorizeAdmin(): void

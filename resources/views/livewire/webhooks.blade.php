@@ -84,6 +84,13 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         return app(CurrentUser::class)->organizationId() ?? '';
     }
 
+    public function mount(): void
+    {
+        // Read gate: these pages expose org-wide config (client secrets shown
+        // once, SSO connection settings, directory tokens, audit) — admins only.
+        $this->authorizeAdmin();
+    }
+
     private function authorizeAdmin(): void
     {
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);

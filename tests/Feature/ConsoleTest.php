@@ -75,5 +75,25 @@ it('forbids a non-admin from registering a directory', function () {
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, 'member');
 
-    Volt::test('directories')->set('name', 'Sneaky')->call('register')->assertForbidden();
+    // The read gate now blocks a member at mount — they never reach register().
+    Volt::test('directories')->assertForbidden();
 });
+
+function member(): string
+{
+    $subject = app(Subjects::class)->create('plain@acme.test', 'Plain Member');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-reader'));
+    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, $org, 'member');
+
+    return $org->id;
+}
+
+it('forbids a non-admin member from reading admin console pages', function (string $page) {
+    member();
+
+    // Not just the write buttons — the whole page (org-wide config, secrets,
+    // audit) must be unreadable to a plain member.
+    Volt::test($page)->assertForbidden();
+})->with(['audit', 'clients', 'connections', 'directories', 'roles', 'webhooks']);

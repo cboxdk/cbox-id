@@ -22,14 +22,20 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
     // SAML config
     public string $idp_entity_id = '';
+
     public string $idp_sso_url = '';
+
     public string $idp_x509cert = '';
+
     public string $sp_entity_id = '';
+
     public string $sp_acs_url = '';
 
     // OIDC config
     public string $issuer = '';
+
     public string $client_id = '';
+
     public string $signing_key = '';
 
     public function create(Connections $connections): void
@@ -86,6 +92,13 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
     private function orgId(): string
     {
         return app(CurrentUser::class)->organizationId() ?? '';
+    }
+
+    public function mount(): void
+    {
+        // Read gate: these pages expose org-wide config (client secrets shown
+        // once, SSO connection settings, directory tokens, audit) — admins only.
+        $this->authorizeAdmin();
     }
 
     private function authorizeAdmin(): void
