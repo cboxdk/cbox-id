@@ -7,7 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "cboxdk/laravel-id": "^0.1",
+        "cboxdk/laravel-id": "^0.2",
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-risk": "^1.0",
         "laravel/framework": "^13.0",

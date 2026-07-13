@@ -3,6 +3,7 @@
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetEnvironment;
 use App\Providers\PlatformServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -39,6 +40,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global so security headers cover API/JSON + error responses too, not
         // just the web group.
         $middleware->append(SecurityHeaders::class);
+
+        // Pin the current environment (session-selected) for the console + hosted UI.
+        $middleware->appendToGroup('web', SetEnvironment::class);
 
         $middleware->alias([
             'platform.auth' => Authenticate::class,
