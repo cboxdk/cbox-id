@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -50,14 +51,30 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
     ): void {
         $request = request();
 
-        $clientId = $client_id ?? $request->query('client_id');
-        $redirectUri = $redirect_uri ?? $request->query('redirect_uri');
-        $responseType = $response_type ?? $request->query('response_type');
-        $scopeParam = $scope ?? $request->query('scope');
-        $stateParam = $state ?? $request->query('state');
-        $codeChallenge = $code_challenge ?? $request->query('code_challenge');
-        $codeChallengeMethod = $code_challenge_method ?? $request->query('code_challenge_method') ?? 'S256';
-        $nonceParam = $nonce ?? $request->query('nonce');
+        // RFC 9126: if the client pushed its request, take the parameters from the
+        // single-use request_uri rather than the (untrusted, tamperable) query.
+        $pushed = [];
+        $requestUri = $request->query('request_uri');
+        $requestClientId = $client_id ?? $request->query('client_id');
+        if (is_string($requestUri) && $requestUri !== '' && is_string($requestClientId)) {
+            $pushed = app(PushedAuthorizationRequests::class)->consume($requestClientId, $requestUri) ?? null;
+            if ($pushed === null) {
+                $this->error = 'This authorization request has expired or was already used. Please start again.';
+
+                return;
+            }
+        }
+
+        $from = fn (string $key, ?string $arg) => $pushed[$key] ?? $arg ?? $request->query($key);
+
+        $clientId = $from('client_id', $client_id);
+        $redirectUri = $from('redirect_uri', $redirect_uri);
+        $responseType = $from('response_type', $response_type);
+        $scopeParam = $from('scope', $scope);
+        $stateParam = $from('state', $state);
+        $codeChallenge = $from('code_challenge', $code_challenge);
+        $codeChallengeMethod = $from('code_challenge_method', $code_challenge_method) ?? 'S256';
+        $nonceParam = $from('nonce', $nonce);
 
         // response_type must be the authorization-code flow.
         if ($responseType !== 'code') {
