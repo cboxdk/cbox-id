@@ -48,13 +48,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         ?string $code_challenge = null,
         ?string $code_challenge_method = null,
         ?string $nonce = null,
+        ?string $request_uri = null,
     ): void {
         $request = request();
 
         // RFC 9126: if the client pushed its request, take the parameters from the
         // single-use request_uri rather than the (untrusted, tamperable) query.
         $pushed = [];
-        $requestUri = $request->query('request_uri');
+        $requestUri = $request_uri ?? $request->query('request_uri');
         $requestClientId = $client_id ?? $request->query('client_id');
         if (is_string($requestUri) && $requestUri !== '' && is_string($requestClientId)) {
             $pushed = app(PushedAuthorizationRequests::class)->consume($requestClientId, $requestUri) ?? null;
@@ -63,6 +64,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
 
                 return;
             }
+        } elseif (config('cbox-id.oauth.require_par') === true) {
+            // FAPI baseline: every authorization request must be pushed (RFC 9126),
+            // so raw query-string requests are refused.
+            $this->error = 'This server requires pushed authorization requests. Send the request to /oauth/par first.';
+
+            return;
         }
 
         $from = fn (string $key, ?string $arg) => $pushed[$key] ?? $arg ?? $request->query($key);
@@ -145,7 +152,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $session !== null ? array_values($session->amr) : [],
         );
 
-        $params = ['code' => $code];
+        // RFC 9207: return the issuer in the authorization response so the client
+        // can detect a mix-up (a code minted by a different AS than it expects).
+        $issuer = config('cbox-id.issuer');
+        $params = [
+            'code' => $code,
+            'iss' => is_string($issuer) && $issuer !== '' ? $issuer : rtrim((string) url('/'), '/'),
+        ];
 
         if ($this->state !== null) {
             $params['state'] = $this->state;
