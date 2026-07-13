@@ -66,6 +66,9 @@ Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/audit', 'audit')->name('audit');
     Volt::route('/settings', 'settings')->name('settings');
 
+    // RFC 8628 device grant: where a signed-in user approves a device's user_code.
+    Volt::route('/device', 'device')->name('device');
+
     // Step-up re-authentication ("sudo mode") gate for sensitive actions.
     Volt::route('/sudo', 'auth.sudo')->name('sudo');
 
