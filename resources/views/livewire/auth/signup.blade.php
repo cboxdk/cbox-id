@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\EmailVerificationMail;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
+use App\Platform\SignupPolicy;
 use App\Rules\NotBreached;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -33,8 +34,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
 
     public int $renderedAt = 0;
 
-    public function mount(): void
+    public function mount(SignupPolicy $signup)
     {
+        // Self-service signup can be closed or invite-only — send would-be
+        // registrants to sign-in with an explanation rather than a dead form.
+        if (! $signup->isOpen()) {
+            return redirect()->route('login')->with('status', $signup->closedMessage());
+        }
+
         $this->renderedAt = now()->timestamp;
     }
 
@@ -53,8 +60,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         ];
     }
 
-    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk): void
+    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup): void
     {
+        // Defense in depth: never create an account when signup isn't open, even
+        // if the form was reached or replayed out of band.
+        abort_unless($signup->isOpen(), 403);
+
         $this->validate();
 
         // Throttle to blunt account-enumeration and automated signup abuse.

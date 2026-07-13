@@ -21,6 +21,20 @@ return [
     ],
 
     /*
+     * Self-service signup mode — who may create an account + organization at
+     * /signup:
+     *   - 'open'        anyone may sign up (the default).
+     *   - 'invite_only' the public signup is closed; new accounts arrive only
+     *                   through admin invitations (which keep working).
+     *   - 'closed'      no self-service signup at all.
+     * Admin-initiated provisioning (invitations, the operator console) is never
+     * gated by this — it is not self-service.
+     */
+    'signup' => [
+        'mode' => env('CBOX_ID_SIGNUP_MODE', 'open'),
+    ],
+
+    /*
      * WebAuthn / passkey ceremony parameters. `rp_id` is the Relying Party ID
      * (usually your registrable domain, e.g. "example.com"); `origin` is the
      * exact origin the browser reports (scheme + host + port). Both are asserted

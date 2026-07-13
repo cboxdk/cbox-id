@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Platform\OperatorAuth;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Illuminate\Http\RedirectResponse;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -24,7 +23,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
     public bool $bootstrap = false;
 
-    public function mount(OperatorAuth $auth, PlatformOperators $operators): ?RedirectResponse
+    public function mount(OperatorAuth $auth, PlatformOperators $operators)
     {
         if ($auth->check()) {
             return redirect()->route('operator.environments');
@@ -32,8 +31,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
         // First run: no operator provisioned yet — offer to create the first.
         $this->bootstrap = ! $operators->exists();
-
-        return null;
     }
 
     public function login(OperatorAuth $auth): void

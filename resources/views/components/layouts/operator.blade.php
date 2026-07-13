@@ -116,7 +116,7 @@
         </div>
     </aside>
 
-    <div class="flex flex-col min-w-0">
+    <div class="flex flex-col min-w-0 overflow-x-hidden">
         <header class="lg:hidden h-16 flex items-center gap-3 px-5 border-b" style="border-color:var(--border);background:var(--surface)">
             <span class="text-sm font-semibold">Operator console</span>
         </header>

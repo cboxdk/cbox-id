@@ -191,7 +191,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         <p id="passkey-msg" role="status" aria-live="polite" class="text-xs text-center" style="min-height:1rem"></p>
     </div>
 
-    <p class="mt-8 text-sm text-center" style="color:var(--muted)">
-        New organization? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Create one</a>
-    </p>
+    @if (app(\App\Platform\SignupPolicy::class)->isOpen())
+        <p class="mt-8 text-sm text-center" style="color:var(--muted)">
+            New organization? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Create one</a>
+        </p>
+    @endif
 </div>

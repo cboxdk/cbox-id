@@ -46,8 +46,8 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
 <div>
     <x-page-header title="Audit log" subtitle="Every change to this organization, tamper-evident and hash-chained.">
         <x-slot:actions>
-            <div class="relative">
-                <input wire:model.live.debounce.300ms="actionFilter" type="text" class="input" style="min-width:16rem" placeholder="Filter by action…">
+            <div class="relative w-full sm:w-auto">
+                <input wire:model.live.debounce.300ms="actionFilter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…">
             </div>
         </x-slot:actions>
     </x-page-header>
@@ -95,8 +95,8 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
         </div>
     </div>
 
-    <div class="flex items-center justify-between gap-4 mt-4">
-        <p class="flex items-center gap-1.5 text-xs" style="color:var(--faint)"><x-icon name="shield" class="w-3.5 h-3.5" /> Entries are append-only and hash-chained — any tampering breaks the chain.</p>
-        <div>{{ $entries->links() }}</div>
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mt-4">
+        <p class="flex items-center gap-1.5 text-xs min-w-0" style="color:var(--faint)"><x-icon name="shield" class="w-3.5 h-3.5 shrink-0" /> Entries are append-only and hash-chained — any tampering breaks the chain.</p>
+        <div class="max-w-full overflow-x-auto">{{ $entries->links() }}</div>
     </div>
 </div>
