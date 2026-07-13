@@ -1,0 +1,76 @@
+name: Build Image
+
+# Builds the cbox-id runtime image FROM the public cbox php-fpm-nginx base and
+# pushes it to ghcr.io/cboxdk/cbox-id. Runs on the org self-hosted runners
+# (same fleet as php-baseimages). No secrets: all deps are public, push uses the
+# built-in GITHUB_TOKEN.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: build-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Native amd64 on the self-hosted runners. Guarded so it NEVER runs for a
+    # fork pull_request or a non-canonical repo — a self-hosted runner has host
+    # access, so untrusted PR code must not reach it.
+    if: github.repository == 'cboxdk/cbox-id' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, linux, x64, buildx, cbox]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/cboxdk/cbox-id
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          # Pin buildkit v0.31.1 — v0.30 (buildx-stable-1) had an incomplete-push
+          # bug that silently dropped a layer when gha cache export was on. See
+          # infrastructure/docs/playbook-ci-runners.md.
+          driver-opts: |
+            image=moby/buildkit:v0.31.1
+            network=host
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          # arm64 disabled: the runners are amd64 and QEMU-emulated arm64 builds
+          # blow the timeout. Re-enable once a native ARM runner exists.
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=cbox-id
+          cache-to: type=gha,mode=max,scope=cbox-id
