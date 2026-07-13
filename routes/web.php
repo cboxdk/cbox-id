@@ -57,6 +57,7 @@ Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
  */
 Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
+    Volt::route('/environments', 'environments')->name('environments');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
     Volt::route('/directories', 'directories')->name('directories');
@@ -76,6 +77,7 @@ Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/oauth/authorize', 'oauth.consent')->name('oauth.authorize');
 
     Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->name('organization.switch');
+    Route::post('/environment/switch', [SessionController::class, 'switchEnvironment'])->name('environment.switch');
 
     // Passkey enrolment (adds a credential to the signed-in subject).
     Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->name('passkeys.register.options');

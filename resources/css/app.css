@@ -187,6 +187,11 @@
         font-size: 0.925rem;
         border-radius: 0.7rem;
     }
+    .btn-sm {
+        padding: 0.3rem 0.65rem;
+        font-size: 0.8rem;
+        border-radius: 0.5rem;
+    }
     .btn-danger {
         background: transparent;
         color: var(--danger);

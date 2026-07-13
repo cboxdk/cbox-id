@@ -12,6 +12,7 @@
 @php
     $nav = [
         ['route' => 'dashboard', 'label' => 'Overview', 'icon' => 'dashboard'],
+        ['route' => 'environments', 'label' => 'Environments', 'icon' => 'layers'],
         ['route' => 'members', 'label' => 'Members', 'icon' => 'members'],
         ['route' => 'connections', 'label' => 'SSO connections', 'icon' => 'connections'],
         ['route' => 'directories', 'label' => 'Directory sync', 'icon' => 'directory'],
@@ -37,6 +38,21 @@
             ->values();
     }
     $activeOrgId = $me->organization()?->id;
+
+    // The active environment — the platform's hard outer boundary — and the
+    // planes the operator can jump between, for the selector above the org
+    // switcher. Environments are not environment-owned, so listing spans them
+    // all; the count query is suspended from scope for the same reason.
+    $environments = collect();
+    $activeEnvId = null;
+    if ($me->check()) {
+        $ctx = app(\Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext::class);
+        $activeEnvId = $ctx->current()?->environmentKey();
+        $environments = $ctx->withoutScope(fn () => \Cbox\Id\Organization\Models\Environment::query()
+            ->orderBy('created_at')->get(['id', 'name', 'slug']));
+    }
+    $activeEnv = $environments->firstWhere('id', $activeEnvId);
+    $canSwitchEnv = $environments->count() > 1;
 @endphp
 
 <a href="#main-content" class="skip-link">Skip to content</a>
@@ -46,6 +62,58 @@
         <div class="h-16 flex items-center px-5 border-b" style="border-color:var(--border)">
             <a href="{{ route('dashboard') }}"><x-brand /></a>
         </div>
+
+        @if ($me->check() && $environments->isNotEmpty())
+            <div class="px-3 pt-3">
+                @if ($canSwitchEnv)
+                    <details class="env-switcher relative">
+                        <summary class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 list-none cursor-pointer"
+                                 style="border:1px solid var(--border)"
+                                 aria-label="Current environment: {{ $activeEnv?->name }}. Switch environment">
+                            <x-icon name="layers" class="w-4 h-4 shrink-0" style="color:var(--accent)" aria-hidden="true" />
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-[0.6rem] font-medium uppercase tracking-wide" style="color:var(--faint)">Environment</span>
+                                <span class="block text-sm font-medium truncate">{{ $activeEnv?->name ?? 'Default' }}</span>
+                            </span>
+                            <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" aria-hidden="true" />
+                        </summary>
+                        <div class="absolute left-0 right-0 mt-1 z-30 rounded-lg border p-1 shadow-lg"
+                             style="background:var(--surface);border-color:var(--border)">
+                            <p class="px-2 py-1 text-[0.68rem] font-medium uppercase tracking-wide" style="color:var(--faint)">Switch environment</p>
+                            @foreach ($environments as $env)
+                                <form method="POST" action="{{ route('environment.switch') }}">
+                                    @csrf
+                                    <input type="hidden" name="environment" value="{{ $env->id }}">
+                                    <button type="submit"
+                                            class="w-full flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:opacity-80"
+                                            style="{{ $env->id === $activeEnvId ? 'background:var(--surface-2)' : '' }}">
+                                        <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--faint)" />
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block text-sm truncate">{{ $env->name }}</span>
+                                            <span class="block text-xs font-mono truncate" style="color:var(--faint)">{{ $env->slug }}</span>
+                                        </span>
+                                        @if ($env->id === $activeEnvId)
+                                            <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--accent)" />
+                                        @endif
+                                    </button>
+                                </form>
+                            @endforeach
+                            <a href="{{ route('environments') }}" class="block px-2 py-1.5 text-xs rounded-md hover:opacity-80" style="color:var(--accent)">Manage environments →</a>
+                        </div>
+                    </details>
+                @else
+                    <a href="{{ route('environments') }}"
+                       class="flex items-center gap-2 rounded-lg px-2.5 py-1.5"
+                       style="border:1px solid var(--border)" aria-label="Environment: {{ $activeEnv?->name ?? 'Default' }}. Manage environments">
+                        <x-icon name="layers" class="w-4 h-4 shrink-0" style="color:var(--accent)" aria-hidden="true" />
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[0.6rem] font-medium uppercase tracking-wide" style="color:var(--faint)">Environment</span>
+                            <span class="block text-sm font-medium truncate">{{ $activeEnv?->name ?? 'Default' }}</span>
+                        </span>
+                    </a>
+                @endif
+            </div>
+        @endif
 
         <div class="px-3 py-3">
             @php $canSwitch = $myOrgs->count() > 1; @endphp
