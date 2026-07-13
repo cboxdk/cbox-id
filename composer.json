@@ -8,7 +8,7 @@
     "require": {
         "php": "^8.4",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^0.3",
+        "cboxdk/laravel-id": "^0.4",
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-queue-metrics": "^3.2",
         "cboxdk/laravel-risk": "^1.0",

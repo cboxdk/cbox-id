@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "905991f77803d9294b7946b87b40c0a5",
+    "content-hash": "a6bbeab82e94b5175e25c83c20c1eefc",
     "packages": [
         {
             "name": "brick/math",
@@ -213,16 +213,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.3.2",
+            "version": "v0.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "355b159f4b2850a0d321b8cbc9b3d4fb22e8464f"
+                "reference": "85f8aefc2239ca05a3407e515d54da072d48a27b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/355b159f4b2850a0d321b8cbc9b3d4fb22e8464f",
-                "reference": "355b159f4b2850a0d321b8cbc9b3d4fb22e8464f",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/85f8aefc2239ca05a3407e515d54da072d48a27b",
+                "reference": "85f8aefc2239ca05a3407e515d54da072d48a27b",
                 "shasum": ""
             },
             "require": {
@@ -268,9 +268,9 @@
             "description": "Cbox ID — self-hostable, Laravel-native identity platform (framework). AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.3.2"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.4.0"
             },
-            "time": "2026-07-13T19:54:53+00:00"
+            "time": "2026-07-13T21:15:49+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",
