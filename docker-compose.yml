@@ -23,7 +23,7 @@ services:
       APP_URL: http://localhost:8080
       LOG_CHANNEL: stderr
 
-      CBOX_ID_CRYPTO_KEY: base64:OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=
+      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
       CBOX_ID_ISSUER: http://localhost:8080
       CBOX_ID_WEBAUTHN_RP_ID: localhost
       CBOX_ID_WEBAUTHN_ORIGIN: http://localhost:8080
@@ -55,7 +55,7 @@ services:
     environment:
       APP_ENV: local
       APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
-      CBOX_ID_CRYPTO_KEY: base64:OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=
+      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
       LOG_CHANNEL: stderr
       DB_CONNECTION: pgsql
       DB_HOST: postgres
