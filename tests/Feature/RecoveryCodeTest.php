@@ -27,6 +27,9 @@ function signedInOwner(): string
 it('issues recovery codes when the user enables 2FA', function (): void {
     $userId = signedInOwner();
 
+    // Enabling 2FA is a sensitive action (it overwrites any existing factor) —
+    // confirm the step-up first.
+    app(Sudo::class)->confirm();
     $component = Volt::test('settings')->call('enable');
     $secret = $component->get('secret');
 
@@ -43,7 +46,8 @@ it('regenerates recovery codes and invalidates the old set', function (): void {
     $userId = signedInOwner();
     $mfa = app(Mfa::class);
 
-    // Enable 2FA first (recovery requires a confirmed factor).
+    // Enable 2FA first (recovery requires a confirmed factor). Sensitive → step-up.
+    app(Sudo::class)->confirm();
     $component = Volt::test('settings')->call('enable');
     $secret = $component->get('secret');
     $component->set('code', app(TotpAuthenticator::class)->codeAt($secret, time()))->call('confirm');

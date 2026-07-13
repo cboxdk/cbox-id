@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Livewire\Volt\Volt;
@@ -34,6 +35,9 @@ it('shows connected accounts and lets a user disconnect one', function () {
     app(Subjects::class)->link($id, new FederatedPrincipal('social:google', 'google|1', 'owner@acme.test'));
     expect(app(Subjects::class)->linkedIdentities($id))->toHaveCount(1);
 
+    // Disconnecting is sensitive → confirm step-up. The account keeps its password,
+    // so the last-factor guard allows the unlink.
+    app(Sudo::class)->confirm();
     Volt::test('settings')
         ->assertSee('Connected accounts')
         ->call('unlinkProvider', 'google');

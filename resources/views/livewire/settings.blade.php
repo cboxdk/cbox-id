@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\SocialProviders;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Mfa;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Livewire\Attributes\Layout;
@@ -61,6 +64,13 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
     public function enable(Mfa $mfa): void
     {
+        // Enrolling TOTP overwrites any existing secret (updateOrCreate). Behind a
+        // fresh step-up so a hijacked-but-stale session can't silently replace the
+        // victim's second factor with the attacker's.
+        if ($this->requiresSudo()) {
+            return;
+        }
+
         $me = app(CurrentUser::class);
         $enrollment = $mfa->enrollTotp($me->id(), $me->email() ?? $me->name(), 'Cbox ID');
 
@@ -73,6 +83,10 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
     public function confirm(Mfa $mfa): void
     {
+        if ($this->requiresSudo()) {
+            return;
+        }
+
         $this->validate();
 
         if (! $mfa->confirmTotp(app(CurrentUser::class)->id(), $this->code)) {
@@ -129,7 +143,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
      * Sensitive actions require a fresh step-up ("sudo") confirmation. If it's
      * stale, remember where to return and send the user to re-authenticate.
      */
-    public function signOutOtherSessions(\Cbox\Id\Identity\Contracts\SessionManager $sessions): void
+    public function signOutOtherSessions(SessionManager $sessions): void
     {
         if ($this->requiresSudo()) {
             return;
@@ -140,7 +154,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
         // Revoke every active session for this user except the one they're on —
         // the "sign out everywhere else" control auditors and users expect.
-        \Cbox\Id\Identity\Models\Session::query()
+        Session::query()
             ->where('user_id', $me->id())
             ->whereNull('revoked_at')
             ->when($currentId !== null, fn ($q) => $q->where('id', '!=', $currentId))
@@ -152,7 +166,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
     private function requiresSudo(): bool
     {
-        if (app(\App\Platform\Sudo::class)->confirmed()) {
+        if (app(Sudo::class)->confirmed()) {
             return false;
         }
 
@@ -164,8 +178,37 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
     public function unlinkProvider(string $provider, Subjects $subjects): void
     {
-        $subjects->unlink(app(CurrentUser::class)->id(), 'social:'.$provider);
+        // Disconnecting a login method is sensitive — require a fresh step-up.
+        if ($this->requiresSudo()) {
+            return;
+        }
+
+        $me = app(CurrentUser::class);
+
+        // Last-factor guard: never let a user strip their only remaining way to
+        // sign in (would lock them out). A method survives if — after this unlink —
+        // they still have another linked identity, a passkey, or a password.
+        $remainingProviders = collect($subjects->linkedIdentities($me->id()))
+            ->reject(fn (array $identity): bool => $identity['provider'] === 'social:'.$provider)
+            ->isNotEmpty();
+        $hasPasskey = WebAuthnCredential::query()->where('user_id', $me->id())->exists();
+
+        if (! $remainingProviders && ! $hasPasskey && ! $this->hasPassword($me->id())) {
+            $this->addError('unlink', 'This is your only sign-in method — add a password or passkey before disconnecting it.');
+
+            return;
+        }
+
+        $subjects->unlink($me->id(), 'social:'.$provider);
         session()->flash('status', ucfirst($provider).' disconnected.');
+    }
+
+    private function hasPassword(string $subjectId): bool
+    {
+        $model = config('cbox-id.models.user');
+
+        return is_string($model)
+            && $model::query()->whereKey($subjectId)->value('password') !== null;
     }
 
     public function with(): array
@@ -177,7 +220,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             'org' => $me->organization(),
             'session' => $me->session(),
             'otherSessions' => $me->id() !== ''
-                ? \Cbox\Id\Identity\Models\Session::query()
+                ? Session::query()
                     ->where('user_id', $me->id())->whereNull('revoked_at')
                     ->when($me->session()?->id !== null, fn ($q) => $q->where('id', '!=', $me->session()?->id))
                     ->count()

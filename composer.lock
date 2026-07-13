@@ -140,7 +140,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/laravel-id",
-                "reference": "1c0c2f4cded756fc68eed209f6cecfa0119d452e"
+                "reference": "d50bc45aad1b904cac5833d73e0aad9e79244e56"
             },
             "require": {
                 "cboxdk/laravel-ssrf": "^1.0",
@@ -222,7 +222,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/laravel-risk",
-                "reference": "b1e0a1689d5901eb554f285178e63d4df38b0da0"
+                "reference": "c1f0c75a5ae3a05f057f50bfcab1ccd6a717e5c8"
             },
             "require": {
                 "illuminate/contracts": "^12.0 || ^13.0",
@@ -320,7 +320,7 @@
             "dist": {
                 "type": "path",
                 "url": "../packages/laravel-ssrf",
-                "reference": "1b342ea59e9a2efe040f814e546f03fe211fd56e"
+                "reference": "7ef8796ca52fd9fc922150b8351863ead84381bb"
             },
             "require": {
                 "illuminate/contracts": "^12.0 || ^13.0",
