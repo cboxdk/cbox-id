@@ -4,7 +4,7 @@
     "type": "project",
     "description": "Cbox ID — the hosted, self-hostable identity platform app (admin console + hosted cloud) built on cboxdk/laravel-id.",
     "keywords": ["cbox", "identity", "sso", "scim", "oidc"],
-    "license": "proprietary",
+    "license": "MIT",
     "require": {
         "php": "^8.4",
         "cboxdk/laravel-id": "^0.1",
