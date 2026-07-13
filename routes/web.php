@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\PasskeyController;
@@ -26,6 +27,10 @@ Route::middleware('platform.guest')->group(function (): void {
     Volt::route('/signup', 'auth.signup')->name('signup');
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
 
+    // Password reset — request a link, then choose a new password from the token.
+    Volt::route('/forgot-password', 'auth.forgot-password')->name('password.request');
+    Volt::route('/reset-password/{token}', 'auth.reset-password')->name('password.reset');
+
     // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
     Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
     Route::post('/passkeys/login', [PasskeyController::class, 'login'])->name('passkeys.login');
@@ -41,6 +46,9 @@ Volt::route('/mfa', 'auth.mfa')->name('mfa');
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept');
+
+// Email verification — the token is the proof; clickable while signed in or out.
+Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->name('verification.verify');
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
 

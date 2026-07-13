@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Mail\EmailVerificationMail;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Rules\NotBreached;
+use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -88,6 +91,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
 
         $organization = $orgs->create(new NewOrganization($this->organization, $this->uniqueSlug($orgs)));
         $memberships->add($organization->id, $subject->id, 'owner');
+
+        // Send a confirmation link; the account is usable immediately, verification
+        // just confirms the address out of band.
+        $verifyToken = app(EmailVerification::class)->issue($subject->id, $this->email);
+        Mail::to($this->email)->send(new EmailVerificationMail(route('verification.verify', $verifyToken)));
 
         $auth->establish(request(), $subject->id, ['pwd']);
 

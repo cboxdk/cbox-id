@@ -149,7 +149,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         </div>
 
         <div>
-            <label class="label" for="password">Password</label>
+            <div class="flex items-center justify-between">
+                <label class="label" for="password">Password</label>
+                <a href="{{ route('password.request') }}" class="text-xs underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
+            </div>
             <input wire:model="password" id="password" type="password" autocomplete="current-password" class="input" placeholder="••••••••">
             @error('password') <p class="field-error">{{ $message }}</p> @enderror
         </div>
