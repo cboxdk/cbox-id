@@ -21,6 +21,19 @@ return [
     ],
 
     /*
+     * Whole-product branding for a self-hosted instance — override without
+     * touching Blade. `name` replaces "Cbox ID" in the wordmark and page titles;
+     * `tagline` is the sign-in hero headline. `trust_line` is free text under the
+     * hero and is EMPTY by default on purpose: a self-hosted deployment must only
+     * claim what it can back — never ship an unearned certification badge.
+     */
+    'branding' => [
+        'name' => env('CBOX_ID_BRAND_NAME', 'Cbox ID'),
+        'tagline' => env('CBOX_ID_BRAND_TAGLINE', 'One identity layer for every app you ship.'),
+        'trust_line' => env('CBOX_ID_BRAND_TRUST_LINE', ''),
+    ],
+
+    /*
      * Self-service signup mode — who may create an account + organization at
      * /signup:
      *   - 'open'        anyone may sign up (the default).

@@ -10,28 +10,34 @@ adds the admin console + hosted-cloud concerns (UI, onboarding, billing).
 
 ## Stack
 
-- **Laravel 13**, PHP 8.4+
+- **Laravel 13**, PHP 8.4+ (argon2id password hashing is the configured default).
 - **Livewire + Volt + Tailwind v4** — server-rendered UI. Chosen for security:
   session-cookie auth (no tokens in the browser), a minimal JS surface, and a
-  CSP-friendly footprint suit an identity console.
-- `cboxdk/laravel-id` wired via a Composer **path repository** to `../packages/*`
-  (edit the framework, changes are live).
+  strict-CSP footprint suit an identity console.
+- Depends on **`cboxdk/laravel-id`** (Composer/Packagist) plus the first-party
+  observability stack (`laravel-telemetry`, `laravel-health`, `laravel-queue-metrics`,
+  `laravel-queue-autoscale`).
 
-## Framework wiring
-
-The package auto-registers its service providers, migrations, config and HTTP
-routes. Because a host app owns its own users, the framework does **not** create
-a `users` table; this app is greenfield, so it publishes the optional one.
+## Quickstart
 
 ```bash
-composer install
-php artisan vendor:publish --tag=cbox-id-config              # config/cbox-id.php
-php artisan vendor:publish --tag=cbox-id-users-migration     # greenfield users table
-php artisan migrate
+git clone … && cd cbox-id
+composer setup          # installs deps, copies .env, creates the sqlite db,
+                        # then runs `cbox-id:install` (guided: mints the crypto
+                        # master key, sets issuer/WebAuthn, runs migrations)
+composer run dev        # serve + queue + vite + logs
 ```
 
-Required env (see `.env`): `CBOX_ID_CRYPTO_KEY` (base64 32 bytes),
-`CBOX_ID_ISSUER`, `CBOX_ID_WEBAUTHN_RP_ID`, `CBOX_ID_WEBAUTHN_ORIGIN`.
+Then create the first **platform operator** (the identity above every
+environment) by visiting **`/operator/login`** — on a fresh install it offers a
+one-time "create the first operator" form, then closes. From the operator console
+you create environments and provision each one's first organization + admin. End
+users then sign in at `/login`.
+
+Required env (all in `.env.example`, keep secrets out of git): `CBOX_ID_CRYPTO_KEY`
+(base64 32 bytes — **back it up**), `CBOX_ID_ISSUER`, `CBOX_ID_WEBAUTHN_RP_ID`,
+`CBOX_ID_WEBAUTHN_ORIGIN`. Brand the console without editing code via
+`CBOX_ID_BRAND_*`; gate self-service signup with `CBOX_ID_SIGNUP_MODE`.
 
 Live platform endpoints (from the package): `/.well-known/openid-configuration`,
 `/.well-known/jwks.json`, `POST /oauth/token`, `POST /oauth/introspect`,
@@ -56,5 +62,10 @@ composer run dev     # serve + queue + vite + logs
 
 ## Status
 
-Scaffold + framework wiring complete. Admin console and auth/onboarding flows
-are next.
+Production-ready. Shipped: full auth (password + magic-link + TOTP MFA +
+passkeys + social), signup → org onboarding with signup-mode lockdown, the
+9-section org admin console (Overview, Members, SSO, Directory/SCIM, Roles, API
+clients, Webhooks, Audit, Settings), the **operator console** (environments,
+tenant management, operators) above every environment, branded error screens with
+telemetry trace IDs, and health/metrics endpoints. Session-cookie auth, strict
+CSP, rate limiting, and argon2id throughout.

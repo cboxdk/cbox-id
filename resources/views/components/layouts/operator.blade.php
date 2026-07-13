@@ -25,7 +25,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ? $title.' · Operator · Cbox ID' : 'Operator · Cbox ID' }}</title>
+    <title>{{ ($title ? $title.' · ' : '').'Operator · '.config('cbox-id.branding.name', 'Cbox ID') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="h-full" style="background:var(--bg);color:var(--text)">
@@ -116,8 +116,53 @@
         </div>
     </aside>
 
+    {{-- Mobile navigation drawer (off-canvas), shown below the lg breakpoint. --}}
+    <div class="lg:hidden" x-cloak>
+        <div x-show="nav" x-transition.opacity class="fixed inset-0 z-40" style="background:rgb(0 0 0 / 0.5)" @click="nav = false" aria-hidden="true"></div>
+        <div x-show="nav"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+             class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] flex flex-col border-r"
+             style="border-color:var(--border);background:var(--surface)"
+             role="dialog" aria-modal="true" aria-label="Navigation">
+            <div class="h-16 flex items-center justify-between px-5 border-b" style="border-color:var(--border)">
+                <span class="text-sm font-semibold">Operator console</span>
+                <button type="button" @click="nav = false" class="btn btn-ghost" style="padding:0.4rem" aria-label="Close navigation">
+                    <x-icon name="close" class="w-[1.1rem] h-[1.1rem]" />
+                </button>
+            </div>
+            <div class="px-3 pt-3 text-xs" style="color:var(--faint)">
+                <span class="uppercase tracking-wide">Target environment</span>
+                <p class="text-sm font-medium truncate" style="color:var(--text)">{{ $activeEnv?->name ?? 'None yet' }}</p>
+            </div>
+            <nav class="flex-1 px-3 pt-3 space-y-0.5 overflow-y-auto" aria-label="Primary">
+                @foreach ($nav as $item)
+                    <a href="{{ route($item['route']) }}" class="nav-link" @click="nav = false"
+                       @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
+                        <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
+                        {{ $item['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+            <div class="p-3 border-t space-y-2" style="border-color:var(--border)">
+                <div class="px-1">
+                    <p class="text-sm font-medium truncate">{{ $operator?->name ?? $operator?->email }}</p>
+                    <p class="text-xs truncate" style="color:var(--faint)">Platform operator</p>
+                </div>
+                <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> <span>Toggle theme</span></button>
+                <form method="POST" action="{{ route('operator.logout') }}">
+                    @csrf
+                    <button type="submit" class="nav-link w-full"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> <span>Sign out</span></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="flex flex-col min-w-0 overflow-x-hidden">
         <header class="lg:hidden h-16 flex items-center gap-3 px-5 border-b" style="border-color:var(--border);background:var(--surface)">
+            <button type="button" @click="nav = true" class="btn btn-ghost" style="padding:0.4rem" aria-label="Open navigation">
+                <x-icon name="menu" class="w-[1.15rem] h-[1.15rem]" />
+            </button>
             <span class="text-sm font-semibold">Operator console</span>
         </header>
 

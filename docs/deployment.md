@@ -42,12 +42,20 @@ php artisan event:cache
 
 Re-run these on every deploy after the code and `.env` are in place.
 
-## 4. Create the first administrator
+## 4. Create the first platform operator
 
-Onboarding provisions the first org and admin. Until the onboarding UI is wired for
-your deployment, create the first subject/admin via your seeding path, then
-immediately enroll MFA/passkey on that account — the first admin is the most
-sensitive account on the system.
+A **platform operator** is the identity above every environment — it administers
+environments, tenant organizations, and other operators. On a fresh install visit
+**`/operator/login`**: with no operator yet it shows a one-time "create the first
+operator" form (serialized behind a lock so only one can win the bootstrap), then
+that path closes permanently. Immediately enroll a strong credential — this is the
+most sensitive account on the system.
+
+From the operator console, create your environment(s) and use **Provision admin**
+on each to seed its first organization and owner-admin. Those org admins then sign
+in at `/login`. (Because whoever reaches `/operator/login` first on a fresh,
+internet-exposed deploy claims root, complete this step before exposing the host,
+or bootstrap the operator on a private network first.)
 
 ## 5. Run the workers
 

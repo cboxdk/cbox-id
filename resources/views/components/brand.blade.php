@@ -8,6 +8,6 @@
         </svg>
     </span>
     @unless($compact)
-        <span class="font-semibold tracking-tight" style="font-size:1.02rem;color:var(--text)">Cbox&nbsp;ID</span>
+        <span class="font-semibold tracking-tight" style="font-size:1.02rem;color:var(--text)">{{ config('cbox-id.branding.name', 'Cbox ID') }}</span>
     @endunless
 </span>

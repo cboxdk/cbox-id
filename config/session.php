@@ -169,10 +169,10 @@ return [
     |
     */
 
-    // Secure-only by default everywhere except local dev, so a hosted/containerised
-    // deploy never ships a session cookie without the Secure attribute. Override
-    // explicitly with SESSION_SECURE_COOKIE when terminating TLS elsewhere.
-    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') !== 'local'),
+    // Secure-only by default everywhere except local dev and the test runner, so a
+    // hosted/containerised deploy never ships a session cookie without the Secure
+    // attribute. Override explicitly with SESSION_SECURE_COOKIE if needed.
+    'secure' => env('SESSION_SECURE_COOKIE', ! in_array(env('APP_ENV'), ['local', 'testing'], true)),
 
     /*
     |--------------------------------------------------------------------------
