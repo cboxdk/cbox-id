@@ -93,10 +93,23 @@ only switch into an org you actually belong to — and the role updates with it
 
 ![Organization switcher](screenshots/org-switcher.png)
 
+### Responsive (mobile & tablet)
+
+Below the `lg` breakpoint the sidebar collapses into an off-canvas **navigation
+drawer** (hamburger in the top bar) holding the full nav, org context, theme
+toggle and sign-out; content stacks to a single column and wide tables scroll
+within their card. The sign-in split-screen collapses to a centered form. Verified
+at phone (390px) and tablet (768px) widths.
+
+![Console on mobile](screenshots/mobile-dashboard.png)
+
 ## Notes
 
 - Server-rendered (Livewire + Volt), session-cookie auth, minimal JS — chosen
   because this *is* the login surface. See the framework
   [security model](../../packages/laravel-id/docs/security.md).
+- **Accessibility:** the auth and console pages pass an automated axe-core
+  WCAG 2.1 A/AA audit (guarded by a regression test); keyboard-navigable with a
+  skip link, labelled landmarks and controls.
 - To reproduce these locally: `php artisan migrate`, seed a demo org
   (`php artisan db:seed --class=DemoSeeder`), then sign in.

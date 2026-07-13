@@ -41,7 +41,7 @@
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="min-h-full lg:grid" style="grid-template-columns:15.5rem 1fr">
+<div class="min-h-full lg:grid" style="grid-template-columns:15.5rem 1fr" x-data="{ nav: false }" @keydown.escape.window="nav = false">
     <aside class="hidden lg:flex flex-col border-r" aria-label="Sidebar" style="border-color:var(--border);background:var(--surface)">
         <div class="h-16 flex items-center px-5 border-b" style="border-color:var(--border)">
             <a href="{{ route('dashboard') }}"><x-brand /></a>
@@ -114,17 +114,61 @@
         </div>
     </aside>
 
-    <div class="flex flex-col min-w-0">
-        <header class="h-16 flex items-center justify-between gap-4 px-5 sm:px-7 border-b sticky top-0 z-10"
+    {{-- Mobile navigation drawer (off-canvas), shown below the lg breakpoint. --}}
+    <div class="lg:hidden" x-cloak>
+        <div x-show="nav" x-transition.opacity class="fixed inset-0 z-40" style="background:rgb(0 0 0 / 0.5)" @click="nav = false" aria-hidden="true"></div>
+        <div x-show="nav"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+             class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] flex flex-col border-r"
+             style="border-color:var(--border);background:var(--surface)"
+             role="dialog" aria-modal="true" aria-label="Navigation">
+            <div class="h-16 flex items-center justify-between px-5 border-b" style="border-color:var(--border)">
+                <a href="{{ route('dashboard') }}"><x-brand /></a>
+                <button type="button" @click="nav = false" class="btn btn-ghost" style="padding:0.4rem" aria-label="Close navigation">
+                    <x-icon name="close" class="w-[1.1rem] h-[1.1rem]" />
+                </button>
+            </div>
+            <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto" aria-label="Primary">
+                @foreach ($nav as $item)
+                    <a href="{{ route($item['route']) }}" class="nav-link" @click="nav = false"
+                       @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
+                        <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
+                        {{ $item['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+            <div class="p-3 border-t space-y-2" style="border-color:var(--border)">
+                <div class="flex items-center gap-2.5 px-1">
+                    <span aria-hidden="true" class="grid place-items-center rounded-full text-xs font-semibold" style="width:2rem;height:2rem;background:var(--accent-soft);color:var(--accent)">{{ strtoupper(substr($me->name(), 0, 1)) }}</span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium truncate leading-tight">{{ $me->name() }}</p>
+                        <p class="text-xs truncate" style="color:var(--faint)">{{ $me->email() }}</p>
+                    </div>
+                </div>
+                <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> <span>Toggle theme</span></button>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="nav-link w-full"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> <span>Sign out</span></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col min-w-0 overflow-x-hidden">
+        <header class="h-16 flex items-center justify-between gap-3 px-4 sm:px-7 border-b sticky top-0 z-10"
                 style="border-color:var(--border);background:color-mix(in srgb, var(--bg) 85%, transparent);backdrop-filter:blur(8px)">
-            <div class="min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+                <button type="button" @click="nav = true" class="btn btn-ghost lg:hidden" style="padding:0.4rem" aria-label="Open navigation">
+                    <x-icon name="menu" class="w-[1.15rem] h-[1.15rem]" />
+                </button>
                 <h1 class="text-base font-semibold truncate">{{ $title ?? 'Overview' }}</h1>
             </div>
             <div class="flex items-center gap-3">
                 <button type="button" data-theme-toggle class="btn btn-ghost" style="padding:0.4rem" aria-label="Toggle theme">
                     <x-icon name="sun" class="w-[1.1rem] h-[1.1rem]" />
                 </button>
-                <div class="flex items-center gap-2.5 pl-3 border-l" style="border-color:var(--border)">
+                <div class="hidden sm:flex items-center gap-2.5 pl-3 border-l" style="border-color:var(--border)">
                     <span aria-hidden="true" class="grid place-items-center rounded-full text-xs font-semibold"
                           style="width:2rem;height:2rem;background:var(--accent-soft);color:var(--accent)">
                         {{ strtoupper(substr($me->name(), 0, 1)) }}

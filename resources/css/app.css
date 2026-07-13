@@ -109,6 +109,11 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    /* Prevent a flash of the mobile drawer before Alpine initialises. */
+    [x-cloak] {
+        display: none !important;
+    }
+
     body {
         font-family: var(--font-sans);
     }
