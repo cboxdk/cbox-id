@@ -2,24 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Bootstrap the essentials a fresh install needs to function: a default
+     * environment (the hard outer boundary every owned row belongs to). Demo
+     * organizations and users live in DemoSeeder, run explicitly.
+     *
+     * A platform operator — the identity above environments — is created out of
+     * band (an interactive command or env-driven bootstrap), never with a
+     * hard-coded password here.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        Environment::firstOrCreate(
+            ['slug' => 'production'],
+            ['name' => 'Production', 'status' => 'active'],
+        );
     }
 }
