@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b82d97c7b1841c2124537e6b5aaa622b",
+    "content-hash": "77676d5cf9ea20d369770eb963af8776",
     "packages": [
         {
             "name": "brick/math",
@@ -133,6 +133,83 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-health",
+            "version": "v2.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-health.git",
+                "reference": "837514c25e9da908f3a84766d2d9e1cde31c156f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-health/zipball/837514c25e9da908f3a84766d2d9e1cde31c156f",
+                "reference": "837514c25e9da908f3a84766d2d9e1cde31c156f",
+                "shasum": ""
+            },
+            "require": {
+                "cboxdk/system-metrics": "^3.0",
+                "illuminate/contracts": "^11.0|^12.0|^13.0",
+                "php": "^8.3",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.8",
+                "orchestra/testbench": "^11.0||^10.0||^9.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-arch": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "LaravelHealth": "Cbox\\LaravelHealth\\Facades\\LaravelHealth"
+                    },
+                    "providers": [
+                        "Cbox\\LaravelHealth\\LaravelHealthServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\LaravelHealth\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Health checks, Kubernetes probes, Prometheus metrics, and system monitoring for Laravel",
+            "homepage": "https://github.com/cboxdk/laravel-health",
+            "keywords": [
+                "Metrics",
+                "cbox",
+                "health",
+                "health-check",
+                "kubernetes",
+                "laravel",
+                "monitoring",
+                "prometheus"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-health/issues",
+                "source": "https://github.com/cboxdk/laravel-health/tree/v2.0.1"
+            },
+            "time": "2026-07-13T13:28:55+00:00"
         },
         {
             "name": "cboxdk/laravel-id",
@@ -519,6 +596,99 @@
                 "source": "https://github.com/cboxdk/laravel-ssrf"
             },
             "time": "2026-07-13T12:48:59+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-telemetry",
+            "version": "v0.3.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-telemetry.git",
+                "reference": "ba12613d27b16a538c2e5b8e1394ea54bcb0b904"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/ba12613d27b16a538c2e5b8e1394ea54bcb0b904",
+                "reference": "ba12613d27b16a538c2e5b8e1394ea54bcb0b904",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^12.0|^13.0",
+                "illuminate/support": "^12.0|^13.0",
+                "php": "^8.3|^8.4|^8.5"
+            },
+            "require-dev": {
+                "cboxdk/system-metrics": "^3.0",
+                "larastan/larastan": "^3.0",
+                "laravel/horizon": "^5.47",
+                "laravel/pennant": "^1.24",
+                "laravel/pint": "^1.14",
+                "laravel/reverb": "^1.10",
+                "livewire/livewire": "^3.0",
+                "nunomaduro/collision": "^8.8",
+                "orchestra/testbench": "^10.0|^11.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-arch": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0"
+            },
+            "suggest": {
+                "cboxdk/system-metrics": "Host CPU/memory/load metrics via the built-in provider AND real per-request/per-job process footprint (peak RSS, CPU utilization) on spans.",
+                "ext-apcu": "Required when using the apcu metric store.",
+                "ext-excimer": "CPU profiling for slow requests/jobs (telemetry.instrument.profiling) — a 'top functions by sample count' event, not a full pprof export.",
+                "ext-redis": "Recommended when using the redis metric store (phpredis).",
+                "geoip2/geoip2": "Resolve client.geo.* from the IP for analytics (telemetry.analytics.geo) with a MaxMind GeoLite2 database, so the raw IP can be dropped.",
+                "laravel/horizon": "Supervisor/master state, long-wait detection, process restarts and OOM metrics when Horizon runs your queues.",
+                "laravel/pennant": "Feature flag check counters (feature.checks, feature.unknown).",
+                "laravel/reverb": "WebSocket message/channel/connection metrics when Reverb is your broadcasting server.",
+                "livewire/livewire": "Component lifecycle: mount/hydrate counters + render/update/call detail spans."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Telemetry": "Cbox\\Telemetry\\Facades\\Telemetry"
+                    },
+                    "providers": [
+                        "Cbox\\Telemetry\\TelemetryServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\Telemetry\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Collector-free telemetry for Laravel: Prometheus metrics, OTLP traces and events. No C extension, no protobuf, no sidecar — metrics that actually work under FPM.",
+            "homepage": "https://github.com/cboxdk/laravel-telemetry",
+            "keywords": [
+                "Metrics",
+                "cbox",
+                "laravel",
+                "observability",
+                "opentelemetry",
+                "otlp",
+                "prometheus",
+                "telemetry",
+                "tracing"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-telemetry/issues",
+                "source": "https://github.com/cboxdk/laravel-telemetry"
+            },
+            "time": "2026-07-13T13:38:34+00:00"
         },
         {
             "name": "cboxdk/system-metrics",
