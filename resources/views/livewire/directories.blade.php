@@ -104,7 +104,7 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr><th>Directory</th><th>Status</th></tr>
+                    <tr><th scope="col">Directory</th><th scope="col">Status</th></tr>
                 </thead>
                 <tbody>
                     @forelse ($directories as $dir)

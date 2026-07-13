@@ -39,8 +39,10 @@
     $activeOrgId = $me->organization()?->id;
 @endphp
 
+<a href="#main-content" class="skip-link">Skip to content</a>
+
 <div class="min-h-full lg:grid" style="grid-template-columns:15.5rem 1fr">
-    <aside class="hidden lg:flex flex-col border-r" style="border-color:var(--border);background:var(--surface)">
+    <aside class="hidden lg:flex flex-col border-r" aria-label="Sidebar" style="border-color:var(--border);background:var(--surface)">
         <div class="h-16 flex items-center px-5 border-b" style="border-color:var(--border)">
             <a href="{{ route('dashboard') }}"><x-brand /></a>
         </div>
@@ -49,8 +51,9 @@
             @php $canSwitch = $myOrgs->count() > 1; @endphp
             <details class="org-switcher relative" @if (! $canSwitch) open-disabled @endif>
                 <summary class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 list-none {{ $canSwitch ? 'cursor-pointer' : '' }}"
-                         style="background:var(--surface-2)" @if (! $canSwitch) onclick="return false" @endif>
-                    <span class="grid place-items-center rounded-md text-xs font-bold shrink-0"
+                         style="background:var(--surface-2)"
+                         @if ($canSwitch) aria-label="Current organization: {{ $me->organization()?->name }}. Switch organization" @else onclick="return false" @endif>
+                    <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"
                           style="width:1.75rem;height:1.75rem;background:var(--accent);color:var(--accent-fg)">
                         {{ strtoupper(substr($me->organization()?->name ?? 'C', 0, 1)) }}
                     </span>
@@ -59,7 +62,7 @@
                         <p class="text-xs truncate" style="color:var(--faint)">{{ $me->role() ? ucfirst($me->role()) : 'Member' }}</p>
                     </div>
                     @if ($canSwitch)
-                        <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
+                        <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" aria-hidden="true" />
                     @endif
                 </summary>
 
@@ -93,11 +96,11 @@
             </details>
         </div>
 
-        <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto">
+        <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto" aria-label="Primary">
             @foreach ($nav as $item)
                 <a href="{{ route($item['route']) }}" class="nav-link"
                    @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
-                    <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" />
+                    <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
                     {{ $item['label'] }}
                 </a>
             @endforeach
@@ -122,7 +125,7 @@
                     <x-icon name="sun" class="w-[1.1rem] h-[1.1rem]" />
                 </button>
                 <div class="flex items-center gap-2.5 pl-3 border-l" style="border-color:var(--border)">
-                    <span class="grid place-items-center rounded-full text-xs font-semibold"
+                    <span aria-hidden="true" class="grid place-items-center rounded-full text-xs font-semibold"
                           style="width:2rem;height:2rem;background:var(--accent-soft);color:var(--accent)">
                         {{ strtoupper(substr($me->name(), 0, 1)) }}
                     </span>
@@ -141,13 +144,13 @@
         </header>
 
         @if (session('status'))
-            <div class="mx-5 sm:mx-7 mt-4 rounded-lg px-4 py-3 text-sm"
+            <div role="status" aria-live="polite" class="mx-5 sm:mx-7 mt-4 rounded-lg px-4 py-3 text-sm"
                  style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)">
                 {{ session('status') }}
             </div>
         @endif
 
-        <main class="flex-1 p-5 sm:p-7 max-w-6xl w-full">
+        <main id="main-content" class="flex-1 p-5 sm:p-7 max-w-6xl w-full">
             {{ $slot }}
         </main>
     </div>

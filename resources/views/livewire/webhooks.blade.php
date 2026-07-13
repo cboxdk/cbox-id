@@ -141,7 +141,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr><th>URL</th><th>Events</th><th>Status</th><th></th></tr>
+                    <tr><th scope="col">URL</th><th scope="col">Events</th><th scope="col">Status</th><th scope="col"></th></tr>
                 </thead>
                 <tbody>
                     @forelse ($rows as $endpoint)

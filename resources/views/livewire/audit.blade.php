@@ -52,9 +52,9 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
                 <thead>
                     <tr>
                         <th style="width:1%">Seq</th>
-                        <th>Action</th>
-                        <th>Actor</th>
-                        <th>Target</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Actor</th>
+                        <th scope="col">Target</th>
                         <th class="text-right">When</th>
                     </tr>
                 </thead>

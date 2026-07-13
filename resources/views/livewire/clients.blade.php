@@ -134,7 +134,7 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr><th>Name</th><th>Client ID</th><th>Type</th><th>Scopes</th></tr>
+                    <tr><th scope="col">Name</th><th scope="col">Client ID</th><th scope="col">Type</th><th scope="col">Scopes</th></tr>
                 </thead>
                 <tbody>
                     @forelse ($rows as $client)

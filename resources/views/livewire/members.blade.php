@@ -171,7 +171,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr><th>Member</th><th>Role</th><th>Joined</th><th></th></tr>
+                    <tr><th scope="col">Member</th><th scope="col">Role</th><th scope="col">Joined</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
                 </thead>
                 <tbody>
                     @forelse ($rows as $row)
