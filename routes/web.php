@@ -103,6 +103,7 @@ Route::prefix('operator')->group(function (): void {
 
     Route::middleware(AuthenticateOperator::class)->group(function (): void {
         Volt::route('/', 'operator.environments')->name('operator.environments');
+        Volt::route('/organizations', 'operator.organizations')->name('operator.organizations');
         Volt::route('/operators', 'operator.operators')->name('operator.operators');
         Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('operator.environment.switch');
     });
