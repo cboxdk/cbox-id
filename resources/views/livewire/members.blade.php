@@ -190,6 +190,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                             <td>
                                 @if ($me->isAdmin())
                                     <select class="input" style="width:auto;padding:0.3rem 1.6rem 0.3rem 0.6rem;font-size:0.8rem"
+                                            aria-label="Role for {{ $row['subject']?->name ?? $row['subject']?->email ?? 'this member' }}"
                                             wire:change="setRole('{{ $row['id'] }}', $event.target.value)">
                                         @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $label)
                                             <option value="{{ $val }}" @selected($row['role'] === $val)>{{ $label }}</option>
