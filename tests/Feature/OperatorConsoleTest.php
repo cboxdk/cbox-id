@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Middleware\SetEnvironment;
+use App\Platform\OperatorAuth;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Models\PlatformOperator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Volt\Volt;
+
+uses(RefreshDatabase::class);
+
+function makeOperator(string $email = 'op@platform.test'): PlatformOperator
+{
+    return app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Operator');
+}
+
+function actingAsOperator(string $email = 'op@platform.test'): PlatformOperator
+{
+    $op = makeOperator($email);
+    session([OperatorAuth::SESSION_KEY => $op->id]);
+
+    return $op;
+}
+
+it('bootstraps the first operator on a fresh install and signs in', function (): void {
+    Volt::test('operator.login')
+        ->set('name', 'Root')
+        ->set('email', 'root@platform.test')
+        ->set('password', 'a-strong-operator-pass')
+        ->call('createFirst')
+        ->assertRedirect(route('operator.environments'));
+
+    expect(app(PlatformOperators::class)->findByEmail('root@platform.test'))->not->toBeNull()
+        ->and(session(OperatorAuth::SESSION_KEY))->not->toBeNull();
+});
+
+it('closes the bootstrap once any operator exists', function (): void {
+    makeOperator();
+
+    Volt::test('operator.login')
+        ->set('name', 'Second')
+        ->set('email', 'second@platform.test')
+        ->set('password', 'another-strong-pass')
+        ->call('createFirst')
+        ->assertForbidden();
+
+    expect(app(PlatformOperators::class)->findByEmail('second@platform.test'))->toBeNull();
+});
+
+it('signs an operator in with the right password and rejects the wrong one', function (): void {
+    makeOperator('login@platform.test');
+
+    Volt::test('operator.login')
+        ->set('email', 'login@platform.test')
+        ->set('password', 'wrong')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    Volt::test('operator.login')
+        ->set('email', 'login@platform.test')
+        ->set('password', 'a-strong-operator-pass')
+        ->call('login')
+        ->assertRedirect(route('operator.environments'));
+});
+
+it('guards the operator console behind an operator session', function (): void {
+    $this->get('/operator')->assertRedirect(route('operator.login'));
+
+    $op = makeOperator();
+    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])->get('/operator')->assertOk();
+});
+
+it('creates and freely targets environments — no identity guard', function (): void {
+    actingAsOperator();
+
+    Volt::test('operator.environments')->set('name', 'Staging')->call('create')->assertHasNoErrors();
+    $staging = Environment::query()->where('slug', 'staging')->first();
+    expect($staging)->not->toBeNull();
+
+    // Operators stand above every plane — switching just repoints the target.
+    Volt::test('operator.environments')->call('switchTo', $staging->id);
+    expect(session(SetEnvironment::SESSION_KEY))->toBe('staging');
+});
+
+it('bootstraps a plane with its first organization and admin', function (): void {
+    actingAsOperator();
+    $env = Environment::query()->create(['name' => 'Prod', 'slug' => 'prod', 'status' => 'active']);
+
+    Volt::test('operator.environments')
+        ->set('provisioningEnvId', $env->id)
+        ->set('orgName', 'Acme Inc')
+        ->set('adminName', 'Ada Lovelace')
+        ->set('adminEmail', 'admin@acme.test')
+        ->set('adminPassword', 'a-strong-admin-pass')
+        ->call('provisionAdmin')
+        ->assertHasNoErrors();
+
+    // The org and admin exist INSIDE the target plane.
+    [$orgExists, $adminExists] = app(EnvironmentContext::class)->runAs($env, fn (): array => [
+        app(Organizations::class)->bySlug('acme-inc') !== null,
+        app(Subjects::class)->findByEmail('admin@acme.test') !== null,
+    ]);
+
+    expect($orgExists)->toBeTrue()->and($adminExists)->toBeTrue();
+});
+
+it('creates operators and toggles their status, but never the current one', function (): void {
+    $me = actingAsOperator('me@platform.test');
+
+    Volt::test('operator.operators')
+        ->set('name', 'Grace')
+        ->set('email', 'grace@platform.test')
+        ->set('password', 'a-strong-operator-pass')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $grace = app(PlatformOperators::class)->findByEmail('grace@platform.test');
+    expect($grace)->not->toBeNull();
+
+    Volt::test('operator.operators')->call('toggleStatus', $grace->id);
+    expect(PlatformOperator::query()->whereKey($grace->id)->value('status'))->toBe('suspended');
+
+    // Cannot suspend yourself mid-session.
+    Volt::test('operator.operators')->call('toggleStatus', $me->id)->assertForbidden();
+    expect(PlatformOperator::query()->whereKey($me->id)->value('status'))->toBe('active');
+});

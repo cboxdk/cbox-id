@@ -5,9 +5,11 @@ declare(strict_types=1);
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
+use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
+use App\Http\Middleware\AuthenticateOperator;
 use App\Platform\PlatformAuth;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -57,7 +59,6 @@ Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
  */
 Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
-    Volt::route('/environments', 'environments')->name('environments');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
     Volt::route('/directories', 'directories')->name('directories');
@@ -77,7 +78,6 @@ Route::middleware('platform.auth')->group(function (): void {
     Volt::route('/oauth/authorize', 'oauth.consent')->name('oauth.authorize');
 
     Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->name('organization.switch');
-    Route::post('/environment/switch', [SessionController::class, 'switchEnvironment'])->name('environment.switch');
 
     // Passkey enrolment (adds a credential to the signed-in subject).
     Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->name('passkeys.register.options');
@@ -86,4 +86,24 @@ Route::middleware('platform.auth')->group(function (): void {
     // Explicit account linking — connect a social provider to the signed-in user.
     Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->name('social.connect');
     Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])->name('social.connect.callback');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Operator console — platform operators, the identity above every environment.
+|--------------------------------------------------------------------------
+|
+| A separate world from the org-user console: operators provision and switch
+| between environments and manage other operators. An org-user session grants
+| nothing here, and vice versa.
+*/
+Route::prefix('operator')->group(function (): void {
+    Volt::route('/login', 'operator.login')->name('operator.login');
+    Route::post('/logout', [OperatorController::class, 'logout'])->name('operator.logout');
+
+    Route::middleware(AuthenticateOperator::class)->group(function (): void {
+        Volt::route('/', 'operator.environments')->name('operator.environments');
+        Volt::route('/operators', 'operator.operators')->name('operator.operators');
+        Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('operator.environment.switch');
+    });
 });
