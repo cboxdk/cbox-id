@@ -64,10 +64,16 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             return;
         }
 
-        // Only an owner may grant the owner role (prevents an admin self-promoting).
+        // Only an owner may grant the owner role, and only an owner may act on an
+        // existing owner (an admin cannot demote the org's owner).
         abort_if($role === 'owner' && ! app(CurrentUser::class)->isOwner(), 403);
+        abort_if($this->isOwner($userId, $memberships) && ! app(CurrentUser::class)->isOwner(), 403);
 
-        $memberships->changeRole($this->orgId(), $userId, $role);
+        try {
+            $memberships->changeRole($this->orgId(), $userId, $role);
+        } catch (\Cbox\Id\Organization\Exceptions\LastOwner) {
+            $this->addError('inviteEmail', 'The organization must keep at least one owner.');
+        }
     }
 
     public function remove(string $userId, Memberships $memberships): void
@@ -80,8 +86,20 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             return;
         }
 
-        $memberships->remove($this->orgId(), $userId);
-        session()->flash('status', 'Member removed.');
+        // Only an owner may remove another owner.
+        abort_if($this->isOwner($userId, $memberships) && ! app(CurrentUser::class)->isOwner(), 403);
+
+        try {
+            $memberships->remove($this->orgId(), $userId);
+            session()->flash('status', 'Member removed.');
+        } catch (\Cbox\Id\Organization\Exceptions\LastOwner) {
+            $this->addError('inviteEmail', 'The organization must keep at least one owner.');
+        }
+    }
+
+    private function isOwner(string $userId, Memberships $memberships): bool
+    {
+        return $memberships->of($this->orgId(), $userId)?->role === 'owner';
     }
 
     public function with(): array

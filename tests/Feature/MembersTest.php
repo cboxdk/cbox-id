@@ -73,3 +73,16 @@ it('forbids a plain member from inviting', function () {
         ->call('invite')
         ->assertForbidden();
 });
+
+it('forbids an admin from demoting or removing the org owner', function () {
+    [, $org] = actingAsRole('admin');
+    // Seed an existing owner in the same org.
+    $owner = app(Subjects::class)->create('theowner@acme.test', 'Owner', 'supersecret123');
+    app(Memberships::class)->add($org->id, $owner->id, 'owner');
+
+    Volt::test('members')->call('setRole', $owner->id, 'member')->assertStatus(403);
+    Volt::test('members')->call('remove', $owner->id)->assertStatus(403);
+
+    // The owner is untouched.
+    expect(app(Memberships::class)->of($org->id, $owner->id)?->role)->toBe('owner');
+});
