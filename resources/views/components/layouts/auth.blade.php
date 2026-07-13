@@ -17,9 +17,9 @@
         <style>:root{--accent:{{ $brandColor }};--ring:{{ $brandColor }}}</style>
     @endif
 </head>
-<body class="h-full" style="background:var(--bg);color:var(--text)">
-    <div class="min-h-full grid lg:grid-cols-2">
-        <div class="flex flex-col justify-center px-6 py-12 sm:px-12">
+<body class="h-full" style="color:var(--text)">
+    <div class="min-h-full grid lg:grid-cols-[1fr_minmax(0,44%)] xl:grid-cols-[1fr_minmax(0,40%)]">
+        <div class="auth-shell flex flex-col justify-center px-6 py-12 sm:px-12">
             <div class="mx-auto w-full" style="max-width:24rem">
                 @if ($brandLogo)
                     <img src="{{ $brandLogo }}" alt="{{ $brandName }}" style="max-height:2.25rem;max-width:12rem">
@@ -27,33 +27,42 @@
                     <a href="{{ url('/') }}" class="inline-block"><x-brand /></a>
                 @endif
 
-                <div class="mt-10">
+                <div class="mt-9">
                     {{ $slot }}
                 </div>
 
-                <p class="mt-10 text-xs" style="color:var(--faint)">
-                    Protected by Cbox ID · <button type="button" data-theme-toggle class="underline underline-offset-2">toggle theme</button>
-                </p>
+                <div class="mt-10 flex items-center justify-between text-xs" style="color:var(--faint)">
+                    <span class="inline-flex items-center gap-1.5">
+                        <x-icon name="shield" class="w-3.5 h-3.5" /> Secured by Cbox ID
+                    </span>
+                    <button type="button" data-theme-toggle aria-label="Toggle light or dark theme"
+                            class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition hover:opacity-80" style="border:1px solid var(--border)">
+                        <x-icon name="sun" class="w-3.5 h-3.5" /> Theme
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden"
-             style="background:linear-gradient(160deg,var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%);color:var(--accent-fg)">
-            <x-brand compact class="opacity-90" />
+        <div class="auth-hero hidden lg:flex flex-col justify-between p-12 overflow-hidden">
+            <x-brand compact class="opacity-95" />
             <div class="max-w-md">
-                <h2 class="text-3xl font-semibold tracking-tight leading-tight">{{ $brandName ? 'Sign in to '.$brandName.'.' : 'One identity layer for every app you ship.' }}</h2>
-                <p class="mt-4 text-sm opacity-80 leading-relaxed">
+                <h2 class="font-semibold tracking-tight leading-[1.1]" style="font-size:2.15rem">{{ $brandName ? 'Sign in to '.$brandName.'.' : 'One identity layer for every app you ship.' }}</h2>
+                <p class="mt-4 text-sm leading-relaxed" style="opacity:0.82">
                     Enterprise SSO, SCIM directory sync, MFA and passkeys, RBAC, and a
                     tamper-evident audit trail — self-hostable, and yours.
                 </p>
-                <ul class="mt-8 space-y-2.5 text-sm opacity-90">
-                    <li class="flex items-center gap-2"><x-icon name="check" class="w-4 h-4" /> SAML &amp; OIDC single sign-on</li>
-                    <li class="flex items-center gap-2"><x-icon name="check" class="w-4 h-4" /> SCIM 2.0 directory provisioning</li>
-                    <li class="flex items-center gap-2"><x-icon name="check" class="w-4 h-4" /> Passkeys, TOTP, and magic links</li>
-                    <li class="flex items-center gap-2"><x-icon name="check" class="w-4 h-4" /> Hash-chained, tamper-evident audit</li>
+                <ul class="mt-9 space-y-3.5">
+                    <li class="hero-feature"><span class="tick"><x-icon name="check" class="w-3.5 h-3.5" /></span> SAML &amp; OIDC single sign-on</li>
+                    <li class="hero-feature"><span class="tick"><x-icon name="check" class="w-3.5 h-3.5" /></span> SCIM 2.0 directory provisioning</li>
+                    <li class="hero-feature"><span class="tick"><x-icon name="check" class="w-3.5 h-3.5" /></span> Passkeys, TOTP, and magic links</li>
+                    <li class="hero-feature"><span class="tick"><x-icon name="check" class="w-3.5 h-3.5" /></span> Hash-chained, tamper-evident audit</li>
                 </ul>
             </div>
-            <p class="text-xs opacity-70">© {{ date('Y') }} Cbox</p>
+            <div class="flex items-center gap-4 text-xs" style="opacity:0.72">
+                <span>© {{ date('Y') }} Cbox</span>
+                <span aria-hidden="true">·</span>
+                <span>SOC 2 · GDPR · ISO 27001 ready</span>
+            </div>
         </div>
     </div>
 </body>

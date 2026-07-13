@@ -41,26 +41,38 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 }; ?>
 
 <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Choose a new password</h1>
-    <p class="mt-1.5 text-sm" style="color:var(--muted)">Pick a strong password of at least 12 characters.</p>
+    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Choose a new password</h1>
+    <p class="mt-2 text-sm" style="color:var(--muted)">Pick a strong password of at least 12 characters.</p>
 
-    <form wire:submit="resetPassword" class="mt-6 space-y-4">
-        <div>
-            <label for="password" class="block text-sm font-medium mb-1.5">New password</label>
-            <input wire:model="password" id="password" type="password" autocomplete="new-password" autofocus
-                   class="input w-full" placeholder="••••••••••••">
-            @error('password') <p class="mt-1.5 text-xs" style="color:var(--danger)">{{ $message }}</p> @enderror
+    {{-- A hidden username field + autocomplete=new-password lets password managers
+         associate and update the saved credential. --}}
+    <form wire:submit="resetPassword" class="mt-7 space-y-4" method="post">
+        <input type="text" name="username" autocomplete="username" class="hidden" tabindex="-1" aria-hidden="true">
+
+        <div x-data="{ pw: '' }">
+            <label for="password" class="label">New password</label>
+            <input wire:model="password" x-on:input="pw = $event.target.value"
+                   id="password" name="password" type="password" autofocus
+                   autocomplete="new-password" minlength="12" passwordrules="minlength: 12; allowed: ascii-printable;"
+                   class="input input-lg" placeholder="At least 12 characters"
+                   aria-describedby="password-policy @error('password') password-error @enderror"
+                   @error('password') aria-invalid="true" @enderror>
+            <div id="password-policy" class="mt-2 flex items-center gap-1.5 text-xs" style="color:var(--faint)">
+                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''" />
+                <span x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''">At least 12 characters</span>
+            </div>
+            @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
         <div>
-            <label for="password_confirmation" class="block text-sm font-medium mb-1.5">Confirm new password</label>
-            <input wire:model="password_confirmation" id="password_confirmation" type="password" autocomplete="new-password"
-                   class="input w-full" placeholder="••••••••••••">
+            <label for="password_confirmation" class="label">Confirm new password</label>
+            <input wire:model="password_confirmation" id="password_confirmation" name="password_confirmation" type="password"
+                   autocomplete="new-password" class="input input-lg" placeholder="Re-enter your new password">
         </div>
 
-        <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled" wire:target="resetPassword">
+        <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="resetPassword">
             <span wire:loading.remove wire:target="resetPassword">Reset password</span>
-            <span wire:loading wire:target="resetPassword">Resetting…</span>
+            <span wire:loading wire:target="resetPassword" class="inline-flex items-center gap-2"><span class="spinner"></span> Resetting…</span>
         </button>
     </form>
 

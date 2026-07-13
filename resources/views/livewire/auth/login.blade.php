@@ -115,8 +115,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 }; ?>
 
 <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Sign in</h1>
-    <p class="mt-1.5 text-sm" style="color:var(--muted)">Welcome back. Access your organization's identity console.</p>
+    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Sign in</h1>
+    <p class="mt-2 text-sm" style="color:var(--muted)">Welcome back. Access your organization's identity console.</p>
 
     @if ($pendingLink)
         <div class="mt-5 rounded-lg px-3.5 py-3 text-sm" style="background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
@@ -124,14 +124,20 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         </div>
     @endif
 
+    @if (session('status'))
+        <div role="status" aria-live="polite" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm inline-flex items-center gap-2" style="background:var(--success-soft);color:var(--success)">
+            <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
+        </div>
+    @endif
+
     @if (session('error'))
-        <div class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">
+        <div role="alert" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">
             {{ session('error') }}
         </div>
     @endif
 
     @if ($magicSent)
-        <div class="mt-5 rounded-lg px-3.5 py-3 text-sm card" style="padding:0.85rem 1rem">
+        <div role="status" aria-live="polite" class="mt-5 rounded-lg px-3.5 py-3 text-sm card" style="padding:0.85rem 1rem">
             <p class="font-medium">Check your inbox</p>
             <p class="mt-1" style="color:var(--muted)">We sent a one-time sign-in link to <b>{{ $email }}</b>.</p>
             @if ($magicUrl)
@@ -141,47 +147,51 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         </div>
     @endif
 
-    <form wire:submit="login" class="mt-6 space-y-4">
+    {{-- name + autocomplete so password managers (1Password, iCloud Keychain, browsers) recognise and fill the form. --}}
+    <form wire:submit="login" class="mt-7 space-y-4" method="post" action="{{ route('login') }}">
         <div>
             <label class="label" for="email">Email</label>
-            <input wire:model="email" id="email" type="email" autocomplete="username" class="input" placeholder="you@company.com" autofocus>
-            @error('email') <p class="field-error">{{ $message }}</p> @enderror
+            <input wire:model="email" id="email" name="email" type="email" inputmode="email"
+                   autocomplete="username" autocapitalize="none" spellcheck="false"
+                   class="input input-lg" placeholder="you@company.com" autofocus
+                   @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+            @error('email') <p class="field-error" id="email-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
         <div>
-            <div class="flex items-center justify-between">
-                <label class="label" for="password">Password</label>
-                <a href="{{ route('password.request') }}" class="text-xs underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
+            <div class="flex items-center justify-between mb-1.5">
+                <label class="label" for="password" style="margin-bottom:0">Password</label>
+                <a href="{{ route('password.request') }}" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
             </div>
-            <input wire:model="password" id="password" type="password" autocomplete="current-password" class="input" placeholder="••••••••">
-            @error('password') <p class="field-error">{{ $message }}</p> @enderror
+            <input wire:model="password" id="password" name="password" type="password"
+                   autocomplete="current-password" class="input input-lg" placeholder="••••••••••••"
+                   @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
+            @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
-        <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled">
+        <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="login">
             <span wire:loading.remove wire:target="login">Sign in</span>
-            <span wire:loading wire:target="login">Signing in…</span>
+            <span wire:loading wire:target="login" class="inline-flex items-center gap-2">
+                <span class="spinner"></span> Signing in…
+            </span>
         </button>
     </form>
 
-    <div class="my-6 flex items-center gap-3 text-xs" style="color:var(--faint)">
-        <span class="flex-1 h-px" style="background:var(--border)"></span>
-        OR
-        <span class="flex-1 h-px" style="background:var(--border)"></span>
-    </div>
+    <div class="divider my-6">OR</div>
 
     <x-social-buttons class="mb-2.5" />
 
     <div class="space-y-2.5">
-        <button type="button" wire:click="sendMagicLink" class="btn btn-ghost w-full" wire:loading.attr="disabled" wire:target="sendMagicLink">
-            Email me a magic link
+        <button type="button" wire:click="sendMagicLink" class="btn btn-ghost btn-lg w-full" wire:loading.attr="disabled" wire:target="sendMagicLink">
+            <x-icon name="magic" class="w-4 h-4" /> Email me a magic link
         </button>
-        <button type="button" data-passkey-login data-passkey-feedback="passkey-msg" data-passkey-only class="btn btn-ghost w-full">
+        <button type="button" data-passkey-login data-passkey-feedback="passkey-msg" data-passkey-only class="btn btn-ghost btn-lg w-full">
             <x-icon name="key" class="w-4 h-4" /> Sign in with a passkey
         </button>
-        <p id="passkey-msg" class="text-xs text-center" style="min-height:1rem"></p>
+        <p id="passkey-msg" role="status" aria-live="polite" class="text-xs text-center" style="min-height:1rem"></p>
     </div>
 
-    <p class="mt-8 text-sm" style="color:var(--muted)">
+    <p class="mt-8 text-sm text-center" style="color:var(--muted)">
         New organization? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Create one</a>
     </p>
 </div>

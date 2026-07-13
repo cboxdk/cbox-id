@@ -49,28 +49,30 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
 }; ?>
 
 <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Reset your password</h1>
-    <p class="mt-1.5 text-sm" style="color:var(--muted)">Enter your email and we'll send a reset link.</p>
+    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Reset your password</h1>
+    <p class="mt-2 text-sm" style="color:var(--muted)">Enter your email and we'll send a reset link.</p>
 
     @if ($sent)
-        <div class="mt-6 rounded-lg px-4 py-3 text-sm" style="background:var(--surface-2);color:var(--text)">
+        <div role="status" aria-live="polite" class="mt-6 rounded-lg px-4 py-3 text-sm" style="background:var(--surface-2);color:var(--text)">
             If an account exists for <span class="font-medium">{{ $email }}</span>, a reset link is on its way.
             @if ($devUrl)
                 <a href="{{ $devUrl }}" class="mt-2 inline-block underline underline-offset-2 mono" style="color:var(--accent);word-break:break-all">{{ $devUrl }}</a>
             @endif
         </div>
     @else
-        <form wire:submit="sendResetLink" class="mt-6 space-y-4">
+        <form wire:submit="sendResetLink" class="mt-7 space-y-4" method="post">
             <div>
-                <label for="email" class="block text-sm font-medium mb-1.5">Email</label>
-                <input wire:model="email" id="email" type="email" autocomplete="email" autofocus
-                       class="input w-full" placeholder="you@company.com">
-                @error('email') <p class="mt-1.5 text-xs" style="color:var(--danger)">{{ $message }}</p> @enderror
+                <label for="email" class="label">Email</label>
+                <input wire:model="email" id="email" name="email" type="email" inputmode="email" autofocus
+                       autocomplete="username" autocapitalize="none" spellcheck="false"
+                       class="input input-lg" placeholder="you@company.com"
+                       @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+                @error('email') <p class="field-error" id="email-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
-            <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled" wire:target="sendResetLink">
+            <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="sendResetLink">
                 <span wire:loading.remove wire:target="sendResetLink">Send reset link</span>
-                <span wire:loading wire:target="sendResetLink">Sending…</span>
+                <span wire:loading wire:target="sendResetLink" class="inline-flex items-center gap-2"><span class="spinner"></span> Sending…</span>
             </button>
         </form>
     @endif
