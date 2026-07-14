@@ -169,7 +169,8 @@ it('creates operators and toggles their status, but never the current one', func
     Volt::test('operator.operators')->call('toggleStatus', $grace->id);
     expect(PlatformOperator::query()->whereKey($grace->id)->value('status'))->toBe('suspended');
 
-    // Cannot suspend yourself mid-session.
-    Volt::test('operator.operators')->call('toggleStatus', $me->id)->assertForbidden();
+    // Cannot suspend yourself mid-session — refused with a friendly message, and
+    // the account stays active (no self-lockout).
+    Volt::test('operator.operators')->call('toggleStatus', $me->id)->assertHasNoErrors();
     expect(PlatformOperator::query()->whereKey($me->id)->value('status'))->toBe('active');
 });

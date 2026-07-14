@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\OperatorAuth;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -48,22 +49,42 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
         session()->flash('status', 'Operator created.');
     }
 
-    public function toggleStatus(string $id, OperatorAuth $auth): void
+    public function toggleStatus(string $id, PlatformOperators $operators, OperatorAuth $auth): void
     {
-        // An operator can never lock themselves out mid-session.
-        abort_if($id === $auth->id(), 403);
+        $actorId = $auth->id();
+        if ($actorId === null) {
+            abort(403);
+        }
 
         $operator = PlatformOperator::query()->find($id);
         if ($operator === null) {
             return;
         }
 
-        // TODO(review): this direct ->update() bypasses the PlatformOperators
-        // contract, so suspending/reactivating an operator fires no audit hook. The
-        // contract has no suspend()/setStatus() method yet — add one to
-        // PlatformOperators so this privileged state change is audited.
-        $operator->update(['status' => $operator->isActive() ? 'suspended' : 'active']);
-        session()->flash('status', $operator->isActive() ? 'Operator reactivated.' : 'Operator suspended.');
+        if ($operator->isActive()) {
+            // Self-lockout guard: never suspend the account you are signed in as.
+            // Checked before the contract call so it can't be reached at all.
+            if ($id === $actorId) {
+                session()->flash('status', 'You cannot suspend the operator you are currently signed in as.');
+
+                return;
+            }
+
+            try {
+                // Route through the contract so the change is audited; it refuses
+                // to suspend the final active operator (would lock everyone out).
+                $operators->suspend($id, $actorId);
+            } catch (CannotSuspendLastOperator) {
+                session()->flash('status', 'You cannot suspend the last active operator — the console would lock everyone out.');
+
+                return;
+            }
+
+            session()->flash('status', 'Operator suspended.');
+        } else {
+            $operators->reactivate($id, $actorId);
+            session()->flash('status', 'Operator reactivated.');
+        }
     }
 
     public function with(OperatorAuth $auth): array

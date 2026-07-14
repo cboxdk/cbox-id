@@ -102,12 +102,19 @@ Route::middleware('platform.auth')->group(function (): void {
 */
 Route::prefix('operator')->group(function (): void {
     Volt::route('/login', 'operator.login')->name('operator.login');
+
+    // The TOTP challenge sits between password and a full operator session, so it
+    // is neither guest nor authenticated — the component itself redirects away
+    // unless a pending marker is present.
+    Volt::route('/login/mfa', 'operator.login-mfa')->name('operator.login.mfa');
+
     Route::post('/logout', [OperatorController::class, 'logout'])->name('operator.logout');
 
     Route::middleware(AuthenticateOperator::class)->group(function (): void {
         Volt::route('/', 'operator.environments')->name('operator.environments');
         Volt::route('/organizations', 'operator.organizations')->name('operator.organizations');
         Volt::route('/operators', 'operator.operators')->name('operator.operators');
+        Volt::route('/security', 'operator.security')->name('operator.security');
         Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('operator.environment.switch');
     });
 });

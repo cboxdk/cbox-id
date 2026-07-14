@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Platform\Contracts\OperatorMfa;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Http\Request;
@@ -27,26 +28,68 @@ final class OperatorAuth
      */
     public const ENV_KEY = 'cbox.operator_environment';
 
-    public function __construct(private readonly PlatformOperators $operators) {}
+    /**
+     * A password verified but a confirmed TOTP factor is still outstanding. Holds
+     * only the operator id, and — deliberately distinct from {@see SESSION_KEY} —
+     * grants NO console access on its own: the gate still requires a full session.
+     */
+    public const PENDING_KEY = 'cbox.operator_pending';
+
+    public function __construct(
+        private readonly PlatformOperators $operators,
+        private readonly OperatorMfa $mfa,
+    ) {}
 
     /**
-     * Verify credentials and, on success, establish an operator session.
-     * Returns false for a wrong password or a suspended operator.
+     * Verify credentials. Returns:
+     *  - 'invalid' for a wrong password or a suspended operator (never authenticates),
+     *  - 'mfa'     when the password is right but a confirmed TOTP factor is required
+     *              — no session is started; a short-lived pending marker is stashed,
+     *  - 'ok'      when the password is right and no second factor is required — the
+     *              full session is established immediately, exactly as before.
      */
-    public function attempt(Request $request, string $email, string $password): bool
+    public function attempt(Request $request, string $email, string $password): string
     {
         $operator = $this->operators->findByEmail($email);
 
         if ($operator === null || ! $this->operators->verifyPassword($operator->id, $password)) {
-            return false;
+            return 'invalid';
         }
 
-        $this->operators->touchLogin($operator->id);
+        if ($this->mfa->hasConfirmedTotp($operator->id)) {
+            session()->put(self::PENDING_KEY, $operator->id);
 
-        session()->put(self::SESSION_KEY, $operator->id);
+            return 'mfa';
+        }
+
+        $this->establish($operator->id);
+
+        return 'ok';
+    }
+
+    /**
+     * Establish the full operator session for an already-authenticated operator —
+     * the single place session state is created, shared by the no-MFA login path
+     * and the post-challenge path so they can never diverge.
+     */
+    public function establish(string $operatorId): void
+    {
+        $this->operators->touchLogin($operatorId);
+
+        session()->forget(self::PENDING_KEY);
+        session()->put(self::SESSION_KEY, $operatorId);
         session()->regenerate();
+    }
 
-        return true;
+    /**
+     * The operator id held pending a second factor, or null. Never grants access —
+     * only {@see current()} (which requires {@see SESSION_KEY} + active status) does.
+     */
+    public function pendingOperatorId(): ?string
+    {
+        $id = session()->get(self::PENDING_KEY);
+
+        return is_string($id) && $id !== '' ? $id : null;
     }
 
     public function check(): bool
@@ -74,7 +117,7 @@ final class OperatorAuth
 
     public function logout(Request $request): void
     {
-        session()->forget([self::SESSION_KEY, self::ENV_KEY]);
+        session()->forget([self::SESSION_KEY, self::ENV_KEY, self::PENDING_KEY]);
         // invalidate() (not regenerate()) so no operator session data survives the
         // logout, matching PlatformAuth::logout.
         session()->invalidate();

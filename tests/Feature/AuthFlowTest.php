@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Identity\Mfa\TotpAuthenticator;
+use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;

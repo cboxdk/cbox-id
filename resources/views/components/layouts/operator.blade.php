@@ -17,6 +17,7 @@
         ['route' => 'operator.environments', 'label' => 'Environments', 'icon' => 'layers'],
         ['route' => 'operator.organizations', 'label' => 'Organizations', 'icon' => 'directory'],
         ['route' => 'operator.operators', 'label' => 'Operators', 'icon' => 'members'],
+        ['route' => 'operator.security', 'label' => 'Security', 'icon' => 'shield'],
     ];
 @endphp
 <!DOCTYPE html>

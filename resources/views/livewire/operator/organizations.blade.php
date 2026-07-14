@@ -56,24 +56,28 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         session()->flash('status', 'Organization created.');
     }
 
-    public function toggleStatus(string $id): void
+    public function toggleStatus(string $id, Organizations $orgs, OperatorAuth $auth): void
     {
         $org = Organization::query()->find($id);
         if ($org === null) {
             return;
         }
 
-        // TODO(review): this direct ->update() bypasses the Organizations contract,
-        // so suspending/reactivating a tenant fires no audit hook. The contract has
-        // no suspend()/setStatus() method yet — add one to Organizations so this
-        // security-relevant state change is recorded in the audit trail.
-        $org->update([
-            'status' => $org->status === OrganizationStatus::Active
-                ? OrganizationStatus::Suspended
-                : OrganizationStatus::Active,
-        ]);
+        // Route the status change through the Organizations contract so it is
+        // attributed to the acting operator and recorded on the tenant's audit
+        // trail — a direct ->update() would bypass both.
+        $actorId = $auth->id();
+        if ($actorId === null) {
+            abort(403);
+        }
 
-        session()->flash('status', 'Organization '.($org->status === OrganizationStatus::Active ? 'reactivated' : 'suspended').'.');
+        if ($org->status === OrganizationStatus::Active) {
+            $orgs->suspend($id, $actorId);
+            session()->flash('status', 'Organization suspended.');
+        } else {
+            $orgs->reactivate($id, $actorId);
+            session()->flash('status', 'Organization reactivated.');
+        }
     }
 
     public function reparent(string $id, string $parentId, OrganizationHierarchy $hierarchy): void

@@ -54,7 +54,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
             return;
         }
 
-        if (! $auth->attempt(request(), $this->email, $this->password)) {
+        $result = $auth->attempt(request(), $this->email, $this->password);
+
+        if ($result === 'invalid') {
             RateLimiter::hit($key, 60);
             // Neutral message — never reveal whether the email is a real operator.
             $this->addError('email', 'Those credentials do not match an operator.');
@@ -64,13 +66,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
         RateLimiter::clear($key);
 
-        // TODO(review): operator TOTP. End-user MFA (Cbox\Id\Identity\Contracts\Mfa)
-        // is keyed on subject ids in the Identity module's MFA store; operators are a
-        // separate PlatformOperator table, so reusing it cleanly needs an
-        // operator-scoped Mfa binding (or an operator-aware store) rather than
-        // passing an operator id where a subject id is expected. Tracked as a
-        // follow-up — see the security report.
-        $this->redirect(route('operator.environments'), navigate: false);
+        // A confirmed TOTP factor holds the operator at the MFA challenge — no full
+        // session exists yet. Otherwise the session is already established.
+        $this->redirect(
+            route($result === 'mfa' ? 'operator.login.mfa' : 'operator.environments'),
+            navigate: false,
+        );
     }
 
     public function createFirst(PlatformOperators $operators, OperatorAuth $auth): void
