@@ -6,6 +6,9 @@ use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
+use App\Platform\SsoStart;
+use Cbox\Id\Federation\Contracts\DomainVerification;
+use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -31,6 +34,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
     public ?string $pendingLink = null;
 
+    /** Home-realm discovery: true once the email step passed with no SSO connection, revealing the password form. */
+    public bool $identified = false;
+
     /**
      * Branded, per-organization login (/o/{slug}/login) themes the page with the
      * org's colour, logo and name.
@@ -54,9 +60,36 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         }
     }
 
+    /**
+     * Identifier-first step: discover the email's home realm. A verified domain
+     * with an active SSO connection redirects straight to the IdP; anything else
+     * falls through to the local password form (revealed by `identified`).
+     */
+    public function continue(): void
+    {
+        $this->validateOnly('email');
+
+        if (($connection = $this->ssoConnectionForEmail()) !== null) {
+            $this->redirect(SsoStart::url($connection), navigate: false);
+
+            return;
+        }
+
+        $this->identified = true;
+    }
+
     public function login(PlatformAuth $auth, RiskGuard $risk): void
     {
         $this->validate();
+
+        // Home-realm discovery also gates the password path: a verified domain with
+        // an active SSO connection is always routed to the IdP, never authenticated
+        // locally, even if the password form was reached directly.
+        if (($connection = $this->ssoConnectionForEmail()) !== null) {
+            $this->redirect(SsoStart::url($connection), navigate: false);
+
+            return;
+        }
 
         $key = $this->throttleKey('login');
 
@@ -120,6 +153,20 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         $this->magicSent = true;
     }
 
+    /**
+     * The active SSO connection this email should be routed to via its verified
+     * domain, or null. connectionForEmail() is deny-by-default — it only matches a
+     * VERIFIED domain with an ACTIVE connection.
+     */
+    private function ssoConnectionForEmail(): ?Connection
+    {
+        if (! str_contains($this->email, '@')) {
+            return null;
+        }
+
+        return app(DomainVerification::class)->connectionForEmail($this->email);
+    }
+
     private function throttleKey(string $action): string
     {
         return $action.'|'.Str::lower($this->email).'|'.request()->ip();
@@ -159,35 +206,60 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         </div>
     @endif
 
-    {{-- name + autocomplete so password managers (1Password, iCloud Keychain, browsers) recognise and fill the form. --}}
-    <form wire:submit="login" class="mt-7 space-y-4" method="post" action="{{ route('login') }}">
-        <div>
-            <label class="label" for="email">Email</label>
-            <input wire:model="email" id="email" name="email" type="email" inputmode="email"
-                   autocomplete="username" autocapitalize="none" spellcheck="false"
-                   class="input input-lg" placeholder="you@company.com" autofocus
-                   @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
-            @error('email') <p class="field-error" id="email-error" role="alert">{{ $message }}</p> @enderror
-        </div>
-
-        <div>
-            <div class="flex items-center justify-between mb-1.5">
-                <label class="label" for="password" style="margin-bottom:0">Password</label>
-                <a href="{{ route('password.request') }}" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
+    {{-- Identifier-first: enter the email, discover its home realm, THEN reveal the
+         password. A verified domain with active SSO redirects to the IdP instead. --}}
+    @if (! $identified)
+        <form wire:submit="continue" class="mt-7 space-y-4">
+            <div>
+                <label class="label" for="email">Email</label>
+                <input wire:model="email" id="email" name="email" type="email" inputmode="email"
+                       autocomplete="username" autocapitalize="none" spellcheck="false"
+                       class="input input-lg" placeholder="you@company.com" autofocus
+                       @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+                @error('email') <p class="field-error" id="email-error" role="alert">{{ $message }}</p> @enderror
             </div>
-            <input wire:model="password" id="password" name="password" type="password"
-                   autocomplete="current-password" class="input input-lg" placeholder="••••••••••••"
-                   @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
-            @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
-        </div>
 
-        <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="login">
-            <span wire:loading.remove wire:target="login">Sign in</span>
-            <span wire:loading wire:target="login" class="inline-flex items-center gap-2">
-                <span class="spinner"></span> Signing in…
-            </span>
-        </button>
-    </form>
+            <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="continue">
+                <span wire:loading.remove wire:target="continue">Continue</span>
+                <span wire:loading wire:target="continue" class="inline-flex items-center gap-2">
+                    <span class="spinner"></span> Continuing…
+                </span>
+            </button>
+        </form>
+    @else
+        {{-- name + autocomplete so password managers (1Password, iCloud Keychain, browsers) recognise and fill the form. --}}
+        <form wire:submit="login" class="mt-7 space-y-4" method="post" action="{{ route('login') }}">
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="label" for="email" style="margin-bottom:0">Email</label>
+                    <button type="button" wire:click="$set('identified', false)" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Use a different email</button>
+                </div>
+                <input wire:model="email" id="email" name="email" type="email" inputmode="email"
+                       autocomplete="username" autocapitalize="none" spellcheck="false"
+                       class="input input-lg" placeholder="you@company.com"
+                       @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+                @error('email') <p class="field-error" id="email-error" role="alert">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="label" for="password" style="margin-bottom:0">Password</label>
+                    <a href="{{ route('password.request') }}" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
+                </div>
+                <input wire:model="password" id="password" name="password" type="password"
+                       autocomplete="current-password" class="input input-lg" placeholder="••••••••••••" autofocus
+                       @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
+                @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="login">
+                <span wire:loading.remove wire:target="login">Sign in</span>
+                <span wire:loading wire:target="login" class="inline-flex items-center gap-2">
+                    <span class="spinner"></span> Signing in…
+                </span>
+            </button>
+        </form>
+    @endif
 
     <div class="divider my-6">OR</div>
 

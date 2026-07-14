@@ -6,7 +6,9 @@ use App\Mail\EmailVerificationMail;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
+use App\Platform\SsoStart;
 use App\Rules\NotBreached;
+use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -60,7 +62,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         ];
     }
 
-    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup): void
+    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup, DomainVerification $domains): void
     {
         // Defense in depth: never create an account when signup isn't open, even
         // if the form was reached or replayed out of band.
@@ -88,6 +90,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
 
         if ($risk->shouldBlock($assessment)) {
             $this->addError('email', 'We could not process this request. Please try again later.');
+
+            return;
+        }
+
+        // Capture gate: when an admin has flagged the email's verified domain for
+        // capture AND the org has an active SSO connection, a local password account
+        // is refused — the user must sign in through their org's IdP. Only bites for
+        // domains explicitly flagged; non-captured domains fall through untouched.
+        if ($domains->forEmail($this->email)?->capture === true
+            && ($connection = $domains->connectionForEmail($this->email)) !== null) {
+            session()->flash('status', 'Your organization requires signing in through SSO.');
+            $this->redirect(SsoStart::url($connection), navigate: false);
 
             return;
         }

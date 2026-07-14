@@ -6,8 +6,11 @@ use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\Models\VerifiedDomain;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -42,6 +45,16 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
     public string $client_id = '';
 
     public string $signing_key = '';
+
+    // Verified domains
+    public string $domain = '';
+
+    /** DNS instructions for the domain just added — shown once so the admin can publish the TXT record. */
+    public ?string $dnsHost = null;
+
+    public ?string $dnsToken = null;
+
+    public ?string $dnsDomain = null;
 
     public function create(Connections $connections): void
     {
@@ -98,6 +111,98 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->portalUrl = route('portal.enter', $token);
     }
 
+    /**
+     * Register a domain for this org and mint its DNS challenge. The instructions
+     * (challenge host + token) are surfaced once so the admin can publish the TXT.
+     */
+    public function addDomain(DomainVerification $domains): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+
+        $this->domain = strtolower(trim($this->domain));
+
+        $this->validate([
+            // A real, dotted hostname — lowercased, no scheme, no path, no '@'.
+            'domain' => ['required', 'string', 'max:253', 'regex:/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/'],
+        ], [
+            'domain.regex' => 'Enter a valid domain, e.g. acme.com.',
+        ]);
+
+        try {
+            $record = $domains->add($this->orgId(), $this->domain);
+        } catch (DomainAlreadyClaimed) {
+            $this->addError('domain', 'That domain is already claimed by another organization.');
+
+            return;
+        }
+
+        $this->dnsHost = $domains->challengeHost($record->domain);
+        $this->dnsToken = $record->verification_token;
+        $this->dnsDomain = $record->domain;
+        $this->domain = '';
+    }
+
+    /**
+     * Re-check the DNS TXT record for a domain this org owns and mark it verified.
+     */
+    public function verifyDomain(string $id, DomainVerification $domains): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+        $this->ownedDomain($id, $domains);
+
+        if ($domains->verify($id)) {
+            session()->flash('status', 'Domain verified ✓');
+
+            return;
+        }
+
+        session()->flash('status', "We couldn't find the TXT record yet — DNS can take a few minutes.");
+    }
+
+    /**
+     * Toggle the capture gate on a VERIFIED domain this org owns.
+     */
+    public function toggleCapture(string $id, DomainVerification $domains): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+        $domain = $this->ownedDomain($id, $domains);
+
+        // Capture only makes sense once control of the domain is proven.
+        abort_unless($domain->isVerified(), 403);
+
+        $domains->setCapture($id, ! $domain->capture);
+        session()->flash('status', $domain->capture ? 'Capture disabled.' : 'Capture enabled — matching users must use SSO.');
+    }
+
+    public function removeDomain(string $id, DomainVerification $domains): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+        $this->ownedDomain($id, $domains);
+
+        $domains->remove($id);
+        session()->flash('status', 'Domain removed.');
+    }
+
+    /**
+     * Resolve a domain the CURRENT org owns, or refuse. The contract is already
+     * org-scoped, but resolving through forOrganization() means a foreign domain id
+     * simply never matches — closing cross-org id tampering (deny-by-default).
+     */
+    private function ownedDomain(string $id, DomainVerification $domains): VerifiedDomain
+    {
+        foreach ($domains->forOrganization($this->orgId()) as $domain) {
+            if ($domain->id === $id) {
+                return $domain;
+            }
+        }
+
+        abort(403);
+    }
+
     public function with(): array
     {
         return [
@@ -107,6 +212,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 ->where('organization_id', $this->orgId())
                 ->orderByDesc('created_at')
                 ->get(),
+            'domains' => app(DomainVerification::class)->forOrganization($this->orgId()),
         ];
     }
 
@@ -286,6 +392,86 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 <p class="mt-1 text-sm" style="color:var(--faint)">Connect an identity provider to let your team sign in with SAML or OIDC.</p>
             </div>
         @endforelse
+    </div>
+
+    {{-- Verified domains — DNS-proven ownership powers home-realm discovery and the optional capture gate. --}}
+    <div class="mt-10">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+                <h2 class="font-semibold" style="font-size:1.05rem">Verified domains</h2>
+                <p class="mt-1 text-sm" style="color:var(--muted)">Prove ownership of an email domain to route your team to SSO automatically.</p>
+            </div>
+        </div>
+
+        @if ($me->isAdmin())
+            <form wire:submit="addDomain" class="card p-5 mb-4 flex flex-wrap items-end gap-3">
+                <div class="flex-1 min-w-[14rem]">
+                    <label class="label" for="domain">Domain</label>
+                    <input wire:model="domain" id="domain" type="text" inputmode="url" autocapitalize="none" spellcheck="false" class="input mono" placeholder="acme.com">
+                    @error('domain') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="addDomain"><x-icon name="plus" class="w-4 h-4" /> Add domain</button>
+            </form>
+        @endif
+
+        @if ($dnsHost && $dnsToken && $me->isAdmin())
+            <div class="card p-5 mb-4" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 font-semibold"><x-icon name="connections" class="w-4 h-4" /> Verify {{ $dnsDomain }}</div>
+                        <p class="mt-1 text-sm" style="color:var(--muted)">Add a TXT record at <code class="mono">{{ $dnsHost }}</code> with the value below, then click Verify. DNS changes can take a few minutes to propagate.</p>
+                    </div>
+                    <button wire:click="$set('dnsHost', null)" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+                </div>
+                <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $dnsToken }}</p>
+            </div>
+        @endif
+
+        <div class="space-y-3">
+            @forelse ($domains as $d)
+                <div class="card p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <p class="font-semibold truncate mono">{{ $d->domain }}</p>
+                                @if ($d->verified_at)
+                                    <span class="badge badge-success">Verified</span>
+                                @else
+                                    <span class="badge">Pending</span>
+                                @endif
+                                @if ($d->capture)
+                                    <span class="badge">Capture on</span>
+                                @endif
+                            </div>
+                        </div>
+                        @if ($me->isAdmin())
+                            <div class="flex items-center gap-2">
+                                @unless ($d->verified_at)
+                                    <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-primary" style="padding:0.35rem 0.7rem;font-size:0.8rem"><x-icon name="check" class="w-4 h-4" /> Verify</button>
+                                @endunless
+                                <button wire:click="removeDomain('{{ $d->id }}')" wire:confirm="Remove {{ $d->domain }}?" class="btn btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.8rem">Remove</button>
+                            </div>
+                        @endif
+                    </div>
+
+                    @if ($d->verified_at && $me->isAdmin())
+                        <div class="mt-4 flex items-start justify-between gap-3 rounded-lg px-3 py-3" style="background:var(--surface-2)">
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium">Capture</p>
+                                <p class="mt-0.5 text-xs" style="color:var(--muted)">Force everyone with an @{{ $d->domain }} email to sign in through this org's SSO.</p>
+                            </div>
+                            <button wire:click="toggleCapture('{{ $d->id }}')" class="btn {{ $d->capture ? 'btn-primary' : 'btn-ghost' }}" style="padding:0.35rem 0.7rem;font-size:0.8rem">
+                                {{ $d->capture ? 'On' : 'Off' }}
+                            </button>
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <div class="card p-8 text-center">
+                    <p class="text-sm" style="color:var(--faint)">No domains yet. Add one to enable domain-based SSO routing.</p>
+                </div>
+            @endforelse
+        </div>
     </div>
     @endif
 </div>
