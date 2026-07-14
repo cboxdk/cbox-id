@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: max
+
+    paths:
+        - app
+        - config
+        - database
+        - routes
+
+    # No baseline and no ignoreErrors on purpose: real findings should surface
+    # and be fixed, not papered over.

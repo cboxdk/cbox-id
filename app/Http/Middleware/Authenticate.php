@@ -10,6 +10,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +30,9 @@ final class Authenticate
         private readonly CurrentUser $current,
     ) {}
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
@@ -43,7 +47,12 @@ final class Authenticate
 
         $subject = $this->subjects->find($session->user_id);
 
-        if ($subject === null) {
+        // find() still returns a deactivated/suspended subject, so a live cookie
+        // would otherwise outlive the account being disabled. Re-check per request
+        // (as OperatorAuth::current() does) and refuse an inactive subject.
+        if ($subject === null || ! $this->subjects->isActive($subject->id)) {
+            $request->session()->forget(PlatformAuth::SESSION_KEY);
+
             return redirect()->route('login');
         }
 
@@ -62,13 +71,20 @@ final class Authenticate
         }
 
         if ($organization === null) {
-            $fallbackOrgId = $this->memberships->forUser($subject->id)->value('organization_id');
+            $fallbackOrgId = $this->memberships->forUser($subject->id)->first()?->organization_id;
 
             if (is_string($fallbackOrgId)) {
                 $organization = $this->organizations->find($fallbackOrgId);
                 $role = $this->memberships->of($fallbackOrgId, $subject->id)?->role;
                 $request->session()->put(PlatformAuth::ORG_KEY, $fallbackOrgId);
             }
+        }
+
+        // Deny-by-default on tenant suspension: an operator can suspend an org, and
+        // that must take effect on the very next request — no console access, no
+        // token minting — not just at the next login.
+        if ($organization !== null && $organization->status === OrganizationStatus::Suspended) {
+            abort(403, 'This organization has been suspended. Contact your platform operator.');
         }
 
         $this->current->set($subject, $session, $organization, $role);

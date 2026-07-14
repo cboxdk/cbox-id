@@ -19,6 +19,14 @@ final class OperatorAuth
 {
     public const SESSION_KEY = 'cbox.operator';
 
+    /**
+     * The environment the operator has pointed the console at. Deliberately
+     * DISTINCT from the end-user environment resolution: an operator switching
+     * planes must never move the environment an end user is served, so the two
+     * never share a session key.
+     */
+    public const ENV_KEY = 'cbox.operator_environment';
+
     public function __construct(private readonly PlatformOperators $operators) {}
 
     /**
@@ -66,7 +74,10 @@ final class OperatorAuth
 
     public function logout(Request $request): void
     {
-        session()->forget(self::SESSION_KEY);
-        session()->regenerate();
+        session()->forget([self::SESSION_KEY, self::ENV_KEY]);
+        // invalidate() (not regenerate()) so no operator session data survives the
+        // logout, matching PlatformAuth::logout.
+        session()->invalidate();
+        session()->regenerateToken();
     }
 }

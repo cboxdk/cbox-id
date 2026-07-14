@@ -38,7 +38,9 @@ return [
     /*
      * Social login providers. The self-host operator configures their own OAuth
      * apps; a provider only appears on the login screen once its credentials are
-     * set. Account linking is by provider-verified email (see SocialController).
+     * set. Account linking is EXPLICIT: a social identity only reaches an existing
+     * account when a signed-in user deliberately linked it (see SocialController).
+     * Accounts are never auto-merged by email.
      */
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),

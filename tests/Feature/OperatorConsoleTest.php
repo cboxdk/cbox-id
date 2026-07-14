@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\SetEnvironment;
 use App\Platform\OperatorAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -69,6 +68,29 @@ it('signs an operator in with the right password and rejects the wrong one', fun
         ->assertRedirect(route('operator.environments'));
 });
 
+it('rate-limits operator login after repeated failures', function (): void {
+    makeOperator('brute@platform.test');
+
+    // Five wrong attempts consume the window (5/min, keyed on email + IP).
+    foreach (range(1, 5) as $ignored) {
+        Volt::test('operator.login')
+            ->set('email', 'brute@platform.test')
+            ->set('password', 'wrong')
+            ->call('login')
+            ->assertHasErrors('email');
+    }
+
+    // Locked out — even the CORRECT password is refused, and no session starts.
+    Volt::test('operator.login')
+        ->set('email', 'brute@platform.test')
+        ->set('password', 'a-strong-operator-pass')
+        ->call('login')
+        ->assertHasErrors('email')
+        ->assertNoRedirect();
+
+    expect(session(OperatorAuth::SESSION_KEY))->toBeNull();
+});
+
 it('guards the operator console behind an operator session', function (): void {
     $this->get('/operator')->assertRedirect(route('operator.login'));
 
@@ -83,9 +105,10 @@ it('creates and freely targets environments — no identity guard', function ():
     $staging = Environment::query()->where('slug', 'staging')->first();
     expect($staging)->not->toBeNull();
 
-    // Operators stand above every plane — switching just repoints the target.
+    // Operators stand above every plane — switching just repoints the target,
+    // under the operator-only env key (never the end-user environment key).
     Volt::test('operator.environments')->call('switchTo', $staging->id);
-    expect(session(SetEnvironment::SESSION_KEY))->toBe('staging');
+    expect(session(OperatorAuth::ENV_KEY))->toBe('staging');
 });
 
 it('bootstraps a plane with its first organization and admin', function (): void {

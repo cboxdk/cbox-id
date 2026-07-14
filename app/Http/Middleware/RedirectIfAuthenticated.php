@@ -17,6 +17,9 @@ final class RedirectIfAuthenticated
 {
     public function __construct(private readonly SessionManager $sessions) {}
 
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);

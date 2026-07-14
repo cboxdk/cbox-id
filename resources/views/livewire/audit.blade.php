@@ -14,10 +14,12 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
 
     public string $actionFilter = '';
 
-    public function mount(): void
+    public function boot(): void
     {
         // The audit log exposes every actor, target and action in the org — a
-        // sensitive, admin-only view. Members must not read it.
+        // sensitive, admin-only view. Members must not read it. Enforced in boot()
+        // (not mount) so it re-runs on every Livewire action — pagination, filter —
+        // not just the initial render.
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);
     }
 

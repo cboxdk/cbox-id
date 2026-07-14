@@ -19,7 +19,9 @@ final class MagicLinkMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Your Cbox ID sign-in link');
+        $brand = config('cbox-id.branding.name', 'Cbox ID');
+
+        return new Envelope(subject: 'Your '.(is_string($brand) ? $brand : 'Cbox ID').' sign-in link');
     }
 
     public function content(): Content

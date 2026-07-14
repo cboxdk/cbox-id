@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\SetEnvironment;
 use App\Platform\OperatorAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
@@ -87,7 +86,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
         $environment = Environment::query()->find($id);
 
         if ($environment !== null) {
-            session()->put(SetEnvironment::SESSION_KEY, $environment->slug);
+            session()->put(OperatorAuth::ENV_KEY, $environment->slug);
             $this->redirect(route('operator.environments'), navigate: false);
         }
     }

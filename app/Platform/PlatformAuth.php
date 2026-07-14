@@ -128,8 +128,7 @@ final class PlatformAuth
      */
     public function establish(Request $request, string $subjectId, array $amr): void
     {
-        $organizationId = $this->memberships->forUser($subjectId)->value('organization_id');
-        $organizationId = is_string($organizationId) ? $organizationId : null;
+        $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
 
         $session = $this->sessions->start($subjectId, $organizationId, $amr);
 
@@ -199,13 +198,30 @@ final class PlatformAuth
             return;
         }
 
+        // Only auto-complete the link when the held identity's verified email
+        // matches the account that just authenticated. Otherwise the pending
+        // identity belongs to someone else, and stapling it onto whoever signs in
+        // next would let an attacker attach their provider account to a victim who
+        // happens to log in afterwards. On a mismatch we discard it (already
+        // pulled) rather than link.
+        $pendingEmail = is_string($pending['email'] ?? null) ? $pending['email'] : null;
+        $subjectEmail = $this->subjects->find($subjectId)?->email;
+
+        if ($pendingEmail === null
+            || $subjectEmail === null
+            || ! hash_equals(mb_strtolower($subjectEmail), mb_strtolower($pendingEmail))) {
+            return;
+        }
+
+        $raw = $pending['raw'] ?? null;
+
         try {
             $this->subjects->link($subjectId, new FederatedPrincipal(
                 provider: $pending['provider'],
                 subject: $pending['subject'],
-                email: is_string($pending['email'] ?? null) ? $pending['email'] : null,
+                email: $pendingEmail,
                 name: is_string($pending['name'] ?? null) ? $pending['name'] : null,
-                raw: is_array($pending['raw'] ?? null) ? $pending['raw'] : [],
+                raw: is_array($raw) ? array_filter($raw, 'is_string', ARRAY_FILTER_USE_KEY) : [],
             ));
         } catch (IdentityAlreadyLinked) {
             // The identity is already attached elsewhere — nothing to do.

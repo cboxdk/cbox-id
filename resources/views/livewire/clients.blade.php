@@ -27,7 +27,6 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
 
     public function create(ClientRegistry $clients): void
     {
-        $this->authorizeAdmin();
         $this->validate();
 
         $registered = $clients->register(new NewClient(
@@ -76,10 +75,11 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
         return app(CurrentUser::class)->organizationId() ?? '';
     }
 
-    public function mount(): void
+    public function boot(): void
     {
-        // Read gate: these pages expose org-wide config (client secrets shown
-        // once, SSO connection settings, directory tokens, audit) — admins only.
+        // Read/write gate: this page exposes org-wide config (client secrets shown
+        // once) — admins only. Enforced in boot() so it re-runs on every Livewire
+        // action (create, toggle), not just the initial mount.
         $this->authorizeAdmin();
     }
 

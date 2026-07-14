@@ -26,6 +26,24 @@ it('links a pending social identity once the user signs in to the existing accou
         ->toContain(['provider' => 'social:google', 'subject' => 'g|1']);
 });
 
+it('does not apply a pending social link whose email differs from the signed-in account', function () {
+    $subject = app(Subjects::class)->create('victim@acme.test', 'Victim', 'supersecret123');
+
+    // A pending identity from a DIFFERENT email is held aside. Stapling it onto
+    // whoever signs in next would let an attacker attach their provider account to
+    // a victim who logs in afterwards.
+    app(PlatformAuth::class)->startPendingLink(new FederatedPrincipal('social:google', 'attacker|1', 'attacker@evil.test', 'Attacker'));
+
+    Volt::test('auth.login')
+        ->set('email', 'victim@acme.test')
+        ->set('password', 'supersecret123')
+        ->call('login')
+        ->assertRedirect(route('dashboard'));
+
+    // The mismatched pending link was discarded, not applied.
+    expect(app(Subjects::class)->linkedIdentities($subject->id))->toBeEmpty();
+});
+
 it('shows connected accounts and lets a user disconnect one', function () {
     config(['services.google.client_id' => 'client', 'services.google.client_secret' => 'secret']);
     actingAsRole('owner');

@@ -58,6 +58,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
             return;
         }
 
+        // TODO(review): this direct ->update() bypasses the PlatformOperators
+        // contract, so suspending/reactivating an operator fires no audit hook. The
+        // contract has no suspend()/setStatus() method yet — add one to
+        // PlatformOperators so this privileged state change is audited.
         $operator->update(['status' => $operator->isActive() ? 'suspended' : 'active']);
         session()->flash('status', $operator->isActive() ? 'Operator reactivated.' : 'Operator suspended.');
     }

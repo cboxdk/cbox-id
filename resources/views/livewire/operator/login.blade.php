@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Platform\OperatorAuth;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -41,12 +43,33 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
             'password' => 'required|string',
         ]);
 
+        // Throttle + lock out brute force, keyed on email + IP — the operator
+        // console is the highest-value surface, so it gets at least the same
+        // discipline as the user login (5 attempts / minute).
+        $key = 'operator-login|'.Str::lower($this->email).'|'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError('email', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
         if (! $auth->attempt(request(), $this->email, $this->password)) {
+            RateLimiter::hit($key, 60);
+            // Neutral message — never reveal whether the email is a real operator.
             $this->addError('email', 'Those credentials do not match an operator.');
 
             return;
         }
 
+        RateLimiter::clear($key);
+
+        // TODO(review): operator TOTP. End-user MFA (Cbox\Id\Identity\Contracts\Mfa)
+        // is keyed on subject ids in the Identity module's MFA store; operators are a
+        // separate PlatformOperator table, so reusing it cleanly needs an
+        // operator-scoped Mfa binding (or an operator-aware store) rather than
+        // passing an operator id where a subject id is expected. Tracked as a
+        // follow-up — see the security report.
         $this->redirect(route('operator.environments'), navigate: false);
     }
 

@@ -58,12 +58,16 @@ final class CurrentUser
 
     public function id(): string
     {
-        return $this->subject?->id ?? '';
+        return $this->subject !== null ? $this->subject->id : '';
     }
 
     public function name(): string
     {
-        return $this->subject?->name ?? $this->subject?->email ?? 'Account';
+        if ($this->subject === null) {
+            return 'Account';
+        }
+
+        return $this->subject->name ?? $this->subject->email ?? 'Account';
     }
 
     public function email(): ?string

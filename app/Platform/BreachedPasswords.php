@@ -60,7 +60,14 @@ final class BreachedPasswords
             return false;
         }
 
-        foreach (preg_split('/\r\n|\r|\n/', $response->body()) as $line) {
+        $lines = preg_split('/\r\n|\r|\n/', $response->body());
+
+        if ($lines === false) {
+            // A split failure means we can't inspect the corpus; fail open.
+            return false;
+        }
+
+        foreach ($lines as $line) {
             $parts = explode(':', trim($line), 2);
 
             if (count($parts) !== 2) {

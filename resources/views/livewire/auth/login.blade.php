@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
+use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
@@ -85,7 +87,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         $this->redirectRoute($result === 'mfa' ? 'mfa' : 'dashboard', navigate: false);
     }
 
-    public function sendMagicLink(MagicLink $links): void
+    public function sendMagicLink(MagicLink $links, Subjects $subjects, SignupPolicy $signup): void
     {
         $this->validateOnly('email');
 
@@ -98,13 +100,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         }
 
         RateLimiter::hit($key, 120);
-        $token = $links->request($this->email);
-        $url = route('magic.redeem', $token);
 
-        Mail::to($this->email)->send(new MagicLinkMail($url));
+        // Redeeming a magic link provisions the account on first login
+        // (findByEmail ?? create), so an unqualified link is a signup bypass:
+        // under invite_only/closed it would mint an account for any email. Only
+        // issue a link when signup is open OR the address already has an account.
+        // The confirmation below shows either way, so the page never reveals
+        // whether an account exists (mirrors the password-reset pattern).
+        if ($signup->isOpen() || $subjects->findByEmail($this->email) !== null) {
+            $token = $links->request($this->email);
+            $url = route('magic.redeem', $token);
 
-        // Also surface the link directly outside production, for local dev.
-        $this->magicUrl = app()->environment('production') ? null : $url;
+            Mail::to($this->email)->send(new MagicLinkMail($url));
+
+            // Also surface the link directly in local dev (never on staging/prod).
+            $this->magicUrl = app()->environment('local') ? $url : null;
+        }
+
         $this->magicSent = true;
     }
 

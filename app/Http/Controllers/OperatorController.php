@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Middleware\SetEnvironment;
 use App\Platform\OperatorAuth;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Http\RedirectResponse;
@@ -30,7 +29,7 @@ final class OperatorController extends Controller
         $environment = $id !== '' ? Environment::query()->find($id) : null;
 
         if ($environment !== null) {
-            $request->session()->put(SetEnvironment::SESSION_KEY, $environment->slug);
+            $request->session()->put(OperatorAuth::ENV_KEY, $environment->slug);
         }
 
         return redirect()->route('operator.environments');

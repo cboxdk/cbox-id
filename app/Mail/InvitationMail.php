@@ -23,7 +23,9 @@ final class InvitationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: "You've been invited to {$this->organization} on Cbox ID");
+        $brand = config('cbox-id.branding.name', 'Cbox ID');
+
+        return new Envelope(subject: "You've been invited to {$this->organization} on ".(is_string($brand) ? $brand : 'Cbox ID'));
     }
 
     public function content(): Content

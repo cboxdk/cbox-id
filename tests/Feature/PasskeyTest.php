@@ -46,14 +46,30 @@ it('requires authentication to enrol a passkey', function () {
     $this->postJson('/passkeys/register/options')->assertRedirect(route('login'));
 });
 
-it('issues registration options for a signed-in subject', function () {
+it('issues registration options for a signed-in subject with a fresh step-up', function () {
     [$subject] = accountWithOrg('pk@acme.test');
-    $this->withSession([PlatformAuth::SESSION_KEY => app(SessionManager::class)->start($subject->id, null, ['pwd'])->id]);
+    $this->withSession([
+        PlatformAuth::SESSION_KEY => app(SessionManager::class)->start($subject->id, null, ['pwd'])->id,
+        // Adding a passkey is gated behind sudo — confirm a fresh step-up window.
+        'cbox.sudo_confirmed_at' => time(),
+    ]);
 
     $this->postJson('/passkeys/register/options')
         ->assertOk()
         ->assertJsonPath('rp.id', 'localhost')
         ->assertJsonStructure(['challenge', 'user' => ['id', 'name'], 'pubKeyCredParams']);
+});
+
+it('refuses to enrol a passkey without a fresh sudo window', function () {
+    [$subject] = accountWithOrg('pk-nosudo@acme.test');
+    // Signed in, but no fresh step-up — a hijacked/stale session must not be able
+    // to plant a persistent credential.
+    $this->withSession([PlatformAuth::SESSION_KEY => app(SessionManager::class)->start($subject->id, null, ['pwd'])->id])
+        ->postJson('/passkeys/register/options')
+        ->assertStatus(403)
+        ->assertJsonPath('sudo', route('sudo'));
+
+    expect(WebAuthnCredential::query()->where('user_id', $subject->id)->exists())->toBeFalse();
 });
 
 it('issues login options with a challenge', function () {

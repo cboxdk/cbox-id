@@ -37,9 +37,11 @@ final class RiskGuard
 
         // Log every decision with its reasons (IP hashed — see the risk package's
         // GDPR guidance). This is the audit trail for tuning and review.
+        $appKey = config('app.key');
+
         Log::info('auth risk assessed', [
             'action' => $action,
-            'ip_hash' => hash_hmac('sha256', (string) $request->ip(), (string) config('app.key')),
+            'ip_hash' => hash_hmac('sha256', (string) $request->ip(), is_string($appKey) ? $appKey : ''),
             'score' => $assessment->score,
             'outcome' => $assessment->outcome->value,
             'reasons' => $assessment->reasons(),

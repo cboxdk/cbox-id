@@ -19,7 +19,9 @@ final class PasswordResetMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Reset your Cbox ID password');
+        $brand = config('cbox-id.branding.name', 'Cbox ID');
+
+        return new Envelope(subject: 'Reset your '.(is_string($brand) ? $brand : 'Cbox ID').' password');
     }
 
     public function content(): Content

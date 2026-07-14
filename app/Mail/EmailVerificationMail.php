@@ -19,7 +19,9 @@ final class EmailVerificationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Confirm your Cbox ID email address');
+        $brand = config('cbox-id.branding.name', 'Cbox ID');
+
+        return new Envelope(subject: 'Confirm your '.(is_string($brand) ? $brand : 'Cbox ID').' email address');
     }
 
     public function content(): Content

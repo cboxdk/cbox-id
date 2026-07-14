@@ -14,6 +14,7 @@ use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirect;
 use Throwable;
 
@@ -68,7 +69,13 @@ final class SocialController extends Controller
     {
         abort_unless(SocialProviders::isConfigured($provider), 404);
 
-        return Socialite::driver($provider)->redirectUrl(route('social.connect.callback', $provider))->redirect();
+        $driver = Socialite::driver($provider);
+
+        if ($driver instanceof AbstractProvider) {
+            $driver->redirectUrl(route('social.connect.callback', $provider));
+        }
+
+        return $driver->redirect();
     }
 
     public function connectCallback(string $provider, Subjects $subjects, CurrentUser $me): RedirectResponse
@@ -94,7 +101,12 @@ final class SocialController extends Controller
     {
         try {
             $driver = Socialite::driver($provider);
-            $social = ($redirectUrl !== null ? $driver->redirectUrl($redirectUrl) : $driver)->user();
+
+            if ($redirectUrl !== null && $driver instanceof AbstractProvider) {
+                $driver->redirectUrl($redirectUrl);
+            }
+
+            $social = $driver->user();
         } catch (Throwable) {
             return null;
         }

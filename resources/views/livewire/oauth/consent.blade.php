@@ -7,30 +7,45 @@ use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends Component
 {
-    // Validated request parameters (only populated once the request passes checks).
+    // Validated request parameters. Locked: mount() validates these once against
+    // the registered client (redirect_uri exact-match, PKCE, response_type). Livewire
+    // lets the browser mutate public properties between requests, so without #[Locked]
+    // an attacker could swap in an unregistered redirect_uri AFTER validation and
+    // still have approve() mint a code — an open-redirect / code-exfiltration hole.
+    #[Locked]
     public string $clientId = '';
 
+    #[Locked]
     public string $clientName = '';
 
+    #[Locked]
     public string $redirectUri = '';
 
     /** @var list<string> */
+    #[Locked]
     public array $scopes = [];
 
+    #[Locked]
     public ?string $state = null;
 
+    #[Locked]
     public string $codeChallenge = '';
 
+    #[Locked]
     public string $codeChallengeMethod = 'S256';
 
+    #[Locked]
     public ?string $nonce = null;
 
     // Set when the request is malformed or the client/redirect_uri cannot be trusted.
+    #[Locked]
     public ?string $error = null;
 
     /**
@@ -130,13 +145,36 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $this->nonce = is_string($nonceParam) ? $nonceParam : null;
     }
 
-    public function approve(AuthorizationCodes $codes): void
+    public function approve(AuthorizationCodes $codes, ClientRegistry $clients): void
     {
         if ($this->error !== null) {
             return;
         }
 
+        // Defense in depth: re-assert the critical invariants at issue time rather
+        // than trusting that mount() still holds. Even with #[Locked], never mint a
+        // code unless the redirect_uri is still registered to the client and PKCE
+        // (S256) is present.
+        $client = $clients->byClientId($this->clientId);
+
+        if (! $client instanceof Client
+            || ! in_array($this->redirectUri, $client->redirect_uris, true)
+            || $this->codeChallenge === ''
+            || $this->codeChallengeMethod !== 'S256') {
+            $this->error = 'This authorization request can no longer be completed. Please start again.';
+
+            return;
+        }
+
         $me = app(CurrentUser::class);
+
+        // A suspended organization cannot authorize applications or mint tokens.
+        if ($me->organization()?->status === OrganizationStatus::Suspended) {
+            $this->error = 'This organization has been suspended and cannot authorize applications.';
+
+            return;
+        }
+
         $session = $me->session();
 
         $code = $codes->issue(

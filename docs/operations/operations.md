@@ -1,4 +1,10 @@
-# Operations
+---
+title: Day-2 operations
+weight: 3
+description: Running a live Cbox ID — crypto-key backup, signing-key rotation, health checks, audit/monitoring, upgrades, and break-glass.
+---
+
+# Day-2 operations
 
 Day-2 running of a live identity provider. Read the first section before anything
 else — it's the one mistake you can't undo.
@@ -55,7 +61,8 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
 - The platform writes an **append-only, hash-chained audit trail** with signed
   checkpoints — tamper-evident by design. Ship it to your SIEM via the audit
   read/pull-stream API (see the framework's
-  [Security](../../packages/laravel-id/docs/security.md) docs).
+  [Security](https://github.com/cboxdk/laravel-id/blob/main/docs/security/_index.md)
+  docs).
 - Watch the queue depth and failures (webhook delivery + event outbox ride it) and
   the scheduler (key retirement/cleanups depend on it).
 - Alert on auth anomalies surfaced by risk scoring (`cboxdk/laravel-risk`) and on
@@ -66,13 +73,18 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
 ```bash
 composer update --no-dev
 php artisan migrate --force
-php artisan config:cache route:cache event:cache
+php artisan config:cache
+php artisan route:cache
+php artisan event:cache
 php artisan cbox-id:doctor
 ```
 
-Roll forward one release at a time; run `doctor` before returning traffic. Because
-the framework is a versioned package, check its changelog for migration or config
-changes before bumping a major.
+The three cache commands are separate artisan invocations (or use
+`php artisan optimize` to run them together). Roll forward one release at a time;
+run `doctor` before returning traffic. Because the framework is a versioned package
+pinned to a pre-1.0 series (`cboxdk/laravel-id ^0.4`), check its changelog for
+migration or config changes before bumping — minor bumps in that range may carry
+breaking changes.
 
 ## Break-glass (emergency admin access)
 
@@ -91,7 +103,10 @@ get back in — that trades a lockout for a breach.
 
 ## Where to go next
 
-- [Configuration](configuration.md) — the variables referenced above.
-- Framework [Security](../../packages/laravel-id/docs/security.md) and
-  [Threat model](../../packages/laravel-id/docs/threat-model.md) — the invariants
-  this app inherits.
+- [Configuration](../configuration/environment-variables.md) — the variables
+  referenced above.
+- Framework
+  [Security](https://github.com/cboxdk/laravel-id/blob/main/docs/security/_index.md)
+  and
+  [Threat model](https://github.com/cboxdk/laravel-id/blob/main/docs/security/threat-model.md) —
+  the invariants this app inherits.

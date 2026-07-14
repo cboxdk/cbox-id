@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Mail\MagicLinkMail;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -38,6 +41,35 @@ it('forbids the register action if signup closes after the form was reached', fu
     config(['cbox-id.signup.mode' => 'closed']);
 
     $component->call('register')->assertForbidden();
+});
+
+it('does not mint an account via a magic link for an unknown email when signup is closed', function (): void {
+    config(['cbox-id.signup.mode' => 'closed']);
+    Mail::fake();
+
+    // Redeeming a magic link would create the account (findByEmail ?? create), so
+    // an unqualified link is a signup bypass. Under closed signup, an unknown email
+    // must get NO link and NO account — while still seeing the neutral confirmation.
+    Volt::test('auth.login')
+        ->set('email', 'ghost@nowhere.test')
+        ->call('sendMagicLink')
+        ->assertSet('magicSent', true);
+
+    Mail::assertNothingSent();
+    expect(app(Subjects::class)->findByEmail('ghost@nowhere.test'))->toBeNull();
+});
+
+it('still sends a magic link to an existing account when signup is closed', function (): void {
+    config(['cbox-id.signup.mode' => 'closed']);
+    Mail::fake();
+    app(Subjects::class)->create('member@acme.test', 'Member', 'a-strong-unbreached-passphrase');
+
+    Volt::test('auth.login')
+        ->set('email', 'member@acme.test')
+        ->call('sendMagicLink')
+        ->assertSet('magicSent', true);
+
+    Mail::assertSent(MagicLinkMail::class);
 });
 
 it('shows the create-account link on sign-in only when signup is open', function (): void {

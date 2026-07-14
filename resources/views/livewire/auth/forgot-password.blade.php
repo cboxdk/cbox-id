@@ -41,7 +41,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
         if ($token !== null) {
             $url = route('password.reset', $token);
             Mail::to($this->email)->send(new PasswordResetMail($url));
-            $this->devUrl = app()->environment('production') ? null : $url;
+            $this->devUrl = app()->environment('local') ? $url : null;
         }
 
         $this->sent = true;

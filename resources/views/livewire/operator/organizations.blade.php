@@ -63,6 +63,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
             return;
         }
 
+        // TODO(review): this direct ->update() bypasses the Organizations contract,
+        // so suspending/reactivating a tenant fires no audit hook. The contract has
+        // no suspend()/setStatus() method yet — add one to Organizations so this
+        // security-relevant state change is recorded in the audit trail.
         $org->update([
             'status' => $org->status === OrganizationStatus::Active
                 ? OrganizationStatus::Suspended

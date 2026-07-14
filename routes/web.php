@@ -79,12 +79,15 @@ Route::middleware('platform.auth')->group(function (): void {
 
     Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->name('organization.switch');
 
-    // Passkey enrolment (adds a credential to the signed-in subject).
-    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->name('passkeys.register.options');
-    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->name('passkeys.register');
+    // Passkey enrolment (adds a credential to the signed-in subject). Adding a
+    // credential is persistence — gate it behind a fresh step-up, symmetric with
+    // the sudo required to REMOVE a passkey in settings.
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware('sudo')->name('passkeys.register.options');
+    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware('sudo')->name('passkeys.register');
 
     // Explicit account linking — connect a social provider to the signed-in user.
-    Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->name('social.connect');
+    // Also a new way in, so it likewise requires a fresh step-up.
+    Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->middleware('sudo')->name('social.connect');
     Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])->name('social.connect.callback');
 });
 

@@ -1,7 +1,7 @@
 # Cbox ID
 
 The hosted, self-hostable identity platform — the deployable app built on
-[`cboxdk/laravel-id`](../packages/laravel-id). Central login, enterprise SSO
+[`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id). Central login, enterprise SSO
 (SAML/OIDC), directory sync (SCIM), RBAC, billing-driven entitlements, and a
 tamper-evident audit trail.
 
@@ -47,12 +47,16 @@ Live platform endpoints (from the package): `/.well-known/openid-configuration`,
 
 Running or self-hosting this app? See [`docs/`](docs/index.md):
 
-- [Deployment](docs/deployment.md) — fresh server to a hardened instance.
-- [Configuration](docs/configuration.md) — env reference + secure defaults.
-- [Operations](docs/operations.md) — crypto-key backup, key rotation, upgrades, break-glass.
+- [Quickstart](docs/quickstart.md) — operator zero-to-running.
+- [Deployment](docs/operations/deployment.md) — fresh server to a hardened instance.
+- [Configuration](docs/configuration/environment-variables.md) — env reference + secure defaults.
+- [Operations](docs/operations/operations.md) — crypto-key backup, key rotation, upgrades, break-glass.
+- [Security](docs/security/_index.md) — operator security surfaces + compliance view.
 
 Integrating *against* the platform (OAuth/OIDC/SCIM, entitlements, existing users)
-is the framework documentation in [`cboxdk/laravel-id`](../packages/laravel-id/docs/index.md).
+is the framework documentation in the [`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id/blob/main/docs/index.md) package.
+
+Security disclosures: see [`SECURITY.md`](SECURITY.md).
 
 ## Develop
 
@@ -62,7 +66,10 @@ composer run dev     # serve + queue + vite + logs
 
 ## Status
 
-Production-ready. Shipped: full auth (password + magic-link + TOTP MFA +
+Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id ^0.4`
+(a pre-1.0 framework) and has open security follow-ups. Review the
+[security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before
+running it in production. Shipped: full auth (password + magic-link + TOTP MFA +
 passkeys + social), signup → org onboarding with signup-mode lockdown, the
 9-section org admin console (Overview, Members, SSO, Directory/SCIM, Roles, API
 clients, Webhooks, Audit, Settings), the **operator console** (environments,

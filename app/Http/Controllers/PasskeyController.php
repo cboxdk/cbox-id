@@ -40,8 +40,8 @@ final class PasskeyController extends Controller
 
         $existing = WebAuthnCredential::query()
             ->where('user_id', $me->id())
-            ->pluck('credential_id')
-            ->map(fn (string $id): array => ['type' => 'public-key', 'id' => $id])
+            ->get()
+            ->map(fn (WebAuthnCredential $credential): array => ['type' => 'public-key', 'id' => $credential->credential_id])
             ->all();
 
         return new JsonResponse([

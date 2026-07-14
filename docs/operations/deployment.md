@@ -1,3 +1,9 @@
+---
+title: Deployment
+weight: 2
+description: From a fresh server to a running, hardened Cbox ID instance.
+---
+
 # Deployment
 
 From a fresh server to a running, hardened Cbox ID instance. This is an identity
@@ -11,6 +17,8 @@ provider — the guidance here is deliberately security-first.
 - A cache/queue backend — **Redis** recommended (sessions, rate limits, queues).
 - **TLS terminated in front of the app.** Passkeys (WebAuthn) and secure cookies
   require HTTPS; the platform assumes it.
+
+See [Requirements](../requirements.md) for the full, `composer.json`-backed list.
 
 ## 1. Install the code
 
@@ -29,8 +37,9 @@ php artisan cbox-id:install
 ```
 
 Prefer a non-interactive deploy? Set the environment variables yourself (see
-[Configuration](configuration.md)) and run `php artisan migrate --force` instead —
-`cbox-id:install` is the convenience path, not a requirement.
+[Configuration](../configuration/environment-variables.md)) and run
+`php artisan migrate --force` instead — `cbox-id:install` is the convenience path,
+not a requirement.
 
 ## 3. Optimize for production
 
@@ -80,12 +89,14 @@ reachable `/.well-known/openid-configuration` means you're live.
 ## Reverse proxy notes
 
 - Terminate TLS; forward the real scheme/host (`X-Forwarded-Proto`/`-Host`) and
-  configure Laravel's trusted proxies so issuer URLs and cookie `Secure` flags are
-  correct.
+  configure Laravel's trusted proxies (`TRUSTED_PROXIES`, see
+  [Configuration](../configuration/environment-variables.md#reverse-proxy)) so
+  issuer URLs and cookie `Secure` flags are correct.
 - The discovery, JWKS, token, introspection, SCIM and SAML ACS endpoints are all
   served by the app — no separate service to route.
 
 ## Where to go next
 
-- [Configuration](configuration.md) — the env reference and secure defaults.
-- [Operations](operations.md) — backups, key rotation, upgrades, break-glass.
+- [Configuration](../configuration/environment-variables.md) — the env reference and
+  secure defaults.
+- [Day-2 operations](operations.md) — backups, key rotation, upgrades, break-glass.

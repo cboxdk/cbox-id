@@ -43,5 +43,8 @@ jobs:
       - name: Lint (Pint)
         run: vendor/bin/pint --test
 
+      - name: Static analysis (PHPStan/Larastan)
+        run: vendor/bin/phpstan analyse --no-progress
+
       - name: Tests (Pest, incl. axe-core a11y regression)
         run: vendor/bin/pest
