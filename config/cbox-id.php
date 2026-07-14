@@ -95,4 +95,20 @@ return [
 
     ],
 
+    /*
+     * DNS — domain-ownership verification reads the challenge TXT from the
+     * domain's authoritative nameservers via cboxdk/dns (App\Platform\AuthoritativeDnsResolver),
+     * so a freshly published record verifies immediately instead of waiting out a
+     * recursive resolver's negative cache.
+     */
+    'dns' => [
+        /*
+         * Allow authoritative reads to target LAN/reserved nameserver IPs. Off by
+         * default (SSRF-safe: only public nameservers are probed). Enable only for
+         * an on-prem/split-horizon deployment whose IdP domains resolve to private
+         * nameservers.
+         */
+        'allow_non_public_nameservers' => env('CBOX_ID_DNS_ALLOW_NON_PUBLIC_NAMESERVERS', false),
+    ],
+
 ];
