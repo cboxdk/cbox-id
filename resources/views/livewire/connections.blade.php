@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
+use App\Platform\Entitlements;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
@@ -13,6 +15,9 @@ use Livewire\Volt\Component;
 new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class extends Component
 {
     public bool $creating = false;
+
+    /** The Admin Portal setup URL, shown to the admin exactly once after minting. */
+    public ?string $portalUrl = null;
 
     #[Validate('required|in:saml,oidc')]
     public string $type = 'saml';
@@ -40,6 +45,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
     public function create(Connections $connections): void
     {
+        $this->guardEntitled();
         $this->authorizeAdmin();
 
         $type = ConnectionType::from($this->validate()['type']);
@@ -72,16 +78,31 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
     public function activate(string $id, Connections $connections): void
     {
+        $this->guardEntitled();
         $this->authorizeAdmin();
 
         $connections->activate($this->orgId(), $id);
         session()->flash('status', 'Connection activated.');
     }
 
+    /**
+     * Mint a single-use Admin Portal link and reveal its URL once, so the admin
+     * can hand SSO setup to an external IT admin without granting them an account.
+     */
+    public function invite(AdminPortal $portal): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+
+        $token = $portal->generate($this->orgId(), 'sso', app(CurrentUser::class)->id());
+        $this->portalUrl = route('portal.enter', $token);
+    }
+
     public function with(): array
     {
         return [
             'me' => app(CurrentUser::class),
+            'entitled' => app(Entitlements::class)->entitled($this->orgId(), 'sso'),
             'connections' => Connection::query()
                 ->where('organization_id', $this->orgId())
                 ->orderByDesc('created_at')
@@ -105,12 +126,23 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
     {
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);
     }
+
+    /**
+     * Deny-by-default entitlement gate for every mutating action. Runs BEFORE the
+     * admin check, so a direct Livewire call from a non-entitled org is refused
+     * even though the (upsell) screen itself is reachable.
+     */
+    private function guardEntitled(): void
+    {
+        abort_unless(app(Entitlements::class)->entitled($this->orgId(), 'sso'), 403);
+    }
 }; ?>
 
 <div>
     <x-page-header title="SSO connections" subtitle="Federate sign-in with your enterprise identity provider.">
         <x-slot:actions>
-            @if ($me->isAdmin())
+            @if ($me->isAdmin() && $entitled)
+                <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
             @endif
         </x-slot:actions>
@@ -119,6 +151,30 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
     @if (session('status'))
         <div class="card p-3 mb-5 text-sm flex items-center gap-2" style="border-color:color-mix(in srgb, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
             <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
+        </div>
+    @endif
+
+    @if (! $entitled)
+        <div class="card p-8 text-center">
+            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="connections" class="w-5 h-5" /></div>
+            <p class="mt-4 font-semibold">Single sign-on is an Enterprise feature</p>
+            <p class="mt-1 text-sm mx-auto" style="color:var(--muted);max-width:32rem">
+                SAML &amp; OIDC single sign-on is available on the Enterprise plan.
+                Contact your account team to enable it for this organization.
+            </p>
+        </div>
+    @else
+
+    @if ($portalUrl && $me->isAdmin())
+        <div class="card p-5 mb-5" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 font-semibold"><x-icon name="members" class="w-4 h-4" /> Setup link for your IT admin</div>
+                    <p class="mt-1 text-sm" style="color:var(--muted)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
+                </div>
+                <button wire:click="$set('portalUrl', null)" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+            </div>
+            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $portalUrl }}</p>
         </div>
     @endif
 
@@ -231,4 +287,5 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             </div>
         @endforelse
     </div>
+    @endif
 </div>

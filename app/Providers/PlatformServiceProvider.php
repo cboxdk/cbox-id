@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateOperator;
+use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Platform\CurrentUser;
 use Illuminate\Support\Facades\Event;
@@ -40,6 +41,9 @@ final class PlatformServiceProvider extends ServiceProvider
             Authenticate::class,
             AuthenticateOperator::class,
             RedirectIfAuthenticated::class,
+            // The guest Admin Portal setup screen is Livewire too — keep its
+            // scoped-session guard on every /livewire/update, not just first load.
+            PortalSession::class,
         ]);
     }
 }

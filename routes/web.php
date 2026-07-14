@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
@@ -53,6 +54,16 @@ Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'
 Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->name('verification.verify');
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
+
+/*
+ * Admin Portal — a WorkOS-style setup link. An external IT admin opens it with
+ * NO platform account and configures one org's SSO/SCIM, nothing else. These live
+ * in the guest area and must never be reachable via a platform session; the
+ * scoped portal session (distinct key) is the only thing that unlocks /setup.
+ */
+Route::view('/setup/expired', 'portal.expired')->name('portal.expired');
+Volt::route('/setup', 'portal.setup')->middleware('portal.session')->name('portal.setup');
+Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
 
 /*
  * Authenticated console.

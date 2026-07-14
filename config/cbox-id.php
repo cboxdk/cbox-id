@@ -58,6 +58,28 @@ return [
         'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN'),
     ],
 
+    /*
+     * Entitlement keys that gate the enterprise self-serve surfaces (SSO & SCIM).
+     * These are NAMESPACED so they never clash with the entitlements a tenant
+     * product pushes through the same billing-fed projection. An org sees the SSO
+     * or SCIM screens as usable only when billing has set the matching key's
+     * `enabled` flag true — deny-by-default otherwise.
+     */
+    'entitlements' => [
+        'sso' => env('CBOX_ID_ENTITLEMENT_SSO', 'cbox-id-sso'),
+        'scim' => env('CBOX_ID_ENTITLEMENT_SCIM', 'cbox-id-scim'),
+    ],
+
+    /*
+     * Admin Portal setup links — the short-lived, single-use URL an entitled org
+     * admin hands to an external IT admin so they can configure that one org's
+     * SSO/SCIM without a platform account. `ttl_minutes` bounds how long a
+     * generated link stays redeemable.
+     */
+    'portal' => [
+        'ttl_minutes' => (int) env('CBOX_ID_PORTAL_TTL_MINUTES', 30),
+    ],
+
     'crypto' => [
 
         /*

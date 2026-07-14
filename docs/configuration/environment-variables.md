@@ -36,6 +36,19 @@ issuer — resolved per request from the host.
 |---|---|---|---|
 | `CBOX_ID_SIGNUP_MODE` | Who may self-register at `/signup`: `open` (anyone), `invite_only` (public signup closed, admin invitations still work), or `closed` (no self-service at all). Admin/operator provisioning is never gated by this. | `open` | Set to `invite_only` or `closed` for a private/internal deployment. See [Security](../security/_index.md#self-service-signup-modes). |
 
+## Enterprise self-serve (SSO, SCIM & Admin Portal)
+
+Gate the self-serve SSO/SCIM screens on a billing-fed entitlement, and tune the
+external IT-admin setup link. See
+[Enterprise self-serve](../getting-started/enterprise-self-serve.md) for the full
+story.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_ENTITLEMENT_SSO` | The **namespaced** entitlement key whose `enabled` flag unlocks self-serve SAML/OIDC SSO for an org. Deny-by-default: without it, the SSO screen shows an upsell and its actions `abort(403)`. | `cbox-id-sso` | Change only to align with the key your billing system pushes. The `cbox-id-` prefix keeps it from clashing with entitlements your tenant products push through the same projection. |
+| `CBOX_ID_ENTITLEMENT_SCIM` | The namespaced entitlement key whose `enabled` flag unlocks self-serve SCIM directory sync. Deny-by-default, same as SSO. | `cbox-id-scim` | As above. |
+| `CBOX_ID_PORTAL_TTL_MINUTES` | How long a minted Admin Portal setup link stays redeemable, in minutes. Links are single-use and only their token hash is stored. | `30` | Lower it for a tighter window; raise it if your customers' IT teams need longer to act. |
+
 ## Branding
 
 Override the wordmark/hero without editing Blade.

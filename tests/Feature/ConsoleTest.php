@@ -7,11 +7,24 @@ use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
+use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
+use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
+
+/** Entitle an org for a self-serve feature ('cbox-id-sso' | 'cbox-id-scim'). */
+function entitle(string $organizationId, string $key): void
+{
+    app(EntitlementWriter::class)->set(
+        $organizationId,
+        new EntitlementInput($key, ['enabled' => true]),
+        EntitlementSource::Manual,
+    );
+}
 
 function owner(): string
 {
@@ -26,6 +39,7 @@ function owner(): string
 
 it('registers a SCIM directory and reveals a bearer token once', function () {
     $orgId = owner();
+    entitle($orgId, 'cbox-id-scim');
 
     $component = Volt::test('directories')
         ->set('name', 'Okta')
@@ -53,6 +67,7 @@ it('registers an OAuth client for the organization', function () {
 
 it('creates and activates a SAML connection', function () {
     $orgId = owner();
+    entitle($orgId, 'cbox-id-sso');
 
     Volt::test('connections')
         ->set('type', 'saml')

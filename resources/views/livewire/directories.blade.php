@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
+use App\Platform\Entitlements;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Models\Directory;
 use Livewire\Attributes\Layout;
@@ -21,8 +23,12 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
 
     public ?string $newTokenName = null;
 
+    /** The Admin Portal setup URL, shown to the admin exactly once after minting. */
+    public ?string $portalUrl = null;
+
     public function register(Directories $directories): void
     {
+        $this->guardEntitled();
         $this->authorizeAdmin();
         $this->validate();
 
@@ -38,10 +44,24 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
         $this->reset('newToken', 'newTokenName');
     }
 
+    /**
+     * Mint a single-use Admin Portal link and reveal its URL once, so the admin
+     * can hand SCIM setup to an external IT admin without granting them an account.
+     */
+    public function invite(AdminPortal $portal): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+
+        $token = $portal->generate($this->orgId(), 'scim', app(CurrentUser::class)->id());
+        $this->portalUrl = route('portal.enter', $token);
+    }
+
     public function with(): array
     {
         return [
             'me' => app(CurrentUser::class),
+            'entitled' => app(Entitlements::class)->entitled($this->orgId(), 'scim'),
             'directories' => Directory::query()
                 ->where('organization_id', $this->orgId())
                 ->orderByDesc('created_at')
@@ -65,22 +85,58 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
     {
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);
     }
+
+    /**
+     * Deny-by-default entitlement gate for every mutating action. Runs BEFORE the
+     * admin check, so a direct Livewire call from a non-entitled org is refused
+     * even though the (upsell) screen itself is reachable.
+     */
+    private function guardEntitled(): void
+    {
+        abort_unless(app(Entitlements::class)->entitled($this->orgId(), 'scim'), 403);
+    }
 }; ?>
 
 <div>
     <x-page-header title="Directory sync" subtitle="Provision and de-provision users automatically over SCIM.">
         <x-slot:actions>
-            @if ($me->isAdmin())
+            @if ($me->isAdmin() && $entitled)
+                <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New directory</button>
             @endif
         </x-slot:actions>
     </x-page-header>
+
+    @if (! $entitled)
+        <div class="card p-8 text-center">
+            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="directory" class="w-5 h-5" /></div>
+            <p class="mt-4 font-semibold">SCIM directory sync is an Enterprise feature</p>
+            <p class="mt-1 text-sm mx-auto" style="color:var(--muted);max-width:32rem">
+                Automatic user provisioning and de-provisioning over SCIM 2.0 is
+                available on the Enterprise plan. Contact your account team to enable
+                it for this organization.
+            </p>
+        </div>
+    @else
 
     <div class="card p-5 mb-5">
         <div class="flex items-center gap-2 text-sm font-semibold"><x-icon name="directory" class="w-4 h-4" /> SCIM endpoint</div>
         <p class="mt-2 text-xs" style="color:var(--muted)">Point your identity provider (Okta, Microsoft Entra) at this base URL and authenticate with a directory's bearer token.</p>
         <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ url('/scim/v2') }}</p>
     </div>
+
+    @if ($portalUrl && $me->isAdmin())
+        <div class="card p-5 mb-5" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 font-semibold"><x-icon name="members" class="w-4 h-4" /> Setup link for your IT admin</div>
+                    <p class="mt-1 text-sm" style="color:var(--muted)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
+                </div>
+                <button wire:click="$set('portalUrl', null)" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+            </div>
+            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $portalUrl }}</p>
+        </div>
+    @endif
 
     @if ($newToken && $me->isAdmin())
         <div class="card p-5 mb-5" style="border-color:color-mix(in srgb, var(--warn) 40%, transparent)">
@@ -135,4 +191,5 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
             </table>
         </div>
     </div>
+    @endif
 </div>

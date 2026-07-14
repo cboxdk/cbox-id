@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
@@ -53,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'platform.auth' => Authenticate::class,
             'platform.guest' => RedirectIfAuthenticated::class,
+            'portal.session' => PortalSession::class,
             'sudo' => RequireSudo::class,
         ]);
     })

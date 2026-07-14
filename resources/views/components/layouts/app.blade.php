@@ -22,6 +22,21 @@
         ['route' => 'settings', 'label' => 'Settings', 'icon' => 'settings'],
     ];
 
+    // Mark the enterprise self-serve items (SSO, SCIM) with a lock when the active
+    // org is not entitled. The link stays — it leads to the upsell screen — but the
+    // nav shows it is a gated, Enterprise feature.
+    $entitlements = app(\App\Platform\Entitlements::class);
+    $nav = array_map(function (array $item) use ($entitlements): array {
+        $feature = match ($item['route']) {
+            'connections' => 'sso',
+            'directories' => 'scim',
+            default => null,
+        };
+        $item['locked'] = $feature !== null && ! $entitlements->entitledOrgFeature($feature);
+
+        return $item;
+    }, $nav);
+
     // Organizations the signed-in subject belongs to, for the switcher.
     $myOrgs = collect();
     if ($me->check()) {
@@ -102,6 +117,9 @@
                    @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
                     <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
                     {{ $item['label'] }}
+                    @if ($item['locked'])
+                        <span class="ml-auto text-[0.6rem] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5" style="background:var(--accent-soft);color:var(--accent)" title="Enterprise feature">Enterprise</span>
+                    @endif
                 </a>
             @endforeach
         </nav>
@@ -135,6 +153,9 @@
                        @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
                         <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
                         {{ $item['label'] }}
+                        @if ($item['locked'])
+                            <span class="ml-auto text-[0.6rem] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5" style="background:var(--accent-soft);color:var(--accent)" title="Enterprise feature">Enterprise</span>
+                        @endif
                     </a>
                 @endforeach
             </nav>
