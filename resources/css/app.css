@@ -651,3 +651,23 @@
     .cbx-subnav.collapsed .cbx-strip { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; padding: 10px 0; width: 100%; }
     .cbx-strip .vlabel { writing-mode: vertical-rl; font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 }
+
+/* Dark mode: the active nav item is blue text on a blue-tinted (accent-soft)
+ * background. At the design-system's --primary (oklch 0.65) that lands ~4.26:1 —
+ * just under AA. Brighten the active text (and its icon) to a lighter blue so it
+ * clears AA comfortably while keeping the blue "active" brand cue. Non-layered so
+ * it overrides the @layer components rule. */
+:root[data-theme='dark'] .cbx-rail a.cbx-on,
+:root[data-theme='dark'] .cbx-rail a.cbx-on svg,
+:root[data-theme='dark'] .nav-link[aria-current='page'],
+:root[data-theme='dark'] .nav-link[aria-current='page'] svg {
+    color: oklch(0.82 0.12 258);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .cbx-rail a.cbx-on,
+    :root:not([data-theme='light']) .cbx-rail a.cbx-on svg,
+    :root:not([data-theme='light']) .nav-link[aria-current='page'],
+    :root:not([data-theme='light']) .nav-link[aria-current='page'] svg {
+        color: oklch(0.82 0.12 258);
+    }
+}
