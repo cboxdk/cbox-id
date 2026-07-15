@@ -625,8 +625,16 @@
     .cbx-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; transition: opacity 120ms var(--ease); }
     .cbx-pin:hover { background: var(--sidebar-accent); color: var(--foreground); }
     .cbx-pin.set { color: var(--primary); opacity: 1; }
-    .cbx-rail.open { width: 210px; }
-    .cbx-rail.open a .lbl, .cbx-rail.open button.cbx-railitem .lbl, .cbx-rail.open .cbx-pin { opacity: 1; }
+    /* Pinned width is driven by a pre-paint <html> class (set from localStorage in
+     * the head, before first paint) as well as the Alpine .open class — so a pinned
+     * rail renders at 210px on the very first frame and never animates 52→210 on a
+     * page navigation. The width transition then only fires on a deliberate toggle. */
+    .cbx-rail.open,
+    :root.cbx-nav-pinned .cbx-rail { width: 210px; }
+    .cbx-rail.open a .lbl, .cbx-rail.open button.cbx-railitem .lbl, .cbx-rail.open .cbx-pin,
+    :root.cbx-nav-pinned .cbx-rail a .lbl,
+    :root.cbx-nav-pinned .cbx-rail button.cbx-railitem .lbl,
+    :root.cbx-nav-pinned .cbx-rail .cbx-pin { opacity: 1; }
     .cbx-rail.unpinned { position: fixed; left: 0; top: 0; bottom: 0; z-index: 70; }
     .cbx-rail.unpinned.open { left: 6px; top: 6px; bottom: 6px; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
     /* Floating overlay when an unpinned rail is hovered open (in-flow wrapper holds 52px). */

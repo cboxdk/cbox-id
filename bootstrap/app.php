@@ -54,6 +54,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'sso/saml/idp/sso',
         ]);
 
+        // The sidebar pin state is a pure UI preference written by JS
+        // (document.cookie) and read server-side to render the correct rail width
+        // on the first paint — so it never animates 52↔210px on a navigation. It
+        // holds no sensitive data and MUST stay unencrypted (JS can't write a
+        // Laravel-encrypted cookie).
+        $middleware->encryptCookies(except: [
+            'cbox-nav-pinned',
+        ]);
+
         // Global so security headers cover API/JSON + error responses too, not
         // just the web group.
         $middleware->append(SecurityHeaders::class);

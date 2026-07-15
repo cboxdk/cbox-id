@@ -24,7 +24,7 @@
     $operatorInitial = strtoupper(substr($operator?->name ?? $operator?->email ?? 'O', 0, 1));
 @endphp
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -38,9 +38,9 @@
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="flex h-full" x-data="{
-        pinned: localStorage.getItem('cbox-nav-pinned') === '1',
+        pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
         mobile: false, account: false, env: false,
-        togglePin() { this.pinned = !this.pinned; localStorage.setItem('cbox-nav-pinned', this.pinned ? '1' : '0'); }
+        togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; }
      }"
      @keydown.escape.window="mobile=false;account=false;env=false">
 
