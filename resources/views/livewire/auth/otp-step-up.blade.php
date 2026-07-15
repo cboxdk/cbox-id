@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
 use App\Platform\SamlSsoHandoff;
+use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -15,6 +16,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
     public string $code = '';
 
     public string $maskedEmail = '';
+
+    public ?string $resent = null;
 
     public function mount(PlatformAuth $auth): void
     {
@@ -62,6 +65,36 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
         $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? route('dashboard'), navigate: false);
     }
 
+    public function resend(PlatformAuth $auth): void
+    {
+        $this->resent = null;
+        $pending = $auth->pendingOtpStepUp(request());
+
+        if ($pending === null) {
+            $this->redirectRoute('login', navigate: false);
+
+            return;
+        }
+
+        // Component-level throttle on top of the OTP service's own issuance cap.
+        $key = 'otp-step-up-resend|'.$pending['subject'];
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $this->addError('code', 'Too many requests. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
+        RateLimiter::hit($key, 60);
+
+        try {
+            $auth->resendOtpStepUp(request());
+            $this->resent = 'We sent a new code to '.$this->maskedEmail.'.';
+        } catch (OtpRateLimitExceeded) {
+            $this->addError('code', 'Too many codes requested. Please wait a moment and try again.');
+        }
+    }
+
     private function mask(string $email): string
     {
         [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
@@ -80,6 +113,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
         <b>{{ $maskedEmail }}</b>. Enter it to continue.
     </p>
 
+    @if ($resent)
+        <div role="status" aria-live="polite" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm inline-flex items-center gap-2" style="background:var(--success-soft);color:var(--success)">
+            <x-icon name="check" class="w-4 h-4" /> {{ $resent }}
+        </div>
+    @endif
+
     <form wire:submit="verify" class="mt-7 space-y-4">
         <div>
             <label class="label" for="code">Verification code</label>
@@ -93,6 +132,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
             <span wire:loading wire:target="verify" class="inline-flex items-center gap-2"><span class="spinner"></span> Verifying…</span>
         </button>
     </form>
+
+    <button type="button" wire:click="resend" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent)"
+            wire:loading.attr="disabled" wire:target="resend">
+        Didn't get it? Resend code
+    </button>
 
     <form method="POST" action="{{ route('logout') }}" class="mt-6">
         @csrf

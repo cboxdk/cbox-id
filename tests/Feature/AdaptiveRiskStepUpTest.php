@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
@@ -98,6 +99,49 @@ it('rejects a wrong step-up code', function (): void {
         ->assertHasErrors('code');
 
     expect(session()->has('cbox.session'))->toBeFalse();
+});
+
+it('resends a fresh step-up code', function (): void {
+    config(['risk.mode' => 'enforce']);
+    stubRiskOutcome(Outcome::StepUp);
+    makePasswordUser('resend@example.com');
+
+    $channel = new FakeOtpChannel;
+    app(OtpChannels::class)->register('email', $channel);
+
+    Volt::test('auth.login')
+        ->set('email', 'resend@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
+        ->call('login')->assertRedirect(route('login.step-up'));
+
+    Volt::test('auth.otp-step-up')->call('resend')->assertHasNoErrors();
+
+    $channel->assertDeliveredCount(2); // original + resend
+});
+
+it('clears a dangling step-up handle once a full session is established (hygiene)', function (): void {
+    config(['risk.mode' => 'enforce']);
+    stubRiskOutcome(Outcome::StepUp);
+    makePasswordUser('victim@example.com');
+
+    $channel = new FakeOtpChannel;
+    app(OtpChannels::class)->register('email', $channel);
+
+    // A risky login for the victim leaves an otp_pending handle in the session.
+    Volt::test('auth.login')
+        ->set('email', 'victim@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
+        ->call('login')->assertRedirect(route('login.step-up'));
+
+    expect(app(PlatformAuth::class)->pendingOtpStepUp(request()))->not->toBeNull();
+
+    // A different, low-risk login in the same browser session establishes cleanly...
+    makePasswordUser('other@example.com');
+    stubRiskOutcome(Outcome::Allow);
+    Volt::test('auth.login')
+        ->set('email', 'other@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
+        ->call('login')->assertRedirect(route('dashboard'));
+
+    // ...and the victim's dangling step-up handle is gone.
+    expect(app(PlatformAuth::class)->pendingOtpStepUp(request()))->toBeNull();
 });
 
 it('does not step up in monitor mode (scores but does not act)', function (): void {

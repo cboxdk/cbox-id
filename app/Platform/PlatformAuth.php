@@ -108,6 +108,24 @@ final class PlatformAuth
     }
 
     /**
+     * Re-issue the step-up code to the pending recipient (the "resend" control).
+     * Returns false when there is nothing pending; the underlying OTP issuance is
+     * itself rate-limited, so this cannot be used to bomb an inbox.
+     */
+    public function resendOtpStepUp(Request $request): bool
+    {
+        $pending = $this->pendingOtpStepUp($request);
+
+        if ($pending === null) {
+            return false;
+        }
+
+        $this->otp->issue(self::OTP_PURPOSE, $pending['email'], 'email', $request->ip());
+
+        return true;
+    }
+
+    /**
      * Complete a risk step-up with the emailed one-time code. The resulting session's
      * amr records 'otp', so it is treated as a two-factor (aal2) login downstream.
      */
@@ -181,6 +199,11 @@ final class PlatformAuth
      */
     public function establish(Request $request, string $subjectId, array $amr): void
     {
+        // A full session is being minted — drop any half-finished second-factor
+        // handles so a completed sign-in can never leave a redeemable pending code
+        // dangling in the (data-preserving) session.
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY]);
+
         $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
 
         // Record the request IP + user-agent on the session so adaptive-risk signals
@@ -205,6 +228,8 @@ final class PlatformAuth
      */
     public function adopt(Request $request, Session $session): void
     {
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY]);
+
         session()->put(self::SESSION_KEY, $session->id);
 
         $organizationId = $session->organization_id
