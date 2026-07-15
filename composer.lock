@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "68179ab4e82f326a25120864d40caa3f",
+    "content-hash": "111472ee413eb71198bcc9196e7abcd3",
     "packages": [
         {
             "name": "brick/math",
@@ -219,6 +219,84 @@
                 "source": "https://github.com/cboxdk/dns/tree/v0.1.0"
             },
             "time": "2026-07-14T18:56:14+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-dns",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-dns.git",
+                "reference": "f07528abe8e1ff3b45aa0c0c123ffdef0f36397d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-dns/zipball/f07528abe8e1ff3b45aa0c0c123ffdef0f36397d",
+                "reference": "f07528abe8e1ff3b45aa0c0c123ffdef0f36397d",
+                "shasum": ""
+            },
+            "require": {
+                "cboxdk/dns": "^0.1",
+                "illuminate/console": "^12.0 || ^13.0",
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^3.5 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0 || ^4.0"
+            },
+            "bin": [
+                "bin/check-licenses.php",
+                "bin/generate-sbom.php"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Dns": "Cbox\\LaravelDns\\Facades\\Dns"
+                    },
+                    "providers": [
+                        "Cbox\\LaravelDns\\LaravelDnsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\LaravelDns\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Laravel integration for cboxdk/dns — authoritative DNS lookups, domain-ownership verification, DNSSEC validation, and intoDNS/MxToolbox-style diagnostics via a facade, Artisan commands, and validation rules.",
+            "homepage": "https://github.com/cboxdk/laravel-dns",
+            "keywords": [
+                "DNSSEC",
+                "dmarc",
+                "dns",
+                "dns-diagnostics",
+                "domain-verification",
+                "laravel",
+                "propagation",
+                "spf",
+                "validation-rule"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-dns/issues",
+                "source": "https://github.com/cboxdk/laravel-dns/tree/v0.1.0"
+            },
+            "time": "2026-07-15T08:22:02+00:00"
         },
         {
             "name": "cboxdk/laravel-health",

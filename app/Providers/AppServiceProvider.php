@@ -3,9 +3,9 @@
 namespace App\Providers;
 
 use App\Platform\AuthoritativeDnsResolver;
-use Cbox\Dns\Resolvers\AuthoritativeResolver;
-use Cbox\Dns\Resolvers\SocketResolver;
+use Cbox\Dns\Dns;
 use Cbox\Id\Federation\Contracts\DnsResolver;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -16,17 +16,14 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Domain-ownership verification reads the challenge TXT from the domain's
-        // authoritative nameservers (cboxdk/dns), not the framework's default
-        // recursive resolver — so a freshly published record verifies immediately
-        // instead of waiting out a recursive resolver's negative cache. Overrides
+        // authoritative nameservers, not the framework's default recursive
+        // resolver — so a freshly published record verifies immediately instead of
+        // waiting out a recursive resolver's negative cache. The authoritative
+        // resolver comes from cboxdk/laravel-dns's config-driven Dns front door
+        // (transport, timeout, and SSRF posture live in config/dns.php). Overrides
         // the framework's SystemDnsResolver binding (app providers load last).
-        $this->app->singleton(DnsResolver::class, function (): DnsResolver {
-            return new AuthoritativeDnsResolver(
-                new AuthoritativeResolver(
-                    new SocketResolver,
-                    (bool) config('cbox-id.dns.allow_non_public_nameservers', false),
-                ),
-            );
+        $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
+            return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());
         });
     }
 
