@@ -221,7 +221,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
                     </select>
                 </div>
 
-                <div class="sm:justify-self-end">
+                <div class="flex items-center gap-1 sm:justify-self-end">
+                    <a href="{{ route('operator.organization', $row['id']) }}" wire:navigate class="btn btn-ghost btn-sm">
+                        View
+                    </a>
                     <button wire:click="toggleStatus('{{ $row['id'] }}')" class="btn btn-ghost btn-sm">
                         {{ $row['status'] === 'active' ? 'Suspend' : 'Reactivate' }}
                     </button>
