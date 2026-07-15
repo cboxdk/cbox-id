@@ -15,6 +15,7 @@
 
     $nav = [
         ['route' => 'operator.environments', 'label' => 'Environments', 'icon' => 'layers'],
+        ['route' => 'operator.usage', 'label' => 'Usage', 'icon' => 'dashboard'],
         ['route' => 'operator.search', 'label' => 'Search', 'icon' => 'search'],
         ['route' => 'operator.organizations', 'label' => 'Organizations', 'icon' => 'directory'],
         ['route' => 'operator.operators', 'label' => 'Operators', 'icon' => 'members'],

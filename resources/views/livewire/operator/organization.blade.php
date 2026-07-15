@@ -9,8 +9,12 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\MfaFactor;
+use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
+use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\ServiceAccount;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\OrganizationHierarchy;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -101,6 +105,46 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
             ];
         })->all();
 
+        // Usage — a compact roll-up for this one tenant. The operator reached this
+        // page in-plane (SetEnvironment pinned the org's environment), so every
+        // environment-owned model below resolves to the right plane directly, no
+        // scope escape needed. The org's user set comes from the members already
+        // loaded above — a single whereIn, never a re-query of memberships.
+        $memberUserIds = $allMemberships->pluck('user_id')->unique()->values()->all();
+        $memberUserCount = count($memberUserIds);
+
+        // Users with at least one CONFIRMED MFA factor (COUNT DISTINCT user_id).
+        $mfaUsers = $memberUserCount === 0 ? 0 : MfaFactor::query()
+            ->whereIn('user_id', $memberUserIds)
+            ->whereNotNull('confirmed_at')
+            ->distinct()
+            ->count('user_id');
+
+        // Active (non-revoked, non-expired) sessions belonging to the org's users.
+        $activeSessions = $memberUserCount === 0 ? 0 : Session::query()
+            ->whereIn('user_id', $memberUserIds)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->count();
+
+        // Recent sign-ins — user.login events on the tenant's trail in the last 30
+        // days. The AuditReader paginates oldest-first with a 500-row cap and no
+        // time predicate, so we read the login-filtered window and count those
+        // inside the 30-day boundary (a per-tenant drill-down never approaches the
+        // cap; the tile is a recent-activity signal, not a billing figure).
+        $signInWindowStart = now()->subDays(30);
+        $signInPage = $audit->query(new AuditQueryFilter(
+            organizationId: $this->orgId,
+            action: 'user.login',
+            limit: 500,
+        ));
+        $recentSignIns = 0;
+        foreach ($signInPage->items as $entry) {
+            if ($entry->recorded_at !== null && $entry->recorded_at->greaterThanOrEqualTo($signInWindowStart)) {
+                $recentSignIns++;
+            }
+        }
+
         // SSO — the org's active connection, if any.
         $connection = $connections->forOrganization($this->orgId);
         $sso = $connection === null ? null : [
@@ -158,6 +202,17 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
             ],
             'members' => $members,
             'memberTotal' => $allMemberships->count(),
+            'usage' => [
+                'members' => $memberUserCount,
+                'mfaUsers' => $mfaUsers,
+                'mfaAdoption' => $memberUserCount === 0 ? 0 : (int) round($mfaUsers / $memberUserCount * 100),
+                'sessions' => $activeSessions,
+                'connections' => $sso === null ? 0 : 1,
+                'domains' => count($domainList),
+                'clients' => Client::query()->where('organization_id', $this->orgId)->count(),
+                'serviceAccounts' => ServiceAccount::query()->where('organization_id', $this->orgId)->count(),
+                'signIns' => $recentSignIns,
+            ],
             'childCount' => count($hierarchy->descendants($this->orgId)),
             'sso' => $sso,
             'domains' => $domainList,
@@ -233,6 +288,36 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
                 </div>
             @endif
         </dl>
+    </div>
+
+    {{-- Usage --}}
+    <div class="card overflow-hidden mb-5">
+        <div class="px-5 py-3 border-b" style="border-color:var(--border)">
+            <h3 class="text-sm font-semibold">Usage</h3>
+        </div>
+        @php
+            $usageTiles = [
+                ['label' => 'Members', 'value' => number_format($usage['members'])],
+                ['label' => 'MFA adoption', 'value' => $usage['mfaAdoption'].'%', 'sub' => $usage['mfaUsers'].' of '.$usage['members'].' with MFA'],
+                ['label' => 'Active sessions', 'value' => number_format($usage['sessions'])],
+                ['label' => 'Sign-ins (30d)', 'value' => number_format($usage['signIns'])],
+                ['label' => 'SSO connections', 'value' => number_format($usage['connections'])],
+                ['label' => 'Verified domains', 'value' => number_format($usage['domains'])],
+                ['label' => 'API clients', 'value' => number_format($usage['clients'])],
+                ['label' => 'Service accounts', 'value' => number_format($usage['serviceAccounts'])],
+            ];
+        @endphp
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-px" style="background:var(--border)">
+            @foreach ($usageTiles as $tile)
+                <div class="p-4 sm:p-5" style="background:var(--surface)">
+                    <p class="text-xs uppercase tracking-wide" style="color:var(--faint)">{{ $tile['label'] }}</p>
+                    <p class="mt-1 text-2xl font-semibold tabular-nums">{{ $tile['value'] }}</p>
+                    @if (isset($tile['sub']))
+                        <p class="mt-0.5 text-xs" style="color:var(--faint)">{{ $tile['sub'] }}</p>
+                    @endif
+                </div>
+            @endforeach
+        </div>
     </div>
 
     {{-- Members --}}
