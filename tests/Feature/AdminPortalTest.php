@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\AdminPortalLink;
 use App\Platform\AdminPortal;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
@@ -70,6 +71,25 @@ it('creates a connection only for the org bound to the portal session', function
 
     expect(Connection::query()->where('organization_id', $orgA)->where('name', 'Bound Co')->exists())->toBeTrue()
         ->and(Connection::query()->where('organization_id', $orgB)->exists())->toBeFalse();
+});
+
+it('lets the IT admin verify their domain from the self-serve portal, bound to the right org', function () {
+    $orgA = gateAdmin('portal-dom-a');
+    grantFeature($orgA, 'cbox-id-sso');
+    $orgB = gateAdmin('portal-dom-b');
+
+    $token = app(AdminPortal::class)->generate($orgA, 'sso', 'sub_creator');
+    expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
+
+    $component = Volt::test('portal.setup')
+        ->set('domain', 'acme.com')
+        ->call('addDomain')
+        ->assertHasNoErrors();
+
+    // The DNS challenge is surfaced and the domain is bound to the portal's org only.
+    expect($component->get('dnsToken'))->not->toBeNull()
+        ->and(VerifiedDomain::query()->where('organization_id', $orgA)->where('domain', 'acme.com')->exists())->toBeTrue()
+        ->and(VerifiedDomain::query()->where('organization_id', $orgB)->exists())->toBeFalse();
 });
 
 it('a portal session grants no access to the platform console', function () {

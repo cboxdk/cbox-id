@@ -6,8 +6,11 @@ use App\Platform\AdminPortal;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -22,6 +25,15 @@ use Livewire\Volt\Component;
 new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] class extends Component
 {
     public bool $done = false;
+
+    // Domain verification (step 1 of SSO onboarding).
+    public string $domain = '';
+
+    public ?string $dnsHost = null;
+
+    public ?string $dnsToken = null;
+
+    public ?string $dnsDomain = null;
 
     // SSO connection form.
     public bool $creatingConnection = false;
@@ -55,6 +67,63 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
     public ?string $newToken = null;
 
     public ?string $newTokenName = null;
+
+    public function addDomain(DomainVerification $domains): void
+    {
+        $orgId = $this->guardFeature('sso');
+
+        $this->domain = strtolower(trim($this->domain));
+        $this->validate([
+            'domain' => ['required', 'string', 'max:253', 'regex:/^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/'],
+        ], ['domain.regex' => 'Enter a valid domain, e.g. acme.com.']);
+
+        try {
+            $record = $domains->add($orgId, $this->domain);
+        } catch (DomainAlreadyClaimed) {
+            $this->addError('domain', 'That domain is already claimed by another organization.');
+
+            return;
+        }
+
+        // Surface the DNS TXT record the IT admin must publish to prove control.
+        $this->dnsHost = $domains->challengeHost($record->domain);
+        $this->dnsToken = $record->verification_token;
+        $this->dnsDomain = $record->domain;
+        $this->domain = '';
+    }
+
+    public function verifyDomain(string $id, DomainVerification $domains): void
+    {
+        $this->guardFeature('sso');
+        $this->ownedDomain($id, $domains);
+
+        session()->flash('status', $domains->verify($id)
+            ? 'Domain verified — users on this domain can now sign in with SSO.'
+            : "We couldn't find the TXT record yet — DNS can take a few minutes to propagate.");
+    }
+
+    public function removeDomain(string $id, DomainVerification $domains): void
+    {
+        $this->guardFeature('sso');
+        $this->ownedDomain($id, $domains);
+
+        $domains->remove($id);
+        session()->flash('status', 'Domain removed.');
+    }
+
+    /** Confirm the domain belongs to the portal-bound org before acting on it. */
+    private function ownedDomain(string $id, DomainVerification $domains): VerifiedDomain
+    {
+        $orgId = $this->guardFeature('sso');
+
+        foreach ($domains->forOrganization($orgId) as $domain) {
+            if ($domain->id === $id) {
+                return $domain;
+            }
+        }
+
+        abort(403);
+    }
 
     public function createConnection(Connections $connections): void
     {
@@ -133,6 +202,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
             'showSso' => $portal->canConfigure('sso'),
             'showScim' => $portal->canConfigure('scim'),
             'orgName' => $orgId === null ? null : app(Organizations::class)->find($orgId)?->name,
+            'domains' => $orgId === null ? [] : app(DomainVerification::class)->forOrganization($orgId),
             'connections' => $orgId === null ? collect() : Connection::query()
                 ->where('organization_id', $orgId)
                 ->orderByDesc('created_at')
@@ -185,9 +255,57 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         @endif
 
         @if ($showSso)
+            {{-- Step 1 — prove domain ownership. A verified domain is what routes your
+                 users to this SSO connection, so it comes first. --}}
+            <section class="mb-8">
+                <div class="mb-3">
+                    <p class="cbx-page-eyebrow">Step 1</p>
+                    <h3 class="text-sm font-semibold flex items-center gap-2 mt-1"><x-icon name="shield" class="w-4 h-4" /> Verify your domain</h3>
+                    <p class="text-xs mt-1" style="color:var(--muted)">Add a DNS record to prove you own the domain your team signs in with. This is what sends those users to SSO.</p>
+                </div>
+
+                <form wire:submit="addDomain" class="flex gap-2 mb-4">
+                    <input wire:model="domain" type="text" class="input" placeholder="acme.com"
+                           @error('domain') aria-invalid="true" @enderror>
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Add domain</button>
+                </form>
+                @error('domain') <p class="field-error -mt-2 mb-4">{{ $message }}</p> @enderror
+
+                @if ($dnsToken)
+                    <div class="card p-4 mb-4" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent)">
+                        <p class="text-sm font-semibold">Add this TXT record for <span class="mono">{{ $dnsDomain }}</span>, then click Check.</p>
+                        <div class="mt-3 grid gap-2 text-sm" style="grid-template-columns:auto 1fr">
+                            <span class="text-xs" style="color:var(--muted)">Type</span><span class="mono">TXT</span>
+                            <span class="text-xs" style="color:var(--muted)">Host</span><span class="mono break-all select-all">{{ $dnsHost }}</span>
+                            <span class="text-xs" style="color:var(--muted)">Value</span><span class="mono break-all select-all">{{ $dnsToken }}</span>
+                        </div>
+                    </div>
+                @endif
+
+                @forelse ($domains as $d)
+                    <div class="card p-3 mb-2 flex items-center justify-between gap-3">
+                        <span class="mono text-sm">{{ $d->domain }}</span>
+                        <div class="flex items-center gap-2">
+                            @if ($d->isVerified())
+                                <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Verified</span>
+                            @else
+                                <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>Pending DNS</span>
+                                <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-ghost btn-sm">Check</button>
+                            @endif
+                            <button wire:click="removeDomain('{{ $d->id }}')" wire:confirm="Remove {{ $d->domain }}?" class="btn btn-ghost btn-sm" style="color:var(--danger)">Remove</button>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-xs" style="color:var(--faint)">No domains added yet.</p>
+                @endforelse
+            </section>
+
             <section class="mb-8">
                 <div class="flex items-center justify-between gap-3 mb-3">
-                    <h3 class="text-sm font-semibold flex items-center gap-2"><x-icon name="connections" class="w-4 h-4" /> SSO connection</h3>
+                    <div>
+                        <p class="cbx-page-eyebrow">Step 2</p>
+                        <h3 class="text-sm font-semibold flex items-center gap-2 mt-1"><x-icon name="connections" class="w-4 h-4" /> SSO connection</h3>
+                    </div>
                     <button wire:click="$toggle('creatingConnection')" class="btn btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
                 </div>
 
@@ -295,7 +413,10 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         @if ($showScim)
             <section class="mb-8">
                 <div class="flex items-center justify-between gap-3 mb-3">
-                    <h3 class="text-sm font-semibold flex items-center gap-2"><x-icon name="directory" class="w-4 h-4" /> Directory sync (SCIM)</h3>
+                    <div>
+                        <p class="cbx-page-eyebrow">{{ $showSso ? 'Step 3' : 'Directory sync' }}</p>
+                        <h3 class="text-sm font-semibold flex items-center gap-2 mt-1"><x-icon name="directory" class="w-4 h-4" /> Directory sync (SCIM)</h3>
+                    </div>
                     <button wire:click="$toggle('creatingDirectory')" class="btn btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" /> New directory</button>
                 </div>
 
