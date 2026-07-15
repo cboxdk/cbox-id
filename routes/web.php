@@ -11,6 +11,7 @@ use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
+use App\Http\Controllers\Sso\SamlIdpSsoController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
@@ -23,6 +24,19 @@ Route::get('/', function () {
         session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
     );
 })->name('home');
+
+/*
+ * SAML 2.0 Identity Provider — the SingleSignOnService endpoint downstream SPs
+ * federate to. The host owns the interactive "authenticate the subject" step
+ * (this app uses its own session guard, not Laravel's default), so it overrides
+ * the framework's thin controller with one wired to PlatformAuth; the package
+ * still parses/validates the AuthnRequest and mints/signs the Response.
+ *
+ * Both bindings are accepted: HTTP-Redirect (GET) and HTTP-POST (cross-site form
+ * POST — exempted from CSRF in bootstrap/app.php, as the package documents). The
+ * metadata (GET /sso/saml/idp/metadata) and SLO endpoints stay with the package.
+ */
+Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)->name('sso.saml.idp.sso');
 
 /*
  * Guest — the sign-in surface.
@@ -84,6 +98,7 @@ Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(f
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
+    Volt::route('/sso-providers', 'sso-providers')->name('sso-providers');
     Volt::route('/directories', 'directories')->name('directories');
     Volt::route('/roles', 'roles')->name('roles');
     Volt::route('/clients', 'clients')->name('clients');

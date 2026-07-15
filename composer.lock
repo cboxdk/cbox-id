@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "111472ee413eb71198bcc9196e7abcd3",
+    "content-hash": "0e1007f5b58aad660b2e9b6b8990ca4e",
     "packages": [
         {
             "name": "brick/math",
@@ -377,16 +377,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.6.0",
+            "version": "v0.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "843ce6ce303df871c289ddb7b86cdd8233d9c935"
+                "reference": "c87bf15656e22459a8305179b543be9f291028df"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/843ce6ce303df871c289ddb7b86cdd8233d9c935",
-                "reference": "843ce6ce303df871c289ddb7b86cdd8233d9c935",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/c87bf15656e22459a8305179b543be9f291028df",
+                "reference": "c87bf15656e22459a8305179b543be9f291028df",
                 "shasum": ""
             },
             "require": {
@@ -400,6 +400,7 @@
                 "illuminate/support": "^12.0 || ^13.0",
                 "onelogin/php-saml": "^4.0",
                 "php": "^8.4",
+                "robrichards/xmlseclibs": "^3.1.5",
                 "spomky-labs/cbor-php": "^3.0"
             },
             "require-dev": {
@@ -432,9 +433,9 @@
             "description": "Cbox ID — self-hostable, Laravel-native identity platform (framework). AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.6.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.7.0"
             },
-            "time": "2026-07-14T14:27:40+00:00"
+            "time": "2026-07-15T12:36:44+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",

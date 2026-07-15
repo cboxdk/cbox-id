@@ -41,6 +41,7 @@
         ['route' => 'dashboard', 'label' => 'Overview', 'icon' => 'dashboard'],
         ['route' => 'members', 'label' => 'Members', 'icon' => 'members'],
         ['route' => 'connections', 'label' => 'SSO connections', 'icon' => 'connections'],
+        ['route' => 'sso-providers', 'label' => 'SSO providers', 'icon' => 'connections'],
         ['route' => 'directories', 'label' => 'Directory sync', 'icon' => 'directory'],
         ['route' => 'roles', 'label' => 'Roles', 'icon' => 'roles'],
         ['route' => 'clients', 'label' => 'API clients', 'icon' => 'clients'],
@@ -56,6 +57,7 @@
     $nav = array_map(function (array $item) use ($entitlements): array {
         $feature = match ($item['route']) {
             'connections' => 'sso',
+            'sso-providers' => 'sso',
             'directories' => 'scim',
             default => null,
         };

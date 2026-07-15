@@ -44,6 +44,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
 
+        // The SAML HTTP-POST binding delivers the SP's AuthnRequest as a cross-site
+        // form POST from the SP's own origin — it carries no Laravel CSRF token, so
+        // with CSRF enabled the POST is rejected (419) before it reaches the IdP.
+        // Exempt just that one endpoint (fail-closed: forgetting it breaks the POST
+        // binding, it does not weaken security — the request is authenticated by its
+        // XML signature and every assertion is pinned to the SP's registered ACS).
+        $middleware->validateCsrfTokens(except: [
+            'sso/saml/idp/sso',
+        ]);
+
         // Global so security headers cover API/JSON + error responses too, not
         // just the web group.
         $middleware->append(SecurityHeaders::class);

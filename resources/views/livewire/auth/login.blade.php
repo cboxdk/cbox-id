@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
+use App\Platform\SamlSsoHandoff;
 use App\Platform\SignupPolicy;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -113,7 +114,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         }
 
         RateLimiter::clear($key);
-        $this->redirectRoute($result === 'mfa' ? 'mfa' : 'dashboard', navigate: false);
+
+        if ($result === 'mfa') {
+            $this->redirectRoute('mfa', navigate: false);
+
+            return;
+        }
+
+        // Resume an in-flight SAML sign-on (the subject was bounced here mid-SSO),
+        // otherwise land on the console.
+        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? route('dashboard'), navigate: false);
     }
 
     public function sendMagicLink(MagicLink $links, Subjects $subjects, SignupPolicy $signup): void
