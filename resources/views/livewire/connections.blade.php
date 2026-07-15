@@ -153,7 +153,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->ownedDomain($id, $domains);
 
         if ($domains->verify($id)) {
-            session()->flash('status', 'Domain verified ✓');
+            session()->flash('status', 'Domain verified.');
 
             return;
         }

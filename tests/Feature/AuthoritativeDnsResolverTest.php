@@ -21,6 +21,19 @@ it('reads the challenge TXT from the zone authoritative nameservers', function (
     expect($resolver->txtRecords('_cbox-id-challenge.acme.test'))->toContain('cbox-id-verify=abc123');
 });
 
+it('walks up past a non-delegated parent to the real zone cut', function (): void {
+    // The challenge host sits under sub.acme.test, but only acme.test is a zone
+    // (sub has no NS). The resolver must fail on the sub candidate and walk up.
+    $fake = (new FakeResolver)
+        ->stub('acme.test', RecordType::NS, ['ns1.acme.test'])
+        ->stub('ns1.acme.test', RecordType::A, ['8.8.8.8'])
+        ->stub('_cbox-id-challenge.sub.acme.test', RecordType::TXT, ['cbox-id-verify=deep'], nameserver: '8.8.8.8');
+
+    $resolver = new AuthoritativeDnsResolver(new AuthoritativeResolver($fake));
+
+    expect($resolver->txtRecords('_cbox-id-challenge.sub.acme.test'))->toContain('cbox-id-verify=deep');
+});
+
 it('fails closed (no records) when the zone has no reachable authoritative nameserver', function (): void {
     $resolver = new AuthoritativeDnsResolver(new AuthoritativeResolver(new FakeResolver));
 

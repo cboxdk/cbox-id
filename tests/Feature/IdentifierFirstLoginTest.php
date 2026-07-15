@@ -8,8 +8,9 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
-// makeConnection/makeVerifiedDomain publish the DNS challenge to an in-memory fake,
-// so home-realm discovery is exercised without touching the network.
+// makeVerifiedDomain publishes the DNS challenge to an in-memory fake (makeConnection
+// just creates/activates the connection), so home-realm discovery is exercised
+// without touching the network.
 uses(InteractsWithFederation::class);
 
 it('redirects an OIDC home-realm email to the IdP on continue', function () {

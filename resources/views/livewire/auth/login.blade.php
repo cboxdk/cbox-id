@@ -69,9 +69,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     {
         $this->validateOnly('email');
 
-        if (($connection = $this->ssoConnectionForEmail()) !== null) {
-            $this->redirect(SsoStart::url($connection), navigate: false);
-
+        if ($this->redirectHomeRealm()) {
             return;
         }
 
@@ -85,9 +83,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         // Home-realm discovery also gates the password path: a verified domain with
         // an active SSO connection is always routed to the IdP, never authenticated
         // locally, even if the password form was reached directly.
-        if (($connection = $this->ssoConnectionForEmail()) !== null) {
-            $this->redirect(SsoStart::url($connection), navigate: false);
-
+        if ($this->redirectHomeRealm()) {
             return;
         }
 
@@ -165,6 +161,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         }
 
         return app(DomainVerification::class)->connectionForEmail($this->email);
+    }
+
+    /**
+     * Route the email's home realm to its IdP if it has one. Returns true when a
+     * redirect was issued (the caller must stop), false to continue with the local
+     * flow — keeping the "verified domain → always SSO, never local auth" invariant
+     * in one place for both the identifier step and a direct password submit.
+     */
+    private function redirectHomeRealm(): bool
+    {
+        if (($connection = $this->ssoConnectionForEmail()) === null) {
+            return false;
+        }
+
+        $this->redirect(SsoStart::url($connection), navigate: false);
+
+        return true;
     }
 
     private function throttleKey(string $action): string

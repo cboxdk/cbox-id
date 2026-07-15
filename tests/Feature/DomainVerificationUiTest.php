@@ -66,6 +66,18 @@ it('rejects a malformed domain', function () {
         ->assertHasErrors('domain');
 });
 
+it('surfaces a friendly error when the domain is already claimed by another org', function () {
+    $orgA = ssoAdmin('dom-claim-a');
+    app(DomainVerification::class)->add($orgA, 'acme.com'); // org A claims it first
+
+    ssoAdmin('dom-claim-b'); // now acting as a different org's admin
+
+    Volt::test('connections')
+        ->set('domain', 'acme.com')
+        ->call('addDomain')
+        ->assertHasErrors('domain');
+});
+
 it('refuses every domain action for a non-entitled org', function () {
     ssoAdmin('dom-deny', entitled: false);
 
