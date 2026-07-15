@@ -188,7 +188,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
             <section class="mb-8">
                 <div class="flex items-center justify-between gap-3 mb-3">
                     <h3 class="text-sm font-semibold flex items-center gap-2"><x-icon name="connections" class="w-4 h-4" /> SSO connection</h3>
-                    <button wire:click="$toggle('creatingConnection')" class="btn btn-primary" style="padding:0.35rem 0.7rem;font-size:0.8rem"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
+                    <button wire:click="$toggle('creatingConnection')" class="btn btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
                 </div>
 
                 @if ($creatingConnection)
@@ -271,17 +271,17 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
                                         <p class="font-semibold truncate">{{ $c->name }}</p>
-                                        <span class="badge">{{ strtoupper($c->type->value) }}</span>
+                                        <span class="cbx-pill">{{ strtoupper($c->type->value) }}</span>
                                         @if ($c->isActive())
-                                            <span class="badge badge-success">Active</span>
+                                            <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Active</span>
                                         @else
-                                            <span class="badge">{{ ucfirst($c->status->value) }}</span>
+                                            <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>{{ ucfirst($c->status->value) }}</span>
                                         @endif
                                     </div>
                                     <p class="mt-1 text-xs mono truncate" style="color:var(--faint)">{{ $c->id }}</p>
                                 </div>
                                 @if (! $c->isActive())
-                                    <button wire:click="activate('{{ $c->id }}')" class="btn btn-primary" style="padding:0.35rem 0.7rem;font-size:0.8rem"><x-icon name="check" class="w-4 h-4" /> Activate</button>
+                                    <button wire:click="activate('{{ $c->id }}')" class="btn btn-primary btn-sm"><x-icon name="check" class="w-4 h-4" /> Activate</button>
                                 @endif
                             </div>
                         </div>
@@ -296,7 +296,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
             <section class="mb-8">
                 <div class="flex items-center justify-between gap-3 mb-3">
                     <h3 class="text-sm font-semibold flex items-center gap-2"><x-icon name="directory" class="w-4 h-4" /> Directory sync (SCIM)</h3>
-                    <button wire:click="$toggle('creatingDirectory')" class="btn btn-primary" style="padding:0.35rem 0.7rem;font-size:0.8rem"><x-icon name="plus" class="w-4 h-4" /> New directory</button>
+                    <button wire:click="$toggle('creatingDirectory')" class="btn btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" /> New directory</button>
                 </div>
 
                 <div class="card p-4 mb-4">
@@ -311,7 +311,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                                 <div class="flex items-center gap-2 font-semibold"><x-icon name="key" class="w-4 h-4" /> Bearer token for “{{ $newTokenName }}”</div>
                                 <p class="mt-1 text-sm" style="color:var(--warn)">Copy this now — it is shown only once and cannot be retrieved again.</p>
                             </div>
-                            <button wire:click="dismissToken" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+                            <button wire:click="dismissToken" class="btn btn-ghost btn-sm">Done</button>
                         </div>
                         <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $newToken }}</p>
                     </div>
@@ -337,9 +337,9 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                                 <p class="text-xs mono truncate" style="color:var(--faint)">{{ $dir->id }}</p>
                             </div>
                             @if ($dir->status === \Cbox\Id\Directory\Enums\DirectoryStatus::Active)
-                                <span class="badge badge-success">Active</span>
+                                <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Active</span>
                             @else
-                                <span class="badge badge-warn">Paused</span>
+                                <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>Paused</span>
                             @endif
                         </div>
                     @empty

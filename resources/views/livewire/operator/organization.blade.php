@@ -231,70 +231,59 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
         </a>
     </div>
 
-    <x-page-header :title="$org['name']"
-                   subtitle="Read-only tenant detail — members, SSO, domains, entitlements and recent activity in the current environment.">
-        <x-slot:actions>
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Organization</p>
+            <h1 class="cbx-page-title">{{ $org['name'] }}</h1>
+            <p class="cbx-page-desc">Read-only tenant detail — members, SSO, domains, entitlements and recent activity in the current environment.</p>
+        </div>
+        <div class="flex items-center gap-2">
             <button wire:click="toggleStatus" class="btn {{ $org['status'] === 'active' ? 'btn-ghost' : 'btn-primary' }}"
                     wire:loading.attr="disabled">
                 {{ $org['status'] === 'active' ? 'Suspend' : 'Reactivate' }}
             </button>
-        </x-slot:actions>
-    </x-page-header>
+        </div>
+    </div>
 
     {{-- Overview --}}
-    <div class="card p-5 mb-5">
-        @if (count($ancestors) > 0)
-            <nav aria-label="Breadcrumb" class="mb-3 text-xs flex flex-wrap items-center gap-1" style="color:var(--faint)">
-                @foreach ($ancestors as $ancestor)
-                    <a href="{{ route('operator.organization', $ancestor['id']) }}" wire:navigate class="hover:underline">{{ $ancestor['name'] }}</a>
-                    <span aria-hidden="true">/</span>
-                @endforeach
-                <span style="color:var(--muted)">{{ $org['name'] }}</span>
-            </nav>
-        @endif
-
-        <div class="flex flex-wrap items-center gap-2 mb-4">
-            <h3 class="text-base font-semibold">{{ $org['name'] }}</h3>
-            @if ($org['status'] === 'suspended')
-                <span class="badge badge-danger">Suspended</span>
-            @elseif ($org['status'] === 'active')
-                <span class="badge badge-success">Active</span>
-            @else
-                <span class="badge">{{ ucfirst($org['status']) }}</span>
+    <div class="cbx-panel mb-5 mt-8">
+        <div class="cbx-panel-body">
+            @if (count($ancestors) > 0)
+                <nav aria-label="Breadcrumb" class="mb-3 text-xs flex flex-wrap items-center gap-1" style="color:var(--faint)">
+                    @foreach ($ancestors as $ancestor)
+                        <a href="{{ route('operator.organization', $ancestor['id']) }}" wire:navigate class="hover:underline">{{ $ancestor['name'] }}</a>
+                        <span aria-hidden="true">/</span>
+                    @endforeach
+                    <span style="color:var(--muted)">{{ $org['name'] }}</span>
+                </nav>
             @endif
+
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <h3 class="text-base font-semibold">{{ $org['name'] }}</h3>
+                @if ($org['status'] === 'suspended')
+                    <span class="cbx-pill cbx-pill--destructive"><span class="dot"></span>Suspended</span>
+                @elseif ($org['status'] === 'active')
+                    <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Active</span>
+                @else
+                    <span class="cbx-pill"><span class="dot"></span>{{ ucfirst($org['status']) }}</span>
+                @endif
+            </div>
+
+            <dl>
+                <div class="cbx-kv"><dt>Slug</dt><dd>{{ $org['slug'] }}</dd></div>
+                <div class="cbx-kv"><dt>Type</dt><dd class="prose capitalize">{{ $org['type'] }}</dd></div>
+                <div class="cbx-kv"><dt>Members</dt><dd>{{ $memberTotal }}</dd></div>
+                <div class="cbx-kv"><dt>Child tenants</dt><dd>{{ $childCount }}</dd></div>
+                @if ($org['created_at'] !== null)
+                    <div class="cbx-kv"><dt>Created</dt><dd>{{ $org['created_at'] }}</dd></div>
+                @endif
+            </dl>
         </div>
-
-        <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-            <div>
-                <dt class="text-xs uppercase tracking-wide" style="color:var(--faint)">Slug</dt>
-                <dd class="mt-0.5 font-mono">{{ $org['slug'] }}</dd>
-            </div>
-            <div>
-                <dt class="text-xs uppercase tracking-wide" style="color:var(--faint)">Type</dt>
-                <dd class="mt-0.5 capitalize">{{ $org['type'] }}</dd>
-            </div>
-            <div>
-                <dt class="text-xs uppercase tracking-wide" style="color:var(--faint)">Members</dt>
-                <dd class="mt-0.5">{{ $memberTotal }}</dd>
-            </div>
-            <div>
-                <dt class="text-xs uppercase tracking-wide" style="color:var(--faint)">Child tenants</dt>
-                <dd class="mt-0.5">{{ $childCount }}</dd>
-            </div>
-            @if ($org['created_at'] !== null)
-                <div>
-                    <dt class="text-xs uppercase tracking-wide" style="color:var(--faint)">Created</dt>
-                    <dd class="mt-0.5">{{ $org['created_at'] }}</dd>
-                </div>
-            @endif
-        </dl>
     </div>
 
     {{-- Usage --}}
-    <div class="card overflow-hidden mb-5">
-        <div class="px-5 py-3 border-b" style="border-color:var(--border)">
-            <h3 class="text-sm font-semibold">Usage</h3>
-        </div>
+    <section class="mb-5">
+        <h3 class="text-sm font-semibold mb-3">Usage</h3>
         @php
             $usageTiles = [
                 ['label' => 'Members', 'value' => number_format($usage['members'])],
@@ -307,23 +296,25 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
                 ['label' => 'Service accounts', 'value' => number_format($usage['serviceAccounts'])],
             ];
         @endphp
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-px" style="background:var(--border)">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             @foreach ($usageTiles as $tile)
-                <div class="p-4 sm:p-5" style="background:var(--surface)">
-                    <p class="text-xs uppercase tracking-wide" style="color:var(--faint)">{{ $tile['label'] }}</p>
-                    <p class="mt-1 text-2xl font-semibold tabular-nums">{{ $tile['value'] }}</p>
-                    @if (isset($tile['sub']))
-                        <p class="mt-0.5 text-xs" style="color:var(--faint)">{{ $tile['sub'] }}</p>
-                    @endif
+                <div class="cbx-stat">
+                    <div class="min-w-0">
+                        <p class="cbx-stat-value">{{ $tile['value'] }}</p>
+                        <p class="cbx-stat-label">{{ $tile['label'] }}</p>
+                        @if (isset($tile['sub']))
+                            <p class="cbx-stat-label mt-1">{{ $tile['sub'] }}</p>
+                        @endif
+                    </div>
                 </div>
             @endforeach
         </div>
-    </div>
+    </section>
 
     {{-- Members --}}
-    <div class="card overflow-hidden mb-5">
-        <div class="px-5 py-3 border-b flex items-center justify-between" style="border-color:var(--border)">
-            <h3 class="text-sm font-semibold">Members</h3>
+    <div class="cbx-panel overflow-hidden mb-5">
+        <div class="cbx-panel-header">
+            <h3 class="cbx-panel-title">Members</h3>
             <span class="text-xs" style="color:var(--faint)">
                 {{ count($members) < $memberTotal ? 'Showing '.count($members).' of '.$memberTotal : $memberTotal.' total' }}
             </span>
@@ -342,7 +333,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
                     @endif
                 </div>
                 <div class="text-sm capitalize"><span class="sm:hidden" style="color:var(--faint)">Role: </span>{{ $member['role'] }}</div>
-                <div class="text-sm capitalize"><span class="sm:hidden" style="color:var(--faint)">Status: </span>{{ $member['status'] }}</div>
+                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Status: </span><span class="cbx-pill {{ $member['status'] === 'active' ? 'cbx-pill--success' : ($member['status'] === 'suspended' ? 'cbx-pill--destructive' : 'cbx-pill--warning') }}"><span class="dot"></span><span class="capitalize">{{ $member['status'] }}</span></span></div>
                 {{-- Step into this member's session for support. Heavily rail-guarded:
                      the console is read-only while impersonating, credential changes
                      are blocked, a justification is required, and the session
@@ -371,47 +362,51 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
 
     <div class="grid gap-5 lg:grid-cols-2 mb-5">
         {{-- SSO --}}
-        <div class="card p-5">
-            <h3 class="text-sm font-semibold mb-3">SSO connection</h3>
-            @if ($sso === null)
-                <p class="text-sm" style="color:var(--faint)">No SSO connection configured.</p>
-            @else
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="text-sm font-medium">{{ $sso['name'] }}</span>
-                    <span class="badge {{ $sso['status'] === 'active' ? 'badge-success' : '' }}">{{ ucfirst($sso['status']) }}</span>
-                </div>
-                <p class="text-xs uppercase tracking-wide" style="color:var(--faint)">Protocol</p>
-                <p class="text-sm uppercase">{{ $sso['type'] }}</p>
-            @endif
+        <div class="cbx-panel">
+            <div class="cbx-panel-body">
+                <h3 class="text-sm font-semibold mb-3">SSO connection</h3>
+                @if ($sso === null)
+                    <p class="text-sm" style="color:var(--faint)">No SSO connection configured.</p>
+                @else
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-sm font-medium">{{ $sso['name'] }}</span>
+                        <span class="cbx-pill {{ $sso['status'] === 'active' ? 'cbx-pill--success' : '' }}"><span class="dot"></span>{{ ucfirst($sso['status']) }}</span>
+                    </div>
+                    <p class="text-xs uppercase tracking-wide" style="color:var(--faint)">Protocol</p>
+                    <p class="text-sm uppercase">{{ $sso['type'] }}</p>
+                @endif
+            </div>
         </div>
 
         {{-- Domains --}}
-        <div class="card p-5">
-            <h3 class="text-sm font-semibold mb-3">Verified domains</h3>
-            @forelse ($domains as $domain)
-                <div class="flex items-center justify-between py-1.5 border-b last:border-0" style="border-color:var(--border)">
-                    <span class="text-sm font-mono">{{ $domain['domain'] }}</span>
-                    <span class="flex items-center gap-2">
-                        @if ($domain['capture'])
-                            <span class="badge">Capture</span>
-                        @endif
-                        @if ($domain['verified_at'] !== null)
-                            <span class="badge badge-success">Verified</span>
-                        @else
-                            <span class="badge">Pending</span>
-                        @endif
-                    </span>
-                </div>
-            @empty
-                <p class="text-sm" style="color:var(--faint)">No domains registered.</p>
-            @endforelse
+        <div class="cbx-panel">
+            <div class="cbx-panel-body">
+                <h3 class="text-sm font-semibold mb-3">Verified domains</h3>
+                @forelse ($domains as $domain)
+                    <div class="flex items-center justify-between py-1.5 border-b last:border-0" style="border-color:var(--border)">
+                        <span class="text-sm font-mono">{{ $domain['domain'] }}</span>
+                        <span class="flex items-center gap-2">
+                            @if ($domain['capture'])
+                                <span class="cbx-pill">Capture</span>
+                            @endif
+                            @if ($domain['verified_at'] !== null)
+                                <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Verified</span>
+                            @else
+                                <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>Pending</span>
+                            @endif
+                        </span>
+                    </div>
+                @empty
+                    <p class="text-sm" style="color:var(--faint)">No domains registered.</p>
+                @endforelse
+            </div>
         </div>
     </div>
 
     {{-- Entitlements --}}
-    <div class="card overflow-hidden mb-5">
-        <div class="px-5 py-3 border-b" style="border-color:var(--border)">
-            <h3 class="text-sm font-semibold">Entitlements</h3>
+    <div class="cbx-panel overflow-hidden mb-5">
+        <div class="cbx-panel-header">
+            <h3 class="cbx-panel-title">Entitlements</h3>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
              style="border-color:var(--border);color:var(--faint);grid-template-columns:2fr 2fr 1fr 1fr">
@@ -431,9 +426,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
     </div>
 
     {{-- Recent audit --}}
-    <div class="card overflow-hidden">
-        <div class="px-5 py-3 border-b" style="border-color:var(--border)">
-            <h3 class="text-sm font-semibold">Recent activity</h3>
+    <div class="cbx-panel overflow-hidden">
+        <div class="cbx-panel-header">
+            <h3 class="cbx-panel-title">Recent activity</h3>
         </div>
         @forelse ($recent as $event)
             <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"

@@ -77,22 +77,22 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
 }; ?>
 
 <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Two-factor verification</h1>
+    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Two-factor verification</h1>
 
     @if (! $useRecovery)
-        <p class="mt-1.5 text-sm" style="color:var(--muted)">Enter the 6-digit code from your authenticator app.</p>
+        <p class="mt-2 text-sm" style="color:var(--muted)">Enter the 6-digit code from your authenticator app.</p>
 
-        <form wire:submit="verify" class="mt-6 space-y-4">
+        <form wire:submit="verify" class="mt-7 space-y-4">
             <div>
                 <label class="label" for="code">Authentication code</label>
                 <input wire:model="code" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
-                       class="input mono" style="letter-spacing:0.5em;font-size:1.1rem;text-align:center" placeholder="000000" autofocus>
-                @error('code') <p class="field-error">{{ $message }}</p> @enderror
+                       class="input input-lg mono" style="letter-spacing:0.5em;text-align:center" placeholder="000000" autofocus>
+                @error('code') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
-            <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled">
+            <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="verify">Verify</span>
-                <span wire:loading wire:target="verify">Verifying…</span>
+                <span wire:loading wire:target="verify" class="inline-flex items-center gap-2"><span class="spinner"></span> Verifying…</span>
             </button>
         </form>
 
@@ -100,19 +100,19 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
             Use a recovery code instead
         </button>
     @else
-        <p class="mt-1.5 text-sm" style="color:var(--muted)">Enter one of the recovery codes you saved when enabling two-factor.</p>
+        <p class="mt-2 text-sm" style="color:var(--muted)">Enter one of the recovery codes you saved when enabling two-factor.</p>
 
-        <form wire:submit="useRecoveryCode" class="mt-6 space-y-4">
+        <form wire:submit="useRecoveryCode" class="mt-7 space-y-4">
             <div>
                 <label class="label" for="recoveryCode">Recovery code</label>
                 <input wire:model="recoveryCode" id="recoveryCode" autocomplete="one-time-code"
-                       class="input mono" placeholder="xxxxx-xxxxx" autofocus>
-                @error('recoveryCode') <p class="field-error">{{ $message }}</p> @enderror
+                       class="input input-lg mono" placeholder="xxxxx-xxxxx" autofocus>
+                @error('recoveryCode') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
-            <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled">
+            <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="useRecoveryCode">Verify recovery code</span>
-                <span wire:loading wire:target="useRecoveryCode">Verifying…</span>
+                <span wire:loading wire:target="useRecoveryCode" class="inline-flex items-center gap-2"><span class="spinner"></span> Verifying…</span>
             </button>
         </form>
 

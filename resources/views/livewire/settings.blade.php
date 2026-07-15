@@ -238,59 +238,48 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 }; ?>
 
 <div class="space-y-6">
-    <x-page-header title="Settings" subtitle="Your organization, security, and current session." />
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Account</p>
+            <h1 class="cbx-page-title">Settings</h1>
+            <p class="cbx-page-desc">Your organization, security, and current session.</p>
+        </div>
+    </div>
 
     {{-- A) Organization --}}
-    <section class="card p-5">
-        <div class="flex items-start gap-3 mb-4">
-            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
-                <x-icon name="settings" class="w-5 h-5" />
-            </span>
-            <div class="min-w-0">
-                <h3 class="font-semibold">Organization</h3>
-                <p class="text-sm" style="color:var(--muted)">The workspace you are currently signed in to.</p>
+    <section class="cbx-panel">
+        <div class="cbx-panel-header">
+            <div>
+                <h3 class="cbx-panel-title">Organization</h3>
+                <p class="cbx-panel-desc">The workspace you are currently signed in to.</p>
             </div>
         </div>
-
-        @if ($org)
-            <dl class="grid gap-4 sm:grid-cols-2">
-                <div>
-                    <dt class="label">Name</dt>
-                    <dd class="text-sm font-medium">{{ $org->name }}</dd>
-                </div>
-                <div>
-                    <dt class="label">Slug</dt>
-                    <dd class="text-sm mono">{{ $org->slug }}</dd>
-                </div>
-                <div>
-                    <dt class="label">Type</dt>
-                    <dd><span class="badge">{{ ucfirst($org->type->value) }}</span></dd>
-                </div>
-                <div>
-                    <dt class="label">Organization ID</dt>
-                    <dd class="text-sm mono" style="color:var(--faint)">{{ $org->id }}</dd>
-                </div>
-            </dl>
-            <p class="mt-4 text-xs" style="color:var(--faint)">Renaming and other organization settings are coming soon.</p>
-        @else
-            <p class="text-sm" style="color:var(--faint)">No organization is associated with this session.</p>
-        @endif
+        <div class="cbx-panel-body">
+            @if ($org)
+                <dl>
+                    <div class="cbx-kv"><dt>Name</dt><dd class="prose">{{ $org->name }}</dd></div>
+                    <div class="cbx-kv"><dt>Slug</dt><dd>{{ $org->slug }}</dd></div>
+                    <div class="cbx-kv"><dt>Type</dt><dd class="prose"><span class="badge">{{ ucfirst($org->type->value) }}</span></dd></div>
+                    <div class="cbx-kv"><dt>Organization ID</dt><dd>{{ $org->id }}</dd></div>
+                </dl>
+                <p class="mt-4 text-xs" style="color:var(--faint)">Renaming and other organization settings are coming soon.</p>
+            @else
+                <p class="text-sm" style="color:var(--faint)">No organization is associated with this session.</p>
+            @endif
+        </div>
     </section>
 
     {{-- A2) Login branding --}}
     @if ($me->isAdmin() && $org)
-        <section class="card p-5">
-            <div class="flex items-start gap-3 mb-4">
-                <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
-                    <x-icon name="shield" class="w-5 h-5" />
-                </span>
-                <div class="min-w-0">
-                    <h3 class="font-semibold">Login branding</h3>
-                    <p class="text-sm" style="color:var(--muted)">Theme your organization's sign-in page. Your team signs in at
+        <section class="cbx-panel">
+            <div class="cbx-panel-header">
+                <div>
+                    <h3 class="cbx-panel-title">Login branding</h3>
+                    <p class="cbx-panel-desc">Theme your organization's sign-in page. Your team signs in at
                         <a href="{{ route('login.branded', $org->slug) }}" class="mono underline" style="color:var(--accent)">/o/{{ $org->slug }}/login</a>.</p>
                 </div>
             </div>
-
+            <div class="cbx-panel-body">
             <form wire:submit="saveBranding" class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label class="label" for="brandColor">Primary colour</label>
@@ -309,26 +298,22 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Save branding</button>
                 </div>
             </form>
+            </div>
         </section>
     @endif
 
     {{-- B) Two-factor authentication --}}
-    <section class="card p-5">
-        <div class="flex items-start gap-3 mb-4">
-            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
-                <x-icon name="shield" class="w-5 h-5" />
-            </span>
-            <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <h3 class="font-semibold">Two-factor authentication</h3>
-                    @if ($twoFactorEnabled)
-                        <span class="badge badge-success"><x-icon name="check" class="w-3.5 h-3.5" /> Enabled</span>
-                    @endif
-                </div>
-                <p class="text-sm" style="color:var(--muted)">An authenticator app adds a second step when you sign in.</p>
+    <section class="cbx-panel">
+        <div class="cbx-panel-header">
+            <div>
+                <h3 class="cbx-panel-title">Two-factor authentication</h3>
+                <p class="cbx-panel-desc">An authenticator app adds a second step when you sign in.</p>
             </div>
+            @if ($twoFactorEnabled)
+                <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Enabled</span>
+            @endif
         </div>
-
+        <div class="cbx-panel-body">
         @if ($twoFactorEnabled)
             <p class="text-sm" style="color:var(--muted)">
                 Your account is protected with an authenticator app. You will be asked for a
@@ -350,7 +335,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                             <span>{{ $rc }}</span>
                         @endforeach
                     </div>
-                    <p class="mt-1 text-xs" style="color:var(--danger,#b91c1c)">These are shown only once. Copy them now.</p>
+                    <p class="mt-1 text-xs" style="color:var(--destructive)">These are shown only once. Copy them now.</p>
                 @endif
 
                 <button wire:click="regenerateRecoveryCodes" wire:confirm="Generate new recovery codes? Your existing codes will stop working."
@@ -392,136 +377,122 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                 </form>
             </div>
         @endif
+        </div>
     </section>
 
     {{-- B2) Passkeys --}}
-    <section class="card p-5" data-passkey-only>
-        <div class="flex items-start gap-3 mb-4">
-            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
-                <x-icon name="key" class="w-5 h-5" />
-            </span>
-            <div class="min-w-0 flex-1">
-                <h3 class="font-semibold">Passkeys</h3>
-                <p class="text-sm" style="color:var(--muted)">Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password.</p>
+    <section class="cbx-panel" data-passkey-only>
+        <div class="cbx-panel-header">
+            <div>
+                <h3 class="cbx-panel-title">Passkeys</h3>
+                <p class="cbx-panel-desc">Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password.</p>
             </div>
             <button type="button" data-passkey-register data-passkey-name="{{ $me->name() }}'s device"
                     data-passkey-feedback="passkey-settings-msg" class="btn btn-primary shrink-0">
                 <x-icon name="plus" class="w-4 h-4" /> Add passkey
             </button>
         </div>
+        <div class="cbx-panel-body">
+            <p id="passkey-settings-msg" class="text-xs mb-2" style="min-height:1rem"></p>
 
-        <p id="passkey-settings-msg" class="text-xs mb-2" style="min-height:1rem"></p>
-
-        @if ($passkeys->isEmpty())
-            <p class="text-sm" style="color:var(--faint)">No passkeys registered yet.</p>
-        @else
-            <ul class="divide-y" style="border-color:var(--border)">
-                @foreach ($passkeys as $passkey)
-                    <li class="flex items-center justify-between gap-4 py-3">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <x-icon name="shield" class="w-4 h-4 shrink-0" style="color:var(--success)" />
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium truncate">{{ $passkey->name ?? 'Passkey' }}</p>
-                                <p class="text-xs" style="color:var(--faint)">Added {{ $passkey->created_at?->format('M j, Y') }} · sign-count {{ $passkey->sign_count }}</p>
+            @if ($passkeys->isEmpty())
+                <p class="text-sm" style="color:var(--faint)">No passkeys registered yet.</p>
+            @else
+                <ul class="divide-y" style="border-color:var(--border)">
+                    @foreach ($passkeys as $passkey)
+                        <li class="flex items-center justify-between gap-4 py-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <x-icon name="shield" class="w-4 h-4 shrink-0" style="color:var(--success)" />
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium truncate">{{ $passkey->name ?? 'Passkey' }}</p>
+                                    <p class="text-xs" style="color:var(--faint)">Added {{ $passkey->created_at?->format('M j, Y') }} · sign-count {{ $passkey->sign_count }}</p>
+                                </div>
                             </div>
-                        </div>
-                        <button wire:click="removePasskey('{{ $passkey->id }}')" wire:confirm="Remove this passkey?"
-                                class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Remove</button>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
+                            <button wire:click="removePasskey('{{ $passkey->id }}')" wire:confirm="Remove this passkey?"
+                                    class="btn btn-danger btn-sm">Remove</button>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
     </section>
 
     {{-- B3) Connected accounts (explicit linking) --}}
     @if (! empty($socialProviders))
-        <section class="card p-5">
-            <div class="flex items-start gap-3 mb-4">
-                <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
-                    <x-icon name="connections" class="w-5 h-5" />
-                </span>
-                <div class="min-w-0">
-                    <h3 class="font-semibold">Connected accounts</h3>
-                    <p class="text-sm" style="color:var(--muted)">Link a social account to sign in with it. Linking is deliberate — we never merge accounts by email automatically.</p>
+        <section class="cbx-panel">
+            <div class="cbx-panel-header">
+                <div>
+                    <h3 class="cbx-panel-title">Connected accounts</h3>
+                    <p class="cbx-panel-desc">Link a social account to sign in with it. Linking is deliberate — we never merge accounts by email automatically.</p>
                 </div>
             </div>
-
-            <ul class="divide-y" style="border-color:var(--border)">
-                @foreach ($socialProviders as $key => $label)
-                    @php $isLinked = in_array('social:'.$key, $linkedProviders, true); @endphp
-                    <li class="flex items-center justify-between gap-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <span class="font-medium">{{ $label }}</span>
-                            @if ($isLinked) <span class="badge badge-success"><x-icon name="check" class="w-3 h-3" /> Connected</span> @endif
-                        </div>
-                        @if ($isLinked)
-                            <button wire:click="unlinkProvider('{{ $key }}')" wire:confirm="Disconnect {{ $label }}?"
-                                    class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Disconnect</button>
-                        @else
-                            <a href="{{ route('social.connect', $key) }}" class="btn btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.8rem">Connect</a>
-                        @endif
-                    </li>
-                @endforeach
-            </ul>
+            <div class="cbx-panel-body">
+                <ul class="divide-y" style="border-color:var(--border)">
+                    @foreach ($socialProviders as $key => $label)
+                        @php $isLinked = in_array('social:'.$key, $linkedProviders, true); @endphp
+                        <li class="flex items-center justify-between gap-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <span class="font-medium">{{ $label }}</span>
+                                @if ($isLinked) <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Connected</span> @endif
+                            </div>
+                            @if ($isLinked)
+                                <button wire:click="unlinkProvider('{{ $key }}')" wire:confirm="Disconnect {{ $label }}?"
+                                        class="btn btn-danger btn-sm">Disconnect</button>
+                            @else
+                                <a href="{{ route('social.connect', $key) }}" class="btn btn-ghost btn-sm">Connect</a>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </section>
     @endif
 
     {{-- C) Current session --}}
-    <section class="card p-5">
-        <div class="flex items-start gap-3 mb-4">
-            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
-                <x-icon name="key" class="w-5 h-5" />
-            </span>
-            <div class="min-w-0">
-                <h3 class="font-semibold">Current session</h3>
-                <p class="text-sm" style="color:var(--muted)">Details of the session you are signed in with right now.</p>
+    <section class="cbx-panel">
+        <div class="cbx-panel-header">
+            <div>
+                <h3 class="cbx-panel-title">Current session</h3>
+                <p class="cbx-panel-desc">Details of the session you are signed in with right now.</p>
             </div>
         </div>
-
-        @if ($session)
-            <dl class="grid gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <dt class="label">Authentication methods</dt>
-                    <dd class="flex flex-wrap gap-1.5">
-                        @forelse ($session->amr ?? [] as $method)
-                            <span class="badge">{{ $method }}</span>
-                        @empty
-                            <span class="text-sm" style="color:var(--faint)">—</span>
-                        @endforelse
-                    </dd>
-                </div>
-                <div>
-                    <dt class="label">Signed in</dt>
-                    <dd class="text-sm">{{ $session->created_at?->format('M j, Y g:i A') ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="label">Expires</dt>
-                    <dd class="text-sm">{{ $session->expires_at?->format('M j, Y g:i A') ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="label">Session ID</dt>
-                    <dd class="text-sm mono" style="color:var(--faint)">{{ $session->id }}</dd>
-                </div>
-            </dl>
-        @else
-            <p class="text-sm" style="color:var(--faint)">No active session details are available.</p>
-        @endif
-
-        <div class="mt-5 pt-4 flex flex-wrap items-center gap-3" style="border-top:1px solid var(--border)">
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="btn btn-danger">
-                    <x-icon name="logout" class="w-4 h-4" /> Sign out
-                </button>
-            </form>
-
-            @if ($otherSessions > 0)
-                <button type="button" wire:click="signOutOtherSessions"
-                        wire:confirm="Sign out of your {{ $otherSessions }} other session(s) on all devices?"
-                        class="btn btn-ghost" wire:loading.attr="disabled">
-                    <x-icon name="logout" class="w-4 h-4" /> Sign out other sessions ({{ $otherSessions }})
-                </button>
+        <div class="cbx-panel-body">
+            @if ($session)
+                <dl>
+                    <div class="cbx-kv">
+                        <dt>Authentication methods</dt>
+                        <dd class="prose flex flex-wrap gap-1.5">
+                            @forelse ($session->amr ?? [] as $method)
+                                <span class="badge">{{ $method }}</span>
+                            @empty
+                                <span class="text-sm" style="color:var(--faint)">—</span>
+                            @endforelse
+                        </dd>
+                    </div>
+                    <div class="cbx-kv"><dt>Signed in</dt><dd>{{ $session->created_at?->format('M j, Y g:i A') ?? '—' }}</dd></div>
+                    <div class="cbx-kv"><dt>Expires</dt><dd>{{ $session->expires_at?->format('M j, Y g:i A') ?? '—' }}</dd></div>
+                    <div class="cbx-kv"><dt>Session ID</dt><dd>{{ $session->id }}</dd></div>
+                </dl>
+            @else
+                <p class="text-sm" style="color:var(--faint)">No active session details are available.</p>
             @endif
+
+            <div class="mt-5 pt-4 flex flex-wrap items-center gap-3" style="border-top:1px solid var(--border)">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">
+                        <x-icon name="logout" class="w-4 h-4" /> Sign out
+                    </button>
+                </form>
+
+                @if ($otherSessions > 0)
+                    <button type="button" wire:click="signOutOtherSessions"
+                            wire:confirm="Sign out of your {{ $otherSessions }} other session(s) on all devices?"
+                            class="btn btn-ghost" wire:loading.attr="disabled">
+                        <x-icon name="logout" class="w-4 h-4" /> Sign out other sessions ({{ $otherSessions }})
+                    </button>
+                @endif
+            </div>
         </div>
     </section>
 </div>

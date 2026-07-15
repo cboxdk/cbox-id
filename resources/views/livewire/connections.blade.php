@@ -245,47 +245,55 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 }; ?>
 
 <div>
-    <x-page-header title="SSO connections" subtitle="Federate sign-in with your enterprise identity provider.">
-        <x-slot:actions>
-            @if ($me->isAdmin() && $entitled)
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Authentication</p>
+            <h1 class="cbx-page-title">SSO connections</h1>
+            <p class="cbx-page-desc">Federate sign-in with your enterprise identity provider.</p>
+        </div>
+        @if ($me->isAdmin() && $entitled)
+            <div class="flex items-center gap-2">
                 <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
-            @endif
-        </x-slot:actions>
-    </x-page-header>
+            </div>
+        @endif
+    </div>
 
+    <div class="mt-8 space-y-6">
     @if (session('status'))
-        <div class="card p-3 mb-5 text-sm flex items-center gap-2" style="border-color:color-mix(in srgb, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
+        <div class="card p-3 text-sm flex items-center gap-2" style="border-color:color-mix(in oklch, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
             <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
         </div>
     @endif
 
     @if (! $entitled)
-        <div class="card p-8 text-center">
-            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="connections" class="w-5 h-5" /></div>
-            <p class="mt-4 font-semibold">Single sign-on is an Enterprise feature</p>
-            <p class="mt-1 text-sm mx-auto" style="color:var(--muted);max-width:32rem">
-                SAML &amp; OIDC single sign-on is available on the Enterprise plan.
-                Contact your account team to enable it for this organization.
-            </p>
+        <div class="card">
+            <div class="cbx-empty">
+                <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
+                <h3>Single sign-on is an Enterprise feature</h3>
+                <p>
+                    SAML &amp; OIDC single sign-on is available on the Enterprise plan.
+                    Contact your account team to enable it for this organization.
+                </p>
+            </div>
         </div>
     @else
 
     @if ($portalUrl && $me->isAdmin())
-        <div class="card p-5 mb-5" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+        <div class="card p-5" style="border-color:color-mix(in oklch, var(--accent) 40%, transparent)">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 font-semibold"><x-icon name="members" class="w-4 h-4" /> Setup link for your IT admin</div>
-                    <p class="mt-1 text-sm" style="color:var(--muted)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
+                    <p class="mt-1 text-sm" style="color:var(--muted-foreground)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
                 </div>
-                <button wire:click="$set('portalUrl', null)" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+                <button wire:click="$set('portalUrl', null)" class="btn btn-ghost btn-sm">Done</button>
             </div>
-            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $portalUrl }}</p>
+            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $portalUrl }}</p>
         </div>
     @endif
 
     @if ($creating && $me->isAdmin())
-        <form wire:submit="create" class="card p-5 mb-5 space-y-4">
+        <form wire:submit="create" class="card p-5 space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label class="label" for="name">Connection name</label>
@@ -294,7 +302,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 </div>
                 <div>
                     <label class="label" for="type">Protocol</label>
-                    <select wire:model.live="type" id="type" class="input">
+                    <select wire:model.live="type" id="type" class="select">
                         <option value="saml">SAML 2.0</option>
                         <option value="oidc">OpenID Connect</option>
                     </select>
@@ -362,49 +370,49 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             <div class="card p-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <p class="font-semibold truncate">{{ $c->name }}</p>
-                            <span class="badge">{{ strtoupper($c->type->value) }}</span>
+                            <span class="cbx-pill">{{ strtoupper($c->type->value) }}</span>
                             @if ($c->isActive())
-                                <span class="badge badge-success">Active</span>
+                                <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Active</span>
                             @else
-                                <span class="badge">{{ ucfirst($c->status->value) }}</span>
+                                <span class="cbx-pill"><span class="dot"></span> {{ ucfirst($c->status->value) }}</span>
                             @endif
                         </div>
-                        <p class="mt-1 text-xs mono truncate" style="color:var(--faint)">{{ $c->id }}</p>
+                        <p class="mt-1 text-xs mono truncate" style="color:var(--muted-foreground)">{{ $c->id }}</p>
                     </div>
                     @if ($me->isAdmin() && ! $c->isActive())
-                        <button wire:click="activate('{{ $c->id }}')" class="btn btn-primary" style="padding:0.35rem 0.7rem;font-size:0.8rem"><x-icon name="check" class="w-4 h-4" /> Activate</button>
+                        <button wire:click="activate('{{ $c->id }}')" class="btn btn-primary btn-sm"><x-icon name="check" class="w-4 h-4" /> Activate</button>
                     @endif
                 </div>
 
                 @if ($c->type === \Cbox\Id\Federation\Enums\ConnectionType::Saml)
                     <div class="mt-4">
                         <p class="label">ACS URL</p>
-                        <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ url("/sso/saml/{$c->id}/acs") }}</p>
+                        <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ url("/sso/saml/{$c->id}/acs") }}</p>
                     </div>
                 @endif
             </div>
         @empty
-            <div class="card p-10 text-center">
-                <div class="mx-auto grid place-items-center rounded-full" style="width:2.5rem;height:2.5rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="connections" class="w-5 h-5" /></div>
-                <p class="mt-3 font-medium">No SSO connections yet</p>
-                <p class="mt-1 text-sm" style="color:var(--faint)">Connect an identity provider to let your team sign in with SAML or OIDC.</p>
+            <div class="card">
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
+                    <h3>No SSO connections yet</h3>
+                    <p>Connect an identity provider to let your team sign in with SAML or OIDC.</p>
+                </div>
             </div>
         @endforelse
     </div>
 
     {{-- Verified domains — DNS-proven ownership powers home-realm discovery and the optional capture gate. --}}
-    <div class="mt-10">
-        <div class="flex items-center justify-between gap-3 mb-4">
-            <div>
-                <h2 class="font-semibold" style="font-size:1.05rem">Verified domains</h2>
-                <p class="mt-1 text-sm" style="color:var(--muted)">Prove ownership of an email domain to route your team to SSO automatically.</p>
-            </div>
+    <div class="space-y-4">
+        <div>
+            <h2 class="cbx-panel-title" style="font-size:18px">Verified domains</h2>
+            <p class="mt-1 text-sm" style="color:var(--muted-foreground)">Prove ownership of an email domain to route your team to SSO automatically.</p>
         </div>
 
         @if ($me->isAdmin())
-            <form wire:submit="addDomain" class="card p-5 mb-4 flex flex-wrap items-end gap-3">
+            <form wire:submit="addDomain" class="card p-5 flex flex-wrap items-end gap-3">
                 <div class="flex-1 min-w-[14rem]">
                     <label class="label" for="domain">Domain</label>
                     <input wire:model="domain" id="domain" type="text" inputmode="url" autocapitalize="none" spellcheck="false" class="input mono" placeholder="acme.com">
@@ -415,15 +423,15 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         @endif
 
         @if ($dnsHost && $dnsToken && $me->isAdmin())
-            <div class="card p-5 mb-4" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+            <div class="card p-5" style="border-color:color-mix(in oklch, var(--accent) 40%, transparent)">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 font-semibold"><x-icon name="connections" class="w-4 h-4" /> Verify {{ $dnsDomain }}</div>
-                        <p class="mt-1 text-sm" style="color:var(--muted)">Add a TXT record at <code class="mono">{{ $dnsHost }}</code> with the value below, then click Verify. DNS changes can take a few minutes to propagate.</p>
+                        <p class="mt-1 text-sm" style="color:var(--muted-foreground)">Add a TXT record at <code class="mono">{{ $dnsHost }}</code> with the value below, then click Verify. DNS changes can take a few minutes to propagate.</p>
                     </div>
-                    <button wire:click="$set('dnsHost', null)" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+                    <button wire:click="$set('dnsHost', null)" class="btn btn-ghost btn-sm">Done</button>
                 </div>
-                <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $dnsToken }}</p>
+                <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $dnsToken }}</p>
             </div>
         @endif
 
@@ -432,46 +440,51 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 <div class="card p-5">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <p class="font-semibold truncate mono">{{ $d->domain }}</p>
                                 @if ($d->verified_at)
-                                    <span class="badge badge-success">Verified</span>
+                                    <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Verified</span>
                                 @else
-                                    <span class="badge">Pending</span>
+                                    <span class="cbx-pill cbx-pill--warning"><span class="dot"></span> Pending</span>
                                 @endif
                                 @if ($d->capture)
-                                    <span class="badge">Capture on</span>
+                                    <span class="cbx-pill cbx-pill--info"><span class="dot"></span> Capture on</span>
                                 @endif
                             </div>
                         </div>
                         @if ($me->isAdmin())
                             <div class="flex items-center gap-2">
                                 @unless ($d->verified_at)
-                                    <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-primary" style="padding:0.35rem 0.7rem;font-size:0.8rem"><x-icon name="check" class="w-4 h-4" /> Verify</button>
+                                    <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-primary btn-sm"><x-icon name="check" class="w-4 h-4" /> Verify</button>
                                 @endunless
-                                <button wire:click="removeDomain('{{ $d->id }}')" wire:confirm="Remove {{ $d->domain }}?" class="btn btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.8rem">Remove</button>
+                                <button wire:click="removeDomain('{{ $d->id }}')" wire:confirm="Remove {{ $d->domain }}?" class="btn btn-ghost btn-sm">Remove</button>
                             </div>
                         @endif
                     </div>
 
                     @if ($d->verified_at && $me->isAdmin())
-                        <div class="mt-4 flex items-start justify-between gap-3 rounded-lg px-3 py-3" style="background:var(--surface-2)">
+                        <div class="mt-4 flex items-start justify-between gap-3 rounded-lg px-3 py-3" style="background:var(--secondary)">
                             <div class="min-w-0">
                                 <p class="text-sm font-medium">Capture</p>
-                                <p class="mt-0.5 text-xs" style="color:var(--muted)">Force everyone with an @{{ $d->domain }} email to sign in through this org's SSO.</p>
+                                <p class="mt-0.5 text-xs" style="color:var(--muted-foreground)">Force everyone with an @{{ $d->domain }} email to sign in through this org's SSO.</p>
                             </div>
-                            <button wire:click="toggleCapture('{{ $d->id }}')" class="btn {{ $d->capture ? 'btn-primary' : 'btn-ghost' }}" style="padding:0.35rem 0.7rem;font-size:0.8rem">
+                            <button wire:click="toggleCapture('{{ $d->id }}')" class="btn {{ $d->capture ? 'btn-primary' : 'btn-ghost' }} btn-sm">
                                 {{ $d->capture ? 'On' : 'Off' }}
                             </button>
                         </div>
                     @endif
                 </div>
             @empty
-                <div class="card p-8 text-center">
-                    <p class="text-sm" style="color:var(--faint)">No domains yet. Add one to enable domain-based SSO routing.</p>
+                <div class="card">
+                    <div class="cbx-empty">
+                        <div class="cbx-empty-icon"><x-icon name="directory" class="w-5 h-5" /></div>
+                        <h3>No domains yet</h3>
+                        <p>Add one to enable domain-based SSO routing.</p>
+                    </div>
                 </div>
             @endforelse
         </div>
     </div>
     @endif
+    </div>
 </div>

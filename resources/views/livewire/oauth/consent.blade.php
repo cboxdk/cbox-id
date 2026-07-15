@@ -304,7 +304,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         </div>
 
         @if (count($scopeRows) > 0)
-            <p class="mt-6 text-xs font-semibold uppercase tracking-wide" style="color:var(--faint)">This will allow {{ $clientName }} to</p>
+            <p class="cbx-page-eyebrow mt-6">This will allow {{ $clientName }} to</p>
             <ul class="mt-2.5 space-y-2">
                 @foreach ($scopeRows as $row)
                     <li class="flex items-center gap-2.5 text-sm">
@@ -321,7 +321,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         </div>
 
         <p class="mt-6 text-xs" style="color:var(--faint)">
-            You'll be redirected to {{ parse_url($redirectUri, PHP_URL_HOST) }} after authorizing.
+            You'll be redirected to <span class="mono">{{ parse_url($redirectUri, PHP_URL_HOST) }}</span> after authorizing.
         </p>
     @endif
 </div>

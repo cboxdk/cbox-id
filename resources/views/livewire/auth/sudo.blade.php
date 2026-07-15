@@ -45,21 +45,21 @@ new #[Layout('components.layouts.app', ['title' => 'Confirm it\'s you'])] class 
 }; ?>
 
 <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Confirm it's you</h1>
-    <p class="mt-1.5 text-sm" style="color:var(--muted)">
+    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Confirm it's you</h1>
+    <p class="mt-2 text-sm" style="color:var(--muted)">
         This is a protected action. Re-enter your password to continue.
     </p>
 
-    <form wire:submit="confirm" class="mt-6 space-y-4">
+    <form wire:submit="confirm" class="mt-7 space-y-4">
         <div>
             <label class="label" for="password">Password</label>
-            <input wire:model="password" id="password" type="password" autocomplete="current-password" class="input" autofocus>
-            @error('password') <p class="field-error">{{ $message }}</p> @enderror
+            <input wire:model="password" id="password" type="password" autocomplete="current-password" class="input input-lg" autofocus>
+            @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
-        <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled">
+        <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">
             <span wire:loading.remove wire:target="confirm">Confirm</span>
-            <span wire:loading wire:target="confirm">Confirming…</span>
+            <span wire:loading wire:target="confirm" class="inline-flex items-center gap-2"><span class="spinner"></span> Confirming…</span>
         </button>
     </form>
 </div>

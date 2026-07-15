@@ -177,53 +177,65 @@ new #[Layout('components.layouts.app', ['title' => 'SSO providers'])] class exte
 }; ?>
 
 <div>
-    <x-page-header title="SSO providers" subtitle="Register the applications that use this platform as their SAML identity provider.">
-        <x-slot:actions>
-            @if ($me->isAdmin() && $entitled)
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Identity provider</p>
+            <h1 class="cbx-page-title">SSO providers</h1>
+            <p class="cbx-page-desc">Register the applications that use this platform as their SAML identity provider.</p>
+        </div>
+        @if ($me->isAdmin() && $entitled)
+            <div class="flex items-center gap-2">
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Add provider</button>
-            @endif
-        </x-slot:actions>
-    </x-page-header>
+            </div>
+        @endif
+    </div>
 
+    <div class="mt-8 space-y-6">
     @if (session('status'))
-        <div class="card p-3 mb-5 text-sm flex items-center gap-2" style="border-color:color-mix(in srgb, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
+        <div class="card p-3 text-sm flex items-center gap-2" style="border-color:color-mix(in oklch, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
             <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
         </div>
     @endif
 
     @if (! $entitled)
-        <div class="card p-8 text-center">
-            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="connections" class="w-5 h-5" /></div>
-            <p class="mt-4 font-semibold">SAML identity provider is an Enterprise feature</p>
-            <p class="mt-1 text-sm mx-auto" style="color:var(--muted);max-width:32rem">
-                Acting as the SAML IdP that your applications federate to is available on the Enterprise plan.
-                Contact your account team to enable it for this organization.
-            </p>
+        <div class="card">
+            <div class="cbx-empty">
+                <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
+                <h3>SAML identity provider is an Enterprise feature</h3>
+                <p>
+                    Acting as the SAML IdP that your applications federate to is available on the Enterprise plan.
+                    Contact your account team to enable it for this organization.
+                </p>
+            </div>
         </div>
     @else
 
     {{-- Our IdP coordinates — the admin imports these into the SP they are registering. --}}
-    <div class="card p-5 mb-5">
-        <div class="flex items-center gap-2 font-semibold"><x-icon name="connections" class="w-4 h-4" /> Your identity provider</div>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Give these to the service provider so it can trust assertions from this platform.</p>
-        <div class="mt-4 space-y-3">
+    <div class="cbx-panel">
+        <div class="cbx-panel-header">
+            <div>
+                <div class="cbx-panel-title flex items-center gap-2"><x-icon name="connections" class="w-4 h-4" /> Your identity provider</div>
+                <p class="cbx-panel-desc">Give these to the service provider so it can trust assertions from this platform.</p>
+            </div>
+        </div>
+        <div class="cbx-panel-body space-y-3">
             <div>
                 <p class="label">IdP entity ID</p>
-                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $idpEntityId }}</p>
+                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $idpEntityId }}</p>
             </div>
             <div>
                 <p class="label">Metadata URL</p>
-                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $idpMetadataUrl }}</p>
+                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $idpMetadataUrl }}</p>
             </div>
             <div>
                 <p class="label">Sign-on URL</p>
-                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $idpSsoUrl }}</p>
+                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $idpSsoUrl }}</p>
             </div>
         </div>
     </div>
 
     @if ($creating && $me->isAdmin())
-        <form wire:submit="create" class="card p-5 mb-5 space-y-4">
+        <form wire:submit="create" class="card p-5 space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label class="label" for="entity_id">SP entity ID</label>
@@ -237,7 +249,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO providers'])] class exte
                 </div>
                 <div>
                     <label class="label" for="name_id_format">NameID format</label>
-                    <select wire:model="name_id_format" id="name_id_format" class="input">
+                    <select wire:model="name_id_format" id="name_id_format" class="select">
                         @foreach ($formats as $format)
                             <option value="{{ $format->value }}">{{ $format->name }}</option>
                         @endforeach
@@ -282,36 +294,39 @@ new #[Layout('components.layouts.app', ['title' => 'SSO providers'])] class exte
             <div class="card p-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <p class="font-semibold truncate mono">{{ $sp->entity_id }}</p>
                             @if ($sp->isActive())
-                                <span class="badge badge-success">Active</span>
+                                <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Active</span>
                             @else
-                                <span class="badge">{{ ucfirst($sp->status->value) }}</span>
+                                <span class="cbx-pill"><span class="dot"></span> {{ ucfirst($sp->status->value) }}</span>
                             @endif
                             @if ($sp->want_authn_requests_signed)
-                                <span class="badge">Signed requests</span>
+                                <span class="cbx-pill cbx-pill--info"><span class="dot"></span> Signed requests</span>
                             @endif
                         </div>
-                        <p class="mt-1 text-xs mono truncate" style="color:var(--faint)">{{ $sp->id }}</p>
+                        <p class="mt-1 text-xs mono truncate" style="color:var(--muted-foreground)">{{ $sp->id }}</p>
                     </div>
                     @if ($me->isAdmin())
-                        <button wire:click="remove('{{ $sp->id }}')" wire:confirm="Remove {{ $sp->entity_id }}?" class="btn btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.8rem">Remove</button>
+                        <button wire:click="remove('{{ $sp->id }}')" wire:confirm="Remove {{ $sp->entity_id }}?" class="btn btn-ghost btn-sm">Remove</button>
                     @endif
                 </div>
 
                 <div class="mt-4">
                     <p class="label">ACS URL</p>
-                    <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $sp->acs_url }}</p>
+                    <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $sp->acs_url }}</p>
                 </div>
             </div>
         @empty
-            <div class="card p-10 text-center">
-                <div class="mx-auto grid place-items-center rounded-full" style="width:2.5rem;height:2.5rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="connections" class="w-5 h-5" /></div>
-                <p class="mt-3 font-medium">No service providers yet</p>
-                <p class="mt-1 text-sm" style="color:var(--faint)">Register an application to let it sign users in through this platform.</p>
+            <div class="card">
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
+                    <h3>No service providers yet</h3>
+                    <p>Register an application to let it sign users in through this platform.</p>
+                </div>
             </div>
         @endforelse
     </div>
     @endif
+    </div>
 </div>

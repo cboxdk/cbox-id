@@ -144,7 +144,13 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
 }; ?>
 
 <div class="space-y-6">
-    <x-page-header title="Security" subtitle="Protect your operator account with a second factor." />
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Platform</p>
+            <h1 class="cbx-page-title">Security</h1>
+            <p class="cbx-page-desc">Protect your operator account with a second factor.</p>
+        </div>
+    </div>
 
     {{-- Two-factor authentication --}}
     <section class="card p-5">
@@ -156,7 +162,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
                 <div class="flex items-center gap-2 flex-wrap">
                     <h3 class="font-semibold">Two-factor authentication</h3>
                     @if ($twoFactorEnabled)
-                        <span class="badge badge-success"><x-icon name="check" class="w-3.5 h-3.5" /> Enabled</span>
+                        <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Enabled</span>
                     @endif
                 </div>
                 <p class="text-sm" style="color:var(--muted)">An authenticator app adds a second step when you sign in to the operator console.</p>
@@ -172,7 +178,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
             <div class="mt-4 pt-4" style="border-top:1px solid var(--border)">
                 <div class="flex items-center gap-2 flex-wrap mb-1">
                     <h4 class="font-medium text-sm">Recovery codes</h4>
-                    <span class="badge">{{ $recoveryRemaining }} left</span>
+                    <span class="cbx-pill">{{ $recoveryRemaining }} left</span>
                 </div>
                 <p class="text-sm" style="color:var(--muted)">
                     Single-use codes to sign in if you lose your authenticator. Store them somewhere safe.
@@ -184,7 +190,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
                             <span>{{ $rc }}</span>
                         @endforeach
                     </div>
-                    <p class="mt-1 text-xs" style="color:var(--danger,#b91c1c)">These are shown only once. Copy them now.</p>
+                    <p class="mt-1 text-xs" style="color:var(--destructive)">These are shown only once. Copy them now.</p>
                 @endif
 
                 <button wire:click="regenerateRecoveryCodes" wire:confirm="Generate new recovery codes? Your existing codes will stop working."

@@ -144,17 +144,21 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
 }; ?>
 
 <div>
-    <x-page-header title="Organizations"
-                   subtitle="Every tenant in the target environment — the management tree of resellers, customers and sub-units.">
-        <x-slot:actions>
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Platform</p>
+            <h1 class="cbx-page-title">Organizations</h1>
+            <p class="cbx-page-desc">Every tenant in the target environment — the management tree of resellers, customers and sub-units.</p>
+        </div>
+        <div class="flex items-center gap-2">
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New organization
             </button>
-        </x-slot:actions>
-    </x-page-header>
+        </div>
+    </div>
 
     @if ($creating)
-        <form wire:submit="create" class="card p-4 mb-5 flex flex-wrap items-end gap-3">
+        <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="org-name">Name</label>
                 <input wire:model="name" id="org-name" type="text" class="input" placeholder="Acme Inc" autofocus>
@@ -162,14 +166,14 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
             </div>
             <div>
                 <label class="label" for="org-type">Type</label>
-                <select wire:model="type" id="org-type" class="input">
+                <select wire:model="type" id="org-type" class="select">
                     <option value="customer">Customer</option>
                     <option value="reseller">Reseller</option>
                 </select>
             </div>
             <div class="min-w-[12rem]">
                 <label class="label" for="org-parent">Parent <span style="color:var(--faint)">(optional)</span></label>
-                <select wire:model="parentId" id="org-parent" class="input">
+                <select wire:model="parentId" id="org-parent" class="select">
                     <option value="">— Top level —</option>
                     @foreach ($all as $o)
                         <option value="{{ $o['id'] }}">{{ $o['name'] }}</option>
@@ -181,7 +185,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         </form>
     @endif
 
-    <div class="card overflow-hidden">
+    <div class="cbx-panel overflow-hidden mt-8">
         <div class="hidden sm:grid px-5 py-3 border-b text-xs font-medium uppercase tracking-wide"
              style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr 1.4fr auto">
             <span>Organization</span><span>Type</span><span>Members</span><span>Parent</span><span></span>
@@ -198,7 +202,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
                         <p class="text-sm font-semibold truncate">
                             {{ $row['name'] }}
                             @if ($row['status'] === 'suspended')
-                                <span class="badge badge-danger align-middle ml-1">Suspended</span>
+                                <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
                             @endif
                         </p>
                         <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $row['slug'] }}</p>
@@ -209,7 +213,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
                 <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Members: </span>{{ $row['members'] }}</div>
 
                 <div>
-                    <select class="input" style="padding:.3rem .5rem;font-size:.8rem"
+                    <select class="select"
                             wire:change="reparent('{{ $row['id'] }}', $event.target.value)"
                             aria-label="Parent organization for {{ $row['name'] }}">
                         <option value="" @selected($row['parent_id'] === null)>— Top level —</option>

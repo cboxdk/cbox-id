@@ -41,7 +41,12 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
 }; ?>
 
 <div class="max-w-md">
-    <x-page-header title="Connect a device" subtitle="Enter the code shown on your device to link it to your account." />
+    <div class="cbx-page-header mb-8">
+        <div>
+            <h1 class="cbx-page-title">Connect a device</h1>
+            <p class="cbx-page-desc">Enter the code shown on your device to link it to your account.</p>
+        </div>
+    </div>
 
     @if ($outcome === 'approved')
         <div role="status" class="card p-5 flex items-start gap-3" style="border-color:color-mix(in srgb,var(--success) 30%,transparent)">

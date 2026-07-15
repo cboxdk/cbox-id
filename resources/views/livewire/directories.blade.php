@@ -98,61 +98,75 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
 }; ?>
 
 <div>
-    <x-page-header title="Directory sync" subtitle="Provision and de-provision users automatically over SCIM.">
-        <x-slot:actions>
-            @if ($me->isAdmin() && $entitled)
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Provisioning</p>
+            <h1 class="cbx-page-title">Directory sync</h1>
+            <p class="cbx-page-desc">Provision and de-provision users automatically over SCIM.</p>
+        </div>
+        @if ($me->isAdmin() && $entitled)
+            <div class="flex items-center gap-2">
                 <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New directory</button>
-            @endif
-        </x-slot:actions>
-    </x-page-header>
+            </div>
+        @endif
+    </div>
 
     @if (! $entitled)
-        <div class="card p-8 text-center">
-            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)"><x-icon name="directory" class="w-5 h-5" /></div>
-            <p class="mt-4 font-semibold">SCIM directory sync is an Enterprise feature</p>
-            <p class="mt-1 text-sm mx-auto" style="color:var(--muted);max-width:32rem">
-                Automatic user provisioning and de-provisioning over SCIM 2.0 is
-                available on the Enterprise plan. Contact your account team to enable
-                it for this organization.
-            </p>
+        <div class="card mt-8">
+            <div class="cbx-empty">
+                <div class="cbx-empty-icon"><x-icon name="directory" class="w-5 h-5" /></div>
+                <h3>SCIM directory sync is an Enterprise feature</h3>
+                <p>
+                    Automatic user provisioning and de-provisioning over SCIM 2.0 is
+                    available on the Enterprise plan. Contact your account team to enable
+                    it for this organization.
+                </p>
+            </div>
         </div>
     @else
 
-    <div class="card p-5 mb-5">
-        <div class="flex items-center gap-2 text-sm font-semibold"><x-icon name="directory" class="w-4 h-4" /> SCIM endpoint</div>
-        <p class="mt-2 text-xs" style="color:var(--muted)">Point your identity provider (Okta, Microsoft Entra) at this base URL and authenticate with a directory's bearer token.</p>
-        <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ url('/scim/v2') }}</p>
+    <div class="mt-8 space-y-6">
+    <div class="cbx-panel">
+        <div class="cbx-panel-header">
+            <div>
+                <div class="cbx-panel-title flex items-center gap-2"><x-icon name="directory" class="w-4 h-4" /> SCIM endpoint</div>
+                <p class="cbx-panel-desc">Point your identity provider (Okta, Microsoft Entra) at this base URL and authenticate with a directory's bearer token.</p>
+            </div>
+        </div>
+        <div class="cbx-panel-body">
+            <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ url('/scim/v2') }}</p>
+        </div>
     </div>
 
     @if ($portalUrl && $me->isAdmin())
-        <div class="card p-5 mb-5" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+        <div class="card p-5" style="border-color:color-mix(in oklch, var(--accent) 40%, transparent)">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 font-semibold"><x-icon name="members" class="w-4 h-4" /> Setup link for your IT admin</div>
-                    <p class="mt-1 text-sm" style="color:var(--muted)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
+                    <p class="mt-1 text-sm" style="color:var(--muted-foreground)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
                 </div>
-                <button wire:click="$set('portalUrl', null)" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+                <button wire:click="$set('portalUrl', null)" class="btn btn-ghost btn-sm">Done</button>
             </div>
-            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $portalUrl }}</p>
+            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $portalUrl }}</p>
         </div>
     @endif
 
     @if ($newToken && $me->isAdmin())
-        <div class="card p-5 mb-5" style="border-color:color-mix(in srgb, var(--warn) 40%, transparent)">
+        <div class="card p-5" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent)">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 font-semibold"><x-icon name="key" class="w-4 h-4" /> Bearer token for “{{ $newTokenName }}”</div>
-                    <p class="mt-1 text-sm" style="color:var(--warn)">Copy this now — it is shown only once and cannot be retrieved again.</p>
+                    <p class="mt-1 text-sm" style="color:var(--warning)">Copy this now — it is shown only once and cannot be retrieved again.</p>
                 </div>
-                <button wire:click="dismissToken" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Done</button>
+                <button wire:click="dismissToken" class="btn btn-ghost btn-sm">Done</button>
             </div>
-            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $newToken }}</p>
+            <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $newToken }}</p>
         </div>
     @endif
 
     @if ($creating && $me->isAdmin())
-        <form wire:submit="register" class="card p-4 mb-5 flex flex-wrap items-end gap-3">
+        <form wire:submit="register" class="card p-4 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="name">Directory name</label>
                 <input wire:model="name" id="name" type="text" class="input" placeholder="Acme Okta SCIM" autofocus>
@@ -174,22 +188,23 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
                         <tr>
                             <td>
                                 <p class="font-medium truncate">{{ $dir->name }}</p>
-                                <p class="text-xs mono truncate" style="color:var(--faint)">{{ $dir->id }}</p>
+                                <p class="text-xs mono truncate" style="color:var(--muted-foreground)">{{ $dir->id }}</p>
                             </td>
                             <td>
                                 @if ($dir->status === \Cbox\Id\Directory\Enums\DirectoryStatus::Active)
-                                    <span class="badge badge-success">Active</span>
+                                    <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Active</span>
                                 @else
-                                    <span class="badge badge-warn">Paused</span>
+                                    <span class="cbx-pill cbx-pill--warning"><span class="dot"></span> Paused</span>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="2" class="text-center py-10" style="color:var(--faint)">No directories connected yet.</td></tr>
+                        <tr><td colspan="2" class="text-center py-10" style="color:var(--muted-foreground)">No directories connected yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+    </div>
     </div>
     @endif
 </div>

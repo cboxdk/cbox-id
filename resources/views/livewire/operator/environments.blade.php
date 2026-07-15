@@ -178,17 +178,21 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
 }; ?>
 
 <div>
-    <x-page-header title="Environments"
-                   subtitle="Isolation planes above every organization. Create one, point the console at it, and bootstrap it with an admin.">
-        <x-slot:actions>
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Platform</p>
+            <h1 class="cbx-page-title">Environments</h1>
+            <p class="cbx-page-desc">Isolation planes above every organization. Create one, point the console at it, and bootstrap it with an admin.</p>
+        </div>
+        <div class="flex items-center gap-2">
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New environment
             </button>
-        </x-slot:actions>
-    </x-page-header>
+        </div>
+    </div>
 
     @if ($creating)
-        <form wire:submit="create" class="card p-4 mb-5 flex flex-wrap items-end gap-3">
+        <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="env-name">Name</label>
                 <input wire:model="name" id="env-name" type="text" class="input" placeholder="Production" autofocus>
@@ -204,7 +208,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
         </form>
     @endif
 
-    <div class="card overflow-hidden">
+    <div class="cbx-panel overflow-hidden mt-8">
         <div class="hidden sm:grid px-5 py-3 border-b text-xs font-medium uppercase tracking-wide"
              style="border-color:var(--border);color:var(--faint);grid-template-columns:2fr 1.5fr 1fr 1fr auto">
             <span>Environment</span><span>Domain</span><span>Orgs</span><span>Users</span><span></span>
@@ -215,14 +219,14 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
                  style="border-color:var(--border);grid-template-columns:2fr 1.5fr 1fr 1fr auto">
                 <div class="flex items-center gap-3 min-w-0">
                     <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"
-                          style="width:1.9rem;height:1.9rem;background:var(--accent);color:var(--accent-fg)">
+                          style="width:1.9rem;height:1.9rem;background:var(--accent-soft);color:var(--accent)">
                         {{ strtoupper(substr($env['name'], 0, 1)) }}
                     </span>
                     <div class="min-w-0">
                         <p class="text-sm font-semibold truncate">
                             {{ $env['name'] }}
                             @if ($env['id'] === $activeId)
-                                <span class="badge badge-success align-middle ml-1">Target</span>
+                                <span class="cbx-pill cbx-pill--success align-middle ml-1"><span class="dot"></span>Target</span>
                             @endif
                         </p>
                         <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $env['slug'] }}</p>

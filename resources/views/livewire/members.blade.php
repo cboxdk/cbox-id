@@ -134,16 +134,22 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 }; ?>
 
 <div>
-    <x-page-header title="Members" subtitle="People with access to this organization.">
-        <x-slot:actions>
-            @if ($me->isAdmin())
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Organization</p>
+            <h1 class="cbx-page-title">Members</h1>
+            <p class="cbx-page-desc">People with access to this organization.</p>
+        </div>
+        @if ($me->isAdmin())
+            <div class="flex items-center gap-2">
                 <button wire:click="$toggle('inviting')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Invite member</button>
-            @endif
-        </x-slot:actions>
-    </x-page-header>
+            </div>
+        @endif
+    </div>
 
+    <div class="mt-8 space-y-6">
     @if ($inviting && $me->isAdmin())
-        <form wire:submit="invite" class="card p-4 mb-5 flex flex-wrap items-end gap-3">
+        <form wire:submit="invite" class="card p-4 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="inviteEmail">Email address</label>
                 <input wire:model="inviteEmail" id="inviteEmail" type="email" class="input" placeholder="teammate@company.com" autofocus>
@@ -151,7 +157,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             </div>
             <div>
                 <label class="label" for="inviteRole">Role</label>
-                <select wire:model="inviteRole" id="inviteRole" class="input">
+                <select wire:model="inviteRole" id="inviteRole" class="select">
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
                     <option value="owner">Owner</option>
@@ -163,21 +169,21 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     @endif
 
     @if ($me->isAdmin() && $invitations->isNotEmpty())
-        <div class="card overflow-hidden mb-5">
-            <div class="px-5 py-3 border-b" style="border-color:var(--border)">
-                <h3 class="text-sm font-semibold">Pending invitations</h3>
+        <div class="cbx-panel overflow-hidden">
+            <div class="cbx-panel-header">
+                <h3 class="cbx-panel-title">Pending invitations</h3>
             </div>
             <ul>
                 @foreach ($invitations as $invite)
                     <li class="px-5 py-3 border-b flex items-center justify-between gap-4" style="border-color:var(--border)">
                         <div class="min-w-0">
                             <p class="text-sm font-medium truncate">{{ $invite->email }}</p>
-                            <p class="text-xs" style="color:var(--faint)">Invited as {{ ucfirst($invite->role) }} · expires {{ $invite->expires_at?->diffForHumans() }}</p>
+                            <p class="text-xs" style="color:var(--muted-foreground)">Invited as {{ ucfirst($invite->role) }} · expires {{ $invite->expires_at?->diffForHumans() }}</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="badge badge-warn">Pending</span>
+                            <span class="cbx-pill cbx-pill--warning"><span class="dot"></span> Pending</span>
                             <button wire:click="revokeInvitation('{{ $invite->id }}')" wire:confirm="Revoke this invitation?"
-                                    class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Revoke</button>
+                                    class="btn btn-danger btn-sm">Revoke</button>
                         </div>
                     </li>
                 @endforeach
@@ -196,18 +202,18 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                         <tr>
                             <td>
                                 <div class="flex items-center gap-3">
-                                    <span class="grid place-items-center rounded-full text-xs font-semibold" style="width:2rem;height:2rem;background:var(--accent-soft);color:var(--accent)">
+                                    <span class="cbx-avatar">
                                         {{ strtoupper(substr($row['subject']?->name ?? $row['subject']?->email ?? '?', 0, 1)) }}
                                     </span>
                                     <div class="min-w-0">
                                         <p class="font-medium truncate">{{ $row['subject']?->name ?? '—' }}</p>
-                                        <p class="text-xs truncate" style="color:var(--faint)">{{ $row['subject']?->email ?? $row['id'] }}</p>
+                                        <p class="text-xs truncate" style="color:var(--muted-foreground)">{{ $row['subject']?->email ?? $row['id'] }}</p>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 @if ($me->isAdmin())
-                                    <select class="input" style="width:auto;padding:0.3rem 1.6rem 0.3rem 0.6rem;font-size:0.8rem"
+                                    <select class="select"
                                             aria-label="Role for {{ $row['subject']?->name ?? $row['subject']?->email ?? 'this member' }}"
                                             wire:change="setRole('{{ $row['id'] }}', $event.target.value)">
                                         @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $label)
@@ -215,23 +221,24 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                         @endforeach
                                     </select>
                                 @else
-                                    <span class="badge">{{ ucfirst($row['role']) }}</span>
+                                    <span class="cbx-pill">{{ ucfirst($row['role']) }}</span>
                                 @endif
                             </td>
-                            <td class="text-sm" style="color:var(--muted)">{{ $row['joined']?->format('M j, Y') ?? '—' }}</td>
+                            <td class="text-sm mono" style="color:var(--muted-foreground)">{{ $row['joined']?->format('M j, Y') ?? '—' }}</td>
                             <td class="text-right">
                                 @if ($me->isAdmin() && $row['id'] !== $me->id())
                                     <button wire:click="remove('{{ $row['id'] }}')"
                                             wire:confirm="Remove this member from the organization?"
-                                            class="btn btn-danger" style="padding:0.35rem 0.6rem;font-size:0.8rem">Remove</button>
+                                            class="btn btn-danger btn-sm">Remove</button>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center py-10" style="color:var(--faint)">No members yet.</td></tr>
+                        <tr><td colspan="4" class="text-center py-10" style="color:var(--muted-foreground)">No members yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+    </div>
     </div>
 </div>

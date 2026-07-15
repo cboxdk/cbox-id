@@ -201,7 +201,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         </button>
     </form>
 
-    <p class="mt-8 text-sm" style="color:var(--muted)">
+    <p class="mt-8 text-sm text-center" style="color:var(--muted)">
         Already have an account? <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Sign in</a>
     </p>
 </div>

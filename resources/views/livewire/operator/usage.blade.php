@@ -156,12 +156,16 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
 }; ?>
 
 <div>
-    <x-page-header title="Usage"
-                   subtitle="Platform-wide usage across every environment — above the plane the console is currently pinned to.">
-    </x-page-header>
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Platform</p>
+            <h1 class="cbx-page-title">Usage</h1>
+            <p class="cbx-page-desc">Platform-wide usage across every environment — above the plane the console is currently pinned to.</p>
+        </div>
+    </div>
 
     {{-- Headline totals --}}
-    <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5">
+    <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5 mt-8">
         @php
             $tiles = [
                 ['label' => 'Environments', 'value' => $totals['environments']],
@@ -174,17 +178,19 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
             ];
         @endphp
         @foreach ($tiles as $tile)
-            <div class="card p-4">
-                <p class="text-xs uppercase tracking-wide" style="color:var(--faint)">{{ $tile['label'] }}</p>
-                <p class="mt-1 text-2xl font-semibold tabular-nums">{{ number_format($tile['value']) }}</p>
+            <div class="cbx-stat">
+                <div class="min-w-0">
+                    <p class="cbx-stat-value">{{ number_format($tile['value']) }}</p>
+                    <p class="cbx-stat-label">{{ $tile['label'] }}</p>
+                </div>
             </div>
         @endforeach
     </div>
 
     {{-- Per-environment breakdown --}}
-    <div class="card overflow-hidden mb-5">
-        <div class="px-5 py-3 border-b flex items-center justify-between" style="border-color:var(--border)">
-            <h3 class="text-sm font-semibold">Per-environment breakdown</h3>
+    <div class="cbx-panel overflow-hidden mb-5">
+        <div class="cbx-panel-header">
+            <h3 class="cbx-panel-title">Per-environment breakdown</h3>
             <span class="text-xs" style="color:var(--faint)">{{ count($breakdown) }} {{ count($breakdown) === 1 ? 'plane' : 'planes' }}</span>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
@@ -208,9 +214,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
     </div>
 
     {{-- Top tenants by member count --}}
-    <div class="card overflow-hidden">
-        <div class="px-5 py-3 border-b flex items-center justify-between" style="border-color:var(--border)">
-            <h3 class="text-sm font-semibold">Top organizations by members</h3>
+    <div class="cbx-panel overflow-hidden">
+        <div class="cbx-panel-header">
+            <h3 class="cbx-panel-title">Top organizations by members</h3>
             <span class="text-xs" style="color:var(--faint)">Across every plane</span>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
@@ -224,8 +230,8 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
                     <p class="text-sm font-semibold truncate">{{ $org['name'] }}</p>
                 </div>
                 <div>
-                    <span class="badge" title="Environment">
-                        <x-icon name="layers" class="w-3 h-3" style="margin-right:.25rem" aria-hidden="true" /> {{ $org['plane'] }}
+                    <span class="cbx-pill cbx-pill--info" title="Environment">
+                        <x-icon name="layers" class="w-3 h-3" aria-hidden="true" /> {{ $org['plane'] }}
                     </span>
                 </div>
                 <div class="text-sm sm:text-right tabular-nums"><span class="sm:hidden" style="color:var(--faint)">Members: </span>{{ number_format($org['members']) }}</div>

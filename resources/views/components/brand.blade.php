@@ -1,13 +1,16 @@
 @props(['compact' => false])
 
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2.5 select-none']) }}>
-    <span class="grid place-items-center rounded-lg" style="width:2rem;height:2rem;background:var(--accent);color:var(--accent-fg);box-shadow:var(--shadow)">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 2.75l7.5 3.5v5.25c0 4.28-2.98 7.86-7.5 9.25-4.52-1.39-7.5-4.97-7.5-9.25V6.25l7.5-3.5z" />
-            <path d="M9 12.25l2.25 2.25L15.5 10" />
-        </svg>
-    </span>
+    {{-- Cbox · ID app monogram (design-system assets/monograms/id.svg), theme-aware
+         via the primary token so the mark matches light and dark. --}}
+    <svg viewBox="0 0 64 64" width="32" height="32" role="img"
+         aria-label="{{ config('cbox-id.branding.name', 'Cbox ID') }}"
+         style="flex-shrink:0;border-radius:9px;box-shadow:var(--shadow-card)">
+        <rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)" />
+        <text x="32" y="44" text-anchor="middle" fill="var(--primary-foreground)"
+              font-family="var(--font-display)" font-weight="700" font-size="30" letter-spacing="-0.04em">ID</text>
+    </svg>
     @unless($compact)
-        <span class="font-semibold tracking-tight" style="font-size:1.02rem;color:var(--text)">{{ config('cbox-id.branding.name', 'Cbox ID') }}</span>
+        <span class="font-semibold tracking-tight" style="font-size:1.02rem;color:var(--foreground)">{{ config('cbox-id.branding.name', 'Cbox ID') }}</span>
     @endunless
 </span>

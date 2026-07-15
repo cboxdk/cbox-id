@@ -104,16 +104,21 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
 }; ?>
 
 <div>
-    <x-page-header title="Operators" subtitle="Platform operators administer environments across the whole install.">
-        <x-slot:actions>
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Platform</p>
+            <h1 class="cbx-page-title">Operators</h1>
+            <p class="cbx-page-desc">Platform operators administer environments across the whole install.</p>
+        </div>
+        <div class="flex items-center gap-2">
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New operator
             </button>
-        </x-slot:actions>
-    </x-page-header>
+        </div>
+    </div>
 
     @if ($creating)
-        <form wire:submit="create" class="card p-4 mb-5 flex flex-wrap items-end gap-3">
+        <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-name">Name</label>
                 <input wire:model="name" id="op-name" type="text" class="input" placeholder="Grace Hopper" autofocus>
@@ -134,7 +139,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
         </form>
     @endif
 
-    <div class="card overflow-hidden">
+    <div class="cbx-panel overflow-hidden mt-8">
         @foreach ($operators as $op)
             <div class="px-5 py-4 border-b flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                  style="border-color:var(--border)">
@@ -142,10 +147,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
                     <p class="text-sm font-semibold truncate">
                         {{ $op['name'] ?? $op['email'] }}
                         @if ($op['id'] === $currentId)
-                            <span class="badge align-middle ml-1">You</span>
+                            <span class="cbx-pill cbx-pill--info align-middle ml-1"><span class="dot"></span>You</span>
                         @endif
                         @unless ($op['active'])
-                            <span class="badge badge-danger align-middle ml-1">Suspended</span>
+                            <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
                         @endunless
                     </p>
                     <p class="text-xs truncate" style="color:var(--faint)">

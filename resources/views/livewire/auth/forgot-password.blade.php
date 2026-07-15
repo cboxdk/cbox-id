@@ -53,8 +53,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
     <p class="mt-2 text-sm" style="color:var(--muted)">Enter your email and we'll send a reset link.</p>
 
     @if ($sent)
-        <div role="status" aria-live="polite" class="mt-6 rounded-lg px-4 py-3 text-sm" style="background:var(--surface-2);color:var(--text)">
-            If an account exists for <span class="font-medium">{{ $email }}</span>, a reset link is on its way.
+        <div role="status" aria-live="polite" class="mt-6 rounded-lg text-sm card" style="padding:0.85rem 1rem">
+            <p class="font-medium">Check your inbox</p>
+            <p class="mt-1" style="color:var(--muted)">If an account exists for <b>{{ $email }}</b>, a reset link is on its way.</p>
             @if ($devUrl)
                 <a href="{{ $devUrl }}" class="mt-2 inline-block underline underline-offset-2 mono" style="color:var(--accent);word-break:break-all">{{ $devUrl }}</a>
             @endif

@@ -161,11 +161,15 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
 }; ?>
 
 <div>
-    <x-page-header title="Search"
-                   subtitle="Find an organization or a user across every environment — above the plane the console is currently pinned to.">
-    </x-page-header>
+    <div class="cbx-page-header">
+        <div>
+            <p class="cbx-page-eyebrow">Platform</p>
+            <h1 class="cbx-page-title">Search</h1>
+            <p class="cbx-page-desc">Find an organization or a user across every environment — above the plane the console is currently pinned to.</p>
+        </div>
+    </div>
 
-    <div class="card p-4 mb-5">
+    <div class="card p-4 mb-5 mt-8">
         <label class="label" for="search-term">Search term</label>
         <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3" style="color:var(--faint)" aria-hidden="true">
@@ -186,9 +190,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
         </div>
     @else
         {{-- Organizations --}}
-        <div class="card overflow-hidden mb-5">
-            <div class="px-5 py-3 border-b flex items-center justify-between" style="border-color:var(--border)">
-                <h3 class="text-sm font-semibold">Organizations</h3>
+        <div class="cbx-panel overflow-hidden mb-5">
+            <div class="cbx-panel-header">
+                <h3 class="cbx-panel-title">Organizations</h3>
                 <span class="text-xs" style="color:var(--faint)">{{ count($organizations) }} match{{ count($organizations) === 1 ? '' : 'es' }}</span>
             </div>
             @forelse ($organizations as $org)
@@ -198,14 +202,14 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
                         <p class="text-sm font-semibold truncate">
                             {{ $org['name'] }}
                             @if ($org['status'] === 'suspended')
-                                <span class="badge badge-danger align-middle ml-1">Suspended</span>
+                                <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
                             @endif
                         </p>
                         <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $org['slug'] }}</p>
                     </div>
                     <div>
-                        <span class="badge" title="Environment">
-                            <x-icon name="layers" class="w-3 h-3" style="margin-right:.25rem" aria-hidden="true" /> {{ $org['plane'] }}
+                        <span class="cbx-pill cbx-pill--info" title="Environment">
+                            <x-icon name="layers" class="w-3 h-3" aria-hidden="true" /> {{ $org['plane'] }}
                         </span>
                     </div>
                     <div class="sm:justify-self-end">
@@ -218,9 +222,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
         </div>
 
         {{-- Users --}}
-        <div class="card overflow-hidden">
-            <div class="px-5 py-3 border-b flex items-center justify-between" style="border-color:var(--border)">
-                <h3 class="text-sm font-semibold">Users</h3>
+        <div class="cbx-panel overflow-hidden">
+            <div class="cbx-panel-header">
+                <h3 class="cbx-panel-title">Users</h3>
                 <span class="text-xs" style="color:var(--faint)">{{ count($users) }} match{{ count($users) === 1 ? '' : 'es' }}</span>
             </div>
             @forelse ($users as $user)
@@ -236,8 +240,8 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
                         </p>
                     </div>
                     <div>
-                        <span class="badge" title="Environment">
-                            <x-icon name="layers" class="w-3 h-3" style="margin-right:.25rem" aria-hidden="true" /> {{ $user['plane'] }}
+                        <span class="cbx-pill cbx-pill--info" title="Environment">
+                            <x-icon name="layers" class="w-3 h-3" aria-hidden="true" /> {{ $user['plane'] }}
                         </span>
                     </div>
                     <div class="sm:justify-self-end">

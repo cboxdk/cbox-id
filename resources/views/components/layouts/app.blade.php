@@ -5,13 +5,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/brand/favicon.ico" sizes="any">
     <title>{{ $title ? $title.' · '.config('cbox-id.branding.name', 'Cbox ID') : config('cbox-id.branding.name', 'Cbox ID') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full" style="background:var(--bg);color:var(--text)">
+<body class="h-full" style="background:var(--background);color:var(--foreground)">
 @php
-    // Support-impersonation banner. Unmissable, on every authenticated page (this
-    // layout is shared), so an operator can never forget they are acting as a user.
+    // Support-impersonation banner — unmissable, on every authenticated page.
     $impersonation = app(\App\Platform\Impersonation::class)->active();
     $impersonationEmail = $impersonation === null
         ? null
@@ -19,235 +20,245 @@
 @endphp
 @if ($impersonation !== null)
     <div role="alert"
-         style="position:sticky;top:0;z-index:50;width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.75rem;padding:0.6rem 1rem;background:#b91c1c;color:#fff;font-size:0.875rem;font-weight:600;box-shadow:0 1px 0 rgba(0,0,0,0.2)">
-        <span>
-            <span aria-hidden="true">⚠</span>
+         style="position:sticky;top:0;z-index:80;width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.75rem;padding:0.6rem 1rem;background:var(--destructive);color:var(--destructive-foreground);font-size:0.85rem;font-weight:600">
+        <span><span aria-hidden="true">⚠</span>
             You are impersonating {{ $impersonationEmail ?? $impersonation['subject'] }} for support. Everything you do is logged.
-            @if ($impersonation['reason'] !== null)
-                <span style="font-weight:400;opacity:0.9">(reason: {{ $impersonation['reason'] }})</span>
-            @endif
+            @if ($impersonation['reason'] !== null)<span style="font-weight:400;opacity:0.9">(reason: {{ $impersonation['reason'] }})</span>@endif
         </span>
-        <form method="POST" action="{{ route('impersonation.exit') }}">
-            @csrf
-            <button type="submit"
-                    style="border:1px solid rgba(255,255,255,0.7);border-radius:0.375rem;padding:0.25rem 0.75rem;background:transparent;color:#fff;font-weight:600;cursor:pointer">
-                Exit impersonation
-            </button>
+        <form method="POST" action="{{ route('impersonation.exit') }}">@csrf
+            <button type="submit" style="border:1px solid rgba(255,255,255,0.7);border-radius:6px;padding:3px 12px;background:transparent;color:inherit;font-weight:600;cursor:pointer">Exit impersonation</button>
         </form>
     </div>
 @endif
+
 @php
-    $nav = [
-        ['route' => 'dashboard', 'label' => 'Overview', 'icon' => 'dashboard'],
-        ['route' => 'members', 'label' => 'Members', 'icon' => 'members'],
-        ['route' => 'connections', 'label' => 'SSO connections', 'icon' => 'connections'],
-        ['route' => 'sso-providers', 'label' => 'SSO providers', 'icon' => 'connections'],
-        ['route' => 'directories', 'label' => 'Directory sync', 'icon' => 'directory'],
-        ['route' => 'roles', 'label' => 'Roles', 'icon' => 'roles'],
-        ['route' => 'clients', 'label' => 'API clients', 'icon' => 'clients'],
-        ['route' => 'webhooks', 'label' => 'Webhooks', 'icon' => 'webhooks'],
-        ['route' => 'audit', 'label' => 'Audit log', 'icon' => 'audit'],
-        ['route' => 'settings', 'label' => 'Settings', 'icon' => 'settings'],
+    // ── Two-tier navigation IA. TIER 1 = areas; TIER 2 = an area's pages (shown
+    // only when the area has more than one page).
+    $areas = [
+        ['key' => 'overview', 'label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
+            ['route' => 'dashboard', 'label' => 'Overview'],
+        ]],
+        ['key' => 'directory', 'label' => 'Directory', 'icon' => 'members', 'pages' => [
+            ['route' => 'members', 'label' => 'Members'],
+            ['route' => 'roles', 'label' => 'Roles'],
+        ]],
+        ['key' => 'authentication', 'label' => 'Authentication', 'icon' => 'connections', 'pages' => [
+            ['route' => 'connections', 'label' => 'SSO connections', 'feature' => 'sso'],
+            ['route' => 'sso-providers', 'label' => 'SSO providers', 'feature' => 'sso'],
+            ['route' => 'directories', 'label' => 'Directory sync', 'feature' => 'scim'],
+        ]],
+        ['key' => 'developers', 'label' => 'Developers', 'icon' => 'clients', 'pages' => [
+            ['route' => 'clients', 'label' => 'API clients'],
+            ['route' => 'webhooks', 'label' => 'Webhooks'],
+        ]],
+        ['key' => 'audit', 'label' => 'Audit', 'icon' => 'audit', 'pages' => [
+            ['route' => 'audit', 'label' => 'Audit log'],
+        ]],
+        ['key' => 'settings', 'label' => 'Settings', 'icon' => 'settings', 'pages' => [
+            ['route' => 'settings', 'label' => 'Settings'],
+        ]],
     ];
 
-    // Mark the enterprise self-serve items (SSO, SCIM) with a lock when the active
-    // org is not entitled. The link stays — it leads to the upsell screen — but the
-    // nav shows it is a gated, Enterprise feature.
     $entitlements = app(\App\Platform\Entitlements::class);
-    $nav = array_map(function (array $item) use ($entitlements): array {
-        $feature = match ($item['route']) {
-            'connections' => 'sso',
-            'sso-providers' => 'sso',
-            'directories' => 'scim',
-            default => null,
-        };
-        $item['locked'] = $feature !== null && ! $entitlements->entitledOrgFeature($feature);
+    $isLocked = fn (array $page): bool => isset($page['feature']) && ! $entitlements->entitledOrgFeature($page['feature']);
+    $routeActive = fn (string $route): bool => request()->routeIs($route.'*');
 
-        return $item;
-    }, $nav);
+    $activeArea = collect($areas)->first(
+        fn (array $a): bool => collect($a['pages'])->contains(fn (array $p): bool => $routeActive($p['route']))
+    ) ?? $areas[0];
+    $showSubnav = count($activeArea['pages']) > 1;
 
-    // Organizations the signed-in subject belongs to, for the switcher.
+    // Organizations the signed-in subject belongs to, for the topbar switcher.
     $myOrgs = collect();
     if ($me->check()) {
         $orgRepo = app(\Cbox\Id\Organization\Contracts\Organizations::class);
-        $myOrgs = app(\Cbox\Id\Organization\Contracts\Memberships::class)
-            ->forUser($me->id())
-            ->map(fn ($m) => (object) [
-                'id' => $m->organization_id,
-                'role' => $m->role ?? null,
-                'name' => $orgRepo->find($m->organization_id)?->name,
-            ])
-            ->filter(fn ($o) => $o->name !== null)
-            ->values();
+        $myOrgs = app(\Cbox\Id\Organization\Contracts\Memberships::class)->forUser($me->id())
+            ->map(fn ($m) => (object) ['id' => $m->organization_id, 'role' => $m->role ?? null, 'name' => $orgRepo->find($m->organization_id)?->name])
+            ->filter(fn ($o) => $o->name !== null)->values();
     }
     $activeOrgId = $me->organization()?->id;
+    $canSwitch = $myOrgs->count() > 1;
+    $orgInitial = strtoupper(substr($me->organization()?->name ?? 'C', 0, 1));
+    $userInitial = strtoupper(substr($me->name(), 0, 1));
 @endphp
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="min-h-full lg:grid" style="grid-template-columns:15.5rem 1fr" x-data="{ nav: false }" @keydown.escape.window="nav = false">
-    <aside class="hidden lg:flex flex-col border-r" aria-label="Sidebar" style="border-color:var(--border);background:var(--surface)">
-        <div class="h-16 flex items-center px-5 border-b" style="border-color:var(--border)">
-            <a href="{{ route('dashboard') }}"><x-brand /></a>
+<div class="flex h-full" x-data="{
+        pinned: localStorage.getItem('cbox-nav-pinned') === '1',
+        subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
+        mobile: false, account: false, org: false, hover: false,
+        togglePin() { this.pinned = !this.pinned; localStorage.setItem('cbox-nav-pinned', this.pinned ? '1' : '0'); },
+        toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
+     }"
+     @keydown.escape.window="mobile=false;account=false;org=false"
+     @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
+
+    {{-- ═══ TIER 1 — icon rail (desktop). 52px icons; expands in-flow to 210px when
+         pinned via the always-visible toggle in the rail foot. ═══ --}}
+    <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned }" aria-label="Areas">
+        <div class="cbx-rail-hd" :style="pinned ? '' : 'justify-content:center'">
+            <a href="{{ route('dashboard') }}" class="cbx-rail-brand" aria-label="{{ config('cbox-id.branding.name', 'Cbox ID') }}" title="{{ config('cbox-id.branding.name', 'Cbox ID') }}">
+                <svg viewBox="0 0 64 64" role="img" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)"/><text x="32" y="44" text-anchor="middle" fill="var(--primary-foreground)" font-family="var(--font-display)" font-weight="700" font-size="30" letter-spacing="-0.04em">ID</text></svg>
+            </a>
         </div>
 
-        <div class="px-3 py-3">
-            @php $canSwitch = $myOrgs->count() > 1; @endphp
-            <details class="org-switcher relative" @if (! $canSwitch) open-disabled @endif>
-                <summary class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 list-none {{ $canSwitch ? 'cursor-pointer' : '' }}"
-                         style="background:var(--surface-2)"
-                         @if ($canSwitch) aria-label="Current organization: {{ $me->organization()?->name }}. Switch organization" @else onclick="return false" @endif>
-                    <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"
-                          style="width:1.75rem;height:1.75rem;background:var(--accent);color:var(--accent-fg)">
-                        {{ strtoupper(substr($me->organization()?->name ?? 'C', 0, 1)) }}
-                    </span>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-sm font-semibold truncate">{{ $me->organization()?->name ?? 'No organization' }}</p>
-                        <p class="text-xs truncate" style="color:var(--faint)">{{ $me->role() ? ucfirst($me->role()) : 'Member' }}</p>
-                    </div>
-                    @if ($canSwitch)
-                        <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" aria-hidden="true" />
-                    @endif
-                </summary>
-
-                @if ($canSwitch)
-                    <div class="absolute left-0 right-0 mt-1 z-20 rounded-lg border p-1 shadow-lg"
-                         style="background:var(--surface);border-color:var(--border)">
-                        <p class="px-2 py-1 text-[0.68rem] font-medium uppercase tracking-wide" style="color:var(--faint)">Switch organization</p>
-                        @foreach ($myOrgs as $o)
-                            <form method="POST" action="{{ route('organization.switch') }}">
-                                @csrf
-                                <input type="hidden" name="organization" value="{{ $o->id }}">
-                                <button type="submit"
-                                        class="w-full flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:opacity-80"
-                                        style="{{ $o->id === $activeOrgId ? 'background:var(--surface-2)' : '' }}">
-                                    <span class="grid place-items-center rounded-md text-[0.65rem] font-bold shrink-0"
-                                          style="width:1.5rem;height:1.5rem;background:var(--accent);color:var(--accent-fg)">
-                                        {{ strtoupper(substr($o->name, 0, 1)) }}
-                                    </span>
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block text-sm truncate">{{ $o->name }}</span>
-                                        <span class="block text-xs truncate" style="color:var(--faint)">{{ $o->role ? ucfirst($o->role) : 'Member' }}</span>
-                                    </span>
-                                    @if ($o->id === $activeOrgId)
-                                        <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--accent)" />
-                                    @endif
-                                </button>
-                            </form>
-                        @endforeach
-                    </div>
-                @endif
-            </details>
-        </div>
-
-        <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto" aria-label="Primary">
-            @foreach ($nav as $item)
-                <a href="{{ route($item['route']) }}" class="nav-link"
-                   @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
-                    <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
-                    {{ $item['label'] }}
-                    @if ($item['locked'])
-                        <span class="ml-auto text-[0.6rem] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5" style="background:var(--accent-soft);color:var(--accent)" title="Enterprise feature">Enterprise</span>
-                    @endif
+        <nav class="flex-1 overflow-y-auto" style="scrollbar-width:none">
+            @foreach ($areas as $area)
+                <a href="{{ route($area['pages'][0]['route']) }}" title="{{ $area['label'] }}"
+                   class="{{ $area['key'] === $activeArea['key'] ? 'cbx-on' : '' }}">
+                    <x-icon :name="$area['icon']" class="w-[18px] h-[18px]" aria-hidden="true" />
+                    <span class="lbl">{{ $area['label'] }}</span>
                 </a>
             @endforeach
         </nav>
 
-        <div class="p-3 border-t" style="border-color:var(--border)">
-            <button type="button" data-theme-toggle class="nav-link w-full">
-                <x-icon name="moon" class="w-[1.15rem] h-[1.15rem] dark:hidden" />
-                <span>Toggle theme</span>
+        <div class="cbx-rail-foot">
+            <button type="button" class="cbx-railitem" @click="togglePin()" :title="pinned ? 'Collapse navigation' : 'Expand navigation'" aria-label="Toggle navigation width">
+                <span class="inline-flex items-center justify-center shrink-0" style="width:18px;height:18px;transition:transform 150ms var(--ease)" :style="pinned ? 'transform:rotate(90deg)' : 'transform:rotate(-90deg)'">
+                    <x-icon name="chevron" class="w-[18px] h-[18px]" />
+                </span>
+                <span class="lbl">Collapse</span>
             </button>
+            <button type="button" class="cbx-railitem" @click="account=!account" title="{{ $me->name() }}" aria-haspopup="true" :aria-expanded="account">
+                <span class="cbx-avatar" aria-hidden="true">{{ $userInitial }}</span>
+                <span class="lbl" style="overflow:hidden;text-overflow:ellipsis">{{ $me->name() }}</span>
+            </button>
+            <div x-show="account" x-transition.opacity.duration.150ms @click.outside="account=false" x-cloak
+                 class="cbx-panel" style="position:absolute;bottom:calc(100% + 8px);left:0;min-width:230px;z-index:75;box-shadow:var(--shadow-popover);padding:6px">
+                <div style="padding:8px 10px;border-bottom:1px solid var(--border);margin-bottom:4px">
+                    <p style="font-size:13px;font-weight:600;margin:0" class="truncate">{{ $me->name() }}</p>
+                    <p style="font-size:12px;color:var(--muted-foreground);margin:2px 0 0" class="truncate">{{ $me->email() }}</p>
+                </div>
+                <button type="button" data-theme-toggle class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
+                    <x-icon name="moon" class="w-4 h-4" /> Toggle theme
+                </button>
+                <form method="POST" action="{{ route('logout') }}">@csrf
+                    <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px;color:var(--destructive)">
+                        <x-icon name="logout" class="w-4 h-4" /> Sign out
+                    </button>
+                </form>
+            </div>
         </div>
     </aside>
 
-    {{-- Mobile navigation drawer (off-canvas), shown below the lg breakpoint. --}}
-    <div class="lg:hidden" x-cloak>
-        <div x-show="nav" x-transition.opacity class="fixed inset-0 z-40" style="background:rgb(0 0 0 / 0.5)" @click="nav = false" aria-hidden="true"></div>
-        <div x-show="nav"
-             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
-             class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] flex flex-col border-r"
-             style="border-color:var(--border);background:var(--surface)"
-             role="dialog" aria-modal="true" aria-label="Navigation">
-            <div class="h-16 flex items-center justify-between px-5 border-b" style="border-color:var(--border)">
-                <a href="{{ route('dashboard') }}"><x-brand /></a>
-                <button type="button" @click="nav = false" class="btn btn-ghost" style="padding:0.4rem" aria-label="Close navigation">
-                    <x-icon name="close" class="w-[1.1rem] h-[1.1rem]" />
+    {{-- ═══ TIER 2 — contextual subnav (desktop, multi-page areas only) ═══ --}}
+    @if ($showSubnav)
+        <aside class="cbx-subnav hidden lg:flex" :class="{ 'collapsed': subnav }">
+            <div class="cbx-strip" @click="subnav=false" title="Expand">
+                <span class="vlabel">{{ $activeArea['label'] }}</span>
+                <x-icon name="chevron" class="w-3.5 h-3.5" style="transform:rotate(-90deg)" />
+            </div>
+            <div class="cbx-subnav-hd">
+                <span>{{ $activeArea['label'] }}</span>
+                <button type="button" class="cbx-subnav-toggle" @click="subnav=true" title="Collapse (⌘.)" aria-label="Collapse subnav">
+                    <x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" />
                 </button>
             </div>
-            <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto" aria-label="Primary">
-                @foreach ($nav as $item)
-                    <a href="{{ route($item['route']) }}" class="nav-link" @click="nav = false"
-                       @if (request()->routeIs($item['route'].'*')) aria-current="page" @endif>
-                        <x-icon :name="$item['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
-                        {{ $item['label'] }}
-                        @if ($item['locked'])
-                            <span class="ml-auto text-[0.6rem] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5" style="background:var(--accent-soft);color:var(--accent)" title="Enterprise feature">Enterprise</span>
+            <nav aria-label="{{ $activeArea['label'] }}">
+                @foreach ($activeArea['pages'] as $page)
+                    <a href="{{ route($page['route']) }}" class="{{ $routeActive($page['route']) ? 'cbx-on' : '' }}">
+                        <span>{{ $page['label'] }}</span>
+                        @if ($isLocked($page))
+                            <span class="cnt" style="text-transform:uppercase;letter-spacing:0.04em;font-size:9.5px;font-weight:600;color:var(--primary)">Enterprise</span>
                         @endif
                     </a>
                 @endforeach
             </nav>
-            <div class="p-3 border-t space-y-2" style="border-color:var(--border)">
-                <div class="flex items-center gap-2.5 px-1">
-                    <span aria-hidden="true" class="grid place-items-center rounded-full text-xs font-semibold" style="width:2rem;height:2rem;background:var(--accent-soft);color:var(--accent)">{{ strtoupper(substr($me->name(), 0, 1)) }}</span>
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium truncate leading-tight">{{ $me->name() }}</p>
-                        <p class="text-xs truncate" style="color:var(--faint)">{{ $me->email() }}</p>
-                    </div>
+        </aside>
+    @endif
+
+    {{-- ═══ Mobile drawer ═══ --}}
+    <div class="lg:hidden" x-cloak>
+        <div x-show="mobile" x-transition.opacity class="fixed inset-0 z-40" style="background:rgb(0 0 0 / 0.5)" @click="mobile=false" aria-hidden="true"></div>
+        <div x-show="mobile"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+             class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] flex flex-col" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)"
+             role="dialog" aria-modal="true" aria-label="Navigation">
+            <div class="cbx-sidebar-brand" style="justify-content:space-between">
+                <a href="{{ route('dashboard') }}"><x-brand /></a>
+                <button type="button" @click="mobile=false" class="cbx-subnav-toggle" aria-label="Close navigation"><x-icon name="close" class="w-[18px] h-[18px]" /></button>
+            </div>
+            <nav class="cbx-nav" aria-label="Primary">
+                @foreach ($areas as $area)
+                    <p class="cbx-nav-group">{{ $area['label'] }}</p>
+                    @foreach ($area['pages'] as $page)
+                        <a href="{{ route($page['route']) }}" class="nav-link" @click="mobile=false" @if ($routeActive($page['route'])) aria-current="page" @endif>
+                            <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
+                            {{ $page['label'] }}
+                            @if ($isLocked($page))<span class="ml-auto" style="font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--primary)">Enterprise</span>@endif
+                        </a>
+                    @endforeach
+                @endforeach
+            </nav>
+            <div class="p-3" style="border-top:1px solid var(--sidebar-border)">
+                <div class="flex items-center gap-2.5 px-1 mb-2">
+                    <span class="cbx-avatar" style="width:2rem;height:2rem" aria-hidden="true">{{ $userInitial }}</span>
+                    <div class="min-w-0"><p class="text-sm font-medium truncate leading-tight">{{ $me->name() }}</p><p class="text-xs truncate" style="color:var(--muted-foreground)">{{ $me->email() }}</p></div>
                 </div>
-                <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> <span>Toggle theme</span></button>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="nav-link w-full"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> <span>Sign out</span></button>
-                </form>
+                <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
+                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="nav-link w-full"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button></form>
             </div>
         </div>
     </div>
 
-    <div class="flex flex-col min-w-0 overflow-x-hidden">
-        <header class="h-16 flex items-center justify-between gap-3 px-4 sm:px-7 border-b sticky top-0 z-10"
-                style="border-color:var(--border);background:color-mix(in srgb, var(--bg) 85%, transparent);backdrop-filter:blur(8px)">
+    {{-- ═══ Main column ═══ --}}
+    <div class="flex flex-col min-w-0 flex-1">
+        <header class="cbx-topbar">
             <div class="flex items-center gap-2 min-w-0">
-                <button type="button" @click="nav = true" class="btn btn-ghost lg:hidden" style="padding:0.4rem" aria-label="Open navigation">
-                    <x-icon name="menu" class="w-[1.15rem] h-[1.15rem]" />
-                </button>
-                <h1 class="text-base font-semibold truncate">{{ $title ?? 'Overview' }}</h1>
-            </div>
-            <div class="flex items-center gap-3">
-                <button type="button" data-theme-toggle class="btn btn-ghost" style="padding:0.4rem" aria-label="Toggle theme">
-                    <x-icon name="sun" class="w-[1.1rem] h-[1.1rem]" />
-                </button>
-                <div class="hidden sm:flex items-center gap-2.5 pl-3 border-l" style="border-color:var(--border)">
-                    <span aria-hidden="true" class="grid place-items-center rounded-full text-xs font-semibold"
-                          style="width:2rem;height:2rem;background:var(--accent-soft);color:var(--accent)">
-                        {{ strtoupper(substr($me->name(), 0, 1)) }}
-                    </span>
-                    <div class="hidden sm:block min-w-0">
-                        <p class="text-sm font-medium truncate leading-tight">{{ $me->name() }}</p>
-                        <p class="text-xs truncate" style="color:var(--faint)">{{ $me->email() }}</p>
-                    </div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="btn btn-ghost" style="padding:0.4rem" aria-label="Sign out" title="Sign out">
-                            <x-icon name="logout" class="w-[1.1rem] h-[1.1rem]" />
-                        </button>
-                    </form>
+                <button type="button" @click="mobile=true" class="cbx-subnav-toggle lg:hidden" aria-label="Open navigation"><x-icon name="menu" class="w-[18px] h-[18px]" /></button>
+
+                {{-- Org context crumb + switcher (Linear/Notion style). --}}
+                <div class="relative">
+                    <button type="button" class="flex items-center gap-2 rounded-lg px-2 py-1.5 {{ $canSwitch ? '' : 'pointer-events-none' }}"
+                            style="transition:background-color var(--dur-hover) var(--ease)" @if ($canSwitch) @click="org=!org" onmouseover="this.style.background='var(--secondary)'" onmouseout="this.style.background='transparent'" :aria-expanded="org" aria-haspopup="true" @endif>
+                        <span class="grid place-items-center rounded-md text-[11px] font-bold shrink-0" style="width:26px;height:26px;background:var(--accent-soft);color:var(--primary)">{{ $orgInitial }}</span>
+                        <span class="min-w-0 text-left hidden sm:block">
+                            <span class="block text-[13px] font-semibold truncate leading-tight">{{ $me->organization()?->name ?? 'No organization' }}</span>
+                            <span class="block text-[11px] truncate leading-tight" style="color:var(--muted-foreground)">{{ $me->role() ? ucfirst($me->role()) : 'Member' }}</span>
+                        </span>
+                        @if ($canSwitch)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
+                    </button>
+                    @if ($canSwitch)
+                        <div x-show="org" x-transition.opacity.duration.150ms @click.outside="org=false" x-cloak
+                             class="cbx-panel" style="position:absolute;top:calc(100% + 6px);left:0;min-width:260px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
+                            <p class="cbx-nav-group" style="padding:6px 10px 4px">Switch organization</p>
+                            @foreach ($myOrgs as $o)
+                                <form method="POST" action="{{ route('organization.switch') }}">@csrf
+                                    <input type="hidden" name="organization" value="{{ $o->id }}">
+                                    <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $o->id === $activeOrgId ? 'background:var(--secondary)' : '' }}">
+                                        <span class="grid place-items-center rounded-md text-[10px] font-bold shrink-0" style="width:24px;height:24px;background:var(--accent-soft);color:var(--primary)">{{ strtoupper(substr($o->name, 0, 1)) }}</span>
+                                        <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ $o->name }}</span><span class="block text-[11px] truncate" style="color:var(--muted-foreground)">{{ $o->role ? ucfirst($o->role) : 'Member' }}</span></span>
+                                        @if ($o->id === $activeOrgId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" />@endif
+                                    </button>
+                                </form>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="button" class="cbx-search hidden md:inline-flex" style="width:160px" aria-label="Search">
+                    <x-icon name="search" class="w-4 h-4" />
+                    <span class="label">Search…</span>
+                    <kbd>⌘K</kbd>
+                </button>
+                <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
             </div>
         </header>
 
         @if (session('status'))
-            <div role="status" aria-live="polite" class="mx-5 sm:mx-7 mt-4 rounded-lg px-4 py-3 text-sm"
-                 style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)">
-                {{ session('status') }}
-            </div>
+            <div role="status" aria-live="polite" class="mx-6 mt-4 rounded-lg px-4 py-3 text-sm"
+                 style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in oklch,var(--success) 20%,transparent)">{{ session('status') }}</div>
         @endif
 
-        <main id="main-content" class="flex-1 p-5 sm:p-7 max-w-6xl w-full">
-            {{ $slot }}
+        <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient">
+            <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:72rem">{{ $slot }}</div>
         </main>
     </div>
 </div>
+
 </body>
 </html>

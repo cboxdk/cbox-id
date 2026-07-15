@@ -106,43 +106,43 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
 <div>
     @if ($bootstrap)
-        <h1 class="text-xl font-semibold tracking-tight">Create the first operator</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">
+        <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Create the first operator</h1>
+        <p class="mt-2 text-sm" style="color:var(--muted)">
             Platform operators administer environments. This one-time step provisions the first.
         </p>
 
-        <form wire:submit="createFirst" class="mt-6 space-y-4">
+        <form wire:submit="createFirst" class="mt-7 space-y-4">
             <div>
                 <label class="label" for="name">Name</label>
                 <input wire:model="name" id="name" type="text" class="input input-lg" placeholder="Root Operator" autofocus>
-                @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="email">Email</label>
                 <input wire:model="email" id="email" type="email" class="input input-lg" placeholder="operator@yourco.example">
-                @error('email') <p class="field-error">{{ $message }}</p> @enderror
+                @error('email') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="password">Password</label>
                 <input wire:model="password" id="password" type="password" autocomplete="new-password" class="input input-lg" placeholder="At least 12 characters">
-                @error('password') <p class="field-error">{{ $message }}</p> @enderror
+                @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">Create operator &amp; sign in</button>
         </form>
     @else
-        <h1 class="text-xl font-semibold tracking-tight">Operator sign in</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Administer environments and platform operators.</p>
+        <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Operator sign in</h1>
+        <p class="mt-2 text-sm" style="color:var(--muted)">Administer environments and platform operators.</p>
 
-        <form wire:submit="login" class="mt-6 space-y-4">
+        <form wire:submit="login" class="mt-7 space-y-4">
             <div>
                 <label class="label" for="email">Email</label>
                 <input wire:model="email" id="email" name="email" type="email" autocomplete="username" class="input input-lg" placeholder="operator@yourco.example" autofocus>
-                @error('email') <p class="field-error">{{ $message }}</p> @enderror
+                @error('email') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="password">Password</label>
                 <input wire:model="password" id="password" name="password" type="password" autocomplete="current-password" class="input input-lg" placeholder="••••••••••••">
-                @error('password') <p class="field-error">{{ $message }}</p> @enderror
+                @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">Sign in</button>
         </form>

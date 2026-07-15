@@ -46,13 +46,18 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
 }; ?>
 
 <div>
-    <x-page-header title="Audit log" subtitle="Every change to this organization, tamper-evident and hash-chained.">
-        <x-slot:actions>
+    <div class="cbx-page-header mb-8 flex-wrap">
+        <div>
+            <p class="cbx-page-eyebrow">Security</p>
+            <h1 class="cbx-page-title">Audit log</h1>
+            <p class="cbx-page-desc">Every change to this organization, tamper-evident and hash-chained.</p>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
             <div class="relative w-full sm:w-auto">
                 <input wire:model.live.debounce.300ms="actionFilter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…">
             </div>
-        </x-slot:actions>
-    </x-page-header>
+        </div>
+    </div>
 
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
@@ -90,7 +95,15 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center py-12" style="color:var(--faint)">No audit entries recorded yet.</td></tr>
+                        <tr>
+                            <td colspan="5">
+                                <div class="cbx-empty">
+                                    <div class="cbx-empty-icon"><x-icon name="audit" class="w-5 h-5" /></div>
+                                    <h3>No audit entries yet</h3>
+                                    <p>Activity across this organization will appear here as it happens.</p>
+                                </div>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

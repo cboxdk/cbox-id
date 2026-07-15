@@ -98,13 +98,18 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
 }; ?>
 
 <div>
-    <x-page-header title="Webhooks" subtitle="Endpoints that receive signed event notifications for this organization.">
-        <x-slot:actions>
+    <div class="cbx-page-header mb-8">
+        <div>
+            <p class="cbx-page-eyebrow">Developers</p>
+            <h1 class="cbx-page-title">Webhooks</h1>
+            <p class="cbx-page-desc">Endpoints that receive signed event notifications for this organization.</p>
+        </div>
+        <div class="flex items-center gap-2">
             @if ($me->isAdmin())
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Add endpoint</button>
             @endif
-        </x-slot:actions>
-    </x-page-header>
+        </div>
+    </div>
 
     @if ($newSecret)
         <div class="card p-4 mb-5" style="border-color:color-mix(in srgb, var(--warn) 40%, transparent);background:var(--warn-soft)">
@@ -113,7 +118,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
                     <p class="font-semibold text-sm" style="color:var(--warn)">Copy this signing secret now — it won't be shown again.</p>
                     <p class="mt-3 mono break-all text-sm">{{ $newSecret }}</p>
                 </div>
-                <button wire:click="dismissSecret" class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Dismiss</button>
+                <button wire:click="dismissSecret" class="btn btn-ghost btn-sm">Dismiss</button>
             </div>
         </div>
     @endif
@@ -163,21 +168,29 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
                             </td>
                             <td>
                                 @if ($endpoint->status === \Cbox\Id\Webhooks\Enums\EndpointStatus::Active)
-                                    <span class="badge badge-success">Active</span>
+                                    <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Active</span>
                                 @else
-                                    <span class="badge badge-warn">Paused</span>
+                                    <span class="cbx-pill cbx-pill--warning"><span class="dot"></span> Paused</span>
                                 @endif
                             </td>
                             <td class="text-right">
                                 @if ($me->isAdmin() && $endpoint->status === \Cbox\Id\Webhooks\Enums\EndpointStatus::Active)
                                     <button wire:click="pause('{{ $endpoint->id }}')"
                                             wire:confirm="Pause this endpoint? It will stop receiving events."
-                                            class="btn btn-ghost" style="padding:0.35rem 0.6rem;font-size:0.8rem">Pause</button>
+                                            class="btn btn-ghost btn-sm">Pause</button>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center py-10" style="color:var(--faint)">No webhook endpoints yet.</td></tr>
+                        <tr>
+                            <td colspan="4">
+                                <div class="cbx-empty">
+                                    <div class="cbx-empty-icon"><x-icon name="webhooks" class="w-5 h-5" /></div>
+                                    <h3>No webhook endpoints yet</h3>
+                                    <p>Add an endpoint to start receiving signed event notifications for this organization.</p>
+                                </div>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
