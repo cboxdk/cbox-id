@@ -123,10 +123,16 @@ Route::prefix('operator')->group(function (): void {
 
     Route::middleware(AuthenticateOperator::class)->group(function (): void {
         Volt::route('/', 'operator.environments')->name('operator.environments');
+        Volt::route('/search', 'operator.search')->name('operator.search');
         Volt::route('/organizations', 'operator.organizations')->name('operator.organizations');
         Volt::route('/organizations/{organization}', 'operator.organization')->name('operator.organization');
         Volt::route('/operators', 'operator.operators')->name('operator.operators');
         Volt::route('/security', 'operator.security')->name('operator.security');
         Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('operator.environment.switch');
+
+        // Cross-plane jump: a search result lives in some plane B; the tenant detail
+        // page is plane-scoped, so we first re-point the console at the result's
+        // environment, then hand off to the (now in-plane) org detail page.
+        Route::get('/search/jump/{organization}', [OperatorController::class, 'jumpToOrganization'])->name('operator.search.jump');
     });
 });
