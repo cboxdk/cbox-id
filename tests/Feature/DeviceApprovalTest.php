@@ -34,14 +34,22 @@ function deviceClient(): Client
     ))->client;
 }
 
-it('approves a device from the verification screen and the device can then get a token', function () {
+it('shows the requesting app and scopes, then approves so the device can get a token', function () {
     $userId = signedInFor();
-    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid', 'email']);
 
-    Volt::test('device')
+    // Step 1: the code resolves to the app + scopes, shown before any approval.
+    $component = Volt::test('device')
         ->set('userCode', $result->userCode)
-        ->call('approve')
-        ->assertSet('outcome', 'approved');
+        ->call('lookup')
+        ->assertSet('verified', true)
+        ->assertSet('clientName', 'TV App')
+        ->assertSet('scopes', ['openid', 'email'])
+        ->assertSee('TV App')
+        ->assertSee('Your email address'); // the human scope label
+
+    // Step 2: approve.
+    $component->call('approve')->assertSet('outcome', 'approved');
 
     // Skip the poll interval, then the device redeems its token bound to the user.
     DeviceCode::query()->update(['last_polled_at' => now()->subMinute()]);
@@ -53,13 +61,14 @@ it('approves a device from the verification screen and the device can then get a
     expect($grant->userId)->toBe($userId);
 });
 
-it('reports an invalid or unknown code', function () {
+it('reports an invalid or unknown code without moving to consent', function () {
     signedInFor();
 
     Volt::test('device')
         ->set('userCode', 'ZZZZ-ZZZZ')
-        ->call('approve')
-        ->assertSet('outcome', 'invalid');
+        ->call('lookup')
+        ->assertSet('verified', false)
+        ->assertSet('error', 'That code is invalid or has expired. Check the code on your device and try again.');
 });
 
 it('denies a device', function () {
@@ -68,8 +77,36 @@ it('denies a device', function () {
 
     Volt::test('device')
         ->set('userCode', $result->userCode)
+        ->call('lookup')
         ->call('deny')
         ->assertSet('outcome', 'denied');
 
     expect(DeviceCode::query()->value('status'))->toBe('denied');
 });
+
+it('prefills and upper-cases the code from the verification_uri_complete link', function () {
+    signedInFor();
+
+    Volt::test('device', ['user_code' => 'bcdf-ghjk'])
+        ->assertSet('userCode', 'BCDF-GHJK');
+});
+
+it('rate-limits repeated invalid code lookups (anti-guessing)', function () {
+    signedInFor();
+    $component = Volt::test('device');
+
+    for ($i = 0; $i < 10; $i++) {
+        $component->set('userCode', 'ZZZZ-'.str_pad((string) $i, 4, '0', STR_PAD_LEFT))->call('lookup');
+    }
+
+    $component->set('userCode', 'AAAA-AAAA')->call('lookup');
+
+    expect($component->get('verified'))->toBeFalse()
+        ->and($component->get('error'))->toContain('Too many attempts');
+});
+
+it('does not let the browser forge the verified state (locked)', function () {
+    signedInFor();
+
+    Volt::test('device')->set('verified', true);
+})->throws(Exception::class, 'Cannot update locked property');
