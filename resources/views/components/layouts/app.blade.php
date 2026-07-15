@@ -37,6 +37,7 @@
     $areas = [
         ['key' => 'overview', 'label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
             ['route' => 'dashboard', 'label' => 'Overview'],
+            ['route' => 'approvals', 'label' => 'Agent approvals'],
         ]],
         ['key' => 'directory', 'label' => 'Directory', 'icon' => 'members', 'pages' => [
             ['route' => 'members', 'label' => 'Members'],
@@ -46,13 +47,21 @@
             ['route' => 'connections', 'label' => 'SSO connections', 'feature' => 'sso'],
             ['route' => 'sso-providers', 'label' => 'SSO providers', 'feature' => 'sso'],
             ['route' => 'directories', 'label' => 'Directory sync', 'feature' => 'scim'],
+            ['route' => 'provisioning', 'label' => 'Outbound SCIM', 'feature' => 'scim'],
+        ]],
+        ['key' => 'governance', 'label' => 'Governance', 'icon' => 'shield', 'pages' => [
+            ['route' => 'governance', 'label' => 'Access reviews'],
+            ['route' => 'sod-policies', 'label' => 'Segregation of duties'],
         ]],
         ['key' => 'developers', 'label' => 'Developers', 'icon' => 'clients', 'pages' => [
             ['route' => 'clients', 'label' => 'API clients'],
             ['route' => 'webhooks', 'label' => 'Webhooks'],
+            ['route' => 'hooks', 'label' => 'Inline hooks'],
+            ['route' => 'vault', 'label' => 'Token vault'],
         ]],
         ['key' => 'audit', 'label' => 'Audit', 'icon' => 'audit', 'pages' => [
             ['route' => 'audit', 'label' => 'Audit log'],
+            ['route' => 'audit-streams', 'label' => 'SIEM streams'],
         ]],
         ['key' => 'settings', 'label' => 'Settings', 'icon' => 'settings', 'pages' => [
             ['route' => 'settings', 'label' => 'Settings'],

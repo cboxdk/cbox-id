@@ -111,6 +111,25 @@ Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(f
     Volt::route('/audit', 'audit')->name('audit');
     Volt::route('/settings', 'settings')->name('settings');
 
+    // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
+    Volt::route('/governance', 'governance')->name('governance');
+    Volt::route('/sod-policies', 'sod-policies')->name('sod-policies');
+
+    // Outbound SCIM provisioning connections (push users OUT to downstream apps).
+    Volt::route('/provisioning', 'provisioning')->name('provisioning');
+
+    // AI token vault + inline-hook (external action) endpoints. Storing/revealing a
+    // secret is sensitive, so the vault is behind the sudo step-up gate.
+    Volt::route('/vault', 'vault')->middleware('sudo')->name('vault');
+    Volt::route('/hooks', 'hooks')->name('hooks');
+
+    // SIEM audit-stream export.
+    Volt::route('/audit-streams', 'audit-streams')->name('audit-streams');
+
+    // Agent approvals (OIDC CIBA): where a signed-in user approves/denies a
+    // backchannel request an agent started on their behalf.
+    Volt::route('/approvals', 'approvals')->name('approvals');
+
     // RFC 8628 device grant: where a signed-in user approves a device's user_code.
     Volt::route('/device', 'device')->name('device');
 
