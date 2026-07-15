@@ -66,6 +66,11 @@ Route::middleware('platform.guest')->group(function (): void {
 // fully guest nor fully authenticated.
 Volt::route('/mfa', 'auth.mfa')->name('mfa');
 
+// The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
+// state: primary auth passed, but an elevated risk assessment demands a second
+// factor before the session is established.
+Volt::route('/login/step-up', 'auth.otp-step-up')->name('login.step-up');
+
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
 // never re-establish a session, while acting as someone).

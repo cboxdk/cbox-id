@@ -9,6 +9,8 @@ description: Operator-facing security surfaces of the Cbox ID app — step-up, o
 This section covers the security surfaces the Cbox ID **app** adds on top of the
 identity engine, and the system-level compliance view.
 
+- [Adaptive risk](adaptive-risk.md) — risk-based authentication: every sign-in is
+  scored and, under enforcement, adapts (allow / step-up / deny).
 - [Compliance](compliance.md) — the system-level control mapping (framework controls
   + what this app adds + what remains yours).
 

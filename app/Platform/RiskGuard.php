@@ -51,12 +51,28 @@ final class RiskGuard
     }
 
     /**
-     * Hard-block only a Reject, and only when enforcement is on. Challenge/StepUp
-     * are left for the flow to handle as friction.
+     * Hard-block only a Reject, and only when enforcement is on.
      */
     public function shouldBlock(RiskAssessment $assessment): bool
     {
-        return config('risk.mode') === 'enforce' && $assessment->outcome === Outcome::Reject;
+        return $this->enforcing() && $assessment->outcome === Outcome::Reject;
+    }
+
+    /**
+     * Demand an additional factor (step-up) for an elevated-but-not-reject outcome
+     * (Challenge / StepUp), when enforcement is on. The login flow turns this into a
+     * second factor before the session is established. Below this — Flag / Allow — the
+     * attempt proceeds with only the friction of being logged.
+     */
+    public function shouldStepUp(RiskAssessment $assessment): bool
+    {
+        return $this->enforcing()
+            && in_array($assessment->outcome, [Outcome::Challenge, Outcome::StepUp], true);
+    }
+
+    private function enforcing(): bool
+    {
+        return config('risk.mode') === 'enforce';
     }
 
     /**

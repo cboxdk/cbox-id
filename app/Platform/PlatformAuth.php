@@ -11,6 +11,7 @@ use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Otp\Contracts\OtpService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Http\Request;
 
@@ -28,6 +29,10 @@ final class PlatformAuth
 
     private const MFA_PENDING_KEY = 'cbox.mfa_pending';
 
+    private const OTP_PENDING_KEY = 'cbox.otp_pending';
+
+    private const OTP_PURPOSE = 'login_step_up';
+
     private const PENDING_LINK_KEY = 'cbox.pending_link';
 
     /** A precomputed hash so a login for a non-existent user still does the work. */
@@ -38,14 +43,21 @@ final class PlatformAuth
         private readonly Subjects $subjects,
         private readonly Memberships $memberships,
         private readonly Mfa $mfa,
+        private readonly OtpService $otp,
         private readonly Hasher $hasher,
     ) {}
 
     /**
-     * Attempt a password login. Returns 'ok', 'mfa', or 'invalid'. On 'mfa' the
-     * subject is held pending a second factor — no session is started yet.
+     * Attempt a password login. Returns 'ok', 'mfa', 'otp', or 'invalid'. On 'mfa'
+     * and 'otp' the subject is held pending a second factor — no session yet.
+     *
+     * `$requireStepUp` (an elevated risk assessment) forces an additional factor even
+     * when the account would otherwise sign in on password alone: if the account has
+     * TOTP it goes through the normal MFA challenge; if it has no second factor we
+     * step up with an emailed one-time code (possession of the inbox) rather than let
+     * a risky sign-in through — and rather than locking the account out.
      */
-    public function attemptPassword(Request $request, string $email, string $password): string
+    public function attemptPassword(Request $request, string $email, string $password, bool $requireStepUp = false): string
     {
         $subject = $this->subjects->findByEmail($email);
 
@@ -67,9 +79,50 @@ final class PlatformAuth
             return 'mfa';
         }
 
+        if ($requireStepUp) {
+            $this->otp->issue(self::OTP_PURPOSE, $email, 'email', $request->ip());
+            session()->put(self::OTP_PENDING_KEY, ['subject' => $subject->id, 'email' => $email]);
+
+            return 'otp';
+        }
+
         $this->establish($request, $subject->id, ['pwd']);
 
         return 'ok';
+    }
+
+    /**
+     * The subject + email held pending an emailed step-up code, or null.
+     *
+     * @return array{subject: string, email: string}|null
+     */
+    public function pendingOtpStepUp(Request $request): ?array
+    {
+        $pending = session()->get(self::OTP_PENDING_KEY);
+
+        if (! is_array($pending) || ! is_string($pending['subject'] ?? null) || ! is_string($pending['email'] ?? null)) {
+            return null;
+        }
+
+        return ['subject' => $pending['subject'], 'email' => $pending['email']];
+    }
+
+    /**
+     * Complete a risk step-up with the emailed one-time code. The resulting session's
+     * amr records 'otp', so it is treated as a two-factor (aal2) login downstream.
+     */
+    public function completeOtpStepUp(Request $request, string $code): bool
+    {
+        $pending = $this->pendingOtpStepUp($request);
+
+        if ($pending === null || ! $this->otp->verifyLatest(self::OTP_PURPOSE, $pending['email'], $code, $request->ip())->verified) {
+            return false;
+        }
+
+        session()->forget(self::OTP_PENDING_KEY);
+        $this->establish($request, $pending['subject'], ['pwd', 'otp']);
+
+        return true;
     }
 
     private function timingHash(): string
@@ -130,7 +183,9 @@ final class PlatformAuth
     {
         $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
 
-        $session = $this->sessions->start($subjectId, $organizationId, $amr);
+        // Record the request IP + user-agent on the session so adaptive-risk signals
+        // (new device, geo-velocity) have a history to compare future logins against.
+        $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
 
         session()->put(self::SESSION_KEY, $session->id);
 
@@ -241,7 +296,7 @@ final class PlatformAuth
             $this->sessions->revoke($sessionId);
         }
 
-        session()->forget([self::SESSION_KEY, self::ORG_KEY, self::MFA_PENDING_KEY, self::PENDING_LINK_KEY]);
+        session()->forget([self::SESSION_KEY, self::ORG_KEY, self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY]);
         session()->invalidate();
         session()->regenerateToken();
     }

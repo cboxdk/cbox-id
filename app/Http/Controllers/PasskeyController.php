@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use App\Platform\RiskGuard;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
 use Cbox\Id\Identity\Exceptions\InvalidAssertionResponse;
@@ -98,8 +99,14 @@ final class PasskeyController extends Controller
         ]);
     }
 
-    public function login(Request $request, Passkeys $passkeys, PlatformAuth $auth): JsonResponse
+    public function login(Request $request, Passkeys $passkeys, PlatformAuth $auth, RiskGuard $risk): JsonResponse
     {
+        // Hard-block a Reject before establishing the session. (A passkey is
+        // phishing-resistant, so an elevated-but-not-reject outcome needs no step-up.)
+        if ($risk->shouldBlock($risk->assess($request, 'login'))) {
+            return $this->error('We could not process this request. Please try again later.');
+        }
+
         $challenge = $this->pullChallenge($request, self::AUTH_CHALLENGE);
         $credentialId = $request->string('id')->toString();
 

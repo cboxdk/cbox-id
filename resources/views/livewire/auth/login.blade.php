@@ -97,14 +97,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         }
 
         // Risk-score the attempt (credential-stuffing / bot velocity, IP reputation,
-        // Tor). Logged for review; hard-blocks a Reject only under enforcement.
-        if ($risk->shouldBlock($risk->assess(request(), 'login', $this->email))) {
+        // Tor). Logged for review. Under enforcement a Reject hard-blocks, and an
+        // elevated-but-not-reject outcome demands a step-up second factor below.
+        $assessment = $risk->assess(request(), 'login', $this->email);
+
+        if ($risk->shouldBlock($assessment)) {
             $this->addError('email', 'We could not process this request. Please try again later.');
 
             return;
         }
 
-        $result = $auth->attemptPassword(request(), $this->email, $this->password);
+        $result = $auth->attemptPassword(request(), $this->email, $this->password, $risk->shouldStepUp($assessment));
 
         if ($result === 'invalid') {
             RateLimiter::hit($key, 60);
@@ -117,6 +120,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
         if ($result === 'mfa') {
             $this->redirectRoute('mfa', navigate: false);
+
+            return;
+        }
+
+        // Elevated risk on an account with no authenticator: step up with an emailed
+        // one-time code before the session is established.
+        if ($result === 'otp') {
+            $this->redirectRoute('login.step-up', navigate: false);
 
             return;
         }
