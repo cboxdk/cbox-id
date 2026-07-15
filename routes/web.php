@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
 use App\Http\Controllers\OperatorController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
 use App\Http\Middleware\AuthenticateOperator;
+use App\Http\Middleware\BlockDuringImpersonation;
+use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Platform\PlatformAuth;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -31,8 +34,10 @@ Route::middleware('platform.guest')->group(function (): void {
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
 
     // Password reset — request a link, then choose a new password from the token.
-    Volt::route('/forgot-password', 'auth.forgot-password')->name('password.request');
-    Volt::route('/reset-password/{token}', 'auth.reset-password')->name('password.reset');
+    // Explicitly closed to an impersonator (the guest guard already bounces an
+    // authenticated subject, but a credential change must be a provable no-op).
+    Volt::route('/forgot-password', 'auth.forgot-password')->middleware(BlockDuringImpersonation::class)->name('password.request');
+    Volt::route('/reset-password/{token}', 'auth.reset-password')->middleware(BlockDuringImpersonation::class)->name('password.reset');
 
     // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
     Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
@@ -48,12 +53,19 @@ Route::middleware('platform.guest')->group(function (): void {
 Volt::route('/mfa', 'auth.mfa')->name('mfa');
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
-Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept');
+// Blocked during impersonation (defense-in-depth: never mutate account state, and
+// never re-establish a session, while acting as someone).
+Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware(BlockDuringImpersonation::class)->name('invitation.accept');
 
 // Email verification — the token is the proof; clickable while signed in or out.
-Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->name('verification.verify');
+Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->middleware(BlockDuringImpersonation::class)->name('verification.verify');
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
+
+// Exit impersonation. Gated on the marker (not operator auth) inside the
+// controller — while impersonating the browser is purely the subject, with no
+// operator key to authenticate against. CSRF-protected via the web group.
+Route::post('/impersonation/exit', [ImpersonationController::class, 'exit'])->name('impersonation.exit');
 
 /*
  * Admin Portal — a WorkOS-style setup link. An external IT admin opens it with
@@ -68,7 +80,7 @@ Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('por
 /*
  * Authenticated console.
  */
-Route::middleware('platform.auth')->group(function (): void {
+Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
@@ -82,23 +94,30 @@ Route::middleware('platform.auth')->group(function (): void {
     // RFC 8628 device grant: where a signed-in user approves a device's user_code.
     Volt::route('/device', 'device')->name('device');
 
-    // Step-up re-authentication ("sudo mode") gate for sensitive actions.
-    Volt::route('/sudo', 'auth.sudo')->name('sudo');
+    // Step-up re-authentication ("sudo mode") gate for sensitive actions. Blocked
+    // while impersonating: an impersonator must never be able to clear the gate
+    // that protects credential changes.
+    Volt::route('/sudo', 'auth.sudo')->middleware(BlockDuringImpersonation::class)->name('sudo');
 
     // Interactive OIDC/OAuth consent — Cbox ID as an identity provider.
     Volt::route('/oauth/authorize', 'oauth.consent')->name('oauth.authorize');
 
-    Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->name('organization.switch');
+    // Blocked while impersonating: the subject session is pinned to the one org the
+    // operator was authorized to enter. Pivoting to another of the subject's orgs
+    // would escape that scope, so it is an unambiguous 403 (not a silent no-op).
+    Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->middleware(BlockDuringImpersonation::class)->name('organization.switch');
 
     // Passkey enrolment (adds a credential to the signed-in subject). Adding a
     // credential is persistence — gate it behind a fresh step-up, symmetric with
-    // the sudo required to REMOVE a passkey in settings.
-    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware('sudo')->name('passkeys.register.options');
-    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware('sudo')->name('passkeys.register');
+    // the sudo required to REMOVE a passkey in settings. BlockDuringImpersonation
+    // runs first so an impersonator gets an unambiguous 403, never a step-up prompt.
+    Route::post('/passkeys/register/options', [PasskeyController::class, 'registerOptions'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register.options');
+    Route::post('/passkeys/register', [PasskeyController::class, 'register'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('passkeys.register');
 
     // Explicit account linking — connect a social provider to the signed-in user.
-    // Also a new way in, so it likewise requires a fresh step-up.
-    Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->middleware('sudo')->name('social.connect');
+    // Also a new way in, so it likewise requires a fresh step-up (and is closed to
+    // an impersonator).
+    Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('social.connect');
     Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])->name('social.connect.callback');
 });
 
@@ -130,6 +149,10 @@ Route::prefix('operator')->group(function (): void {
         Volt::route('/operators', 'operator.operators')->name('operator.operators');
         Volt::route('/security', 'operator.security')->name('operator.security');
         Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('operator.environment.switch');
+
+        // Support impersonation — step into a tenant member's session. Authorized by
+        // membership in the operator's currently-pinned plane (see the controller).
+        Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('operator.impersonate');
 
         // Cross-plane jump: a search result lives in some plane B; the tenant detail
         // page is plane-scoped, so we first re-point the console at the result's

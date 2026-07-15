@@ -6,9 +6,13 @@ namespace App\Providers;
 
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateOperator;
+use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Platform\CurrentUser;
+use App\Platform\ImpersonationAwareAuditLog;
+use App\Platform\ImpersonationCallGuard;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +26,14 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
+
+        // Dual-attribution audit for privileged impersonation: wrap the framework
+        // audit logger so EVERY recorded event (framework-emitted included) carries
+        // the acting operator in its context while a marker is active. Decorating
+        // the existing binding means nothing can bypass it.
+        $this->app->extend(AuditLog::class, function (AuditLog $inner): AuditLog {
+            return new ImpersonationAwareAuditLog($inner);
+        });
     }
 
     public function boot(): void
@@ -38,6 +50,9 @@ final class PlatformServiceProvider extends ServiceProvider
         // the org console loses CurrentUser on every action, and a suspended
         // operator keeps full powers because AuthenticateOperator never re-checks.
         Livewire::addPersistentMiddleware([
+            // Ahead of Authenticate: a Livewire action on an impersonated page must
+            // also self-terminate once the time-box lapses, not just full loads.
+            EnforceImpersonationWindow::class,
             Authenticate::class,
             AuthenticateOperator::class,
             RedirectIfAuthenticated::class,
@@ -45,5 +60,15 @@ final class PlatformServiceProvider extends ServiceProvider
             // scoped-session guard on every /livewire/update, not just first load.
             PortalSession::class,
         ]);
+
+        // Make impersonation effectively READ-ONLY across the whole console. Route
+        // middleware can't see individual Livewire actions (all POSTed to one
+        // /livewire/update endpoint), so guard the `call` seam itself: while
+        // impersonating, every component action is refused (403) except a tight
+        // allowlist of read/navigation primitives. Deny-by-default — a new mutating
+        // action is blocked with no extra wiring, so no sink can be missed.
+        Livewire::listen('call', function (mixed $component, string $method): void {
+            app(ImpersonationCallGuard::class)->guard($method);
+        });
     }
 }

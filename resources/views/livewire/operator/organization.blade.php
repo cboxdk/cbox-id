@@ -329,12 +329,12 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
             </span>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr">
-            <span>User</span><span>Role</span><span>Status</span>
+             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr auto">
+            <span>User</span><span>Role</span><span>Status</span><span class="text-right">Support</span>
         </div>
         @forelse ($members as $member)
             <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr">
+                 style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr auto">
                 <div class="min-w-0">
                     <p class="text-sm font-medium truncate">{{ $member['email'] ?? $member['name'] ?? $member['user_id'] }}</p>
                     @if ($member['name'] !== null && $member['email'] !== null)
@@ -343,6 +343,26 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
                 </div>
                 <div class="text-sm capitalize"><span class="sm:hidden" style="color:var(--faint)">Role: </span>{{ $member['role'] }}</div>
                 <div class="text-sm capitalize"><span class="sm:hidden" style="color:var(--faint)">Status: </span>{{ $member['status'] }}</div>
+                {{-- Step into this member's session for support. Heavily rail-guarded:
+                     the console is read-only while impersonating, credential changes
+                     are blocked, a justification is required, and the session
+                     self-terminates after 30 minutes. Owners and admins are never
+                     impersonable — their elevated surface is off-limits. --}}
+                @if (in_array($member['role'], ['owner', 'admin'], true))
+                    <span class="sm:text-right text-xs" style="color:var(--faint)">Not impersonable</span>
+                @else
+                    <form method="POST" action="{{ route('operator.impersonate', $member['user_id']) }}"
+                          class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
+                          onsubmit="return confirm('Impersonate {{ $member['email'] ?? $member['user_id'] }}? Everything you do will be logged.');">
+                        @csrf
+                        <input type="hidden" name="organization" value="{{ $org['id'] }}">
+                        <input type="text" name="reason" required maxlength="200"
+                               placeholder="Reason for access"
+                               class="input text-xs" style="max-width:12rem"
+                               aria-label="Reason for impersonating {{ $member['email'] ?? $member['user_id'] }}">
+                        <button type="submit" class="btn btn-ghost text-xs" wire:loading.attr="disabled">Impersonate</button>
+                    </form>
+                @endif
             </div>
         @empty
             <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">No members in this organization.</div>
