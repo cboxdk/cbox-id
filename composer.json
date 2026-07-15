@@ -10,7 +10,7 @@
         "cboxdk/dns": "^0.1",
         "cboxdk/laravel-dns": "^0.1.0",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^0.11",
+        "cboxdk/laravel-id": "^0.12",
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-queue-metrics": "^3.2",
         "cboxdk/laravel-risk": "^1.0",
