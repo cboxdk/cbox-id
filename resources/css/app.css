@@ -99,13 +99,13 @@
         --card-foreground: oklch(0.965 0.006 90);
         --popover: oklch(0.245 0.011 80);
         --primary: oklch(0.65 0.18 258);
-        --primary-foreground: oklch(0.16 0.01 250);
+        --primary-foreground: oklch(0.99 0.01 250);
         --secondary: oklch(0.285 0.012 80);
         --secondary-foreground: oklch(0.955 0.006 90);
         --muted-color: oklch(0.275 0.012 80);
         --muted-foreground: oklch(0.70 0.016 85);
         --accent: oklch(0.65 0.18 258);
-        --accent-foreground: oklch(0.16 0.01 250);
+        --accent-foreground: oklch(0.99 0.01 250);
         --accent-soft: oklch(0.65 0.18 258 / 0.18);
         --accent-edge: oklch(0.65 0.18 258 / 0.42);
         --success: oklch(0.74 0.16 145);
@@ -142,13 +142,13 @@
     --card-foreground: oklch(0.965 0.006 90);
     --popover: oklch(0.245 0.011 80);
     --primary: oklch(0.65 0.18 258);
-    --primary-foreground: oklch(0.16 0.01 250);
+    --primary-foreground: oklch(0.99 0.01 250);
     --secondary: oklch(0.285 0.012 80);
     --secondary-foreground: oklch(0.955 0.006 90);
     --muted-color: oklch(0.275 0.012 80);
     --muted-foreground: oklch(0.70 0.016 85);
     --accent: oklch(0.65 0.18 258);
-    --accent-foreground: oklch(0.16 0.01 250);
+    --accent-foreground: oklch(0.99 0.01 250);
     --accent-soft: oklch(0.65 0.18 258 / 0.18);
     --accent-edge: oklch(0.65 0.18 258 / 0.42);
     --success: oklch(0.74 0.16 145);
@@ -511,13 +511,15 @@
             radial-gradient(120% 80% at 50% -10%, var(--accent-soft) 0%, transparent 60%),
             var(--canvas);
     }
+    /* Branded hero — a consistent DEEP blue in both light and dark, always with
+     * near-white text (never tied to --primary, which lightens in dark mode). */
     .auth-hero {
         position: relative;
         isolation: isolate;
         background:
-            radial-gradient(90% 60% at 15% 0%, color-mix(in oklch, #fff 18%, var(--primary)) 0%, transparent 55%),
-            linear-gradient(160deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 62%, #05060a) 100%);
-        color: var(--primary-foreground);
+            radial-gradient(90% 60% at 15% 0%, color-mix(in oklch, #fff 18%, oklch(0.45 0.16 258)) 0%, transparent 55%),
+            linear-gradient(160deg, oklch(0.45 0.16 258) 0%, color-mix(in oklch, oklch(0.45 0.16 258) 62%, #05060a) 100%);
+        color: oklch(0.985 0.005 250);
     }
     .auth-hero::before {
         content: ''; position: absolute; inset: 0; z-index: -1;
