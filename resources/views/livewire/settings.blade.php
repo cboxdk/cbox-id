@@ -211,11 +211,44 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             && $model::query()->whereKey($subjectId)->value('password') !== null;
     }
 
+    /**
+     * A validated "return to your app" target, when this page was reached via a
+     * client SDK profile redirect (`?return_to=`). Only a well-formed absolute https
+     * URL (or http on localhost for dev) is offered, and only as a clickable link
+     * showing its host — never an automatic redirect — so it can't be an open-redirect
+     * or phishing vector.
+     *
+     * @return array{url: string, host: string}|null
+     */
+    private function validReturnTo(): ?array
+    {
+        $url = request()->query('return_to');
+
+        if (! is_string($url)) {
+            return null;
+        }
+
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $isLocal = in_array($parts['host'], ['localhost', '127.0.0.1'], true);
+
+        if ($parts['scheme'] !== 'https' && ! ($isLocal && $parts['scheme'] === 'http')) {
+            return null;
+        }
+
+        return ['url' => $url, 'host' => $parts['host']];
+    }
+
     public function with(): array
     {
         $me = app(CurrentUser::class);
 
         return [
+            'returnTo' => $this->validReturnTo(),
             'me' => $me,
             'org' => $me->organization(),
             'session' => $me->session(),
@@ -238,6 +271,12 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 }; ?>
 
 <div class="space-y-6">
+    @if ($returnTo)
+        <a href="{{ $returnTo['url'] }}" class="inline-flex items-center gap-2 text-sm font-medium" style="color:var(--accent)">
+            <x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" /> Return to {{ $returnTo['host'] }}
+        </a>
+    @endif
+
     <div class="cbx-page-header">
         <div>
             <p class="cbx-page-eyebrow">Account</p>
