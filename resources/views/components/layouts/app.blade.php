@@ -96,8 +96,9 @@
 
     {{-- ═══ TIER 1 — icon rail (desktop). 52px icons; expands in-flow to 210px when
          pinned via the always-visible toggle in the rail foot. ═══ --}}
-    <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned }" aria-label="Areas">
-        <div class="cbx-rail-hd" :style="pinned ? '' : 'justify-content:center'">
+    <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned || hover }"
+           @mouseenter="hover = true" @mouseleave="hover = false" aria-label="Areas">
+        <div class="cbx-rail-hd">
             <a href="{{ route('dashboard') }}" class="cbx-rail-brand" aria-label="{{ config('cbox-id.branding.name', 'Cbox ID') }}" title="{{ config('cbox-id.branding.name', 'Cbox ID') }}">
                 <svg viewBox="0 0 64 64" role="img" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)"/><text x="32" y="44" text-anchor="middle" fill="var(--primary-foreground)" font-family="var(--font-display)" font-weight="700" font-size="30" letter-spacing="-0.04em">ID</text></svg>
             </a>
@@ -115,9 +116,7 @@
 
         <div class="cbx-rail-foot">
             <button type="button" class="cbx-railitem" @click="togglePin()" :title="pinned ? 'Collapse navigation' : 'Expand navigation'" aria-label="Toggle navigation width">
-                <span class="inline-flex items-center justify-center shrink-0" style="width:18px;height:18px;transition:transform 150ms var(--ease)" :style="pinned ? 'transform:rotate(90deg)' : 'transform:rotate(-90deg)'">
-                    <x-icon name="chevron" class="w-[18px] h-[18px]" />
-                </span>
+                <span class="cbx-navtoggle-ico"><x-icon name="chevron" class="w-[18px] h-[18px]" /></span>
                 <span class="lbl">Collapse</span>
             </button>
             <button type="button" class="cbx-railitem" @click="account=!account" title="{{ $me->name() }}" aria-haspopup="true" :aria-expanded="account">
@@ -141,6 +140,9 @@
             </div>
         </div>
     </aside>
+    {{-- Reserves the collapsed floating rail's 52px+insets of flow space so opening
+         it as an overlay never pushes the page (hidden when pinned/in-flow). --}}
+    <div class="cbx-rail-spacer" aria-hidden="true"></div>
 
     {{-- ═══ TIER 2 — contextual subnav (desktop, multi-page areas only) ═══ --}}
     @if ($showSubnav)

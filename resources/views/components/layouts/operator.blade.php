@@ -39,14 +39,15 @@
 
 <div class="flex h-full" x-data="{
         pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
-        mobile: false, account: false, env: false,
+        mobile: false, account: false, env: false, hover: false,
         togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; }
      }"
      @keydown.escape.window="mobile=false;account=false;env=false">
 
     {{-- ═══ TIER 1 — operator icon rail ═══ --}}
-    <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned }" aria-label="Operator areas">
-        <div class="cbx-rail-hd" :style="pinned ? '' : 'justify-content:center'">
+    <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned || hover }"
+           @mouseenter="hover = true" @mouseleave="hover = false" aria-label="Operator areas">
+        <div class="cbx-rail-hd">
             <a href="{{ route('operator.environments') }}" class="cbx-rail-brand" title="Operator console" aria-label="Operator console">
                 <svg viewBox="0 0 64 64" role="img" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="var(--foreground)"/><text x="32" y="44" text-anchor="middle" fill="var(--background)" font-family="var(--font-display)" font-weight="700" font-size="30" letter-spacing="-0.04em">OP</text></svg>
             </a>
@@ -64,9 +65,7 @@
 
         <div class="cbx-rail-foot">
             <button type="button" class="cbx-railitem" @click="togglePin()" :title="pinned ? 'Collapse navigation' : 'Expand navigation'" aria-label="Toggle navigation width">
-                <span class="inline-flex items-center justify-center shrink-0" style="width:18px;height:18px;transition:transform 150ms var(--ease)" :style="pinned ? 'transform:rotate(90deg)' : 'transform:rotate(-90deg)'">
-                    <x-icon name="chevron" class="w-[18px] h-[18px]" />
-                </span>
+                <span class="cbx-navtoggle-ico"><x-icon name="chevron" class="w-[18px] h-[18px]" /></span>
                 <span class="lbl">Collapse</span>
             </button>
             <button type="button" class="cbx-railitem" @click="account=!account" title="{{ $operator?->name ?? $operator?->email }}" aria-haspopup="true" :aria-expanded="account">
@@ -90,6 +89,9 @@
             </div>
         </div>
     </aside>
+    {{-- Reserves the collapsed floating rail's flow space so opening it as an overlay
+         never pushes the page (hidden when pinned/in-flow). --}}
+    <div class="cbx-rail-spacer" aria-hidden="true"></div>
 
     {{-- ═══ Mobile drawer ═══ --}}
     <div class="lg:hidden" x-cloak>

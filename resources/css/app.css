@@ -612,8 +612,11 @@
     .cbx-nav-group { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 10px 4px; margin: 0; }
 
     /* ── TIER 1: icon rail (Intercom 3-state model). Active = filled bg; NO left-edge rail. */
-    .cbx-rail { width: 52px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 8px; box-sizing: border-box; position: relative; transition: width 180ms var(--ease), left 180ms var(--ease), top 180ms var(--ease), bottom 180ms var(--ease); overflow: hidden; }
-    .cbx-rail-hd { display: flex; align-items: center; justify-content: space-between; height: 34px; margin-bottom: 8px; flex-shrink: 0; }
+    .cbx-rail { width: 52px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 8px; box-sizing: border-box; position: relative; transition: width 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease); overflow: hidden; }
+    /* Header monogram is centred only in the collapsed strip; left-aligned once the
+     * rail is expanded (pinned or hover-open) — CSS-driven so it never shifts on load. */
+    .cbx-rail-hd { display: flex; align-items: center; justify-content: center; height: 34px; margin-bottom: 8px; flex-shrink: 0; }
+    :root.cbx-nav-pinned .cbx-rail-hd, .cbx-rail.open .cbx-rail-hd { justify-content: space-between; }
     .cbx-rail-brand { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
     .cbx-rail-brand svg, .cbx-rail-brand img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .cbx-rail a, .cbx-rail button.cbx-railitem { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 9px; border-radius: 8px; text-decoration: none; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); margin-bottom: 2px; white-space: nowrap; width: 100%; box-sizing: border-box; background: transparent; border: 0; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
@@ -635,12 +638,34 @@
     :root.cbx-nav-pinned .cbx-rail a .lbl,
     :root.cbx-nav-pinned .cbx-rail button.cbx-railitem .lbl,
     :root.cbx-nav-pinned .cbx-rail .cbx-pin { opacity: 1; }
-    .cbx-rail.unpinned { position: fixed; left: 0; top: 0; bottom: 0; z-index: 70; }
-    .cbx-rail.unpinned.open { left: 6px; top: 6px; bottom: 6px; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
-    /* Floating overlay when an unpinned rail is hovered open (in-flow wrapper holds 52px). */
-    .cbx-rail--float { border-right-color: var(--border); border-radius: 0 12px 12px 0; box-shadow: 12px 0 32px -8px rgba(0, 0, 0, 0.16); }
-    .cbx-rail-spacer { width: 52px; flex-shrink: 0; }
+    /* Unpinned = a floating overlay card (Intercom 3-state). CLOSED and OPEN share
+     * identical geometry — same 6px inset, 12px radius, and 1px border BOX — so only
+     * the width, the border COLOUR and the shadow change on open; the icons/links do
+     * not move a single pixel. Driven by the SSR :root.cbx-nav-pinned class (from the
+     * cookie) so there is no hydration flash; hover adds .open. It floats over the
+     * content (a 64px spacer reserves the collapsed strip's flow), so opening it never
+     * pushes the page. */
+    :root:not(.cbx-nav-pinned) .cbx-rail {
+        position: fixed; left: 6px; top: 6px; bottom: 6px; z-index: 70;
+        width: 52px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        box-shadow: none;
+    }
+    :root:not(.cbx-nav-pinned) .cbx-rail.open {
+        width: 210px;
+        border-color: var(--border);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    }
+    .cbx-rail-spacer { display: none; }
+    @media (min-width: 1024px) {
+        :root:not(.cbx-nav-pinned) .cbx-rail-spacer { display: block; width: 64px; flex-shrink: 0; }
+    }
     .cbx-rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; position: relative; padding-top: 8px; }
+    /* Collapse/expand chevron — points right (expand) collapsed, left (collapse)
+     * expanded; CSS-driven so it never flips on hydration. */
+    .cbx-navtoggle-ico { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; transform: rotate(-90deg); transition: transform 150ms var(--ease); }
+    :root.cbx-nav-pinned .cbx-navtoggle-ico, .cbx-rail.open .cbx-navtoggle-ico { transform: rotate(90deg); }
 
     /* ── TIER 2: contextual subnav */
     .cbx-subnav { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); overflow: hidden; }
