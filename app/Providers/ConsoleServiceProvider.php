@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Platform\ConsoleCurrentContext;
+use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,6 +20,12 @@ use Illuminate\Support\ServiceProvider;
  */
 final class ConsoleServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Let plugins resolve the current org/user through console-kit's CurrentContext.
+        $this->app->bind(CurrentContext::class, ConsoleCurrentContext::class);
+    }
+
     public function boot(): void
     {
         $nav = Console::nav();

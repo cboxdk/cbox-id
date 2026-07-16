@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "621c8b4c256f5d7864038ba78153ca9e",
+    "content-hash": "63ce4a4d36d6a5790ecfa742f3894ff7",
     "packages": [
         {
             "name": "brick/math",
@@ -222,16 +222,16 @@
         },
         {
             "name": "cboxdk/laravel-console-kit",
-            "version": "v0.1.0",
+            "version": "v0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-console-kit.git",
-                "reference": "b68cb1132a31b287766f16e33b32c3d5a06a08d7"
+                "reference": "05950173f19519bd8eeda43b9f4533b196952590"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-console-kit/zipball/b68cb1132a31b287766f16e33b32c3d5a06a08d7",
-                "reference": "b68cb1132a31b287766f16e33b32c3d5a06a08d7",
+                "url": "https://api.github.com/repos/cboxdk/laravel-console-kit/zipball/05950173f19519bd8eeda43b9f4533b196952590",
+                "reference": "05950173f19519bd8eeda43b9f4533b196952590",
                 "shasum": ""
             },
             "require": {
@@ -277,9 +277,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-console-kit/issues",
-                "source": "https://github.com/cboxdk/laravel-console-kit/tree/v0.1.0"
+                "source": "https://github.com/cboxdk/laravel-console-kit/tree/v0.2.0"
             },
-            "time": "2026-07-16T11:56:46+00:00"
+            "time": "2026-07-16T12:49:58+00:00"
         },
         {
             "name": "cboxdk/laravel-dns",
