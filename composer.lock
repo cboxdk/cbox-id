@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "63ce4a4d36d6a5790ecfa742f3894ff7",
+    "content-hash": "49457b29a297a8c630a5ba131f0b6c1f",
     "packages": [
         {
             "name": "brick/math",
@@ -438,21 +438,22 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.17.1",
+            "version": "v0.19.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "77d57717e11fc63cc26a4ded99366d1c04898658"
+                "reference": "cd3e9d0150f071b099b09da73911cd394f1779f7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/77d57717e11fc63cc26a4ded99366d1c04898658",
-                "reference": "77d57717e11fc63cc26a4ded99366d1c04898658",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/cd3e9d0150f071b099b09da73911cd394f1779f7",
+                "reference": "cd3e9d0150f071b099b09da73911cd394f1779f7",
                 "shasum": ""
             },
             "require": {
                 "cboxdk/laravel-siem": "^0.1",
                 "cboxdk/laravel-ssrf": "^1.0",
+                "cboxdk/license": "^0.1",
                 "cboxdk/siem": "^0.1",
                 "ext-openssl": "*",
                 "ext-sodium": "*",
@@ -509,9 +510,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.17.1"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.19.0"
             },
-            "time": "2026-07-16T10:33:39+00:00"
+            "time": "2026-07-16T19:23:31+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",
@@ -853,16 +854,16 @@
         },
         {
             "name": "cboxdk/laravel-ssrf",
-            "version": "v1.0.2",
+            "version": "v1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-ssrf.git",
-                "reference": "3f56cc0bbd3c7127e34a4c28cb063a9eee71c95b"
+                "reference": "9595ef91ca4a995611019dd8bd4f1104938ac4cc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-ssrf/zipball/3f56cc0bbd3c7127e34a4c28cb063a9eee71c95b",
-                "reference": "3f56cc0bbd3c7127e34a4c28cb063a9eee71c95b",
+                "url": "https://api.github.com/repos/cboxdk/laravel-ssrf/zipball/9595ef91ca4a995611019dd8bd4f1104938ac4cc",
+                "reference": "9595ef91ca4a995611019dd8bd4f1104938ac4cc",
                 "shasum": ""
             },
             "require": {
@@ -921,7 +922,7 @@
                 "security": "https://github.com/cboxdk/laravel-ssrf/security/policy",
                 "source": "https://github.com/cboxdk/laravel-ssrf"
             },
-            "time": "2026-07-13T12:48:59+00:00"
+            "time": "2026-07-15T23:19:12+00:00"
         },
         {
             "name": "cboxdk/laravel-telemetry",
@@ -1015,6 +1016,70 @@
                 "source": "https://github.com/cboxdk/laravel-telemetry"
             },
             "time": "2026-07-13T13:38:34+00:00"
+        },
+        {
+            "name": "cboxdk/license",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/license.git",
+                "reference": "0ef7d1860118ab39a9af894ba82bd43c7500ac46"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/license/zipball/0ef7d1860118ab39a9af894ba82bd43c7500ac46",
+                "reference": "0ef7d1860118ab39a9af894ba82bd43c7500ac46",
+                "shasum": ""
+            },
+            "require": {
+                "ext-sodium": "*",
+                "firebase/php-jwt": "^7.1",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.18",
+                "pestphp/pest": "^3.5 || ^4.0",
+                "phpstan/phpstan": "^2.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\License\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Framework-agnostic, offline license core: mint and verify compact Ed25519-signed license artifacts (EdDSA JWTs) with entitlements, limits, deployment/domain binding, grace windows and signed revocation lists. The shared leaf both a billing issuer and a self-hosted verifier depend on.",
+            "homepage": "https://github.com/cboxdk/license",
+            "keywords": [
+                "Ed25519",
+                "EdDSA",
+                "crypto",
+                "entitlements",
+                "framework-agnostic",
+                "jwt",
+                "license",
+                "license-key",
+                "licensing",
+                "offline",
+                "php",
+                "revocation",
+                "signature"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/license/issues",
+                "source": "https://github.com/cboxdk/license/tree/v0.1.0"
+            },
+            "time": "2026-07-16T15:07:34+00:00"
         },
         {
             "name": "cboxdk/siem",
