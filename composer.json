@@ -1,14 +1,22 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "cboxdk/laravel-id-whitelabel",
-    "description": "Cbox ID whitelabel plugin (commercial) — per-tenant branding (palette, logo, favicon, app name, custom domain and email sender) for Cbox ID. Themes the console shell and hosted auth through laravel-console-kit's BrandingResolver, with zero host edits.",
-    "keywords": ["cbox", "identity", "whitelabel", "branding", "multi-tenant", "plugin", "laravel"],
+    "description": "Cbox ID whitelabel plugin (commercial) \u2014 per-tenant branding (palette, logo, favicon, app name, custom domain and email sender) for Cbox ID. Themes the console shell and hosted auth through laravel-console-kit's BrandingResolver, with zero host edits.",
+    "keywords": [
+        "cbox",
+        "identity",
+        "whitelabel",
+        "branding",
+        "multi-tenant",
+        "plugin",
+        "laravel"
+    ],
     "type": "library",
     "license": "proprietary",
     "require": {
         "php": "^8.4",
         "cboxdk/laravel-console-kit": "^0.2",
-        "cboxdk/laravel-id": "^0.17",
+        "cboxdk/laravel-id": "^0.19",
         "cboxdk/laravel-ssrf": "^1.0",
         "illuminate/contracts": "^12.0 || ^13.0",
         "illuminate/database": "^12.0 || ^13.0",
@@ -37,7 +45,13 @@
         "test": "pest",
         "license-check": "@php bin/check-licenses.php",
         "sbom": "@php bin/generate-sbom.php",
-        "qa": ["@lint", "@analyse", "@test", "@license-check", "@composer audit"]
+        "qa": [
+            "@lint",
+            "@analyse",
+            "@test",
+            "@license-check",
+            "@composer audit"
+        ]
     },
     "extra": {
         "laravel": {
