@@ -33,6 +33,8 @@
     <link rel="icon" href="/brand/favicon.ico" sizes="any">
     <title>{{ ($title ? $title.' · ' : '').'Operator · '.config('cbox-id.branding.name', 'Cbox ID') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Per-tenant console branding when the whitelabel plugin is installed; inert otherwise. --}}
+    @consoleBrandingStyle
 </head>
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
 <a href="#main-content" class="skip-link">Skip to content</a>

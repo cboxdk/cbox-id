@@ -7,6 +7,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($title ? $title.' · ' : '').config('cbox-id.branding.name', 'Cbox ID') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Per-tenant console branding when the whitelabel plugin is installed; inert otherwise. --}}
+    @consoleBrandingStyle
 </head>
 <body class="h-full" style="background:var(--bg);color:var(--text)">
     <div class="min-h-full flex flex-col">

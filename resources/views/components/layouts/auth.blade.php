@@ -16,6 +16,8 @@
     @if ($brandColor)
         <style>:root{--accent:{{ $brandColor }};--ring:{{ $brandColor }}}</style>
     @endif
+    {{-- Full per-tenant palette when the whitelabel plugin is installed; inert otherwise. --}}
+    @consoleBrandingStyle
 </head>
 <body class="h-full" style="color:var(--text)">
     <div class="min-h-full grid lg:grid-cols-[1fr_minmax(0,44%)] xl:grid-cols-[1fr_minmax(0,40%)]">
