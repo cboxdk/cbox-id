@@ -35,6 +35,9 @@ jobs:
       - name: Build assets
         run: npm run build
 
+      - name: Install Playwright browser (for Pest 4 browser tests)
+        run: npx playwright install --with-deps chromium
+
       - name: Prepare environment
         run: |
           cp .env.example .env || true
@@ -46,5 +49,5 @@ jobs:
       - name: Static analysis (PHPStan/Larastan)
         run: vendor/bin/phpstan analyse --no-progress
 
-      - name: Tests (Pest, incl. axe-core a11y regression)
+      - name: Tests (Pest — feature, axe-core a11y, and real-browser smoke)
         run: vendor/bin/pest
