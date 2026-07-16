@@ -203,7 +203,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO providers'])] class exte
                 <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
                 <h3>SAML identity provider is an Enterprise feature</h3>
                 <p>
-                    Acting as the SAML IdP that your applications federate to is available on the Enterprise plan.
+                    Turning this platform into the SAML identity provider your applications federate to is available on the Enterprise plan.
                     Contact your account team to enable it for this organization.
                 </p>
             </div>
