@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
-use App\Platform\PlatformAuth;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
@@ -148,21 +147,27 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $this->codeChallengeMethod = $codeChallengeMethod;
         $this->nonce = is_string($nonceParam) ? $nonceParam : null;
 
-        // OIDC `prompt` handling. `login`/`select_account` force a fresh sign-in so
-        // the subject can authenticate as a *different* Cbox ID account (there is one
-        // active session today; a multi-account picker is the follow-on). The resumed
-        // request carries reauthed=1 so re-entry after login doesn't loop — and it's a
-        // plain query URL, so it works even when the original request was pushed (PAR),
-        // whose single-use request_uri has already been consumed above.
+        // OIDC `prompt` handling. `select_account` sends the user to the account
+        // chooser (switch among the accounts signed in on this browser, or add one);
+        // `login` goes straight to add-another-account. Neither logs anyone out — the
+        // chosen/added account becomes active and the request resumes. The resumed
+        // request carries reauthed=1 so re-entry doesn't loop, and it's a plain query
+        // URL, so it works even when the original request was pushed (PAR), whose
+        // single-use request_uri has already been consumed above.
         $promptParam = $from('prompt', $prompt);
         $prompts = is_string($promptParam) ? array_values(array_filter(explode(' ', $promptParam))) : [];
         $isReauthed = in_array($from('reauthed', $reauthed), ['1', 'true'], true);
 
-        if (! $isReauthed
-            && (in_array('login', $prompts, true) || in_array('select_account', $prompts, true))) {
-            app(PlatformAuth::class)->logout($request);
+        if (! $isReauthed && in_array('select_account', $prompts, true)) {
             session()->put('url.intended', $this->resumeUrl());
-            $this->redirect(route('login'));
+            $this->redirect(route('accounts'));
+
+            return;
+        }
+
+        if (! $isReauthed && in_array('login', $prompts, true)) {
+            session()->put('url.intended', $this->resumeUrl());
+            $this->redirect(route('accounts.add'));
 
             return;
         }

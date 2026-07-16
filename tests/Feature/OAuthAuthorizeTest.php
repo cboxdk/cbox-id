@@ -81,7 +81,7 @@ it('rejects a redirect_uri not registered to the client', function () {
         ->assertSee('Authorization failed');
 });
 
-it('forces a fresh sign-in on prompt=login so a different account can be used', function () {
+it('routes prompt=login to add-another-account (no logout of the current one)', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
@@ -94,10 +94,10 @@ it('forces a fresh sign-in on prompt=login so a different account can be used', 
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
         'prompt' => 'login',
-    ])->assertRedirect(route('login'));
+    ])->assertRedirect(route('accounts.add'));
 });
 
-it('shows the account picker path on prompt=select_account', function () {
+it('routes prompt=select_account to the account chooser', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
@@ -110,7 +110,7 @@ it('shows the account picker path on prompt=select_account', function () {
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
         'prompt' => 'select_account',
-    ])->assertRedirect(route('login'));
+    ])->assertRedirect(route('accounts'));
 });
 
 it('does not re-prompt once re-authenticated (loop guard)', function () {

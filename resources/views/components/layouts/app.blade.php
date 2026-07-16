@@ -133,6 +133,9 @@
                     <p style="font-size:13px;font-weight:600;margin:0" class="truncate">{{ $me->name() }}</p>
                     <p style="font-size:12px;color:var(--muted-foreground);margin:2px 0 0" class="truncate">{{ $me->email() }}</p>
                 </div>
+                <a href="{{ route('accounts') }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
+                    <x-icon name="refresh" class="w-4 h-4" /> Switch account
+                </a>
                 <button type="button" data-theme-toggle class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
                     <x-icon name="moon" class="w-4 h-4" /> Toggle theme
                 </button>

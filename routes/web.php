@@ -101,6 +101,13 @@ Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('por
  */
 Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
+
+    // Multi-account: choose/switch among accounts signed in on this browser, or add
+    // another. /accounts/add reuses the login screen but for an already-authenticated
+    // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
+    Volt::route('/accounts', 'auth.accounts')->name('accounts');
+    Volt::route('/accounts/add', 'auth.login')->name('accounts.add');
+
     Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
