@@ -81,6 +81,71 @@ it('rejects a redirect_uri not registered to the client', function () {
         ->assertSee('Authorization failed');
 });
 
+it('forces a fresh sign-in on prompt=login so a different account can be used', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+
+    Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'login',
+    ])->assertRedirect(route('login'));
+});
+
+it('shows the account picker path on prompt=select_account', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+
+    Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'select_account',
+    ])->assertRedirect(route('login'));
+});
+
+it('does not re-prompt once re-authenticated (loop guard)', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+
+    Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'login',
+        'reauthed' => '1',
+    ])->assertSet('error', null)->assertNoRedirect();
+});
+
+it('returns interaction_required on prompt=none when consent would be shown', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id); // third-party by default → needs consent
+
+    Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'none',
+    ])->assertRedirect('https://app.test/cb?error=interaction_required&error_description=User+interaction+is+required+to+authorize+this+request.&state=xyz');
+});
+
 it('locks validated request parameters so the browser cannot tamper with them between requests', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);

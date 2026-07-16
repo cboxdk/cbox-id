@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
@@ -64,6 +65,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         ?string $code_challenge = null,
         ?string $code_challenge_method = null,
         ?string $nonce = null,
+        ?string $prompt = null,
+        ?string $reauthed = null,
         ?string $request_uri = null,
     ): void {
         $request = request();
@@ -145,6 +148,25 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $this->codeChallengeMethod = $codeChallengeMethod;
         $this->nonce = is_string($nonceParam) ? $nonceParam : null;
 
+        // OIDC `prompt` handling. `login`/`select_account` force a fresh sign-in so
+        // the subject can authenticate as a *different* Cbox ID account (there is one
+        // active session today; a multi-account picker is the follow-on). The resumed
+        // request carries reauthed=1 so re-entry after login doesn't loop — and it's a
+        // plain query URL, so it works even when the original request was pushed (PAR),
+        // whose single-use request_uri has already been consumed above.
+        $promptParam = $from('prompt', $prompt);
+        $prompts = is_string($promptParam) ? array_values(array_filter(explode(' ', $promptParam))) : [];
+        $isReauthed = in_array($from('reauthed', $reauthed), ['1', 'true'], true);
+
+        if (! $isReauthed
+            && (in_array('login', $prompts, true) || in_array('select_account', $prompts, true))) {
+            app(PlatformAuth::class)->logout($request);
+            session()->put('url.intended', $this->resumeUrl());
+            $this->redirect(route('login'));
+
+            return;
+        }
+
         // First-party consent-skip: an org's own trusted app — or a platform-owned
         // first-party client — authorizes without a prompt. STRICTLY org-scoped: a
         // first-party client owned by ANOTHER org still prompts, so it can never
@@ -155,9 +177,41 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $skipConsent = $client->first_party === true
             && ($client->organization_id === null || $client->organization_id === $userOrgId);
 
+        // prompt=none: no UI is permitted. If we could authorize silently (a trusted
+        // first-party client), do so; otherwise return the OIDC error to the client
+        // rather than showing the consent screen.
+        if (in_array('none', $prompts, true) && ! $skipConsent) {
+            $this->redirect($this->buildRedirect(array_filter([
+                'error' => 'interaction_required',
+                'error_description' => 'User interaction is required to authorize this request.',
+                'state' => $this->state,
+            ], static fn (?string $v): bool => $v !== null)));
+
+            return;
+        }
+
         if ($skipConsent) {
             $this->approve($codes, $clients);
         }
+    }
+
+    /**
+     * Rebuild this authorization request as a plain query URL to resume after a
+     * re-authentication prompt — without `prompt` and with a loop guard.
+     */
+    private function resumeUrl(): string
+    {
+        return route('oauth.authorize', array_filter([
+            'client_id' => $this->clientId,
+            'redirect_uri' => $this->redirectUri,
+            'response_type' => 'code',
+            'scope' => implode(' ', $this->scopes),
+            'state' => $this->state,
+            'code_challenge' => $this->codeChallenge,
+            'code_challenge_method' => $this->codeChallengeMethod,
+            'nonce' => $this->nonce,
+            'reauthed' => '1',
+        ], static fn (?string $v): bool => $v !== null && $v !== ''));
     }
 
     public function approve(AuthorizationCodes $codes, ClientRegistry $clients): void
