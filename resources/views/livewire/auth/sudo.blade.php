@@ -44,22 +44,29 @@ new #[Layout('components.layouts.app', ['title' => 'Confirm it\'s you'])] class 
     }
 }; ?>
 
-<div>
-    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Confirm it's you</h1>
-    <p class="mt-2 text-sm" style="color:var(--muted)">
-        This is a protected action. Re-enter your password to continue.
-    </p>
+<div class="max-w-md">
+    <div class="mb-6">
+        <span class="grid place-items-center rounded-full mb-4" style="width:2.5rem;height:2.5rem;background:var(--accent-soft);color:var(--accent)">
+            <x-icon name="shield" class="w-5 h-5" />
+        </span>
+        <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Confirm it's you</h1>
+        <p class="mt-2 text-sm" style="color:var(--muted)">
+            This is a protected action. Re-enter your password to continue.
+        </p>
+    </div>
 
-    <form wire:submit="confirm" class="mt-7 space-y-4">
-        <div>
-            <label class="label" for="password">Password</label>
-            <input wire:model="password" id="password" type="password" autocomplete="current-password" class="input input-lg" autofocus>
-            @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-        </div>
+    <div class="card p-5">
+        <form wire:submit="confirm" class="space-y-4">
+            <div>
+                <label class="label" for="password">Password</label>
+                <input wire:model="password" id="password" type="password" autocomplete="current-password" class="input input-lg" autofocus>
+                @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            </div>
 
-        <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">
-            <span wire:loading.remove wire:target="confirm">Confirm</span>
-            <span wire:loading wire:target="confirm" class="inline-flex items-center gap-2"><span class="spinner"></span> Confirming…</span>
-        </button>
-    </form>
+            <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="confirm">Confirm</span>
+                <span wire:loading wire:target="confirm" class="inline-flex items-center gap-2"><span class="spinner"></span> Confirming…</span>
+            </button>
+        </form>
+    </div>
 </div>
