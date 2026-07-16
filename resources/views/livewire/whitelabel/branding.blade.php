@@ -124,7 +124,7 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
     }
 }; ?>
 
-<div class="mx-auto max-w-3xl px-4 py-8" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:24px">
     <header class="cbx-page-header">
         <div>
             <p class="cbx-page-eyebrow">White-label</p>
