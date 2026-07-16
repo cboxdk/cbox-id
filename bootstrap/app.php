@@ -3,6 +3,7 @@
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -75,6 +77,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.guest' => RedirectIfAuthenticated::class,
             'portal.session' => PortalSession::class,
             'sudo' => RequireSudo::class,
+            'scope' => RequireScope::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
