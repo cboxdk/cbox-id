@@ -52,7 +52,15 @@ import './bootstrap';
             body: JSON.stringify(body ?? {}),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Request failed');
+        if (!res.ok) {
+            // Sudo required: send the user to re-authenticate, then return here to
+            // continue — never a dead end. Halt this flow (we're navigating away).
+            if (res.status === 403 && data && typeof data.sudo === 'string') {
+                window.location.assign(data.sudo);
+                return new Promise(() => {});
+            }
+            throw new Error(data.error || 'Request failed');
+        }
         return data;
     };
 

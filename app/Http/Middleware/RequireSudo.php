@@ -31,9 +31,16 @@ final class RequireSudo
         }
 
         // JSON/ceremony endpoints (passkey enrolment) can't follow a redirect; tell
-        // the client to re-authenticate. Don't record an intended URL for these —
-        // they are POST API calls, not navigable pages.
+        // the client where to re-authenticate. Record the PAGE that made the call
+        // (the referer) — not the POST endpoint — so sudo returns the user to where
+        // they were to finish the action.
         if ($request->expectsJson() || $request->ajax()) {
+            $referer = $request->headers->get('referer');
+
+            if (is_string($referer) && $referer !== '' && str_starts_with($referer, $request->schemeAndHttpHost())) {
+                $request->session()->put('sudo.intended', $referer);
+            }
+
             return new JsonResponse([
                 'error' => 'Confirm your identity first — re-enter your password, then try again.',
                 'sudo' => route('sudo'),

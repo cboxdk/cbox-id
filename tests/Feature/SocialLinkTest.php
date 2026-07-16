@@ -56,7 +56,7 @@ it('shows connected accounts and lets a user disconnect one', function () {
     // Disconnecting is sensitive → confirm step-up. The account keeps its password,
     // so the last-factor guard allows the unlink.
     app(Sudo::class)->confirm();
-    Volt::test('settings')
+    Volt::test('account')
         ->assertSee('Connected accounts')
         ->call('unlinkProvider', 'google');
 

@@ -30,7 +30,7 @@ it('issues recovery codes when the user enables 2FA', function (): void {
     // Enabling 2FA is a sensitive action (it overwrites any existing factor) —
     // confirm the step-up first.
     app(Sudo::class)->confirm();
-    $component = Volt::test('settings')->call('enable');
+    $component = Volt::test('account')->call('enable');
     $secret = $component->get('secret');
 
     $component->set('code', app(TotpAuthenticator::class)->codeAt($secret, time()))
@@ -48,7 +48,7 @@ it('regenerates recovery codes and invalidates the old set', function (): void {
 
     // Enable 2FA first (recovery requires a confirmed factor). Sensitive → step-up.
     app(Sudo::class)->confirm();
-    $component = Volt::test('settings')->call('enable');
+    $component = Volt::test('account')->call('enable');
     $secret = $component->get('secret');
     $component->set('code', app(TotpAuthenticator::class)->codeAt($secret, time()))->call('confirm');
 

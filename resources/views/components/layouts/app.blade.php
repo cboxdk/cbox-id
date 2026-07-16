@@ -47,7 +47,14 @@
         'directories' => 'scim', 'provisioning' => 'scim',
     ];
 
+    // Role gate: a plain member sees only their overview (with the app launcher) and
+    // their own account. Everything else is organization administration, shown to
+    // admins/owners. Plugin areas (billing, connectors, …) are admin surfaces too.
+    $isConsoleAdmin = \Cbox\Console\Kit\Facades\Console::context()->isAdmin();
+    $memberAreas = ['overview', 'account'];
+
     $areas = collect(\Cbox\Console\Kit\Facades\Console::nav()->areas())
+        ->reject(fn ($area): bool => ! $isConsoleAdmin && ! in_array($area->key, $memberAreas, true))
         ->map(fn ($area): array => [
             'key' => $area->key,
             'label' => $area->label,
@@ -119,9 +126,10 @@
         </nav>
 
         <div class="cbx-rail-foot">
-            <button type="button" class="cbx-railitem" @click="togglePin()" :title="pinned ? 'Collapse navigation' : 'Expand navigation'" aria-label="Toggle navigation width">
-                <span class="cbx-navtoggle-ico"><x-icon name="chevron" class="w-[18px] h-[18px]" /></span>
-                <span class="lbl">Collapse</span>
+            <button type="button" class="cbx-railitem cbx-pintoggle" :class="{ 'is-pinned': pinned }" @click="togglePin()"
+                    :title="pinned ? 'Unpin navigation' : 'Pin navigation open'" :aria-pressed="pinned" aria-label="Pin navigation">
+                <x-icon name="pin" class="w-[18px] h-[18px]" />
+                <span class="lbl" x-text="pinned ? 'Unpin' : 'Pin'">Pin</span>
             </button>
             <button type="button" class="cbx-railitem" @click="account=!account" title="{{ $me->name() }}" aria-haspopup="true" :aria-expanded="account">
                 <span class="cbx-avatar" aria-hidden="true">{{ $userInitial }}</span>
@@ -133,6 +141,9 @@
                     <p style="font-size:13px;font-weight:600;margin:0" class="truncate">{{ $me->name() }}</p>
                     <p style="font-size:12px;color:var(--muted-foreground);margin:2px 0 0" class="truncate">{{ $me->email() }}</p>
                 </div>
+                <a href="{{ route('account') }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
+                    <x-icon name="key" class="w-4 h-4" /> My account
+                </a>
                 <a href="{{ route('accounts') }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
                     <x-icon name="refresh" class="w-4 h-4" /> Switch account
                 </a>

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AppLauncher;
 use App\Platform\CurrentUser;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -25,6 +26,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
 
         return [
             'me' => $me,
+            'apps' => app(AppLauncher::class)->apps(),
             'memberCount' => $orgId !== null ? app(Memberships::class)->forOrganization($orgId)->count() : 0,
             'ssoActive' => $connection !== null,
             'recent' => $recent,
@@ -69,8 +71,29 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
     <x-page-header :title="'Welcome back, '.\Illuminate\Support\Str::before($me->name(), ' ')"
                    subtitle="Here's what's happening across {{ $me->organization()?->name ?? 'your organization' }}." />
 
-    {{-- Plugins (billing, …) contribute cards here — nothing renders without one. --}}
-    @consoleSlot('console.dashboard.cards')
+    @if (count($apps) > 0)
+        <section class="mb-6">
+            <h2 class="text-xs font-medium uppercase tracking-wide mb-3" style="color:var(--muted)">Your apps</h2>
+            <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                @foreach ($apps as $app)
+                    <a href="{{ $app['url'] }}" class="card p-4 flex items-center gap-3 transition hover:border-[var(--accent)]" style="text-decoration:none">
+                        <span class="cbx-avatar shrink-0" aria-hidden="true">{{ $app['initial'] }}</span>
+                        <span class="min-w-0">
+                            <span class="block truncate font-medium" style="color:var(--foreground)">{{ $app['name'] }}</span>
+                            <span class="block truncate text-xs" style="color:var(--muted)">{{ $app['host'] }}</span>
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if ($me->isAdmin())
+    {{-- Plugins (billing, …) contribute cards here; each returns a `.card` block, so
+         they tile as a responsive row alongside the native stat cards below. --}}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&:empty]:hidden mb-4">
+        @consoleSlot('console.dashboard.cards')
+    </div>
 
     <div class="grid gap-4 sm:grid-cols-3">
         <div class="card p-5">
@@ -143,4 +166,20 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
             </ul>
         </div>
     </div>
+    @else
+        {{-- Member overview: their apps (above) plus a nudge to their own security.
+             Org stats, the org-wide audit feed and the setup checklist are admin
+             surfaces — a plain member neither manages nor needs to see them. --}}
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div class="card p-5">
+                <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="shield" class="w-4 h-4" /> Your role</div>
+                <p class="mt-2 text-lg font-semibold">{{ ucfirst($me->role() ?? 'member') }}<span style="color:var(--muted);font-weight:400"> · {{ $me->organization()?->name }}</span></p>
+            </div>
+            <div class="card p-5 flex flex-col">
+                <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="key" class="w-4 h-4" /> Your security</div>
+                <p class="mt-2 text-sm" style="color:var(--foreground)">Add a passkey or two-factor authentication to keep your account safe.</p>
+                <a href="{{ route('account') }}" class="btn btn-primary btn-sm mt-3 self-start">Manage security</a>
+            </div>
+        </div>
+    @endif
 </div>

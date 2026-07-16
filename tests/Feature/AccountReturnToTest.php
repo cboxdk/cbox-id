@@ -26,7 +26,7 @@ function signInUserHttp(): void
 it('offers a return link for a safe https return_to (client SDK profile redirect)', function (): void {
     signInUserHttp();
 
-    $this->get('/settings?return_to='.urlencode('https://app.acme.com/dashboard'))
+    $this->get('/account?return_to='.urlencode('https://app.acme.com/dashboard'))
         ->assertOk()
         ->assertSee('Return to app.acme.com');
 });
@@ -34,7 +34,7 @@ it('offers a return link for a safe https return_to (client SDK profile redirect
 it('never renders a return link for an unsafe return_to (no open redirect)', function (string $unsafe): void {
     signInUserHttp();
 
-    $this->get('/settings?return_to='.urlencode($unsafe))
+    $this->get('/account?return_to='.urlencode($unsafe))
         ->assertOk()
         ->assertDontSee('Return to', false);
 })->with([

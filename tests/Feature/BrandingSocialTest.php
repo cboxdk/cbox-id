@@ -2,7 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
 it('lets an admin set org branding and themes the branded login page', function () {
@@ -30,10 +36,37 @@ it('rejects an invalid brand colour', function () {
     Volt::test('settings')->set('brandColor', 'red')->call('saveBranding')->assertHasErrors('brandColor');
 });
 
-it('forbids a non-admin from changing branding', function () {
-    actingAsRole('member');
+it('redirects a member away from org settings to their own account', function () {
+    // A full HTTP sign-in (web session key, not just the Volt component context) so
+    // GET /settings runs the real middleware + component mount as this member.
+    $subject = app(Subjects::class)->create('plainmember@acme.test', 'Member', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-plain'));
+    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+    app(CurrentUser::class)->set($subject, $session, $org, 'member');
 
-    Volt::test('settings')->set('brandColor', '#000000')->call('saveBranding')->assertForbidden();
+    // The member/admin split is enforced at the door: a member who lands on the
+    // admin settings surface is sent to their own security centre, so they never
+    // reach the (admin-gated) branding or rename controls in the first place.
+    $this->get('/settings')->assertRedirect(route('account'));
+});
+
+it('lets an admin rename their organization', function () {
+    [, $org] = actingAsRole('owner');
+
+    Volt::test('settings')
+        ->set('orgName', 'Acme Rocketry')
+        ->call('rename')
+        ->assertHasNoErrors();
+
+    expect(app(Organizations::class)->find($org->id)?->name)->toBe('Acme Rocketry');
+});
+
+it('rejects an empty organization name', function () {
+    actingAsRole('owner');
+
+    Volt::test('settings')->set('orgName', '')->call('rename')->assertHasErrors('orgName');
 });
 
 it('hides social buttons and 404s providers when none are configured', function () {

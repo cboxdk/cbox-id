@@ -61,5 +61,10 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('settings', 'Settings', 'settings', 70)
             ->page('settings', 'Settings', order: 10);
+
+        // Every user's own security — shown to members and admins alike (the app
+        // layout gates the admin-only areas above by role, this one is universal).
+        $nav->area('account', 'My account', 'key', 90)
+            ->page('account', 'Security', order: 10);
     }
 }

@@ -28,7 +28,7 @@ it('signs out every other session but keeps the current one', function (): void 
     app(CurrentUser::class)->set($subject, $current, $org, 'owner');
     app(Sudo::class)->confirm(); // sensitive action
 
-    Volt::test('settings')->call('signOutOtherSessions')->assertHasNoErrors();
+    Volt::test('account')->call('signOutOtherSessions')->assertHasNoErrors();
 
     // Current stays active; the two others are revoked.
     expect(Session::query()->whereKey($current->id)->value('revoked_at'))->toBeNull()
@@ -45,7 +45,7 @@ it('requires step-up before signing out other sessions', function (): void {
     app(CurrentUser::class)->set($subject, $current, $org, 'owner');
 
     // No sudo confirmation -> redirected, nothing revoked.
-    Volt::test('settings')->call('signOutOtherSessions')->assertRedirect(route('sudo'));
+    Volt::test('account')->call('signOutOtherSessions')->assertRedirect(route('sudo'));
 
     expect(Session::query()->whereKey($other->id)->value('revoked_at'))->toBeNull();
 });

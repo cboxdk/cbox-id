@@ -30,11 +30,11 @@ function signIn(): string
 it('redirects a sensitive action to sudo when not recently confirmed', function (): void {
     signIn();
 
-    Volt::test('settings')
+    Volt::test('account')
         ->call('regenerateRecoveryCodes')
         ->assertRedirect(route('sudo'));
 
-    expect(session()->get('sudo.intended'))->toBe(route('settings'));
+    expect(session()->get('sudo.intended'))->toBe(route('account'));
 });
 
 it('performs the sensitive action once sudo is confirmed', function (): void {
@@ -43,7 +43,7 @@ it('performs the sensitive action once sudo is confirmed', function (): void {
 
     // 2FA must be enabled for recovery codes; enable it inline first (sudo is
     // already fresh above, so the now-gated enable/confirm proceed).
-    $component = Volt::test('settings')->call('enable');
+    $component = Volt::test('account')->call('enable');
     $secret = $component->get('secret');
     $component->set('code', app(TotpAuthenticator::class)->codeAt($secret, time()))->call('confirm');
 
@@ -57,14 +57,14 @@ it('sends TOTP enrollment through sudo when not recently confirmed', function ()
 
     // enrollTotp overwrites any existing secret — it must not run from a stale
     // session. Without a fresh step-up, the action redirects to re-auth.
-    Volt::test('settings')->call('enable')->assertRedirect(route('sudo'));
+    Volt::test('account')->call('enable')->assertRedirect(route('sudo'));
 });
 
 it('sends provider unlink through sudo when not recently confirmed', function (): void {
     $id = signIn();
     app(Subjects::class)->link($id, new FederatedPrincipal('social:google', 'google|1'));
 
-    Volt::test('settings')->call('unlinkProvider', 'google')->assertRedirect(route('sudo'));
+    Volt::test('account')->call('unlinkProvider', 'google')->assertRedirect(route('sudo'));
 });
 
 it('refuses to unlink a user\'s only sign-in method', function (): void {
@@ -77,7 +77,7 @@ it('refuses to unlink a user\'s only sign-in method', function (): void {
     app(Subjects::class)->link($subject->id, new FederatedPrincipal('social:google', 'google|1'));
     app(Sudo::class)->confirm();
 
-    Volt::test('settings')
+    Volt::test('account')
         ->call('unlinkProvider', 'google')
         ->assertHasErrors('unlink');
 
@@ -90,7 +90,7 @@ it('allows unlinking when another sign-in method remains', function (): void {
     app(Subjects::class)->link($id, new FederatedPrincipal('social:google', 'google|1'));
     app(Sudo::class)->confirm();
 
-    Volt::test('settings')
+    Volt::test('account')
         ->call('unlinkProvider', 'google')
         ->assertHasNoErrors();
 

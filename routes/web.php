@@ -108,6 +108,10 @@ Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(f
     Volt::route('/accounts', 'auth.accounts')->name('accounts');
     Volt::route('/accounts/add', 'auth.login')->name('accounts.add');
 
+    // My account — every user's self-service security center (password, 2FA,
+    // passkeys, sessions). Available to members and admins alike.
+    Volt::route('/account', 'account')->name('account');
+
     Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
