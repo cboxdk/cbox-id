@@ -5,7 +5,8 @@ use Cbox\Id\Compliance\Export\ExportAuditTrail;
 use Cbox\Id\Compliance\Models\AuditExportRun;
 use Cbox\Id\Compliance\Retention\RetentionPolicy;
 
-use function Livewire\Volt\{computed, state};
+use function Livewire\Volt\{computed, state, layout};
+layout('components.layouts.app');
 
 state(['subjectId' => '']);
 

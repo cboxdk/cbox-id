@@ -4,7 +4,8 @@ use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 
-use function Livewire\Volt\{computed, state};
+use function Livewire\Volt\{computed, state, layout};
+layout('components.layouts.app');
 
 state([
     'organizationId' => '',
