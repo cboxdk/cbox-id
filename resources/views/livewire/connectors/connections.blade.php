@@ -2,25 +2,31 @@
 
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-use function Livewire\Volt\{computed};
+new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extends Component
+{
+    #[Computed]
+    public function connections(): array
+    {
+        $organizationId = Console::context()->organizationId();
 
-$connections = computed(function () {
-    $organizationId = Console::context()->organizationId();
+        $rows = [];
+        foreach (app(ConnectionsOverview::class)->forOrganization($organizationId) as $summary) {
+            $rows[] = [
+                'category' => $summary->category->label(),
+                'name' => $summary->name,
+                'status' => $summary->status,
+                'target' => $summary->target,
+                'health' => $summary->health?->verdict(),
+            ];
+        }
 
-    $rows = [];
-    foreach (app(ConnectionsOverview::class)->forOrganization($organizationId) as $summary) {
-        $rows[] = [
-            'category' => $summary->category->label(),
-            'name' => $summary->name,
-            'status' => $summary->status,
-            'target' => $summary->target,
-            'health' => $summary->health?->verdict(),
-        ];
+        return $rows;
     }
-
-    return $rows;
-});
+};
 
 ?>
 

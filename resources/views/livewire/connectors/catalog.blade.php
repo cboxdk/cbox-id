@@ -3,10 +3,15 @@
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-use function Livewire\Volt\{computed};
-
-$catalog = computed(function () {
+new #[Layout('components.layouts.app', ['title' => 'Connectors'])] class extends Component
+{
+    #[Computed]
+    public function catalog(): array
+    {
     $organizationId = Console::context()->organizationId();
 
     $active = [];
@@ -29,7 +34,8 @@ $catalog = computed(function () {
     }
 
     return $types;
-});
+    }
+};
 
 ?>
 

@@ -60,7 +60,7 @@ final class ConnectorsServiceProvider extends ServiceProvider
         // Console — present whenever the plugin is installed and not switched off.
         Console::features()->register('connectors', fn (): bool => $this->connectorsEnabled());
 
-        Console::nav()->area('connectors', 'Connectors', 'plug', 70)
+        Console::nav()->area('connectors', 'Connectors', 'connections', 70)
             ->page('connectors.catalog', 'Catalog', feature: 'connectors', order: 10)
             ->page('connectors.connections', 'Connections', feature: 'connectors', order: 20);
 
