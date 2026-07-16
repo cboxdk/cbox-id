@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:d876d4e7-1bc2-4607-bde2-03f999281406",
+    "serialNumber": "urn:uuid:fd2c2b18-6e49-4619-ad17-e30d4ae2b512",
     "version": 1,
     "metadata": {
         "tools": [
@@ -69,11 +69,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.17.1",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.19.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.17.1",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.17.1",
+            "version": "v0.19.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.19.0",
             "description": "Cbox ID \u2014 self-hostable, Laravel-native identity platform (framework). AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -107,6 +107,22 @@
             "version": "v1.1.0",
             "purl": "pkg:composer/cboxdk/laravel-ssrf@v1.1.0",
             "description": "Cbox SSRF \u2014 a hardened, config-driven guard against server-side request forgery for outbound URLs in Laravel. Blocks private/reserved/cloud-metadata targets, pins DNS, and refuses redirects.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/license@v0.1.0",
+            "group": "cboxdk",
+            "name": "license",
+            "version": "v0.1.0",
+            "purl": "pkg:composer/cboxdk/license@v0.1.0",
+            "description": "Framework-agnostic, offline license core: mint and verify compact Ed25519-signed license artifacts (EdDSA JWTs) with entitlements, limits, deployment/domain binding, grace windows and signed revocation lists. The shared leaf both a billing issuer and a self-hosted verifier depend on.",
             "licenses": [
                 {
                     "license": {
