@@ -23,9 +23,21 @@ use Illuminate\Http\Request;
  */
 final class PlatformAuth
 {
+    // The active account's framework session id + org. Kept as the single source
+    // the auth middleware reads, so it always reflects whichever held account is
+    // active — the rest of the app is unaware of multi-account.
     public const SESSION_KEY = 'cbox.session';
 
     public const ORG_KEY = 'cbox.org';
+
+    // The set of concurrently signed-in accounts (Notion/Slack style): a map of
+    // subjectId => {session, org}. SESSION_KEY/ORG_KEY are the active one, derived.
+    public const ACCOUNTS_KEY = 'cbox.accounts';
+
+    public const ACTIVE_KEY = 'cbox.active';
+
+    // Bound the held set so the (cookie-backed) session can't grow without limit.
+    private const MAX_ACCOUNTS = 8;
 
     private const MFA_PENDING_KEY = 'cbox.mfa_pending';
 
@@ -210,13 +222,12 @@ final class PlatformAuth
         // (new device, geo-velocity) have a history to compare future logins against.
         $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
 
-        session()->put(self::SESSION_KEY, $session->id);
+        // Add (or refresh) this account and make it active, keeping any other
+        // signed-in accounts — so a second sign-in adds a switchable account
+        // rather than replacing the first.
+        $this->addAccount($subjectId, $session->id, $organizationId);
 
-        if ($organizationId !== null) {
-            session()->put(self::ORG_KEY, $organizationId);
-        }
-
-        // Rotate the id to defeat session fixation.
+        // Rotate the id to defeat session fixation (preserves the accounts set).
         session()->regenerate();
 
         $this->applyPendingLink($subjectId);
@@ -230,14 +241,10 @@ final class PlatformAuth
     {
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY]);
 
-        session()->put(self::SESSION_KEY, $session->id);
-
         $organizationId = $session->organization_id
             ?? $this->memberships->forUser($session->user_id)->value('organization_id');
 
-        if (is_string($organizationId)) {
-            session()->put(self::ORG_KEY, $organizationId);
-        }
+        $this->addAccount($session->user_id, $session->id, is_string($organizationId) ? $organizationId : null);
 
         session()->regenerate();
 
@@ -311,17 +318,207 @@ final class PlatformAuth
     public function switchOrganization(Request $request, string $organizationId): void
     {
         session()->put(self::ORG_KEY, $organizationId);
+
+        // Keep the active account's remembered org in sync, so switching accounts
+        // and back restores the org the user was in.
+        $accounts = $this->accountsMap();
+        $active = session()->get(self::ACTIVE_KEY);
+
+        if (is_string($active) && isset($accounts[$active])) {
+            $accounts[$active]['org'] = $organizationId;
+            session()->put(self::ACCOUNTS_KEY, $accounts);
+        }
     }
 
+    /**
+     * The concurrently signed-in accounts, resolved for display, newest last, with
+     * the active one flagged. Sessions revoked/expired out from under us are pruned.
+     *
+     * @return list<array{subject_id: string, name: string, email: ?string, organization_id: ?string, active: bool}>
+     */
+    public function accounts(): array
+    {
+        $accounts = $this->accountsMap();
+        $active = session()->get(self::ACTIVE_KEY);
+        $out = [];
+        $changed = false;
+
+        foreach ($accounts as $subjectId => $entry) {
+            $subject = $this->sessions->active($entry['session']) !== null
+                ? $this->subjects->find($subjectId)
+                : null;
+
+            if ($subject === null) {
+                // Session gone or subject removed — drop it from the held set.
+                unset($accounts[$subjectId]);
+                $changed = true;
+
+                continue;
+            }
+
+            $out[] = [
+                'subject_id' => $subjectId,
+                'name' => $subject->name ?? $subject->email ?? $subjectId,
+                'email' => $subject->email,
+                'organization_id' => $entry['org'],
+                'active' => $subjectId === $active,
+            ];
+        }
+
+        if ($changed) {
+            session()->put(self::ACCOUNTS_KEY, $accounts);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Switch the active account to another already-signed-in one — no re-auth. The
+     * target session is re-validated (still active) before we activate it; a stale
+     * entry is pruned and refused. Returns false when the account isn't held/valid.
+     */
+    public function switchTo(Request $request, string $subjectId): bool
+    {
+        $accounts = $this->accountsMap();
+
+        if (! isset($accounts[$subjectId])) {
+            return false;
+        }
+
+        $sessionId = $accounts[$subjectId]['session'];
+
+        if ($this->sessions->active($sessionId) === null) {
+            unset($accounts[$subjectId]);
+            session()->put(self::ACCOUNTS_KEY, $accounts);
+
+            return false;
+        }
+
+        $this->makeActive($subjectId, $sessionId, $accounts[$subjectId]['org']);
+
+        // Rotate the id on privilege change (the active identity just changed).
+        session()->regenerate();
+
+        return true;
+    }
+
+    /**
+     * Log out the ACTIVE account. If other accounts remain signed in, activate the
+     * next one (Notion-style); otherwise fully tear the browser session down.
+     */
     public function logout(Request $request): void
     {
+        $accounts = $this->accountsMap();
+        $active = session()->get(self::ACTIVE_KEY);
+
+        if (is_string($active) && isset($accounts[$active])) {
+            $this->sessions->revoke($accounts[$active]['session']);
+            unset($accounts[$active]);
+        } else {
+            // No tracked active account — revoke whatever the derived key points at.
+            $sessionId = session()->get(self::SESSION_KEY);
+
+            if (is_string($sessionId)) {
+                $this->sessions->revoke($sessionId);
+            }
+        }
+
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY]);
+
+        if ($accounts !== []) {
+            $next = array_key_first($accounts);
+            session()->put(self::ACCOUNTS_KEY, $accounts);
+            $this->makeActive($next, $accounts[$next]['session'], $accounts[$next]['org']);
+            session()->regenerate();
+
+            return;
+        }
+
+        $this->tearDown();
+    }
+
+    /**
+     * Log out of every signed-in account and tear the browser session down.
+     */
+    public function logoutAll(Request $request): void
+    {
+        foreach ($this->accountsMap() as $entry) {
+            $this->sessions->revoke($entry['session']);
+        }
+
         $sessionId = session()->get(self::SESSION_KEY);
 
         if (is_string($sessionId)) {
             $this->sessions->revoke($sessionId);
         }
 
-        session()->forget([self::SESSION_KEY, self::ORG_KEY, self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY]);
+        $this->tearDown();
+    }
+
+    /**
+     * Add (or refresh) an account in the held set and make it active. Evicts the
+     * oldest when the cap is reached (revoking its framework session).
+     */
+    private function addAccount(string $subjectId, string $sessionId, ?string $organizationId): void
+    {
+        $accounts = $this->accountsMap();
+
+        if (! isset($accounts[$subjectId]) && count($accounts) >= self::MAX_ACCOUNTS) {
+            // Non-empty branch (count >= cap), so there is always an oldest key.
+            $oldest = array_key_first($accounts);
+            $this->sessions->revoke($accounts[$oldest]['session']);
+            unset($accounts[$oldest]);
+        }
+
+        // Re-insert at the end so refresh keeps recency ordering.
+        unset($accounts[$subjectId]);
+        $accounts[$subjectId] = ['session' => $sessionId, 'org' => $organizationId];
+
+        session()->put(self::ACCOUNTS_KEY, $accounts);
+        $this->makeActive($subjectId, $sessionId, $organizationId);
+    }
+
+    private function makeActive(string $subjectId, string $sessionId, ?string $organizationId): void
+    {
+        session()->put(self::ACTIVE_KEY, $subjectId);
+        session()->put(self::SESSION_KEY, $sessionId);
+
+        if ($organizationId !== null) {
+            session()->put(self::ORG_KEY, $organizationId);
+        } else {
+            session()->forget(self::ORG_KEY);
+        }
+    }
+
+    /**
+     * @return array<string, array{session: string, org: ?string}>
+     */
+    private function accountsMap(): array
+    {
+        $raw = session()->get(self::ACCOUNTS_KEY);
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $map = [];
+
+        foreach ($raw as $subjectId => $entry) {
+            if (is_string($subjectId) && is_array($entry) && is_string($entry['session'] ?? null)) {
+                $org = $entry['org'] ?? null;
+                $map[$subjectId] = ['session' => $entry['session'], 'org' => is_string($org) ? $org : null];
+            }
+        }
+
+        return $map;
+    }
+
+    private function tearDown(): void
+    {
+        session()->forget([
+            self::SESSION_KEY, self::ORG_KEY, self::ACCOUNTS_KEY, self::ACTIVE_KEY,
+            self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY,
+        ]);
         session()->invalidate();
         session()->regenerateToken();
     }
