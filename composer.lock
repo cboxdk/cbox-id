@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49457b29a297a8c630a5ba131f0b6c1f",
+    "content-hash": "10c77ad8c06f396de85564d36d38b9aa",
     "packages": [
         {
             "name": "brick/math",
@@ -696,16 +696,16 @@
         },
         {
             "name": "cboxdk/laravel-risk",
-            "version": "v1.0.2",
+            "version": "v1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-risk.git",
-                "reference": "3a327d680b5cbd0fd1388f21cbe9afdbb9d58eac"
+                "reference": "c196c1120f7be5049ae0b74e02160bcb7bb446c2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-risk/zipball/3a327d680b5cbd0fd1388f21cbe9afdbb9d58eac",
-                "reference": "3a327d680b5cbd0fd1388f21cbe9afdbb9d58eac",
+                "url": "https://api.github.com/repos/cboxdk/laravel-risk/zipball/c196c1120f7be5049ae0b74e02160bcb7bb446c2",
+                "reference": "c196c1120f7be5049ae0b74e02160bcb7bb446c2",
                 "shasum": ""
             },
             "require": {
@@ -765,7 +765,7 @@
                 "security": "https://github.com/cboxdk/laravel-risk/security/policy",
                 "source": "https://github.com/cboxdk/laravel-risk"
             },
-            "time": "2026-07-13T12:48:59+00:00"
+            "time": "2026-07-16T13:20:55+00:00"
         },
         {
             "name": "cboxdk/laravel-siem",
