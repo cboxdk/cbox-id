@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Livewire\Attributes\Layout;
@@ -18,14 +19,49 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
 
         $connection = $orgId !== null ? app(Connections::class)->forOrganization($orgId) : null;
 
+        $recent = $orgId !== null
+            ? AuditEntry::query()->where('organization_id', $orgId)->orderByDesc('sequence')->limit(6)->get()
+            : collect();
+
         return [
             'me' => $me,
             'memberCount' => $orgId !== null ? app(Memberships::class)->forOrganization($orgId)->count() : 0,
             'ssoActive' => $connection !== null,
-            'recent' => $orgId !== null
-                ? AuditEntry::query()->where('organization_id', $orgId)->orderByDesc('sequence')->limit(6)->get()
-                : collect(),
+            'recent' => $recent,
+            // Resolve opaque target ids to human names so the feed reads like a
+            // story ("member added · Ada Lovelace"), not a wall of ULIDs.
+            'targetLabels' => $this->resolveTargets($recent, $orgId, $me->organization()?->name),
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, AuditEntry>  $entries
+     * @return array<string, string>
+     */
+    private function resolveTargets($entries, ?string $orgId, ?string $orgName): array
+    {
+        $subjects = app(Subjects::class);
+        $labels = [];
+
+        foreach ($entries as $entry) {
+            $id = $entry->target_id;
+
+            if (! is_string($id) || $id === '' || isset($labels[$id])) {
+                continue;
+            }
+
+            if ($entry->target_type === 'user') {
+                $subject = $subjects->find($id);
+                $name = $subject?->name ?? $subject?->email;
+                if (is_string($name) && $name !== '') {
+                    $labels[$id] = $name;
+                }
+            } elseif ($entry->target_type === 'organization' && $id === $orgId && is_string($orgName)) {
+                $labels[$id] = $orgName;
+            }
+        }
+
+        return $labels;
     }
 }; ?>
 
@@ -64,7 +100,14 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
                         <li class="px-5 py-3 border-b flex items-center justify-between gap-4" style="border-color:var(--border)">
                             <div class="min-w-0">
                                 <p class="text-sm font-medium truncate">{{ str_replace(['.', '_'], [' · ', ' '], $entry->action) }}</p>
-                                <p class="text-xs mono truncate" style="color:var(--faint)">{{ $entry->target_type }} {{ \Illuminate\Support\Str::limit($entry->target_id ?? '', 20) }}</p>
+                                @php $label = $targetLabels[$entry->target_id] ?? null; @endphp
+                                <p class="text-xs truncate" style="color:var(--faint)">
+                                    @if ($label)
+                                        {{ $label }}
+                                    @elseif ($entry->target_id)
+                                        <span class="mono">{{ $entry->target_type }} {{ \Illuminate\Support\Str::limit($entry->target_id, 12) }}</span>
+                                    @endif
+                                </p>
                             </div>
                             <time class="text-xs whitespace-nowrap" style="color:var(--faint)">{{ $entry->recorded_at?->diffForHumans() }}</time>
                         </li>
