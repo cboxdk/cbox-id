@@ -132,9 +132,15 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             return;
         }
 
-        // Resume an in-flight SAML sign-on (the subject was bounced here mid-SSO),
-        // otherwise land on the console.
-        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? route('dashboard'), navigate: false);
+        // Resume an in-flight SAML sign-on (the subject was bounced here mid-SSO);
+        // else the intended URL stashed when auth bounced us here (e.g. an
+        // /oauth/authorize the user was completing); else the console.
+        $intended = session()->pull('url.intended');
+        $this->redirect(
+            app(SamlSsoHandoff::class)->resumeUrl()
+                ?? (is_string($intended) && $intended !== '' ? $intended : route('dashboard')),
+            navigate: false,
+        );
     }
 
     public function sendMagicLink(MagicLink $links, Subjects $subjects, SignupPolicy $signup): void

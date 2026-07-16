@@ -179,3 +179,77 @@ it('issues a code and redirects on approve for a valid request', function () {
         ->and($redirect)->toContain('state=xyz')
         ->and($redirect)->toMatch('/[?&]code=/');
 });
+
+/**
+ * Register a FIRST-PARTY OAuth client, optionally owned by a specific org
+ * (null = platform-owned). Returns its public client_id.
+ */
+function registerFirstPartyClient(?string $ownerOrgId): string
+{
+    $registered = app(ClientRegistry::class)->register(
+        new NewClient('First Party App', redirectUris: ['https://fp.test/cb'], firstParty: true, organizationId: $ownerOrgId)
+    );
+
+    return $registered->client->client_id;
+}
+
+/** @return array<string, string> */
+function fpAuthorizeParams(string $clientId): array
+{
+    return [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://fp.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+    ];
+}
+
+it('skips consent for a first-party client owned by the user\'s own org', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerFirstPartyClient($org->id);
+
+    // No approve() call — mount() auto-issues and redirects for a first-party client.
+    Volt::test('oauth.consent', fpAuthorizeParams($clientId))
+        ->assertSet('error', null)
+        ->assertRedirect();
+});
+
+it('skips consent for a platform-owned first-party client', function () {
+    actingAsConsentUser();
+    $clientId = registerFirstPartyClient(null); // platform-owned (organization_id null)
+
+    Volt::test('oauth.consent', fpAuthorizeParams($clientId))
+        ->assertSet('error', null)
+        ->assertRedirect();
+});
+
+it('does NOT skip consent for a first-party client owned by a DIFFERENT org', function () {
+    actingAsConsentUser(); // member of "acme-consent"
+    $otherOrg = app(Organizations::class)->create(new NewOrganization('Other', 'other-org'));
+    $clientId = registerFirstPartyClient($otherOrg->id); // owned by another tenant
+
+    // Cross-org: never auto-skip — the consent screen must be shown, no code minted.
+    Volt::test('oauth.consent', fpAuthorizeParams($clientId))
+        ->assertSet('error', null)
+        ->assertNoRedirect();
+});
+
+it('does NOT skip consent for a non-first-party client', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id); // first_party = false
+
+    Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+    ])
+        ->assertSet('error', null)
+        ->assertNoRedirect();
+});

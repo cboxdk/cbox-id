@@ -47,7 +47,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
         }
 
         RateLimiter::clear($key);
-        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? route('dashboard'), navigate: false);
+        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? (is_string($intended = session()->pull('url.intended')) && $intended !== '' ? $intended : route('dashboard')), navigate: false);
     }
 
     public function verify(PlatformAuth $auth): void
@@ -72,7 +72,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
         }
 
         RateLimiter::clear($key);
-        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? route('dashboard'), navigate: false);
+        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? (is_string($intended = session()->pull('url.intended')) && $intended !== '' ? $intended : route('dashboard')), navigate: false);
     }
 }; ?>
 

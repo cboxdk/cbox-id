@@ -42,7 +42,9 @@ final class Authenticate
         if ($session === null) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
 
-            return redirect()->route('login');
+            // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
+            // /oauth/authorize?…) is returned to complete it after logging in.
+            return redirect()->guest(route('login'));
         }
 
         $subject = $this->subjects->find($session->user_id);
@@ -53,7 +55,7 @@ final class Authenticate
         if ($subject === null || ! $this->subjects->isActive($subject->id)) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
 
-            return redirect()->route('login');
+            return redirect()->guest(route('login'));
         }
 
         // Resolve the active org — but ONLY honour one the subject is a member of.

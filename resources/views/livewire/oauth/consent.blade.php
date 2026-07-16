@@ -55,6 +55,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
      */
     public function mount(
         ClientRegistry $clients,
+        AuthorizationCodes $codes,
         ?string $client_id = null,
         ?string $redirect_uri = null,
         ?string $response_type = null,
@@ -143,6 +144,20 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $this->codeChallenge = $codeChallenge;
         $this->codeChallengeMethod = $codeChallengeMethod;
         $this->nonce = is_string($nonceParam) ? $nonceParam : null;
+
+        // First-party consent-skip: an org's own trusted app — or a platform-owned
+        // first-party client — authorizes without a prompt. STRICTLY org-scoped: a
+        // first-party client owned by ANOTHER org still prompts, so it can never
+        // silently mint a code for a different tenant's user. approve() re-asserts
+        // every invariant (redirect_uri, PKCE/S256, org-not-suspended) before issuing,
+        // so this skips the screen, never the checks.
+        $userOrgId = app(CurrentUser::class)->organizationId();
+        $skipConsent = $client->first_party === true
+            && ($client->organization_id === null || $client->organization_id === $userOrgId);
+
+        if ($skipConsent) {
+            $this->approve($codes, $clients);
+        }
     }
 
     public function approve(AuthorizationCodes $codes, ClientRegistry $clients): void
