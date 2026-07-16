@@ -6,15 +6,14 @@ use Cbox\Id\Whitelabel\CustomDomain\Exceptions\InvalidCustomDomain;
 use Cbox\Id\Whitelabel\CustomDomain\ManageCustomDomain;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
 use Cbox\Id\Whitelabel\Support\PaletteTokens;
+use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
-use function Livewire\Volt\{layout, uses};
+new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends Component
+{
+    use WithFileUploads;
 
-uses([WithFileUploads::class]);
-layout('components.layouts.app');
-
-new class extends Component {
     /** @var array<string, string> */
     public array $palette = [];
 

@@ -61,12 +61,22 @@ final class ManageCustomDomain
         $this->currentEnvironment()->forceFill(['domain' => null])->save();
     }
 
-    /** The custom domain currently set on the environment, or null. */
+    /**
+     * The custom domain currently set on the environment, or null. A read for
+     * display, so it never throws: no environment context, or no persisted
+     * environment row, simply means "no custom domain" (not a 404).
+     */
     public function current(): ?string
     {
+        $environment = $this->environment->current();
+
+        if ($environment === null) {
+            return null;
+        }
+
         // Read via getAttribute: laravel-id's Environment model does not declare a
         // `domain` @property, so a direct access would not type-check.
-        $domain = $this->currentEnvironment()->getAttribute('domain');
+        $domain = EnvironmentModel::query()->find($environment->environmentKey())?->getAttribute('domain');
 
         return is_string($domain) && $domain !== '' ? $domain : null;
     }
