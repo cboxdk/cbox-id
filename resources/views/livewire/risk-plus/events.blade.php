@@ -2,7 +2,8 @@
 
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 
-use function Livewire\Volt\{computed};
+use function Livewire\Volt\{computed, layout};
+layout('components.layouts.app');
 
 $events = computed(fn () => RiskEvent::query()->latest('created_at')->limit(50)->get());
 
