@@ -3,7 +3,8 @@
 use Cbox\Id\Analytics\Contracts\ReportReader;
 use Illuminate\Support\Carbon;
 
-use function Livewire\Volt\{computed};
+use function Livewire\Volt\{computed, layout};
+layout('components.layouts.app');
 
 $overview = computed(function () {
     $reader = app(ReportReader::class);
