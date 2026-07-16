@@ -30,52 +30,54 @@ new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extend
 
 ?>
 
-<div class="mx-auto max-w-5xl px-4 py-8">
-    <header class="mb-6">
-        <h1 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Connections</h1>
-        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Every live connector for this organization, across outbound SCIM, webhooks and SSO federation.
-        </p>
-    </header>
+<div class="space-y-6">
+    <div class="cbx-page-header mb-6">
+        <div class="min-w-0">
+            <h1 class="cbx-page-title">Connections</h1>
+            <p class="cbx-page-desc">
+                Every live connector for this organization, across outbound SCIM, webhooks and SSO federation.
+            </p>
+        </div>
+    </div>
 
     @if ($this->connections === [])
-        <div class="rounded-xl border border-dashed border-neutral-300 bg-white p-8 text-center dark:border-neutral-700 dark:bg-neutral-900">
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">No connectors are configured for this organization yet.</p>
+        <div class="cbx-empty">
+            <p class="text-sm" style="color:var(--muted)">No connectors are configured for this organization yet.</p>
         </div>
     @else
-        <div class="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800">
-            <table class="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-                <thead class="bg-neutral-50 text-left text-xs font-medium uppercase tracking-wide text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
                     <tr>
-                        <th class="px-4 py-3">Type</th>
-                        <th class="px-4 py-3">Name</th>
-                        <th class="px-4 py-3">Target</th>
-                        <th class="px-4 py-3">Status</th>
-                        <th class="px-4 py-3">Health</th>
+                        <th>Type</th>
+                        <th>Name</th>
+                        <th>Target</th>
+                        <th>Status</th>
+                        <th>Health</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-neutral-100 bg-white dark:divide-neutral-800/60 dark:bg-neutral-900">
+                <tbody>
                     @foreach ($this->connections as $row)
                         <tr>
-                            <td class="whitespace-nowrap px-4 py-3 text-neutral-500 dark:text-neutral-400">{{ $row['category'] }}</td>
-                            <td class="px-4 py-3 font-medium text-neutral-900 dark:text-neutral-100">{{ $row['name'] }}</td>
-                            <td class="px-4 py-3 text-neutral-500 dark:text-neutral-400">{{ $row['target'] ?? '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap" style="color:var(--muted)">{{ $row['category'] }}</td>
+                            <td class="font-medium" style="color:var(--foreground)">{{ $row['name'] }}</td>
+                            <td style="color:var(--muted)">{{ $row['target'] ?? '—' }}</td>
+                            <td class="whitespace-nowrap">
                                 @if ($row['status'] === 'active')
-                                    <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Active</span>
+                                    <span class="badge badge-success">Active</span>
                                 @else
-                                    <span class="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">{{ $row['status'] }}</span>
+                                    <span class="badge capitalize">{{ $row['status'] }}</span>
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap">
                                 @if ($row['health'] === null)
-                                    <span class="text-xs text-neutral-400 dark:text-neutral-500">—</span>
+                                    <span class="text-xs" style="color:var(--faint)">—</span>
                                 @elseif ($row['health'] === 'healthy')
-                                    <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Healthy</span>
+                                    <span class="badge badge-success">Healthy</span>
                                 @elseif ($row['health'] === 'degraded')
-                                    <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">Degraded</span>
+                                    <span class="badge badge-warn">Degraded</span>
                                 @else
-                                    <span class="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">{{ $row['health'] }}</span>
+                                    <span class="badge capitalize">{{ $row['health'] }}</span>
                                 @endif
                             </td>
                         </tr>
