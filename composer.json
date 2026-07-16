@@ -1,0 +1,57 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "cboxdk/laravel-id-whitelabel",
+    "description": "Cbox ID whitelabel plugin (commercial) — per-tenant branding (palette, logo, favicon, app name, custom domain and email sender) for Cbox ID. Themes the console shell and hosted auth through laravel-console-kit's BrandingResolver, with zero host edits.",
+    "keywords": ["cbox", "identity", "whitelabel", "branding", "multi-tenant", "plugin", "laravel"],
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.4",
+        "cboxdk/laravel-console-kit": "^0.2",
+        "cboxdk/laravel-id": "^0.17",
+        "cboxdk/laravel-ssrf": "^1.0",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/database": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "livewire/volt": "^1.6.0 || ^2.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^3.5 || ^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cbox\\Id\\Whitelabel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cbox\\Id\\Whitelabel\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "lint": "pint --test",
+        "analyse": "phpstan analyse --no-progress --memory-limit=1G",
+        "test": "pest",
+        "license-check": "@php bin/check-licenses.php",
+        "sbom": "@php bin/generate-sbom.php",
+        "qa": ["@lint", "@analyse", "@test", "@license-check", "@composer audit"]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Cbox\\Id\\Whitelabel\\WhitelabelServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
