@@ -7,6 +7,7 @@ use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
+use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         PlatformServiceProvider::class,
+        ConsoleServiceProvider::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

@@ -33,41 +33,33 @@
 
 @php
     // ── Two-tier navigation IA. TIER 1 = areas; TIER 2 = an area's pages (shown
-    // only when the area has more than one page).
-    $areas = [
-        ['key' => 'overview', 'label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
-            ['route' => 'dashboard', 'label' => 'Overview'],
-            ['route' => 'usage', 'label' => 'Usage'],
-            ['route' => 'approvals', 'label' => 'Agent approvals'],
-        ]],
-        ['key' => 'directory', 'label' => 'Directory', 'icon' => 'members', 'pages' => [
-            ['route' => 'members', 'label' => 'Members'],
-            ['route' => 'roles', 'label' => 'Roles'],
-        ]],
-        ['key' => 'authentication', 'label' => 'Authentication', 'icon' => 'connections', 'pages' => [
-            ['route' => 'connections', 'label' => 'SSO connections', 'feature' => 'sso'],
-            ['route' => 'sso-providers', 'label' => 'SSO providers', 'feature' => 'sso'],
-            ['route' => 'directories', 'label' => 'Directory sync', 'feature' => 'scim'],
-            ['route' => 'provisioning', 'label' => 'Outbound SCIM', 'feature' => 'scim'],
-        ]],
-        ['key' => 'governance', 'label' => 'Governance', 'icon' => 'shield', 'pages' => [
-            ['route' => 'governance', 'label' => 'Access reviews'],
-            ['route' => 'sod-policies', 'label' => 'Segregation of duties'],
-        ]],
-        ['key' => 'developers', 'label' => 'Developers', 'icon' => 'clients', 'pages' => [
-            ['route' => 'clients', 'label' => 'API clients'],
-            ['route' => 'webhooks', 'label' => 'Webhooks'],
-            ['route' => 'hooks', 'label' => 'Inline hooks'],
-            ['route' => 'vault', 'label' => 'Token vault'],
-        ]],
-        ['key' => 'audit', 'label' => 'Audit', 'icon' => 'audit', 'pages' => [
-            ['route' => 'audit', 'label' => 'Audit log'],
-            ['route' => 'audit-streams', 'label' => 'SIEM streams'],
-        ]],
-        ['key' => 'settings', 'label' => 'Settings', 'icon' => 'settings', 'pages' => [
-            ['route' => 'settings', 'label' => 'Settings'],
-        ]],
+    // only when the area has more than one page). The nav is sourced from the shared
+    // console-kit registry (App\Providers\ConsoleServiceProvider seeds the defaults),
+    // so an installed plugin's areas/pages appear here with no edit to this layout.
+    //
+    // A page's console-kit `feature` is a hard presence gate — hidden unless the
+    // feature is active. The entitlement SOFT-lock (SSO/SCIM shown, but badged when
+    // the org isn't entitled) is a separate app gate, keyed by route below.
+    $entitlementFeature = [
+        'connections' => 'sso', 'sso-providers' => 'sso',
+        'directories' => 'scim', 'provisioning' => 'scim',
     ];
+
+    $areas = collect(\Cbox\Console\Kit\Facades\Console::nav()->areas())
+        ->map(fn ($area): array => [
+            'key' => $area->key,
+            'label' => $area->label,
+            'icon' => $area->icon,
+            'pages' => collect($area->pages())
+                ->reject(fn ($p): bool => $p->feature !== null && ! \Cbox\Console\Kit\Facades\Console::featureActive($p->feature))
+                ->map(fn ($p): array => [
+                    'route' => $p->route,
+                    'label' => $p->label,
+                    'feature' => $entitlementFeature[$p->route] ?? null,
+                ])->values()->all(),
+        ])
+        ->reject(fn (array $a): bool => $a['pages'] === [])
+        ->values()->all();
 
     $entitlements = app(\App\Platform\Entitlements::class);
     $isLocked = fn (array $page): bool => isset($page['feature']) && ! $entitlements->entitledOrgFeature($page['feature']);

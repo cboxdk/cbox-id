@@ -69,6 +69,9 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
     <x-page-header :title="'Welcome back, '.\Illuminate\Support\Str::before($me->name(), ' ')"
                    subtitle="Here's what's happening across {{ $me->organization()?->name ?? 'your organization' }}." />
 
+    {{-- Plugins (billing, …) contribute cards here — nothing renders without one. --}}
+    @consoleSlot('console.dashboard.cards')
+
     <div class="grid gap-4 sm:grid-cols-3">
         <div class="card p-5">
             <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="members" class="w-4 h-4" /> Members</div>
