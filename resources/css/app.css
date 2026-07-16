@@ -298,19 +298,35 @@
         cursor: pointer;
         white-space: nowrap;
         border: 1px solid transparent;
-        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease), transform var(--dur-hover) var(--ease);
     }
     .btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
         pointer-events: none;
     }
+    /* A subtle press — the button gives under the cursor for a tactile feel. */
+    .btn:active:not(:disabled) {
+        transform: translateY(0.5px);
+    }
     .btn-primary {
         background: var(--primary);
         color: var(--primary-foreground);
+        /* Lit-from-above highlight + a soft accent-tinted lift off the page. */
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 22%, transparent),
+            0 1px 2px color-mix(in oklch, var(--primary) 42%, transparent);
     }
     .btn-primary:hover:not(:disabled) {
         background: var(--accent);
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 26%, transparent),
+            0 3px 10px color-mix(in oklch, var(--primary) 45%, transparent);
+    }
+    .btn-primary:active:not(:disabled) {
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 12%, transparent),
+            0 1px 2px color-mix(in oklch, var(--primary) 34%, transparent);
     }
     .btn-ghost {
         background: var(--card);
@@ -329,7 +345,7 @@
         background: var(--destructive-soft);
     }
     .btn-lg {
-        height: 40px;
+        height: 42px;
         padding: 0 18px;
         font-size: 14px;
         border-radius: var(--radius-md);
@@ -567,7 +583,29 @@
     .hero-feature { display: flex; align-items: center; gap: 10px; font-size: 14px; }
     .hero-feature span.tick {
         display: grid; place-items: center; width: 22px; height: 22px;
-        border-radius: 9999px; background: rgb(255 255 255 / 0.16); flex: none;
+        border-radius: 9999px; flex: none;
+        background: rgb(255 255 255 / 0.14);
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
+    }
+
+    /* A top sheen + a hairline inner edge give the hero panel depth and crispness. */
+    .auth-hero::after {
+        content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+        background: radial-gradient(70% 45% at 50% 0%, rgb(255 255 255 / 0.10) 0%, transparent 70%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    }
+
+    /* Auth-surface inputs: a slightly larger, softer focus ring reads as premium
+     * without shouting — scoped so the dense console keeps its tighter 2px ring. */
+    .auth-shell .input:focus,
+    .auth-shell .input-lg:focus {
+        box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    /* The primary CTA on the auth surface sits a touch more lifted. */
+    .auth-shell .btn-primary {
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 24%, transparent),
+            0 2px 6px color-mix(in oklch, var(--primary) 40%, transparent);
     }
 }
 
