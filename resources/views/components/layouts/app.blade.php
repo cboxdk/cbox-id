@@ -37,6 +37,7 @@
     $areas = [
         ['key' => 'overview', 'label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
             ['route' => 'dashboard', 'label' => 'Overview'],
+            ['route' => 'usage', 'label' => 'Usage'],
             ['route' => 'approvals', 'label' => 'Agent approvals'],
         ]],
         ['key' => 'directory', 'label' => 'Directory', 'icon' => 'members', 'pages' => [

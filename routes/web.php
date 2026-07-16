@@ -101,6 +101,7 @@ Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('por
  */
 Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
+    Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
     Volt::route('/sso-providers', 'sso-providers')->name('sso-providers');
