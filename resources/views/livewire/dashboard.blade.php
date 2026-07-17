@@ -73,15 +73,17 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
 
     @if (count($apps) > 0)
         <section class="mb-6">
-            <h2 class="text-xs font-medium uppercase tracking-wide mb-3" style="color:var(--muted)">Your apps</h2>
-            <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <h2 class="text-xs font-medium uppercase mb-3" style="color:var(--muted);letter-spacing:0.06em">Your apps</h2>
+            <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($apps as $app)
-                    <a href="{{ $app['url'] }}" class="card p-4 flex items-center gap-3 transition hover:border-[var(--accent)]" style="text-decoration:none">
-                        <span class="cbx-avatar shrink-0" aria-hidden="true">{{ $app['initial'] }}</span>
-                        <span class="min-w-0">
-                            <span class="block truncate font-medium" style="color:var(--foreground)">{{ $app['name'] }}</span>
-                            <span class="block truncate text-xs" style="color:var(--muted)">{{ $app['host'] }}</span>
+                    <a href="{{ $app['url'] }}" class="cbx-app-tile">
+                        <span class="cbx-app-logo" aria-hidden="true"
+                              style="background:linear-gradient(135deg, oklch(0.63 0.15 {{ $app['hue'] }}), oklch(0.5 0.17 {{ ($app['hue'] + 28) % 360 }}))">{{ $app['initial'] }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-semibold" style="color:var(--foreground)">{{ $app['name'] }}</span>
+                            <span class="block truncate text-xs mono" style="color:var(--muted)">{{ $app['host'] }}</span>
                         </span>
+                        <svg class="cbx-app-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                     </a>
                 @endforeach
             </div>

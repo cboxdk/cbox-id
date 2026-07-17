@@ -670,6 +670,15 @@
     /* Avatar */
     .cbx-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--accent-soft); color: var(--foreground); font-size: 11px; font-weight: 600; }
 
+    /* App launcher tile — the first-party "portal". A colour-branded logo per app,
+     * a tactile hover lift, and an arrow that slides in to say "this opens". */
+    .cbx-app-tile { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-card); text-decoration: none; transition: transform var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease); }
+    .cbx-app-tile:hover { transform: translateY(-2px); border-color: var(--accent-edge); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.10); }
+    .cbx-app-tile:active { transform: translateY(0); }
+    .cbx-app-logo { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; color: #fff; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.02em; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.18); }
+    .cbx-app-go { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted-foreground); opacity: 0; transform: translateX(-5px); transition: opacity var(--dur-hover) var(--ease), transform var(--dur-hover) var(--ease); }
+    .cbx-app-tile:hover .cbx-app-go { opacity: 1; transform: translateX(0); }
+
     /* Search trigger (⌘K) */
     .cbx-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--card); font-size: 12px; color: var(--muted-foreground); cursor: pointer; transition: border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
     .cbx-search:hover { border-color: var(--border-strong); color: var(--foreground); }

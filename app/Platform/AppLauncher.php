@@ -21,7 +21,7 @@ final class AppLauncher
     public function __construct(private readonly CurrentUser $me) {}
 
     /**
-     * @return list<array{name: string, url: string, host: string, initial: string}>
+     * @return list<array{name: string, url: string, host: string, initial: string, hue: int}>
      */
     public function apps(): array
     {
@@ -59,6 +59,9 @@ final class AppLauncher
                 'url' => $url,
                 'host' => (string) parse_url($url, PHP_URL_HOST),
                 'initial' => mb_strtoupper(mb_substr($client->name, 0, 1)),
+                // A stable hue per app name, so each tile keeps a recognisable colour
+                // across sessions (Okta/Workspace-style app portal).
+                'hue' => (int) (crc32($client->name) % 360),
             ];
         }
 
