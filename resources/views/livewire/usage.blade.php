@@ -83,7 +83,7 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             @foreach (array_slice($snapshot, 0, 8, true) as $metric => $total)
                 <div class="card p-5">
-                    <div class="text-sm truncate" style="color:var(--muted)">{{ $labels[$metric] ?? $metric }}</div>
+                    <div class="text-sm truncate" style="color:var(--muted)">{{ $labels[$metric] ?? ucfirst(str_replace(['auth.', '_'], ['', ' '], (string) $metric)) }}</div>
                     <p class="mt-2 text-3xl font-semibold tracking-tight mono">{{ number_format($total) }}</p>
                 </div>
             @endforeach

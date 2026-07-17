@@ -216,7 +216,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
                     </div>
                     @if ($me->isAdmin())
                         <form wire:submit="grant('{{ $role->id }}')" class="flex items-center gap-2 mt-3">
-                            <input wire:model="permissionInput.{{ $role->id }}" type="text" class="input" style="max-width:16rem" placeholder="reports:read">
+                            <input wire:model="permissionInput.{{ $role->id }}" type="text" class="input" style="max-width:16rem" placeholder="reports:read" aria-label="Add a permission to the {{ $role->name }} role">
                             <button type="submit" class="btn btn-ghost btn-sm" wire:loading.attr="disabled"><x-icon name="plus" class="w-3.5 h-3.5" /> Grant</button>
                         </form>
                     @endif

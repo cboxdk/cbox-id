@@ -133,7 +133,8 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
                                     @if ($label)
                                         {{ $label }}
                                     @elseif ($entry->target_id)
-                                        <span class="mono">{{ $entry->target_type }} {{ \Illuminate\Support\Str::limit($entry->target_id, 12) }}</span>
+                                        {{ \Illuminate\Support\Str::headline((string) $entry->target_type) }}
+                                        <span class="mono">{{ \Illuminate\Support\Str::limit($entry->target_id, 24) }}</span>
                                     @endif
                                 </p>
                             </div>

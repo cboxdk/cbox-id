@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Governance\Contracts\AccessReviews;
+use Cbox\Id\Governance\Enums\AccessKind;
 use Cbox\Id\Governance\Enums\CampaignStatus;
 use Cbox\Id\Governance\Enums\ReviewDecision;
 use Cbox\Id\Governance\Models\CertificationCampaign;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -64,6 +67,8 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
             ? CertificationCampaign::query()->whereKey($this->selected)->where('organization_id', $this->orgId())->first()
             : null;
 
+        $items = $campaign !== null ? $reviews->itemsFor($campaign->id) : [];
+
         return [
             'me' => app(CurrentUser::class),
             'campaigns' => CertificationCampaign::query()
@@ -71,8 +76,66 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                 ->orderByDesc('created_at')
                 ->get(),
             'campaign' => $campaign,
-            'items' => $campaign !== null ? $reviews->itemsFor($campaign->id) : [],
+            'items' => $items,
+            // A reviewer certifying access needs to see *who* they're deciding on and
+            // *what* — resolve subject ids to names/emails and role refs to role names
+            // so the table never shows bare ULIDs.
+            'subjectLabels' => $this->resolveSubjects($items),
+            'roleNames' => $this->resolveRoleNames($items),
         ];
+    }
+
+    /**
+     * @param  iterable<int, object{subject_id: string}>  $items
+     * @return array<string, string>
+     */
+    private function resolveSubjects(iterable $items): array
+    {
+        $subjects = app(Subjects::class);
+        $labels = [];
+
+        foreach ($items as $item) {
+            $id = $item->subject_id;
+
+            if (! is_string($id) || $id === '' || isset($labels[$id])) {
+                continue;
+            }
+
+            $subject = $subjects->find($id);
+            $name = $subject?->name ?? $subject?->email;
+
+            if (is_string($name) && $name !== '') {
+                $labels[$id] = $name;
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * For role items the `access_ref` is a role id — map those to role names.
+     *
+     * @param  iterable<int, object{access_type: AccessKind, access_ref: string}>  $items
+     * @return array<string, string>
+     */
+    private function resolveRoleNames(iterable $items): array
+    {
+        $roleIds = [];
+
+        foreach ($items as $item) {
+            if ($item->access_type === AccessKind::Role && is_string($item->access_ref) && $item->access_ref !== '') {
+                $roleIds[$item->access_ref] = true;
+            }
+        }
+
+        if ($roleIds === []) {
+            return [];
+        }
+
+        return Role::query()
+            ->whereIn('id', array_keys($roleIds))
+            ->pluck('name', 'id')
+            ->all();
     }
 
     private function orgId(): string
@@ -149,8 +212,17 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                             <tbody>
                             @forelse ($items as $item)
                                 <tr>
-                                    <td class="mono">{{ $item->subject_id }}</td>
-                                    <td><span class="badge mono">{{ $item->access_type->value }}</span> <span class="mono" style="color:var(--muted)">{{ $item->access_ref }}</span></td>
+                                    <td>
+                                        @if ($label = ($subjectLabels[$item->subject_id] ?? null))
+                                            <span class="font-medium">{{ $label }}</span>
+                                        @else
+                                            <span class="mono" style="color:var(--muted)">{{ \Illuminate\Support\Str::limit($item->subject_id, 16) }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge">{{ ucfirst($item->access_type->value) }}</span>
+                                        <span style="color:var(--muted)">{{ $roleNames[$item->access_ref] ?? $item->access_ref }}</span>
+                                    </td>
                                     <td>
                                         @if ($item->decision === ReviewDecision::Certified)
                                             <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Certified</span>

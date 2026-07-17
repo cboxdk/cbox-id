@@ -294,7 +294,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
                                 </div>
                             </div>
                             @if ($me->isAdmin() && $accessRoles->isNotEmpty())
-                                <select class="select" style="max-width:15rem" wire:change="mapGroup('{{ $group->id }}', $event.target.value)">
+                                <select class="select" style="max-width:15rem" aria-label="Map a role to the {{ $group->name }} group" wire:change="mapGroup('{{ $group->id }}', $event.target.value)">
                                     <option value="">+ Map a role…</option>
                                     @foreach ($accessRoles->groupBy(fn ($r) => $r->client_id ?? '__org') as $groupKey => $rolesInGroup)
                                         <optgroup label="{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}">

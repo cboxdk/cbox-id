@@ -54,7 +54,7 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
         </div>
         <div class="flex items-center gap-2 w-full sm:w-auto">
             <div class="relative w-full sm:w-auto">
-                <input wire:model.live.debounce.300ms="actionFilter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…">
+                <input wire:model.live.debounce.300ms="actionFilter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…" aria-label="Filter by action">
             </div>
         </div>
     </div>
@@ -84,7 +84,7 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
                             </td>
                             <td>
                                 @if ($entry->target_type)
-                                    <span class="text-sm" style="color:var(--muted)">{{ $entry->target_type }}</span>
+                                    <span class="text-sm" style="color:var(--muted)">{{ str_replace('_', ' ', $entry->target_type) }}</span>
                                     <span class="mono text-xs ml-1" style="color:var(--faint)">{{ Str::limit($entry->target_id ?? '', 10, '…') }}</span>
                                 @else
                                     <span style="color:var(--faint)">—</span>

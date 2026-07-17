@@ -152,7 +152,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                     <div>
                         <label class="label" for="brandColor">Primary colour</label>
                         <div class="flex items-center gap-2">
-                            <input wire:model="brandColor" id="brandColor" type="text" class="input mono" placeholder="#4f46e5" style="flex:1">
+                            <input wire:model.live.debounce.400ms="brandColor" id="brandColor" type="text" class="input mono" placeholder="#4f46e5" style="flex:1">
                             <span class="rounded-md shrink-0" style="width:2.4rem;height:2.4rem;border:1px solid var(--border);background:{{ preg_match('/^#[0-9a-fA-F]{6}$/', $brandColor) ? $brandColor : 'var(--surface-2)' }}"></span>
                         </div>
                         @error('brandColor') <p class="field-error">{{ $message }}</p> @enderror
