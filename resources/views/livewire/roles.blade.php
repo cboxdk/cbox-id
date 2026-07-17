@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Support\Facades\DB;
@@ -25,34 +26,52 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
 
     public string $description = '';
 
-    public bool $creating = false;
+    /** Empty = org-wide (applies in every app); a client_id = scoped to that app. */
+    public string $scope = '';
 
-    /** @var array<string, string> */
-    public array $permissionInput = [];
+    public bool $creating = false;
 
     public function create(Roles $roles): void
     {
         $this->authorizeAdmin();
         $this->validate();
 
-        $roles->define($this->orgId(), trim($this->name), trim($this->description) ?: null);
+        // Only allow scoping to an app this org may actually use — never trust the
+        // posted client_id blindly.
+        $clientId = $this->scope !== '' && $this->usableApps()->has($this->scope) ? $this->scope : null;
 
-        $this->reset('name', 'description', 'creating');
+        $roles->define($this->orgId(), trim($this->name), trim($this->description) ?: null, $clientId);
+
+        $this->reset('name', 'description', 'scope', 'creating');
         session()->flash('status', 'Role created.');
     }
 
-    public function grant(string $roleId, Roles $roles): void
+    public function grant(string $roleId, string $permission, Roles $roles): void
     {
         $this->authorizeAdmin();
 
-        $permission = trim($this->permissionInput[$roleId] ?? '');
+        $permission = trim($permission);
         if ($permission === '') {
             return;
         }
 
-        $roles->grantPermission($this->orgId(), $roleId, $permission);
+        // Guardrail: a tenant composes from the DECLARED catalog — never invents a
+        // permission. The role must be this org's, and the permission must already
+        // be declared within the role's scope (its app, or org-global).
+        $role = Role::query()->whereKey($roleId)->where('organization_id', $this->orgId())->first();
+        if ($role === null) {
+            return;
+        }
 
-        $this->permissionInput[$roleId] = '';
+        $declared = Permission::query()
+            ->where('name', $permission)
+            ->where(fn ($q) => $q->where('client_id', $role->client_id)->orWhereNull('client_id'))
+            ->exists();
+        if (! $declared) {
+            return;
+        }
+
+        $roles->grantPermission($this->orgId(), $roleId, $permission);
         session()->flash('status', 'Permission granted.');
     }
 
@@ -61,32 +80,37 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
      */
     public function with(): array
     {
-        // Org roles: admin-defined, org-wide (no client_id).
-        $orgRoles = Role::query()
+        $usableApps = $this->usableApps();
+        $clientIds = $usableApps->keys();
+
+        // The tenant's OWN custom roles — org-wide (client_id null) and app-scoped
+        // (client_id set). This is where a tenant admin sees everything they author.
+        $tenantRoles = Role::query()
             ->where('organization_id', $this->orgId())
-            ->whereNull('client_id')
+            ->orderByRaw('client_id is not null')
             ->orderBy('name')
             ->get();
 
-        // App roles: declared by apps this org can use (platform-owned or its own),
-        // still declared (not orphaned), grouped by app.
-        $clientIds = Client::query()
-            ->where(function ($query): void {
-                $query->whereNull('organization_id')->orWhere('organization_id', $this->orgId());
-            })
-            ->pluck('client_id');
-
+        // App-declared roles (from the manifest): organization-agnostic, owned by the
+        // app, still declared (not orphaned). Grouped by app, read-only.
         $appRoles = Role::query()
+            ->whereNull('organization_id')
             ->whereIn('client_id', $clientIds)
             ->whereNull('orphaned_at')
             ->orderBy('name')
             ->get();
 
-        $appNames = Client::query()->whereIn('client_id', $appRoles->pluck('client_id')->unique())->pluck('name', 'client_id');
+        // The declared permission catalog the picker offers — each app's permissions
+        // plus org-global ones. Tenants compose from this; they never free-type.
+        $catalog = Permission::query()
+            ->whereNull('orphaned_at')
+            ->where(fn ($q) => $q->whereIn('client_id', $clientIds)->orWhereNull('client_id'))
+            ->orderBy('name')
+            ->get(['id', 'client_id', 'name', 'description']);
 
         $permsByRole = DB::table('role_permission')
             ->join('permissions', 'permissions.id', '=', 'role_permission.permission_id')
-            ->whereIn('role_permission.role_id', $orgRoles->pluck('id')->merge($appRoles->pluck('id')))
+            ->whereIn('role_permission.role_id', $tenantRoles->pluck('id')->merge($appRoles->pluck('id')))
             ->orderBy('permissions.name')
             ->get(['role_permission.role_id', 'permissions.name'])
             ->groupBy('role_id')
@@ -94,11 +118,26 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
 
         return [
             'me' => app(CurrentUser::class),
-            'orgRoles' => $orgRoles,
+            'tenantRoles' => $tenantRoles,
             'appRolesByApp' => $appRoles->groupBy('client_id'),
-            'appNames' => $appNames,
+            'appNames' => $usableApps,
+            'usableApps' => $usableApps,
+            'catalog' => $catalog->groupBy('client_id'),
             'permsByRole' => $permsByRole,
         ];
+    }
+
+    /**
+     * client_id => name for every app this org may use (platform-owned + its own).
+     *
+     * @return \Illuminate\Support\Collection<string, string>
+     */
+    private function usableApps(): \Illuminate\Support\Collection
+    {
+        return Client::query()
+            ->where(fn ($query) => $query->whereNull('organization_id')->orWhere('organization_id', $this->orgId()))
+            ->orderBy('name')
+            ->pluck('name', 'client_id');
     }
 
     private function orgId(): string
@@ -177,7 +216,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
 
     {{-- ── Org roles (admin-defined) ── --}}
     <section>
-        <h2 class="text-xs font-medium uppercase mb-3" style="color:var(--muted);letter-spacing:0.06em">Org roles <span style="text-transform:none;font-weight:400">— yours, applied across every app</span></h2>
+        <h2 class="text-xs font-medium uppercase mb-3" style="color:var(--muted);letter-spacing:0.06em">Your roles <span style="text-transform:none;font-weight:400">— org-wide, or scoped to one app</span></h2>
 
         @if ($creating && $me->isAdmin())
             <form wire:submit="create" class="card p-4 flex flex-wrap items-end gap-3 mb-4">
@@ -190,13 +229,32 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
                     <label class="label" for="description">Description <span style="color:var(--muted-foreground);font-weight:400">(optional)</span></label>
                     <input wire:model="description" id="description" type="text" class="input" placeholder="Team leads across the organization">
                 </div>
+                <div class="min-w-[12rem]">
+                    <label class="label" for="scope">Applies to</label>
+                    <select wire:model="scope" id="scope" class="select">
+                        <option value="">All apps (org-wide)</option>
+                        @foreach ($usableApps as $clientId => $appName)
+                            <option value="{{ $clientId }}">{{ $appName }} only</option>
+                        @endforeach
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create role</button>
                 <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
             </form>
         @endif
 
         <div class="card overflow-hidden">
-            @forelse ($orgRoles as $role)
+            @forelse ($tenantRoles as $role)
+                @php
+                    $granted = $permsByRole[$role->id] ?? [];
+                    // The picker offers permissions in the role's scope, minus ones
+                    // already granted. App-scoped role → that app's catalog; org-wide
+                    // → the whole catalog (grouped by app).
+                    $available = ($role->client_id
+                        ? ($catalog[$role->client_id] ?? collect())
+                        : $catalog->flatten(1))
+                        ->reject(fn ($p) => in_array($p->name, $granted, true));
+                @endphp
                 <div class="px-5 py-4" style="border-bottom:1px solid var(--border)">
                     <div class="flex items-start justify-between gap-4 flex-wrap">
                         <div class="flex items-center gap-2">
@@ -206,26 +264,49 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
                                 @if ($role->description)<p class="text-sm" style="color:var(--muted-foreground)">{{ $role->description }}</p>@endif
                             </div>
                         </div>
+                        @if ($role->client_id)
+                            <span class="badge"><x-icon name="clients" class="w-3 h-3" /> {{ $appNames[$role->client_id] ?? $role->client_id }} only</span>
+                        @else
+                            <span class="badge">All apps</span>
+                        @endif
                     </div>
                     <div class="flex flex-wrap items-center gap-1.5 mt-3">
-                        @forelse ($permsByRole[$role->id] ?? [] as $permission)
+                        @forelse ($granted as $permission)
                             <span class="badge"><x-icon name="key" class="w-3 h-3" /> <span class="mono">{{ $permission }}</span></span>
                         @empty
                             <span class="text-xs" style="color:var(--muted-foreground)">No permissions yet.</span>
                         @endforelse
                     </div>
                     @if ($me->isAdmin())
-                        <form wire:submit="grant('{{ $role->id }}')" class="flex items-center gap-2 mt-3">
-                            <input wire:model="permissionInput.{{ $role->id }}" type="text" class="input" style="max-width:16rem" placeholder="reports:read" aria-label="Add a permission to the {{ $role->name }} role">
-                            <button type="submit" class="btn btn-ghost btn-sm" wire:loading.attr="disabled"><x-icon name="plus" class="w-3.5 h-3.5" /> Grant</button>
-                        </form>
+                        @if ($available->isNotEmpty())
+                            <select class="select mt-3" style="max-width:22rem"
+                                    aria-label="Add a permission to the {{ $role->name }} role"
+                                    wire:change="grant('{{ $role->id }}', $event.target.value)">
+                                <option value="">+ Add a permission…</option>
+                                @if ($role->client_id)
+                                    @foreach ($available as $perm)
+                                        <option value="{{ $perm->name }}">{{ $perm->name }}@if ($perm->description) — {{ \Illuminate\Support\Str::limit($perm->description, 40) }}@endif</option>
+                                    @endforeach
+                                @else
+                                    @foreach ($available->groupBy('client_id') as $cid => $perms)
+                                        <optgroup label="{{ $cid ? ($appNames[$cid] ?? $cid) : 'Org-global' }}">
+                                            @foreach ($perms as $perm)
+                                                <option value="{{ $perm->name }}">{{ $perm->name }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                @endif
+                            </select>
+                        @else
+                            <p class="text-xs mt-3" style="color:var(--faint)">Every available permission is already granted.</p>
+                        @endif
                     @endif
                 </div>
             @empty
                 <div class="cbx-empty">
                     <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
-                    <h3>No org roles yet</h3>
-                    <p>Create a role that applies across every app in your organization — or let your apps declare their own above.</p>
+                    <h3>No custom roles yet</h3>
+                    <p>Create a role — org-wide or scoped to one app — composed from the permissions your apps declare. Or let your apps declare their own above.</p>
                 </div>
             @endforelse
         </div>
