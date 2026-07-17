@@ -9,10 +9,12 @@ use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\CurrentUser;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\ImpersonationCallGuard;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Events\EventDelivered;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -43,6 +45,10 @@ final class PlatformServiceProvider extends ServiceProvider
 
         // Register the Microsoft Socialite driver (Google/GitHub are built in).
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
+
+        // RBAC freshness: revoke a user's refresh tokens when their roles change, so a
+        // grant/downgrade takes effect on next refresh rather than riding a stale token.
+        Event::listen(EventDelivered::class, RevokeTokensOnRoleChange::class);
 
         // Livewire only re-runs *persistent* middleware on /livewire/update, so the
         // route-level auth guards must be registered here — in source, not via a
