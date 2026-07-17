@@ -65,6 +65,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
 
         $declared = Permission::query()
             ->where('name', $permission)
+            ->where('tenant_assignable', true)
             ->where(fn ($q) => $q->where('client_id', $role->client_id)->orWhereNull('client_id'))
             ->exists();
         if (! $declared) {
@@ -101,9 +102,11 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
             ->get();
 
         // The declared permission catalog the picker offers — each app's permissions
-        // plus org-global ones. Tenants compose from this; they never free-type.
+        // plus org-global ones. Tenants compose from this; they never free-type. Only
+        // tenant_assignable permissions appear; an app keeps privileged ones internal.
         $catalog = Permission::query()
             ->whereNull('orphaned_at')
+            ->where('tenant_assignable', true)
             ->where(fn ($q) => $q->whereIn('client_id', $clientIds)->orWhereNull('client_id'))
             ->orderBy('name')
             ->get(['id', 'client_id', 'name', 'description']);

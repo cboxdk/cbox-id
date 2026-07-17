@@ -12,6 +12,7 @@ use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
+use Illuminate\Support\Facades\DB;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
@@ -210,6 +211,16 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             ->groupBy('user_id')
             ->map(fn ($g) => $g->pluck('role_id')->all());
 
+        // roleId => the permissions it grants, so the Manage drawer shows what each
+        // role actually lets a member do — the "effective access across apps" view.
+        $permsByRole = DB::table('role_permission')
+            ->join('permissions', 'permissions.id', '=', 'role_permission.permission_id')
+            ->whereIn('role_permission.role_id', $accessRoles->pluck('id'))
+            ->orderBy('permissions.name')
+            ->get(['role_permission.role_id', 'permissions.name'])
+            ->groupBy('role_id')
+            ->map(fn ($group) => $group->pluck('name')->all());
+
         return [
             'me' => $me,
             'rows' => new Collection($rows),
@@ -218,6 +229,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             'accessRolesById' => $accessRoles->keyBy('id'),
             'appNames' => $appNames,
             'assignmentsByUser' => $assignmentsByUser,
+            'permsByRole' => $permsByRole,
         ];
     }
 
@@ -379,10 +391,14 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                         <p class="text-xs font-semibold uppercase mb-1.5 mt-1" style="color:var(--muted);letter-spacing:0.05em">{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}</p>
                                         <div class="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 mb-3">
                                             @foreach ($group as $r)
-                                                <label class="flex items-center gap-2 text-sm rounded-lg px-2.5 py-1.5 cursor-pointer" style="border:1px solid var(--border);background:var(--card)">
-                                                    <input type="checkbox" @checked(in_array($r->id, $assigned, true)) wire:click="toggleRole('{{ $row['id'] }}', '{{ $r->id }}')">
-                                                    <span class="min-w-0 flex-1 truncate" style="color:var(--foreground)">{{ $r->name }}</span>
-                                                    <span class="badge mono" style="font-size:10px">{{ $r->key ?? 'org' }}</span>
+                                                @php $grants = $permsByRole[$r->id] ?? []; @endphp
+                                                <label class="flex flex-col gap-1 text-sm rounded-lg px-2.5 py-1.5 cursor-pointer" style="border:1px solid var(--border);background:var(--card)" title="{{ implode(', ', $grants) }}">
+                                                    <span class="flex items-center gap-2">
+                                                        <input type="checkbox" @checked(in_array($r->id, $assigned, true)) wire:click="toggleRole('{{ $row['id'] }}', '{{ $r->id }}')">
+                                                        <span class="min-w-0 flex-1 truncate" style="color:var(--foreground)">{{ $r->name }}</span>
+                                                        <span class="badge mono" style="font-size:10px">{{ $r->key ?? 'org' }}</span>
+                                                    </span>
+                                                    <span class="text-xs truncate" style="color:var(--faint)">{{ count($grants) > 0 ? implode(' · ', array_slice($grants, 0, 4)).(count($grants) > 4 ? ' +'.(count($grants) - 4) : '') : 'No permissions' }}</span>
                                                 </label>
                                             @endforeach
                                         </div>
