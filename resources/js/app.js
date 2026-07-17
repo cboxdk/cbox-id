@@ -285,3 +285,25 @@ import './bootstrap';
         }
     });
 })();
+
+// Generic copy-to-clipboard buttons. Any `<button data-copy="…">` copies its value;
+// a nested `[data-copy-label]` flips to "Copied" briefly. Used for the 2FA setup key,
+// recovery codes, and anywhere a value should be one tap to grab.
+(() => {
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-copy]');
+        if (!btn) return;
+        e.preventDefault();
+        const text = btn.getAttribute('data-copy') || '';
+        if (!text || !(navigator.clipboard && navigator.clipboard.writeText)) return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const label = btn.querySelector('[data-copy-label]');
+            if (!label || btn.dataset.copyBusy) return;
+            btn.dataset.copyBusy = '1';
+            const original = label.textContent;
+            label.textContent = 'Copied';
+            setTimeout(() => { label.textContent = original; delete btn.dataset.copyBusy; }, 1600);
+        }).catch(() => {});
+    });
+})();

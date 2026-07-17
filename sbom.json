@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:e5da78ec-8b64-4a1e-9d5d-650a41cbc47c",
+    "serialNumber": "urn:uuid:4ebf73d2-20e2-4ccc-944c-a00bbff0320a",
     "version": 1,
     "metadata": {
         "tools": [
@@ -19,6 +19,22 @@
         }
     },
     "components": [
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/bacon/bacon-qr-code@v3.1.1",
+            "group": "bacon",
+            "name": "bacon-qr-code",
+            "version": "v3.1.1",
+            "purl": "pkg:composer/bacon/bacon-qr-code@v3.1.1",
+            "description": "BaconQrCode is a QR code generator for PHP.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "BSD-2-Clause"
+                    }
+                }
+            ]
+        },
         {
             "type": "library",
             "bom-ref": "pkg:composer/brick/math@0.18.0",
@@ -271,6 +287,22 @@
                 {
                     "license": {
                         "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/dasprid/enum@1.0.7",
+            "group": "dasprid",
+            "name": "enum",
+            "version": "1.0.7",
+            "purl": "pkg:composer/dasprid/enum@1.0.7",
+            "description": "PHP 7.1 enum implementation",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "BSD-2-Clause"
                     }
                 }
             ]

@@ -5,6 +5,10 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use App\Platform\SocialProviders;
 use App\Platform\Sudo;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -88,6 +92,25 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         $this->enrolling = true;
         $this->reset('code');
         $this->resetErrorBag();
+    }
+
+    /**
+     * The enrollment `otpauth://` URI rendered as an inline SVG QR code — what an
+     * authenticator app or password manager scans. Themed via currentColor so it
+     * follows light/dark. Returns null before enrolling.
+     */
+    public function qrCode(): ?string
+    {
+        if ($this->provisioningUri === null) {
+            return null;
+        }
+
+        $writer = new Writer(new ImageRenderer(
+            new RendererStyle(220, 0),
+            new SvgImageBackEnd(),
+        ));
+
+        return $writer->writeString($this->provisioningUri);
     }
 
     public function confirm(Mfa $mfa): void
@@ -360,7 +383,12 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
                     <div class="mt-3 p-3 rounded-lg grid grid-cols-2 gap-x-6 gap-y-1 mono text-sm select-all" style="background:var(--surface-2);border:1px solid var(--border)">
                         @foreach ($recoveryCodes as $rc)<span>{{ $rc }}</span>@endforeach
                     </div>
-                    <p class="mt-1 text-xs" style="color:var(--destructive)">These are shown only once. Copy them now.</p>
+                    <div class="mt-2 flex items-center gap-3 flex-wrap">
+                        <button type="button" data-copy="{{ implode("\n", $recoveryCodes) }}" class="btn btn-ghost btn-sm" aria-label="Copy all recovery codes">
+                            <x-icon name="copy" class="w-3.5 h-3.5" /> <span data-copy-label>Copy all codes</span>
+                        </button>
+                        <p class="text-xs" style="color:var(--destructive)">Shown only once — save them now.</p>
+                    </div>
                 @endif
                 <button wire:click="regenerateRecoveryCodes" wire:confirm="Generate new recovery codes? Your existing codes will stop working."
                         class="btn btn-ghost mt-3" wire:loading.attr="disabled">
@@ -372,12 +400,22 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         @else
             <div class="space-y-4">
                 <ol class="text-sm space-y-1" style="color:var(--muted)">
-                    <li>1. Add a new account in your authenticator app.</li>
-                    <li>2. Scan or paste the setup key below, then enter the 6-digit code it shows.</li>
+                    <li>1. Scan the QR code with your authenticator app or password manager — or add the key manually.</li>
+                    <li>2. Enter the 6-digit code it shows.</li>
                 </ol>
-                <div>
-                    <span class="label">Setup key (manual entry)</span>
-                    <p class="mono text-sm p-3 rounded-lg select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $secret }}</p>
+                <div class="flex flex-col sm:flex-row gap-4 items-start">
+                    <div class="shrink-0 rounded-xl p-3" style="background:#fff;line-height:0" role="img" aria-label="Authenticator setup QR code">
+                        {!! $this->qrCode() !!}
+                    </div>
+                    <div class="min-w-0 flex-1 w-full">
+                        <span class="label">Setup key (manual entry)</span>
+                        <div class="flex items-stretch gap-2">
+                            <p class="mono text-sm p-3 rounded-lg select-all break-all flex-1 min-w-0" style="background:var(--surface-2);border:1px solid var(--border)">{{ $secret }}</p>
+                            <button type="button" data-copy="{{ $secret }}" class="btn btn-ghost btn-sm shrink-0" aria-label="Copy setup key">
+                                <x-icon name="copy" class="w-3.5 h-3.5" /> <span data-copy-label>Copy</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <form wire:submit="confirm" class="flex flex-wrap items-end gap-3">
                     <div class="min-w-[10rem]">

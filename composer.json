@@ -13,6 +13,7 @@
   "license": "MIT",
   "require": {
     "php": "^8.4",
+    "bacon/bacon-qr-code": "^3.1",
     "cboxdk/dns": "^0.1",
     "cboxdk/laravel-console-kit": "^0.2",
     "cboxdk/laravel-dns": "^0.1.0",

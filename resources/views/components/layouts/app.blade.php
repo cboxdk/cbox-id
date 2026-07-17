@@ -7,6 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/brand/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/brand/cbox-icon-128.png">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
     <title>{{ $title ? $title.' · '.config('cbox-id.branding.name', 'Cbox ID') : config('cbox-id.branding.name', 'Cbox ID') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     {{-- Per-tenant console branding when the whitelabel plugin is installed; inert otherwise. --}}
