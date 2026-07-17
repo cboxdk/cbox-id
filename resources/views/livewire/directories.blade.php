@@ -5,13 +5,18 @@ declare(strict_types=1);
 use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
+use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
+use Cbox\Id\AccessControl\Models\GroupRoleMapping;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Models\Directory;
+use Cbox\Id\Directory\Models\DirectoryGroup;
+use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends Component
 {
     public bool $creating = false;
 
@@ -57,15 +62,69 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
         $this->portalUrl = route('portal.enter', $token);
     }
 
+    /** Map a directory group onto a role — everyone in it gets the role (pushed). */
+    public function mapGroup(string $groupId, string $roleId, GroupRoleMappings $mappings): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+
+        if ($roleId !== '') {
+            $mappings->map($this->orgId(), $groupId, $roleId);
+        }
+    }
+
+    public function unmapGroup(string $groupId, string $roleId, GroupRoleMappings $mappings): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+
+        $mappings->unmap($this->orgId(), $groupId, $roleId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function with(): array
     {
+        $orgId = $this->orgId();
+
+        $directories = Directory::query()
+            ->where('organization_id', $orgId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        $groups = DirectoryGroup::query()
+            ->whereIn('directory_id', $directories->pluck('id'))
+            ->orderBy('display_name')
+            ->get();
+
+        // Roles assignable to a group: org roles + app-declared roles for the org.
+        $clientIds = Client::query()
+            ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $orgId))
+            ->pluck('client_id');
+        $accessRoles = Role::query()
+            ->where(function ($q) use ($orgId, $clientIds): void {
+                $q->where(fn ($x) => $x->where('organization_id', $orgId)->whereNull('client_id'))
+                    ->orWhere(fn ($x) => $x->whereIn('client_id', $clientIds)->whereNull('orphaned_at'));
+            })
+            ->orderBy('name')
+            ->get();
+
+        $mappingsByGroup = GroupRoleMapping::query()
+            ->where('organization_id', $orgId)
+            ->get()
+            ->groupBy('group_id')
+            ->map(fn ($g) => $g->pluck('role_id')->all());
+
         return [
             'me' => app(CurrentUser::class),
-            'entitled' => app(Entitlements::class)->entitled($this->orgId(), 'scim'),
-            'directories' => Directory::query()
-                ->where('organization_id', $this->orgId())
-                ->orderByDesc('created_at')
-                ->get(),
+            'entitled' => app(Entitlements::class)->entitled($orgId, 'scim'),
+            'directories' => $directories,
+            'groups' => $groups,
+            'accessRoles' => $accessRoles,
+            'accessRolesById' => $accessRoles->keyBy('id'),
+            'appNames' => Client::query()->whereIn('client_id', $accessRoles->pluck('client_id')->filter()->unique())->pluck('name', 'client_id'),
+            'mappingsByGroup' => $mappingsByGroup,
         ];
     }
 
@@ -100,9 +159,9 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
 <div>
     <div class="cbx-page-header">
         <div>
-            <p class="cbx-page-eyebrow">Provisioning</p>
-            <h1 class="cbx-page-title">Directory sync</h1>
-            <p class="cbx-page-desc">Provision and de-provision users automatically over SCIM.</p>
+            <p class="cbx-page-eyebrow">Sign-in</p>
+            <h1 class="cbx-page-title">User sync</h1>
+            <p class="cbx-page-desc">Provision and de-provision users automatically over SCIM, and map their groups onto roles.</p>
         </div>
         @if ($me->isAdmin() && $entitled)
             <div class="flex items-center gap-2">
@@ -205,6 +264,53 @@ new #[Layout('components.layouts.app', ['title' => 'Directory sync'])] class ext
             </table>
         </div>
     </div>
+
+    {{-- ── Directory group → role mapping (the SCIM bridge) ── --}}
+    @if ($groups->isNotEmpty())
+        <div class="cbx-panel overflow-hidden">
+            <div class="cbx-panel-header">
+                <div>
+                    <div class="cbx-panel-title flex items-center gap-2"><x-icon name="shield" class="w-4 h-4" /> Group → role mapping</div>
+                    <p class="cbx-panel-desc">Map a directory group onto a role — everyone in the group gets it automatically as membership syncs. A hand-assigned role is never affected.</p>
+                </div>
+            </div>
+            <ul>
+                @foreach ($groups as $group)
+                    <li class="px-5 py-3" style="border-top:1px solid var(--border)">
+                        <div class="flex items-start justify-between gap-4 flex-wrap">
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm">{{ $group->display_name }}</p>
+                                <div class="flex flex-wrap gap-1 mt-1.5">
+                                    @forelse ($mappingsByGroup[$group->id] ?? [] as $rid)
+                                        @php $r = $accessRolesById[$rid] ?? null; @endphp
+                                        @if ($r)
+                                            <span class="badge">{{ $r->name }}
+                                                <button wire:click="unmapGroup('{{ $group->id }}', '{{ $rid }}')" style="margin-left:5px;color:var(--muted);cursor:pointer" title="Remove mapping">×</button>
+                                            </span>
+                                        @endif
+                                    @empty
+                                        <span class="text-xs" style="color:var(--faint)">No roles mapped</span>
+                                    @endforelse
+                                </div>
+                            </div>
+                            @if ($me->isAdmin() && $accessRoles->isNotEmpty())
+                                <select class="select" style="max-width:15rem" wire:change="mapGroup('{{ $group->id }}', $event.target.value)">
+                                    <option value="">+ Map a role…</option>
+                                    @foreach ($accessRoles->groupBy(fn ($r) => $r->client_id ?? '__org') as $groupKey => $rolesInGroup)
+                                        <optgroup label="{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}">
+                                            @foreach ($rolesInGroup as $r)
+                                                <option value="{{ $r->id }}">{{ $r->name }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            @endif
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     </div>
     @endif
 </div>
