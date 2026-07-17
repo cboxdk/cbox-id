@@ -53,9 +53,14 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
 it('registers an OAuth client for the organization', function () {
     $orgId = owner();
 
+    // A machine-to-machine app (client-credentials), so no redirect URI is needed;
+    // its scopes come from the advanced/custom field.
     Volt::test('clients')
         ->set('name', 'CI Pipeline')
-        ->set('scopes', 'api.read, api.write')
+        ->set('grantAuthorizationCode', false)
+        ->set('grantClientCredentials', true)
+        ->set('selectedScopes', [])
+        ->set('customScopes', 'api.read, api.write')
         ->call('create')
         ->assertHasNoErrors();
 

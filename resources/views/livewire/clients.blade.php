@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\ScopeCatalog;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -10,20 +11,24 @@ use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class extends Component
 {
     public string $name = '';
 
     /** confidential = has a secret (server-side); public = PKCE, no secret (SPA/native/mobile). */
     public string $type = 'confidential';
 
-    public bool $grantClientCredentials = true;
+    public bool $grantClientCredentials = false;
 
-    public bool $grantAuthorizationCode = false;
+    public bool $grantAuthorizationCode = true;
 
     public string $redirectUris = '';
 
-    public string $scopes = '';
+    /** @var array<int, string> Scopes ticked from the catalog. */
+    public array $selectedScopes = ['openid', 'profile', 'email'];
+
+    /** Advanced: any extra custom scope keys, comma-separated. */
+    public string $customScopes = '';
 
     /** First-party clients skip the consent screen and surface in the app launcher. */
     public bool $firstParty = false;
@@ -34,7 +39,10 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
 
     public ?string $newSecret = null;
 
-    public function create(ClientRegistry $clients): void
+    /** @var array{redirect: ?string, scopes: array<int, string>, auth_code: bool}|null */
+    public ?array $newClientMeta = null;
+
+    public function create(ClientRegistry $clients, ScopeCatalog $catalog): void
     {
         $this->authorizeAdmin();
 
@@ -43,25 +51,23 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
             'type' => ['required', 'in:confidential,public'],
             'grantClientCredentials' => ['boolean'],
             'grantAuthorizationCode' => ['boolean'],
-            'scopes' => ['nullable', 'string', 'max:500'],
+            'customScopes' => ['nullable', 'string', 'max:500'],
             'redirectUris' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $grantTypes = $this->parsedGrantTypes();
 
         if ($grantTypes === []) {
-            $this->addError('grantClientCredentials', 'Select at least one grant type.');
+            $this->addError('grantClientCredentials', 'Choose at least one way this app connects.');
 
             return;
         }
 
-        $redirects = $this->parsedRedirectUris();
+        $redirects = $this->splitLines($this->redirectUris);
 
-        // Authorization-code clients redirect the browser back to themselves, so a
-        // redirect URI is mandatory — and each must be an absolute URL we can trust.
         if (in_array('authorization_code', $grantTypes, true)) {
             if ($redirects === []) {
-                $this->addError('redirectUris', 'Add at least one redirect URI for the authorization-code grant.');
+                $this->addError('redirectUris', 'A browser-login app needs at least one redirect URI to return people to.');
 
                 return;
             }
@@ -74,25 +80,37 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
             }
         }
 
+        // Only catalog scopes from the picker, plus any advanced custom keys.
+        $scopes = array_values(array_unique(array_merge(
+            array_values(array_intersect($this->selectedScopes, $catalog->keys())),
+            $this->parsedCustomScopes(),
+        )));
+
         $registered = $clients->register(new NewClient(
             name: $this->name,
             type: $this->type === 'public' ? ClientType::Public : ClientType::Confidential,
             redirectUris: $redirects,
             grantTypes: $grantTypes,
-            scopes: $this->parsedScopes(),
+            scopes: $scopes,
             firstParty: $this->firstParty,
             organizationId: $this->orgId(),
         ));
 
         $this->newClientId = $registered->client->client_id;
-        // Public (PKCE) clients have no secret; only reveal one when there is one.
-        $this->newSecret = $registered->secret !== '' ? $registered->secret : null;
+        $this->newSecret = ($registered->secret !== null && $registered->secret !== '') ? $registered->secret : null;
+        $this->newClientMeta = [
+            'redirect' => $redirects[0] ?? null,
+            'scopes' => $scopes,
+            'auth_code' => in_array('authorization_code', $grantTypes, true),
+        ];
 
-        $this->reset('name', 'scopes', 'redirectUris', 'creating', 'firstParty', 'grantAuthorizationCode');
+        $this->reset('name', 'redirectUris', 'creating', 'firstParty', 'customScopes');
         $this->type = 'confidential';
-        $this->grantClientCredentials = true;
+        $this->grantClientCredentials = false;
+        $this->grantAuthorizationCode = true;
+        $this->selectedScopes = $catalog->signInDefaults();
 
-        session()->flash('status', 'Client "'.$registered->client->name.'" created.');
+        session()->flash('status', 'App "'.$registered->client->name.'" created.');
     }
 
     public function delete(string $clientId): void
@@ -104,12 +122,12 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
             ->where('client_id', $clientId)
             ->delete();
 
-        session()->flash('status', 'Client deleted.');
+        session()->flash('status', 'App deleted.');
     }
 
     public function dismissSecret(): void
     {
-        $this->reset('newClientId', 'newSecret');
+        $this->reset('newClientId', 'newSecret', 'newClientMeta');
     }
 
     /** @return list<string> */
@@ -121,7 +139,6 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
         }
         if ($this->grantAuthorizationCode) {
             $grants[] = 'authorization_code';
-            // A browser-login app almost always wants silent renewal too.
             $grants[] = 'refresh_token';
         }
 
@@ -129,17 +146,11 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
     }
 
     /** @return list<string> */
-    private function parsedRedirectUris(): array
-    {
-        return $this->splitLines($this->redirectUris);
-    }
-
-    /** @return list<string> */
-    private function parsedScopes(): array
+    private function parsedCustomScopes(): array
     {
         return array_values(array_filter(array_map(
             'trim',
-            explode(',', $this->scopes),
+            explode(',', $this->customScopes),
         ), fn (string $scope): bool => $scope !== ''));
     }
 
@@ -157,10 +168,14 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
     /**
      * @return array<string, mixed>
      */
-    public function with(): array
+    public function with(ScopeCatalog $catalog): array
     {
+        $appUrl = config('app.url');
+
         return [
             'me' => app(CurrentUser::class),
+            'scopeGroups' => $catalog->grouped(),
+            'issuer' => rtrim(is_string($appUrl) ? $appUrl : '', '/'),
             'rows' => Client::query()
                 ->where('organization_id', $this->orgId())
                 ->orderByDesc('id')
@@ -175,9 +190,6 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
 
     public function boot(): void
     {
-        // Read/write gate: this page exposes org-wide config (client secrets shown
-        // once) — admins only. Enforced in boot() so it re-runs on every Livewire
-        // action (create, delete), not just the initial mount.
         $this->authorizeAdmin();
     }
 
@@ -191,97 +203,174 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
     <div class="cbx-page-header mb-8">
         <div>
             <p class="cbx-page-eyebrow">Developers</p>
-            <h1 class="cbx-page-title">API clients</h1>
-            <p class="cbx-page-desc">OAuth clients & apps for this organization — machine-to-machine access, browser SSO, and first-party apps that appear in the launcher.</p>
+            <h1 class="cbx-page-title">Apps &amp; API keys</h1>
+            <p class="cbx-page-desc">Connect your apps to Cbox ID — for signing people in (single sign-on) or for machine-to-machine API access. First-party apps also appear in your team's launcher.</p>
         </div>
         <div class="flex items-center gap-2">
             @if ($me->isAdmin())
-                <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New client</button>
+                <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New app</button>
             @endif
         </div>
     </div>
 
     @if ($newClientId)
-        <div class="card p-4 mb-5" style="border-color:color-mix(in srgb, var(--warn) 40%, transparent);background:var(--warn-soft)">
-            <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                    @if ($newSecret)
-                        <p class="font-semibold text-sm" style="color:var(--warn)">Copy this secret now — it won't be shown again.</p>
-                    @else
-                        <p class="font-semibold text-sm" style="color:var(--foreground)">Public client created — no secret (uses PKCE).</p>
-                    @endif
-                    <dl class="mt-3 space-y-2 text-sm">
-                        <div>
-                            <dt class="text-xs" style="color:var(--muted)">Client ID</dt>
-                            <dd class="mono break-all">{{ $newClientId }}</dd>
-                        </div>
-                        @if ($newSecret)
-                            <div>
-                                <dt class="text-xs" style="color:var(--muted)">Client secret</dt>
-                                <dd class="mono break-all">{{ $newSecret }}</dd>
-                            </div>
-                        @endif
-                    </dl>
+        <div class="card p-5 mb-5" style="border-color:var(--accent-edge)">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h3 class="font-semibold" style="color:var(--foreground)">Your app is ready — connect it</h3>
+                    <p class="text-sm" style="color:var(--muted)">Copy these values into your app or SDK. The secret is shown once.</p>
                 </div>
-                <button wire:click="dismissSecret" class="btn btn-ghost btn-sm">Dismiss</button>
+                <button wire:click="dismissSecret" class="btn btn-ghost btn-sm">Done</button>
             </div>
+
+            <dl class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-lg p-3" style="background:var(--secondary)">
+                    <dt class="text-xs" style="color:var(--muted)">Issuer</dt>
+                    <dd class="mono text-sm break-all" style="color:var(--foreground)">{{ $issuer }}</dd>
+                </div>
+                <div class="rounded-lg p-3" style="background:var(--secondary)">
+                    <dt class="text-xs" style="color:var(--muted)">Client ID</dt>
+                    <dd class="mono text-sm break-all" style="color:var(--foreground)">{{ $newClientId }}</dd>
+                </div>
+                @if ($newSecret)
+                    <div class="rounded-lg p-3 sm:col-span-2" style="background:var(--warning-soft);border:1px solid color-mix(in oklch, var(--warning) 30%, transparent)">
+                        <dt class="text-xs font-semibold" style="color:var(--warning)">Client secret — copy it now, it won't be shown again</dt>
+                        <dd class="mono text-sm break-all mt-1" style="color:var(--foreground)">{{ $newSecret }}</dd>
+                    </div>
+                @else
+                    <div class="rounded-lg p-3 sm:col-span-2" style="background:var(--secondary)">
+                        <dt class="text-xs" style="color:var(--muted)">Client secret</dt>
+                        <dd class="text-sm mt-1" style="color:var(--foreground)">None — this is a public app and uses PKCE instead of a secret.</dd>
+                    </div>
+                @endif
+            </dl>
+
+            @if ($newClientMeta && $newClientMeta['auth_code'])
+                <div class="mt-4">
+                    <p class="text-xs font-medium uppercase mb-2" style="color:var(--muted);letter-spacing:0.06em">Wire it up with a Cbox&nbsp;ID SDK</p>
+                    <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--secondary);color:var(--foreground);line-height:1.6"><span style="color:var(--muted)">// npm i @cboxdk/id-js</span>
+import {'{'} CboxID {'}'} from '@cboxdk/id-js'
+
+const id = new CboxID({'{'}
+  issuer: '{{ $issuer }}',
+  clientId: '{{ $newClientId }}',
+  redirectUri: '{{ $newClientMeta['redirect'] }}',
+  scopes: [{!! collect($newClientMeta['scopes'])->map(fn ($s) => "'".e($s)."'")->implode(', ') !!}],
+{'}'})
+
+await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, returns signed in</span></pre>
+                    <p class="text-xs mt-2" style="color:var(--muted)">SDKs:
+                        <a href="https://www.npmjs.com/package/@cboxdk/id-js" class="underline" style="color:var(--accent)">id-js</a> ·
+                        <a href="https://www.npmjs.com/package/@cboxdk/id-react" class="underline" style="color:var(--accent)">id-react</a> ·
+                        <a href="https://pypi.org/project/cbox-id/" class="underline" style="color:var(--accent)">python</a>
+                    </p>
+                </div>
+            @endif
         </div>
     @endif
 
     @if ($creating && $me->isAdmin())
-        <form wire:submit="create" class="card p-5 mb-5 space-y-4">
+        <form wire:submit="create" class="card p-5 mb-5 space-y-5">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="label" for="name">Name</label>
-                    <input wire:model="name" id="name" type="text" class="input" placeholder="Billing service" autofocus>
+                    <label class="label" for="name">App name</label>
+                    <input wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus>
                     @error('name') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="type">Client type</label>
                     <select wire:model="type" id="type" class="select">
-                        <option value="confidential">Confidential — has a secret (server-side)</option>
-                        <option value="public">Public — PKCE, no secret (SPA / native / mobile)</option>
+                        <option value="confidential">Confidential — a server that can keep a secret</option>
+                        <option value="public">Public — a browser/mobile app (PKCE, no secret)</option>
                     </select>
                 </div>
             </div>
 
+            {{-- How the app connects — with a visual of the handshake. --}}
             <div>
-                <span class="label">Grant types</span>
-                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                <span class="label">How does this app connect?</span>
+                <div class="flex flex-wrap gap-x-6 gap-y-2 mb-3">
                     <label class="flex items-center gap-2 text-sm" style="color:var(--foreground)">
-                        <input wire:model="grantClientCredentials" type="checkbox"> Client credentials <span style="color:var(--muted)">(machine-to-machine)</span>
+                        <input wire:model.live="grantAuthorizationCode" type="checkbox"> Sign people in <span style="color:var(--muted)">(single sign-on)</span>
                     </label>
                     <label class="flex items-center gap-2 text-sm" style="color:var(--foreground)">
-                        <input wire:model.live="grantAuthorizationCode" type="checkbox"> Authorization code <span style="color:var(--muted)">(browser login / SSO)</span>
+                        <input wire:model.live="grantClientCredentials" type="checkbox"> Call the API as itself <span style="color:var(--muted)">(machine-to-machine)</span>
                     </label>
                 </div>
                 @error('grantClientCredentials') <p class="field-error">{{ $message }}</p> @enderror
+
+                @if ($grantAuthorizationCode)
+                    <div class="cbx-flow" role="img" aria-label="Sign-in handshake: person, your app, Cbox ID, back to your app">
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--info-soft);color:var(--info)">1</span><span>Person clicks <b>Sign in</b> in your app</span></div>
+                        <span class="cbx-flow-arrow">→</span>
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">2</span><span>Redirected to <b>Cbox ID</b> to authenticate</span></div>
+                        <span class="cbx-flow-arrow">→</span>
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">3</span><span>Redirected <b>back to your app</b> with a code</span></div>
+                        <span class="cbx-flow-arrow">→</span>
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--success-soft);color:var(--success)">4</span><span>Your app swaps the code for tokens</span></div>
+                    </div>
+                @endif
+                @if ($grantClientCredentials)
+                    <div class="cbx-flow" role="img" aria-label="Machine-to-machine: your app requests a token, then calls the API">
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">1</span><span>Your app sends its <b>ID + secret</b> to Cbox ID</span></div>
+                        <span class="cbx-flow-arrow">→</span>
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">2</span><span>Cbox ID returns an <b>access token</b></span></div>
+                        <span class="cbx-flow-arrow">→</span>
+                        <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--success-soft);color:var(--success)">3</span><span>Your app calls the <b>API</b> with the token</span></div>
+                    </div>
+                @endif
             </div>
 
             @if ($grantAuthorizationCode)
                 <div>
-                    <label class="label" for="redirectUris">Redirect URIs <span style="color:var(--muted);font-weight:400">(one per line)</span></label>
-                    <textarea wire:model="redirectUris" id="redirectUris" rows="3" class="input" style="height:auto;padding:8px 10px" placeholder="https://app.example.com/auth/callback"></textarea>
+                    <label class="label" for="redirectUris">Redirect URIs <span style="color:var(--muted);font-weight:400">— where Cbox ID sends people back (one per line)</span></label>
+                    <textarea wire:model="redirectUris" id="redirectUris" rows="2" class="input" style="height:auto;padding:8px 10px" placeholder="https://app.example.com/auth/callback"></textarea>
                     @error('redirectUris') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
             @endif
 
+            {{-- Permissions / scopes — a described picker, not a blank box. --}}
             <div>
-                <label class="label" for="scopes">Scopes <span style="color:var(--muted);font-weight:400">(comma-separated)</span></label>
-                <input wire:model="scopes" id="scopes" type="text" class="input" placeholder="users.read, orgs.read">
-                @error('scopes') <p class="field-error">{{ $message }}</p> @enderror
+                <span class="label">Permissions this app requests</span>
+                <p class="text-xs mb-3" style="color:var(--muted)">Scopes decide what the app is allowed to see and do. People see the sign-in ones on the consent screen (first-party apps skip it).</p>
+                <div class="space-y-4">
+                    @foreach ($scopeGroups as $group => $scopes)
+                        <div>
+                            <p class="text-xs font-semibold uppercase mb-2" style="color:var(--muted);letter-spacing:0.05em">{{ $group }}</p>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                @foreach ($scopes as $scope)
+                                    <label class="flex items-start gap-2.5 rounded-lg p-2.5 cursor-pointer" style="border:1px solid var(--border)">
+                                        <input wire:model="selectedScopes" type="checkbox" value="{{ $scope['key'] }}" class="mt-0.5">
+                                        <span class="min-w-0">
+                                            <span class="flex items-center gap-2">
+                                                <span class="text-sm font-medium" style="color:var(--foreground)">{{ $scope['label'] }}</span>
+                                                <span class="badge mono" style="font-size:10px">{{ $scope['key'] }}</span>
+                                            </span>
+                                            <span class="block text-xs mt-0.5" style="color:var(--muted)">{{ $scope['description'] }}</span>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                    <div>
+                        <label class="label" for="customScopes" style="font-weight:400;font-size:12px">Advanced — custom scopes <span style="color:var(--muted)">(comma-separated)</span></label>
+                        <input wire:model="customScopes" id="customScopes" type="text" class="input" placeholder="reports.read">
+                        @error('customScopes') <p class="field-error">{{ $message }}</p> @enderror
+                    </div>
+                </div>
             </div>
 
             <label class="flex items-start gap-2.5 text-sm" style="color:var(--foreground)">
                 <input wire:model="firstParty" type="checkbox" class="mt-0.5">
                 <span>
                     First-party app
-                    <span class="block text-xs" style="color:var(--muted)">Trusted app — skips the consent screen and appears in your team's app launcher (needs a redirect URI).</span>
+                    <span class="block text-xs" style="color:var(--muted)">A trusted app you own — skips the consent screen and appears in your team's app launcher (needs a redirect URI).</span>
                 </span>
             </label>
 
             <div class="flex items-center gap-2 pt-1">
-                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create client</button>
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create app</button>
                 <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
             </div>
         </form>
@@ -292,11 +381,11 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
             <table class="table">
                 <thead>
                     <tr>
-                        <th scope="col">Name</th>
+                        <th scope="col">App</th>
                         <th scope="col">Client ID</th>
                         <th scope="col">Type</th>
-                        <th scope="col">Grants</th>
-                        <th scope="col">Scopes</th>
+                        <th scope="col">Connects via</th>
+                        <th scope="col">Permissions</th>
                         @if ($me->isAdmin())<th scope="col"><span class="sr-only">Actions</span></th>@endif
                     </tr>
                 </thead>
@@ -311,9 +400,8 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
                             <td><span class="badge">{{ ucfirst($client->type->value) }}</span></td>
                             <td>
                                 <div class="flex flex-wrap gap-1">
-                                    @foreach ($client->grant_types ?? [] as $grant)
-                                        <span class="badge mono">{{ str_replace('_', ' ', $grant) }}</span>
-                                    @endforeach
+                                    @if (in_array('authorization_code', $client->grant_types ?? [], true))<span class="badge">Sign-in</span>@endif
+                                    @if (in_array('client_credentials', $client->grant_types ?? [], true))<span class="badge">API</span>@endif
                                 </div>
                             </td>
                             <td>
@@ -330,7 +418,7 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
                             @if ($me->isAdmin())
                                 <td class="text-right">
                                     <button wire:click="delete('{{ $client->client_id }}')"
-                                            wire:confirm="Delete this client? Anything using its credentials will stop working."
+                                            wire:confirm="Delete this app? Anything using its credentials will stop working."
                                             class="btn btn-danger btn-sm">Delete</button>
                                 </td>
                             @endif
@@ -340,8 +428,8 @@ new #[Layout('components.layouts.app', ['title' => 'API clients'])] class extend
                             <td colspan="{{ $me->isAdmin() ? 6 : 5 }}">
                                 <div class="cbx-empty">
                                     <div class="cbx-empty-icon"><x-icon name="clients" class="w-5 h-5" /></div>
-                                    <h3>No clients yet</h3>
-                                    <p>Register an OAuth client for machine-to-machine access, browser SSO, or a first-party launcher app.</p>
+                                    <h3>No apps yet</h3>
+                                    <p>Connect your first app — to sign people in with single sign-on, or to call the Cbox ID API.</p>
                                 </div>
                             </td>
                         </tr>
