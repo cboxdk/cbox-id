@@ -113,6 +113,12 @@
             <a href="{{ route('dashboard') }}" class="cbx-rail-brand" aria-label="{{ config('cbox-id.branding.name', 'Cbox ID') }}" title="{{ config('cbox-id.branding.name', 'Cbox ID') }}">
                 <svg viewBox="0 0 64 64" role="img" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)"/><text x="32" y="44" text-anchor="middle" fill="var(--primary-foreground)" font-family="var(--font-display)" font-weight="700" font-size="30" letter-spacing="-0.04em">ID</text></svg>
             </a>
+            {{-- Pin toggle, top-right of the rail header — visible only when the rail is
+                 expanded (pinned or hover-open); tilted when loose, upright + accent pinned. --}}
+            <button type="button" class="cbx-pin-btn cbx-pintoggle" :class="{ 'is-pinned': pinned }" @click="togglePin()"
+                    :title="pinned ? 'Unpin navigation' : 'Pin navigation open'" :aria-pressed="pinned" aria-label="Pin navigation">
+                <x-icon name="pin" class="w-[17px] h-[17px]" />
+            </button>
         </div>
 
         <nav class="flex-1 overflow-y-auto" style="scrollbar-width:none">
@@ -126,11 +132,6 @@
         </nav>
 
         <div class="cbx-rail-foot">
-            <button type="button" class="cbx-railitem cbx-pintoggle" :class="{ 'is-pinned': pinned }" @click="togglePin()"
-                    :title="pinned ? 'Unpin navigation' : 'Pin navigation open'" :aria-pressed="pinned" aria-label="Pin navigation">
-                <x-icon name="pin" class="w-[18px] h-[18px]" />
-                <span class="lbl" x-text="pinned ? 'Unpin' : 'Pin'">Pin</span>
-            </button>
             <button type="button" class="cbx-railitem" @click="account=!account" title="{{ $me->name() }}" aria-haspopup="true" :aria-expanded="account">
                 <span class="cbx-avatar" aria-hidden="true">{{ $userInitial }}</span>
                 <span class="lbl" style="overflow:hidden;text-overflow:ellipsis">{{ $me->name() }}</span>
