@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\InvitationMail;
+use App\Models\InvitationRoleGrant;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
@@ -25,6 +26,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
     #[Validate('required|in:member,admin,owner')]
     public string $inviteRole = 'member';
+
+    /** @var array<int, string> Access-role ids to grant the invitee on acceptance. */
+    public array $inviteAccessRoles = [];
 
     public bool $inviting = false;
 
@@ -76,9 +80,42 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             url: route('invitation.accept', $pending->token),
         ));
 
-        $this->reset('inviteEmail', 'inviting');
+        // Park the chosen access roles for this email — applied on acceptance, so
+        // there's no separate assignment step after they join.
+        $validRoleIds = $this->validAccessRoleIds();
+        foreach (array_values(array_intersect($this->inviteAccessRoles, $validRoleIds)) as $roleId) {
+            InvitationRoleGrant::query()->firstOrCreate([
+                'organization_id' => $this->orgId(),
+                'email' => $email,
+                'role_id' => $roleId,
+            ]);
+        }
+
+        $this->reset('inviteEmail', 'inviting', 'inviteAccessRoles');
         $this->inviteRole = 'member';
         session()->flash('status', 'Invitation sent to '.$email.'.');
+    }
+
+    /**
+     * Ids of the access roles a member may hold in this org (org-wide + this org's
+     * app-declared roles) — the allow-list for both the invite picker and manage.
+     *
+     * @return list<string>
+     */
+    private function validAccessRoleIds(): array
+    {
+        $orgId = $this->orgId();
+        $clientIds = Client::query()
+            ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $orgId))
+            ->pluck('client_id');
+
+        return Role::query()
+            ->where(function ($q) use ($orgId, $clientIds): void {
+                $q->where(fn ($x) => $x->where('organization_id', $orgId)->whereNull('client_id'))
+                    ->orWhere(fn ($x) => $x->whereIn('client_id', $clientIds)->whereNull('orphaned_at'));
+            })
+            ->pluck('id')
+            ->all();
     }
 
     public function revokeInvitation(string $id, Invitations $invitations): void
@@ -211,22 +248,45 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
     <div class="mt-8 space-y-6">
     @if ($inviting && $me->isAdmin())
-        <form wire:submit="invite" class="card p-4 flex flex-wrap items-end gap-3">
-            <div class="flex-1 min-w-[14rem]">
-                <label class="label" for="inviteEmail">Email address</label>
-                <input wire:model="inviteEmail" id="inviteEmail" type="email" class="input" placeholder="teammate@company.com" autofocus>
-                @error('inviteEmail') <p class="field-error">{{ $message }}</p> @enderror
+        <form wire:submit="invite" class="card p-4 space-y-4">
+            <div class="flex flex-wrap items-end gap-3">
+                <div class="flex-1 min-w-[14rem]">
+                    <label class="label" for="inviteEmail">Email address</label>
+                    <input wire:model="inviteEmail" id="inviteEmail" type="email" class="input" placeholder="teammate@company.com" autofocus>
+                    @error('inviteEmail') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="label" for="inviteRole">Workspace access</label>
+                    <select wire:model="inviteRole" id="inviteRole" class="select">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                        <option value="owner">Owner</option>
+                    </select>
+                </div>
             </div>
-            <div>
-                <label class="label" for="inviteRole">Role</label>
-                <select wire:model="inviteRole" id="inviteRole" class="select">
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
-                </select>
+
+            @if ($accessRoles->isNotEmpty())
+                <div>
+                    <span class="label">Access roles <span style="color:var(--muted);font-weight:400">— granted the moment they accept (optional)</span></span>
+                    @foreach ($accessRoles->groupBy(fn ($r) => $r->client_id ?? '__org') as $groupKey => $group)
+                        <p class="text-xs font-semibold uppercase mb-1.5 mt-1" style="color:var(--muted);letter-spacing:0.05em">{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}</p>
+                        <div class="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 mb-2">
+                            @foreach ($group as $r)
+                                <label class="flex items-center gap-2 text-sm rounded-lg px-2.5 py-1.5 cursor-pointer" style="border:1px solid var(--border);background:var(--card)">
+                                    <input type="checkbox" wire:model="inviteAccessRoles" value="{{ $r->id }}">
+                                    <span class="min-w-0 flex-1 truncate" style="color:var(--foreground)">{{ $r->name }}</span>
+                                    <span class="badge mono" style="font-size:10px">{{ $r->key ?? 'org' }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            <div class="flex items-center gap-2">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Send invite</button>
+                <button type="button" wire:click="$set('inviting', false)" class="btn btn-ghost">Cancel</button>
             </div>
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Send invite</button>
-            <button type="button" wire:click="$set('inviting', false)" class="btn btn-ghost">Cancel</button>
         </form>
     @endif
 

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\InvitationRoleGrant;
 use App\Platform\PlatformAuth;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
@@ -19,7 +22,7 @@ use Illuminate\Http\Request;
  */
 final class InvitationController extends Controller
 {
-    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth): RedirectResponse
+    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, Roles $roles): RedirectResponse
     {
         $invitation = $invitations->byToken($token);
 
@@ -34,6 +37,22 @@ final class InvitationController extends Controller
         } catch (InvalidInvitation) {
             return redirect()->route('login')->with('error', 'That invitation is invalid or has expired.');
         }
+
+        // Apply any access roles chosen for this invite, then clear them — so the
+        // invitee lands already holding the roles the admin picked.
+        $grants = InvitationRoleGrant::query()
+            ->where('organization_id', $invitation->organization_id)
+            ->where('email', $invitation->email)
+            ->get();
+
+        foreach ($grants as $grant) {
+            $roles->assign($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual);
+        }
+
+        InvitationRoleGrant::query()
+            ->where('organization_id', $invitation->organization_id)
+            ->where('email', $invitation->email)
+            ->delete();
 
         $auth->establish($request, $subject->id, ['invitation']);
         $auth->switchOrganization($request, $invitation->organization_id);
