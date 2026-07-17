@@ -35,29 +35,31 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('usage', 'Usage', order: 20)
             ->page('approvals', 'Agent approvals', order: 30);
 
-        $nav->area('directory', 'Directory', 'members', 20)
+        // Plain-language labels for non-experts (the technical term lives on the page
+        // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.
+        $nav->area('directory', 'People', 'members', 20)
             ->page('members', 'Members', order: 10)
             ->page('roles', 'Roles', order: 20);
 
-        $nav->area('authentication', 'Authentication', 'connections', 30)
-            ->page('connections', 'SSO connections', order: 10)
-            ->page('sso-providers', 'SSO providers', order: 20)
-            ->page('directories', 'Directory sync', order: 30)
-            ->page('provisioning', 'Outbound SCIM', order: 40);
+        $nav->area('authentication', 'Sign-in', 'connections', 30)
+            ->page('connections', 'Single sign-on', order: 10)
+            ->page('sso-providers', 'Login methods', order: 20)
+            ->page('directories', 'User sync', order: 30)
+            ->page('provisioning', 'Outbound sync', order: 40);
 
-        $nav->area('governance', 'Governance', 'shield', 40)
+        $nav->area('governance', 'Access control', 'shield', 40)
             ->page('governance', 'Access reviews', order: 10)
-            ->page('sod-policies', 'Segregation of duties', order: 20);
+            ->page('sod-policies', 'Conflict rules', order: 20);
 
         $nav->area('developers', 'Developers', 'clients', 50)
-            ->page('clients', 'API clients', order: 10)
+            ->page('clients', 'Apps & API keys', order: 10)
             ->page('webhooks', 'Webhooks', order: 20)
-            ->page('hooks', 'Inline hooks', order: 30)
-            ->page('vault', 'Token vault', order: 40);
+            ->page('hooks', 'Event hooks', order: 30)
+            ->page('vault', 'Stored tokens', order: 40);
 
-        $nav->area('audit', 'Audit', 'audit', 60)
-            ->page('audit', 'Audit log', order: 10)
-            ->page('audit-streams', 'SIEM streams', order: 20);
+        $nav->area('audit', 'Logs', 'audit', 60)
+            ->page('audit', 'Activity log', order: 10)
+            ->page('audit-streams', 'Log streaming', order: 20);
 
         $nav->area('settings', 'Settings', 'settings', 70)
             ->page('settings', 'Settings', order: 10);

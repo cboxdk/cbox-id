@@ -1,117 +1,117 @@
 {
-    "$schema": "https://getcomposer.org/schema.json",
-    "name": "cboxdk/cbox-id",
-    "type": "project",
-    "description": "Cbox ID \u2014 the hosted, self-hostable identity platform app (admin console + hosted cloud) built on cboxdk/laravel-id.",
-    "keywords": [
-        "cbox",
-        "identity",
-        "sso",
-        "scim",
-        "oidc"
+  "$schema": "https://getcomposer.org/schema.json",
+  "name": "cboxdk/cbox-id",
+  "type": "project",
+  "description": "Cbox ID — the hosted, self-hostable identity platform app (admin console + hosted cloud) built on cboxdk/laravel-id.",
+  "keywords": [
+    "cbox",
+    "identity",
+    "sso",
+    "scim",
+    "oidc"
+  ],
+  "license": "MIT",
+  "require": {
+    "php": "^8.4",
+    "cboxdk/dns": "^0.1",
+    "cboxdk/laravel-console-kit": "^0.2",
+    "cboxdk/laravel-dns": "^0.1.0",
+    "cboxdk/laravel-health": "^2.0",
+    "cboxdk/laravel-id": "^0.20",
+    "cboxdk/laravel-queue-autoscale": "^3.0",
+    "cboxdk/laravel-queue-metrics": "^3.2",
+    "cboxdk/laravel-risk": "^1.1",
+    "cboxdk/laravel-telemetry": "^1.0",
+    "laravel/framework": "^13.0",
+    "laravel/socialite": "^5.28",
+    "laravel/tinker": "^3.0",
+    "livewire/livewire": "^4.3",
+    "livewire/volt": "^1.10",
+    "socialiteproviders/microsoft": "^4.9"
+  },
+  "require-dev": {
+    "fakerphp/faker": "^1.23",
+    "larastan/larastan": "^3.0",
+    "laravel/pail": "^1.2.2",
+    "laravel/pint": "^1.24",
+    "laravel/sail": "^1.41",
+    "mockery/mockery": "^1.6",
+    "nunomaduro/collision": "^8.6",
+    "pestphp/pest": "^4.0",
+    "pestphp/pest-plugin-browser": "^4.3",
+    "phpunit/phpunit": "^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/",
+      "Database\\Factories\\": "database/factories/",
+      "Database\\Seeders\\": "database/seeders/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "setup": [
+      "composer install",
+      "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+      "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+      "@php artisan key:generate",
+      "@php artisan cbox-id:install",
+      "npm install",
+      "npm run build"
     ],
-    "license": "MIT",
-    "require": {
-        "php": "^8.4",
-        "cboxdk/dns": "^0.1",
-        "cboxdk/laravel-console-kit": "^0.2",
-        "cboxdk/laravel-dns": "^0.1.0",
-        "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^0.19",
-        "cboxdk/laravel-queue-autoscale": "^3.0",
-        "cboxdk/laravel-queue-metrics": "^3.2",
-        "cboxdk/laravel-risk": "^1.1",
-        "cboxdk/laravel-telemetry": "^1.0",
-        "laravel/framework": "^13.0",
-        "laravel/socialite": "^5.28",
-        "laravel/tinker": "^3.0",
-        "livewire/livewire": "^4.3",
-        "livewire/volt": "^1.10",
-        "socialiteproviders/microsoft": "^4.9"
-    },
-    "require-dev": {
-        "fakerphp/faker": "^1.23",
-        "larastan/larastan": "^3.0",
-        "laravel/pail": "^1.2.2",
-        "laravel/pint": "^1.24",
-        "laravel/sail": "^1.41",
-        "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-browser": "^4.3",
-        "phpunit/phpunit": "^12.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "App\\": "app/",
-            "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "setup": [
-            "composer install",
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan key:generate",
-            "@php artisan cbox-id:install",
-            "npm install",
-            "npm run build"
-        ],
-        "dev": [
-            "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
-        ],
-        "test": [
-            "@php artisan config:clear --ansi",
-            "@php artisan test"
-        ],
-        "analyse": [
-            "@php vendor/bin/phpstan analyse --no-progress"
-        ],
-        "qa": [
-            "@php vendor/bin/pint --test",
-            "@analyse",
-            "@test"
-        ],
-        "post-autoload-dump": [
-            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
-        ],
-        "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
-        ],
-        "post-root-package-install": [
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
-        ],
-        "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
-        ],
-        "pre-package-uninstall": [
-            "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
-        ]
-    },
-    "extra": {
-        "laravel": {
-            "dont-discover": []
-        }
-    },
-    "config": {
-        "optimize-autoloader": true,
-        "preferred-install": "dist",
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true,
-            "php-http/discovery": true
-        }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    "dev": [
+      "Composer\\Config::disableProcessTimeout",
+      "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+    ],
+    "test": [
+      "@php artisan config:clear --ansi",
+      "@php artisan test"
+    ],
+    "analyse": [
+      "@php vendor/bin/phpstan analyse --no-progress"
+    ],
+    "qa": [
+      "@php vendor/bin/pint --test",
+      "@analyse",
+      "@test"
+    ],
+    "post-autoload-dump": [
+      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+      "@php artisan package:discover --ansi"
+    ],
+    "post-update-cmd": [
+      "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+    ],
+    "post-root-package-install": [
+      "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+    ],
+    "post-create-project-cmd": [
+      "@php artisan key:generate --ansi",
+      "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+      "@php artisan migrate --graceful --ansi"
+    ],
+    "pre-package-uninstall": [
+      "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+    ]
+  },
+  "extra": {
+    "laravel": {
+      "dont-discover": []
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true,
+      "php-http/discovery": true
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
 }
