@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Platform\CurrentUser;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Enums\GrantSource;
+use Cbox\Id\AccessControl\Models\Role;
+use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
@@ -22,6 +27,33 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     public string $inviteRole = 'member';
 
     public bool $inviting = false;
+
+    /** The member whose access-roles panel is expanded, if any. */
+    public ?string $managingUserId = null;
+
+    public function toggleManage(string $userId): void
+    {
+        $this->authorizeAdmin();
+        $this->managingUserId = $this->managingUserId === $userId ? null : $userId;
+    }
+
+    /** Assign or remove an org/app access-role for a member (manual grant). */
+    public function toggleRole(string $userId, string $roleId, Roles $roles): void
+    {
+        $this->authorizeAdmin();
+
+        $held = RoleAssignment::query()
+            ->where('organization_id', $this->orgId())
+            ->where('user_id', $userId)
+            ->where('role_id', $roleId)
+            ->exists();
+
+        if ($held) {
+            $roles->unassign($this->orgId(), $userId, $roleId);
+        } else {
+            $roles->assign($this->orgId(), $userId, $roleId, GrantSource::Manual);
+        }
+    }
 
     public function invite(Invitations $invitations): void
     {
@@ -115,10 +147,40 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                 'joined' => $m->created_at,
             ]);
 
+        // Access roles assignable to people: org-wide roles + app-declared roles for
+        // apps this org can use. Grouped so the picker reads clearly.
+        $orgId = $this->orgId();
+        $clientIds = Client::query()
+            ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $orgId))
+            ->pluck('client_id');
+
+        $accessRoles = Role::query()
+            ->where(function ($q) use ($orgId, $clientIds): void {
+                $q->where(fn ($x) => $x->where('organization_id', $orgId)->whereNull('client_id'))
+                    ->orWhere(fn ($x) => $x->whereIn('client_id', $clientIds)->whereNull('orphaned_at'));
+            })
+            ->orderBy('name')
+            ->get();
+
+        $appNames = Client::query()
+            ->whereIn('client_id', $accessRoles->pluck('client_id')->filter()->unique())
+            ->pluck('name', 'client_id');
+
+        // userId => list of assigned role ids (org-scoped).
+        $assignmentsByUser = RoleAssignment::query()
+            ->where('organization_id', $orgId)
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($g) => $g->pluck('role_id')->all());
+
         return [
             'me' => $me,
             'rows' => new Collection($rows),
             'invitations' => $me->isAdmin() ? app(Invitations::class)->pending($this->orgId()) : collect(),
+            'accessRoles' => $accessRoles,
+            'accessRolesById' => $accessRoles->keyBy('id'),
+            'appNames' => $appNames,
+            'assignmentsByUser' => $assignmentsByUser,
         ];
     }
 
@@ -195,7 +257,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr><th scope="col">Member</th><th scope="col">Role</th><th scope="col">Joined</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+                    <tr><th scope="col">Member</th><th scope="col">Workspace access</th><th scope="col">Access roles</th><th scope="col">Joined</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
                 </thead>
                 <tbody>
                     @forelse ($rows as $row)
@@ -224,6 +286,22 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                     <span class="cbx-pill">{{ ucfirst($row['role']) }}</span>
                                 @endif
                             </td>
+                            <td>
+                                @php $assigned = $assignmentsByUser[$row['id']] ?? []; @endphp
+                                <div class="flex flex-wrap items-center gap-1">
+                                    @forelse ($assigned as $rid)
+                                        @php $r = $accessRolesById[$rid] ?? null; @endphp
+                                        @if ($r)<span class="badge">{{ $r->name }}</span>@endif
+                                    @empty
+                                        <span class="text-xs" style="color:var(--faint)">None</span>
+                                    @endforelse
+                                    @if ($me->isAdmin() && $accessRoles->isNotEmpty())
+                                        <button wire:click="toggleManage('{{ $row['id'] }}')" class="btn btn-ghost btn-sm" style="height:24px;padding:0 8px;font-size:11px">
+                                            {{ $managingUserId === $row['id'] ? 'Done' : 'Manage' }}
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="text-sm mono" style="color:var(--muted-foreground)">{{ $row['joined']?->format('M j, Y') ?? '—' }}</td>
                             <td class="text-right">
                                 @if ($me->isAdmin() && $row['id'] !== $me->id())
@@ -233,8 +311,27 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                 @endif
                             </td>
                         </tr>
+                        @if ($managingUserId === $row['id'] && $me->isAdmin())
+                            <tr>
+                                <td colspan="5" style="background:color-mix(in oklch, var(--secondary) 55%, transparent);padding:14px 20px">
+                                    <p class="text-xs mb-3" style="color:var(--muted)">Access roles for <b style="color:var(--foreground)">{{ $row['subject']?->name ?? $row['subject']?->email ?? 'this member' }}</b> — these ride in the app tokens; the app enforces what each one can do.</p>
+                                    @foreach ($accessRoles->groupBy(fn ($r) => $r->client_id ?? '__org') as $groupKey => $group)
+                                        <p class="text-xs font-semibold uppercase mb-1.5 mt-1" style="color:var(--muted);letter-spacing:0.05em">{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}</p>
+                                        <div class="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 mb-3">
+                                            @foreach ($group as $r)
+                                                <label class="flex items-center gap-2 text-sm rounded-lg px-2.5 py-1.5 cursor-pointer" style="border:1px solid var(--border);background:var(--card)">
+                                                    <input type="checkbox" @checked(in_array($r->id, $assigned, true)) wire:click="toggleRole('{{ $row['id'] }}', '{{ $r->id }}')">
+                                                    <span class="min-w-0 flex-1 truncate" style="color:var(--foreground)">{{ $r->name }}</span>
+                                                    <span class="badge mono" style="font-size:10px">{{ $r->key ?? 'org' }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                </td>
+                            </tr>
+                        @endif
                     @empty
-                        <tr><td colspan="4" class="text-center py-10" style="color:var(--muted-foreground)">No members yet.</td></tr>
+                        <tr><td colspan="5" class="text-center py-10" style="color:var(--muted-foreground)">No members yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
