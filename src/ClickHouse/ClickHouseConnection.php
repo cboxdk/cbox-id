@@ -103,11 +103,14 @@ final class ClickHouseConnection
             $query['param_'.$name] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
         }
 
-        $request = $this->http->timeout($this->timeout)->withQueryParameters($query);
-
-        if ($body !== null) {
-            $request = $request->withBody($body, 'text/plain');
-        }
+        // Always attach a body (empty for bodyless reads/DDL) so the POST carries a
+        // Content-Length header — ClickHouse rejects a bodyless POST with no
+        // Content-Length as 411 (Code 381, HTTP_LENGTH_REQUIRED). The SQL travels
+        // in the `query` param either way; an empty body just satisfies the HTTP
+        // requirement and is harmless for SELECT/DDL, while INSERT still sends rows.
+        $request = $this->http->timeout($this->timeout)
+            ->withQueryParameters($query)
+            ->withBody($body ?? '', 'text/plain');
 
         $response = $request->post($this->endpoint());
 
