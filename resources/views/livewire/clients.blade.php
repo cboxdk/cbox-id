@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\ScopeCatalog;
+use Cbox\Id\AccessControl\AppManifestPuller;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -42,6 +44,14 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
     /** @var array{redirect: ?string, scopes: array<int, string>, auth_code: bool}|null */
     public ?array $newClientMeta = null;
 
+    /** Where this app publishes its role/permission manifest for Cbox ID to pull. */
+    public string $manifestUrl = '';
+
+    /** The app whose manifest panel is expanded, if any. */
+    public ?string $managingManifest = null;
+
+    public string $editManifestUrl = '';
+
     public function create(ClientRegistry $clients, ScopeCatalog $catalog): void
     {
         $this->authorizeAdmin();
@@ -53,6 +63,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             'grantAuthorizationCode' => ['boolean'],
             'customScopes' => ['nullable', 'string', 'max:500'],
             'redirectUris' => ['nullable', 'string', 'max:2000'],
+            'manifestUrl' => ['nullable', 'url', 'max:500'],
         ]);
 
         $grantTypes = $this->parsedGrantTypes();
@@ -96,6 +107,12 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             organizationId: $this->orgId(),
         ));
 
+        // A published manifest URL (the pull transport) — stored on the app so the
+        // scheduled sweep + "Sync now" can fetch its declared roles/permissions.
+        if (trim($this->manifestUrl) !== '') {
+            $registered->client->forceFill(['manifest_url' => trim($this->manifestUrl)])->save();
+        }
+
         $this->newClientId = $registered->client->client_id;
         $this->newSecret = ($registered->secret !== null && $registered->secret !== '') ? $registered->secret : null;
         $this->newClientMeta = [
@@ -104,7 +121,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             'auth_code' => in_array('authorization_code', $grantTypes, true),
         ];
 
-        $this->reset('name', 'redirectUris', 'creating', 'firstParty', 'customScopes');
+        $this->reset('name', 'redirectUris', 'creating', 'firstParty', 'customScopes', 'manifestUrl');
         $this->type = 'confidential';
         $this->grantClientCredentials = false;
         $this->grantAuthorizationCode = true;
@@ -128,6 +145,74 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
     public function dismissSecret(): void
     {
         $this->reset('newClientId', 'newSecret', 'newClientMeta');
+    }
+
+    public function openManifest(string $clientId): void
+    {
+        $this->authorizeAdmin();
+
+        if ($this->managingManifest === $clientId) {
+            $this->managingManifest = null;
+
+            return;
+        }
+
+        $this->managingManifest = $clientId;
+        $this->editManifestUrl = $this->findClient($clientId)?->manifest_url ?? '';
+    }
+
+    public function saveManifestUrl(string $clientId, AppManifestPuller $puller): void
+    {
+        $this->authorizeAdmin();
+        $this->validate(['editManifestUrl' => ['nullable', 'url', 'max:500']]);
+
+        $client = $this->findClient($clientId);
+        if ($client === null) {
+            return;
+        }
+
+        $client->forceFill(['manifest_url' => trim($this->editManifestUrl) ?: null])->save();
+
+        if ($client->manifest_url === null) {
+            session()->flash('status', 'Manifest URL cleared.');
+
+            return;
+        }
+
+        // Pull immediately so the app's roles appear without waiting for the sweep.
+        try {
+            $result = $puller->pull($client->refresh());
+            session()->flash('status', $result !== null ? 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).' : 'Saved.');
+        } catch (\Throwable $e) {
+            $this->addError('editManifestUrl', 'Saved, but the sync failed: '.$e->getMessage());
+        }
+    }
+
+    public function syncNow(string $clientId, AppManifestPuller $puller): void
+    {
+        $this->authorizeAdmin();
+
+        $client = $this->findClient($clientId);
+        if ($client === null || $client->manifest_url === null) {
+            return;
+        }
+
+        try {
+            $result = $puller->pull($client);
+            session()->flash('status', $result !== null && ! $result->unchanged
+                ? 'Synced — '.$result->rolesDeclared.' role(s).'
+                : 'Already up to date.');
+        } catch (\Throwable $e) {
+            session()->flash('status', 'Sync failed: '.$e->getMessage());
+        }
+    }
+
+    private function findClient(string $clientId): ?Client
+    {
+        return Client::query()
+            ->where('organization_id', $this->orgId())
+            ->where('client_id', $clientId)
+            ->first();
     }
 
     /** @return list<string> */
@@ -172,14 +257,25 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
     {
         $appUrl = config('app.url');
 
+        $rows = Client::query()
+            ->where('organization_id', $this->orgId())
+            ->orderByDesc('id')
+            ->get();
+
+        // How many roles each app currently declares (for the Manifest panel).
+        $roleCounts = Role::query()
+            ->whereIn('client_id', $rows->pluck('client_id'))
+            ->whereNull('orphaned_at')
+            ->get(['client_id'])
+            ->groupBy('client_id')
+            ->map(fn ($group) => $group->count());
+
         return [
             'me' => app(CurrentUser::class),
             'scopeGroups' => $catalog->grouped(),
             'issuer' => rtrim(is_string($appUrl) ? $appUrl : '', '/'),
-            'rows' => Client::query()
-                ->where('organization_id', $this->orgId())
-                ->orderByDesc('id')
-                ->get(),
+            'rows' => $rows,
+            'roleCounts' => $roleCounts,
         ];
     }
 
@@ -369,6 +465,13 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                 </span>
             </label>
 
+            <div>
+                <label class="label" for="manifestUrl">Manifest URL <span style="color:var(--muted);font-weight:400">— optional; where the app publishes its roles &amp; permissions</span></label>
+                <input wire:model="manifestUrl" id="manifestUrl" type="url" class="input" placeholder="https://app.example.com/.well-known/cbox-authz">
+                <p class="text-xs mt-1" style="color:var(--muted)">Cbox ID pulls this to learn the app's roles. You can also set it later, or the app can push.</p>
+                @error('manifestUrl') <p class="field-error">{{ $message }}</p> @enderror
+            </div>
+
             <div class="flex items-center gap-2 pt-1">
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create app</button>
                 <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
@@ -417,12 +520,42 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                             </td>
                             @if ($me->isAdmin())
                                 <td class="text-right">
-                                    <button wire:click="delete('{{ $client->client_id }}')"
-                                            wire:confirm="Delete this app? Anything using its credentials will stop working."
-                                            class="btn btn-danger btn-sm">Delete</button>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button wire:click="openManifest('{{ $client->client_id }}')" class="btn btn-ghost btn-sm">Roles{{ ($roleCounts[$client->client_id] ?? 0) > 0 ? ' · '.$roleCounts[$client->client_id] : '' }}</button>
+                                        <button wire:click="delete('{{ $client->client_id }}')"
+                                                wire:confirm="Delete this app? Anything using its credentials will stop working."
+                                                class="btn btn-danger btn-sm">Delete</button>
+                                    </div>
                                 </td>
                             @endif
                         </tr>
+                        @if ($managingManifest === $client->client_id && $me->isAdmin())
+                            <tr>
+                                <td colspan="6" style="background:color-mix(in oklch, var(--secondary) 55%, transparent);padding:16px 20px">
+                                    <p class="text-sm font-medium mb-1" style="color:var(--foreground)">Roles & permissions for {{ $client->name }}</p>
+                                    <p class="text-xs mb-3" style="color:var(--muted)">The app declares these — Cbox ID pulls them from its manifest URL (or the app pushes). They become assignable on the <a href="{{ route('members') }}" class="underline" style="color:var(--accent)">Members</a> page.</p>
+                                    <form wire:submit="saveManifestUrl('{{ $client->client_id }}')" class="flex flex-wrap items-end gap-2 mb-3">
+                                        <div class="flex-1 min-w-[18rem]">
+                                            <label class="label" for="mf-{{ $client->client_id }}">Manifest URL</label>
+                                            <input wire:model="editManifestUrl" id="mf-{{ $client->client_id }}" type="url" class="input" placeholder="https://app.example.com/.well-known/cbox-authz">
+                                            @error('editManifestUrl') <p class="field-error">{{ $message }}</p> @enderror
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled">Save & sync</button>
+                                        @if ($client->manifest_url)
+                                            <button type="button" wire:click="syncNow('{{ $client->client_id }}')" class="btn btn-ghost btn-sm">Sync now</button>
+                                        @endif
+                                    </form>
+                                    @php $declared = $roleCounts[$client->client_id] ?? 0; @endphp
+                                    <p class="text-xs" style="color:var(--muted)">
+                                        @if ($declared > 0)
+                                            {{ $declared }} role(s) declared. See them on <a href="{{ route('roles') }}" class="underline" style="color:var(--accent)">Roles</a>.
+                                        @else
+                                            No roles declared yet — set a manifest URL above and sync, or have the app push its manifest.
+                                        @endif
+                                    </p>
+                                </td>
+                            </tr>
+                        @endif
                     @empty
                         <tr>
                             <td colspan="{{ $me->isAdmin() ? 6 : 5 }}">
