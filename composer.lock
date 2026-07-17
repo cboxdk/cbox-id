@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "10c77ad8c06f396de85564d36d38b9aa",
+    "content-hash": "f7b9c7f4151e575da92436da00babbe9",
     "packages": [
         {
             "name": "brick/math",
@@ -136,16 +136,16 @@
         },
         {
             "name": "cboxdk/dns",
-            "version": "v0.1.0",
+            "version": "v0.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/dns.git",
-                "reference": "bd07a5a81f8d3847a715212268569e10bcd674c1"
+                "reference": "6f44abbd23b914a2937812f8be531afbfd98be88"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/dns/zipball/bd07a5a81f8d3847a715212268569e10bcd674c1",
-                "reference": "bd07a5a81f8d3847a715212268569e10bcd674c1",
+                "url": "https://api.github.com/repos/cboxdk/dns/zipball/6f44abbd23b914a2937812f8be531afbfd98be88",
+                "reference": "6f44abbd23b914a2937812f8be531afbfd98be88",
                 "shasum": ""
             },
             "require": {
@@ -216,9 +216,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/dns/issues",
-                "source": "https://github.com/cboxdk/dns/tree/v0.1.0"
+                "source": "https://github.com/cboxdk/dns/tree/v0.1.1"
             },
-            "time": "2026-07-14T18:56:14+00:00"
+            "time": "2026-07-15T08:26:11+00:00"
         },
         {
             "name": "cboxdk/laravel-console-kit",
@@ -926,16 +926,16 @@
         },
         {
             "name": "cboxdk/laravel-telemetry",
-            "version": "v0.3.3",
+            "version": "v1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-telemetry.git",
-                "reference": "ba12613d27b16a538c2e5b8e1394ea54bcb0b904"
+                "reference": "dabfd740b5e491988221b9f3784310532f717a69"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/ba12613d27b16a538c2e5b8e1394ea54bcb0b904",
-                "reference": "ba12613d27b16a538c2e5b8e1394ea54bcb0b904",
+                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/dabfd740b5e491988221b9f3784310532f717a69",
+                "reference": "dabfd740b5e491988221b9f3784310532f717a69",
                 "shasum": ""
             },
             "require": {
@@ -950,7 +950,7 @@
                 "laravel/pennant": "^1.24",
                 "laravel/pint": "^1.14",
                 "laravel/reverb": "^1.10",
-                "livewire/livewire": "^3.0",
+                "livewire/livewire": "^3.0|^4.0",
                 "nunomaduro/collision": "^8.8",
                 "orchestra/testbench": "^10.0|^11.0",
                 "pestphp/pest": "^4.0",
@@ -980,6 +980,9 @@
                     "providers": [
                         "Cbox\\Telemetry\\TelemetryServiceProvider"
                     ]
+                },
+                "branch-alias": {
+                    "dev-main": "1.0.x-dev"
                 }
             },
             "autoload": {
@@ -1015,7 +1018,7 @@
                 "issues": "https://github.com/cboxdk/laravel-telemetry/issues",
                 "source": "https://github.com/cboxdk/laravel-telemetry"
             },
-            "time": "2026-07-13T13:38:34+00:00"
+            "time": "2026-07-15T19:45:14+00:00"
         },
         {
             "name": "cboxdk/license",
@@ -1997,16 +2000,16 @@
         },
         {
             "name": "guzzlehttp/psr7",
-            "version": "2.12.5",
+            "version": "2.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/psr7.git",
-                "reference": "9365d578a9fd1552ad6ca9c3cb530708526feb09"
+                "reference": "dad89620b7a6edb60c15858442eb2e408b45d8f4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/psr7/zipball/9365d578a9fd1552ad6ca9c3cb530708526feb09",
-                "reference": "9365d578a9fd1552ad6ca9c3cb530708526feb09",
+                "url": "https://api.github.com/repos/guzzle/psr7/zipball/dad89620b7a6edb60c15858442eb2e408b45d8f4",
+                "reference": "dad89620b7a6edb60c15858442eb2e408b45d8f4",
                 "shasum": ""
             },
             "require": {
@@ -2096,7 +2099,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/psr7/issues",
-                "source": "https://github.com/guzzle/psr7/tree/2.12.5"
+                "source": "https://github.com/guzzle/psr7/tree/2.13.0"
             },
             "funding": [
                 {
@@ -2112,7 +2115,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-13T01:27:20+00:00"
+            "time": "2026-07-16T22:23:49+00:00"
         },
         {
             "name": "guzzlehttp/uri-template",
@@ -10667,23 +10670,23 @@
         },
         {
             "name": "nunomaduro/collision",
-            "version": "v8.9.4",
+            "version": "v8.9.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nunomaduro/collision.git",
-                "reference": "716af8f95a470e9094cfca09ed897b023be191a5"
+                "reference": "fb53eacd509a1d303858e2d20cfebf2d630254ec"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nunomaduro/collision/zipball/716af8f95a470e9094cfca09ed897b023be191a5",
-                "reference": "716af8f95a470e9094cfca09ed897b023be191a5",
+                "url": "https://api.github.com/repos/nunomaduro/collision/zipball/fb53eacd509a1d303858e2d20cfebf2d630254ec",
+                "reference": "fb53eacd509a1d303858e2d20cfebf2d630254ec",
                 "shasum": ""
             },
             "require": {
                 "filp/whoops": "^2.18.4",
                 "nunomaduro/termwind": "^2.4.0",
                 "php": "^8.2.0",
-                "symfony/console": "^7.4.8 || ^8.0.8"
+                "symfony/console": "^7.4.14 || ^8.1.1"
             },
             "conflict": {
                 "laravel/framework": "<11.48.0 || >=14.0.0",
@@ -10691,12 +10694,12 @@
             },
             "require-dev": {
                 "brianium/paratest": "^7.8.5",
-                "larastan/larastan": "^3.9.6",
-                "laravel/framework": "^11.48.0 || ^12.56.0 || ^13.5.0",
-                "laravel/pint": "^1.29.1",
-                "orchestra/testbench-core": "^9.12.0 || ^10.12.1 || ^11.2.1",
-                "pestphp/pest": "^3.8.5 || ^4.4.3 || ^5.0.0",
-                "sebastian/environment": "^7.2.1 || ^8.0.4 || ^9.3.0"
+                "larastan/larastan": "^3.10.0",
+                "laravel/framework": "^11.48.0 || ^12.56.0 || ^13.20.0",
+                "laravel/pint": "^1.29.3",
+                "orchestra/testbench-core": "^9.12.0 || ^10.12.1 || ^11.3.5",
+                "pestphp/pest": "^3.8.5 || ^4.7.5 || ^5.0.0",
+                "sebastian/environment": "^7.2.1 || ^8.1.2 || ^9.3.2"
             },
             "type": "library",
             "extra": {
@@ -10759,7 +10762,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2026-04-21T14:04:20+00:00"
+            "time": "2026-07-15T19:09:14+00:00"
         },
         {
             "name": "pestphp/pest",

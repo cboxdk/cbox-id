@@ -21,7 +21,7 @@
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-queue-metrics": "^3.2",
         "cboxdk/laravel-risk": "^1.1",
-        "cboxdk/laravel-telemetry": "^0.3.3",
+        "cboxdk/laravel-telemetry": "^1.0",
         "laravel/framework": "^13.0",
         "laravel/socialite": "^5.28",
         "laravel/tinker": "^3.0",
