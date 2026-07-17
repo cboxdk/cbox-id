@@ -1,7 +1,6 @@
 <?php
 
 use App\Platform\PlatformAuth;
-use Illuminate\Http\RedirectResponse;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -20,7 +19,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose account'])] class ex
         return app(PlatformAuth::class)->accounts();
     }
 
-    public function switchTo(string $subjectId): ?RedirectResponse
+    public function switchTo(string $subjectId): mixed
     {
         if (app(PlatformAuth::class)->switchTo(request(), $subjectId)) {
             // Resume wherever the flow was headed (e.g. the OAuth authorize request).
@@ -30,7 +29,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose account'])] class ex
         return null;
     }
 
-    public function add(): RedirectResponse
+    public function add(): mixed
     {
         return redirect()->route('accounts.add');
     }
