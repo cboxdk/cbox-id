@@ -74,10 +74,14 @@
     "analyse": [
       "@php vendor/bin/phpstan analyse --no-progress"
     ],
+    "license-check": "@php bin/check-licenses.php",
+    "sbom": "@php bin/generate-sbom.php",
     "qa": [
       "@php vendor/bin/pint --test",
       "@analyse",
-      "@test"
+      "@test",
+      "@license-check",
+      "@composer audit --no-dev"
     ],
     "post-autoload-dump": [
       "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

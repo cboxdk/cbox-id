@@ -51,3 +51,14 @@ jobs:
 
       - name: Tests (Pest — feature, axe-core a11y, and real-browser smoke)
         run: vendor/bin/pest
+
+      - name: License gate (permissive-only dependencies)
+        run: composer license-check
+
+      - name: Supply-chain audit (known vulnerabilities)
+        run: composer audit --no-dev
+
+      - name: SBOM not stale (CycloneDX drift check)
+        run: |
+          composer sbom
+          git diff --exit-code sbom.json
