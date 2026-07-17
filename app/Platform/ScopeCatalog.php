@@ -35,6 +35,7 @@ final class ScopeCatalog
             ['key' => 'offline_access', 'label' => 'Stay signed in', 'description' => 'Keep them signed in with refresh tokens, so they need not log in again.', 'category' => self::SIGN_IN, 'recommended' => false],
             ['key' => 'vault.manage', 'label' => 'Manage stored secrets', 'description' => 'Create, rotate and revoke downstream credentials in the Token Vault.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'vault.lease', 'label' => 'Use stored secrets', 'description' => 'Fetch a stored credential to call a downstream service.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            ['key' => 'apps.manifest', 'label' => 'Publish its own manifest', 'description' => 'Let this app push its own roles &amp; permissions manifest to Cbox ID.', 'category' => self::PLATFORM_API, 'recommended' => false],
         ];
     }
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\VaultController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,15 @@ use Illuminate\Support\Facades\Route;
  * Token Vault (v1): provision + grant downstream credentials (vault.manage), and
  * lease them to an authorized agent client (vault.lease).
  */
+// App authorization manifest — the PUSH transport. An app declares its own
+// roles/permissions with an `apps.manifest`-scoped token.
+Route::middleware([ResolveEnvironment::class, 'throttle:60,1'])
+    ->prefix('v1/apps')
+    ->group(function (): void {
+        Route::post('manifest', [AppManifestController::class, 'push'])
+            ->middleware('scope:apps.manifest');
+    });
+
 Route::middleware([ResolveEnvironment::class, 'throttle:120,1'])
     ->prefix('v1/vault')
     ->group(function (): void {
