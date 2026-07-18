@@ -12,6 +12,7 @@ use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
@@ -262,6 +263,37 @@ it('resets a user\'s two-factor factors', function (): void {
     Volt::test('environment.users.show', ['user' => $user->id])->call('resetMfa');
 
     expect(MfaFactor::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('requires and stores client_secret for an OIDC connection created via the form', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'OIDC Co', slug: 'oidc-co'));
+    $key = "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----";
+
+    // The federation OIDC token exchange requires client_secret — the form must too.
+    Volt::test('environment.connections.create')
+        ->set('type', 'oidc')
+        ->set('organization_id', $org->id)
+        ->set('name', 'Okta OIDC')
+        ->set('issuer', 'https://okta.example')
+        ->set('client_id', 'abc')
+        ->set('signing_key', $key)
+        ->call('create')
+        ->assertHasErrors('client_secret');
+
+    Volt::test('environment.connections.create')
+        ->set('type', 'oidc')
+        ->set('organization_id', $org->id)
+        ->set('name', 'Okta OIDC')
+        ->set('issuer', 'https://okta.example')
+        ->set('client_id', 'abc')
+        ->set('client_secret', 's3cr3t-value')
+        ->set('signing_key', $key)
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $conn = Connection::query()->where('name', 'Okta OIDC')->firstOrFail();
+    expect(app(Connections::class)->config($conn)['client_secret'] ?? null)->toBe('s3cr3t-value');
 });
 
 it('pins an impersonation session to the authorized org, not the subject\'s oldest membership', function (): void {

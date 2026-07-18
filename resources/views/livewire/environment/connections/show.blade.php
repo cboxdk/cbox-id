@@ -44,7 +44,9 @@ new #[Layout('components.layouts.environment')] class extends Component
 
     public string $client_id = '';
 
-    /** Sealed secret — never prefilled; blank on save keeps the stored signing key. */
+    /** Sealed secrets — never prefilled; blank on save keeps the stored value. */
+    public string $client_secret = '';
+
     public string $signing_key = '';
 
     public function mount(string $connection, Connections $connections): void
@@ -141,9 +143,18 @@ new #[Layout('components.layouts.environment')] class extends Component
                 return;
             }
 
+            // Secrets are write-once: a blank field keeps the sealed value.
+            $secret = trim($this->client_secret) !== '' ? trim($this->client_secret) : (string) ($current['client_secret'] ?? '');
+            if ($secret === '') {
+                $this->addError('client_secret', 'A client secret is required.');
+
+                return;
+            }
+
             $config = [
                 'issuer' => trim($this->issuer),
                 'client_id' => trim($this->client_id),
+                'client_secret' => $secret,
                 'signing_key' => $key,
             ];
         }
@@ -156,7 +167,7 @@ new #[Layout('components.layouts.environment')] class extends Component
         $model->save();
 
         // Never keep a secret in component state once it has been sealed.
-        $this->reset('idp_x509cert', 'signing_key');
+        $this->reset('idp_x509cert', 'signing_key', 'client_secret');
 
         session()->flash('status', 'Connection updated.');
     }
@@ -280,6 +291,11 @@ new #[Layout('components.layouts.environment')] class extends Component
                         <label class="label" for="client_id">Client ID</label>
                         <input wire:model="client_id" id="client_id" type="text" class="input mono">
                         @error('client_id') <p class="field-error">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="label" for="client_secret">Client secret <span style="color:var(--faint);font-weight:400">— leave blank to keep</span></label>
+                        <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••">
+                        @error('client_secret') <p class="field-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>

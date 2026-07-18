@@ -49,6 +49,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
 
     public string $client_id = '';
 
+    public string $client_secret = '';
+
     public string $signing_key = '';
 
     /**
@@ -109,6 +111,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
             $config = $this->validate([
                 'issuer' => 'required|url|max:500',
                 'client_id' => 'required|string|max:500',
+                'client_secret' => 'required|string|max:500',
                 'signing_key' => 'required|string',
             ]);
         }
@@ -217,6 +220,11 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
                     <label class="label" for="client_id">Client ID</label>
                     <input wire:model="client_id" id="client_id" type="text" class="input mono" placeholder="cbox-id-app">
                     @error('client_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="label" for="client_secret">Client secret</label>
+                    <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••">
+                    @error('client_secret') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
             <div>
