@@ -31,6 +31,24 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
     /** @var list<string> */
     public array $recoveryCodes = [];
 
+    public string $name = '';
+
+    public function mount(AccountAuth $auth): void
+    {
+        $this->name = $auth->current()?->name ?? '';
+    }
+
+    public function updateProfile(AccountAuth $auth): void
+    {
+        $this->validate(['name' => ['required', 'string', 'max:120']]);
+
+        $member = $auth->current();
+        if ($member !== null) {
+            $member->forceFill(['name' => trim($this->name)])->save();
+            session()->flash('status', 'Profile updated.');
+        }
+    }
+
     public function startEnroll(AccountAuth $auth, AccountMemberMfa $mfa): void
     {
         $member = $auth->current();
@@ -121,6 +139,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         $keys = $member === null ? collect() : $passkeys->forMember($member->id);
 
         return [
+            'email' => $member?->email,
             'enabled' => $member !== null && $mfa->hasConfirmedTotp($member->id),
             'remainingRecoveryCodes' => $member !== null ? $mfa->remainingRecoveryCodes($member->id) : 0,
             'passkeys' => $keys,
@@ -130,8 +149,25 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
 <div>
     <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Security</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Protect your workspace sign-in with a second factor.</p>
+        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Profile &amp; security</h1>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Your account details and how you protect your sign-in.</p>
+    </div>
+
+    {{-- Profile --}}
+    <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
+        <p class="text-sm font-medium">Profile</p>
+        <form wire:submit="updateProfile" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-start">
+            <div>
+                <label for="name" class="label">Name</label>
+                <input wire:model="name" id="name" type="text" class="input" placeholder="Your name">
+                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="label">Email</label>
+                <input type="email" class="input" value="{{ $email }}" disabled style="opacity:.65">
+            </div>
+            <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="updateProfile">Save</button>
+        </form>
     </div>
 
     {{-- Freshly-generated recovery codes — shown exactly once. --}}

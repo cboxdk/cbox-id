@@ -12,6 +12,12 @@
     $envName = $environment?->name ?? 'Environment';
     $memberInitial = strtoupper(substr($member?->name ?? $member?->email ?? 'A', 0, 1));
 
+    // The account member's own profile/MFA/passkeys live on the ACCOUNT plane (where
+    // the WebAuthn origin is valid) — link out to it from here.
+    $bases = config('cbox-id.environments.base_domains', []);
+    $accountHost = is_array($bases) && isset($bases[0]) && is_string($bases[0]) ? $bases[0] : request()->getHost();
+    $securityUrl = 'https://'.$accountHost.'/workspace/security';
+
     $areas = [
         ['route' => 'environment.home', 'label' => 'Overview', 'icon' => 'dashboard'],
         ['route' => 'environment.organizations', 'label' => 'Organizations', 'icon' => 'layers'],
@@ -65,6 +71,7 @@
                     <p class="text-xs truncate" style="color:var(--faint)">{{ $member?->email }}</p>
                 </div>
             </div>
+            <a href="{{ $securityUrl }}" class="nav-link w-full"><x-icon name="shield-check" class="w-[1.15rem] h-[1.15rem]" /> Profile &amp; security</a>
             <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
             <form method="POST" action="{{ route('admin.logout') }}">@csrf
                 <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
@@ -89,6 +96,7 @@
                     <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" /> {{ $area['label'] }}
                 </a>
             @endforeach
+            <a href="{{ $securityUrl }}" class="nav-link w-full"><x-icon name="shield-check" class="w-[1.15rem] h-[1.15rem]" /> Profile &amp; security</a>
             <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
             <form method="POST" action="{{ route('admin.logout') }}">@csrf
                 <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
