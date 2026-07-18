@@ -238,6 +238,8 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/', 'environment.home')->name('environment.home');
         Volt::route('/organizations', 'environment.organizations')->name('environment.organizations');
         Volt::route('/users', 'environment.users')->name('environment.users');
+        Volt::route('/applications', 'environment.clients')->name('environment.clients');
+        Volt::route('/settings', 'environment.settings')->name('environment.settings');
     });
 });
 

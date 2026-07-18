@@ -85,6 +85,8 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
     $this->get('/admin')->assertOk()->assertSee('Overview');
     $this->get('/admin/organizations')->assertOk()->assertSee('Organizations');
     $this->get('/admin/users')->assertOk()->assertSee('Users');
+    $this->get('/admin/applications')->assertOk()->assertSee('Applications');
+    $this->get('/admin/settings')->assertOk()->assertSee('Integration');
 });
 
 it('refuses a handoff minted for a different environment than the host', function (): void {

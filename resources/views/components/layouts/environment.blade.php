@@ -16,6 +16,8 @@
         ['route' => 'environment.home', 'label' => 'Overview', 'icon' => 'dashboard'],
         ['route' => 'environment.organizations', 'label' => 'Organizations', 'icon' => 'layers'],
         ['route' => 'environment.users', 'label' => 'Users', 'icon' => 'members'],
+        ['route' => 'environment.clients', 'label' => 'Applications', 'icon' => 'key'],
+        ['route' => 'environment.settings', 'label' => 'Settings', 'icon' => 'settings'],
     ];
 @endphp
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
