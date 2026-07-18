@@ -6,8 +6,11 @@ use App\Mail\PasswordResetMail;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
+use Cbox\Id\ExternalActions\Contracts\ExternalActions;
+use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Identity\Models\User;
@@ -23,6 +26,11 @@ use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
+use Cbox\Id\Provisioning\Enums\AuthScheme;
+use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
+use Cbox\Id\SamlIdp\Enums\NameIdFormat;
+use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -185,4 +193,35 @@ it('renders the detail pages for connections, directories, roles, applications a
     $this->get("/admin/webhooks/{$webhook->id}")->assertOk()->assertSee('example.com');
     $this->get("/admin/directories/{$directory->id}")->assertOk()->assertSee('HR directory');
     $this->get("/admin/single-sign-on/{$connection->id}")->assertOk()->assertSee('Okta');
+});
+
+it('renders the detail pages for login methods, event hooks, conflict rules and outbound sync', function (): void {
+    crudSetup();
+
+    $sp = app(ServiceProviders::class)->register(
+        new NewServiceProvider(
+            entityId: 'https://sp.example/meta',
+            acsUrl: 'https://sp.example/acs',
+            nameIdFormat: NameIdFormat::cases()[0],
+            nameIdAttribute: 'email',
+        )
+    );
+    $hook = app(ExternalActions::class)
+        ->register(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
+    $roleA = app(Roles::class)->define(null, 'Maker');
+    $roleB = app(Roles::class)->define(null, 'Checker');
+    $policy = app(SegregationOfDuties::class)
+        ->definePolicy(null, 'Maker/Checker', [$roleA->id, $roleB->id]);
+    $sync = app(ProvisioningConnections::class)->register(
+        null,
+        'Downstream',
+        'https://example.com',
+        AuthScheme::cases()[0],
+        'a-secret',
+    )->connection;
+
+    $this->get("/admin/login-methods/{$sp->id}")->assertOk()->assertSee('sp.example');
+    $this->get("/admin/event-hooks/{$hook->id}")->assertOk()->assertSee('example.com');
+    $this->get("/admin/conflict-rules/{$policy->id}")->assertOk()->assertSee('Maker/Checker');
+    $this->get("/admin/outbound-sync/{$sync->id}")->assertOk()->assertSee('Downstream');
 });
