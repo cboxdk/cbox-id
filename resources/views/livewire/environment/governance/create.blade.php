@@ -35,6 +35,12 @@ new #[Layout('components.layouts.environment', ['title' => 'New access review'])
     {
         $this->validate();
 
+        if (Organization::query()->whereKey($this->organization_id)->doesntExist()) {
+            $this->addError('organization_id', 'That organization is not in this environment.');
+
+            return null;
+        }
+
         $campaign = $reviews->open(
             $this->organization_id,
             $this->name,

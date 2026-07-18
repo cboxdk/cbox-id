@@ -254,7 +254,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 </div>
             @endif
 
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="save">Save changes</button>
         </form>
     </div>
 

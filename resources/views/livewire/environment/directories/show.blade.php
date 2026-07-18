@@ -226,7 +226,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <input wire:model="editName" id="editName" type="text" class="input">
                 @error('editName') <p class="field-error">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary shrink-0 self-end">Save</button>
+            <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="saveName">Save</button>
         </form>
     </div>
 

@@ -209,7 +209,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <textarea wire:model="editRedirectUris" id="editRedirectUris" rows="3" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/auth/callback"></textarea>
                 @error('editRedirectUris') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="saveDetails">Save changes</button>
         </form>
     </div>
 

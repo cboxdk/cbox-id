@@ -15,6 +15,7 @@ use Cbox\Id\Identity\Models\MfaRecoveryCode;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
@@ -206,16 +207,32 @@ new #[Layout('components.layouts.environment')] class extends Component
 
     public function changeMembershipRole(string $orgId, string $role, Memberships $memberships): void
     {
-        if (in_array($role, ['member', 'admin', 'owner'], true)) {
-            $memberships->changeRole($orgId, $this->user()->id, $role);
+        $user = $this->user();
+        if (! in_array($role, ['member', 'admin', 'owner'], true) || $memberships->of($orgId, $user->id) === null) {
+            return;
+        }
+
+        try {
+            $memberships->changeRole($orgId, $user->id, $role);
             session()->flash('status', 'Role updated.');
+        } catch (LastOwner) {
+            session()->flash('status', 'An organization must keep at least one owner.');
         }
     }
 
     public function removeMembership(string $orgId, Memberships $memberships): void
     {
-        $memberships->remove($orgId, $this->user()->id);
-        session()->flash('status', 'Removed from the organization.');
+        $user = $this->user();
+        if ($memberships->of($orgId, $user->id) === null) {
+            return;
+        }
+
+        try {
+            $memberships->remove($orgId, $user->id);
+            session()->flash('status', 'Removed from the organization.');
+        } catch (LastOwner) {
+            session()->flash('status', 'An organization must keep at least one owner.');
+        }
     }
 
     /**
@@ -281,7 +298,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <input wire:model="editEmail" id="editEmail" type="email" class="input">
                 @error('editEmail') <p class="field-error">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary shrink-0 self-end">Save</button>
+            <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="saveProfile">Save</button>
         </form>
     </div>
 
@@ -322,7 +339,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                         <p class="text-sm truncate">{{ $s->user_agent ?? 'Unknown device' }}</p>
                         <p class="text-xs truncate" style="color:var(--faint)">{{ $s->ip ?? '—' }} · {{ $s->last_active_at?->diffForHumans() ?? 'never' }}@if (in_array('impersonation', $s->amr, true)) · <span style="color:var(--accent)">impersonation</span>@endif</p>
                     </div>
-                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeSession('{{ $s->id }}')">Revoke</button>
+                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeSession('{{ $s->id }}')" wire:confirm="Revoke this session?">Revoke</button>
                 </div>
             @empty
                 <p class="text-sm" style="color:var(--muted)">No active sessions.</p>
@@ -363,7 +380,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <option value="admin">Admin</option>
                 <option value="owner">Owner</option>
             </select>
-            <button type="submit" class="btn btn-primary shrink-0">Add</button>
+            <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="assignOrg">Add</button>
         </form>
     </div>
 

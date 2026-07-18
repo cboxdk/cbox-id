@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -17,13 +18,23 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Outbound sync'])] class extends Component
 {
+    #[Url(as: 'q')]
+    public string $search = '';
+
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
+        $query = ProvisioningConnection::query()->orderByDesc('id');
+
+        $term = trim($this->search);
+        if ($term !== '') {
+            $query->where('name', 'like', "%{$term}%");
+        }
+
         return [
-            'connections' => ProvisioningConnection::query()->orderByDesc('id')->get(),
+            'connections' => $query->get(),
         ];
     }
 }; ?>
@@ -37,7 +48,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound sync'])] cl
         <a href="{{ route('environment.provisioning.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New connection</a>
     </div>
 
-    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
+    </div>
+
+    <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @forelse ($connections as $connection)
             <a href="{{ route('environment.provisioning.show', $connection->id) }}"
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">

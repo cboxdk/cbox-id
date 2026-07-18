@@ -31,8 +31,21 @@ new #[Layout('components.layouts.environment', ['title' => 'New event hook'])] c
     {
         $this->validate();
 
+        $hookPoint = HookPoint::tryFrom($this->hook);
+        if ($hookPoint === null) {
+            $this->addError('hook', 'Choose a valid hook point.');
+
+            return null;
+        }
+
+        if ($this->organization_id !== '' && Organization::query()->whereKey($this->organization_id)->doesntExist()) {
+            $this->addError('organization_id', 'That organization is not in this environment.');
+
+            return null;
+        }
+
         $registered = $actions->register(
-            HookPoint::from($this->hook),
+            $hookPoint,
             $this->url,
             $this->organization_id !== '' ? $this->organization_id : null,
         );

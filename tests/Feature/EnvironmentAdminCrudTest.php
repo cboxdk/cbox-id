@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
@@ -12,6 +13,7 @@ use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\VerifiedDomain;
+use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
@@ -21,6 +23,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -35,7 +38,10 @@ use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
+use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
+use Cbox\LaravelSiem\Contracts\LogStreams;
+use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -256,6 +262,79 @@ it('resets a user\'s two-factor factors', function (): void {
     Volt::test('environment.users.show', ['user' => $user->id])->call('resetMfa');
 
     expect(MfaFactor::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('pins an impersonation session to the authorized org, not the subject\'s oldest membership', function (): void {
+    crudSetup();
+    $ownerOrg = app(Organizations::class)->create(new NewOrganization(name: 'OwnerCo', slug: 'ownerco'));
+    $memberOrg = app(Organizations::class)->create(new NewOrganization(name: 'MemberCo', slug: 'memberco'));
+    $user = app(Subjects::class)->create('victim@acme.example', 'Victim');
+    app(Memberships::class)->add($ownerOrg->id, $user->id, 'owner');   // oldest membership
+    app(Memberships::class)->add($memberOrg->id, $user->id, 'member'); // the one we authorize
+
+    $this->post("/admin/impersonate/{$user->id}", ['organization' => $memberOrg->id, 'reason' => 'support'])
+        ->assertRedirect(route('dashboard'));
+
+    // Must land in the AUTHORIZED (member) org — never the subject's owner org.
+    expect(session(PlatformAuth::ORG_KEY))->toBe($memberOrg->id);
+});
+
+it('keeps the last owner when a demotion is attempted (no uncaught 500)', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Solo', slug: 'solo'));
+    $user = app(Subjects::class)->create('soleowner@acme.example', 'Sole Owner');
+    app(Memberships::class)->add($org->id, $user->id, 'owner');
+
+    Volt::test('environment.organizations.show', ['organization' => $org->id])
+        ->call('changeMemberRole', $user->id, 'member');
+
+    expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe('owner');
+});
+
+it('rejects an event-hook create with an out-of-environment organization', function (): void {
+    crudSetup();
+    Volt::test('environment.hooks.create')
+        ->set('hook', HookPoint::TokenMinting->value)
+        ->set('url', 'https://example.com/hook')
+        ->set('organization_id', 'not-a-real-org-id')
+        ->call('create')
+        ->assertHasErrors('organization_id');
+});
+
+it('renders the access-review, stored-token and log-stream detail pages', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Rev Co', slug: 'rev-co'));
+    $campaign = app(AccessReviews::class)->open($org->id, 'Q3 Review');
+    $secret = app(SecretVault::class)->store('Stripe key', 'stripe', 'sk_test_x');
+    $stream = app(LogStreams::class)->create(
+        'SIEM export',
+        Destination::GenericJson,
+        'https://example.com/siem',
+        'shh',
+        Cbox\LaravelSiem\Enums\AuthScheme::Bearer,
+    )->stream;
+
+    $this->get("/admin/access-reviews/{$campaign->id}")->assertOk()->assertSee('Q3 Review');
+    $this->get("/admin/stored-tokens/{$secret->id}")->assertOk()->assertSee('Stripe key');
+    $this->get("/admin/log-streaming/{$stream->id}")->assertOk()->assertSee('SIEM export');
+});
+
+it('rotates and deletes an application', function (): void {
+    crudSetup();
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Rotate App',
+        type: ClientType::Confidential,
+        redirectUris: ['https://a.example/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ))->client;
+    $before = Client::query()->whereKey($client->id)->value('secret_hash');
+
+    Volt::test('environment.clients.show', ['client' => $client->id])->call('rotateSecret');
+    expect(Client::query()->whereKey($client->id)->value('secret_hash'))->not->toBe($before);
+
+    Volt::test('environment.clients.show', ['client' => $client->id])->call('deleteClient');
+    expect(Client::query()->whereKey($client->id)->exists())->toBeFalse();
 });
 
 it('renders the detail pages for login methods, event hooks, conflict rules and outbound sync', function (): void {

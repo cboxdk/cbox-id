@@ -6,6 +6,7 @@ use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -19,6 +20,9 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] class extends Component
 {
+    #[Url(as: 'q')]
+    public string $search = '';
+
     /**
      * @return array<string, mixed>
      */
@@ -26,9 +30,16 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] clas
     {
         $organizations = Organization::query()->orderBy('name')->get();
 
+        $query = ExternalActionEndpoint::query()->orderByDesc('id')->limit(100);
+
+        $term = trim($this->search);
+        if ($term !== '') {
+            $query->where('url', 'like', "%{$term}%");
+        }
+
         return [
             'orgNames' => $organizations->pluck('name', 'id'),
-            'rows' => ExternalActionEndpoint::query()->orderByDesc('id')->limit(100)->get(),
+            'rows' => $query->get(),
         ];
     }
 }; ?>
@@ -42,7 +53,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] clas
         <a href="{{ route('environment.hooks.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New hook</a>
     </div>
 
-    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by URL">
+    </div>
+
+    <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @forelse ($rows as $endpoint)
             <a href="{{ route('environment.hooks.show', $endpoint->id) }}"
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">

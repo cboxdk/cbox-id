@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -15,13 +16,23 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Webhooks'])] class extends Component
 {
+    #[Url(as: 'q')]
+    public string $search = '';
+
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
+        $query = WebhookEndpoint::query()->orderByDesc('id')->limit(100);
+
+        $term = trim($this->search);
+        if ($term !== '') {
+            $query->where('url', 'like', "%{$term}%");
+        }
+
         return [
-            'endpoints' => WebhookEndpoint::query()->orderByDesc('id')->limit(100)->get(),
+            'endpoints' => $query->get(),
         ];
     }
 }; ?>
@@ -35,7 +46,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhooks'])] class e
         <a href="{{ route('environment.webhooks.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New webhook</a>
     </div>
 
-    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by URL">
+    </div>
+
+    <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @forelse ($endpoints as $endpoint)
             <a href="{{ route('environment.webhooks.show', $endpoint->id) }}"
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">

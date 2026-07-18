@@ -6,6 +6,7 @@ use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Governance\Models\SodPolicy;
 use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -22,13 +23,23 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Conflict rules'])] class extends Component
 {
+    #[Url(as: 'q')]
+    public string $search = '';
+
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
+        $query = SodPolicy::query()->orderByDesc('id');
+
+        $term = trim($this->search);
+        if ($term !== '') {
+            $query->where('name', 'like', "%{$term}%");
+        }
+
         return [
-            'policies' => SodPolicy::query()->orderByDesc('id')->get(),
+            'policies' => $query->get(),
             'roleNames' => Role::query()->orderBy('name')->pluck('name', 'id'),
             'orgNames' => Organization::query()->orderBy('name')->pluck('name', 'id'),
         ];
@@ -44,7 +55,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rules'])] c
         <a href="{{ route('environment.sod-policies.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New rule</a>
     </div>
 
-    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
+    </div>
+
+    <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @forelse ($policies as $policy)
             <a href="{{ route('environment.sod-policies.show', $policy->id) }}"
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">

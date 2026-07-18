@@ -208,15 +208,22 @@ final class PlatformAuth
      * used after magic-link and passkey login).
      *
      * @param  list<string>  $amr  how the subject authenticated
+     * @param  string|null  $organizationId  Pin the session to this org (e.g. the
+     *                                       org an impersonation was authorized
+     *                                       against); defaults to the subject's
+     *                                       first membership for a normal sign-in.
      */
-    public function establish(Request $request, string $subjectId, array $amr): void
+    public function establish(Request $request, string $subjectId, array $amr, ?string $organizationId = null): void
     {
         // A full session is being minted — drop any half-finished second-factor
         // handles so a completed sign-in can never leave a redeemable pending code
         // dangling in the (data-preserving) session.
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY]);
 
-        $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
+        // Pin to the caller-supplied org when given (impersonation authorizes against
+        // a SPECIFIC org — the session must land there, not in the subject's oldest
+        // membership, or the role gate and the effective session would disagree).
+        $organizationId ??= $this->memberships->forUser($subjectId)->first()?->organization_id;
 
         // Record the request IP + user-agent on the session so adaptive-risk signals
         // (new device, geo-velocity) have a history to compare future logins against.

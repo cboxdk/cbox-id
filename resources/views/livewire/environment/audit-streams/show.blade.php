@@ -39,7 +39,7 @@ new #[Layout('components.layouts.environment')] class extends Component
         }
     }
 
-    private function stream(): AuditStream
+    private function resolveStream(): AuditStream
     {
         $model = AuditStream::query()->whereKey($this->streamId)->first();
         abort_if($model === null, 404);
@@ -53,7 +53,7 @@ new #[Layout('components.layouts.environment')] class extends Component
      */
     public function disable(LogStreams $streams): void
     {
-        $streams->disable($this->stream()->id);
+        $streams->disable($this->resolveStream()->id);
         session()->flash('status', 'Stream disabled.');
     }
 
@@ -63,7 +63,7 @@ new #[Layout('components.layouts.environment')] class extends Component
      */
     public function resume(LogStreams $streams): void
     {
-        $streams->update($this->stream()->id, ['enabled' => true]);
+        $streams->update($this->resolveStream()->id, ['enabled' => true]);
         session()->flash('status', 'Stream resumed.');
     }
 
@@ -74,7 +74,7 @@ new #[Layout('components.layouts.environment')] class extends Component
 
     public function deleteStream(): mixed
     {
-        $this->stream()->delete();
+        $this->resolveStream()->delete();
         session()->flash('status', 'Log stream deleted.');
 
         return $this->redirectRoute('environment.audit-streams', navigate: true);
@@ -86,7 +86,7 @@ new #[Layout('components.layouts.environment')] class extends Component
     public function with(): array
     {
         return [
-            'stream' => $this->stream(),
+            'stream' => $this->resolveStream(),
             'destinationLabels' => [
                 'splunk_hec' => 'Splunk HEC',
                 'elastic_ecs' => 'Elastic (ECS)',

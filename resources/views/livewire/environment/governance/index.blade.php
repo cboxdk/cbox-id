@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -18,15 +19,23 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Access reviews'])] class extends Component
 {
+    #[Url(as: 'q')]
+    public string $search = '';
+
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
+        $query = CertificationCampaign::query()->orderByDesc('created_at');
+
+        $term = trim($this->search);
+        if ($term !== '') {
+            $query->where('name', 'like', "%{$term}%");
+        }
+
         return [
-            'campaigns' => CertificationCampaign::query()
-                ->orderByDesc('created_at')
-                ->get(),
+            'campaigns' => $query->get(),
         ];
     }
 }; ?>
@@ -40,7 +49,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Access reviews'])] c
         <a href="{{ route('environment.governance.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New review</a>
     </div>
 
-    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
+    </div>
+
+    <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @forelse ($campaigns as $c)
             <a href="{{ route('environment.governance.show', $c->id) }}"
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">

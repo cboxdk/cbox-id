@@ -78,7 +78,7 @@ final class Impersonation
         // Start the subject session with an `impersonation` amr so it is never
         // mistaken for a real login. establish() regenerates the session id; the
         // marker (session data) survives the regeneration.
-        $this->platformAuth->establish($request, $subjectId, ['impersonation']);
+        $this->platformAuth->establish($request, $subjectId, ['impersonation'], $orgId);
 
         $this->audit->record(new AuditEvent(
             action: 'operator.impersonation_started',
@@ -122,7 +122,7 @@ final class Impersonation
             'started_at' => now()->getTimestamp(),
         ]);
 
-        $this->platformAuth->establish($request, $subjectId, ['impersonation']);
+        $this->platformAuth->establish($request, $subjectId, ['impersonation'], $orgId);
 
         $this->audit->record(new AuditEvent(
             action: 'account.impersonation_started',

@@ -218,7 +218,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 </div>
                 @error('editEvents') <p class="field-error">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="saveSubscription">Save changes</button>
         </form>
     </div>
 

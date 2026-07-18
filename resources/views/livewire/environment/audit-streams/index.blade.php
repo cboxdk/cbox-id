@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -18,13 +19,23 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Log streaming'])] class extends Component
 {
+    #[Url(as: 'q')]
+    public string $search = '';
+
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
+        $query = AuditStream::query()->orderByDesc('created_at');
+
+        $term = trim($this->search);
+        if ($term !== '') {
+            $query->where('name', 'like', "%{$term}%");
+        }
+
         return [
-            'streams' => AuditStream::query()->orderByDesc('created_at')->get(),
+            'streams' => $query->get(),
             'destinationLabels' => [
                 'splunk_hec' => 'Splunk HEC',
                 'elastic_ecs' => 'Elastic (ECS)',
@@ -45,7 +56,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Log streaming'])] cl
         <a href="{{ route('environment.audit-streams.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New stream</a>
     </div>
 
-    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
+    </div>
+
+    <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @forelse ($streams as $stream)
             <a href="{{ route('environment.audit-streams.show', $stream->id) }}"
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">

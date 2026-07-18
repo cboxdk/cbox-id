@@ -42,6 +42,12 @@ new #[Layout('components.layouts.environment', ['title' => 'New outbound connect
     {
         $this->validate();
 
+        if ($this->organizationId !== '' && Organization::query()->whereKey($this->organizationId)->doesntExist()) {
+            $this->addError('organizationId', 'That organization is not in this environment.');
+
+            return null;
+        }
+
         $model = $connections->register(
             $this->organizationId !== '' ? $this->organizationId : null,
             $this->name,

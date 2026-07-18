@@ -41,12 +41,20 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
     {
         $this->validate();
 
+        $destination = Destination::tryFrom($this->destination);
+        $authScheme = AuthScheme::tryFrom($this->auth);
+        if ($destination === null || $authScheme === null) {
+            $this->addError('destination', 'Choose a valid destination and auth scheme.');
+
+            return null;
+        }
+
         $registered = $streams->create(
             $this->name,
-            Destination::from($this->destination),
+            $destination,
             $this->endpointUrl,
             $this->secret !== '' ? $this->secret : null,
-            AuthScheme::from($this->auth),
+            $authScheme,
         );
 
         // A generated HMAC key (or an echoed token) is revealed exactly once; only

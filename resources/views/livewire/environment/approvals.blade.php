@@ -107,7 +107,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
 
     <div class="mt-6 space-y-4">
         @forelse ($requests as $request)
-            <div class="rounded-xl border p-5" style="border-color:var(--border)">
+            <div class="rounded-xl border p-5" style="border-color:var(--border)" wire:key="req-{{ $request['id'] }}">
                 <div class="flex items-center gap-3">
                     <span class="grid place-items-center rounded-full shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
                         <x-icon name="shield" class="w-5 h-5" />

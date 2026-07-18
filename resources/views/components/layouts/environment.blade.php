@@ -24,7 +24,7 @@
     $groups = [
         ['label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
             ['route' => 'environment.home', 'label' => 'Overview'],
-            ['route' => 'environment.analytics', 'label' => 'Usage'],
+            ['route' => 'environment.analytics', 'label' => 'Analytics'],
             ['route' => 'environment.approvals', 'label' => 'Agent approvals'],
         ]],
         ['label' => 'Tenants', 'icon' => 'layers', 'pages' => [
@@ -37,7 +37,7 @@
         ['label' => 'Sign-in', 'icon' => 'connections', 'pages' => [
             ['route' => 'environment.connections', 'label' => 'Single sign-on'],
             ['route' => 'environment.sso-providers', 'label' => 'Login methods'],
-            ['route' => 'environment.directories', 'label' => 'User sync'],
+            ['route' => 'environment.directories', 'label' => 'Directories'],
             ['route' => 'environment.provisioning', 'label' => 'Outbound sync'],
         ]],
         ['label' => 'Access control', 'icon' => 'shield-check', 'pages' => [
@@ -51,7 +51,7 @@
             ['route' => 'environment.vault', 'label' => 'Stored tokens'],
         ]],
         ['label' => 'Logs', 'icon' => 'audit', 'pages' => [
-            ['route' => 'environment.audit', 'label' => 'Activity log'],
+            ['route' => 'environment.audit', 'label' => 'Audit log'],
             ['route' => 'environment.audit-streams', 'label' => 'Log streaming'],
         ]],
         ['label' => 'Settings', 'icon' => 'settings', 'pages' => [

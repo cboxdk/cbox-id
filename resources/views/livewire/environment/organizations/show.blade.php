@@ -12,6 +12,7 @@ use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
+use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -187,16 +188,32 @@ new #[Layout('components.layouts.environment')] class extends Component
 
     public function changeMemberRole(string $userId, string $role, Memberships $memberships): void
     {
-        if (in_array($role, ['member', 'admin', 'owner'], true)) {
-            $memberships->changeRole($this->org()->id, $userId, $role);
+        $org = $this->org();
+        if (! in_array($role, ['member', 'admin', 'owner'], true) || $memberships->of($org->id, $userId) === null) {
+            return;
+        }
+
+        try {
+            $memberships->changeRole($org->id, $userId, $role);
             session()->flash('status', 'Role updated.');
+        } catch (LastOwner) {
+            session()->flash('status', 'An organization must keep at least one owner.');
         }
     }
 
     public function removeMember(string $userId, Memberships $memberships): void
     {
-        $memberships->remove($this->org()->id, $userId);
-        session()->flash('status', 'Member removed.');
+        $org = $this->org();
+        if ($memberships->of($org->id, $userId) === null) {
+            return;
+        }
+
+        try {
+            $memberships->remove($org->id, $userId);
+            session()->flash('status', 'Member removed.');
+        } catch (LastOwner) {
+            session()->flash('status', 'An organization must keep at least one owner.');
+        }
     }
 
     public function invite(Invitations $invitations): void
@@ -352,7 +369,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 </div>
                 <button type="button" class="btn btn-ghost btn-sm mt-2" wire:click="addMetaRow">+ Add field</button>
             </div>
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="saveDetails">Save changes</button>
         </form>
     </div>
 
@@ -387,7 +404,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <option value="admin">Admin</option>
                 <option value="owner">Owner</option>
             </select>
-            <button type="submit" class="btn btn-primary shrink-0">Add member</button>
+            <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="addMember">Add member</button>
         </form>
     </div>
 
@@ -419,7 +436,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <option value="admin">Admin</option>
                 <option value="owner">Owner</option>
             </select>
-            <button type="submit" class="btn btn-primary shrink-0">Send invite</button>
+            <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="invite">Send invite</button>
         </form>
     </div>
 
@@ -454,7 +471,7 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <input wire:model="newDomain" type="text" class="input mono" placeholder="acme.com">
                 @error('newDomain') <p class="field-error">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary shrink-0">Add domain</button>
+            <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="addDomain">Add domain</button>
         </form>
     </div>
 

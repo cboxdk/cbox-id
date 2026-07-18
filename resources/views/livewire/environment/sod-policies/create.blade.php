@@ -46,6 +46,12 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
             return null;
         }
 
+        if ($this->orgId !== '' && Organization::query()->whereKey($this->orgId)->doesntExist()) {
+            $this->addError('orgId', 'That organization is not in this environment.');
+
+            return null;
+        }
+
         $policy = $sod->definePolicy(
             $this->orgId !== '' ? $this->orgId : null,
             $this->name,

@@ -36,6 +36,12 @@ new #[Layout('components.layouts.environment', ['title' => 'New stored token'])]
         $this->validateOnly('provider');
         $this->validateOnly('secret');
 
+        if ($this->ownerId !== '' && Organization::query()->whereKey($this->ownerId)->doesntExist()) {
+            $this->addError('ownerId', 'That organization is not in this environment.');
+
+            return null;
+        }
+
         // Scope to an organization only when one is chosen; otherwise the secret is
         // environment-wide. Both stay within this environment (BelongsToEnvironment).
         $model = $this->ownerId !== ''
