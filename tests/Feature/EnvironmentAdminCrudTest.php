@@ -158,6 +158,23 @@ it('starts an env-admin impersonation of a member (redirect + marker)', function
         ->and($marker['actor_type'])->toBe('account_member');
 });
 
+it('expires an env-admin impersonation back to the env console (not the operator one)', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant I', slug: 'tenant-i'));
+    $user = app(Subjects::class)->create('gina@acme.example', 'Gina');
+    app(Memberships::class)->add($org->id, $user->id, 'member');
+
+    $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'support']);
+
+    // Age the marker past the 30-minute window, then hit an authenticated route.
+    $marker = session('cbox.impersonation');
+    $marker['started_at'] = now()->subMinutes(31)->getTimestamp();
+    session()->put('cbox.impersonation', $marker);
+
+    $this->get('/dashboard')->assertRedirect(route('environment.home'));
+    expect(session('cbox.impersonation'))->toBeNull();
+});
+
 it('refuses to impersonate an owner/admin', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant E', slug: 'tenant-e'));
