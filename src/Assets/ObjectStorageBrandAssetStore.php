@@ -60,8 +60,9 @@ final class ObjectStorageBrandAssetStore implements BrandAssetStore
 
     protected function filename(string $kind, UploadedFile $file): string
     {
-        $extension = $file->extension();
-        $extension = is_string($extension) && $extension !== '' ? $extension : 'bin';
+        // `?:` (not is_string/??) so the guard is meaningful on both Laravel majors:
+        // UploadedFile::extension() is `string` on 12 but `?string` on 13.
+        $extension = $file->extension() ?: 'bin';
 
         $slug = preg_replace('/[^a-z0-9]/', '', strtolower($kind)) ?? '';
         $slug = $slug === '' ? 'asset' : $slug;
