@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
@@ -192,6 +193,23 @@ Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(f
     // an impersonator).
     Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('social.connect');
     Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])->name('social.connect.callback');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Environment ADMIN door (infrastructure — not yet gating the console).
+|--------------------------------------------------------------------------
+|
+| The account-layer path into a tenant environment's admin: redeem the signed
+| account→environment handoff, or "sign in as admin" against the account layer.
+| Wired for the identity model (control-plane admin, never a subject in the env);
+| the console re-gate onto `env.admin` follows once the console components are
+| moved off the subject session.
+*/
+Route::prefix('admin')->group(function (): void {
+    Volt::route('/login', 'admin.login')->name('admin.login');
+    Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
+    Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 });
 
 /*

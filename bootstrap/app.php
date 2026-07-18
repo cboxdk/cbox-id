@@ -2,7 +2,9 @@
 
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateAccountApi;
+use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
+use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequireScope;
@@ -84,6 +86,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'scope' => RequireScope::class,
             'account.api' => AuthenticateAccountApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,
+            // Host-plane bulkheads + the environment-admin (account-layer) console gate.
+            'plane' => EnforcePlane::class,
+            'env.admin' => AuthenticateEnvironmentAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
