@@ -10,9 +10,12 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-/** Build the middleware with a fixed current + default environment. */
+/** Build the middleware with a fixed current + default environment (multi-tenant SaaS). */
 function planeGate(?string $current, ?string $default): EnforcePlane
 {
+    // Multi-tenant shape: base_domains set → the bulkheads engage.
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+
     $ctx = Mockery::mock(EnvironmentContext::class);
     $ctx->shouldReceive('current')->andReturn($current !== null ? GenericEnvironment::of($current) : null);
 
@@ -58,4 +61,19 @@ it('denies BOTH planes when no environment resolves (deny-by-default)', function
 
 it('rejects an unknown plane name', function (): void {
     expect(passesPlane(planeGate('env_prod', 'env_prod'), 'operator'))->toBeFalse();
+});
+
+it('does NOT split planes in a single-tenant / self-hosted deployment (no base_domains)', function (): void {
+    // Single-tenant: one host serves the whole IdP — every plane is allowed, so the
+    // subject console is never 404'd just because the lone env is also the default.
+    config(['cbox-id.environments.base_domains' => []]);
+
+    $ctx = Mockery::mock(EnvironmentContext::class);
+    $ctx->shouldReceive('current')->andReturn(GenericEnvironment::of('the_only_env'));
+    $resolver = Mockery::mock(EnvironmentResolver::class);
+    $resolver->shouldReceive('defaultEnvironment')->andReturn(GenericEnvironment::of('the_only_env'));
+    $gate = new EnforcePlane($ctx, $resolver);
+
+    expect(passesPlane($gate, 'subject'))->toBeTrue()
+        ->and(passesPlane($gate, 'account'))->toBeTrue();
 });

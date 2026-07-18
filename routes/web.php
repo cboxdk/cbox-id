@@ -27,17 +27,21 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 /*
- * The root is plane-aware by HOST. cboxid.com — the platform-root (is_default)
- * environment — is the ACCOUNT door: sign in / sign up as an account member to
- * create and manage your IdP (environments, billing, keys). A tenant's OWN
- * subdomain ({slug}.{base_domain}) serves the subject/tenant plane (its dashboard
- * and org administration) instead — never the account console.
+ * The root is plane-aware, but ONLY in the multi-tenant SaaS shape. When
+ * `base_domains` is set (e.g. cboxid.com), the platform-root (is_default) host is the
+ * ACCOUNT door — sign in / sign up as an account member to create and manage your IdP
+ * — and a tenant's OWN subdomain serves the subject/tenant plane. In the single-tenant
+ * / self-hosted shape (no `base_domains`) there is NO account door: the one host is
+ * the IdP itself, so the root goes straight to the subject sign-in/dashboard.
  */
 Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver $resolver) {
+    $bases = config('cbox-id.environments.base_domains', []);
+    $multiTenant = is_array($bases) && $bases !== [];
+
     $current = $environments->current()?->environmentKey();
     $default = $resolver->defaultEnvironment()?->environmentKey();
 
-    if ($current !== null && $current === $default) {
+    if ($multiTenant && $current !== null && $current === $default) {
         return redirect()->route(
             session()->has(AccountAuth::SESSION_KEY) ? 'workspace.home' : 'workspace.login'
         );

@@ -37,6 +37,14 @@ final class EnforcePlane
      */
     public function handle(Request $request, Closure $next, string $plane): Response
     {
+        // Single-tenant / self-hosted (no `base_domains`) is ONE host serving the whole
+        // IdP — there is no account/subject host split, so the bulkheads don't apply and
+        // every plane is served. Only the multi-tenant SaaS shape (base_domains set,
+        // e.g. cboxid.com) has separate account-root and tenant-subdomain hosts.
+        if (! $this->multiTenant()) {
+            return $next($request);
+        }
+
         $current = $this->environments->current()?->environmentKey();
         $default = $this->resolver->defaultEnvironment()?->environmentKey();
         $onRoot = $current !== null && $default !== null && $current === $default;
@@ -50,5 +58,17 @@ final class EnforcePlane
         abort_unless($allowed, 404);
 
         return $next($request);
+    }
+
+    /**
+     * The multi-tenant SaaS shape — subdomain→environment routing is configured, so
+     * the account plane and the tenant planes live on separate hosts. Empty
+     * `base_domains` means a single-tenant / self-hosted deployment (one forced IdP).
+     */
+    private function multiTenant(): bool
+    {
+        $bases = config('cbox-id.environments.base_domains', []);
+
+        return is_array($bases) && $bases !== [];
     }
 }
