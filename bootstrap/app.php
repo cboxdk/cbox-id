@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateAccountApi;
+use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequireScope;
@@ -80,6 +82,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'portal.session' => PortalSession::class,
             'sudo' => RequireSudo::class,
             'scope' => RequireScope::class,
+            'account.api' => AuthenticateAccountApi::class,
+            'env.api' => AuthenticateEnvironmentApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

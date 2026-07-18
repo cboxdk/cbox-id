@@ -66,7 +66,7 @@ final class SetEnvironment
                 ? Environment::query()->where('slug', $slug)->first()
                 : null;
 
-            return $selected ?? Environment::query()->orderBy('created_at')->first();
+            return $selected ?? $this->resolver->defaultEnvironment();
         }
 
         // End users: the request host maps to the plane (custom domain or
@@ -78,7 +78,12 @@ final class SetEnvironment
             return $byHost;
         }
 
-        // Single-host / single-tenant fallback: the first (or only) environment.
-        return Environment::query()->orderBy('created_at')->first();
+        // Unmapped host → the PLATFORM-ROOT (is_default) environment — Cbox's own,
+        // never a customer's. This closes the fail-open bug where an unrecognized or
+        // spoofed Host fell through to the OLDEST environment (which could be any
+        // customer's live IdP): the apex/console/signup keep working, but no
+        // unmapped host can ever be mapped to a customer tenant. A customer plane is
+        // reachable ONLY via its own custom domain or {slug}.{base_domain} subdomain.
+        return $this->resolver->defaultEnvironment();
     }
 }

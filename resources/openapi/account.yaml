@@ -1,0 +1,203 @@
+openapi: 3.1.0
+info:
+  title: Cbox ID — Account Management API
+  version: "1.0.0"
+  description: |
+    The **global account-management plane** — above every environment. Manage the
+    account, its environments, and its members with an account API key.
+
+    This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
+    which is served on each environment's own host and authenticated with
+    environment-scoped credentials. Credentials never cross planes: an account key
+    (`cbid_acc_…`) cannot call the environment API, and vice versa.
+
+    **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
+    a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
+    "<human message>" }`.
+servers:
+  - url: https://api.cboxid.com/api/v1
+    description: Hosted (global account plane)
+  - url: https://{host}/api/v1
+    description: Self-hosted
+    variables:
+      host: { default: id.example.com }
+security:
+  - AccountApiKey: []
+tags:
+  - name: Account
+  - name: Environments
+  - name: Members
+paths:
+  /account:
+    get:
+      tags: [Account]
+      summary: Get the account
+      description: Returns the account identity. The `plan` block is included only for keys whose role can read billing (owner/admin/billing/viewer — not developer).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Account" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /account/environments:
+    get:
+      tags: [Environments]
+      summary: List environments
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Environment" } }
+                  meta: { $ref: "#/components/schemas/ListMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Environments]
+      summary: Create an environment
+      description: Requires the `manage-environments` capability (owner/admin/developer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                type: { type: string, enum: [production, sandbox], default: production }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Environment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422":
+          description: Plan limit reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: environment_limit_reached, message: "Account has reached its plan limit of 2 environment(s)." }
+  /account/members:
+    get:
+      tags: [Members]
+      summary: List members
+      description: Requires the `read-members` capability (owner/admin/viewer). The roster is PII — a developer key is refused.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Member" } }
+                  meta: { $ref: "#/components/schemas/ListMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Members]
+      summary: Invite a member
+      description: Requires the `manage-members` capability (owner/admin). Sends a signed email invitation; the member is created in the `invited` state until they accept.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                name: { type: string, nullable: true }
+                role: { type: string, enum: [admin, billing, developer, viewer] }
+      responses:
+        "201":
+          description: Invited
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422":
+          description: Email already belongs to a member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+components:
+  securitySchemes:
+    AccountApiKey:
+      type: http
+      scheme: bearer
+      description: An account API key, `cbid_acc_…`. Create and revoke keys in the workspace console (Owner/Admin).
+  responses:
+    Unauthorized:
+      description: Missing or invalid account API key (or its account is suspended)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: The key's role lacks the required capability
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Account:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        plan:
+          type: object
+          description: Present only for billing-readers.
+          properties:
+            environment_limit: { type: integer }
+            environments_used: { type: integer }
+            environments_remaining: { type: integer }
+    Environment:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        type: { type: string, enum: [production, sandbox] }
+        status: { type: string }
+        domain: { type: string, nullable: true }
+        issuer:
+          type: string
+          format: uri
+          description: The environment's own host — where its OIDC/environment API lives.
+    Member:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string, nullable: true }
+        role: { type: string, enum: [owner, admin, billing, developer, viewer] }
+        status: { type: string, enum: [active, invited] }
+        all_environments: { type: boolean }
+    ListMeta:
+      type: object
+      properties:
+        limit: { type: integer }
+        has_more: { type: boolean }
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, description: Stable machine code }
+        message: { type: string, description: Human-readable explanation }

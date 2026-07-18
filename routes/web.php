@@ -12,6 +12,9 @@ use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
+use App\Http\Controllers\WorkspaceController;
+use App\Http\Controllers\WorkspacePasskeyController;
+use App\Http\Middleware\AuthenticateAccountMember;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
@@ -209,5 +212,56 @@ Route::prefix('operator')->group(function (): void {
         // page is plane-scoped, so we first re-point the console at the result's
         // environment, then hand off to the (now in-plane) org detail page.
         Route::get('/search/jump/{organization}', [OperatorController::class, 'jumpToOrganization'])->name('operator.search.jump');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Workspace console — account members, the customer's buyer/admin plane.
+|--------------------------------------------------------------------------
+|
+| A third world, distinct from both the org-user console (end-users, who
+| authenticate INTO an environment) and the operator console (Cbox staff, above
+| every account). An account member signs in once at the root and administers
+| the environments their account owns — the Account → Environment relationship.
+| Neither an org-user nor an operator session grants anything here.
+*/
+Route::prefix('workspace')->group(function (): void {
+    Volt::route('/login', 'workspace.login')->name('workspace.login');
+
+    // Two-factor challenge — between password and a full session; the component
+    // self-guards on the pending marker, so it's neither guest nor authenticated.
+    Volt::route('/login/mfa', 'workspace.login-mfa')->name('workspace.login.mfa');
+
+    // Passwordless passkey sign-in (guest — a passkey is strong auth on its own).
+    Route::post('/passkeys/login/options', [WorkspacePasskeyController::class, 'loginOptions'])->name('workspace.passkeys.login.options');
+    Route::post('/passkeys/login', [WorkspacePasskeyController::class, 'login'])->name('workspace.passkeys.login');
+
+    // Invitation acceptance — guest-accessible but gated by a signed URL (the token
+    // is the signature; no token table needed). The invitee sets their password and
+    // is signed in. The component locks the member id so it can't be swapped after
+    // the signed load.
+    Volt::route('/invite/{member}/accept', 'workspace.accept-invite')
+        ->middleware('signed')
+        ->name('workspace.invite.accept');
+
+    // Forgot / reset password (guest, reset gated by a signed URL).
+    Volt::route('/forgot-password', 'workspace.forgot-password')->name('workspace.password.request');
+    Volt::route('/reset-password/{member}', 'workspace.reset-password')
+        ->middleware('signed')
+        ->name('workspace.password.reset');
+
+    Route::post('/logout', [WorkspaceController::class, 'logout'])->name('workspace.logout');
+
+    Route::middleware(AuthenticateAccountMember::class)->group(function (): void {
+        Volt::route('/', 'workspace.home')->name('workspace.home');
+        Volt::route('/members', 'workspace.members')->name('workspace.members');
+        Volt::route('/security', 'workspace.security')->name('workspace.security');
+        Route::post('/passkeys/register/options', [WorkspacePasskeyController::class, 'registerOptions'])->name('workspace.passkeys.register.options');
+        Route::post('/passkeys/register', [WorkspacePasskeyController::class, 'register'])->name('workspace.passkeys.register');
+        Volt::route('/api-keys', 'workspace.api-keys')->name('workspace.api-keys');
+        Volt::route('/environment-keys', 'workspace.environment-api-keys')->name('workspace.environment-keys');
+        Volt::route('/billing', 'workspace.billing')->name('workspace.billing');
+        Volt::route('/settings', 'workspace.settings')->name('workspace.settings');
     });
 });

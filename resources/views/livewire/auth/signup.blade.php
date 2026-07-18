@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
+use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
@@ -11,16 +12,22 @@ use App\Rules\NotBreached;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])] class extends Component
+new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class extends Component
 {
     public string $organization = '';
 
@@ -94,6 +101,55 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
             return;
         }
 
+        // Tier 2 — on the platform root (cboxid.com), a standalone signup provisions
+        // the signer's own ACCOUNT: a workspace, its first member (them), and their
+        // first environment — their own IdP. Cbox ID is the product here. This runs
+        // before the Tier-1 checks below because it's a different plane entirely: the
+        // signer becomes a global account member, not a Subject in Cbox's own
+        // environment. During an SSO flow (joining an app) or on a customer's own
+        // environment it stays a Tier-1 join, which is what keeps IdP-creation a
+        // root-only capability that never recurses into a customer's environment.
+        if ($this->provisionsOwnIdp(app(EnvironmentContext::class))) {
+            $members = app(AccountMembers::class);
+
+            // Account-member emails are globally unique — one email, one root login.
+            if ($members->findByEmail($this->email) !== null) {
+                $this->addError('email', 'A workspace with this email already exists.');
+
+                return;
+            }
+
+            try {
+                $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+                    accountName: trim($this->organization),
+                    ownerEmail: $this->email,
+                    ownerName: trim($this->name) ?: null,
+                    ownerPassword: $this->password,
+                ));
+            } catch (QueryException $e) {
+                // Two concurrent signups for the same email both clear the check
+                // above, then race the unique index. The loser's whole transaction
+                // rolls back (no partial state) — surface the same friendly error
+                // instead of a 500.
+                if (! $this->isUniqueViolation($e)) {
+                    throw $e;
+                }
+
+                $this->addError('email', 'A workspace with this email already exists.');
+
+                return;
+            }
+
+            // The buyer administers every environment they own from the root
+            // workspace — sign them straight in there, not into an environment's
+            // own domain. This is the account plane's single sign-in.
+            app(AccountAuth::class)->establish($result->member->id);
+            session()->flash('status', 'Your identity platform is ready.');
+            $this->redirect(route('workspace.home'), navigate: false);
+
+            return;
+        }
+
         // Capture gate: when an admin has flagged the email's verified domain for
         // capture AND the org has an active SSO connection, a local password account
         // is refused — the user must sign in through their org's IdP. Only bites for
@@ -127,6 +183,58 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         $this->redirectRoute('dashboard', navigate: false);
     }
 
+    /**
+     * True only on the platform-root environment (the one that sells IdPs) AND when
+     * this isn't part of an SSO flow (no pending OAuth authorize). A customer's own
+     * environment is never the default, so its signups can never provision new IdPs.
+     */
+    private function provisionsOwnIdp(EnvironmentContext $env): bool
+    {
+        // SaaS multi-tenant only. A self-hosted install is a single forced IdP: no
+        // base domains configured → no subdomain routing → nowhere to route a new
+        // environment, so signup stays a plain Tier-1 join. This one flag is the
+        // whole difference between the hosted product and single-tenant self-hosting.
+        if (! $this->multiTenant()) {
+            return false;
+        }
+
+        $current = $env->current()?->environmentKey();
+
+        if ($current === null) {
+            return false;
+        }
+
+        $isRoot = Environment::query()->where('is_default', true)->whereKey($current)->exists();
+        $inSsoFlow = str_contains((string) session()->get('url.intended'), 'oauth');
+
+        return $isRoot && ! $inSsoFlow;
+    }
+
+    private function multiTenant(): bool
+    {
+        $bases = config('cbox-id.environments.base_domains', []);
+
+        return is_array($bases) && $bases !== [];
+    }
+
+    /** A unique-index violation across the supported drivers (Postgres/MySQL/SQLite). */
+    private function isUniqueViolation(QueryException $e): bool
+    {
+        // 23505 = Postgres unique_violation; 23000 = MySQL integrity constraint.
+        return in_array((string) $e->getCode(), ['23505', '23000'], true)
+            || str_contains(strtolower($e->getMessage()), 'unique');
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    public function with(): array
+    {
+        // On the platform root this signup mints the signer's OWN IdP, so the page
+        // says so; elsewhere it's an ordinary join.
+        return ['createsIdp' => $this->provisionsOwnIdp(app(EnvironmentContext::class))];
+    }
+
     private function uniqueSlug(Organizations $orgs): string
     {
         $base = Str::slug($this->organization) ?: 'org';
@@ -142,8 +250,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
 }; ?>
 
 <div>
-    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Create your organization</h1>
-    <p class="mt-2 text-sm" style="color:var(--muted)">Set up Cbox ID for your team in under a minute.</p>
+    <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">{{ $createsIdp ? 'Create your identity platform' : 'Create your organization' }}</h1>
+    <p class="mt-2 text-sm" style="color:var(--muted)">{{ $createsIdp ? 'Your own hosted IdP — SSO, users, and sign-in you fully control, live in a minute.' : 'Set up Cbox ID for your team in under a minute.' }}</p>
 
     {{-- name + autocomplete so password managers offer to save; passwordrules/minlength
          let them generate a policy-compliant password (NIST: length over complexity). --}}
@@ -155,7 +263,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         </div>
 
         <div>
-            <label class="label" for="organization">Organization name</label>
+            <label class="label" for="organization">{{ $createsIdp ? 'Name your platform' : 'Organization name' }}</label>
             <input wire:model="organization" id="organization" name="organization" type="text" autocomplete="organization" class="input input-lg" placeholder="Acme Inc." autofocus
                    @error('organization') aria-invalid="true" aria-describedby="organization-error" @enderror>
             @error('organization') <p class="field-error" id="organization-error" role="alert">{{ $message }}</p> @enderror
@@ -196,7 +304,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Create your organization'])
         </div>
 
         <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="register">
-            <span wire:loading.remove wire:target="register">Create organization</span>
+            <span wire:loading.remove wire:target="register">{{ $createsIdp ? 'Create identity platform' : 'Create organization' }}</span>
             <span wire:loading wire:target="register" class="inline-flex items-center gap-2"><span class="spinner"></span> Creating…</span>
         </button>
     </form>

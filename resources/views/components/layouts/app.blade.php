@@ -16,6 +16,7 @@
     @consoleBrandingStyle
 </head>
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
+<x-sandbox-banner />
 @php
     // Support-impersonation banner — unmissable, on every authenticated page.
     $impersonation = app(\App\Platform\Impersonation::class)->active();

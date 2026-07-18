@@ -1,0 +1,272 @@
+openapi: 3.1.0
+info:
+  title: Cbox ID — Environment Management API
+  version: "1.0.0"
+  description: |
+    The **per-environment management plane** — the API apps use for day-to-day
+    provisioning of organizations and users inside ONE environment. It is served on
+    the environment's own host ({slug}.cboxid.com or a custom domain): the host pins
+    the environment, and the request is authenticated with an environment API key
+    (`cbid_env_…`).
+
+    This is distinct from the global account API (`cbid_acc_…`), which manages the
+    account, its environments and members. Credentials never cross planes — an
+    account key cannot call this API, and an environment key cannot call the account
+    API. An environment key is bound to the host it was minted for: presenting it on
+    another environment's host fails authentication outright.
+
+    **Scopes.** A key carries an explicit allow-list; every endpoint requires one
+    (deny-by-default). `resource:read` never implies `resource:write`, so a
+    read-only integration key cannot mutate.
+
+    **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
+    a sibling `meta` on lists). Lists are cursor-paginated: pass `?after=<next_cursor>`
+    from the previous page's `meta`. Every error returns
+    `{ "error": "<code>", "message": "<human message>" }`.
+servers:
+  - url: https://{host}/api/v1
+    description: The environment's own host
+    variables:
+      host: { default: acme.cboxid.com }
+security:
+  - EnvironmentApiKey: []
+tags:
+  - name: Organizations
+  - name: Users
+paths:
+  /organizations:
+    get:
+      tags: [Organizations]
+      summary: List organizations
+      description: "Requires scope `organizations:read`."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Organization" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Organizations]
+      summary: Create an organization
+      description: "Requires scope `organizations:write`."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string, maxLength: 190 }
+                slug:
+                  type: string
+                  maxLength: 190
+                  description: URL-safe; unique within the environment.
+                type:
+                  type: string
+                  enum: [customer, internal, reseller]
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+  /organizations/{id}:
+    get:
+      tags: [Organizations]
+      summary: Get an organization
+      description: "Requires scope `organizations:read`."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: "Requires scope `users:read`."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/User" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Users]
+      summary: Create a user
+      description: "Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 190 }
+                name: { type: string, maxLength: 190, nullable: true }
+                password: { type: string, minLength: 8, maxLength: 255, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get a user
+      description: "Requires scope `users:read`."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Users]
+      summary: Deactivate a user
+      description: |
+        Requires scope `users:write`. A **soft disable** — the identity can no longer
+        authenticate, but is never hard-deleted. Returns the user in its new
+        `inactive` state.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    EnvironmentApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: cbid_env_
+      description: An environment API key, minted in the environment's console. Bound to that environment's host.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    After:
+      name: after
+      in: query
+      required: false
+      description: Opaque cursor — the `meta.next_cursor` from the previous page.
+      schema: { type: string }
+  schemas:
+    Organization:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        type: { type: string, enum: [customer, internal, reseller] }
+        status: { type: string, enum: [active, suspended] }
+        parent_id: { type: string, nullable: true }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string, nullable: true }
+        status: { type: string, enum: [active, disabled, locked] }
+        email_verified_at: { type: string, format: date-time, nullable: true }
+    PageMeta:
+      type: object
+      properties:
+        limit: { type: integer }
+        has_more: { type: boolean }
+        next_cursor: { type: string, nullable: true }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+  responses:
+    Unauthorized:
+      description: Missing or invalid environment API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: The key is missing the scope this endpoint requires.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such resource in this environment.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableEntity:
+      description: Validation failed, or a uniqueness conflict (e.g. slug/email taken).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

@@ -66,8 +66,8 @@ import './bootstrap';
 
     const supported = () => typeof window.PublicKeyCredential !== 'undefined';
 
-    async function register(name) {
-        const opts = await post('/passkeys/register/options');
+    async function register(name, base = '/passkeys') {
+        const opts = await post(base + '/register/options');
         const publicKey = {
             ...opts,
             challenge: dec(opts.challenge),
@@ -75,7 +75,7 @@ import './bootstrap';
             excludeCredentials: (opts.excludeCredentials || []).map((c) => ({ ...c, id: dec(c.id) })),
         };
         const cred = await navigator.credentials.create({ publicKey });
-        await post('/passkeys/register', {
+        await post(base + '/register', {
             name,
             id: cred.id,
             type: cred.type,
@@ -87,15 +87,15 @@ import './bootstrap';
         });
     }
 
-    async function login() {
-        const opts = await post('/passkeys/login/options');
+    async function login(base = '/passkeys') {
+        const opts = await post(base + '/login/options');
         const publicKey = {
             ...opts,
             challenge: dec(opts.challenge),
             allowCredentials: (opts.allowCredentials || []).map((c) => ({ ...c, id: dec(c.id) })),
         };
         const cred = await navigator.credentials.get({ publicKey });
-        const data = await post('/passkeys/login', {
+        const data = await post(base + '/login', {
             id: cred.id,
             type: cred.type,
             response: {
@@ -142,13 +142,15 @@ import './bootstrap';
         const loginEl = e.target.closest('[data-passkey-login]');
         if (loginEl) {
             e.preventDefault();
-            run(loginEl, login, 'Waiting for passkey…');
+            const base = loginEl.getAttribute('data-passkey-base') || '/passkeys';
+            run(loginEl, () => login(base), 'Waiting for passkey…');
             return;
         }
         const regEl = e.target.closest('[data-passkey-register]');
         if (regEl) {
             e.preventDefault();
-            run(regEl, () => register(regEl.getAttribute('data-passkey-name') || 'Passkey'), 'Follow the prompt…').then(
+            const base = regEl.getAttribute('data-passkey-base') || '/passkeys';
+            run(regEl, () => register(regEl.getAttribute('data-passkey-name') || 'Passkey', base), 'Follow the prompt…').then(
                 (ok) => ok && window.location.reload()
             );
         }

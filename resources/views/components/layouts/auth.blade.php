@@ -25,6 +25,7 @@
     @consoleBrandingStyle
 </head>
 <body class="h-full" style="color:var(--text)">
+    <x-sandbox-banner />
     <div class="min-h-full grid lg:grid-cols-[1fr_minmax(0,44%)] xl:grid-cols-[1fr_minmax(0,40%)]">
         <div class="auth-shell flex flex-col justify-center px-6 py-12 sm:px-12">
             <div class="mx-auto w-full" style="max-width:24rem">

@@ -9,6 +9,9 @@ use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Contracts\Directories;
+use Cbox\Id\Directory\DirectoryConnectors;
+use Cbox\Id\Directory\DirectoryPullSync;
+use Cbox\Id\Directory\Enums\DirectoryProvider;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Directory\Models\DirectoryGroup;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -47,6 +50,94 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
     public function dismissToken(): void
     {
         $this->reset('newToken', 'newTokenName');
+    }
+
+    // --- API-pull directory connections (Google Workspace, Microsoft Entra) ---
+
+    public string $pullProvider = 'google_workspace';
+
+    public string $googleServiceAccountJson = '';
+
+    public string $googleAdminEmail = '';
+
+    public string $entraTenantId = '';
+
+    public string $entraClientId = '';
+
+    public string $entraClientSecret = '';
+
+    public ?string $connectError = null;
+
+    /** Connect a pull directory: verify the credentials, register, and sync now. */
+    public function connectPull(Directories $directories, DirectoryConnectors $connectors, DirectoryPullSync $sync): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+        $this->connectError = null;
+
+        $provider = DirectoryProvider::tryFrom($this->pullProvider);
+
+        if ($provider === null || ! $provider->isPull()) {
+            $this->connectError = 'Choose a directory provider.';
+
+            return;
+        }
+
+        $credentials = $this->pullCredentials($provider);
+
+        if ($credentials === null) {
+            return;
+        }
+
+        if (! $connectors->for($provider)->verify($credentials)) {
+            $this->connectError = 'Could not connect to '.$provider->label().' — check the credentials and admin consent.';
+
+            return;
+        }
+
+        $directory = $directories->registerPull($this->orgId(), $provider->label(), $provider, $credentials);
+
+        // Kick off the first sync now; failures are recorded on the directory.
+        try {
+            $sync->sync($directory);
+        } catch (\Throwable) {
+            // The error is stored on last_sync_error and shown in the list.
+        }
+
+        $this->reset('googleServiceAccountJson', 'googleAdminEmail', 'entraTenantId', 'entraClientId', 'entraClientSecret');
+        session()->flash('status', $provider->label().' connected — users are syncing.');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pullCredentials(DirectoryProvider $provider): ?array
+    {
+        if ($provider === DirectoryProvider::GoogleWorkspace) {
+            $sa = json_decode($this->googleServiceAccountJson, true);
+
+            if (! is_array($sa) || ! is_string($sa['client_email'] ?? null) || ! is_string($sa['private_key'] ?? null)) {
+                $this->connectError = 'Paste the full service-account JSON key (it must contain client_email and private_key).';
+
+                return null;
+            }
+
+            if (trim($this->googleAdminEmail) === '') {
+                $this->connectError = 'Enter the admin email to impersonate.';
+
+                return null;
+            }
+
+            return ['client_email' => $sa['client_email'], 'private_key' => $sa['private_key'], 'admin_email' => trim($this->googleAdminEmail)];
+        }
+
+        if (trim($this->entraTenantId) === '' || trim($this->entraClientId) === '' || trim($this->entraClientSecret) === '') {
+            $this->connectError = 'Enter the Entra tenant ID, client ID, and client secret.';
+
+            return null;
+        }
+
+        return ['tenant_id' => trim($this->entraTenantId), 'client_id' => trim($this->entraClientId), 'client_secret' => trim($this->entraClientSecret)];
     }
 
     /**
@@ -234,6 +325,53 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Register directory</button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
         </form>
+    @endif
+
+    {{-- Connect an API-pull provider (Google Workspace, Microsoft Entra) — we pull
+         users on a schedule; Google has no SCIM, so this is its only path. --}}
+    @if ($me->isAdmin() && $entitled)
+        <div class="card p-4">
+            <p class="font-semibold">Connect a directory provider</p>
+            <p class="mt-1 text-sm" style="color:var(--muted-foreground)">We'll pull and reconcile users automatically. Joiners are provisioned, leavers deprovisioned.</p>
+
+            <div class="mt-3 flex flex-wrap items-end gap-3">
+                <div>
+                    <label class="label" for="pullProvider">Provider</label>
+                    <select wire:model.live="pullProvider" id="pullProvider" class="input" style="width:auto">
+                        <option value="google_workspace">Google Workspace</option>
+                        <option value="microsoft_entra">Microsoft Entra ID</option>
+                    </select>
+                </div>
+            </div>
+
+            <form wire:submit="connectPull" class="mt-3 space-y-3">
+                @if ($pullProvider === 'google_workspace')
+                    <div>
+                        <label class="label" for="gsa">Service-account JSON key</label>
+                        <textarea wire:model="googleServiceAccountJson" id="gsa" rows="4" class="input mono text-xs" placeholder='{ "client_email": "...@...iam.gserviceaccount.com", "private_key": "-----BEGIN PRIVATE KEY-----\n..." }'></textarea>
+                        <p class="mt-1 text-xs" style="color:var(--faint)">A service account with domain-wide delegation for the read-only Admin Directory scope.</p>
+                    </div>
+                    <div class="max-w-sm">
+                        <label class="label" for="gadmin">Admin email to impersonate</label>
+                        <input wire:model="googleAdminEmail" id="gadmin" type="email" class="input" placeholder="admin@acme.com">
+                    </div>
+                @else
+                    <div class="grid sm:grid-cols-3 gap-3">
+                        <div><label class="label" for="etenant">Tenant ID</label><input wire:model="entraTenantId" id="etenant" type="text" class="input"></div>
+                        <div><label class="label" for="ecid">Client ID</label><input wire:model="entraClientId" id="ecid" type="text" class="input"></div>
+                        <div><label class="label" for="esecret">Client secret</label><input wire:model="entraClientSecret" id="esecret" type="password" class="input"></div>
+                    </div>
+                    <p class="text-xs" style="color:var(--faint)">An app registration with the <span class="mono">User.Read.All</span> application permission (admin-consented).</p>
+                @endif
+
+                @if ($connectError)<p class="field-error">{{ $connectError }}</p>@endif
+
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="connectPull">
+                    <span wire:loading.remove wire:target="connectPull">Connect &amp; sync</span>
+                    <span wire:loading wire:target="connectPull">Connecting…</span>
+                </button>
+            </form>
+        </div>
     @endif
 
     <div class="card overflow-hidden">

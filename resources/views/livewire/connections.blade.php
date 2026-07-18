@@ -9,8 +9,11 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
+use Cbox\Id\Federation\Exceptions\SamlMetadataImportFailed;
+use Cbox\Id\Federation\Exceptions\UnsafeFederationUrl;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
+use Cbox\Id\Federation\Saml\SamlMetadataImporter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -27,6 +30,9 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
     #[Validate('required|string|max:120')]
     public string $name = '';
+
+    /** Pasted IdP metadata XML, or a metadata URL — one-shot prefill for the SAML fields. */
+    public string $metadataInput = '';
 
     // SAML config
     public string $idp_entity_id = '';
@@ -87,6 +93,43 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         );
         $this->type = 'saml';
         session()->flash('status', 'Connection created as a draft.');
+    }
+
+    /**
+     * Prefill the SAML fields from an IdP's metadata — either pasted XML or a
+     * metadata URL. Parsed by the vetted framework importer; only the IdP fields
+     * are filled, and the admin still reviews and submits.
+     */
+    public function importMetadata(SamlMetadataImporter $importer): void
+    {
+        $this->guardEntitled();
+        $this->authorizeAdmin();
+
+        $input = trim($this->metadataInput);
+
+        if ($input === '') {
+            $this->addError('metadataInput', 'Paste the IdP metadata XML, or a metadata URL.');
+
+            return;
+        }
+
+        try {
+            $metadata = str_starts_with($input, 'http://') || str_starts_with($input, 'https://')
+                ? $importer->fromUrl($input)
+                : $importer->fromXml($input);
+        } catch (SamlMetadataImportFailed|UnsafeFederationUrl $e) {
+            $this->addError('metadataInput', $e->getMessage());
+
+            return;
+        }
+
+        $this->type = 'saml';
+        $this->idp_entity_id = $metadata->entityId;
+        $this->idp_sso_url = $metadata->ssoUrl;
+        $this->idp_x509cert = $metadata->x509cert;
+        $this->reset('metadataInput');
+
+        session()->flash('status', 'Metadata imported — review the fields and create the connection.');
     }
 
     public function activate(string $id, Connections $connections): void
@@ -311,6 +354,17 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             </div>
 
             @if ($type === 'saml')
+                {{-- Onboarding shortcut: paste the IdP's metadata (or its URL) to fill
+                     the three IdP fields below in one step, instead of copying by hand. --}}
+                <div class="rounded-xl p-4" style="background:var(--secondary);border:1px solid var(--border)">
+                    <label class="label" for="metadataInput">Import from IdP metadata <span style="color:var(--muted);font-weight:400">— optional</span></label>
+                    <textarea wire:model="metadataInput" id="metadataInput" rows="2" class="input mono" style="font-size:0.78rem"
+                              placeholder="Paste the IdP metadata XML, or a metadata URL (https://idp.example.com/metadata)"></textarea>
+                    @error('metadataInput') <p class="field-error">{{ $message }}</p> @enderror
+                    <button type="button" wire:click="importMetadata" class="btn btn-secondary btn-sm mt-2"
+                            wire:loading.attr="disabled" wire:target="importMetadata">Prefill from metadata</button>
+                </div>
+
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="label" for="idp_entity_id">IdP entity ID</label>

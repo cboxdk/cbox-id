@@ -262,9 +262,20 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             ->orderByDesc('id')
             ->get();
 
+        // Platform-owned first-party apps (Billing, …) — available to every org and
+        // shown in the launcher, but not registered BY this org, so read-only here.
+        // Surfacing them keeps this page consistent with the dashboard launcher
+        // (otherwise an app the user sees in their launcher looks missing here).
+        $platformApps = Client::query()
+            ->whereNull('organization_id')
+            ->where('first_party', true)
+            ->whereNull('orphaned_at')
+            ->orderBy('name')
+            ->get();
+
         // How many roles each app currently declares (for the Manifest panel).
         $roleCounts = Role::query()
-            ->whereIn('client_id', $rows->pluck('client_id'))
+            ->whereIn('client_id', $rows->pluck('client_id')->merge($platformApps->pluck('client_id')))
             ->whereNull('orphaned_at')
             ->get(['client_id'])
             ->groupBy('client_id')
@@ -275,6 +286,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             'scopeGroups' => $catalog->grouped(),
             'issuer' => rtrim(is_string($appUrl) ? $appUrl : '', '/'),
             'rows' => $rows,
+            'platformApps' => $platformApps,
             'roleCounts' => $roleCounts,
         ];
     }
@@ -561,8 +573,8 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                             <td colspan="{{ $me->isAdmin() ? 6 : 5 }}">
                                 <div class="cbx-empty">
                                     <div class="cbx-empty-icon"><x-icon name="clients" class="w-5 h-5" /></div>
-                                    <h3>No apps yet</h3>
-                                    <p>Connect your first app — to sign people in with single sign-on, or to call the Cbox ID API.</p>
+                                    <h3>No apps of your own yet</h3>
+                                    <p>Connect your first app — to sign people in with single sign-on, or to call the Cbox ID API.@if ($platformApps->isNotEmpty()) The Cbox apps below are available to everyone and managed by Cbox.@endif</p>
                                 </div>
                             </td>
                         </tr>
@@ -571,4 +583,50 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
             </table>
         </div>
     </div>
+
+    {{-- Platform-owned first-party apps (Billing, …): available to every org and shown
+         in the launcher, but not registered by this org — read-only here, so the page
+         stays consistent with the dashboard launcher. --}}
+    @if ($platformApps->isNotEmpty())
+        <section class="mt-8">
+            <h2 class="text-xs font-medium uppercase mb-3" style="color:var(--muted);letter-spacing:0.06em">Cbox apps <span style="text-transform:none;font-weight:400">— available to your team, managed by Cbox</span></h2>
+            <div class="card overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th scope="col">App</th>
+                                <th scope="col">Client ID</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Connects via</th>
+                                <th scope="col">Permissions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($platformApps as $client)
+                                <tr>
+                                    <td class="font-medium">{{ $client->name }} <span class="badge" style="margin-left:6px">Managed by Cbox</span></td>
+                                    <td class="mono text-xs" style="color:var(--muted)">{{ $client->client_id }}</td>
+                                    <td><span class="badge">{{ ucfirst($client->type->value) }}</span></td>
+                                    <td>
+                                        <div class="flex flex-wrap gap-1">
+                                            @if (in_array('authorization_code', $client->grant_types ?? [], true))<span class="badge">Sign-in</span>@endif
+                                            @if (in_array('client_credentials', $client->grant_types ?? [], true))<span class="badge">API</span>@endif
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (($roleCounts[$client->client_id] ?? 0) > 0)
+                                            <a href="{{ route('roles') }}" class="badge" style="color:var(--accent)">{{ $roleCounts[$client->client_id] }} role(s)</a>
+                                        @else
+                                            <span style="color:var(--faint)">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    @endif
 </div>
