@@ -5,9 +5,14 @@ declare(strict_types=1);
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
 use Cbox\Id\Identity\Contracts\EmailVerification;
+use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\PasswordReset;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
+use Cbox\Id\Identity\Models\MfaFactor;
+use Cbox\Id\Identity\Models\MfaRecoveryCode;
+use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Organization;
@@ -146,6 +151,31 @@ new #[Layout('components.layouts.environment')] class extends Component
         session()->flash('status', 'Email marked as verified.');
     }
 
+    public function resetMfa(): void
+    {
+        $user = $this->user();
+        // No disable verb on the contract; clearing the env-scoped factors + recovery
+        // codes forces a fresh enrollment on next sign-in.
+        MfaFactor::query()->where('user_id', $user->id)->delete();
+        MfaRecoveryCode::query()->where('user_id', $user->id)->delete();
+        session()->flash('status', 'Two-factor authentication reset — the user must re-enroll.');
+    }
+
+    public function revokeSession(string $sessionId, SessionManager $sessions): void
+    {
+        // Only a session belonging to THIS env-scoped user (deny-by-default).
+        if (Session::query()->whereKey($sessionId)->where('user_id', $this->user()->id)->exists()) {
+            $sessions->revoke($sessionId);
+            session()->flash('status', 'Session revoked.');
+        }
+    }
+
+    public function revokeAllSessions(SessionManager $sessions): void
+    {
+        $sessions->revokeAllForUser($this->user()->id);
+        session()->flash('status', 'All sessions revoked.');
+    }
+
     public function assignOrg(Memberships $memberships): void
     {
         $user = $this->user();
@@ -212,6 +242,14 @@ new #[Layout('components.layouts.environment')] class extends Component
             'allOrgs' => $orgNames,
             'memberships' => $rows,
             'impersonatableOrgs' => $impersonatable,
+            'hasMfa' => app(Mfa::class)->hasConfirmedTotp($user->id),
+            'sessions' => Session::query()
+                ->where('user_id', $user->id)
+                ->whereNull('revoked_at')
+                ->where('expires_at', '>', now())
+                ->orderByDesc('last_active_at')
+                ->limit(50)
+                ->get(),
         ];
     }
 }; ?>
@@ -256,12 +294,39 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="resendVerification">Resend verification</button>
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="markVerified">Mark verified</button>
             @endunless
+            @if ($hasMfa)
+                <button type="button" class="btn btn-ghost btn-sm" wire:click="resetMfa" wire:confirm="Reset this user's two-factor authentication? They must set it up again.">Reset 2FA</button>
+            @endif
             @if ($user->status === UserStatus::Active)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="suspend" wire:confirm="Deactivate this user? They can no longer sign in.">Deactivate</button>
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="reactivate">Reactivate</button>
             @endif
             <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteUser" wire:confirm="Permanently delete this user and their memberships? This cannot be undone.">Delete user</button>
+        </div>
+        <p class="mt-2 text-xs" style="color:var(--faint)">Two-factor: {{ $hasMfa ? 'enabled' : 'not enrolled' }}.</p>
+    </div>
+
+    {{-- Active sessions --}}
+    <div class="rounded-xl border p-5" style="border-color:var(--border)">
+        <div class="flex items-center justify-between gap-4">
+            <p class="text-sm font-medium">Active sessions</p>
+            @if ($sessions->isNotEmpty())
+                <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="revokeAllSessions" wire:confirm="Sign this user out of all sessions?">Revoke all</button>
+            @endif
+        </div>
+        <div class="mt-4 space-y-2">
+            @forelse ($sessions as $s)
+                <div class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="session-{{ $s->id }}">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm truncate">{{ $s->user_agent ?? 'Unknown device' }}</p>
+                        <p class="text-xs truncate" style="color:var(--faint)">{{ $s->ip ?? '—' }} · {{ $s->last_active_at?->diffForHumans() ?? 'never' }}@if (in_array('impersonation', $s->amr, true)) · <span style="color:var(--accent)">impersonation</span>@endif</p>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeSession('{{ $s->id }}')">Revoke</button>
+                </div>
+            @empty
+                <p class="text-sm" style="color:var(--muted)">No active sessions.</p>
+            @endforelse
         </div>
     </div>
 

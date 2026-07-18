@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Mail\InvitationMail;
 use App\Platform\EnvironmentAdminAuth;
+use Cbox\Id\Federation\Contracts\DomainVerification;
+use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
+use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Models\User;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -36,6 +42,12 @@ new #[Layout('components.layouts.environment')] class extends Component
     public string $memberEmail = '';
 
     public string $memberRole = 'member';
+
+    public string $inviteEmail = '';
+
+    public string $inviteRole = 'member';
+
+    public string $newDomain = '';
 
     public function mount(string $organization): void
     {
@@ -187,6 +199,85 @@ new #[Layout('components.layouts.environment')] class extends Component
         session()->flash('status', 'Member removed.');
     }
 
+    public function invite(Invitations $invitations): void
+    {
+        $org = $this->org();
+
+        $this->validate([
+            'inviteEmail' => ['required', 'email', 'max:190'],
+            'inviteRole' => ['required', 'in:member,admin,owner'],
+        ]);
+
+        // The invitee accepts via the emailed token — no one is added without consent.
+        $pending = $invitations->invite($org->id, $this->inviteEmail, $this->inviteRole);
+        Mail::to($this->inviteEmail)->send(new InvitationMail(
+            organization: $org->name,
+            inviter: app(EnvironmentAdminAuth::class)->current()?->name ?? 'An administrator',
+            url: route('invitation.accept', $pending->token),
+        ));
+
+        $this->inviteEmail = '';
+        $this->inviteRole = 'member';
+        session()->flash('status', 'Invitation sent to '.$pending->invitation->email.'.');
+    }
+
+    public function revokeInvitation(string $id, Invitations $invitations): void
+    {
+        $invitations->revoke($this->org()->id, $id);
+        session()->flash('status', 'Invitation revoked.');
+    }
+
+    public function addDomain(DomainVerification $domains): void
+    {
+        $org = $this->org();
+
+        $this->validate(['newDomain' => ['required', 'string', 'max:190', 'regex:/^[a-z0-9.-]+\.[a-z]{2,}$/i']]);
+
+        try {
+            $domains->add($org->id, mb_strtolower(trim($this->newDomain)));
+        } catch (DomainAlreadyClaimed) {
+            $this->addError('newDomain', 'That domain is already claimed.');
+
+            return;
+        }
+
+        $this->newDomain = '';
+        session()->flash('status', 'Domain added — add the DNS TXT record shown below, then verify.');
+    }
+
+    public function verifyDomain(string $id, DomainVerification $domains): void
+    {
+        if (! $this->ownsDomain($id)) {
+            return;
+        }
+
+        session()->flash('status', $domains->verify($id)
+            ? 'Domain verified.'
+            : 'Verification failed — the DNS TXT record was not found yet.');
+    }
+
+    public function toggleCapture(string $id, DomainVerification $domains): void
+    {
+        $domain = VerifiedDomain::query()->whereKey($id)->where('organization_id', $this->org()->id)->first();
+        if ($domain !== null) {
+            $domains->setCapture($id, ! $domain->capture);
+            session()->flash('status', 'Domain capture updated.');
+        }
+    }
+
+    public function removeDomain(string $id, DomainVerification $domains): void
+    {
+        if ($this->ownsDomain($id)) {
+            $domains->remove($id);
+            session()->flash('status', 'Domain removed.');
+        }
+    }
+
+    private function ownsDomain(string $id): bool
+    {
+        return VerifiedDomain::query()->whereKey($id)->where('organization_id', $this->org()->id)->exists();
+    }
+
     private function actorId(): string
     {
         return app(EnvironmentAdminAuth::class)->current()?->id ?? '';
@@ -213,7 +304,12 @@ new #[Layout('components.layouts.environment')] class extends Component
             ];
         }
 
-        return ['org' => $org, 'members' => $members];
+        return [
+            'org' => $org,
+            'members' => $members,
+            'invitations' => app(Invitations::class)->pending($org->id),
+            'domains' => app(DomainVerification::class)->forOrganization($org->id),
+        ];
     }
 }; ?>
 
@@ -292,6 +388,73 @@ new #[Layout('components.layouts.environment')] class extends Component
                 <option value="owner">Owner</option>
             </select>
             <button type="submit" class="btn btn-primary shrink-0">Add member</button>
+        </form>
+    </div>
+
+    {{-- Invitations (for people who don't have an account yet) --}}
+    <div class="rounded-xl border p-5" style="border-color:var(--border)">
+        <p class="text-sm font-medium">Invitations</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Invite someone by email — they join on their own by accepting the link.</p>
+        <div class="mt-4 space-y-2">
+            @forelse ($invitations as $inv)
+                <div class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="inv-{{ $inv->id }}">
+                    <div class="min-w-0 flex-1">
+                        <span class="block text-sm font-medium truncate">{{ $inv->email }}</span>
+                        <span class="block text-xs" style="color:var(--faint)">{{ ucfirst($inv->role) }} · expires {{ $inv->expires_at?->diffForHumans() }}</span>
+                    </div>
+                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $inv->status->value }}</span>
+                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeInvitation('{{ $inv->id }}')" wire:confirm="Revoke this invitation?">Revoke</button>
+                </div>
+            @empty
+                <p class="text-sm" style="color:var(--muted)">No pending invitations.</p>
+            @endforelse
+        </div>
+        <form wire:submit="invite" class="mt-4 grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
+            <div>
+                <input wire:model="inviteEmail" type="email" class="input" placeholder="newteammate@example.com">
+                @error('inviteEmail') <p class="field-error">{{ $message }}</p> @enderror
+            </div>
+            <select wire:model="inviteRole" class="select">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+            <button type="submit" class="btn btn-primary shrink-0">Send invite</button>
+        </form>
+    </div>
+
+    {{-- Verified domains (drive SSO / directory matching) --}}
+    <div class="rounded-xl border p-5" style="border-color:var(--border)">
+        <p class="text-sm font-medium">Domains</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Verify domains this organization owns so its users are matched to it for SSO.</p>
+        <div class="mt-4 space-y-2">
+            @forelse ($domains as $domain)
+                <div class="rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="domain-{{ $domain->id }}">
+                    <div class="flex items-center gap-2">
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium mono">{{ $domain->domain }}</span>
+                        @if ($domain->verified_at)
+                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--success-soft);color:var(--success)">Verified</span>
+                            <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="toggleCapture('{{ $domain->id }}')">{{ $domain->capture ? 'Capture on' : 'Capture off' }}</button>
+                        @else
+                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Pending</span>
+                            <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="verifyDomain('{{ $domain->id }}')">Verify</button>
+                        @endif
+                        <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeDomain('{{ $domain->id }}')" wire:confirm="Remove this domain?">Remove</button>
+                    </div>
+                    @unless ($domain->verified_at)
+                        <p class="mt-2 text-xs" style="color:var(--faint)">Add a DNS TXT record: <code class="mono select-all">{{ $domain->verification_token }}</code></p>
+                    @endunless
+                </div>
+            @empty
+                <p class="text-sm" style="color:var(--muted)">No domains yet.</p>
+            @endforelse
+        </div>
+        <form wire:submit="addDomain" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2 items-start">
+            <div>
+                <input wire:model="newDomain" type="text" class="input mono" placeholder="acme.com">
+                @error('newDomain') <p class="field-error">{{ $message }}</p> @enderror
+            </div>
+            <button type="submit" class="btn btn-primary shrink-0">Add domain</button>
         </form>
     </div>
 

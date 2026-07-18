@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -10,15 +11,18 @@ use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
+use Cbox\Id\Identity\Models\MfaFactor;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
@@ -193,6 +197,48 @@ it('renders the detail pages for connections, directories, roles, applications a
     $this->get("/admin/webhooks/{$webhook->id}")->assertOk()->assertSee('example.com');
     $this->get("/admin/directories/{$directory->id}")->assertOk()->assertSee('HR directory');
     $this->get("/admin/single-sign-on/{$connection->id}")->assertOk()->assertSee('Okta');
+});
+
+it('sends an organization invitation and lists it as pending', function (): void {
+    crudSetup();
+    Mail::fake();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant G', slug: 'tenant-g'));
+
+    Volt::test('environment.organizations.show', ['organization' => $org->id])
+        ->set('inviteEmail', 'newbie@acme.example')
+        ->set('inviteRole', 'member')
+        ->call('invite')
+        ->assertHasNoErrors();
+
+    Mail::assertSent(InvitationMail::class);
+    expect(app(Invitations::class)->pending($org->id))->toHaveCount(1);
+});
+
+it('adds a verified domain to an organization', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant H', slug: 'tenant-h'));
+
+    Volt::test('environment.organizations.show', ['organization' => $org->id])
+        ->set('newDomain', 'acme-h.com')
+        ->call('addDomain')
+        ->assertHasNoErrors();
+
+    expect(VerifiedDomain::query()->where('organization_id', $org->id)->where('domain', 'acme-h.com')->exists())->toBeTrue();
+});
+
+it('resets a user\'s two-factor factors', function (): void {
+    crudSetup();
+    $user = app(Subjects::class)->create('mfa@acme.example', 'Mfa User');
+    MfaFactor::query()->create([
+        'user_id' => $user->id,
+        'type' => 'totp',
+        'secret_encrypted' => 'sealed',
+        'confirmed_at' => now(),
+    ]);
+
+    Volt::test('environment.users.show', ['user' => $user->id])->call('resetMfa');
+
+    expect(MfaFactor::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
 it('renders the detail pages for login methods, event hooks, conflict rules and outbound sync', function (): void {
