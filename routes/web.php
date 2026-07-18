@@ -236,8 +236,17 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
     // session grants nothing here.
     Route::middleware('env.admin')->group(function (): void {
         Volt::route('/', 'environment.home')->name('environment.home');
-        Volt::route('/organizations', 'environment.organizations')->name('environment.organizations');
-        Volt::route('/users', 'environment.users')->name('environment.users');
+
+        // Organizations — routable list → create → detail (deep-linkable, WorkOS shape).
+        Volt::route('/organizations', 'environment.organizations.index')->name('environment.organizations');
+        Volt::route('/organizations/new', 'environment.organizations.create')->name('environment.organizations.create');
+        Volt::route('/organizations/{organization}', 'environment.organizations.show')->name('environment.organizations.show');
+
+        // Users — routable list → create → detail.
+        Volt::route('/users', 'environment.users.index')->name('environment.users');
+        Volt::route('/users/new', 'environment.users.create')->name('environment.users.create');
+        Volt::route('/users/{user}', 'environment.users.show')->name('environment.users.show');
+
         Volt::route('/single-sign-on', 'environment.connections')->name('environment.connections');
         Volt::route('/login-methods', 'environment.sso-providers')->name('environment.sso-providers');
         Volt::route('/directories', 'environment.directories')->name('environment.directories');
@@ -254,6 +263,10 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/analytics', 'environment.analytics')->name('environment.analytics');
         Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');
         Volt::route('/settings', 'environment.settings')->name('environment.settings');
+
+        // Step into a subject's session for support (env-admin actor). Authorized in
+        // the controller by env-scoped membership; owners/admins refused; reason required.
+        Route::post('/impersonate/{user}', [ImpersonationController::class, 'startAsEnvAdmin'])->name('environment.impersonate');
     });
 });
 

@@ -85,7 +85,9 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
     foreach ([
         '/admin' => 'Overview',
         '/admin/organizations' => 'Organizations',
+        '/admin/organizations/new' => 'New organization',
         '/admin/users' => 'Users',
+        '/admin/users/new' => 'New user',
         '/admin/applications' => 'Applications',
         '/admin/single-sign-on' => 'Single sign-on',
         '/admin/login-methods' => 'Login methods',

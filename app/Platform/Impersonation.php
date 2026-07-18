@@ -66,6 +66,7 @@ final class Impersonation
         $request->session()->forget(OperatorAuth::SESSION_KEY);
 
         $request->session()->put(self::SESSION_KEY, [
+            'actor_type' => ActorType::Operator->value,
             'operator' => $operatorId,
             'subject' => $subjectId,
             'org' => $orgId,
@@ -92,6 +93,50 @@ final class Impersonation
     }
 
     /**
+     * Step into a subject's session as an ENVIRONMENT ADMIN (an account member
+     * administering this environment), rather than a platform operator.
+     *
+     * Same strict model as {@see start()}: the caller has already authorized this
+     * (the subject is a real member of $orgId within the env-admin's environment)
+     * and captured a justification. Here the env-admin session keys are the ones
+     * forgotten — so the /admin control plane is unreachable while impersonating —
+     * and the acting principal is recorded as an {@see ActorType::AccountMember}.
+     * The env to re-pin on exit is the env-admin's bound environment.
+     */
+    public function startAsAccountMember(Request $request, string $memberId, string $subjectId, string $orgId, string $reason): void
+    {
+        // The env-admin session is bound to exactly one environment; re-pin it on exit.
+        $env = $request->session()->get(EnvironmentAdminAuth::ENV_KEY);
+
+        // Become PURELY the subject: drop the env-admin keys so /admin is unreachable
+        // until exit. Only the member id in the marker survives, restored on exit.
+        $request->session()->forget([EnvironmentAdminAuth::SESSION_KEY, EnvironmentAdminAuth::ENV_KEY]);
+
+        $request->session()->put(self::SESSION_KEY, [
+            'actor_type' => ActorType::AccountMember->value,
+            'operator' => $memberId,
+            'subject' => $subjectId,
+            'org' => $orgId,
+            'env' => is_string($env) && $env !== '' ? $env : null,
+            'reason' => $reason,
+            'started_at' => now()->getTimestamp(),
+        ]);
+
+        $this->platformAuth->establish($request, $subjectId, ['impersonation']);
+
+        $this->audit->record(new AuditEvent(
+            action: 'account.impersonation_started',
+            actorType: ActorType::AccountMember,
+            actorId: $memberId,
+            organizationId: $orgId,
+            targetType: 'user',
+            targetId: $subjectId,
+            context: ['reason' => $reason],
+            ip: $request->ip(),
+        ));
+    }
+
+    /**
      * Leave impersonation: end the subject session and restore the operator. A no-op
      * when there is no active marker (e.g. a double-submit of the exit form).
      */
@@ -103,9 +148,11 @@ final class Impersonation
             return;
         }
 
+        $isAccountMember = $marker['actor_type'] === ActorType::AccountMember->value;
+
         $this->audit->record(new AuditEvent(
-            action: 'operator.impersonation_ended',
-            actorType: ActorType::Operator,
+            action: $isAccountMember ? 'account.impersonation_ended' : 'operator.impersonation_ended',
+            actorType: $isAccountMember ? ActorType::AccountMember : ActorType::Operator,
             actorId: $marker['operator'],
             organizationId: $marker['org'],
             targetType: 'user',
@@ -124,11 +171,19 @@ final class Impersonation
         }
         $request->session()->forget([PlatformAuth::SESSION_KEY, PlatformAuth::ORG_KEY]);
 
-        // Restore ONLY the operator id captured (and validated) at start, and re-pin
-        // the plane it was working in.
-        $request->session()->put(OperatorAuth::SESSION_KEY, $marker['operator']);
-        if ($marker['env'] !== null) {
-            $request->session()->put(OperatorAuth::ENV_KEY, $marker['env']);
+        // Restore ONLY the acting principal captured (and validated) at start, and
+        // re-pin the plane it was working in — the env-admin session for an account
+        // member, the operator session otherwise.
+        if ($isAccountMember) {
+            $request->session()->put(EnvironmentAdminAuth::SESSION_KEY, $marker['operator']);
+            if ($marker['env'] !== null) {
+                $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker['env']);
+            }
+        } else {
+            $request->session()->put(OperatorAuth::SESSION_KEY, $marker['operator']);
+            if ($marker['env'] !== null) {
+                $request->session()->put(OperatorAuth::ENV_KEY, $marker['env']);
+            }
         }
 
         $request->session()->forget(self::SESSION_KEY);
@@ -141,7 +196,7 @@ final class Impersonation
     /**
      * The validated marker, or null when not impersonating.
      *
-     * @return array{operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int}|null
+     * @return array{actor_type: string, operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int}|null
      */
     public function active(): ?array
     {
@@ -165,8 +220,11 @@ final class Impersonation
 
         $env = $data['env'] ?? null;
         $reason = $data['reason'] ?? null;
+        // Back-compat: a marker written before actor_type existed is an operator one.
+        $actorType = $data['actor_type'] ?? null;
 
         return [
+            'actor_type' => $actorType === ActorType::AccountMember->value ? ActorType::AccountMember->value : ActorType::Operator->value,
             'operator' => $operator,
             'subject' => $subject,
             'org' => $org,

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
 use App\Platform\OperatorAuth;
+use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,17 +63,53 @@ final class ImpersonationController extends Controller
     }
 
     /**
-     * Leave impersonation and return to the operator console. Guarded on the marker
-     * rather than operator auth — the browser is purely the subject here. A missing
-     * marker means there is nothing to exit (403), so a stray POST can neither forge
-     * an operator session nor act.
+     * Step into a subject's session as an ENVIRONMENT ADMIN (an account member who
+     * administers this environment) rather than a platform operator. The route sits
+     * in the env-admin group, so an env-admin session is already required; we
+     * re-assert it, then AUTHORIZE by membership resolved in the current (host-pinned)
+     * environment — {@see Memberships::of} is env-scoped, so a user or org outside
+     * this environment resolves to null → 403. Owners/admins are refused, and a
+     * justification is mandatory, exactly as for operator impersonation.
+     */
+    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation): RedirectResponse
+    {
+        $memberId = $auth->current()?->id;
+        abort_if($memberId === null, 403);
+
+        $orgId = $request->string('organization')->toString();
+        abort_if($orgId === '', 403);
+
+        $membership = $memberships->of($orgId, $user);
+        abort_if($membership === null, 403);
+
+        // Never step into an owner/admin — that would hand durable tenant control to
+        // the account member (defense-in-depth on top of the read-only screen).
+        abort_if(in_array($membership->role, ['owner', 'admin'], true), 403);
+
+        $request->validate(['reason' => ['required', 'string', 'max:200']]);
+
+        $impersonation->startAsAccountMember($request, $memberId, $user, $orgId, $request->string('reason')->toString());
+
+        return redirect()->route('dashboard');
+    }
+
+    /**
+     * Leave impersonation and return to whichever control plane started it. Guarded
+     * on the marker rather than any auth session — the browser is purely the subject
+     * here. A missing marker means there is nothing to exit (403), so a stray POST
+     * can neither forge a session nor act.
      */
     public function exit(Request $request, Impersonation $impersonation): RedirectResponse
     {
-        abort_unless($impersonation->isImpersonating(), 403);
+        // Read the marker before exit() clears it, so we return to the right console
+        // — the env-admin home for an account member, else the operator. A missing
+        // marker means there is nothing to exit (403).
+        $marker = $impersonation->active();
+        abort_if($marker === null, 403);
+        $wasAccountMember = $marker['actor_type'] === ActorType::AccountMember->value;
 
         $impersonation->exit($request);
 
-        return redirect()->route('operator.organizations');
+        return redirect()->route($wasAccountMember ? 'environment.home' : 'operator.organizations');
     }
 }
