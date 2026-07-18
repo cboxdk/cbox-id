@@ -239,6 +239,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/organizations', 'environment.organizations')->name('environment.organizations');
         Volt::route('/users', 'environment.users')->name('environment.users');
         Volt::route('/applications', 'environment.clients')->name('environment.clients');
+        Volt::route('/single-sign-on', 'environment.connections')->name('environment.connections');
+        Volt::route('/directories', 'environment.directories')->name('environment.directories');
+        Volt::route('/roles', 'environment.roles')->name('environment.roles');
+        Volt::route('/webhooks', 'environment.webhooks')->name('environment.webhooks');
+        Volt::route('/audit', 'environment.audit')->name('environment.audit');
+        Volt::route('/analytics', 'environment.analytics')->name('environment.analytics');
         Volt::route('/settings', 'environment.settings')->name('environment.settings');
     });
 });

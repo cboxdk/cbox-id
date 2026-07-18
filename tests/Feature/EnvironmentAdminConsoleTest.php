@@ -82,11 +82,21 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
     session()->put(EnvironmentAdminAuth::SESSION_KEY, $member->id);
     session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
 
-    $this->get('/admin')->assertOk()->assertSee('Overview');
-    $this->get('/admin/organizations')->assertOk()->assertSee('Organizations');
-    $this->get('/admin/users')->assertOk()->assertSee('Users');
-    $this->get('/admin/applications')->assertOk()->assertSee('Applications');
-    $this->get('/admin/settings')->assertOk()->assertSee('Integration');
+    foreach ([
+        '/admin' => 'Overview',
+        '/admin/organizations' => 'Organizations',
+        '/admin/users' => 'Users',
+        '/admin/applications' => 'Applications',
+        '/admin/single-sign-on' => 'Single sign-on',
+        '/admin/directories' => 'Directories',
+        '/admin/roles' => 'Roles',
+        '/admin/webhooks' => 'Webhooks',
+        '/admin/audit' => 'Audit log',
+        '/admin/analytics' => 'Analytics',
+        '/admin/settings' => 'Integration',
+    ] as $path => $needle) {
+        $this->get($path)->assertOk()->assertSee($needle);
+    }
 });
 
 it('refuses a handoff minted for a different environment than the host', function (): void {
