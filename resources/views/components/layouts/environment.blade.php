@@ -37,8 +37,8 @@
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="flex h-full" x-data="{ nav: false }" @keydown.escape.window="nav=false">
-    <aside class="cbx-rail hidden lg:flex flex-col shrink-0" style="width:210px;border-right:1px solid var(--border)">
-        <div class="flex items-center gap-2 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--border)">
+    <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
+        <div class="flex items-center gap-2 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
             <div class="min-w-0">
                 <p class="text-sm font-semibold truncate">{{ $envName }}</p>
                 <p class="text-xs truncate" style="color:var(--faint)">Environment admin</p>
@@ -51,7 +51,7 @@
                 </a>
             @endforeach
         </nav>
-        <div class="p-3 space-y-0.5" style="border-top:1px solid var(--border)">
+        <div class="p-3 space-y-0.5" style="border-top:1px solid var(--sidebar-border)">
             <div class="flex items-center gap-2 px-2 py-1">
                 <span class="grid place-items-center w-7 h-7 rounded-full text-xs font-semibold shrink-0" style="background:var(--accent-soft);color:var(--accent)">{{ $memberInitial }}</span>
                 <div class="min-w-0">
