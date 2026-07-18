@@ -247,15 +247,37 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/users/new', 'environment.users.create')->name('environment.users.create');
         Volt::route('/users/{user}', 'environment.users.show')->name('environment.users.show');
 
-        Volt::route('/single-sign-on', 'environment.connections')->name('environment.connections');
+        // SSO connections — routable list → create → detail.
+        Volt::route('/single-sign-on', 'environment.connections.index')->name('environment.connections');
+        Volt::route('/single-sign-on/new', 'environment.connections.create')->name('environment.connections.create');
+        Volt::route('/single-sign-on/{connection}', 'environment.connections.show')->name('environment.connections.show');
+
         Volt::route('/login-methods', 'environment.sso-providers')->name('environment.sso-providers');
-        Volt::route('/directories', 'environment.directories')->name('environment.directories');
+
+        // Directories (SCIM) — routable list → create → detail.
+        Volt::route('/directories', 'environment.directories.index')->name('environment.directories');
+        Volt::route('/directories/new', 'environment.directories.create')->name('environment.directories.create');
+        Volt::route('/directories/{directory}', 'environment.directories.show')->name('environment.directories.show');
+
         Volt::route('/outbound-sync', 'environment.provisioning')->name('environment.provisioning');
-        Volt::route('/roles', 'environment.roles')->name('environment.roles');
+
+        // Roles — routable list → create → detail (permission editor).
+        Volt::route('/roles', 'environment.roles.index')->name('environment.roles');
+        Volt::route('/roles/new', 'environment.roles.create')->name('environment.roles.create');
+        Volt::route('/roles/{role}', 'environment.roles.show')->name('environment.roles.show');
+
         Volt::route('/access-reviews', 'environment.governance')->name('environment.governance');
         Volt::route('/conflict-rules', 'environment.sod-policies')->name('environment.sod-policies');
-        Volt::route('/applications', 'environment.clients')->name('environment.clients');
-        Volt::route('/webhooks', 'environment.webhooks')->name('environment.webhooks');
+
+        // Applications (OAuth clients) — routable list → create → detail (secret rotation).
+        Volt::route('/applications', 'environment.clients.index')->name('environment.clients');
+        Volt::route('/applications/new', 'environment.clients.create')->name('environment.clients.create');
+        Volt::route('/applications/{client}', 'environment.clients.show')->name('environment.clients.show');
+
+        // Webhooks — routable list → create → detail.
+        Volt::route('/webhooks', 'environment.webhooks.index')->name('environment.webhooks');
+        Volt::route('/webhooks/new', 'environment.webhooks.create')->name('environment.webhooks.create');
+        Volt::route('/webhooks/{webhook}', 'environment.webhooks.show')->name('environment.webhooks.show');
         Volt::route('/event-hooks', 'environment.hooks')->name('environment.hooks');
         Volt::route('/stored-tokens', 'environment.vault')->name('environment.vault');
         Volt::route('/audit', 'environment.audit')->name('environment.audit');

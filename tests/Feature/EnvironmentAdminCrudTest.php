@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 use App\Mail\PasswordResetMail;
 use App\Platform\EnvironmentAdminAuth;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\Directory\Contracts\Directories;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
@@ -16,6 +23,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -146,4 +154,35 @@ it('refuses to impersonate an owner/admin', function (): void {
 
     $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'nope'])
         ->assertForbidden();
+});
+
+it('renders the detail pages for connections, directories, roles, applications and webhooks', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant F', slug: 'tenant-f'));
+
+    $role = app(Roles::class)->define(null, 'Support', 'Support staff');
+    $client = app(ClientRegistry::class)->register(
+        new NewClient(
+            name: 'Test App',
+            type: ClientType::Confidential,
+            redirectUris: ['https://app.example/callback'],
+            grantTypes: ['authorization_code'],
+            scopes: ['openid'],
+        )
+    )->client;
+    $webhook = app(WebhookRegistry::class)
+        ->register(null, 'https://example.com/in', ['user.created'])->endpoint;
+    $directory = app(Directories::class)->register($org->id, 'HR directory')->directory;
+    $connection = app(Connections::class)->create(
+        $org->id,
+        ConnectionType::Oidc,
+        'Okta',
+        ['issuer' => 'https://okta.example', 'client_id' => 'abc', 'client_secret' => 'shh'],
+    );
+
+    $this->get("/admin/roles/{$role->id}")->assertOk()->assertSee('Support');
+    $this->get("/admin/applications/{$client->id}")->assertOk()->assertSee('Test App');
+    $this->get("/admin/webhooks/{$webhook->id}")->assertOk()->assertSee('example.com');
+    $this->get("/admin/directories/{$directory->id}")->assertOk()->assertSee('HR directory');
+    $this->get("/admin/single-sign-on/{$connection->id}")->assertOk()->assertSee('Okta');
 });
