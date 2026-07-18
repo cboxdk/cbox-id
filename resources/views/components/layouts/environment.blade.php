@@ -58,6 +58,11 @@
             ['route' => 'environment.settings', 'label' => 'Settings'],
         ]],
     ];
+
+    // A nav item stays active on its own detail/create routes (e.g. environment.users
+    // → environment.users.show) but NOT on a sibling that merely shares a prefix
+    // (environment.audit must not light up on environment.audit-streams).
+    $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
 @endphp
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
      Distinct from the org-user console (subjects) and the account/workspace console. --}}
@@ -90,7 +95,7 @@
                         <x-icon :name="$group['icon']" class="w-3.5 h-3.5" /> {{ $group['label'] }}
                     </p>
                     @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link {{ request()->routeIs($page['route']) ? 'is-active' : '' }}">
+                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}">
                             {{ $page['label'] }}
                         </a>
                     @endforeach
@@ -131,7 +136,7 @@
                         <x-icon :name="$group['icon']" class="w-3.5 h-3.5" aria-hidden="true" /> {{ $group['label'] }}
                     </p>
                     @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link {{ request()->routeIs($page['route']) ? 'is-active' : '' }}">
+                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}">
                             {{ $page['label'] }}
                         </a>
                     @endforeach
