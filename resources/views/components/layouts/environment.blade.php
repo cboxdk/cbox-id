@@ -18,18 +18,45 @@
     $accountHost = is_array($bases) && isset($bases[0]) && is_string($bases[0]) ? $bases[0] : request()->getHost();
     $securityUrl = 'https://'.$accountHost.'/workspace/security';
 
-    $areas = [
-        ['route' => 'environment.home', 'label' => 'Overview', 'icon' => 'dashboard'],
-        ['route' => 'environment.organizations', 'label' => 'Organizations', 'icon' => 'layers'],
-        ['route' => 'environment.users', 'label' => 'Users', 'icon' => 'members'],
-        ['route' => 'environment.clients', 'label' => 'Applications', 'icon' => 'clients'],
-        ['route' => 'environment.connections', 'label' => 'Single sign-on', 'icon' => 'connections'],
-        ['route' => 'environment.directories', 'label' => 'Directories', 'icon' => 'directory'],
-        ['route' => 'environment.roles', 'label' => 'Roles', 'icon' => 'roles'],
-        ['route' => 'environment.webhooks', 'label' => 'Webhooks', 'icon' => 'webhooks'],
-        ['route' => 'environment.audit', 'label' => 'Audit log', 'icon' => 'audit'],
-        ['route' => 'environment.analytics', 'label' => 'Analytics', 'icon' => 'chart'],
-        ['route' => 'environment.settings', 'label' => 'Settings', 'icon' => 'settings'],
+    // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
+    // Every resource here is env-scoped (BelongsToEnvironment); the account-member
+    // admin gets full CRUD on behalf of the environment's organizations.
+    $groups = [
+        ['label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
+            ['route' => 'environment.home', 'label' => 'Overview'],
+            ['route' => 'environment.analytics', 'label' => 'Usage'],
+            ['route' => 'environment.approvals', 'label' => 'Agent approvals'],
+        ]],
+        ['label' => 'Tenants', 'icon' => 'layers', 'pages' => [
+            ['route' => 'environment.organizations', 'label' => 'Organizations'],
+        ]],
+        ['label' => 'People', 'icon' => 'members', 'pages' => [
+            ['route' => 'environment.users', 'label' => 'Users'],
+            ['route' => 'environment.roles', 'label' => 'Roles'],
+        ]],
+        ['label' => 'Sign-in', 'icon' => 'connections', 'pages' => [
+            ['route' => 'environment.connections', 'label' => 'Single sign-on'],
+            ['route' => 'environment.sso-providers', 'label' => 'Login methods'],
+            ['route' => 'environment.directories', 'label' => 'User sync'],
+            ['route' => 'environment.provisioning', 'label' => 'Outbound sync'],
+        ]],
+        ['label' => 'Access control', 'icon' => 'shield-check', 'pages' => [
+            ['route' => 'environment.governance', 'label' => 'Access reviews'],
+            ['route' => 'environment.sod-policies', 'label' => 'Conflict rules'],
+        ]],
+        ['label' => 'Developers', 'icon' => 'clients', 'pages' => [
+            ['route' => 'environment.clients', 'label' => 'Applications'],
+            ['route' => 'environment.webhooks', 'label' => 'Webhooks'],
+            ['route' => 'environment.hooks', 'label' => 'Event hooks'],
+            ['route' => 'environment.vault', 'label' => 'Stored tokens'],
+        ]],
+        ['label' => 'Logs', 'icon' => 'audit', 'pages' => [
+            ['route' => 'environment.audit', 'label' => 'Activity log'],
+            ['route' => 'environment.audit-streams', 'label' => 'Log streaming'],
+        ]],
+        ['label' => 'Settings', 'icon' => 'settings', 'pages' => [
+            ['route' => 'environment.settings', 'label' => 'Settings'],
+        ]],
     ];
 @endphp
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
@@ -56,11 +83,18 @@
                 <p class="text-xs truncate" style="color:var(--faint)">Environment admin</p>
             </div>
         </div>
-        <nav class="flex-1 overflow-y-auto p-3 space-y-0.5" aria-label="Environment areas">
-            @foreach ($areas as $area)
-                <a href="{{ route($area['route']) }}" class="nav-link {{ request()->routeIs($area['route']) ? 'is-active' : '' }}">
-                    <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" /> {{ $area['label'] }}
-                </a>
+        <nav class="flex-1 overflow-y-auto p-3 space-y-3" aria-label="Environment areas">
+            @foreach ($groups as $group)
+                <div class="space-y-0.5">
+                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
+                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" /> {{ $group['label'] }}
+                    </p>
+                    @foreach ($group['pages'] as $page)
+                        <a href="{{ route($page['route']) }}" class="nav-link {{ request()->routeIs($page['route']) ? 'is-active' : '' }}">
+                            {{ $page['label'] }}
+                        </a>
+                    @endforeach
+                </div>
             @endforeach
         </nav>
         <div class="p-3 space-y-0.5" style="border-top:1px solid var(--sidebar-border)">
@@ -90,17 +124,26 @@
         </header>
 
         {{-- Mobile nav drawer --}}
-        <div x-show="nav" x-cloak class="lg:hidden px-3 py-2 space-y-0.5" style="border-bottom:1px solid var(--sidebar-border)">
-            @foreach ($areas as $area)
-                <a href="{{ route($area['route']) }}" class="nav-link {{ request()->routeIs($area['route']) ? 'is-active' : '' }}">
-                    <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" /> {{ $area['label'] }}
-                </a>
+        <div x-show="nav" x-cloak class="lg:hidden px-3 py-2 space-y-3" style="border-bottom:1px solid var(--sidebar-border)">
+            @foreach ($groups as $group)
+                <div class="space-y-0.5">
+                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
+                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" aria-hidden="true" /> {{ $group['label'] }}
+                    </p>
+                    @foreach ($group['pages'] as $page)
+                        <a href="{{ route($page['route']) }}" class="nav-link {{ request()->routeIs($page['route']) ? 'is-active' : '' }}">
+                            {{ $page['label'] }}
+                        </a>
+                    @endforeach
+                </div>
             @endforeach
+            <div class="space-y-0.5 pt-2" style="border-top:1px solid var(--sidebar-border)">
             <a href="{{ $securityUrl }}" class="nav-link w-full"><x-icon name="shield-check" class="w-[1.15rem] h-[1.15rem]" /> Profile &amp; security</a>
             <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
             <form method="POST" action="{{ route('admin.logout') }}">@csrf
                 <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
             </form>
+            </div>
         </div>
 
         <main id="main-content" class="flex-1 min-w-0 overflow-y-auto">
