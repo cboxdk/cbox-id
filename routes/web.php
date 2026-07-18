@@ -230,6 +230,15 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
     Volt::route('/login', 'admin.login')->name('admin.login');
     Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
+
+    // The ENVIRONMENT control plane — the account-member admin's env-scoped console
+    // (organizations, users, connections…). Gated by an env-admin session; a subject
+    // session grants nothing here.
+    Route::middleware('env.admin')->group(function (): void {
+        Volt::route('/', 'environment.home')->name('environment.home');
+        Volt::route('/organizations', 'environment.organizations')->name('environment.organizations');
+        Volt::route('/users', 'environment.users')->name('environment.users');
+    });
 });
 
 /*
@@ -312,6 +321,10 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
 
     Route::middleware(AuthenticateAccountMember::class)->group(function (): void {
         Volt::route('/', 'workspace.home')->name('workspace.home');
+
+        // Open an environment → signed handoff → its own admin console (no second login).
+        Route::get('/open/{environment}', [WorkspaceController::class, 'openEnvironment'])->name('workspace.environment.open');
+
         Volt::route('/members', 'workspace.members')->name('workspace.members');
         Volt::route('/security', 'workspace.security')->name('workspace.security');
         Route::post('/passkeys/register/options', [WorkspacePasskeyController::class, 'registerOptions'])->name('workspace.passkeys.register.options');

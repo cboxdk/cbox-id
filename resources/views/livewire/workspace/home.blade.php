@@ -129,7 +129,8 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments'])] class
                     </div>
                     <a href="{{ $url }}" target="_blank" rel="noopener" class="mt-1 block text-sm truncate underline underline-offset-2" style="color:var(--accent)">{{ $url }}</a>
                 </div>
-                <a href="{{ $url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm shrink-0">Open ↗</a>
+                {{-- Signed handoff → the environment's admin console, no second login. --}}
+                <a href="{{ route('workspace.environment.open', $environment->id) }}" class="btn btn-primary btn-sm shrink-0">Open ↗</a>
             </div>
         @empty
             <p class="text-sm" style="color:var(--muted)">No environments yet.</p>

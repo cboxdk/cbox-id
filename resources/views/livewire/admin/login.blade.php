@@ -118,7 +118,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
     private function establish(EnvironmentAdminAuth $auth, string $memberId, string $environmentId): void
     {
         $auth->establish($memberId, $environmentId);
-        $this->redirect(session()->pull('url.intended', route('dashboard')), navigate: false);
+        $this->redirect(session()->pull('url.intended', route('environment.home')), navigate: false);
     }
 }; ?>
 

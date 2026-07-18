@@ -53,7 +53,7 @@ final class EnvironmentAdminController extends Controller
 
         $auth->establish($member->id, $hostEnv);
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route('environment.home'));
     }
 
     public function logout(Request $request, EnvironmentAdminAuth $auth): RedirectResponse
