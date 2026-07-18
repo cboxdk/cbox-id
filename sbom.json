@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:fd2c2b18-6e49-4619-ad17-e30d4ae2b512",
+    "serialNumber": "urn:uuid:3a1bc58a-db4b-40e5-ba0a-d73567c9e583",
     "version": 1,
     "metadata": {
         "tools": [
@@ -69,12 +69,12 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.19.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.27.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.19.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.19.0",
-            "description": "Cbox ID \u2014 self-hostable, Laravel-native identity platform (framework). AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
+            "version": "v0.27.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.27.0",
+            "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
                     "license": {
@@ -117,11 +117,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/license@v0.1.0",
+            "bom-ref": "pkg:composer/cboxdk/license@v0.1.1",
             "group": "cboxdk",
             "name": "license",
-            "version": "v0.1.0",
-            "purl": "pkg:composer/cboxdk/license@v0.1.0",
+            "version": "v0.1.1",
+            "purl": "pkg:composer/cboxdk/license@v0.1.1",
             "description": "Framework-agnostic, offline license core: mint and verify compact Ed25519-signed license artifacts (EdDSA JWTs) with entitlements, limits, deployment/domain binding, grace windows and signed revocation lists. The shared leaf both a billing issuer and a self-hosted verifier depend on.",
             "licenses": [
                 {
@@ -277,11 +277,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.14.2",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.0",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.14.2",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.14.2",
+            "version": "7.15.0",
+            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.0",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -309,11 +309,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/psr7@2.12.5",
+            "bom-ref": "pkg:composer/guzzlehttp/psr7@2.13.0",
             "group": "guzzlehttp",
             "name": "psr7",
-            "version": "2.12.5",
-            "purl": "pkg:composer/guzzlehttp/psr7@2.12.5",
+            "version": "2.13.0",
+            "purl": "pkg:composer/guzzlehttp/psr7@2.13.0",
             "description": "PSR-7 message implementation that also provides common utility methods",
             "licenses": [
                 {
@@ -325,11 +325,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/uri-template@v1.0.9",
+            "bom-ref": "pkg:composer/guzzlehttp/uri-template@v1.0.10",
             "group": "guzzlehttp",
             "name": "uri-template",
-            "version": "v1.0.9",
-            "purl": "pkg:composer/guzzlehttp/uri-template@v1.0.9",
+            "version": "v1.0.10",
+            "purl": "pkg:composer/guzzlehttp/uri-template@v1.0.10",
             "description": "A polyfill class for uri_template of PHP",
             "licenses": [
                 {
@@ -579,11 +579,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/nette/utils@v4.1.4",
+            "bom-ref": "pkg:composer/nette/utils@v4.1.5",
             "group": "nette",
             "name": "utils",
-            "version": "v4.1.4",
-            "purl": "pkg:composer/nette/utils@v4.1.4",
+            "version": "v4.1.5",
+            "purl": "pkg:composer/nette/utils@v4.1.5",
             "description": "\ud83d\udee0  Nette Utils: lightweight utilities for string & array manipulation, image handling, safe JSON encoding/decoding, validation, slug or strong password generating etc.",
             "licenses": [
                 {
