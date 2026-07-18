@@ -46,7 +46,7 @@ final class EnforcePlane
         }
 
         $current = $this->environments->current()?->environmentKey();
-        $default = $this->resolver->defaultEnvironment()?->environmentKey();
+        $default = $this->platformRootKey();
         $onRoot = $current !== null && $default !== null && $current === $default;
 
         $allowed = match ($plane) {
@@ -70,5 +70,23 @@ final class EnforcePlane
         $bases = config('cbox-id.environments.base_domains', []);
 
         return is_array($bases) && $bases !== [];
+    }
+
+    /**
+     * The platform-root environment key — the account plane's host. Resolved the SAME
+     * way as the SetEnvironment middleware: the configured default
+     * (`CBOX_ID_ENVIRONMENT_DEFAULT`) wins, else the database `is_default` environment.
+     * Keeping them in lock-step is what makes "is this the account-root host?" agree
+     * with which environment the request actually resolved to.
+     */
+    private function platformRootKey(): ?string
+    {
+        $configured = config('cbox-id.environments.default');
+
+        if (is_string($configured) && $configured !== '') {
+            return $configured;
+        }
+
+        return $this->resolver->defaultEnvironment()?->environmentKey();
     }
 }

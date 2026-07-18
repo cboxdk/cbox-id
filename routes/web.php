@@ -38,8 +38,13 @@ Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver 
     $bases = config('cbox-id.environments.base_domains', []);
     $multiTenant = is_array($bases) && $bases !== [];
 
+    // The platform-root env — resolved like SetEnvironment: configured default first,
+    // else the DB is_default env.
+    $configuredDefault = config('cbox-id.environments.default');
     $current = $environments->current()?->environmentKey();
-    $default = $resolver->defaultEnvironment()?->environmentKey();
+    $default = is_string($configuredDefault) && $configuredDefault !== ''
+        ? $configuredDefault
+        : $resolver->defaultEnvironment()?->environmentKey();
 
     if ($multiTenant && $current !== null && $current === $default) {
         return redirect()->route(
@@ -66,12 +71,21 @@ Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver 
 Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)->name('sso.saml.idp.sso');
 
 /*
- * Guest — the sign-in surface.
+ * Account signup — "create your identity platform" — is an ACCOUNT-plane action in the
+ * SaaS shape (`plane:account`, root host only): it provisions an account + its first
+ * environment. In the single-tenant shape the gate is a no-op and it is a Tier-1 join.
  */
-Route::middleware('platform.guest')->group(function (): void {
+Route::middleware(['plane:account', 'platform.guest'])->group(function (): void {
+    Volt::route('/signup', 'auth.signup')->name('signup');
+});
+
+/*
+ * Guest — the subject/tenant sign-in surface. `plane:subject` keeps it on tenant
+ * subdomains in the SaaS shape; single-tenant serves it on the one host.
+ */
+Route::middleware(['plane:subject', 'platform.guest'])->group(function (): void {
     Volt::route('/login', 'auth.login')->name('login');
     Volt::route('/o/{slug}/login', 'auth.login')->name('login.branded');
-    Volt::route('/signup', 'auth.signup')->name('signup');
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
 
     // Password reset — request a link, then choose a new password from the token.
@@ -124,9 +138,11 @@ Volt::route('/setup', 'portal.setup')->middleware('portal.session')->name('porta
 Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
 
 /*
- * Authenticated console.
+ * Authenticated console — the subject/tenant plane. `plane:subject` confines it to a
+ * tenant subdomain in the SaaS shape (404 on the account-root host, no bleed); in the
+ * single-tenant shape the plane gate is a no-op, so the one host serves it normally.
  */
-Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
+Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
 
     // Multi-account: choose/switch among accounts signed in on this browser, or add
@@ -210,7 +226,7 @@ Route::middleware([EnforceImpersonationWindow::class, 'platform.auth'])->group(f
 | the console re-gate onto `env.admin` follows once the console components are
 | moved off the subject session.
 */
-Route::prefix('admin')->group(function (): void {
+Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
     Volt::route('/login', 'admin.login')->name('admin.login');
     Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
@@ -267,7 +283,7 @@ Route::prefix('operator')->group(function (): void {
 | the environments their account owns — the Account → Environment relationship.
 | Neither an org-user nor an operator session grants anything here.
 */
-Route::prefix('workspace')->group(function (): void {
+Route::middleware('plane:account')->prefix('workspace')->group(function (): void {
     Volt::route('/login', 'workspace.login')->name('workspace.login');
 
     // Two-factor challenge — between password and a full session; the component

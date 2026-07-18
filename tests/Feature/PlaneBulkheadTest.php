@@ -15,6 +15,8 @@ function planeGate(?string $current, ?string $default): EnforcePlane
 {
     // Multi-tenant shape: base_domains set → the bulkheads engage.
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+    // The platform-root env is resolved via the config default first (like SetEnvironment).
+    config(['cbox-id.environments.default' => $default ?? '']);
 
     $ctx = Mockery::mock(EnvironmentContext::class);
     $ctx->shouldReceive('current')->andReturn($current !== null ? GenericEnvironment::of($current) : null);
