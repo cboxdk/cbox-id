@@ -18,11 +18,30 @@ use App\Http\Middleware\AuthenticateAccountMember;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
-Route::get('/', function () {
+/*
+ * The root is plane-aware by HOST. cboxid.com — the platform-root (is_default)
+ * environment — is the ACCOUNT door: sign in / sign up as an account member to
+ * create and manage your IdP (environments, billing, keys). A tenant's OWN
+ * subdomain ({slug}.{base_domain}) serves the subject/tenant plane (its dashboard
+ * and org administration) instead — never the account console.
+ */
+Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver $resolver) {
+    $current = $environments->current()?->environmentKey();
+    $default = $resolver->defaultEnvironment()?->environmentKey();
+
+    if ($current !== null && $current === $default) {
+        return redirect()->route(
+            session()->has(AccountAuth::SESSION_KEY) ? 'workspace.home' : 'workspace.login'
+        );
+    }
+
     return redirect()->route(
         session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
     );
