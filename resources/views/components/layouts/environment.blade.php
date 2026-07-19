@@ -17,6 +17,22 @@
     $bases = config('cbox-id.environments.base_domains', []);
     $accountHost = is_array($bases) && isset($bases[0]) && is_string($bases[0]) ? $bases[0] : request()->getHost();
     $securityUrl = 'https://'.$accountHost.'/workspace/security';
+    $workspaceUrl = 'https://'.$accountHost.'/workspace';
+
+    // Breadcrumb + switcher context. Where this environment sits in the account
+    // hierarchy (Account › Project › Environment), and the other environments this
+    // admin can jump to. Switching opens on the ACCOUNT host, which mints a fresh
+    // signed handoff to the target env's own host — so no dead-end, and no second login.
+    $project = null;
+    $switchableEnvs = collect();
+    if ($member !== null) {
+        $projectId = $environment?->getAttribute('project_id');
+        $project = is_string($projectId) ? \Cbox\Id\Platform\Models\Project::query()->find($projectId) : null;
+
+        $accessibleIds = app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->accessibleEnvironmentIds($member);
+        $switchableEnvs = Environment::query()->whereKey($accessibleIds)->orderBy('name')->get(['id', 'name', 'slug']);
+    }
+    $openUrl = fn (string $id): string => 'https://'.$accountHost.route('workspace.environment.open', $id, false);
 
     // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
     // Every resource here is env-scoped (BelongsToEnvironment); the account-member
@@ -80,7 +96,7 @@
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="flex h-full" x-data="{ nav: false }" @keydown.escape.window="nav=false">
+<div class="flex h-full" x-data="{ nav: false, env: false }" @keydown.escape.window="nav=false;env=false">
     <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
         <div class="flex items-center gap-2 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
             <div class="min-w-0">
@@ -120,7 +136,43 @@
     </aside>
 
     <div class="flex flex-col min-w-0 flex-1">
-        <main id="main-content" class="flex-1 min-w-0 overflow-y-auto pb-16 lg:pb-0">
+        {{-- Desktop top bar — breadcrumb home + environment switcher. Fixes the
+             one-way-door: an env-admin can always get back to the account, see where
+             they are (Account › Project › Environment), and jump to another env. --}}
+        <header class="hidden lg:flex cbx-topbar items-center justify-between">
+            <nav class="flex items-center gap-1.5 text-[13px] min-w-0" aria-label="Breadcrumb">
+                <a href="{{ $workspaceUrl }}" class="shrink-0 font-medium hover:underline" style="color:var(--muted-foreground)">Account</a>
+                @if ($project)
+                    <span style="color:var(--faint)" aria-hidden="true">/</span>
+                    <span class="shrink-0 truncate" style="color:var(--muted-foreground)">{{ $project->name }}</span>
+                @endif
+                <span style="color:var(--faint)" aria-hidden="true">/</span>
+                <div class="relative min-w-0">
+                    <button type="button" class="flex items-center gap-1.5 rounded-lg px-1.5 py-1 {{ $switchableEnvs->count() > 1 ? '' : 'pointer-events-none' }}"
+                            style="transition:background-color var(--dur-hover) var(--ease)"
+                            @if ($switchableEnvs->count() > 1) @click="env=!env" onmouseover="this.style.background='var(--secondary)'" onmouseout="this.style.background='transparent'" :aria-expanded="env" aria-haspopup="true" @endif>
+                        <span class="font-semibold truncate" aria-current="page">{{ $envName }}</span>
+                        @if ($switchableEnvs->count() > 1)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
+                    </button>
+                    @if ($switchableEnvs->count() > 1)
+                        <div x-show="env" x-transition.opacity.duration.150ms @click.outside="env=false" x-cloak
+                             class="cbx-panel" style="position:absolute;top:calc(100% + 6px);left:0;min-width:240px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
+                            <p class="cbx-nav-group" style="padding:6px 10px 4px">Switch environment</p>
+                            @foreach ($switchableEnvs as $e)
+                                <a href="{{ $openUrl($e->id) }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $e->id === $envKey ? 'background:var(--secondary)' : '' }}">
+                                    <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />
+                                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $e->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $e->slug }}</span></span>
+                                    @if ($e->id === $envKey)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />@endif
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </nav>
+            <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
+        </header>
+
+        <main id="main-content" class="flex-1 min-w-0 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
             <div class="mx-auto w-full max-w-5xl px-5 py-8">
                 @if (session('status'))
                     <div class="mb-6 rounded-xl border p-3 text-sm" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft);color:var(--success)">{{ session('status') }}</div>
@@ -132,7 +184,21 @@
 
     <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$envName" subheading="Environment admin"
                   :initial="$memberInitial" logout-route="admin.logout"
-                  :member-name="$member?->name" :member-email="$member?->email" :security-url="$securityUrl" />
+                  :member-name="$member?->name" :member-email="$member?->email" :security-url="$securityUrl">
+        <a href="{{ $workspaceUrl }}" class="nav-link w-full"><x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" aria-hidden="true" /> Back to account</a>
+        @if ($switchableEnvs->count() > 1)
+            <p class="cbx-nav-group px-2 pt-2 pb-1">Switch environment</p>
+            <div class="max-h-52 overflow-y-auto space-y-0.5">
+                @foreach ($switchableEnvs as $e)
+                    <a href="{{ $openUrl($e->id) }}" class="cbx-row w-full" style="padding:8px 10px;border-radius:8px;gap:10px;{{ $e->id === $envKey ? 'background:var(--secondary)' : '' }}">
+                        <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />
+                        <span class="min-w-0 flex-1"><span class="block text-[13px] truncate">{{ $e->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $e->slug }}</span></span>
+                        @if ($e->id === $envKey)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />@endif
+                    </a>
+                @endforeach
+            </div>
+        @endif
+    </x-mobile-nav>
 </div>
 @livewireScripts
 </body>
