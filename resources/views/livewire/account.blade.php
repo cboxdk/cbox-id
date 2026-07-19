@@ -259,6 +259,23 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
             return null;
         }
 
+        // Host allowlist — the target must be a host this environment actually
+        // redirects to (a registered OAuth redirect_uri), or the console's own host.
+        // Without this, `?return_to=https://evil.tld` renders a legitimate-looking
+        // "Return to …" link: an open-redirect / phishing pivot on an IdP surface.
+        // Client is env-scoped (BelongsToEnvironment), so this is the current realm's set.
+        $allowedHosts = \Cbox\Id\OAuthServer\Models\Client::query()
+            ->get(['redirect_uris'])
+            ->flatMap(fn ($c): array => is_array($c->redirect_uris) ? $c->redirect_uris : [])
+            ->map(fn (string $uri): ?string => parse_url($uri, PHP_URL_HOST) ?: null)
+            ->filter()
+            ->push(request()->getHost())
+            ->unique();
+
+        if (! $allowedHosts->contains($parts['host'])) {
+            return null;
+        }
+
         return ['url' => $url, 'host' => $parts['host']];
     }
 

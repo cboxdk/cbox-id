@@ -177,11 +177,17 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $me = app(CurrentUser::class);
         $subjects = app(Subjects::class);
 
-        $rows = app(Memberships::class)->forOrganization($this->orgId())
+        $memberships = app(Memberships::class)->forOrganization($this->orgId());
+
+        // Batch-resolve every member's subject in one query (findMany) instead of a
+        // per-row find() — a 200-member org went from ~200 queries to 1.
+        $subjectsById = $subjects->findMany($memberships->pluck('user_id')->all());
+
+        $rows = $memberships
             ->map(fn ($m): array => [
                 'id' => $m->user_id,
                 'role' => $m->role,
-                'subject' => $subjects->find($m->user_id),
+                'subject' => $subjectsById[$m->user_id] ?? null,
                 'joined' => $m->created_at,
             ]);
 

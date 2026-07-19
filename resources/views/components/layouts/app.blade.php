@@ -86,10 +86,18 @@
     // Organizations the signed-in subject belongs to, for the topbar switcher.
     $myOrgs = collect();
     if ($me->check()) {
-        $orgRepo = app(\Cbox\Id\Organization\Contracts\Organizations::class);
-        $myOrgs = app(\Cbox\Id\Organization\Contracts\Memberships::class)->forUser($me->id())
-            ->map(fn ($m) => (object) ['id' => $m->organization_id, 'role' => $m->role ?? null, 'name' => $orgRepo->find($m->organization_id)?->name])
-            ->filter(fn ($o) => $o->name !== null)->values();
+        $memberships = app(\Cbox\Id\Organization\Contracts\Memberships::class)->forUser($me->id());
+        // The switcher only renders for >1 membership, so only then do we resolve org
+        // names — and in a single batch (findMany) rather than a query per membership.
+        // This runs on EVERY authenticated console page, so the single-org fast path
+        // (the common case) now costs zero org queries.
+        if ($memberships->count() > 1) {
+            $orgsById = app(\Cbox\Id\Organization\Contracts\Organizations::class)
+                ->findMany($memberships->pluck('organization_id')->all());
+            $myOrgs = $memberships
+                ->map(fn ($m) => (object) ['id' => $m->organization_id, 'role' => $m->role ?? null, 'name' => ($orgsById[$m->organization_id] ?? null)?->name])
+                ->filter(fn ($o) => $o->name !== null)->values();
+        }
     }
     $activeOrgId = $me->organization()?->id;
     $canSwitch = $myOrgs->count() > 1;
