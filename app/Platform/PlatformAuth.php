@@ -333,8 +333,8 @@ final class PlatformAuth
         $active = session()->get(self::ACTIVE_KEY);
 
         if (is_string($active) && isset($accounts[$active])) {
-            $accounts[$active]['org'] = $organizationId;
-            session()->put(self::ACCOUNTS_KEY, $accounts);
+            $accounts[$active] = $accounts[$active]->withOrganization($organizationId);
+            $this->writeAccounts($accounts);
         }
     }
 
@@ -351,8 +351,8 @@ final class PlatformAuth
         $out = [];
         $changed = false;
 
-        foreach ($accounts as $subjectId => $entry) {
-            $subject = $this->sessions->active($entry['session']) !== null
+        foreach ($accounts as $subjectId => $held) {
+            $subject = $this->sessions->active($held->sessionId) !== null
                 ? $this->subjects->find($subjectId)
                 : null;
 
@@ -368,13 +368,13 @@ final class PlatformAuth
                 'subject_id' => $subjectId,
                 'name' => $subject->name ?? $subject->email ?? $subjectId,
                 'email' => $subject->email,
-                'organization_id' => $entry['org'],
+                'organization_id' => $held->organizationId,
                 'active' => $subjectId === $active,
             ];
         }
 
         if ($changed) {
-            session()->put(self::ACCOUNTS_KEY, $accounts);
+            $this->writeAccounts($accounts);
         }
 
         return $out;
@@ -393,16 +393,16 @@ final class PlatformAuth
             return false;
         }
 
-        $sessionId = $accounts[$subjectId]['session'];
+        $held = $accounts[$subjectId];
 
-        if ($this->sessions->active($sessionId) === null) {
+        if ($this->sessions->active($held->sessionId) === null) {
             unset($accounts[$subjectId]);
-            session()->put(self::ACCOUNTS_KEY, $accounts);
+            $this->writeAccounts($accounts);
 
             return false;
         }
 
-        $this->makeActive($subjectId, $sessionId, $accounts[$subjectId]['org']);
+        $this->makeActive($subjectId, $held->sessionId, $held->organizationId);
 
         // Rotate the id on privilege change (the active identity just changed).
         session()->regenerate();
@@ -420,7 +420,7 @@ final class PlatformAuth
         $active = session()->get(self::ACTIVE_KEY);
 
         if (is_string($active) && isset($accounts[$active])) {
-            $this->sessions->revoke($accounts[$active]['session']);
+            $this->sessions->revoke($accounts[$active]->sessionId);
             unset($accounts[$active]);
         } else {
             // No tracked active account — revoke whatever the derived key points at.
@@ -435,8 +435,8 @@ final class PlatformAuth
 
         if ($accounts !== []) {
             $next = array_key_first($accounts);
-            session()->put(self::ACCOUNTS_KEY, $accounts);
-            $this->makeActive($next, $accounts[$next]['session'], $accounts[$next]['org']);
+            $this->writeAccounts($accounts);
+            $this->makeActive($next, $accounts[$next]->sessionId, $accounts[$next]->organizationId);
             session()->regenerate();
 
             return;
@@ -450,8 +450,8 @@ final class PlatformAuth
      */
     public function logoutAll(Request $request): void
     {
-        foreach ($this->accountsMap() as $entry) {
-            $this->sessions->revoke($entry['session']);
+        foreach ($this->accountsMap() as $held) {
+            $this->sessions->revoke($held->sessionId);
         }
 
         $sessionId = session()->get(self::SESSION_KEY);
@@ -474,15 +474,15 @@ final class PlatformAuth
         if (! isset($accounts[$subjectId]) && count($accounts) >= self::MAX_ACCOUNTS) {
             // Non-empty branch (count >= cap), so there is always an oldest key.
             $oldest = array_key_first($accounts);
-            $this->sessions->revoke($accounts[$oldest]['session']);
+            $this->sessions->revoke($accounts[$oldest]->sessionId);
             unset($accounts[$oldest]);
         }
 
         // Re-insert at the end so refresh keeps recency ordering.
         unset($accounts[$subjectId]);
-        $accounts[$subjectId] = ['session' => $sessionId, 'org' => $organizationId];
+        $accounts[$subjectId] = new HeldAccount($sessionId, $organizationId);
 
-        session()->put(self::ACCOUNTS_KEY, $accounts);
+        $this->writeAccounts($accounts);
         $this->makeActive($subjectId, $sessionId, $organizationId);
     }
 
@@ -499,7 +499,7 @@ final class PlatformAuth
     }
 
     /**
-     * @return array<string, array{session: string, org: ?string}>
+     * @return array<string, HeldAccount>
      */
     private function accountsMap(): array
     {
@@ -512,13 +512,28 @@ final class PlatformAuth
         $map = [];
 
         foreach ($raw as $subjectId => $entry) {
-            if (is_string($subjectId) && is_array($entry) && is_string($entry['session'] ?? null)) {
-                $org = $entry['org'] ?? null;
-                $map[$subjectId] = ['session' => $entry['session'], 'org' => is_string($org) ? $org : null];
+            $held = HeldAccount::fromArray($entry);
+
+            if (is_string($subjectId) && $held !== null) {
+                $map[$subjectId] = $held;
             }
         }
 
         return $map;
+    }
+
+    /**
+     * Persist the held-account set, flattening the typed map back to the session's
+     * plain-array shape (the serialization boundary).
+     *
+     * @param  array<string, HeldAccount>  $accounts
+     */
+    private function writeAccounts(array $accounts): void
+    {
+        session()->put(self::ACCOUNTS_KEY, array_map(
+            static fn (HeldAccount $held): array => $held->toArray(),
+            $accounts,
+        ));
     }
 
     private function tearDown(): void
