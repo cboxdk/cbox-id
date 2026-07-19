@@ -5,18 +5,19 @@ declare(strict_types=1);
 use App\Platform\AccountAuth;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Contracts\Projects;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Billing — the account plane's plan & real usage. Billing lives at the
- * ACCOUNT (not per environment or per organization), aggregated across every
- * environment the account owns — the WorkOS/Clerk/Frontegg model.
+ * Workspace › Billing — the account plane's usage rollup and per-project plans. Since
+ * the plan/billing anchor lives on the PROJECT (one account can own several
+ * independently-billed IdP products, the Clerk model), this page lists each project's
+ * plan + environment allowance, then rolls up account-wide usage.
  *
- * Every figure here is queried live from the account's own environments — the
- * environment allowance, the tenants and SSO connections that drive enterprise
- * charges, and this month's sign-ins from the usage meter. Nothing is fabricated.
+ * Every figure is queried live from the account's own environments — nothing is
+ * fabricated.
  */
 new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class extends Component
 {
@@ -32,24 +33,27 @@ new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class exte
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth): array
+    public function with(AccountAuth $auth, Projects $projects): array
     {
         $account = $auth->current()?->account;
-        $limit = $account?->environment_limit ?? 0;
 
+        // Per-project plan + allowance (the billing anchor is the project).
+        $projectRows = $account === null ? [] : $projects->forAccount($account->id)->map(fn ($p): array => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'used' => Environment::query()->where('project_id', $p->id)->count(),
+            'limit' => $p->environment_limit,
+        ])->all();
+
+        // Account-wide usage — the figures charges are based on, across every project.
         $envIds = $account === null
             ? collect()
             : Environment::query()->where('account_id', $account->id)->pluck('id');
-
-        $used = $envIds->count();
         $monthStart = now()->startOfMonth()->format('Y-m-d');
 
         return [
             'account' => $account,
-            'limit' => $limit,
-            'used' => $used,
-            'pct' => $limit > 0 ? min(100, (int) round($used / max(1, $limit) * 100)) : 0,
-            // Real usage across the account's environments — the figures billing is based on.
+            'projects' => $projectRows,
             'organizations' => $envIds->isEmpty() ? 0 : DB::table('organizations')->whereIn('environment_id', $envIds)->count(),
             'connections' => $envIds->isEmpty() ? 0 : DB::table('connections')->whereIn('environment_id', $envIds)->count(),
             'signins' => $envIds->isEmpty() ? 0 : (int) DB::table('usage_counters')
@@ -64,31 +68,27 @@ new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class exte
 <div>
     <div>
         <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Billing</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Your plan and live usage across every environment this account owns.</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Plans are per project; usage rolls up across every environment this account owns.</p>
     </div>
 
-    {{-- Plan & environment allowance. --}}
-    <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <p class="text-sm" style="color:var(--muted)">Plan</p>
-                <p class="mt-0.5 font-semibold" style="font-size:1.1rem">{{ ucfirst($account?->status ?? 'active') }} account</p>
-            </div>
-        </div>
-
-        <div class="mt-5">
-            <div class="flex items-center justify-between text-sm">
-                <span class="font-medium">Environments</span>
-                <span style="color:var(--muted)">{{ $used }} of {{ $limit }}</span>
-            </div>
-            <div class="mt-2 h-2 rounded-full overflow-hidden" style="background:var(--surface-2)">
-                <div class="h-full rounded-full" style="width:{{ $pct }}%;background:var(--accent)"></div>
-            </div>
-            <p class="mt-2 text-xs" style="color:var(--faint)">Your plan includes {{ $limit }} isolated {{ \Illuminate\Support\Str::plural('environment', $limit) }} (e.g. production and staging).</p>
-        </div>
+    {{-- Per-project plans (the billing anchor is the project). --}}
+    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+        <div class="p-4" style="border-bottom:1px solid var(--border)"><p class="text-sm font-medium">Projects</p></div>
+        @forelse ($projects as $project)
+            <a href="{{ route('workspace.projects.show', $project['id']) }}"
+               class="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
+                <div class="min-w-0">
+                    <p class="font-medium truncate">{{ $project['name'] }}</p>
+                    <p class="text-xs" style="color:var(--faint)">Early access — free</p>
+                </div>
+                <span class="text-sm tabular-nums shrink-0" style="color:var(--muted)">{{ $project['used'] }} of {{ $project['limit'] }} {{ \Illuminate\Support\Str::plural('environment', $project['limit']) }}</span>
+            </a>
+        @empty
+            <p class="p-4 text-sm" style="color:var(--muted)">No projects yet.</p>
+        @endforelse
     </div>
 
-    {{-- Live usage — the figures enterprise billing is based on. --}}
+    {{-- Live usage — the figures enterprise billing is based on, across all projects. --}}
     <div class="mt-4 grid grid-cols-3 gap-3">
         @php
             $stats = [
@@ -109,9 +109,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class exte
     <div class="mt-4 rounded-xl border p-5" style="border-color:var(--border)">
         <p class="font-medium">How pricing works</p>
         <p class="mt-1 text-sm" style="color:var(--muted)">
-            Cbox ID is usage-based: you're billed on monthly active users and enterprise connections
-            (SSO &amp; SCIM), totalled across all your environments. Development and staging carry no
-            connection charge.
+            Each project is billed on its own plan — usage-based on monthly active users and enterprise
+            connections (SSO &amp; SCIM) across that project's environments. Sandbox environments carry no
+            connection charge. Per-project billing arrives with general availability; every project is
+            free during early access.
         </p>
     </div>
 </div>

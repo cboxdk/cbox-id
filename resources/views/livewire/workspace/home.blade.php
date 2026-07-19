@@ -84,9 +84,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
             </a>
         @empty
             <div class="sm:col-span-2 lg:col-span-3 rounded-xl border p-8 text-center" style="border-color:var(--border)">
-                <p class="text-sm" style="color:var(--muted)">No projects yet.</p>
+                <p class="font-medium">No projects yet</p>
+                <p class="mx-auto mt-1 max-w-md text-sm" style="color:var(--muted)">A <strong>project</strong> is one product's IdP (Clerk calls it an Application). It holds isolated <strong>environments</strong> — production and sandbox — each with its own users, keys and sign-in, and is billed on its own plan.</p>
                 @if ($canManage)
-                    <a href="{{ route('workspace.projects.create') }}" class="btn btn-primary btn-sm mt-3"><x-icon name="plus" class="w-4 h-4" /> Create your first project</a>
+                    <a href="{{ route('workspace.projects.create') }}" class="btn btn-primary btn-sm mt-4"><x-icon name="plus" class="w-4 h-4" /> Create your first project</a>
                 @endif
             </div>
         @endforelse

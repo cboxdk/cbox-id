@@ -23,7 +23,7 @@ use Livewire\Volt\Component;
  * Access is re-checked here: the project must belong to the member's account, and
  * the member must be able to reach it (all-access, or at least one env in it).
  */
-new #[Layout('components.layouts.workspace')] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class extends Component
 {
     public string $projectId = '';
 
@@ -61,12 +61,21 @@ new #[Layout('components.layouts.workspace')] class extends Component
         return $model;
     }
 
-    public function rename(AccountAuth $auth, Projects $projects): void
+    /**
+     * A project management action (rename, add environment, suspend) requires the
+     * environment-manager capability AND full, non-scoped access — a member confined
+     * to specific environments must not manage the whole project. Aborts 403 on a
+     * direct call the UI would never surface for them.
+     */
+    private function assertCanManage(AccountAuth $auth): void
     {
         $member = $auth->current();
-        if (($member?->role->canManageEnvironments() ?? false) === false) {
-            return;
-        }
+        abort_unless($member !== null && $member->role->canManageEnvironments() && $member->all_environments, 403);
+    }
+
+    public function rename(AccountAuth $auth, Projects $projects): void
+    {
+        $this->assertCanManage($auth);
 
         $this->validate(['editName' => 'required|string|max:120']);
         $projects->rename($this->project($auth)->id, trim($this->editName));
@@ -75,10 +84,7 @@ new #[Layout('components.layouts.workspace')] class extends Component
 
     public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner): void
     {
-        $member = $auth->current();
-        if (($member?->role->canManageEnvironments() ?? false) === false) {
-            return;
-        }
+        $this->assertCanManage($auth);
 
         $this->validate([
             'newEnvironment' => 'required|string|max:120',
@@ -98,6 +104,20 @@ new #[Layout('components.layouts.workspace')] class extends Component
         session()->flash('status', 'Environment created.');
     }
 
+    public function suspend(AccountAuth $auth, Projects $projects): void
+    {
+        $this->assertCanManage($auth);
+        $projects->suspend($this->project($auth)->id);
+        session()->flash('status', 'Project suspended — its environments stay live but no new ones can be added until reactivated.');
+    }
+
+    public function reactivate(AccountAuth $auth, Projects $projects): void
+    {
+        $this->assertCanManage($auth);
+        $projects->reactivate($this->project($auth)->id);
+        session()->flash('status', 'Project reactivated.');
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -106,9 +126,19 @@ new #[Layout('components.layouts.workspace')] class extends Component
         $member = $auth->current();
         $project = $this->project($auth);
         $accessibleIds = $member === null ? [] : $members->accessibleEnvironmentIds($member);
+        $scoped = $member !== null && ! $member->all_environments;
+
+        // Re-validate a scoped member's reachability on every render (mount only runs
+        // once), so a grant revoked mid-session stops leaking the project's metadata.
+        if ($scoped) {
+            abort_unless(
+                Environment::query()->where('project_id', $project->id)->whereIn('id', $accessibleIds)->exists(),
+                403,
+            );
+        }
 
         $query = Environment::query()->where('project_id', $project->id)->orderBy('created_at');
-        if (! ($member?->all_environments ?? false)) {
+        if ($scoped) {
             $query->whereIn('id', $accessibleIds);
         }
 
@@ -118,8 +148,9 @@ new #[Layout('components.layouts.workspace')] class extends Component
         return [
             'project' => $project,
             'environments' => $query->get(),
-            'canManage' => $member?->role->canManageEnvironments() ?? false,
-            'scoped' => $member !== null && ! $member->all_environments,
+            // A management surface requires the capability AND full access.
+            'canManage' => $member !== null && $member->role->canManageEnvironments() && $member->all_environments,
+            'scoped' => $scoped,
             'remaining' => $projects->remainingEnvironments($project),
             'baseDomain' => $baseDomain,
         ];
@@ -133,6 +164,7 @@ new #[Layout('components.layouts.workspace')] class extends Component
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $project->name }}</h1>
             <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $project->status }}</span>
         </div>
+        <p class="mt-1 text-xs mono select-all" style="color:var(--faint)">{{ $project->slug }} · {{ $project->id }}</p>
     </div>
 
     {{-- Environments --}}
@@ -143,7 +175,7 @@ new #[Layout('components.layouts.workspace')] class extends Component
                 <span class="text-xs shrink-0" style="color:var(--faint)">{{ $environments->count() }} of {{ $project->environment_limit }} used</span>
             @endunless
         </div>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Each is an isolated stage (production, staging, sandbox) with its own users, keys and sign-in.</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Each is an isolated stage — production or sandbox — with its own users, keys and sign-in. Name one "Staging" for a pre-production stage.</p>
 
         <div class="mt-4 space-y-2">
             @forelse ($environments as $environment)
@@ -214,6 +246,22 @@ new #[Layout('components.layouts.workspace')] class extends Component
                 </div>
                 <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="rename">Save</button>
             </form>
+
+            <div class="mt-5 pt-5 flex items-center justify-between gap-4" style="border-top:1px solid var(--border)">
+                <div>
+                    <p class="text-sm font-medium">{{ $project->status === 'suspended' ? 'Reactivate project' : 'Suspend project' }}</p>
+                    <p class="mt-1 text-xs" style="color:var(--faint)">
+                        {{ $project->status === 'suspended'
+                            ? 'Bring the project back — new environments can be added again.'
+                            : 'Existing environments stay live, but no new ones can be added until reactivated.' }}
+                    </p>
+                </div>
+                @if ($project->status === 'suspended')
+                    <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="reactivate">Reactivate</button>
+                @else
+                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="suspend" wire:confirm="Suspend this project?">Suspend</button>
+                @endif
+            </div>
         </div>
     @endif
 </div>

@@ -259,6 +259,34 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
     expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 });
 
+it('refuses a scoped member trying to add an environment to a project', function (): void {
+    ['account' => $account, 'project' => $project] = provisionAccount();
+    $staging = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
+    $dev = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
+    // Restrict the Developer to staging only — they can VIEW the project but must not
+    // manage it (the env-add form is hidden; the server must refuse a direct call too).
+    app(AccountMembers::class)->setEnvironmentAccess($dev->id, all: false, environmentIds: [$staging->id]);
+    session()->put(AccountAuth::SESSION_KEY, $dev->id);
+
+    Volt::test('workspace.projects.show', ['project' => $project->id])
+        ->set('newEnvironment', 'Sneaky')
+        ->call('addEnvironment')
+        ->assertForbidden();
+
+    expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
+});
+
+it('suspends and reactivates a project', function (): void {
+    ['member' => $member, 'project' => $project] = provisionAccount();
+    session()->put(AccountAuth::SESSION_KEY, $member->id);
+
+    Volt::test('workspace.projects.show', ['project' => $project->id])->call('suspend');
+    expect(Project::query()->whereKey($project->id)->value('status'))->toBe('suspended');
+
+    Volt::test('workspace.projects.show', ['project' => $project->id])->call('reactivate');
+    expect(Project::query()->whereKey($project->id)->value('status'))->toBe('active');
+});
+
 it('lets a member create a second project and drills into it empty', function (): void {
     ['member' => $member] = provisionAccount();
     session()->put(AccountAuth::SESSION_KEY, $member->id);

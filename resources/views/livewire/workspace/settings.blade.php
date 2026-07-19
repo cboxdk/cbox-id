@@ -62,6 +62,6 @@ new #[Layout('components.layouts.workspace', ['title' => 'Settings'])] class ext
 
     <div class="mt-4 rounded-xl border p-5" style="border-color:var(--border)">
         <p class="text-sm font-medium">Delete account</p>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Deleting an account tears down every environment it owns. To protect live IdPs this isn't self-serve — contact support to proceed.</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Deleting an account tears down every project and environment it owns. To protect live IdPs this isn't self-serve — contact support to proceed.</p>
     </div>
 </div>
