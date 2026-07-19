@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
+use App\Platform\Enums\AttemptOutcome;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
 use App\Platform\SignupPolicy;
@@ -110,7 +111,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
         $result = $auth->attemptPassword(request(), $this->email, $this->password, $risk->shouldStepUp($assessment));
 
-        if ($result === 'invalid') {
+        if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
             $this->addError('email', 'Those credentials do not match our records.');
 
@@ -119,7 +120,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
         RateLimiter::clear($key);
 
-        if ($result === 'mfa') {
+        if ($result === AttemptOutcome::Mfa) {
             $this->redirectRoute('mfa', navigate: false);
 
             return;
@@ -127,7 +128,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
         // Elevated risk on an account with no authenticator: step up with an emailed
         // one-time code before the session is established.
-        if ($result === 'otp') {
+        if ($result === AttemptOutcome::Otp) {
             $this->redirectRoute('login.step-up', navigate: false);
 
             return;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
@@ -53,7 +54,7 @@ final class AccountAuth
      *  - 'ok'      when the password is right and no second factor is enrolled — the
      *              full session is established immediately.
      */
-    public function attempt(Request $request, string $email, string $password): string
+    public function attempt(Request $request, string $email, string $password): AttemptOutcome
     {
         $member = $this->members->findByEmail($email);
 
@@ -67,18 +68,18 @@ final class AccountAuth
         }
 
         if (! $verified) {
-            return 'invalid';
+            return AttemptOutcome::Invalid;
         }
 
         if ($this->mfa->hasConfirmedTotp($member->id)) {
             session()->put(self::PENDING_KEY, $member->id);
 
-            return 'mfa';
+            return AttemptOutcome::Mfa;
         }
 
         $this->establish($member->id);
 
-        return 'ok';
+        return AttemptOutcome::Ok;
     }
 
     /**

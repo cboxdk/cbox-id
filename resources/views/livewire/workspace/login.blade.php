@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Enums\AttemptOutcome;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -46,7 +47,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
 
         $result = $auth->attempt(request(), $this->email, $this->password);
 
-        if ($result === 'invalid') {
+        if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
             // Neutral message — never reveal whether the email is a real member.
             $this->addError('email', 'Those credentials do not match a workspace.');
@@ -59,7 +60,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
         // A confirmed second factor holds the member at the challenge — no full
         // session exists yet. Otherwise the session is already established.
         $this->redirect(
-            route($result === 'mfa' ? 'workspace.login.mfa' : 'workspace.home'),
+            route($result === AttemptOutcome::Mfa ? 'workspace.login.mfa' : 'workspace.home'),
             navigate: false,
         );
     }

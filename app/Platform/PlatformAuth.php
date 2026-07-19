@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -69,7 +70,7 @@ final class PlatformAuth
      * step up with an emailed one-time code (possession of the inbox) rather than let
      * a risky sign-in through — and rather than locking the account out.
      */
-    public function attemptPassword(Request $request, string $email, string $password, bool $requireStepUp = false): string
+    public function attemptPassword(Request $request, string $email, string $password, bool $requireStepUp = false): AttemptOutcome
     {
         $subject = $this->subjects->findByEmail($email);
 
@@ -78,29 +79,29 @@ final class PlatformAuth
             // faster than a wrong password — closes the email-enumeration oracle.
             $this->hasher->check($password, self::timingHash());
 
-            return 'invalid';
+            return AttemptOutcome::Invalid;
         }
 
         if (! $this->subjects->verifyPassword($subject->id, $password)) {
-            return 'invalid';
+            return AttemptOutcome::Invalid;
         }
 
         if ($this->mfa->hasConfirmedTotp($subject->id)) {
             session()->put(self::MFA_PENDING_KEY, $subject->id);
 
-            return 'mfa';
+            return AttemptOutcome::Mfa;
         }
 
         if ($requireStepUp) {
             $this->otp->issue(self::OTP_PURPOSE, $email, 'email', $request->ip());
             session()->put(self::OTP_PENDING_KEY, ['subject' => $subject->id, 'email' => $email]);
 
-            return 'otp';
+            return AttemptOutcome::Otp;
         }
 
         $this->establish($request, $subject->id, ['pwd']);
 
-        return 'ok';
+        return AttemptOutcome::Ok;
     }
 
     /**

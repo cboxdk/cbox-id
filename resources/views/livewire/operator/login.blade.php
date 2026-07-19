@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\OperatorAuth;
+use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -56,7 +57,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
         $result = $auth->attempt(request(), $this->email, $this->password);
 
-        if ($result === 'invalid') {
+        if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
             // Neutral message — never reveal whether the email is a real operator.
             $this->addError('email', 'Those credentials do not match an operator.');
@@ -69,7 +70,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
         // A confirmed TOTP factor holds the operator at the MFA challenge — no full
         // session exists yet. Otherwise the session is already established.
         $this->redirect(
-            route($result === 'mfa' ? 'operator.login.mfa' : 'operator.environments'),
+            route($result === AttemptOutcome::Mfa ? 'operator.login.mfa' : 'operator.environments'),
             navigate: false,
         );
     }

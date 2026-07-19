@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Platform\Contracts\OperatorMfa;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
@@ -48,23 +49,23 @@ final class OperatorAuth
      *  - 'ok'      when the password is right and no second factor is required — the
      *              full session is established immediately, exactly as before.
      */
-    public function attempt(Request $request, string $email, string $password): string
+    public function attempt(Request $request, string $email, string $password): AttemptOutcome
     {
         $operator = $this->operators->findByEmail($email);
 
         if ($operator === null || ! $this->operators->verifyPassword($operator->id, $password)) {
-            return 'invalid';
+            return AttemptOutcome::Invalid;
         }
 
         if ($this->mfa->hasConfirmedTotp($operator->id)) {
             session()->put(self::PENDING_KEY, $operator->id);
 
-            return 'mfa';
+            return AttemptOutcome::Mfa;
         }
 
         $this->establish($operator->id);
 
-        return 'ok';
+        return AttemptOutcome::Ok;
     }
 
     /**
