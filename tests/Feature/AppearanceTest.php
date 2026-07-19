@@ -5,14 +5,24 @@ declare(strict_types=1);
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\AppearanceCss;
 use App\Platform\Appearance\Color;
+use App\Platform\Appearance\ThemeFont;
+use App\Platform\Appearance\ThemeMode;
+use App\Platform\Appearance\ThemePreset;
 use App\Platform\Appearance\ThemePresets;
+use App\Platform\Appearance\ThemeRadius;
 use App\Platform\CurrentUser;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
@@ -25,11 +35,11 @@ it('ships 5 complete, well-formed presets', function (): void {
     expect($presets)->toHaveCount(5)->toHaveKeys(['cbox', 'midnight', 'minimal', 'warm', 'contrast']);
 
     foreach ($presets as $id => $p) {
-        expect($p['radius'])->toBeIn(ThemePresets::RADII);
-        expect($p['font'])->toBeIn(array_keys(ThemePresets::FONTS));
-        foreach (['light', 'dark'] as $mode) {
-            foreach (['primary', 'background', 'foreground', 'muted'] as $token) {
-                expect(Appearance::hex($p[$mode][$token]))->not->toBeNull("$id.$mode.$token must be a valid hex");
+        expect($p)->toBeInstanceOf(ThemePreset::class);
+        expect($p->light)->toBeInstanceOf(ThemeMode::class);
+        foreach ([$p->light, $p->dark] as $mode) {
+            foreach ([$mode->primary, $mode->background, $mode->foreground, $mode->muted] as $hex) {
+                expect(Appearance::hex($hex))->not->toBeNull("$id colours must be valid hex");
             }
         }
     }
@@ -48,19 +58,30 @@ it('coerces malformed appearance input to safe defaults (deny-by-default)', func
 
     // Bad preset/radius/font fall back to the default preset's values…
     expect($a->preset)->toBe('cbox');
-    expect($a->radius)->toBeIn(ThemePresets::RADII);
-    expect($a->font)->toBeIn(array_keys(ThemePresets::FONTS));
+    expect($a->radius)->toBeInstanceOf(ThemeRadius::class);
+    expect($a->font)->toBeInstanceOf(ThemeFont::class);
     // …a bad hex is replaced by the preset fallback, a good one is kept & lowercased.
-    expect($a->light['primary'])->toBe(ThemePresets::all()['cbox']['light']['primary']);
-    expect($a->light['background'])->toBe('#ffffff');
-    // Every mode is always complete.
-    expect($a->dark)->toHaveKeys(['primary', 'background', 'foreground', 'muted']);
+    expect($a->light->primary)->toBe(ThemePresets::get('cbox')->light->primary);
+    expect($a->light->background)->toBe('#ffffff');
+    // Every mode is always a complete, typed ThemeMode.
+    expect($a->dark)->toBeInstanceOf(ThemeMode::class);
 });
 
 it('honours a legacy brand_color as the primary when no appearance block exists', function (): void {
     $a = Appearance::fromSettings(['brand_color' => '#AB12CD']);
-    expect($a->light['primary'])->toBe('#ab12cd')
-        ->and($a->dark['primary'])->toBe('#ab12cd');
+    expect($a->light->primary)->toBe('#ab12cd')
+        ->and($a->dark->primary)->toBe('#ab12cd');
+});
+
+it('resolves the effective theme with org overriding the environment default', function (): void {
+    $orgTheme = ['appearance' => Appearance::fromPreset('warm')->toArray()];
+    $envTheme = ['appearance' => Appearance::fromPreset('midnight')->toArray()];
+
+    // Org wins when it has one; else env; else null (platform default).
+    expect(Appearance::effective($orgTheme, $envTheme)?->preset)->toBe('warm');
+    expect(Appearance::effective(['brand_color' => null], $envTheme)?->preset)->toBe('midnight');
+    expect(Appearance::effective(null, $envTheme)?->preset)->toBe('midnight');
+    expect(Appearance::effective(null, null))->toBeNull();
 });
 
 it('round-trips through toArray/fromArray', function (): void {
@@ -163,4 +184,63 @@ it('leaves the platform default when an org has no custom appearance', function 
     $this->get(route('login.branded', $org->slug))
         ->assertOk()
         ->assertDontSee('cbox-appearance');
+});
+
+// ─────────────────────────── feature: environment-level theme ───────────────────────────
+
+if (! function_exists('appearanceEnvSetup')) {
+    function appearanceEnvSetup(): string
+    {
+        $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+            accountName: 'Acme',
+            ownerEmail: 'owner@acme.example',
+            ownerName: 'Owner',
+            ownerPassword: 'a-strong-unbreached-passphrase',
+        ));
+
+        config(['cbox-id.environments.default' => $r->environment->id]);
+        app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
+        session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
+        session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+
+        return $r->environment->id;
+    }
+}
+
+it('saves an environment-level theme and applies it to the hosted sign-in', function (): void {
+    $envId = appearanceEnvSetup();
+
+    $theme = Appearance::fromPreset('midnight')->toArray();
+    $theme['light']['primary'] = '#00aa88';
+
+    Volt::test('environment.appearance')->call('save', $theme);
+
+    // Persisted onto the environment…
+    expect(Environment::find($envId)->settings['appearance']['light']['primary'])->toBe('#00aa88');
+
+    // …and a plain env sign-in (no org) now carries the env default theme.
+    $this->get('/login')->assertOk()->assertSee('--accent:#00aa88', false);
+});
+
+it('lets an organization override the environment default theme', function (): void {
+    $envId = appearanceEnvSetup();
+
+    // Environment default: a green primary.
+    $env = Environment::find($envId);
+    $envTheme = Appearance::fromPreset('midnight')->toArray();
+    $envTheme['light']['primary'] = '#00aa88';
+    $env->settings = array_merge(is_array($env->settings) ? $env->settings : [], ['appearance' => $envTheme]);
+    $env->save();
+
+    // Organization override: a different primary.
+    $org = app(Organizations::class)->create(new NewOrganization('Acme Org', 'acme-ovr'));
+    $orgTheme = Appearance::fromPreset('warm')->toArray();
+    $orgTheme['light']['primary'] = '#ff3366';
+    app(Organizations::class)->updateSettings($org->id, ['appearance' => $orgTheme]);
+
+    // The org's branded sign-in shows the ORG colour, and NOT the environment's.
+    $this->get(route('login.branded', $org->slug))
+        ->assertOk()
+        ->assertSee('--accent:#ff3366', false)
+        ->assertDontSee('--accent:#00aa88', false);
 });

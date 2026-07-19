@@ -72,6 +72,7 @@
         ]],
         ['label' => 'Settings', 'icon' => 'settings', 'pages' => [
             ['route' => 'environment.settings', 'label' => 'Settings'],
+            ['route' => 'environment.appearance', 'label' => 'Appearance'],
         ]],
     ];
 

@@ -4,47 +4,38 @@ declare(strict_types=1);
 
 namespace App\Platform\Appearance;
 
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 
 /**
- * A validated, normalized appearance for an organization's hosted sign-in — a preset
- * anchor plus per-mode colours (primary/background/foreground/muted), a corner radius,
- * and a typeface. Persisted inside {@see Organization}
- * settings under `appearance`; rendered to CSS by {@see AppearanceCss}.
+ * A validated, strongly-typed appearance for an organization's or environment's
+ * hosted sign-in — a preset anchor plus a per-mode {@see ThemeMode} (light/dark), a
+ * {@see ThemeRadius}, and a {@see ThemeFont}. Persisted inside {@see Organization}
+ * (or {@see Environment}) settings under `appearance`;
+ * rendered to CSS by {@see AppearanceCss}.
  *
- * Every value is sanitized here (hex clamped, font/radius/preset allow-listed) so
- * whatever reaches the resolver — and thus a `<style>` block on a public page — is
- * always safe and well-formed, never attacker-controlled free text.
- *
- * @phpstan-type Mode array{primary: string, background: string, foreground: string, muted: string}
+ * Arrays appear ONLY at the serialization edges ({@see fromArray}/{@see toArray} for
+ * stored JSON + the client editor payload); the domain model itself is typed. Every
+ * value is sanitized on the way in, so what reaches a public `<style>` is always safe.
  */
-final class Appearance
+final readonly class Appearance
 {
-    /**
-     * @param  Mode  $light
-     * @param  Mode  $dark
-     */
     public function __construct(
-        public readonly string $preset,
-        public readonly string $radius,
-        public readonly string $font,
-        public readonly array $light,
-        public readonly array $dark,
+        public string $preset,
+        public ThemeRadius $radius,
+        public ThemeFont $font,
+        public ThemeMode $light,
+        public ThemeMode $dark,
     ) {}
 
     public static function fromPreset(string $id): self
     {
-        $presets = ThemePresets::all();
-        $id = ThemePresets::has($id) ? $id : ThemePresets::default();
-        $p = $presets[$id];
-
-        return new self($id, $p['radius'], $p['font'], $p['light'], $p['dark']);
+        return ThemePresets::get($id)->toAppearance();
     }
 
     /**
-     * Build from an organization's stored settings. Falls back gracefully: a full
-     * `appearance` block wins; a legacy `brand_color` seeds the default preset's
-     * primary; otherwise the plain default preset.
+     * Build from a settings bag. A full `appearance` block wins; a legacy
+     * `brand_color` seeds the default preset's primary; otherwise the default preset.
      *
      * @param  array<string, mixed>  $settings
      */
@@ -57,20 +48,43 @@ final class Appearance
         }
 
         $base = self::fromPreset(ThemePresets::default());
-
-        // Legacy single-colour branding → keep honouring it as the primary.
         $legacy = self::hex($settings['brand_color'] ?? null);
-        if ($legacy !== null) {
-            return new self(
-                $base->preset,
-                $base->radius,
-                $base->font,
-                ['primary' => $legacy] + $base->light,
-                ['primary' => $legacy] + $base->dark,
-            );
+
+        return $legacy === null
+            ? $base
+            : new self($base->preset, $base->radius, $base->font, $base->light->withPrimary($legacy), $base->dark->withPrimary($legacy));
+    }
+
+    /**
+     * The EFFECTIVE appearance for a hosted sign-in: an organization's own theme
+     * wins wholesale when it has one, else the environment's default, else null
+     * (→ the platform default, no override injected).
+     *
+     * @param  array<string, mixed>|null  $orgSettings
+     * @param  array<string, mixed>|null  $envSettings
+     */
+    public static function effective(?array $orgSettings, ?array $envSettings): ?self
+    {
+        if (is_array($orgSettings) && self::isCustomized($orgSettings)) {
+            return self::fromSettings($orgSettings);
         }
 
-        return $base;
+        if (is_array($envSettings) && self::isCustomized($envSettings)) {
+            return self::fromSettings($envSettings);
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a settings bag carries a custom appearance (a full block, or the
+     * legacy single `brand_color`).
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    public static function isCustomized(array $settings): bool
+    {
+        return is_array($settings['appearance'] ?? null) || self::hex($settings['brand_color'] ?? null) !== null;
     }
 
     /**
@@ -78,55 +92,37 @@ final class Appearance
      */
     public static function fromArray(array $raw): self
     {
-        $preset = is_string($raw['preset'] ?? null) && ThemePresets::has($raw['preset'])
-            ? $raw['preset'] : ThemePresets::default();
-
-        $fallback = ThemePresets::all()[$preset];
+        $presetId = is_string($raw['preset'] ?? null) && ThemePresets::has($raw['preset'])
+            ? $raw['preset']
+            : ThemePresets::default();
+        $preset = ThemePresets::get($presetId);
 
         return new self(
-            $preset,
-            in_array($raw['radius'] ?? null, ThemePresets::RADII, true) ? $raw['radius'] : $fallback['radius'],
-            is_string($raw['font'] ?? null) && array_key_exists($raw['font'], ThemePresets::FONTS) ? $raw['font'] : $fallback['font'],
-            self::mode(is_array($raw['light'] ?? null) ? $raw['light'] : [], $fallback['light']),
-            self::mode(is_array($raw['dark'] ?? null) ? $raw['dark'] : [], $fallback['dark']),
+            $presetId,
+            ThemeRadius::fromValue(is_string($raw['radius'] ?? null) ? $raw['radius'] : null, $preset->radius),
+            ThemeFont::fromValue(is_string($raw['font'] ?? null) ? $raw['font'] : null, $preset->font),
+            ThemeMode::fromArray(is_array($raw['light'] ?? null) ? $raw['light'] : [], $preset->light),
+            ThemeMode::fromArray(is_array($raw['dark'] ?? null) ? $raw['dark'] : [], $preset->dark),
         );
     }
 
     /**
-     * @return array{preset: string, radius: string, font: string, light: Mode, dark: Mode}
+     * @return array{preset: string, radius: string, font: string, light: array{primary: string, background: string, foreground: string, muted: string}, dark: array{primary: string, background: string, foreground: string, muted: string}}
      */
     public function toArray(): array
     {
         return [
             'preset' => $this->preset,
-            'radius' => $this->radius,
-            'font' => $this->font,
-            'light' => $this->light,
-            'dark' => $this->dark,
+            'radius' => $this->radius->value,
+            'font' => $this->font->value,
+            'light' => $this->light->toArray(),
+            'dark' => $this->dark->toArray(),
         ];
     }
 
     public function fontStack(): string
     {
-        return ThemePresets::FONTS[$this->font] ?? ThemePresets::FONTS['system'];
-    }
-
-    /**
-     * Sanitize one mode's four colours, filling any missing/invalid value from the
-     * preset fallback so the result is always complete.
-     *
-     * @param  array<mixed>  $raw
-     * @param  Mode  $fallback
-     * @return Mode
-     */
-    private static function mode(array $raw, array $fallback): array
-    {
-        $out = [];
-        foreach (['primary', 'background', 'foreground', 'muted'] as $key) {
-            $out[$key] = self::hex($raw[$key] ?? null) ?? $fallback[$key];
-        }
-
-        return $out;
+        return $this->font->stack();
     }
 
     /** A #rrggbb hex (lower-cased), or null if not a valid 6-digit hex. */

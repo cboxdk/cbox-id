@@ -2,22 +2,29 @@
 @php
     use App\Platform\Appearance\Appearance;
     use App\Platform\Appearance\AppearanceCss;
+    use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+    use Cbox\Id\Organization\Models\Environment;
 
     // The signing-in organization's brand (shared as `cboxBrand` when reached via its
-    // slug). Its stored settings drive the full sign-in appearance via the Theme Editor.
+    // slug). Its settings can OVERRIDE the environment's default theme.
     $brand = $cboxBrand ?? null;
-    $settings = is_array($brand['settings'] ?? null) ? $brand['settings'] : null;
+    $orgSettings = is_array($brand['settings'] ?? null) ? $brand['settings'] : null;
+
+    // The environment's DEFAULT theme — applies to every sign-in on this host unless
+    // an organization overrides it. Resolved from the host-pinned environment.
+    $envKey = app(EnvironmentContext::class)->current()?->environmentKey();
+    $env = $envKey !== null ? Environment::query()->find($envKey) : null;
+    $envSettings = is_array($env?->settings) ? $env->settings : null;
+
+    // env default → org override; null when neither customized (platform default stands).
+    $effective = Appearance::effective($orgSettings, $envSettings);
+    $appearanceCss = $effective !== null ? AppearanceCss::render($effective) : null;
 
     $brandName = is_array($brand) && is_string($brand['name'] ?? null) ? $brand['name'] : null;
-    $brandLogo = $settings !== null && is_string($settings['brand_logo_url'] ?? null)
-        ? $settings['brand_logo_url']
-        : (is_array($brand) && is_string($brand['logo'] ?? null) ? $brand['logo'] : null);
-
-    // Inject the custom theme only when the org actually customized (a full appearance
-    // block, or legacy brand_color) — otherwise the platform default (app.css) stands.
-    $hasCustomAppearance = $settings !== null
-        && (is_array($settings['appearance'] ?? null) || Appearance::hex($settings['brand_color'] ?? null) !== null);
-    $appearanceCss = $hasCustomAppearance ? AppearanceCss::render(Appearance::fromSettings($settings)) : null;
+    // Logo: the org's, else the environment's.
+    $orgLogo = is_array($orgSettings) && is_string($orgSettings['brand_logo_url'] ?? null) ? $orgSettings['brand_logo_url'] : null;
+    $envLogo = is_array($envSettings) && is_string($envSettings['brand_logo_url'] ?? null) ? $envSettings['brand_logo_url'] : null;
+    $brandLogo = $orgLogo ?? $envLogo ?? (is_array($brand) && is_string($brand['logo'] ?? null) ? $brand['logo'] : null);
 @endphp
 <!DOCTYPE html>
 <html lang="en" class="h-full">

@@ -30,7 +30,7 @@ final class AppearanceCss
 
         // Radius + font are mode-independent — declared once on :root.
         $root = $light
-            ."--radius:{$appearance->radius};"
+            .'--radius:'.$appearance->radius->value.';'
             .'--font-sans:'.$appearance->fontStack().';';
 
         $css = ":root{{$root}}"
@@ -42,15 +42,13 @@ final class AppearanceCss
 
     /**
      * The coherent token override for one mode.
-     *
-     * @param  array{primary: string, background: string, foreground: string, muted: string}  $m
      */
-    private static function modeVars(array $m): string
+    private static function modeVars(ThemeMode $m): string
     {
-        $p = $m['primary'];
-        $bg = $m['background'];
-        $fg = $m['foreground'];
-        $mu = $m['muted'];
+        $p = $m->primary;
+        $bg = $m->background;
+        $fg = $m->foreground;
+        $mu = $m->muted;
         $on = Color::readableForeground($p);
 
         return implode('', [

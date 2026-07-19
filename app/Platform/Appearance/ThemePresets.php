@@ -5,89 +5,78 @@ declare(strict_types=1);
 namespace App\Platform\Appearance;
 
 /**
- * The curated starting points for the hosted sign-in Theme Editor. Each preset is a
- * complete, considered look — a light AND dark token set, a radius, and a typeface —
- * not a random palette. A customer picks one, then fine-tunes.
- *
- * Colours are hex; the {@see AppearanceCss} resolver derives the full coherent token
- * set (soft/edge/border/ring, auto-contrast accent foreground) from these four
- * anchors per mode, so the entire sign-in surface re-themes together.
+ * The curated starting points for the hosted sign-in Theme Editor — each a complete,
+ * typed {@see ThemePreset} (light AND dark {@see ThemeMode}, a {@see ThemeRadius}, a
+ * {@see ThemeFont}), not a loose array. A customer picks one, then fine-tunes.
  */
 final class ThemePresets
 {
     /**
-     * @return array<string, array{
-     *     label: string,
-     *     description: string,
-     *     radius: string,
-     *     font: string,
-     *     light: array{primary: string, background: string, foreground: string, muted: string},
-     *     dark: array{primary: string, background: string, foreground: string, muted: string},
-     * }>
+     * @var array<string, ThemePreset>|null
+     */
+    private static ?array $cache = null;
+
+    /**
+     * @return array<string, ThemePreset>
      */
     public static function all(): array
     {
-        return [
-            'cbox' => [
-                'label' => 'Cbox',
-                'description' => 'The signature look — a confident blue on warm neutrals.',
-                'radius' => '0.75rem',
-                'font' => 'geometric',
-                'light' => ['primary' => '#2f62ea', 'background' => '#ffffff', 'foreground' => '#1a1714', 'muted' => '#6b6459'],
-                'dark' => ['primary' => '#7ba0ff', 'background' => '#141210', 'foreground' => '#f2ece3', 'muted' => '#9a9082'],
-            ],
-            'midnight' => [
-                'label' => 'Midnight',
-                'description' => 'Deep indigo, built for the dark.',
-                'radius' => '0.5rem',
-                'font' => 'system',
-                'light' => ['primary' => '#4f46e5', 'background' => '#f6f6fb', 'foreground' => '#1e1b2e', 'muted' => '#6b6785'],
-                'dark' => ['primary' => '#8b7fff', 'background' => '#0e0e18', 'foreground' => '#e8e6f5', 'muted' => '#8f8ba8'],
-            ],
-            'minimal' => [
-                'label' => 'Minimal',
-                'description' => 'Monochrome and sharp — the type does the talking.',
-                'radius' => '0.25rem',
-                'font' => 'system',
-                'light' => ['primary' => '#111111', 'background' => '#ffffff', 'foreground' => '#0a0a0a', 'muted' => '#737373'],
-                'dark' => ['primary' => '#fafafa', 'background' => '#0a0a0a', 'foreground' => '#fafafa', 'muted' => '#a3a3a3'],
-            ],
-            'warm' => [
-                'label' => 'Warm',
-                'description' => 'Cream and terracotta — soft, editorial, rounded.',
-                'radius' => '1rem',
-                'font' => 'serif',
-                'light' => ['primary' => '#c2582f', 'background' => '#faf6f0', 'foreground' => '#2b2018', 'muted' => '#8a7a68'],
-                'dark' => ['primary' => '#e08a5f', 'background' => '#1c1510', 'foreground' => '#f2e8dd', 'muted' => '#a89684'],
-            ],
-            'contrast' => [
-                'label' => 'Contrast',
-                'description' => 'Maximum legibility — pure grounds, AAA-minded.',
-                'radius' => '0.375rem',
-                'font' => 'system',
-                'light' => ['primary' => '#0b53ff', 'background' => '#ffffff', 'foreground' => '#000000', 'muted' => '#404040'],
-                'dark' => ['primary' => '#6aa8ff', 'background' => '#000000', 'foreground' => '#ffffff', 'muted' => '#c8c8c8'],
-            ],
+        return self::$cache ??= [
+            'cbox' => new ThemePreset(
+                'cbox', 'Cbox', 'The signature look — a confident blue on warm neutrals.',
+                ThemeRadius::Large, ThemeFont::Geometric,
+                new ThemeMode('#2f62ea', '#ffffff', '#1a1714', '#6b6459'),
+                new ThemeMode('#7ba0ff', '#141210', '#f2ece3', '#9a9082'),
+            ),
+            'midnight' => new ThemePreset(
+                'midnight', 'Midnight', 'Deep indigo, built for the dark.',
+                ThemeRadius::Medium, ThemeFont::System,
+                new ThemeMode('#4f46e5', '#f6f6fb', '#1e1b2e', '#6b6785'),
+                new ThemeMode('#8b7fff', '#0e0e18', '#e8e6f5', '#8f8ba8'),
+            ),
+            'minimal' => new ThemePreset(
+                'minimal', 'Minimal', 'Monochrome and sharp — the type does the talking.',
+                ThemeRadius::ExtraSmall, ThemeFont::System,
+                new ThemeMode('#111111', '#ffffff', '#0a0a0a', '#737373'),
+                new ThemeMode('#fafafa', '#0a0a0a', '#fafafa', '#a3a3a3'),
+            ),
+            'warm' => new ThemePreset(
+                'warm', 'Warm', 'Cream and terracotta — soft, editorial, rounded.',
+                ThemeRadius::ExtraLarge, ThemeFont::Serif,
+                new ThemeMode('#c2582f', '#faf6f0', '#2b2018', '#8a7a68'),
+                new ThemeMode('#e08a5f', '#1c1510', '#f2e8dd', '#a89684'),
+            ),
+            'contrast' => new ThemePreset(
+                'contrast', 'Contrast', 'Maximum legibility — pure grounds, AAA-minded.',
+                ThemeRadius::Small, ThemeFont::System,
+                new ThemeMode('#0b53ff', '#ffffff', '#000000', '#404040'),
+                new ThemeMode('#6aa8ff', '#000000', '#ffffff', '#c8c8c8'),
+            ),
         ];
     }
 
-    /** The font-family stacks a customer can choose — all self-hosted or system, never a silently-missing webfont. */
-    public const FONTS = [
-        'system' => "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-        'geometric' => "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
-        'serif' => "ui-serif, Georgia, Cambria, 'Times New Roman', serif",
-    ];
+    public static function get(string $id): ThemePreset
+    {
+        return self::all()[$id] ?? self::all()[self::default()];
+    }
 
-    /** Allowed corner radii (rem). */
-    public const RADII = ['0rem', '0.25rem', '0.375rem', '0.5rem', '0.75rem', '1rem'];
+    public static function has(string $id): bool
+    {
+        return array_key_exists($id, self::all());
+    }
 
     public static function default(): string
     {
         return 'cbox';
     }
 
-    public static function has(string $id): bool
+    /**
+     * The preset catalogue as an editor payload (serialization boundary).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function toPayload(): array
     {
-        return array_key_exists($id, self::all());
+        return array_map(static fn (ThemePreset $p): array => $p->toArray(), self::all());
     }
 }

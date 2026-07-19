@@ -122,13 +122,13 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                 <div class="flex items-center justify-between gap-4">
                     <div class="flex items-center gap-3 min-w-0">
                         <span class="grid grid-cols-2 grid-rows-2 w-10 h-10 rounded-lg overflow-hidden shrink-0" style="border:1px solid var(--border)" aria-hidden="true">
-                            <span style="background:{{ $ap->light['background'] }}"></span>
-                            <span style="background:{{ $ap->light['primary'] }}"></span>
-                            <span style="background:{{ $ap->dark['background'] }}"></span>
-                            <span style="background:{{ $ap->dark['primary'] }}"></span>
+                            <span style="background:{{ $ap->light->background }}"></span>
+                            <span style="background:{{ $ap->light->primary }}"></span>
+                            <span style="background:{{ $ap->dark->background }}"></span>
+                            <span style="background:{{ $ap->dark->primary }}"></span>
                         </span>
                         <div class="min-w-0">
-                            <p class="text-sm font-medium">{{ \App\Platform\Appearance\ThemePresets::all()[$ap->preset]['label'] ?? 'Custom' }} theme</p>
+                            <p class="text-sm font-medium">{{ \App\Platform\Appearance\ThemePresets::get($ap->preset)->label }} theme</p>
                             <p class="text-xs" style="color:var(--muted-foreground)">Presets, colours, corners &amp; type — edited with a live preview.</p>
                         </div>
                     </div>
