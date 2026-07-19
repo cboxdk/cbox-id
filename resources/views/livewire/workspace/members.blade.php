@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
+use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -43,7 +44,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         }
     }
 
-    public function invite(AccountAuth $auth, AccountMembers $members): void
+    public function invite(AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
     {
         $current = $auth->current();
         $account = $current?->account;
@@ -68,11 +69,15 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         $url = URL::temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
         Mail::to($invited->email)->send(new AccountInviteMail($account->name, $current->name ?? $current->email, $url));
 
+        $activity->record($account->id, 'account.member_invited', $current->id,
+            targetType: 'account_member', targetId: $invited->id,
+            context: ['email' => $invited->email, 'role' => $this->inviteRole], request: request());
+
         $this->reset('inviteEmail', 'inviteName');
         session()->flash('status', 'Invitation sent to '.$invited->email.'.');
     }
 
-    public function changeRole(string $memberId, string $role, AccountAuth $auth, AccountMembers $members): void
+    public function changeRole(string $memberId, string $role, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
     {
         $target = $this->manageableTarget($memberId, $auth, $members);
         $next = AccountRole::tryFrom($role);
@@ -82,16 +87,24 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         }
 
         $members->setRole($memberId, $next);
+
+        $activity->record($auth->current()->account_id, 'account.member_role_changed', $auth->id(),
+            targetType: 'account_member', targetId: $memberId,
+            context: ['role' => $next->value], request: request());
+
         session()->flash('status', 'Role updated.');
     }
 
-    public function removeMember(string $memberId, AccountAuth $auth, AccountMembers $members): void
+    public function removeMember(string $memberId, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
     {
         if ($this->manageableTarget($memberId, $auth, $members) === null) {
             return;
         }
 
         if ($members->remove($memberId)) {
+            $activity->record($auth->current()->account_id, 'account.member_removed', $auth->id(),
+                targetType: 'account_member', targetId: $memberId, request: request());
+
             session()->flash('status', 'Member removed.');
         }
     }

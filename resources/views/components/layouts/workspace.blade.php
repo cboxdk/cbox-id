@@ -24,6 +24,7 @@
             $member?->role->canManageEnvironments() ? ['route' => 'workspace.environment-keys', 'label' => 'Environment keys'] : null,
         ]],
         ['label' => 'Account', 'icon' => 'settings', 'pages' => [
+            $member?->role->canReadMembers() ? ['route' => 'workspace.activity', 'label' => 'Activity'] : null,
             $member?->role->canReadBilling() ? ['route' => 'workspace.billing', 'label' => 'Billing'] : null,
             $member?->role->canManageMembers() ? ['route' => 'workspace.settings', 'label' => 'Settings'] : null,
         ]],

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -54,7 +55,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         $this->selectedEnvironment = is_string($first) ? $first : '';
     }
 
-    public function createKey(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys): void
+    public function createKey(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
     {
         if (! $this->guard($auth, $members)) {
             return;
@@ -68,11 +69,19 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 
         $issued = $keys->issue($this->selectedEnvironment, trim($this->newKeyName), array_values($this->newKeyScopes));
 
+        $member = $auth->current();
+        if ($member !== null) {
+            $activity->record($member->account_id, 'account.environment_key_created', $member->id,
+                targetType: 'environment', targetId: $this->selectedEnvironment,
+                context: ['name' => trim($this->newKeyName), 'scopes' => array_values($this->newKeyScopes)],
+                request: request());
+        }
+
         $this->freshKey = $issued->plaintext;
         $this->reset('newKeyName');
     }
 
-    public function revokeKey(string $id, AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys): void
+    public function revokeKey(string $id, AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
     {
         if (! $this->guard($auth, $members)) {
             return;
@@ -81,6 +90,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         // Only revoke a key that belongs to the selected (and accessible) environment.
         if ($keys->forEnvironment($this->selectedEnvironment)->firstWhere('id', $id) !== null) {
             $keys->revoke($this->selectedEnvironment, $id);
+
+            $member = $auth->current();
+            if ($member !== null) {
+                $activity->record($member->account_id, 'account.environment_key_revoked', $member->id,
+                    targetType: 'environment', targetId: $this->selectedEnvironment,
+                    context: ['key_id' => $id], request: request());
+            }
+
             session()->flash('status', 'Environment key revoked.');
         }
     }

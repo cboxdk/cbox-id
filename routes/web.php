@@ -406,6 +406,7 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
         Route::get('/open/{environment}', [WorkspaceController::class, 'openEnvironment'])->name('workspace.environment.open');
 
         Volt::route('/members', 'workspace.members')->name('workspace.members');
+        Volt::route('/activity', 'workspace.activity')->name('workspace.activity');
         Volt::route('/security', 'workspace.security')->name('workspace.security');
         Route::post('/passkeys/register/options', [WorkspacePasskeyController::class, 'registerOptions'])->name('workspace.passkeys.register.options');
         Route::post('/passkeys/register', [WorkspacePasskeyController::class, 'register'])->name('workspace.passkeys.register');

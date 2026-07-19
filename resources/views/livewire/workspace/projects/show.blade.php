@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
@@ -82,7 +83,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
         session()->flash('status', 'Project renamed.');
     }
 
-    public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner): void
+    public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner, AccountActivity $activity): void
     {
         $this->assertCanManage($auth);
 
@@ -92,11 +93,18 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
         ]);
 
         try {
-            $provisioner->addEnvironment($this->project($auth), trim($this->newEnvironment), type: EnvironmentType::from($this->newEnvironmentType));
+            $environment = $provisioner->addEnvironment($this->project($auth), trim($this->newEnvironment), type: EnvironmentType::from($this->newEnvironmentType));
         } catch (EnvironmentLimitReached) {
             $this->addError('newEnvironment', 'This project is at its environment limit. Upgrade its plan to add more.');
 
             return;
+        }
+
+        $member = $auth->current();
+        if ($member !== null) {
+            $activity->record($member->account_id, 'account.environment_created', $member->id,
+                targetType: 'environment', targetId: $environment->id,
+                context: ['name' => trim($this->newEnvironment), 'type' => $this->newEnvironmentType], request: request());
         }
 
         $this->newEnvironment = '';
