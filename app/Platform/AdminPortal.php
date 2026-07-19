@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Models\AdminPortalLink;
+use App\Platform\Enums\PortalFeature;
+use App\Platform\Enums\PortalScope;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -33,13 +35,13 @@ final class AdminPortal
      * Mint a single-use link for an org and scope, returning the plaintext token
      * (shown to the minting admin once). Only its hash is persisted.
      */
-    public function generate(string $organizationId, string $scope, string $createdBy): string
+    public function generate(string $organizationId, PortalScope $scope, string $createdBy): string
     {
         $token = bin2hex(random_bytes(32));
 
         $link = AdminPortalLink::create([
             'organization_id' => $organizationId,
-            'scope' => $scope,
+            'scope' => $scope->value,
             'token_hash' => hash('sha256', $token),
             'expires_at' => now()->addMinutes($this->ttlMinutes()),
             'consumed_at' => null,
@@ -53,7 +55,7 @@ final class AdminPortal
             organizationId: $organizationId,
             targetType: 'admin_portal_link',
             targetId: $link->id,
-            context: ['scope' => $scope],
+            context: ['scope' => $scope->value],
         ));
 
         return $token;
@@ -76,7 +78,7 @@ final class AdminPortal
         }
 
         // Plan may have lapsed since the link was minted — re-gate at redemption.
-        if (! $this->scopeEntitled($link->organization_id, $link->scope)) {
+        if (! $this->scopeEntitled($link->organization_id, PortalScope::tryFrom($link->scope))) {
             return null;
         }
 
@@ -141,14 +143,14 @@ final class AdminPortal
             return false;
         }
 
-        return $this->scopeEntitled($link->organization_id, $link->scope);
+        return $this->scopeEntitled($link->organization_id, PortalScope::tryFrom($link->scope));
     }
 
     /**
-     * Whether the bound session may configure a given feature ('sso'|'scim') —
-     * i.e. the feature is in the link's scope AND the org is entitled to it.
+     * Whether the bound session may configure a given feature — i.e. the feature is
+     * in the link's scope AND the org is entitled to it.
      */
-    public function canConfigure(string $feature): bool
+    public function canConfigure(PortalFeature $feature): bool
     {
         $data = $this->currentSession();
 
@@ -156,11 +158,13 @@ final class AdminPortal
             return false;
         }
 
-        if ($data['scope'] !== $feature && $data['scope'] !== 'both') {
+        $scope = PortalScope::tryFrom($data['scope']);
+
+        if ($scope === null || ! $scope->permits($feature)) {
             return false;
         }
 
-        return $this->entitlements->entitled($data['org'], $feature);
+        return $this->entitlements->entitled($data['org'], $feature->entitlement());
     }
 
     /**
@@ -172,9 +176,11 @@ final class AdminPortal
         return $this->currentSession()['org'] ?? null;
     }
 
-    public function boundScope(): ?string
+    public function boundScope(): ?PortalScope
     {
-        return $this->currentSession()['scope'] ?? null;
+        $scope = $this->currentSession()['scope'] ?? null;
+
+        return is_string($scope) ? PortalScope::tryFrom($scope) : null;
     }
 
     public function clearSession(): void
@@ -192,15 +198,20 @@ final class AdminPortal
         return $data === null ? null : AdminPortalLink::query()->find($data['link_id']);
     }
 
-    private function scopeEntitled(string $organizationId, string $scope): bool
+    private function scopeEntitled(string $organizationId, ?PortalScope $scope): bool
     {
-        return match ($scope) {
-            'sso' => $this->entitlements->entitled($organizationId, 'sso'),
-            'scim' => $this->entitlements->entitled($organizationId, 'scim'),
-            'both' => $this->entitlements->entitled($organizationId, 'sso')
-                || $this->entitlements->entitled($organizationId, 'scim'),
-            default => false,
-        };
+        if ($scope === null) {
+            return false;
+        }
+
+        // A link is usable while the org is still entitled to ANY feature it covers.
+        foreach ($scope->features() as $feature) {
+            if ($this->entitlements->entitled($organizationId, $feature->entitlement())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

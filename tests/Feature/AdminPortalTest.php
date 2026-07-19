@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\AdminPortalLink;
 use App\Platform\AdminPortal;
+use App\Platform\Enums\PortalScope;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -39,7 +40,7 @@ it('a non-admin cannot reach the invite action even on an entitled org', functio
 it('opens the portal for a valid token', function () {
     $orgId = gateAdmin('portal-open');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
 
     $this->followingRedirects()
         ->get(route('portal.enter', $token))
@@ -55,7 +56,7 @@ it('creates a connection only for the org bound to the portal session', function
     $orgB = gateAdmin('portal-b');
     grantFeature($orgB, 'cbox-id-sso');
 
-    $token = app(AdminPortal::class)->generate($orgA, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
     Volt::test('portal.setup')
@@ -78,7 +79,7 @@ it('lets the IT admin verify their domain from the self-serve portal, bound to t
     grantFeature($orgA, 'cbox-id-sso');
     $orgB = gateAdmin('portal-dom-b');
 
-    $token = app(AdminPortal::class)->generate($orgA, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
     $component = Volt::test('portal.setup')
@@ -95,7 +96,7 @@ it('lets the IT admin verify their domain from the self-serve portal, bound to t
 it('a portal session grants no access to the platform console', function () {
     $orgId = gateAdmin('portal-iso');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
     $link = AdminPortalLink::query()->where('organization_id', $orgId)->firstOrFail();
 
     $this->withSession([
@@ -111,7 +112,7 @@ it('a portal session grants no access to the platform console', function () {
 it('refuses an expired token at the entry point', function () {
     $orgId = gateAdmin('portal-exp');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['expires_at' => now()->subMinute()]);
 
@@ -121,7 +122,7 @@ it('refuses an expired token at the entry point', function () {
 it('refuses a consumed token at the entry point', function () {
     $orgId = gateAdmin('portal-consumed');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['consumed_at' => now()]);
 
@@ -131,7 +132,7 @@ it('refuses a consumed token at the entry point', function () {
 it('refuses redemption when the org is no longer entitled', function () {
     $orgId = gateAdmin('portal-lapse');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
 
     app(EntitlementWriter::class)->revoke($orgId, 'cbox-id-sso', EntitlementSource::Manual);
 
@@ -142,7 +143,7 @@ it('refuses redemption when the org is no longer entitled', function () {
 it('finishing marks the link consumed, records completion, and closes the session', function () {
     $orgId = gateAdmin('portal-finish');
     grantFeature($orgId, 'cbox-id-sso');
-    $token = app(AdminPortal::class)->generate($orgId, 'sso', 'sub_creator');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
 
     $fake = new FakeAuditLog;
     app()->instance(AuditLog::class, $fake);

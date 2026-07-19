@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
+use App\Platform\Enums\PortalScope;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
 use Cbox\Id\AccessControl\Models\Role;
@@ -149,7 +150,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
         $this->guardEntitled();
         $this->authorizeAdmin();
 
-        $token = $portal->generate($this->orgId(), 'scim', app(CurrentUser::class)->id());
+        $token = $portal->generate($this->orgId(), PortalScope::Scim, app(CurrentUser::class)->id());
         $this->portalUrl = route('portal.enter', $token);
     }
 

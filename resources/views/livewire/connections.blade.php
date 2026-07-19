@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
+use App\Platform\Enums\PortalScope;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -150,7 +151,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->guardEntitled();
         $this->authorizeAdmin();
 
-        $token = $portal->generate($this->orgId(), 'sso', app(CurrentUser::class)->id());
+        $token = $portal->generate($this->orgId(), PortalScope::Sso, app(CurrentUser::class)->id());
         $this->portalUrl = route('portal.enter', $token);
     }
 

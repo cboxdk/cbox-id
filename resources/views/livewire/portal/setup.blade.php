@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AdminPortal;
+use App\Platform\Enums\PortalFeature;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -70,7 +71,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function addDomain(DomainVerification $domains): void
     {
-        $orgId = $this->guardFeature('sso');
+        $orgId = $this->guardFeature(PortalFeature::Sso);
 
         $this->domain = strtolower(trim($this->domain));
         $this->validate([
@@ -94,7 +95,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function verifyDomain(string $id, DomainVerification $domains): void
     {
-        $this->guardFeature('sso');
+        $this->guardFeature(PortalFeature::Sso);
         $this->ownedDomain($id, $domains);
 
         session()->flash('status', $domains->verify($id)
@@ -104,7 +105,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function removeDomain(string $id, DomainVerification $domains): void
     {
-        $this->guardFeature('sso');
+        $this->guardFeature(PortalFeature::Sso);
         $this->ownedDomain($id, $domains);
 
         $domains->remove($id);
@@ -114,7 +115,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
     /** Confirm the domain belongs to the portal-bound org before acting on it. */
     private function ownedDomain(string $id, DomainVerification $domains): VerifiedDomain
     {
-        $orgId = $this->guardFeature('sso');
+        $orgId = $this->guardFeature(PortalFeature::Sso);
 
         foreach ($domains->forOrganization($orgId) as $domain) {
             if ($domain->id === $id) {
@@ -127,7 +128,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function createConnection(Connections $connections): void
     {
-        $orgId = $this->guardFeature('sso');
+        $orgId = $this->guardFeature(PortalFeature::Sso);
 
         $type = ConnectionType::from($this->validate(['type' => 'required|in:saml,oidc'])['type']);
         $this->validate(['connName' => 'required|string|max:120']);
@@ -160,7 +161,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function activate(string $id, Connections $connections): void
     {
-        $orgId = $this->guardFeature('sso');
+        $orgId = $this->guardFeature(PortalFeature::Sso);
 
         $connections->activate($orgId, $id);
         session()->flash('status', 'Connection activated.');
@@ -168,7 +169,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function registerDirectory(Directories $directories): void
     {
-        $orgId = $this->guardFeature('scim');
+        $orgId = $this->guardFeature(PortalFeature::Scim);
 
         $this->validate(['dirName' => 'required|string|max:120']);
 
@@ -199,8 +200,8 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $orgId = $portal->boundOrgId();
 
         return [
-            'showSso' => $portal->canConfigure('sso'),
-            'showScim' => $portal->canConfigure('scim'),
+            'showSso' => $portal->canConfigure(PortalFeature::Sso),
+            'showScim' => $portal->canConfigure(PortalFeature::Scim),
             'orgName' => $orgId === null ? null : app(Organizations::class)->find($orgId)?->name,
             'domains' => $orgId === null ? [] : app(DomainVerification::class)->forOrganization($orgId),
             'connections' => $orgId === null ? collect() : Connection::query()
@@ -218,7 +219,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
      * Guard a mutating action: the portal session must be live AND permit the
      * feature. Returns the bound org id — the only org id any action ever acts on.
      */
-    private function guardFeature(string $feature): string
+    private function guardFeature(PortalFeature $feature): string
     {
         $portal = app(AdminPortal::class);
 
