@@ -26,7 +26,11 @@
         ['label' => 'Account', 'icon' => 'settings', 'pages' => [
             $member?->role->canReadBilling() ? ['route' => 'workspace.billing', 'label' => 'Billing'] : null,
             $member?->role->canManageMembers() ? ['route' => 'workspace.settings', 'label' => 'Settings'] : null,
-            ['route' => 'workspace.security', 'label' => 'Security'],
+        ]],
+        // The member's OWN identity/2FA/passkeys — a personal concern, not an
+        // account-level setting, so it gets its own section.
+        ['label' => 'Personal', 'icon' => 'shield-check', 'pages' => [
+            ['route' => 'workspace.security', 'label' => 'Profile'],
         ]],
     ]), fn (array $g): bool => $g['pages'] !== []));
 
