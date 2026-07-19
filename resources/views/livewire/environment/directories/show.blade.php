@@ -25,7 +25,7 @@ use Livewire\Volt\Component;
  * only its SHA-256 hash is stored, so it is shown exactly once (on registration or
  * rotation) and can never be re-echoed.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class extends Component
 {
     public string $directoryId = '';
 

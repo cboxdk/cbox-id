@@ -30,7 +30,7 @@ use Livewire\Volt\Component;
  * BelongsToEnvironment scope) and 404s otherwise — an id from another plane never
  * matches (deny-by-default).
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'User'])] class extends Component
 {
     public string $userId = '';
 

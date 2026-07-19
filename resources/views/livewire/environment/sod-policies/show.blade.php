@@ -20,7 +20,7 @@ use Livewire\Volt\Component;
  * model's BelongsToEnvironment scope) and 404s otherwise — an id from another plane
  * never matches (deny-by-default).
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] class extends Component
 {
     public string $policyId = '';
 

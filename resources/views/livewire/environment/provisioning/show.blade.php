@@ -23,7 +23,7 @@ use Livewire\Volt\Component;
  * hard delete of the env-scoped model (no delete service exists), mirroring
  * organizations/show. The sealed secret is never re-echoed.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'])] class extends Component
 {
     public string $syncId = '';
 

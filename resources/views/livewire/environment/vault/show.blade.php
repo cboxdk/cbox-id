@@ -19,7 +19,7 @@ use Livewire\Volt\Component;
  * it, and is sealed and cleared on submit. Every read/write re-resolves the secret
  * within THIS environment (BelongsToEnvironment) and 404s on a foreign id.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] class extends Component
 {
     public string $secretId = '';
 

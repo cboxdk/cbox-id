@@ -18,7 +18,7 @@ use Livewire\Volt\Component;
  * ciphertext and never decrypted for display; only a freshly minted secret (handed off
  * from the create page) is shown, exactly once, and never re-echoed afterwards.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class extends Component
 {
     public string $streamId = '';
 

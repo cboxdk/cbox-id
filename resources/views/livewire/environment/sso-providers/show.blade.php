@@ -20,7 +20,7 @@ use Livewire\Volt\Component;
  * env-scoped model. The stored signing certificate is never echoed back: the admin
  * only sees whether one is on file and may replace it.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Login method'])] class extends Component
 {
     public string $providerId = '';
 

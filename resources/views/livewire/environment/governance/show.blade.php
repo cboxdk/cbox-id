@@ -22,7 +22,7 @@ use Livewire\Volt\Component;
  * id from another plane never matches (deny-by-default), so a foreign close can never
  * apply. The acting reviewer is the env-admin account member, resolved from session.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Access review'])] class extends Component
 {
     public string $campaignId = '';
 

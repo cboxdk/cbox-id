@@ -20,7 +20,7 @@ use Livewire\Volt\Component;
  * database. It is shown exactly once — freshly on creation (handed over by flash) or
  * when rotated here — and can never be echoed again.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Application'])] class extends Component
 {
     public string $clientId = '';
 

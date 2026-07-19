@@ -21,7 +21,7 @@ use Livewire\Volt\Component;
  * to prefill the editable fields, certificates and signing keys are never echoed back,
  * and a save re-seals through the Crypto kernel exactly as creation does.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] class extends Component
 {
     public string $connectionId = '';
 

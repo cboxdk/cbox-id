@@ -19,7 +19,7 @@ use Livewire\Volt\Component;
  * for display; only the freshly minted secret handed off at creation is shown, exactly
  * once, straight from the flash bag — it is never stored in a public prop or re-echoed.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class extends Component
 {
     public string $endpointId = '';
 

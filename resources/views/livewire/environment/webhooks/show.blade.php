@@ -22,7 +22,7 @@ use Livewire\Volt\Component;
  * for display; only a freshly minted secret (on create hand-off or rotation) is shown,
  * exactly once, and never re-echoed afterwards.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class extends Component
 {
     /** @var list<string> The event catalogue an endpoint may subscribe to. */
     public const EVENT_TYPES = [

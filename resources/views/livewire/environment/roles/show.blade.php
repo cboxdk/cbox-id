@@ -20,7 +20,7 @@ use Livewire\Volt\Component;
  * all refuse. No rename service exists for roles, so name/description persist directly
  * on the environment-scoped model; permissions are the role_permission pivot.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Role'])] class extends Component
 {
     public string $roleId = '';
 

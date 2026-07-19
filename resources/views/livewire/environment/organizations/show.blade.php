@@ -29,7 +29,7 @@ use Livewire\Volt\Component;
  * (actor = the env-admin account member); rename/handle/metadata persist on the
  * env-scoped model (no rename service exists); delete is a soft status change.
  */
-new #[Layout('components.layouts.environment')] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'Organization'])] class extends Component
 {
     public string $orgId = '';
 
