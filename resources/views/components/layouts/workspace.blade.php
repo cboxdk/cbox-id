@@ -22,6 +22,7 @@
         ['label' => 'Developers', 'icon' => 'clients', 'pages' => [
             $member?->role->canManageMembers() ? ['route' => 'workspace.api-keys', 'label' => 'API keys'] : null,
             $member?->role->canManageEnvironments() ? ['route' => 'workspace.environment-keys', 'label' => 'Environment keys'] : null,
+            $member?->role->canManageEnvironments() ? ['route' => 'workspace.environment-domains', 'label' => 'Domains'] : null,
         ]],
         ['label' => 'Account', 'icon' => 'settings', 'pages' => [
             $member?->role->canReadMembers() ? ['route' => 'workspace.activity', 'label' => 'Activity'] : null,

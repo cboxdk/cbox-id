@@ -412,6 +412,7 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
         Route::post('/passkeys/register', [WorkspacePasskeyController::class, 'register'])->name('workspace.passkeys.register');
         Volt::route('/api-keys', 'workspace.api-keys')->name('workspace.api-keys');
         Volt::route('/environment-keys', 'workspace.environment-api-keys')->name('workspace.environment-keys');
+        Volt::route('/environment-domains', 'workspace.environment-domains')->name('workspace.environment-domains');
         Volt::route('/billing', 'workspace.billing')->name('workspace.billing');
         Volt::route('/settings', 'workspace.settings')->name('workspace.settings');
     });
