@@ -158,7 +158,6 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
-    Volt::route('/sso-providers', 'sso-providers')->name('sso-providers');
     Volt::route('/directories', 'directories')->name('directories');
     Volt::route('/roles', 'roles')->name('roles');
     Volt::route('/clients', 'clients')->name('clients');
@@ -180,7 +179,6 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/hooks', 'hooks')->name('hooks');
 
     // SIEM audit-stream export.
-    Volt::route('/audit-streams', 'audit-streams')->name('audit-streams');
 
     // Agent approvals (OIDC CIBA): where a signed-in user approves/denies a
     // backchannel request an agent started on their behalf.

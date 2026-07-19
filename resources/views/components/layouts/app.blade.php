@@ -47,7 +47,7 @@
     // feature is active. The entitlement SOFT-lock (SSO/SCIM shown, but badged when
     // the org isn't entitled) is a separate app gate, keyed by route below.
     $entitlementFeature = [
-        'connections' => 'sso', 'sso-providers' => 'sso',
+        'connections' => 'sso',
         'directories' => 'scim', 'provisioning' => 'scim',
     ];
 

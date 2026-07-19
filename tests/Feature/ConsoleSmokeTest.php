@@ -29,4 +29,4 @@ it('renders every new console page end-to-end for an admin', function (string $r
     signInAdminHttp();
 
     $this->get(route($route))->assertOk();
-})->with(['governance', 'sod-policies', 'provisioning', 'hooks', 'audit-streams', 'approvals']);
+})->with(['governance', 'sod-policies', 'provisioning', 'hooks', 'approvals']);

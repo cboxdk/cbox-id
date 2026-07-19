@@ -43,7 +43,6 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('authentication', 'Sign-in', 'connections', 30)
             ->page('connections', 'Single sign-on', order: 10)
-            ->page('sso-providers', 'Login methods', order: 20)
             ->page('directories', 'User sync', order: 30)
             ->page('provisioning', 'Outbound sync', order: 40);
 
@@ -58,8 +57,7 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('vault', 'Stored tokens', order: 40);
 
         $nav->area('audit', 'Logs', 'audit', 60)
-            ->page('audit', 'Activity log', order: 10)
-            ->page('audit-streams', 'Log streaming', order: 20);
+            ->page('audit', 'Activity log', order: 10);
 
         $nav->area('settings', 'Settings', 'settings', 70)
             ->page('settings', 'Settings', order: 10)
