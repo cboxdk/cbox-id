@@ -6,27 +6,31 @@
     $account = $member?->account;
     $accountInitial = strtoupper(substr($account?->name ?? 'W', 0, 1));
 
-    // Nav is role-aware: API keys (high-privilege) only for member managers, Billing
-    // only for roles that can manage it.
-    $areas = array_values(array_filter([
-        ['route' => 'workspace.home', 'label' => 'Projects', 'icon' => 'layers'],
-        $member?->role->canReadMembers()
-            ? ['route' => 'workspace.members', 'label' => 'Members', 'icon' => 'members']
-            : null,
-        ['route' => 'workspace.security', 'label' => 'Security', 'icon' => 'shield'],
-        $member?->role->canManageMembers()
-            ? ['route' => 'workspace.api-keys', 'label' => 'API keys', 'icon' => 'key']
-            : null,
-        $member?->role->canManageEnvironments()
-            ? ['route' => 'workspace.environment-keys', 'label' => 'Environment keys', 'icon' => 'key']
-            : null,
-        $member?->role->canReadBilling()
-            ? ['route' => 'workspace.billing', 'label' => 'Billing', 'icon' => 'dashboard']
-            : null,
-        $member?->role->canManageMembers()
-            ? ['route' => 'workspace.settings', 'label' => 'Settings', 'icon' => 'settings']
-            : null,
-    ]));
+    // Two-tier IA (grouped), role-aware. Same shape as the environment console so the
+    // whole product navigates consistently. Empty groups (a role sees none of a
+    // group's pages) are dropped.
+    $groups = array_values(array_filter(array_map(fn (array $g): array => [
+        'label' => $g['label'], 'icon' => $g['icon'],
+        'pages' => array_values(array_filter($g['pages'])),
+    ], [
+        ['label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
+            ['route' => 'workspace.home', 'label' => 'Projects'],
+        ]],
+        ['label' => 'People', 'icon' => 'members', 'pages' => [
+            $member?->role->canReadMembers() ? ['route' => 'workspace.members', 'label' => 'Members'] : null,
+        ]],
+        ['label' => 'Developers', 'icon' => 'clients', 'pages' => [
+            $member?->role->canManageMembers() ? ['route' => 'workspace.api-keys', 'label' => 'API keys'] : null,
+            $member?->role->canManageEnvironments() ? ['route' => 'workspace.environment-keys', 'label' => 'Environment keys'] : null,
+        ]],
+        ['label' => 'Account', 'icon' => 'settings', 'pages' => [
+            $member?->role->canReadBilling() ? ['route' => 'workspace.billing', 'label' => 'Billing'] : null,
+            $member?->role->canManageMembers() ? ['route' => 'workspace.settings', 'label' => 'Settings'] : null,
+            ['route' => 'workspace.security', 'label' => 'Security'],
+        ]],
+    ]), fn (array $g): bool => $g['pages'] !== []));
+
+    $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
 @endphp
 {{-- The workspace console shell — the account-member (buyer) plane. Self-contained:
      it assumes NO org-user or operator context (an account member has neither). --}}
@@ -46,7 +50,7 @@
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="flex h-full" x-data="{ nav: false }" @keydown.escape.window="nav=false">
-    {{-- ═══ Sidebar — the account layer ═══ --}}
+    {{-- ═══ Desktop sidebar — 2-tier grouped ═══ --}}
     <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
         <div class="flex items-center gap-2.5 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
             <span class="grid place-items-center w-8 h-8 rounded-lg text-sm font-semibold shrink-0" style="background:var(--accent);color:var(--accent-fg)" aria-hidden="true">{{ $accountInitial }}</span>
@@ -56,13 +60,17 @@
             </span>
         </div>
 
-        <nav class="flex-1 overflow-y-auto p-3 space-y-0.5" aria-label="Account areas">
-            @foreach ($areas as $area)
-                <a href="{{ route($area['route']) }}" class="nav-link"
-                   @if (request()->routeIs($area['route'])) aria-current="page" @endif>
-                    <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem] shrink-0" aria-hidden="true" />
-                    {{ $area['label'] }}
-                </a>
+        <nav class="flex-1 overflow-y-auto p-3 space-y-3" aria-label="Account areas">
+            @foreach ($groups as $group)
+                <div class="space-y-0.5">
+                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
+                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" /> {{ $group['label'] }}
+                    </p>
+                    @foreach ($group['pages'] as $page)
+                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
+                           @if ($isActive($page['route'])) aria-current="page" @endif>{{ $page['label'] }}</a>
+                    @endforeach
+                </div>
             @endforeach
         </nav>
 
@@ -78,29 +86,8 @@
         </div>
     </aside>
 
-    {{-- ═══ Mobile top bar ═══ --}}
     <div class="flex flex-col min-w-0 flex-1">
-        <header class="lg:hidden flex items-center justify-between px-4 h-14 shrink-0" style="border-bottom:1px solid var(--border)">
-            <span class="flex items-center gap-2 min-w-0">
-                <span class="grid place-items-center w-7 h-7 rounded-lg text-xs font-semibold shrink-0" style="background:var(--accent);color:var(--accent-fg)">{{ $accountInitial }}</span>
-                <span class="text-[13px] font-semibold truncate">{{ $account?->name ?? 'Workspace' }}</span>
-            </span>
-            <button type="button" @click="nav=!nav" class="cbx-subnav-toggle" aria-label="Menu"><x-icon name="menu" class="w-[18px] h-[18px]" /></button>
-        </header>
-
-        {{-- Mobile nav drawer --}}
-        <div x-show="nav" x-cloak class="lg:hidden px-3 py-2 space-y-0.5" style="border-bottom:1px solid var(--border)">
-            @foreach ($areas as $area)
-                <a href="{{ route($area['route']) }}" class="nav-link">
-                    <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" /> {{ $area['label'] }}
-                </a>
-            @endforeach
-            <form method="POST" action="{{ route('workspace.logout') }}">@csrf
-                <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
-            </form>
-        </div>
-
-        <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient">
+        <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
             @if (session('status'))
                 <div role="status" aria-live="polite" class="mx-6 mt-6 -mb-2 rounded-lg px-4 py-3 text-sm"
                      style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in oklch,var(--success) 20%,transparent)">{{ session('status') }}</div>
@@ -108,6 +95,10 @@
             <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:48rem">{{ $slot }}</div>
         </main>
     </div>
+
+    <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$account?->name ?? 'Workspace'"
+                  subheading="Account" :initial="$accountInitial" logout-route="workspace.logout"
+                  :member-name="$member?->name" :member-email="$member?->email" />
 </div>
 </body>
 </html>

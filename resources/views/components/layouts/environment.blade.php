@@ -119,39 +119,7 @@
     </aside>
 
     <div class="flex flex-col min-w-0 flex-1">
-        {{-- Mobile top bar --}}
-        <header class="lg:hidden flex items-center justify-between px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
-            <span class="min-w-0">
-                <span class="block text-[13px] font-semibold truncate leading-tight">{{ $envName }}</span>
-                <span class="block text-[11px] leading-tight" style="color:var(--faint)">Environment admin</span>
-            </span>
-            <button type="button" @click="nav=!nav" class="cbx-subnav-toggle" aria-label="Menu"><x-icon name="menu" class="w-[18px] h-[18px]" /></button>
-        </header>
-
-        {{-- Mobile nav drawer --}}
-        <div x-show="nav" x-cloak class="lg:hidden px-3 py-2 space-y-3" style="border-bottom:1px solid var(--sidebar-border)">
-            @foreach ($groups as $group)
-                <div class="space-y-0.5">
-                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
-                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" aria-hidden="true" /> {{ $group['label'] }}
-                    </p>
-                    @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}">
-                            {{ $page['label'] }}
-                        </a>
-                    @endforeach
-                </div>
-            @endforeach
-            <div class="space-y-0.5 pt-2" style="border-top:1px solid var(--sidebar-border)">
-            <a href="{{ $securityUrl }}" class="nav-link w-full"><x-icon name="shield-check" class="w-[1.15rem] h-[1.15rem]" /> Profile &amp; security</a>
-            <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
-            <form method="POST" action="{{ route('admin.logout') }}">@csrf
-                <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
-            </form>
-            </div>
-        </div>
-
-        <main id="main-content" class="flex-1 min-w-0 overflow-y-auto">
+        <main id="main-content" class="flex-1 min-w-0 overflow-y-auto pb-16 lg:pb-0">
             <div class="mx-auto w-full max-w-5xl px-5 py-8">
                 @if (session('status'))
                     <div class="mb-6 rounded-xl border p-3 text-sm" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft);color:var(--success)">{{ session('status') }}</div>
@@ -160,6 +128,10 @@
             </div>
         </main>
     </div>
+
+    <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$envName" subheading="Environment admin"
+                  :initial="$memberInitial" logout-route="admin.logout"
+                  :member-name="$member?->name" :member-email="$member?->email" :security-url="$securityUrl" />
 </div>
 @livewireScripts
 </body>
