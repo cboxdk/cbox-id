@@ -37,8 +37,27 @@
     </button>
 </div>
 
-{{-- Bottom sheet — backdrop + panel that rises from the bottom --}}
-<div x-show="nav" x-cloak class="lg:hidden fixed inset-0 z-40" style="background:color-mix(in oklch, black 45%, transparent)"
+{{-- Bottom sheet — a real modal dialog: backdrop + panel that rises from the bottom.
+     A self-contained focus trap (no Alpine Focus plugin needed) moves focus in on
+     open, cycles Tab within the panel, locks background scroll, and returns focus to
+     the trigger on close. Escape is handled by the shell's window listener. --}}
+<div x-show="nav" x-cloak role="dialog" aria-modal="true" aria-label="Navigation"
+     class="lg:hidden fixed inset-0 z-40" style="background:color-mix(in oklch, black 45%, transparent)"
+     x-data="{
+        prevFocus: null,
+        onOpen() { this.prevFocus = document.activeElement; document.documentElement.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.closeBtn && this.$refs.closeBtn.focus()); },
+        onClose() { document.documentElement.style.overflow = ''; if (this.prevFocus) { this.prevFocus.focus && this.prevFocus.focus(); this.prevFocus = null; } },
+        trap(e) {
+            if (e.key !== 'Tab') return;
+            const f = Array.from(this.$el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')).filter(el => el.offsetParent !== null);
+            if (!f.length) return;
+            const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+     }"
+     x-effect="nav ? onOpen() : onClose()"
+     @keydown.tab="trap($event)"
      x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
      x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
      @click.self="nav=false">
@@ -49,7 +68,7 @@
         {{-- Grab handle + close --}}
         <div class="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
             <span class="block mx-auto w-9 h-1 rounded-full" style="background:var(--sidebar-border)" aria-hidden="true"></span>
-            <button type="button" @click="nav=false" aria-label="Close menu" class="absolute right-3 top-3 grid place-items-center w-8 h-8 rounded-lg" style="color:var(--muted-foreground)">
+            <button type="button" x-ref="closeBtn" @click="nav=false" aria-label="Close menu" class="absolute right-3 top-3 grid place-items-center w-8 h-8 rounded-lg" style="color:var(--muted-foreground)">
                 <x-icon name="close" class="w-[18px] h-[18px]" />
             </button>
         </div>

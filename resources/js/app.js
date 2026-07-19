@@ -1,5 +1,3 @@
-import './bootstrap';
-
 // Theme: honour the stored preference, else the OS. Applied to <html data-theme>.
 // Kept in bundled (same-origin) JS so a strict CSP needs no inline script.
 (() => {
