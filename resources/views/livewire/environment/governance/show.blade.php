@@ -153,9 +153,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $campaign->name }}</h1>
             @if ($campaign->status === \Cbox\Id\Governance\Enums\CampaignStatus::Open)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Open</span>
+                <span class="badge badge-warn">Open</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--success-soft);color:var(--success)">Closed</span>
+                <span class="badge badge-success">Closed</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $campaign->id }}</p>
@@ -179,17 +179,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
                             <span class="font-medium truncate mono" style="color:var(--muted)">{{ \Illuminate\Support\Str::limit($item->subject_id, 16) }}</span>
                         @endif
                         <p class="text-sm truncate" style="color:var(--muted)">
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ ucfirst($item->access_type->value) }}</span>
+                            <span class="badge">{{ ucfirst($item->access_type->value) }}</span>
                             {{ $roleNames[$item->access_ref] ?? $item->access_ref }}
                         </p>
                     </div>
 
                     @if ($item->decision === \Cbox\Id\Governance\Enums\ReviewDecision::Certified)
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--success-soft);color:var(--success)">Certified</span>
+                        <span class="badge badge-success">Certified</span>
                     @elseif ($item->decision === \Cbox\Id\Governance\Enums\ReviewDecision::Revoked)
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--destructive)">Revoked</span>
+                        <span class="badge badge-danger">Revoked</span>
                     @else
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Pending</span>
+                        <span class="badge">Pending</span>
                     @endif
 
                     @if ($campaign->status === \Cbox\Id\Governance\Enums\CampaignStatus::Open)
@@ -202,7 +202,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
                     @endif
                 </div>
             @empty
-                <p class="p-4 text-sm" style="color:var(--muted)">No access in scope. This organization has no direct role or membership grants.</p>
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="roles" class="w-5 h-5" /></div>
+                    <h3>No access in scope</h3>
+                    <p>This organization has no direct role or membership grants to certify.</p>
+                </div>
             @endforelse
         </div>
     </div>

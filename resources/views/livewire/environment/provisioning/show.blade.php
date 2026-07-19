@@ -89,9 +89,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $connection->name }}</h1>
             @if ($connection->status === ConnectionStatus::Active)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Active</span>
+                <span class="badge badge-success">Active</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Paused</span>
+                <span class="badge badge-warn">Paused</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $connection->id }}</p>
@@ -108,11 +108,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'
             <div class="grid sm:grid-cols-2 gap-4">
                 <div>
                     <p class="label">Auth scheme</p>
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $connection->auth_scheme->value }}</span>
+                    <span class="badge">{{ $connection->auth_scheme->value }}</span>
                 </div>
                 <div>
                     <p class="label">Scope</p>
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $connection->organization_id === null ? 'Environment-wide' : ($organizationName ?? 'Org-scoped') }}</span>
+                    <span class="badge">{{ $connection->organization_id === null ? 'Environment-wide' : ($organizationName ?? 'Org-scoped') }}</span>
                 </div>
             </div>
             @if ($connection->last_error)

@@ -78,8 +78,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
 
 <div>
     <a href="{{ route('environment.sod-policies') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Conflict rules</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New conflict rule</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">Holding two or more roles from the set at once is a violation.</p>
+    <x-page-header class="mt-2" title="New conflict rule" subtitle="Holding two or more roles from the set at once is a violation." />
 
     <form wire:submit="define" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div class="grid gap-4 sm:grid-cols-2">

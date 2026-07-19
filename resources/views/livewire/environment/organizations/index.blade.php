@@ -7,6 +7,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Organizations (list). The environment's tenants; each
@@ -15,8 +16,15 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Organizations'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
@@ -25,26 +33,23 @@ new #[Layout('components.layouts.environment', ['title' => 'Organizations'])] cl
     {
         $query = Organization::query()
             ->where('status', '!=', OrganizationStatus::Deleted->value)
-            ->orderBy('name')
-            ->limit(100);
+            ->orderBy('name');
 
         $term = trim($this->search);
         if ($term !== '') {
             $query->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('slug', 'like', "%{$term}%"));
         }
 
-        return ['organizations' => $query->get()];
+        return ['organizations' => $query->paginate(25)];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Organizations</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">The tenants inside this environment. Each has its own users, roles, and SSO.</p>
-        </div>
-        <a href="{{ route('environment.organizations.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New organization</a>
-    </div>
+    <x-page-header title="Organizations" subtitle="The tenants inside this environment. Each has its own users, roles, and SSO.">
+        <x-slot:actions>
+            <a href="{{ route('environment.organizations.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New organization</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name or handle">
@@ -58,11 +63,26 @@ new #[Layout('components.layouts.environment', ['title' => 'Organizations'])] cl
                     <span class="font-medium truncate">{{ $org->name }}</span>
                     <p class="text-xs truncate mono" style="color:var(--faint)">{{ $org->slug }}</p>
                 </div>
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $org->status->value }}</span>
+                @php $variant = match ($org->status) { OrganizationStatus::Active => 'badge-success', OrganizationStatus::Suspended => 'badge-warn', OrganizationStatus::Deleted => 'badge-danger', default => '' }; @endphp
+                <span class="badge {{ $variant }}">{{ $org->status->value }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No organizations yet.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+                    <h3>No matches</h3>
+                    <p>No organizations match “{{ trim($search) }}”. Try a different name or handle.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+                    <h3>No organizations yet</h3>
+                    <p>Organizations are the tenants inside this environment. Create the first one to get started.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4 max-w-full overflow-x-auto">{{ $organizations->links() }}</div>
 </div>

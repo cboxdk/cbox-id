@@ -8,6 +8,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Event hooks (list). The external inline-hook registry —
@@ -20,8 +21,15 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
@@ -30,7 +38,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] clas
     {
         $organizations = Organization::query()->orderBy('name')->get();
 
-        $query = ExternalActionEndpoint::query()->orderByDesc('id')->limit(100);
+        $query = ExternalActionEndpoint::query()->orderByDesc('id');
 
         $term = trim($this->search);
         if ($term !== '') {
@@ -39,19 +47,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] clas
 
         return [
             'orgNames' => $organizations->pluck('name', 'id'),
-            'rows' => $query->get(),
+            'rows' => $query->paginate(25),
         ];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Event hooks</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">External endpoints the platform calls synchronously at a hook point to enrich or veto an operation.</p>
-        </div>
-        <a href="{{ route('environment.hooks.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New hook</a>
-    </div>
+    <x-page-header title="Event hooks" subtitle="External endpoints the platform calls synchronously at a hook point to enrich or veto an operation.">
+        <x-slot:actions>
+            <a href="{{ route('environment.hooks.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New hook</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by URL">
@@ -63,20 +69,34 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] clas
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-xs rounded-full px-2 py-0.5 mono" style="background:var(--surface-2);color:var(--muted)">{{ $endpoint->hook_point->value }}</span>
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $endpoint->organization_id !== null ? ($orgNames[$endpoint->organization_id] ?? $endpoint->organization_id) : 'All organizations' }}</span>
+                        <span class="badge mono">{{ $endpoint->hook_point->value }}</span>
+                        <span class="badge">{{ $endpoint->organization_id !== null ? ($orgNames[$endpoint->organization_id] ?? $endpoint->organization_id) : 'All organizations' }}</span>
                     </div>
                     <p class="mt-1 text-xs truncate mono" style="color:var(--faint)">{{ $endpoint->url }}</p>
                 </div>
                 @if ($endpoint->status === \Cbox\Id\ExternalActions\Enums\ActionEndpointStatus::Active)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Active</span>
+                    <span class="badge badge-success">Active</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--warning-soft);color:var(--warning)">Paused</span>
+                    <span class="badge badge-warn">Paused</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No event hook endpoints yet. Register one to have the platform call your external logic at a hook point.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+                    <h3>No matching hooks</h3>
+                    <p>No endpoint URL matches "{{ $search }}". Try a different search.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+                    <h3>No event hook endpoints yet</h3>
+                    <p>Register one to have the platform call your external logic at a hook point.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $rows->links() }}</div>
 </div>

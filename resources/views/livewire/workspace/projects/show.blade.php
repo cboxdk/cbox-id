@@ -162,7 +162,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
         <a href="{{ route('workspace.home') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Projects</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $project->name }}</h1>
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $project->status }}</span>
+            <span class="badge">{{ $project->status }}</span>
         </div>
         <p class="mt-1 text-xs mono select-all" style="color:var(--faint)">{{ $project->slug }} · {{ $project->id }}</p>
     </div>
@@ -189,16 +189,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
                         <div class="flex items-center gap-2">
                             <span class="font-medium truncate">{{ $environment->name }}</span>
                             @if ($environment->isSandbox())
-                                <span class="text-xs rounded-full px-2 py-0.5 font-medium" style="background:color-mix(in oklch,var(--warning) 15%,transparent);color:var(--warning)">Sandbox</span>
+                                <span class="badge badge-warn">Sandbox</span>
                             @endif
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $environment->status }}</span>
+                            <span class="badge">{{ $environment->status }}</span>
                         </div>
                         <a href="{{ $url }}" target="_blank" rel="noopener" class="mt-1 block text-sm truncate underline underline-offset-2" style="color:var(--accent)">{{ $url }}</a>
                     </div>
                     <a href="{{ route('workspace.environment.open', $environment->id) }}" class="btn btn-primary btn-sm shrink-0">Open ↗</a>
                 </div>
             @empty
-                <p class="text-sm" style="color:var(--muted)">No environments yet.</p>
+                <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No environments yet</h3><p>Create an environment below to start issuing keys and sign-ins.</p></div>
             @endforelse
         </div>
 

@@ -156,7 +156,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
             @if ($client->first_party)
                 <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">First-party</span>
             @endif
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ ucfirst($client->type->value) }}</span>
+            <span class="badge">{{ ucfirst($client->type->value) }}</span>
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $client->id }}</p>
     </div>
@@ -221,10 +221,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
                 <p class="label">Connects via</p>
                 <div class="flex flex-wrap gap-1.5">
                     @if (in_array('authorization_code', $client->grant_types ?? [], true))
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Sign-in</span>
+                        <span class="badge">Sign-in</span>
                     @endif
                     @if (in_array('client_credentials', $client->grant_types ?? [], true))
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">API</span>
+                        <span class="badge">API</span>
                     @endif
                     @if (($client->grant_types ?? []) === [])
                         <span class="text-sm" style="color:var(--faint)">—</span>
@@ -236,7 +236,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
                 @if (count($client->scopes ?? []) > 0)
                     <div class="flex flex-wrap gap-1.5">
                         @foreach ($client->scopes as $scope)
-                            <span class="text-xs rounded-full px-2 py-0.5 mono" style="background:var(--surface-2);color:var(--muted)">{{ $scope }}</span>
+                            <span class="badge mono">{{ $scope }}</span>
                         @endforeach
                     </div>
                 @else

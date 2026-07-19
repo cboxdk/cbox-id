@@ -110,9 +110,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $stream->name }}</h1>
             @if ($stream->enabled)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Enabled</span>
+                <span class="badge badge-success">Enabled</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Disabled</span>
+                <span class="badge">Disabled</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $stream->id }}</p>

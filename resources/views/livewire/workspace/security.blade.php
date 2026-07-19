@@ -148,10 +148,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Profile &amp; security</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Your account details and how you protect your sign-in.</p>
-    </div>
+    <x-page-header title="Profile &amp; security" subtitle="Your account details and how you protect your sign-in." />
 
     {{-- Profile --}}
     <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">

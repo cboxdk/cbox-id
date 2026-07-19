@@ -72,8 +72,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New access review'])
 
 <div>
     <a href="{{ route('environment.governance') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Access reviews</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New access review</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">Snapshots every current role assignment and membership in the selected organization as items to certify or revoke.</p>
+    <x-page-header class="mt-2" title="New access review" subtitle="Snapshots every current role assignment and membership in the selected organization as items to certify or revoke." />
 
     <form wire:submit="open" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>

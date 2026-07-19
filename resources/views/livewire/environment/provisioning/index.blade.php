@@ -6,6 +6,7 @@ use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Outbound sync (list). The registry of downstream SCIM
@@ -18,8 +19,15 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Outbound sync'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
@@ -34,19 +42,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound sync'])] cl
         }
 
         return [
-            'connections' => $query->get(),
+            'connections' => $query->paginate(25),
         ];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Outbound sync</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Push users out to your downstream SaaS apps over their SCIM 2.0 endpoints. Changes are provisioned to each connected app.</p>
-        </div>
-        <a href="{{ route('environment.provisioning.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New connection</a>
-    </div>
+    <x-page-header title="Outbound sync" subtitle="Push users out to your downstream SaaS apps over their SCIM 2.0 endpoints. Changes are provisioned to each connected app.">
+        <x-slot:actions>
+            <a href="{{ route('environment.provisioning.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New connection</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -60,16 +66,30 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound sync'])] cl
                     <span class="font-medium truncate">{{ $connection->name }}</span>
                     <p class="text-xs truncate mono" style="color:var(--faint)">{{ $connection->base_url }}</p>
                 </div>
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $connection->organization_id === null ? 'Environment-wide' : 'Org-scoped' }}</span>
+                <span class="badge">{{ $connection->organization_id === null ? 'Environment-wide' : 'Org-scoped' }}</span>
                 @if ($connection->status === \Cbox\Id\Provisioning\Enums\ConnectionStatus::Active)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Active</span>
+                    <span class="badge badge-success">Active</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Paused</span>
+                    <span class="badge badge-warn">Paused</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No provisioning connections yet. Register one to start pushing user changes out to a downstream app over its SCIM endpoint.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+                    <h3>No matches for "{{ trim($search) }}"</h3>
+                    <p>No connections match that name. Try a different search term.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+                    <h3>No provisioning connections yet</h3>
+                    <p>Register one to start pushing user changes out to a downstream app over its SCIM endpoint.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $connections->links() }}</div>
 </div>

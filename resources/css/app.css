@@ -103,6 +103,12 @@
     --radius-sm: 6px;    /* badges + chips */
     --shadow-card: 0 1px 2px rgba(31, 26, 18, 0.05), 0 1px 1px rgba(31, 26, 18, 0.03);
     --shadow-popover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    /* Elevation ramp — surfaces layer instead of sitting flat. Used by cards, hover
+       lifts, popovers, modals. Dark mode gets its own (heavier) ramp below. */
+    --shadow-xs: 0 1px 2px rgba(31, 26, 18, 0.05);
+    --shadow-sm: 0 1px 3px rgba(31, 26, 18, 0.08), 0 1px 2px rgba(31, 26, 18, 0.05);
+    --shadow-md: 0 4px 12px -2px rgba(31, 26, 18, 0.10), 0 2px 6px -2px rgba(31, 26, 18, 0.07);
+    --shadow-lg: 0 12px 32px -8px rgba(31, 26, 18, 0.16), 0 4px 12px -4px rgba(31, 26, 18, 0.10);
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --dur-hover: 150ms;
     --dur-menu: 200ms;
@@ -170,6 +176,10 @@
         --sidebar-border: oklch(0.39 0.016 80);
         --faint: oklch(0.67 0.016 85);
         --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 18px 44px -12px rgba(0, 0, 0, 0.7), 0 6px 16px -6px rgba(0, 0, 0, 0.5);
     }
 }
 
@@ -214,6 +224,10 @@
     --sidebar-border: oklch(0.39 0.016 80);
     --faint: oklch(0.67 0.016 85);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 18px 44px -12px rgba(0, 0, 0, 0.7), 0 6px 16px -6px rgba(0, 0, 0, 0.5);
 }
 
 @layer base {
@@ -429,7 +443,7 @@
         background: var(--card);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        box-shadow: var(--shadow-card);
+        box-shadow: var(--shadow-sm);
     }
 
     /* ── Badges / status pills */
@@ -638,8 +652,10 @@
     .cbx-pill--destructive .dot { background: var(--destructive); }
 
     /* Stat tile */
-    .cbx-stat { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-card); transition: border-color var(--dur-hover) var(--ease); }
+    .cbx-stat { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-sm); transition: transform var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease); }
     .cbx-stat:hover { border-color: var(--border-strong); }
+    /* Navigational stat cards (rendered as <a>) get a tactile hover lift. */
+    a.cbx-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
     .cbx-stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--info-soft); color: var(--info); }
     .cbx-stat-icon--success { background: var(--success-soft); color: var(--success); }
     .cbx-stat-icon--warning { background: var(--warning-soft); color: var(--warning); }

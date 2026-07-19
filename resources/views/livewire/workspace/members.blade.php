@@ -186,10 +186,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Members</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">People who can administer this account, their roles, and which environments they reach.</p>
-    </div>
+    <x-page-header title="Members" subtitle="People who can administer this account, their roles, and which environments they reach." />
 
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @foreach ($members as $m)
@@ -205,7 +202,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
                         <div class="flex items-center gap-2">
                             <span class="font-medium truncate">{{ $m->name ?? $m->email }}</span>
                             @if ($isSelf)<span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">You</span>@endif
-                            @if ($m->status !== 'active')<span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $m->status }}</span>@endif
+                            @if ($m->status !== 'active')<span class="badge badge-warn">{{ $m->status }}</span>@endif
                         </div>
                         <p class="text-sm truncate" style="color:var(--muted)">{{ $m->email }}</p>
                     </div>
@@ -230,7 +227,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
                             </div>
                         </div>
                     @else
-                        <span class="text-xs rounded-full px-2.5 py-1 shrink-0" style="background:var(--surface-2);color:var(--muted)">{{ $m->role->label() }}</span>
+                        <span class="badge shrink-0">{{ $m->role->label() }}</span>
                     @endif
                 </div>
 

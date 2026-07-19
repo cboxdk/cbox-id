@@ -221,8 +221,8 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
         <a href="{{ route('environment.connections') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Single sign-on</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $connection->name }}</h1>
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">{{ strtoupper($connection->type->value) }}</span>
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $connection->isActive() ? 'Active' : ucfirst($connection->status->value) }}</span>
+            <span class="cbx-pill cbx-pill--info">{{ strtoupper($connection->type->value) }}</span>
+            <span class="badge {{ $connection->isActive() ? 'badge-success' : '' }}">{{ $connection->isActive() ? 'Active' : ucfirst($connection->status->value) }}</span>
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $connection->id }}</p>
     </div>

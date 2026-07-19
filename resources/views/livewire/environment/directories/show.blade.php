@@ -188,8 +188,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
         <a href="{{ route('environment.directories') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Directories</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $directory->name }}</h1>
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ ucfirst($directory->status->value) }}</span>
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">{{ $directory->provider->label() }}</span>
+            <span class="badge {{ $directory->status === DirectoryStatus::Active ? 'badge-success' : 'badge-warn' }}">{{ ucfirst($directory->status->value) }}</span>
+            <span class="cbx-pill cbx-pill--info">{{ $directory->provider->label() }}</span>
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $directory->id }} · {{ $orgName }}</p>
     </div>
@@ -260,7 +260,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
                                 @forelse ($mappingsByGroup[$group->id] ?? [] as $rid)
                                     @php $role = $accessRolesById[$rid] ?? null; @endphp
                                     @if ($role)
-                                        <span class="text-xs rounded-full px-2 py-0.5 inline-flex items-center gap-1" style="background:var(--surface-2);color:var(--muted)">{{ $role->name }}
+                                        <span class="badge">{{ $role->name }}
                                             <button type="button" wire:click="unmapGroup('{{ $group->id }}', '{{ $rid }}')" style="color:var(--destructive)" title="Remove mapping" aria-label="Remove {{ $role->name }} mapping">×</button>
                                         </span>
                                     @endif

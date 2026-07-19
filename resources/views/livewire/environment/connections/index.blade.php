@@ -6,6 +6,7 @@ use Cbox\Id\Federation\Models\Connection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Single sign-on (list). Every SSO connection in the
@@ -16,33 +17,38 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Single sign-on'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
-        $query = Connection::query()->orderByDesc('created_at')->limit(100);
+        $query = Connection::query()->orderByDesc('created_at');
 
         $term = trim($this->search);
         if ($term !== '') {
             $query->where('name', 'like', "%{$term}%");
         }
 
-        return ['connections' => $query->get()];
+        return ['connections' => $query->paginate(25)];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Single sign-on</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Federated SAML and OIDC connections for this environment's organizations.</p>
-        </div>
-        <a href="{{ route('environment.connections.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New connection</a>
-    </div>
+    <x-page-header title="Single sign-on" subtitle="Federated SAML and OIDC connections for this environment's organizations.">
+        <x-slot:actions>
+            <a href="{{ route('environment.connections.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New connection</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -56,12 +62,26 @@ new #[Layout('components.layouts.environment', ['title' => 'Single sign-on'])] c
                     <span class="font-medium truncate">{{ $c->name }}</span>
                     <p class="text-xs truncate mono" style="color:var(--faint)">{{ $c->id }}</p>
                 </div>
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">{{ strtoupper($c->type->value) }}</span>
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $c->isActive() ? 'Active' : ucfirst($c->status->value) }}</span>
+                <span class="cbx-pill cbx-pill--info">{{ strtoupper($c->type->value) }}</span>
+                <span class="badge {{ $c->isActive() ? 'badge-success' : '' }}">{{ $c->isActive() ? 'Active' : ucfirst($c->status->value) }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No connections yet.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
+                    <h3>No matches for "{{ trim($search) }}"</h3>
+                    <p>No connections match that name. Try a different search term.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
+                    <h3>No connections yet</h3>
+                    <p>Federated SAML and OIDC connections you add for this environment's organizations will appear here.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $connections->links() }}</div>
 </div>

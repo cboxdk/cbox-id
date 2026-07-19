@@ -277,9 +277,10 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $user->name ?? $user->email }}</h1>
             @unless ($user->email_verified_at)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Unverified</span>
+                <span class="badge badge-warn">Unverified</span>
             @endunless
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $user->status->value }}</span>
+            @php $statusVariant = match ($user->status) { UserStatus::Active => 'badge-success', UserStatus::Disabled => 'badge-warn', UserStatus::Locked => 'badge-danger', default => '' }; @endphp
+            <span class="badge {{ $statusVariant }}">{{ $user->status->value }}</span>
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $user->id }}</p>
     </div>
@@ -342,7 +343,11 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeSession('{{ $s->id }}')" wire:confirm="Revoke this session?">Revoke</button>
                 </div>
             @empty
-                <p class="text-sm" style="color:var(--muted)">No active sessions.</p>
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
+                    <h3>No active sessions</h3>
+                    <p>This user has no signed-in sessions right now. They appear here once the user signs in.</p>
+                </div>
             @endforelse
         </div>
     </div>
@@ -362,7 +367,11 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMembership('{{ $m['org'] }}')" wire:confirm="Remove from this organization?">Remove</button>
                 </div>
             @empty
-                <p class="text-sm" style="color:var(--muted)">Not a member of any organization.</p>
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+                    <h3>Not a member of any organization</h3>
+                    <p>Add this user to an organization below to grant them access to its apps.</p>
+                </div>
             @endforelse
         </div>
         <form wire:submit="assignOrg" class="mt-4 grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">

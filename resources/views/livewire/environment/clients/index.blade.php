@@ -6,6 +6,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Applications (list). Every OAuth client (relying party)
@@ -17,33 +18,38 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Applications'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
-        $query = Client::query()->orderByDesc('id')->limit(100);
+        $query = Client::query()->orderByDesc('id');
 
         $term = trim($this->search);
         if ($term !== '') {
             $query->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('client_id', 'like', "%{$term}%"));
         }
 
-        return ['clients' => $query->get()];
+        return ['clients' => $query->paginate(25)];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Applications</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Every OAuth client registered in this environment — for signing people in or for machine-to-machine API access.</p>
-        </div>
-        <a href="{{ route('environment.clients.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New application</a>
-    </div>
+    <x-page-header title="Applications" subtitle="Every OAuth client registered in this environment — for signing people in or for machine-to-machine API access.">
+        <x-slot:actions>
+            <a href="{{ route('environment.clients.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New application</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name or client ID">
@@ -60,11 +66,25 @@ new #[Layout('components.layouts.environment', ['title' => 'Applications'])] cla
                 @if ($client->first_party)
                     <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">First-party</span>
                 @endif
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ ucfirst($client->type->value) }}</span>
+                <span class="badge">{{ ucfirst($client->type->value) }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No applications yet. Register one to sign people in or to call the API.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="clients" class="w-5 h-5" /></div>
+                    <h3>No matching applications</h3>
+                    <p>No application matches "{{ $search }}". Try a different name or client ID.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="clients" class="w-5 h-5" /></div>
+                    <h3>No applications yet</h3>
+                    <p>Register one to sign people in or to call the API.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $clients->links() }}</div>
 </div>

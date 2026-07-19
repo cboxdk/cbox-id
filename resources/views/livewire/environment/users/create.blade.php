@@ -42,8 +42,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
 
 <div>
     <a href="{{ route('environment.users') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Users</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New user</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">They complete sign-in via an invite or magic link — no password is set here.</p>
+    <x-page-header class="mt-2" title="New user" subtitle="They complete sign-in via an invite or magic link — no password is set here." />
 
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>

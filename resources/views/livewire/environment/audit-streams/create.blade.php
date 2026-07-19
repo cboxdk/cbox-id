@@ -95,8 +95,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
 
 <div>
     <a href="{{ route('environment.audit-streams') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Log streaming</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New log stream</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">The signing secret is shown once, right after you create the stream.</p>
+    <x-page-header class="mt-2" title="New log stream" subtitle="The signing secret is shown once, right after you create the stream." />
 
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>

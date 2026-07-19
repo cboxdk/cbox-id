@@ -58,15 +58,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Projects</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Each project is a separate IdP product — its own environments, sign-in, and plan.</p>
-        </div>
+    <x-page-header title="Projects" subtitle="Each project is a separate IdP product — its own environments, sign-in, and plan.">
         @if ($canManage)
-            <a href="{{ route('workspace.projects.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New project</a>
+            <x-slot:actions>
+                <a href="{{ route('workspace.projects.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New project</a>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @forelse ($projects as $project)
@@ -74,7 +72,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
                class="rounded-xl border p-5 transition-colors hover:bg-[var(--surface-2)]" style="border-color:var(--border)">
                 <div class="flex items-center justify-between gap-2">
                     <span class="font-medium truncate">{{ $project['name'] }}</span>
-                    <span class="text-xs rounded-full px-2 py-0.5 shrink-0" style="background:var(--surface-2);color:var(--muted)">{{ $project['status'] }}</span>
+                    <span class="badge shrink-0">{{ $project['status'] }}</span>
                 </div>
                 <p class="mt-3 text-sm" style="color:var(--muted)">
                     <span class="font-semibold tabular-nums" style="color:var(--foreground)">{{ $project['environments'] }} of {{ $project['limit'] }}</span>

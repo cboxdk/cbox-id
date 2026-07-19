@@ -7,6 +7,7 @@ use Cbox\Id\SamlIdp\Support\IdpDescriptor;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Login methods (list). The connector library: the
@@ -21,8 +22,15 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Login methods'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
@@ -37,7 +45,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login methods'])] cl
         }
 
         return [
-            'providers' => $query->get(),
+            'providers' => $query->paginate(25),
             'idpEntityId' => IdpDescriptor::entityId(),
             'idpMetadataUrl' => IdpDescriptor::metadataUrl(),
             'idpSsoUrl' => IdpDescriptor::ssoUrl(),
@@ -46,13 +54,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Login methods'])] cl
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Login methods</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Register the applications that use this environment as their SAML identity provider.</p>
-        </div>
-        <a href="{{ route('environment.sso-providers.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> Add method</a>
-    </div>
+    <x-page-header title="Login methods" subtitle="Register the applications that use this environment as their SAML identity provider.">
+        <x-slot:actions>
+            <a href="{{ route('environment.sso-providers.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> Add method</a>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- The IdP coordinates the admin hands to the service provider being registered. --}}
     <div class="mt-6 rounded-xl border p-5 space-y-3" style="border-color:var(--border)">
@@ -85,13 +91,27 @@ new #[Layout('components.layouts.environment', ['title' => 'Login methods'])] cl
                     <p class="text-xs truncate mono" style="color:var(--faint)">{{ $sp->id }}</p>
                 </div>
                 @if ($sp->want_authn_requests_signed)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Signed requests</span>
+                    <span class="cbx-pill cbx-pill--info">Signed requests</span>
                 @endif
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $sp->isActive() ? 'Active' : ucfirst($sp->status->value) }}</span>
+                <span class="badge {{ $sp->isActive() ? 'badge-success' : '' }}">{{ $sp->isActive() ? 'Active' : ucfirst($sp->status->value) }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No login methods yet. Add one to let an application sign users in through this environment.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                    <h3>No matches for "{{ trim($search) }}"</h3>
+                    <p>No login methods match that entity ID. Try a different search term.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                    <h3>No login methods yet</h3>
+                    <p>Add one to let an application sign users in through this environment.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $providers->links() }}</div>
 </div>

@@ -108,9 +108,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $policy->name }}</h1>
             @if ($policy->active)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Active</span>
+                <span class="badge badge-success">Active</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Inactive</span>
+                <span class="badge">Inactive</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $policy->id }}</p>
@@ -125,13 +125,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
         <dl class="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
                 <dt class="label">Scope</dt>
-                <dd class="mt-1"><span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $policy->organization_id ? ($orgNames[$policy->organization_id] ?? $policy->organization_id) : 'Environment-wide' }}</span></dd>
+                <dd class="mt-1"><span class="badge">{{ $policy->organization_id ? ($orgNames[$policy->organization_id] ?? $policy->organization_id) : 'Environment-wide' }}</span></dd>
             </div>
             <div>
                 <dt class="label">Conflicting roles</dt>
                 <dd class="mt-1 flex flex-wrap gap-1.5">
                     @foreach ($policy->role_ids as $roleId)
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $roleNames[$roleId] ?? $roleId }}</span>
+                        <span class="badge">{{ $roleNames[$roleId] ?? $roleId }}</span>
                     @endforeach
                 </dd>
             </div>
@@ -173,18 +173,22 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
                 @forelse ($violations as $violation)
                     <div class="rounded-xl border p-5" style="border-color:var(--destructive)">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">{{ $violation->policyName }}</span>
+                            <span class="badge badge-danger">{{ $violation->policyName }}</span>
                             <span class="mono text-xs" style="color:var(--faint)">{{ $violation->subjectId }}</span>
                         </div>
                         <p class="mt-2 text-sm" style="color:var(--muted)">Holds conflicting roles:</p>
                         <div class="mt-2 flex flex-wrap gap-1.5">
                             @foreach ($violation->conflictingRoleIds as $roleId)
-                                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $roleNames[$roleId] ?? $roleId }}</span>
+                                <span class="badge">{{ $roleNames[$roleId] ?? $roleId }}</span>
                             @endforeach
                         </div>
                     </div>
                 @empty
-                    <p class="rounded-xl border p-4 text-sm" style="border-color:var(--border);color:var(--muted)">No conflicts detected in this organization.</p>
+                    <div class="cbx-empty">
+                        <div class="cbx-empty-icon"><x-icon name="shield-check" class="w-5 h-5" /></div>
+                        <h3>No conflicts detected</h3>
+                        <p>No subject in this organization holds this rule's conflicting combination.</p>
+                    </div>
                 @endforelse
             </div>
         @endif

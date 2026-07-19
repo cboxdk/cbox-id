@@ -176,9 +176,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight mono truncate" style="font-size:1.25rem">{{ $endpoint->url }}</h1>
             @if ($endpoint->status === EndpointStatus::Active)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Active</span>
+                <span class="badge badge-success">Active</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--warning-soft);color:var(--warning)">Paused</span>
+                <span class="badge badge-warn">Paused</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $endpoint->id }}</p>
@@ -243,9 +243,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
                         </p>
                     </div>
                     @if ($delivery->status === \Cbox\Id\Webhooks\Enums\DeliveryStatus::Delivered)
-                        <span class="text-xs rounded-full px-2 py-0.5 shrink-0" style="background:var(--surface-2);color:var(--muted)">Delivered</span>
+                        <span class="badge badge-success shrink-0">Delivered</span>
                     @else
-                        <span class="text-xs rounded-full px-2 py-0.5 shrink-0" style="background:var(--warning-soft);color:var(--warning)">{{ ucfirst($delivery->status->value) }}</span>
+                        <span class="badge badge-warn shrink-0">{{ ucfirst($delivery->status->value) }}</span>
                     @endif
                 </div>
             @empty

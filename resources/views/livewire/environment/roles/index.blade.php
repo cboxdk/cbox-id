@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Roles (list). Every role this environment owns — the
@@ -19,22 +20,29 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Roles'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
-        $query = Role::query()->orderBy('name')->limit(100);
+        $query = Role::query()->orderBy('name');
 
         $term = trim($this->search);
         if ($term !== '') {
             $query->where('name', 'like', "%{$term}%");
         }
 
-        $roles = $query->get();
+        $roles = $query->paginate(25);
 
         /** @var Collection<string, int> $counts */
         $counts = DB::table('role_permission')
@@ -48,13 +56,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Roles'])] class exte
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Roles</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">What people can do inside this environment's apps. Assign roles to people; a role is a bundle of permissions.</p>
-        </div>
-        <a href="{{ route('environment.roles.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New role</a>
-    </div>
+    <x-page-header title="Roles" subtitle="What people can do inside this environment's apps. Assign roles to people; a role is a bundle of permissions.">
+        <x-slot:actions>
+            <a href="{{ route('environment.roles.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New role</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -72,13 +78,27 @@ new #[Layout('components.layouts.environment', ['title' => 'Roles'])] class exte
                     @endif
                 </div>
                 @if ($role->source === $manifest)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">App</span>
+                    <span class="badge">App</span>
                 @endif
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $count }} {{ \Illuminate\Support\Str::plural('permission', $count) }}</span>
+                <span class="badge">{{ $count }} {{ \Illuminate\Support\Str::plural('permission', $count) }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No roles yet.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+                    <h3>No matches</h3>
+                    <p>No roles match “{{ trim($search) }}”. Try a different name.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="roles" class="w-5 h-5" /></div>
+                    <h3>No roles yet</h3>
+                    <p>A role is a bundle of permissions you assign to people. Create the first one to get started.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4 max-w-full overflow-x-auto">{{ $roles->links() }}</div>
 </div>

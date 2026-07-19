@@ -40,8 +40,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'New project'])] class 
 
 <div>
     <a href="{{ route('workspace.home') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Projects</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New project</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">A separate IdP product with its own environments and plan — billed independently of your other projects.</p>
+    <x-page-header class="mt-2" title="New project" subtitle="A separate IdP product with its own environments and plan — billed independently of your other projects." />
 
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>

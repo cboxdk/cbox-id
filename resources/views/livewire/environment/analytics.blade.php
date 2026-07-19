@@ -12,10 +12,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Analytics'])] class 
     }
 }; ?>
 <div>
-    <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Analytics</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">Usage across this environment — logins, tokens issued, provisioning events and more.</p>
+    <x-page-header title="Analytics" subtitle="Usage across this environment — logins, tokens issued, provisioning events and more." />
     @if ($metrics->isEmpty())
-        <div class="mt-6 rounded-xl border p-4 text-sm" style="border-color:var(--border);color:var(--muted)">No usage recorded yet — it appears as your apps start signing users in.</div>
+        <div class="cbx-empty">
+            <div class="cbx-empty-icon"><x-icon name="chart" class="w-5 h-5" /></div>
+            <h3>No usage recorded yet</h3>
+            <p>Usage appears here as your apps start signing users in and issuing tokens.</p>
+        </div>
     @else
         <div class="mt-6 grid gap-4 sm:grid-cols-3">
             @foreach ($metrics as $m)

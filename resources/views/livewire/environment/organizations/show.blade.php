@@ -335,7 +335,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         <a href="{{ route('environment.organizations') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Organizations</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $org->name }}</h1>
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $org->status->value }}</span>
+            @php $statusVariant = match ($org->status) { OrganizationStatus::Active => 'badge-success', OrganizationStatus::Suspended => 'badge-warn', OrganizationStatus::Deleted => 'badge-danger', default => '' }; @endphp
+            <span class="badge {{ $statusVariant }}">{{ $org->status->value }}</span>
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $org->id }}</p>
     </div>
@@ -391,7 +392,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMember('{{ $m['userId'] }}')" wire:confirm="Remove this member?">Remove</button>
                 </div>
             @empty
-                <p class="text-sm" style="color:var(--muted)">No members yet.</p>
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="members" class="w-5 h-5" /></div>
+                    <h3>No members yet</h3>
+                    <p>Add an existing user by email below to give them access to this organization.</p>
+                </div>
             @endforelse
         </div>
         <form wire:submit="addMember" class="mt-4 grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
@@ -419,11 +424,16 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                         <span class="block text-sm font-medium truncate">{{ $inv->email }}</span>
                         <span class="block text-xs" style="color:var(--faint)">{{ ucfirst($inv->role) }} · expires {{ $inv->expires_at?->diffForHumans() }}</span>
                     </div>
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $inv->status->value }}</span>
+                    @php $invVariant = match ($inv->status->value) { 'accepted' => 'badge-success', 'pending' => 'badge-warn', 'revoked' => 'badge-danger', default => '' }; @endphp
+                    <span class="badge {{ $invVariant }}">{{ $inv->status->value }}</span>
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeInvitation('{{ $inv->id }}')" wire:confirm="Revoke this invitation?">Revoke</button>
                 </div>
             @empty
-                <p class="text-sm" style="color:var(--muted)">No pending invitations.</p>
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="members" class="w-5 h-5" /></div>
+                    <h3>No pending invitations</h3>
+                    <p>Invite someone by email below — they join on their own by accepting the link.</p>
+                </div>
             @endforelse
         </div>
         <form wire:submit="invite" class="mt-4 grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
@@ -450,10 +460,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                     <div class="flex items-center gap-2">
                         <span class="min-w-0 flex-1 truncate text-sm font-medium mono">{{ $domain->domain }}</span>
                         @if ($domain->verified_at)
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--success-soft);color:var(--success)">Verified</span>
+                            <span class="badge badge-success">Verified</span>
                             <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="toggleCapture('{{ $domain->id }}')">{{ $domain->capture ? 'Capture on' : 'Capture off' }}</button>
                         @else
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Pending</span>
+                            <span class="badge badge-warn">Pending</span>
                             <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="verifyDomain('{{ $domain->id }}')">Verify</button>
                         @endif
                         <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeDomain('{{ $domain->id }}')" wire:confirm="Remove this domain?">Remove</button>
@@ -463,7 +473,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                     @endunless
                 </div>
             @empty
-                <p class="text-sm" style="color:var(--muted)">No domains yet.</p>
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="directory" class="w-5 h-5" /></div>
+                    <h3>No domains yet</h3>
+                    <p>Add a domain this organization owns below, then verify it so its users are matched for SSO.</p>
+                </div>
             @endforelse
         </div>
         <form wire:submit="addDomain" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2 items-start">

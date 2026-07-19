@@ -38,15 +38,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Overview'])] class e
 }; ?>
 
 <div>
-    <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Overview</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">Everything in this environment — organizations, users, and sign-in.</p>
+    <x-page-header title="Overview" subtitle="Everything in this environment — organizations, users, and sign-in." />
 
+    @php
+        $statIcons = ['Organizations' => 'layers', 'Users' => 'members', 'SSO connections' => 'connections', 'Applications' => 'clients', 'Directories' => 'directory'];
+    @endphp
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($stats as $stat)
-            <a href="{{ route($stat['route']) }}" class="rounded-xl border p-5 transition-colors hover:bg-[var(--surface-2)]" style="border-color:var(--border)">
-                <p class="text-sm" style="color:var(--muted)">{{ $stat['label'] }}</p>
-                <p class="mt-1 font-semibold tabular-nums" style="font-size:1.75rem">{{ number_format($stat['count']) }}</p>
-                <span class="mt-2 inline-block text-xs" style="color:var(--accent)">Manage →</span>
+            <a href="{{ route($stat['route']) }}" class="cbx-stat">
+                <div class="cbx-stat-icon"><x-icon name="{{ $statIcons[$stat['label']] ?? 'dashboard' }}" class="w-5 h-5" /></div>
+                <div class="min-w-0">
+                    <p class="cbx-stat-value">{{ number_format($stat['count']) }}</p>
+                    <p class="cbx-stat-label">{{ $stat['label'] }}</p>
+                </div>
             </a>
         @endforeach
     </div>

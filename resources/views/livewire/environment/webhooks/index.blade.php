@@ -6,6 +6,7 @@ use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Webhooks (list). Every subscriber endpoint this
@@ -16,15 +17,22 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Webhooks'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
-        $query = WebhookEndpoint::query()->orderByDesc('id')->limit(100);
+        $query = WebhookEndpoint::query()->orderByDesc('id');
 
         $term = trim($this->search);
         if ($term !== '') {
@@ -32,19 +40,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhooks'])] class e
         }
 
         return [
-            'endpoints' => $query->get(),
+            'endpoints' => $query->paginate(25),
         ];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Webhooks</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Endpoints that receive signed event notifications for this environment.</p>
-        </div>
-        <a href="{{ route('environment.webhooks.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New webhook</a>
-    </div>
+    <x-page-header title="Webhooks" subtitle="Endpoints that receive signed event notifications for this environment.">
+        <x-slot:actions>
+            <a href="{{ route('environment.webhooks.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New webhook</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by URL">
@@ -59,14 +65,28 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhooks'])] class e
                     <p class="text-xs truncate" style="color:var(--faint)">{{ count($endpoint->event_types) }} {{ count($endpoint->event_types) === 1 ? 'event' : 'events' }} subscribed</p>
                 </div>
                 @if ($endpoint->status === \Cbox\Id\Webhooks\Enums\EndpointStatus::Active)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Active</span>
+                    <span class="badge badge-success">Active</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--warning-soft);color:var(--warning)">Paused</span>
+                    <span class="badge badge-warn">Paused</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No webhook endpoints yet. Add one to start receiving signed event notifications.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="webhooks" class="w-5 h-5" /></div>
+                    <h3>No matching webhooks</h3>
+                    <p>No endpoint URL matches "{{ $search }}". Try a different search.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="webhooks" class="w-5 h-5" /></div>
+                    <h3>No webhook endpoints yet</h3>
+                    <p>Add one to start receiving signed event notifications.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $endpoints->links() }}</div>
 </div>

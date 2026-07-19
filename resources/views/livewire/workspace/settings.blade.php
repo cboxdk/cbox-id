@@ -43,10 +43,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Settings'])] class ext
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Settings</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Manage your account.</p>
-    </div>
+    <x-page-header title="Settings" subtitle="Manage your account." />
 
     <form wire:submit="save" class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
         <label class="label" for="name">Account name</label>

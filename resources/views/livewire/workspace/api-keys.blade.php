@@ -98,7 +98,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
             <p class="text-sm font-medium" style="color:var(--success)">Copy your key now — you won't be able to see it again.</p>
             <div class="mt-3 flex items-center gap-2">
                 <code class="flex-1 min-w-0 truncate rounded-lg px-3 py-2 text-sm" style="background:var(--background);border:1px solid var(--border)">{{ $freshKey }}</code>
-                <button type="button" class="btn btn-primary btn-sm shrink-0" data-copy="{{ $freshKey }}" onclick="navigator.clipboard.writeText(this.getAttribute('data-copy'))">Copy</button>
+                <button type="button" class="btn btn-primary btn-sm shrink-0" data-copy="{{ $freshKey }}" onclick="navigator.clipboard.writeText(this.getAttribute('data-copy'));var b=this,t=b.textContent;b.textContent='Copied ✓';setTimeout(function(){b.textContent=t},1500)">Copy</button>
             </div>
         </div>
     @endif
@@ -109,9 +109,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
                         <span class="font-medium truncate">{{ $key->name }}</span>
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $key->role->label() }}</span>
+                        <span class="badge">{{ $key->role->label() }}</span>
                         @if (! $key->isActive())
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:color-mix(in oklch,var(--destructive) 12%,transparent);color:var(--destructive)">revoked</span>
+                            <span class="badge badge-danger">revoked</span>
                         @endif
                     </div>
                     <p class="text-sm truncate mono" style="color:var(--muted)">{{ $key->prefix }}…&nbsp; · &nbsp;{{ $key->last_used_at ? 'last used '.$key->last_used_at->diffForHumans() : 'never used' }}</p>
@@ -123,7 +123,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
                 @endif
             </div>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No API keys yet.</p>
+            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div><h3>No API keys yet</h3><p>Create a key to reach the account management API from your own services.</p></div>
         @endforelse
     </div>
 

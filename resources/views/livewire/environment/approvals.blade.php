@@ -100,10 +100,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Agent approvals</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Pending requests from agents asking to act on a user's behalf. Approve only requests you recognize.</p>
-    </div>
+    <x-page-header title="Agent approvals" subtitle="Pending requests from agents asking to act on a user's behalf. Approve only requests you recognize." />
 
     <div class="mt-6 space-y-4">
         @forelse ($requests as $request)
@@ -133,7 +130,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
                                 <li class="flex items-center gap-2.5 text-sm">
                                     <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success)" />
                                     <span>{{ $row['label'] }}</span>
-                                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $row['scope'] }}</span>
+                                    <span class="badge">{{ $row['scope'] }}</span>
                                 </li>
                             @endforeach
                         </ul>
@@ -146,7 +143,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
                 </div>
             </div>
         @empty
-            <p class="rounded-xl border p-4 text-sm" style="border-color:var(--border);color:var(--muted)">No pending requests. Agent approval requests will appear here for review.</p>
+            <div class="cbx-empty">
+                <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
+                <h3>No pending requests</h3>
+                <p>Agent approval requests will appear here for review as they arrive.</p>
+            </div>
         @endforelse
     </div>
 </div>

@@ -35,8 +35,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Settings'])] class e
 }; ?>
 
 <div>
-    <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Settings</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">This environment's identity and the details your apps need to integrate.</p>
+    <x-page-header title="Settings" subtitle="This environment's identity and the details your apps need to integrate." />
 
     <div class="mt-6 rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>
@@ -44,7 +43,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Settings'])] class e
             <div class="mt-1 flex items-center gap-2">
                 <span class="font-medium">{{ $environment?->name ?? '—' }}</span>
                 @if ($environment?->isSandbox())
-                    <span class="text-xs rounded-full px-2 py-0.5 font-medium" style="background:color-mix(in oklch,var(--warning) 15%,transparent);color:var(--warning)">Sandbox</span>
+                    <span class="badge badge-warn">Sandbox</span>
                 @endif
             </div>
         </div>

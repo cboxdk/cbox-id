@@ -68,8 +68,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
 
 <div>
     <a href="{{ route('environment.roles') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Roles</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New role</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">A bundle of permissions you can assign to people across this environment.</p>
+    <x-page-header class="mt-2" title="New role" subtitle="A bundle of permissions you can assign to people across this environment." />
 
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>
@@ -94,7 +93,11 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
                         </span>
                     </label>
                 @empty
-                    <p class="text-sm" style="color:var(--muted)">No permissions have been declared yet — you can add them once an app registers its catalog.</p>
+                    <div class="cbx-empty">
+                        <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                        <h3>No permissions declared</h3>
+                        <p>You can add permissions here once an app registers its catalog with this environment.</p>
+                    </div>
                 @endforelse
             </div>
         </div>

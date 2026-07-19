@@ -6,6 +6,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Audit log. The environment's tamper-evident,
@@ -13,28 +14,34 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Audit log'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
      */
     public function with(): array
     {
-        $query = AuditEntry::query()->orderByDesc('sequence')->limit(100);
+        $query = AuditEntry::query()->orderByDesc('sequence');
 
         $term = trim($this->search);
         if ($term !== '') {
             $query->where(fn ($q) => $q->where('action', 'like', "%{$term}%")->orWhere('target_type', 'like', "%{$term}%"));
         }
 
-        return ['entries' => $query->get()];
+        return ['entries' => $query->paginate(25)];
     }
 }; ?>
 
 <div>
-    <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Audit log</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">A tamper-evident, hash-chained record of every security-relevant action in this environment.</p>
+    <x-page-header title="Audit log" subtitle="A tamper-evident, hash-chained record of every security-relevant action in this environment." />
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Filter by action or target">
@@ -55,7 +62,21 @@ new #[Layout('components.layouts.environment', ['title' => 'Audit log'])] class 
                 </div>
             </div>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No audit entries match.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+                    <h3>No matches for "{{ trim($search) }}"</h3>
+                    <p>No audit entries match that action or target. Try a broader term.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="audit" class="w-5 h-5" /></div>
+                    <h3>No audit entries yet</h3>
+                    <p>Security-relevant actions in this environment will appear here as they happen.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $entries->links() }}</div>
 </div>

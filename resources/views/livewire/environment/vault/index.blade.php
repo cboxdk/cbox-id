@@ -6,6 +6,7 @@ use Cbox\Id\TokenVault\Models\VaultSecret;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Stored tokens (list). The downstream credential vault:
@@ -19,8 +20,15 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Stored tokens'])] class extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'q')]
     public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return array<string, mixed>
@@ -35,19 +43,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored tokens'])] cl
         }
 
         return [
-            'secrets' => $query->get(),
+            'secrets' => $query->paginate(25),
         ];
     }
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Stored tokens</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Downstream API keys your AI agents present to providers. Each value is sealed at rest and brokered only to explicitly granted clients — it is never shown again after you store it.</p>
-        </div>
-        <a href="{{ route('environment.vault.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New secret</a>
-    </div>
+    <x-page-header title="Stored tokens" subtitle="Downstream API keys your AI agents present to providers. Each value is sealed at rest and brokered only to explicitly granted clients — it is never shown again after you store it.">
+        <x-slot:actions>
+            <a href="{{ route('environment.vault.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New secret</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -62,19 +68,33 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored tokens'])] cl
                     <p class="text-xs truncate mono" style="color:var(--faint)">{{ $s->provider }}</p>
                 </div>
                 @if ($s->isRevoked())
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--destructive-soft);color:var(--destructive)">Revoked</span>
+                    <span class="badge badge-danger">Revoked</span>
                 @elseif ($s->isExpired())
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--warning-soft);color:var(--warning)">Expired</span>
+                    <span class="badge badge-warn">Expired</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Active</span>
+                    <span class="badge badge-success">Active</span>
                 @endif
                 @if ($s->owner_type === 'organization')
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Org-scoped</span>
+                    <span class="badge">Org-scoped</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No secrets yet. Store a downstream API key to broker it to this environment's agents.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                    <h3>No matching secrets</h3>
+                    <p>No secret matches "{{ $search }}". Try a different name.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                    <h3>No secrets yet</h3>
+                    <p>Store a downstream API key to broker it to this environment's agents.</p>
+                </div>
+            @endif
         @endforelse
     </div>
+
+    <div class="mt-4">{{ $secrets->links() }}</div>
 </div>

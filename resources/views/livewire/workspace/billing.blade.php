@@ -66,10 +66,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class exte
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Billing</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Plans are per project; usage rolls up across every environment this account owns.</p>
-    </div>
+    <x-page-header title="Billing" subtitle="Plans are per project; usage rolls up across every environment this account owns." />
 
     {{-- Per-project plans (the billing anchor is the project). --}}
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
@@ -84,7 +81,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class exte
                 <span class="text-sm tabular-nums shrink-0" style="color:var(--muted)">{{ $project['used'] }} of {{ $project['limit'] }} {{ \Illuminate\Support\Str::plural('environment', $project['limit']) }}</span>
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No projects yet.</p>
+            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No projects yet</h3><p>Each project you create appears here with its plan and environment allowance.</p></div>
         @endforelse
     </div>
 

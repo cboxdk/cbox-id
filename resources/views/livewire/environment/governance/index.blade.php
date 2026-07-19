@@ -41,13 +41,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Access reviews'])] c
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Access reviews</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Periodically certify who holds which role and membership. Revoked access is applied when the review closes.</p>
-        </div>
-        <a href="{{ route('environment.governance.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New review</a>
-    </div>
+    <x-page-header title="Access reviews" subtitle="Periodically certify who holds which role and membership. Revoked access is applied when the review closes.">
+        <x-slot:actions>
+            <a href="{{ route('environment.governance.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New review</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -62,14 +60,26 @@ new #[Layout('components.layouts.environment', ['title' => 'Access reviews'])] c
                     <p class="text-xs truncate" style="color:var(--faint)">{{ $c->created_at?->diffForHumans() }}</p>
                 </div>
                 @if ($c->status === \Cbox\Id\Governance\Enums\CampaignStatus::Open)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Open</span>
+                    <span class="badge badge-warn">Open</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--success-soft);color:var(--success)">Closed</span>
+                    <span class="badge badge-success">Closed</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No reviews yet. Open a review to certify access.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+                    <h3>No reviews match "{{ trim($search) }}"</h3>
+                    <p>No access review matches that name. Try a different search.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="shield-check" class="w-5 h-5" /></div>
+                    <h3>No access reviews yet</h3>
+                    <p>Open a review to certify who holds which role and membership across an organization.</p>
+                </div>
+            @endif
         @endforelse
     </div>
 </div>

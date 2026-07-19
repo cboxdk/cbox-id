@@ -86,9 +86,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight mono truncate" style="font-size:1.25rem">{{ $endpoint->url }}</h1>
             @if ($endpoint->status === \Cbox\Id\ExternalActions\Enums\ActionEndpointStatus::Active)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Active</span>
+                <span class="badge badge-success">Active</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--warning-soft);color:var(--warning)">Paused</span>
+                <span class="badge badge-warn">Paused</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $endpoint->id }}</p>
@@ -111,11 +111,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
         <dl class="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
                 <dt class="label">Hook point</dt>
-                <dd class="mt-1"><span class="text-xs rounded-full px-2 py-0.5 mono" style="background:var(--surface-2);color:var(--muted)">{{ $endpoint->hook_point->value }}</span></dd>
+                <dd class="mt-1"><span class="badge mono">{{ $endpoint->hook_point->value }}</span></dd>
             </div>
             <div>
                 <dt class="label">Organization</dt>
-                <dd class="mt-1"><span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $orgName ?? 'All organizations' }}</span></dd>
+                <dd class="mt-1"><span class="badge">{{ $orgName ?? 'All organizations' }}</span></dd>
             </div>
             <div class="sm:col-span-2">
                 <dt class="label">Endpoint URL</dt>

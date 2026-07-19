@@ -47,13 +47,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rules'])] c
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Conflict rules</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Declare sets of roles that must never be held together, then detect subjects who already hold a toxic combination.</p>
-        </div>
-        <a href="{{ route('environment.sod-policies.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New rule</a>
-    </div>
+    <x-page-header title="Conflict rules" subtitle="Declare sets of roles that must never be held together, then detect subjects who already hold a toxic combination.">
+        <x-slot:actions>
+            <a href="{{ route('environment.sod-policies.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New rule</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -66,21 +64,33 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rules'])] c
                 <div class="min-w-0 flex-1">
                     <span class="font-medium truncate">{{ $policy->name }}</span>
                     <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $policy->organization_id ? ($orgNames[$policy->organization_id] ?? $policy->organization_id) : 'Environment-wide' }}</span>
+                        <span class="badge">{{ $policy->organization_id ? ($orgNames[$policy->organization_id] ?? $policy->organization_id) : 'Environment-wide' }}</span>
                         @foreach ($policy->role_ids as $roleId)
-                            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $roleNames[$roleId] ?? $roleId }}</span>
+                            <span class="badge">{{ $roleNames[$roleId] ?? $roleId }}</span>
                         @endforeach
                     </div>
                 </div>
                 @if ($policy->active)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Active</span>
+                    <span class="badge badge-success">Active</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Inactive</span>
+                    <span class="badge">Inactive</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No conflict rules yet. Define one to forbid a toxic combination of roles.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+                    <h3>No rules match "{{ trim($search) }}"</h3>
+                    <p>No conflict rule matches that name. Try a different search.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
+                    <h3>No conflict rules yet</h3>
+                    <p>Define one to forbid a toxic combination of roles being held together.</p>
+                </div>
+            @endif
         @endforelse
     </div>
 </div>

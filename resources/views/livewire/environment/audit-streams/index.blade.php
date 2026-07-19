@@ -48,13 +48,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Log streaming'])] cl
 }; ?>
 
 <div>
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Log streaming</h1>
-            <p class="mt-1 text-sm" style="color:var(--muted)">Mirror this environment's hash-chained audit trail out to your SIEM (Splunk, Elastic, Graylog, CEF). Delivery is at-least-once and environment-isolated.</p>
-        </div>
-        <a href="{{ route('environment.audit-streams.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New stream</a>
-    </div>
+    <x-page-header title="Log streaming" subtitle="Mirror this environment's hash-chained audit trail out to your SIEM (Splunk, Elastic, Graylog, CEF). Delivery is at-least-once and environment-isolated.">
+        <x-slot:actions>
+            <a href="{{ route('environment.audit-streams.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New stream</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
@@ -68,16 +66,28 @@ new #[Layout('components.layouts.environment', ['title' => 'Log streaming'])] cl
                     <span class="font-medium truncate">{{ $stream->name }}</span>
                     <p class="text-xs truncate mono" style="color:var(--faint)">{{ $stream->endpoint_url }}</p>
                 </div>
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $destinationLabels[$stream->destination->value] ?? $stream->destination->value }}</span>
+                <span class="badge">{{ $destinationLabels[$stream->destination->value] ?? $stream->destination->value }}</span>
                 @if ($stream->enabled)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Enabled</span>
+                    <span class="badge badge-success">Enabled</span>
                 @else
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Disabled</span>
+                    <span class="badge">Disabled</span>
                 @endif
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
-            <p class="p-4 text-sm" style="color:var(--muted)">No streams yet. Add one to export this environment's audit trail to your SIEM.</p>
+            @if (trim($search) !== '')
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+                    <h3>No streams match "{{ trim($search) }}"</h3>
+                    <p>No log stream matches that name. Try a different search.</p>
+                </div>
+            @else
+                <div class="cbx-empty">
+                    <div class="cbx-empty-icon"><x-icon name="audit" class="w-5 h-5" /></div>
+                    <h3>No log streams yet</h3>
+                    <p>Add one to export this environment's audit trail to your SIEM.</p>
+                </div>
+            @endif
         @endforelse
     </div>
 </div>

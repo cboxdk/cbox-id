@@ -194,9 +194,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight mono" style="font-size:1.5rem">{{ $provider->entity_id }}</h1>
             @if ($provider->want_authn_requests_signed)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Signed requests</span>
+                <span class="cbx-pill cbx-pill--info">Signed requests</span>
             @endif
-            <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">{{ $provider->isActive() ? 'Active' : ucfirst($provider->status->value) }}</span>
+            <span class="badge {{ $provider->isActive() ? 'badge-success' : '' }}">{{ $provider->isActive() ? 'Active' : ucfirst($provider->status->value) }}</span>
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $provider->id }}</p>
     </div>

@@ -120,16 +120,16 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         <a href="{{ route('environment.vault') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Stored tokens</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $secret->name }}</h1>
-            <span class="text-xs rounded-full px-2 py-0.5 mono" style="background:var(--surface-2);color:var(--muted)">{{ $secret->provider }}</span>
+            <span class="badge mono">{{ $secret->provider }}</span>
             @if ($secret->isRevoked())
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--destructive-soft);color:var(--destructive)">Revoked</span>
+                <span class="badge badge-danger">Revoked</span>
             @elseif ($secret->isExpired())
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--warning-soft);color:var(--warning)">Expired</span>
+                <span class="badge badge-warn">Expired</span>
             @else
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Active</span>
+                <span class="badge badge-success">Active</span>
             @endif
             @if ($secret->owner_type === 'organization')
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--surface-2);color:var(--muted)">Org-scoped</span>
+                <span class="badge">Org-scoped</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $secret->id }}</p>

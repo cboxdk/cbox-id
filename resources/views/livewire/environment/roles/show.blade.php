@@ -133,7 +133,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $role->name }}</h1>
             @if ($readOnly)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">Managed by the app</span>
+                <span class="badge">Managed by the app</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $role->id }}</p>
@@ -178,9 +178,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
         @if ($readOnly)
             <div class="mt-4 flex flex-wrap gap-1.5">
                 @forelse ($catalog->whereIn('id', $granted) as $perm)
-                    <span class="text-xs rounded-full px-2 py-0.5 mono" style="background:var(--surface-2);color:var(--muted)">{{ $perm->name }}</span>
+                    <span class="badge mono">{{ $perm->name }}</span>
                 @empty
-                    <p class="text-sm" style="color:var(--muted)">No permissions.</p>
+                    <div class="cbx-empty">
+                        <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                        <h3>No permissions</h3>
+                        <p>This role grants no permissions. The application that declares it controls what it can do.</p>
+                    </div>
                 @endforelse
             </div>
         @else
@@ -194,7 +198,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
                         </span>
                     </label>
                 @empty
-                    <p class="text-sm" style="color:var(--muted)">No permissions have been declared yet.</p>
+                    <div class="cbx-empty">
+                        <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
+                        <h3>No permissions declared</h3>
+                        <p>Permissions appear here once an app registers its catalog with this environment.</p>
+                    </div>
                 @endforelse
             </div>
         @endif
