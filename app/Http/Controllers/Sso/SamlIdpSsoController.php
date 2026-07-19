@@ -52,11 +52,11 @@ final class SamlIdpSsoController
 
         try {
             $authnRequest = $this->idp->parseAuthnRequest(
-                $context['samlRequest'],
-                $context['relayState'],
-                $context['signature'],
-                $context['sigAlg'],
-                $context['fromRedirect'],
+                $context->samlRequest,
+                $context->relayState,
+                $context->signature,
+                $context->sigAlg,
+                $context->fromRedirect,
             );
         } catch (UnknownServiceProvider) {
             $this->handoff->clear();

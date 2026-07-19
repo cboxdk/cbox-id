@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use App\Platform\SamlRequestContext;
 use App\Platform\SamlSsoHandoff;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -80,9 +81,9 @@ it('resolves the resume URL back to the SSO endpoint once a request is pending',
 
     expect($handoff->resumeUrl())->toBeNull();
 
-    $handoff->stash([
-        'samlRequest' => 'x', 'relayState' => null, 'signature' => null, 'sigAlg' => null, 'fromRedirect' => true,
-    ]);
+    $handoff->stash(new SamlRequestContext(
+        samlRequest: 'x', relayState: null, signature: null, sigAlg: null, fromRedirect: true,
+    ));
 
     expect($handoff->resumeUrl())->toBe(route('sso.saml.idp.sso'));
 });

@@ -75,7 +75,7 @@ final class ImpersonationAwareAuditLog implements AuditLog
             targetId: $event->targetId,
             context: array_merge($event->context, [
                 'impersonation' => true,
-                'impersonated_by' => $marker['operator'],
+                'impersonated_by' => $marker->operator,
             ]),
             ip: $event->ip,
         );

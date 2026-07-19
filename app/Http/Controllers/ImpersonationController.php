@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
 use App\Platform\OperatorAuth;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -106,7 +105,7 @@ final class ImpersonationController extends Controller
         // marker means there is nothing to exit (403).
         $marker = $impersonation->active();
         abort_if($marker === null, 403);
-        $wasAccountMember = $marker['actor_type'] === ActorType::AccountMember->value;
+        $wasAccountMember = $marker->isAccountMember();
 
         $impersonation->exit($request);
 

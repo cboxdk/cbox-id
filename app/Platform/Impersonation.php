@@ -148,16 +148,16 @@ final class Impersonation
             return;
         }
 
-        $isAccountMember = $marker['actor_type'] === ActorType::AccountMember->value;
+        $isAccountMember = $marker->isAccountMember();
 
         $this->audit->record(new AuditEvent(
             action: $isAccountMember ? 'account.impersonation_ended' : 'operator.impersonation_ended',
-            actorType: $isAccountMember ? ActorType::AccountMember : ActorType::Operator,
-            actorId: $marker['operator'],
-            organizationId: $marker['org'],
+            actorType: $marker->actorType,
+            actorId: $marker->operator,
+            organizationId: $marker->organizationId,
             targetType: 'user',
-            targetId: $marker['subject'],
-            context: ['duration_seconds' => max(0, now()->getTimestamp() - $marker['started_at'])],
+            targetId: $marker->subject,
+            context: ['duration_seconds' => max(0, now()->getTimestamp() - $marker->startedAt)],
             ip: $request->ip(),
         ));
 
@@ -175,14 +175,14 @@ final class Impersonation
         // re-pin the plane it was working in — the env-admin session for an account
         // member, the operator session otherwise.
         if ($isAccountMember) {
-            $request->session()->put(EnvironmentAdminAuth::SESSION_KEY, $marker['operator']);
-            if ($marker['env'] !== null) {
-                $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker['env']);
+            $request->session()->put(EnvironmentAdminAuth::SESSION_KEY, $marker->operator);
+            if ($marker->environmentKey !== null) {
+                $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
             }
         } else {
-            $request->session()->put(OperatorAuth::SESSION_KEY, $marker['operator']);
-            if ($marker['env'] !== null) {
-                $request->session()->put(OperatorAuth::ENV_KEY, $marker['env']);
+            $request->session()->put(OperatorAuth::SESSION_KEY, $marker->operator);
+            if ($marker->environmentKey !== null) {
+                $request->session()->put(OperatorAuth::ENV_KEY, $marker->environmentKey);
             }
         }
 
@@ -195,10 +195,8 @@ final class Impersonation
 
     /**
      * The validated marker, or null when not impersonating.
-     *
-     * @return array{actor_type: string, operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int}|null
      */
-    public function active(): ?array
+    public function active(): ?ImpersonationMarker
     {
         $data = session()->get(self::SESSION_KEY);
 
@@ -221,17 +219,19 @@ final class Impersonation
         $env = $data['env'] ?? null;
         $reason = $data['reason'] ?? null;
         // Back-compat: a marker written before actor_type existed is an operator one.
-        $actorType = $data['actor_type'] ?? null;
+        $actorType = ($data['actor_type'] ?? null) === ActorType::AccountMember->value
+            ? ActorType::AccountMember
+            : ActorType::Operator;
 
-        return [
-            'actor_type' => $actorType === ActorType::AccountMember->value ? ActorType::AccountMember->value : ActorType::Operator->value,
-            'operator' => $operator,
-            'subject' => $subject,
-            'org' => $org,
-            'env' => is_string($env) && $env !== '' ? $env : null,
-            'reason' => is_string($reason) && $reason !== '' ? $reason : null,
-            'started_at' => $startedAt,
-        ];
+        return new ImpersonationMarker(
+            actorType: $actorType,
+            operator: $operator,
+            subject: $subject,
+            organizationId: $org,
+            environmentKey: is_string($env) && $env !== '' ? $env : null,
+            reason: is_string($reason) && $reason !== '' ? $reason : null,
+            startedAt: $startedAt,
+        );
     }
 
     public function isImpersonating(): bool
@@ -250,6 +250,6 @@ final class Impersonation
             return 0;
         }
 
-        return max(0, self::MAX_MINUTES * 60 - (now()->getTimestamp() - $marker['started_at']));
+        return max(0, self::MAX_MINUTES * 60 - (now()->getTimestamp() - $marker->startedAt));
     }
 }

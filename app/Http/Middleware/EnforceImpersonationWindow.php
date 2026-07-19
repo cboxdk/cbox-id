@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\Impersonation;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,10 +31,10 @@ final class EnforceImpersonationWindow
     {
         $marker = $this->impersonation->active();
 
-        if ($marker !== null && now()->getTimestamp() - $marker['started_at'] > Impersonation::MAX_MINUTES * 60) {
+        if ($marker !== null && now()->getTimestamp() - $marker->startedAt > Impersonation::MAX_MINUTES * 60) {
             // Return to whichever control plane started it (exit() restores that
             // session): the env-admin console for an account member, else operator.
-            $isAccountMember = $marker['actor_type'] === ActorType::AccountMember->value;
+            $isAccountMember = $marker->isAccountMember();
             $this->impersonation->exit($request);
 
             return redirect()->route($isAccountMember ? 'environment.home' : 'operator.organizations')
