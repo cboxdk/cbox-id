@@ -102,8 +102,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         }
 
         // Tier 2 — on the platform root (cboxid.com), a standalone signup provisions
-        // the signer's own ACCOUNT: a workspace, its first member (them), and their
-        // first environment — their own IdP. Cbox ID is the product here. This runs
+        // the signer's own ACCOUNT: a workspace, its first member (them), a first
+        // project (their first IdP product), and that project's first environment —
+        // their own IdP. Cbox ID is the product here. This runs
         // before the Tier-1 checks below because it's a different plane entirely: the
         // signer becomes a global account member, not a Subject in Cbox's own
         // environment. During an SSO flow (joining an app) or on a customer's own

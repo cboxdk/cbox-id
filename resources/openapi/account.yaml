@@ -4,7 +4,8 @@ info:
   version: "1.0.0"
   description: |
     The **global account-management plane** — above every environment. Manage the
-    account, its environments, and its members with an account API key.
+    account, its **projects** (IdP products, each a billing anchor) and their
+    environments, and its members with an account API key.
 
     This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
     which is served on each environment's own host and authenticated with
@@ -25,6 +26,7 @@ security:
   - AccountApiKey: []
 tags:
   - name: Account
+  - name: Projects
   - name: Environments
   - name: Members
 paths:
@@ -32,7 +34,7 @@ paths:
     get:
       tags: [Account]
       summary: Get the account
-      description: Returns the account identity. The `plan` block is included only for keys whose role can read billing (owner/admin/billing/viewer — not developer).
+      description: Returns the account identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/billing/viewer — not developer).
       responses:
         "200":
           description: OK
@@ -43,6 +45,46 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/Account" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+  /account/projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      description: The account's projects (IdP products). Each carries its own plan and environment allowance.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Project" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Projects]
+      summary: Create a project
+      description: Stand up another independently-billed IdP product. Requires the `manage-environments` capability (owner/admin/developer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                environment_limit: { type: integer, minimum: 1, maximum: 100, description: "This project's plan environment allowance (default 2)." }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /account/environments:
     get:
       tags: [Environments]
@@ -74,6 +116,7 @@ paths:
               properties:
                 name: { type: string, maxLength: 120 }
                 type: { type: string, enum: [production, sandbox], default: production }
+                project_id: { type: string, description: "The project (billing anchor) to create the environment under. Defaults to the account's first project when omitted." }
       responses:
         "201":
           description: Created
@@ -90,7 +133,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-              example: { error: environment_limit_reached, message: "Account has reached its plan limit of 2 environment(s)." }
+              example: { error: environment_limit_reached, message: "Project [01J…] has reached its plan limit of 2 environment(s)." }
   /account/members:
     get:
       tags: [Members]
@@ -161,13 +204,19 @@ components:
         id: { type: string }
         name: { type: string }
         status: { type: string, enum: [active, suspended] }
-        plan:
-          type: object
-          description: Present only for billing-readers.
-          properties:
-            environment_limit: { type: integer }
-            environments_used: { type: integer }
-            environments_remaining: { type: integer }
+        projects:
+          type: array
+          description: The account's projects with each one's plan/allowance. Present only for billing-readers (plans are per project).
+          items: { $ref: "#/components/schemas/Project" }
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        environment_limit: { type: integer, description: This project's plan environment allowance. }
+        environments_used: { type: integer }
     Environment:
       type: object
       properties:
@@ -176,6 +225,7 @@ components:
         slug: { type: string }
         type: { type: string, enum: [production, sandbox] }
         status: { type: string }
+        project_id: { type: string, description: The project (billing anchor) this environment belongs to. }
         domain: { type: string, nullable: true }
         issuer:
           type: string

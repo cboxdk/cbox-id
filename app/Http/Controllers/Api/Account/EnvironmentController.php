@@ -99,6 +99,8 @@ final class EnvironmentController extends Controller
             'slug' => $environment->slug,
             'type' => $environment->type->value,
             'status' => $environment->status,
+            // Which project (billing anchor) this environment belongs to.
+            'project_id' => $environment->getAttribute('project_id'),
             'domain' => $environment->domain,
             'issuer' => 'https://'.($environment->domain ?? $environment->slug.'.'.$baseDomain),
         ];

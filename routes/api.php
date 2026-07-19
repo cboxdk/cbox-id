@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\Account\AccountController;
 use App\Http\Controllers\Api\Account\EnvironmentController;
 use App\Http\Controllers\Api\Account\MemberController;
+use App\Http\Controllers\Api\Account\ProjectController;
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\Environment\OrganizationController;
 use App\Http\Controllers\Api\Environment\UserController;
@@ -53,6 +54,10 @@ Route::middleware('throttle:120,1')
         // requires — reads are gated too, so a leaked developer/CI key can't
         // enumerate the member roster (PII) or read billing.
         Route::get('/', [AccountController::class, 'show'])->middleware('account.api');
+
+        // Projects (IdP products) — each its own billing anchor + environment allowance.
+        Route::get('projects', [ProjectController::class, 'index'])->middleware('account.api');
+        Route::post('projects', [ProjectController::class, 'store'])->middleware('account.api:manage-environments');
 
         Route::get('environments', [EnvironmentController::class, 'index'])->middleware('account.api');
         Route::post('environments', [EnvironmentController::class, 'store'])->middleware('account.api:manage-environments');
