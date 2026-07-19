@@ -9,6 +9,7 @@ use App\Platform\AccountApiContext;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,11 +43,12 @@ final class EnvironmentController extends Controller
         ]);
     }
 
-    public function store(Request $request, AccountApiContext $context, AccountProvisioner $provisioner): JsonResponse
+    public function store(Request $request, AccountApiContext $context, AccountProvisioner $provisioner, Projects $projects): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'type' => ['sometimes', Rule::enum(EnvironmentType::class)],
+            'project_id' => ['sometimes', 'string'],
         ]);
 
         $account = $context->key()?->account;
@@ -55,9 +57,19 @@ final class EnvironmentController extends Controller
             return response()->json(['error' => 'not_found', 'message' => 'Account not found.'], 404);
         }
 
+        // Environments belong to a project (the billing anchor). Target the requested
+        // project, or fall back to the account's first project for back-compat with
+        // callers that predate the project layer.
+        $projectId = $request->string('project_id')->toString();
+        $project = $projectId !== '' ? $projects->find($projectId) : $projects->forAccount($account->id)->first();
+
+        if ($project === null || $project->account_id !== $account->id) {
+            return response()->json(['error' => 'not_found', 'message' => 'Project not found.'], 404);
+        }
+
         try {
             $environment = $provisioner->addEnvironment(
-                $account,
+                $project,
                 $request->string('name')->toString(),
                 type: $request->enum('type', EnvironmentType::class) ?? EnvironmentType::Production,
             );

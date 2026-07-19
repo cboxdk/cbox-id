@@ -9,7 +9,7 @@
     // Nav is role-aware: API keys (high-privilege) only for member managers, Billing
     // only for roles that can manage it.
     $areas = array_values(array_filter([
-        ['route' => 'workspace.home', 'label' => 'Environments', 'icon' => 'layers'],
+        ['route' => 'workspace.home', 'label' => 'Projects', 'icon' => 'layers'],
         $member?->role->canReadMembers()
             ? ['route' => 'workspace.members', 'label' => 'Members', 'icon' => 'members']
             : null,

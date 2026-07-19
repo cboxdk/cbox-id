@@ -11,6 +11,7 @@ use Cbox\Id\Platform\Contracts\Accounts;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\Account;
 use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Livewire\Volt\Volt;
 
@@ -28,9 +29,9 @@ if (! function_exists('memberWithRole')) {
 
 if (! function_exists('provisionAccount')) {
     /**
-     * Provision an account and return its member/account/environment, for signing in.
+     * Provision an account and return its member/account/project/environment.
      *
-     * @return array{member: AccountMember, account: Account, environment: Environment}
+     * @return array{member: AccountMember, account: Account, project: Project, environment: Environment}
      */
     function provisionAccount(string $email = 'owner@acme.example'): array
     {
@@ -41,7 +42,7 @@ if (! function_exists('provisionAccount')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
-        return ['member' => $result->member, 'account' => $result->account, 'environment' => $result->environment];
+        return ['member' => $result->member, 'account' => $result->account, 'project' => $result->project, 'environment' => $result->environment];
     }
 }
 
@@ -55,27 +56,28 @@ it('redirects guests away from the workspace home', function (): void {
     $this->get(route('workspace.home'))->assertRedirect(route('workspace.login'));
 });
 
-it('renders the workspace home with the account\'s environments', function (): void {
-    ['member' => $member, 'environment' => $environment] = provisionAccount();
+it('renders the workspace home with the account\'s projects', function (): void {
+    ['member' => $member] = provisionAccount();
 
+    // Home is the Projects launchpad — the account's default project card, with its
+    // environment count.
     $this->withSession([AccountAuth::SESSION_KEY => $member->id])
         ->get(route('workspace.home'))
         ->assertOk()
-        ->assertSee('Acme')
-        ->assertSee($member->email)
-        ->assertSee($environment->name)
-        ->assertSee('1 of 2 used');
+        ->assertSee('Projects')
+        ->assertSee('Acme')          // the default project is named after the account
+        ->assertSee('1 of 2');       // 1 of 2 environments
 });
 
-it('links each environment out to its own host-resolved URL', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAccount();
+it('links each environment out to its own host-resolved URL on the project detail', function (): void {
+    ['member' => $member, 'project' => $project] = provisionAccount();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-    $staging = app(AccountProvisioner::class)->addEnvironment($account, 'Staging');
+    $staging = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
 
-    // The launchpad is stateless: it lists each environment as a link to its own
+    // The project detail lists each environment as a link to its own
     // {slug}.{base_domain} host — no session "current environment" is pinned.
     $this->withSession([AccountAuth::SESSION_KEY => $member->id])
-        ->get(route('workspace.home'))
+        ->get(route('workspace.projects.show', $project->id))
         ->assertOk()
         ->assertSee('https://acme.cboxid.com')
         ->assertSee('https://'.$staging->slug.'.cboxid.com');
@@ -93,8 +95,8 @@ it('renders the members roster with the signed-in member marked', function (): v
 });
 
 it('renders billing with the real environment allowance', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAccount();
-    app(AccountProvisioner::class)->addEnvironment($account, 'Staging');
+    ['member' => $member, 'project' => $project] = provisionAccount();
+    app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
 
     $this->withSession([AccountAuth::SESSION_KEY => $member->id])
         ->get(route('workspace.billing'))
@@ -137,18 +139,22 @@ it('redirects a member who cannot read billing away from it', function (): void 
 });
 
 it('shows a scoped member only the environments they are granted', function (): void {
-    ['account' => $account] = provisionAccount();
+    ['account' => $account, 'project' => $project] = provisionAccount();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-    $staging = app(AccountProvisioner::class)->addEnvironment($account, 'Staging');
+    $staging = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
 
     $dev = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
     app(AccountMembers::class)->setEnvironmentAccess($dev->id, all: false, environmentIds: [$staging->id]);
 
+    // They see the project (it holds a reachable env)…
     $this->withSession([AccountAuth::SESSION_KEY => $dev->id])
-        ->get(route('workspace.home'))
+        ->get(route('workspace.home'))->assertOk()->assertSee('Acme');
+
+    // …and inside it, only their granted environment — production is outside the grant.
+    $this->withSession([AccountAuth::SESSION_KEY => $dev->id])
+        ->get(route('workspace.projects.show', $project->id))
         ->assertOk()
         ->assertSee('acme-staging.cboxid.com')
-        // Production (acme.cboxid.com) is outside their grant — not shown.
         ->assertDontSee('https://acme.cboxid.com');
 });
 
@@ -191,8 +197,8 @@ it('lets an owner remove a member and transfer ownership', function (): void {
 });
 
 it('scopes a member to specific environments via the access editor', function (): void {
-    ['account' => $account, 'member' => $owner] = provisionAccount();
-    $staging = app(AccountProvisioner::class)->addEnvironment($account, 'Staging');
+    ['account' => $account, 'member' => $owner, 'project' => $project] = provisionAccount();
+    $staging = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
     $dev = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
     session()->put(AccountAuth::SESSION_KEY, $owner->id);
 
@@ -232,25 +238,42 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
         ->assertDontSee('Invite a teammate');
 });
 
-it('adds an environment from the home screen up to the plan limit', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAccount();
-
-    // The home component resolves the signed-in member from the session.
+it('adds an environment to a project up to its plan limit, then refuses', function (): void {
+    ['member' => $member, 'project' => $project] = provisionAccount();
     session()->put(AccountAuth::SESSION_KEY, $member->id);
 
-    // Limit 2, one used → adding one succeeds and it becomes visible.
-    Volt::test('workspace.home')
+    // The project's limit is 2, one used → adding one succeeds.
+    Volt::test('workspace.projects.show', ['project' => $project->id])
         ->set('newEnvironment', 'Staging')
         ->call('addEnvironment')
         ->assertHasNoErrors();
 
-    expect(Environment::query()->where('account_id', $account->id)->count())->toBe(2);
+    expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 
     // The third is refused by the plan, with a friendly error rather than a throw.
-    Volt::test('workspace.home')
+    Volt::test('workspace.projects.show', ['project' => $project->id])
         ->set('newEnvironment', 'Dev')
         ->call('addEnvironment')
         ->assertHasErrors('newEnvironment');
 
-    expect(Environment::query()->where('account_id', $account->id)->count())->toBe(2);
+    expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
+});
+
+it('lets a member create a second project and drills into it empty', function (): void {
+    ['member' => $member] = provisionAccount();
+    session()->put(AccountAuth::SESSION_KEY, $member->id);
+
+    Volt::test('workspace.projects.create')
+        ->set('name', 'Product Two')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $project = Project::query()->where('name', 'Product Two')->firstOrFail();
+
+    // A brand-new project starts with no environments — the member adds them there.
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id])
+        ->get(route('workspace.projects.show', $project->id))
+        ->assertOk()
+        ->assertSee('Product Two')
+        ->assertSee('No environments yet');
 });

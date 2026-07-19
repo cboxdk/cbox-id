@@ -396,7 +396,11 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
     Route::post('/logout', [WorkspaceController::class, 'logout'])->name('workspace.logout');
 
     Route::middleware(AuthenticateAccountMember::class)->group(function (): void {
+        // The account's Projects (IdP products) — the launchpad. Each project holds
+        // its own environments + plan; a project opens to its environments detail.
         Volt::route('/', 'workspace.home')->name('workspace.home');
+        Volt::route('/projects/new', 'workspace.projects.create')->name('workspace.projects.create');
+        Volt::route('/projects/{project}', 'workspace.projects.show')->name('workspace.projects.show');
 
         // Open an environment → signed handoff → its own admin console (no second login).
         Route::get('/open/{environment}', [WorkspaceController::class, 'openEnvironment'])->name('workspace.environment.open');
