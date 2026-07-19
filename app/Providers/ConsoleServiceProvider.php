@@ -62,7 +62,8 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('audit-streams', 'Log streaming', order: 20);
 
         $nav->area('settings', 'Settings', 'settings', 70)
-            ->page('settings', 'Settings', order: 10);
+            ->page('settings', 'Settings', order: 10)
+            ->page('appearance', 'Appearance', order: 20);
 
         // Every user's own security — shown to members and admins alike (the app
         // layout gates the admin-only areas above by role, this one is universal).

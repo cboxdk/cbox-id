@@ -1,9 +1,23 @@
 @props(['title' => null])
 @php
+    use App\Platform\Appearance\Appearance;
+    use App\Platform\Appearance\AppearanceCss;
+
+    // The signing-in organization's brand (shared as `cboxBrand` when reached via its
+    // slug). Its stored settings drive the full sign-in appearance via the Theme Editor.
     $brand = $cboxBrand ?? null;
-    $brandColor = is_array($brand) && is_string($brand['color'] ?? null) && preg_match('/^#[0-9a-fA-F]{3,8}$/', $brand['color']) ? $brand['color'] : null;
-    $brandLogo = is_array($brand) && is_string($brand['logo'] ?? null) ? $brand['logo'] : null;
+    $settings = is_array($brand['settings'] ?? null) ? $brand['settings'] : null;
+
     $brandName = is_array($brand) && is_string($brand['name'] ?? null) ? $brand['name'] : null;
+    $brandLogo = $settings !== null && is_string($settings['brand_logo_url'] ?? null)
+        ? $settings['brand_logo_url']
+        : (is_array($brand) && is_string($brand['logo'] ?? null) ? $brand['logo'] : null);
+
+    // Inject the custom theme only when the org actually customized (a full appearance
+    // block, or legacy brand_color) — otherwise the platform default (app.css) stands.
+    $hasCustomAppearance = $settings !== null
+        && (is_array($settings['appearance'] ?? null) || Appearance::hex($settings['brand_color'] ?? null) !== null);
+    $appearanceCss = $hasCustomAppearance ? AppearanceCss::render(Appearance::fromSettings($settings)) : null;
 @endphp
 <!DOCTYPE html>
 <html lang="en" class="h-full">
@@ -18,9 +32,9 @@
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
     <title>{{ ($brandName ?? config('cbox-id.branding.name', 'Cbox ID')) === null ? '' : (($title ? $title.' · ' : '').($brandName ?? config('cbox-id.branding.name', 'Cbox ID'))) }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @if ($brandColor)
-        <style>:root{--accent:{{ $brandColor }};--ring:{{ $brandColor }}}</style>
-    @endif
+    {{-- The organization's custom sign-in theme (Theme Editor). Coherent token
+         override for light + dark; absent → the platform default stands. --}}
+    @if ($appearanceCss){!! $appearanceCss !!}@endif
     {{-- Full per-tenant palette when the whitelabel plugin is installed; inert otherwise. --}}
     @consoleBrandingStyle
 </head>

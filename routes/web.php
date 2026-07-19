@@ -165,6 +165,7 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/webhooks', 'webhooks')->name('webhooks');
     Volt::route('/audit', 'audit')->name('audit');
     Volt::route('/settings', 'settings')->name('settings');
+    Volt::route('/appearance', 'appearance')->name('appearance');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     Volt::route('/governance', 'governance')->name('governance');

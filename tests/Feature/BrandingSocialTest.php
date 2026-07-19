@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Appearance\Appearance;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -11,14 +12,15 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
-it('lets an admin set org branding and themes the branded login page', function () {
+it('lets an admin theme the branded login page via the appearance editor', function () {
     [, $org] = actingAsRole('owner');
 
-    Volt::test('settings')
-        ->set('brandColor', '#0ea5e9')
-        ->set('brandLogoUrl', 'https://acme.test/logo.svg')
-        ->call('saveBranding')
-        ->assertHasNoErrors();
+    // Branding now lives in the dedicated Appearance editor (Theme Editor), which
+    // writes the full appearance block AND keeps the legacy brand_color in sync.
+    $theme = Appearance::fromPreset('cbox')->toArray();
+    $theme['light']['primary'] = '#0ea5e9';
+
+    Volt::test('appearance')->call('save', $theme)->assertHasNoErrors();
 
     expect(app(Organizations::class)->find($org->id)?->settings)->toMatchArray([
         'brand_color' => '#0ea5e9',
@@ -30,10 +32,11 @@ it('lets an admin set org branding and themes the branded login page', function 
         ->assertSee($org->name);        // org name on the branded panel
 });
 
-it('rejects an invalid brand colour', function () {
+it('points org settings at the appearance editor', function () {
     actingAsRole('owner');
 
-    Volt::test('settings')->set('brandColor', 'red')->call('saveBranding')->assertHasErrors('brandColor');
+    // The old inline brand-colour form is gone; settings now links to the editor.
+    Volt::test('settings')->assertSee(route('appearance'));
 });
 
 it('redirects a member away from org settings to their own account', function () {

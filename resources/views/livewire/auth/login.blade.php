@@ -53,10 +53,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         $org = app(Organizations::class)->bySlug($slug);
 
         if ($org !== null) {
+            // Carry the org's whole settings bag — the auth layout resolves both the
+            // logo and the full custom sign-in appearance (Theme Editor) from it.
             View::share('cboxBrand', [
                 'name' => $org->name,
-                'color' => is_string($org->settings['brand_color'] ?? null) ? $org->settings['brand_color'] : null,
-                'logo' => is_string($org->settings['brand_logo_url'] ?? null) ? $org->settings['brand_logo_url'] : null,
+                'settings' => is_array($org->settings) ? $org->settings : [],
             ]);
         }
     }

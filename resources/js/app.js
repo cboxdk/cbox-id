@@ -307,3 +307,94 @@
         }).catch(() => {});
     });
 })();
+
+// ── Theme Editor — the live, client-side sign-in appearance editor.
+// Registered as an Alpine component (bundled, so it runs under the strict CSP that
+// forbids inline scripts). Editing and preview are entirely client-side for zero
+// latency — Livewire is touched only on Save. The derivation here MIRRORS the PHP
+// App\Platform\Appearance\AppearanceCss resolver so the live preview matches the
+// rendered hosted page exactly.
+document.addEventListener('alpine:init', () => {
+    if (!window.Alpine) return;
+
+    window.Alpine.data('themeEditor', (initial, presets, fonts, radii) => ({
+        draft: JSON.parse(JSON.stringify(initial)),
+        presets, fonts, radii,
+        mode: 'light',       // which mode is being edited + previewed
+        saved: false,
+        copied: '',
+        hexRe: /^#[0-9a-fA-F]{6}$/,
+
+        get m() { return this.draft[this.mode]; },
+
+        applyPreset(id) {
+            const p = this.presets[id];
+            if (!p) return;
+            this.draft.preset = id;
+            this.draft.radius = p.radius;
+            this.draft.font = p.font;
+            this.draft.light = Object.assign({}, p.light);
+            this.draft.dark = Object.assign({}, p.dark);
+        },
+
+        setColor(token, value) {
+            if (this.hexRe.test(value)) this.m[token] = value.toLowerCase();
+        },
+
+        fontStack(f) { return this.fonts[f] || this.fonts.system; },
+        fontLabel(f) { return { system: 'System', geometric: 'Geometric', serif: 'Serif' }[f] || f; },
+        radiusLabel(r) { return { '0rem': 'Square', '0.25rem': 'XS', '0.375rem': 'S', '0.5rem': 'M', '0.75rem': 'L', '1rem': 'XL' }[r] || r; },
+
+        // WCAG maths — mirrors App\Platform\Appearance\Color.
+        _chan(hex) { hex = hex.replace('#', ''); return [0, 2, 4].map((i) => parseInt(hex.substr(i, 2), 16) / 255); },
+        _lum(hex) { const [r, g, b] = this._chan(hex).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; },
+        contrast(a, b) { const la = this._lum(a), lb = this._lum(b); return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05); },
+        readable(bg) { return this.contrast(bg, '#ffffff') >= this.contrast(bg, '#151515') ? '#ffffff' : '#151515'; },
+
+        // The AA readout for the currently-edited mode (primary on background).
+        get aa() {
+            const r = this.contrast(this.m.primary, this.m.background);
+            return { ratio: r.toFixed(2), level: r >= 7 ? 'AAA' : r >= 4.5 ? 'AA' : r >= 3 ? 'AA Large' : 'Fail', pass: r >= 4.5 };
+        },
+
+        // CSS-variable map for the preview surface — identical derivation to the resolver.
+        vars(mode) {
+            const m = this.draft[mode];
+            const on = this.readable(m.primary);
+            return {
+                '--accent': m.primary, '--ring': m.primary, '--accent-foreground': on,
+                '--accent-soft': `color-mix(in srgb, ${m.primary} 12%, transparent)`,
+                '--accent-edge': `color-mix(in srgb, ${m.primary} 32%, transparent)`,
+                '--background': m.background, '--foreground': m.foreground,
+                '--card': m.background, '--card-foreground': m.foreground,
+                '--secondary': `color-mix(in srgb, ${m.foreground} 6%, ${m.background})`, '--secondary-foreground': m.foreground,
+                '--muted-foreground': m.muted, '--faint': `color-mix(in srgb, ${m.muted} 65%, ${m.background})`,
+                '--border': `color-mix(in srgb, ${m.foreground} 14%, ${m.background})`,
+                '--input': `color-mix(in srgb, ${m.foreground} 22%, ${m.background})`,
+                '--radius': this.draft.radius, '--font-sans': this.fontStack(this.draft.font),
+                background: m.background, color: m.foreground,
+            };
+        },
+
+        // Exported CSS — same shape the server injects.
+        get exportedCss() {
+            const block = (mode) => {
+                const v = this.vars(mode);
+                delete v.background; delete v.color;
+                if (mode === 'dark') { delete v['--radius']; delete v['--font-sans']; }
+                return Object.entries(v).map(([k, val]) => `${k}:${val}`).join(';');
+            };
+            return `:root{${block('light')}}\n@media(prefers-color-scheme:dark){:root:not([data-theme='light']){${block('dark')}}}\n:root[data-theme='dark']{${block('dark')}}`;
+        },
+
+        copy(kind) {
+            const text = kind === 'json' ? JSON.stringify(this.draft, null, 2) : this.exportedCss;
+            if (!(navigator.clipboard && navigator.clipboard.writeText)) return;
+            navigator.clipboard.writeText(text).then(() => { this.copied = kind; setTimeout(() => { this.copied = ''; }, 1500); }).catch(() => {});
+        },
+
+        save() {
+            this.$wire.save(this.draft).then(() => { this.saved = true; setTimeout(() => { this.saved = false; }, 2200); });
+        },
+    }));
+});

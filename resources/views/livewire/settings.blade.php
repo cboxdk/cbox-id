@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -16,10 +15,6 @@ use Livewire\Volt\Component;
 new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends Component
 {
     public string $orgName = '';
-
-    public string $brandColor = '';
-
-    public string $brandLogoUrl = '';
 
     public function mount(): void
     {
@@ -34,9 +29,6 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 
         $org = app(CurrentUser::class)->organization();
         $this->orgName = $org?->name ?? '';
-        $settings = $org?->settings ?? [];
-        $this->brandColor = is_string($settings['brand_color'] ?? null) ? $settings['brand_color'] : '';
-        $this->brandLogoUrl = is_string($settings['brand_logo_url'] ?? null) ? $settings['brand_logo_url'] : '';
     }
 
     public function rename(AuditLog $audit): void
@@ -61,28 +53,6 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
         ]));
 
         session()->flash('status', 'Organization name updated.');
-    }
-
-    public function saveBranding(Organizations $organizations): void
-    {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
-
-        $this->validate([
-            'brandColor' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'brandLogoUrl' => ['nullable', 'url', 'max:500'],
-        ], [
-            'brandColor.regex' => 'Use a 6-digit hex colour, e.g. #4f46e5.',
-        ]);
-
-        $orgId = app(CurrentUser::class)->organizationId();
-
-        if ($orgId !== null) {
-            $organizations->updateSettings($orgId, [
-                'brand_color' => $this->brandColor ?: null,
-                'brand_logo_url' => $this->brandLogoUrl ?: null,
-            ]);
-            session()->flash('status', 'Branding saved.');
-        }
     }
 
     public function with(): array
@@ -148,24 +118,22 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                 </div>
             </div>
             <div class="cbx-panel-body">
-                <form wire:submit="saveBranding" class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="label" for="brandColor">Primary colour</label>
-                        <div class="flex items-center gap-2">
-                            <input wire:model.live.debounce.400ms="brandColor" id="brandColor" type="text" class="input mono" placeholder="#4f46e5" style="flex:1">
-                            <span class="rounded-md shrink-0" style="width:2.4rem;height:2.4rem;border:1px solid var(--border);background:{{ preg_match('/^#[0-9a-fA-F]{6}$/', $brandColor) ? $brandColor : 'var(--surface-2)' }}"></span>
+                @php $ap = \App\Platform\Appearance\Appearance::fromSettings(is_array($org?->settings) ? $org->settings : []); @endphp
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="grid grid-cols-2 grid-rows-2 w-10 h-10 rounded-lg overflow-hidden shrink-0" style="border:1px solid var(--border)" aria-hidden="true">
+                            <span style="background:{{ $ap->light['background'] }}"></span>
+                            <span style="background:{{ $ap->light['primary'] }}"></span>
+                            <span style="background:{{ $ap->dark['background'] }}"></span>
+                            <span style="background:{{ $ap->dark['primary'] }}"></span>
+                        </span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium">{{ \App\Platform\Appearance\ThemePresets::all()[$ap->preset]['label'] ?? 'Custom' }} theme</p>
+                            <p class="text-xs" style="color:var(--muted-foreground)">Presets, colours, corners &amp; type — edited with a live preview.</p>
                         </div>
-                        @error('brandColor') <p class="field-error">{{ $message }}</p> @enderror
                     </div>
-                    <div>
-                        <label class="label" for="brandLogoUrl">Logo URL (https)</label>
-                        <input wire:model="brandLogoUrl" id="brandLogoUrl" type="url" class="input" placeholder="https://acme.com/logo.svg">
-                        @error('brandLogoUrl') <p class="field-error">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="sm:col-span-2">
-                        <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Save branding</button>
-                    </div>
-                </form>
+                    <a href="{{ route('appearance') }}" class="btn btn-secondary shrink-0">Open editor <x-icon name="chevron" class="w-4 h-4" style="transform:rotate(-90deg)" /></a>
+                </div>
             </div>
         </section>
     @endif
