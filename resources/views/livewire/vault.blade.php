@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
+use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Livewire\Attributes\Layout;
@@ -46,7 +47,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $this->validateOnly('provider');
         $this->validateOnly('secret');
 
-        $vault->store($this->name, $this->provider, $this->secret, 'organization', $this->orgId());
+        $vault->store($this->name, $this->provider, $this->secret, VaultOwner::organization($this->orgId()));
 
         $this->reset('name', 'provider', 'secret', 'creating');
         session()->flash('status', 'Secret sealed and stored — its value is never shown again.');
@@ -64,7 +65,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $this->authorizeSecret($id);
         $this->validateOnly('rotateSecret');
 
-        $vault->rotate($id, $this->rotateSecret);
+        $vault->rotate($id, $this->rotateSecret, VaultOwner::organization($this->orgId()));
 
         $this->reset('rotating', 'rotateSecret');
         session()->flash('status', 'Secret rotated — the sealed value was replaced.');
@@ -74,7 +75,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
     {
         $this->authorizeSecret($id);
 
-        $vault->revoke($id);
+        $vault->revoke($id, VaultOwner::organization($this->orgId()));
         session()->flash('status', 'Secret revoked — no future lease can open it.');
     }
 
@@ -90,7 +91,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $this->authorizeSecret($id);
         $this->validateOnly('grantClient');
 
-        $vault->grant($id, $this->grantClient);
+        $vault->grant($id, $this->grantClient, VaultOwner::organization($this->orgId()));
 
         $this->reset('grantClient');
         session()->flash('status', 'Access granted.');
@@ -100,7 +101,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
     {
         $this->authorizeSecret($id);
 
-        $vault->revokeGrant($id, $clientId);
+        $vault->revokeGrant($id, $clientId, VaultOwner::organization($this->orgId()));
         session()->flash('status', 'Access revoked.');
     }
 
