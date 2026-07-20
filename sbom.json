@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:e3f691aa-6f87-4b3f-a16f-a36fef59669f",
+    "serialNumber": "urn:uuid:137c2d8c-10c1-49b3-8d0c-8eda2afb735d",
     "version": 1,
     "metadata": {
         "tools": [
@@ -133,11 +133,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.27.2",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.30.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.27.2",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.27.2",
+            "version": "v0.30.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.30.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -235,22 +235,6 @@
             "version": "v1.0.0",
             "purl": "pkg:composer/cboxdk/laravel-telemetry@v1.0.0",
             "description": "Collector-free telemetry for Laravel: Prometheus metrics, OTLP traces and events. No C extension, no protobuf, no sidecar \u2014 metrics that actually work under FPM.",
-            "licenses": [
-                {
-                    "license": {
-                        "id": "MIT"
-                    }
-                }
-            ]
-        },
-        {
-            "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/license@v0.1.1",
-            "group": "cboxdk",
-            "name": "license",
-            "version": "v0.1.1",
-            "purl": "pkg:composer/cboxdk/license@v0.1.1",
-            "description": "Framework-agnostic, offline license core: mint and verify compact Ed25519-signed license artifacts (EdDSA JWTs) with entitlements, limits, deployment/domain binding, grace windows and signed revocation lists. The shared leaf both a billing issuer and a self-hosted verifier depend on.",
             "licenses": [
                 {
                     "license": {
@@ -437,11 +421,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.0",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.15.0",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.0",
+            "version": "7.15.1",
+            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -787,11 +771,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/nette/utils@v4.1.4",
+            "bom-ref": "pkg:composer/nette/utils@v4.1.5",
             "group": "nette",
             "name": "utils",
-            "version": "v4.1.4",
-            "purl": "pkg:composer/nette/utils@v4.1.4",
+            "version": "v4.1.5",
+            "purl": "pkg:composer/nette/utils@v4.1.5",
             "description": "\ud83d\udee0  Nette Utils: lightweight utilities for string & array manipulation, image handling, safe JSON encoding/decoding, validation, slug or strong password generating etc.",
             "licenses": [
                 {

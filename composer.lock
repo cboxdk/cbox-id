@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ce447bd7b55a561adccd5baa08ec815c",
+    "content-hash": "7d92d58471dbabbf7e82c6b6201328a4",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -493,22 +493,21 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.29.3",
+            "version": "v0.30.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "9ab95fa60d9082b0f024b7d7443dfd4f3c1a2585"
+                "reference": "bcda34e15d0483313176b574c2581ac331db631e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/9ab95fa60d9082b0f024b7d7443dfd4f3c1a2585",
-                "reference": "9ab95fa60d9082b0f024b7d7443dfd4f3c1a2585",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/bcda34e15d0483313176b574c2581ac331db631e",
+                "reference": "bcda34e15d0483313176b574c2581ac331db631e",
                 "shasum": ""
             },
             "require": {
                 "cboxdk/laravel-siem": "^0.1",
                 "cboxdk/laravel-ssrf": "^1.0",
-                "cboxdk/license": "^0.1",
                 "cboxdk/siem": "^0.1",
                 "ext-openssl": "*",
                 "ext-sodium": "*",
@@ -565,9 +564,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.29.3"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.30.0"
             },
-            "time": "2026-07-20T07:27:24+00:00"
+            "time": "2026-07-20T10:34:48+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",
@@ -1074,70 +1073,6 @@
                 "source": "https://github.com/cboxdk/laravel-telemetry"
             },
             "time": "2026-07-15T19:45:14+00:00"
-        },
-        {
-            "name": "cboxdk/license",
-            "version": "v0.1.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/cboxdk/license.git",
-                "reference": "1f370f5d30c064e3b39a1444abfedf1ee325cfd9"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/license/zipball/1f370f5d30c064e3b39a1444abfedf1ee325cfd9",
-                "reference": "1f370f5d30c064e3b39a1444abfedf1ee325cfd9",
-                "shasum": ""
-            },
-            "require": {
-                "ext-sodium": "*",
-                "firebase/php-jwt": "^7.1",
-                "php": "^8.4"
-            },
-            "require-dev": {
-                "laravel/pint": "^1.18",
-                "pestphp/pest": "^3.5 || ^4.0",
-                "phpstan/phpstan": "^2.0"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Cbox\\License\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Sylvester Damgaard",
-                    "email": "sn@cbox.dk",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Framework-agnostic, offline license core: mint and verify compact Ed25519-signed license artifacts (EdDSA JWTs) with entitlements, limits, deployment/domain binding, grace windows and signed revocation lists. The shared leaf both a billing issuer and a self-hosted verifier depend on.",
-            "homepage": "https://github.com/cboxdk/license",
-            "keywords": [
-                "Ed25519",
-                "EdDSA",
-                "crypto",
-                "entitlements",
-                "framework-agnostic",
-                "jwt",
-                "license",
-                "license-key",
-                "licensing",
-                "offline",
-                "php",
-                "revocation",
-                "signature"
-            ],
-            "support": {
-                "issues": "https://github.com/cboxdk/license/issues",
-                "source": "https://github.com/cboxdk/license/tree/v0.1.1"
-            },
-            "time": "2026-07-16T22:25:40+00:00"
         },
         {
             "name": "cboxdk/siem",
