@@ -27,7 +27,13 @@ function envAdminSetup(): array
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    return ['member' => $r->member, 'account' => $r->account, 'envId' => $r->environment->id];
+    return [
+        'member' => $r->member,
+        'account' => $r->account,
+        'envId' => $r->environment->id,
+        // The env's {slug}.{base_domain} tenant host (with base_domains = ['cboxid.com']).
+        'host' => $r->environment->slug.'.cboxid.com',
+    ];
 }
 
 it('authenticates an account member as admin ONLY on their environment\'s host (anti-bleed)', function (): void {
@@ -130,4 +136,37 @@ it('refuses a handoff minted for a different environment than the host', functio
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
     expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+});
+
+it('bounces an unauthenticated tenant admin to the ROOT open-environment handoff (multi-tenant pull flow)', function (): void {
+    ['envId' => $envId, 'host' => $host] = envAdminSetup();
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+
+    // No credential form on the tenant host — the admin is sent to the root's
+    // "open environment" door, which authenticates once and hands off back here.
+    $this->get("https://{$host}/admin/organizations")
+        ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
+});
+
+it('also bounces the local admin login FORM to the root on a multi-tenant deployment', function (): void {
+    ['envId' => $envId, 'host' => $host] = envAdminSetup();
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+
+    // Directly navigating to the tenant credential form is closed off too — account
+    // credentials are never entered on a tenant-controlled host.
+    $this->get("https://{$host}/admin/login")
+        ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
+});
+
+it('uses the local admin door on a single-host deployment (no base domains)', function (): void {
+    ['envId' => $envId] = envAdminSetup();
+    config([
+        'cbox-id.environments.default' => $envId,
+        'cbox-id.environments.base_domains' => [],
+    ]);
+
+    // Self-hosted single tenant: the account console and this admin console share an
+    // origin, so the local form is fine and stays put.
+    $this->get('/admin/organizations')->assertRedirect(route('admin.login'));
+    $this->get('/admin/login')->assertOk();
 });

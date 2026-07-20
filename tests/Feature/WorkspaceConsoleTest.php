@@ -56,6 +56,16 @@ it('redirects guests away from the workspace home', function (): void {
     $this->get(route('workspace.home'))->assertRedirect(route('workspace.login'));
 });
 
+it('remembers the intended destination when a guest hits open-environment (handoff round-trip)', function (): void {
+    ['environment' => $environment] = provisionAccount();
+
+    // A guest bounced here from a tenant admin console must, after signing in, land
+    // back on the mint step — so the intended URL is stashed for redirect()->intended().
+    $this->get(route('workspace.environment.open', $environment->id))
+        ->assertRedirect(route('workspace.login'))
+        ->assertSessionHas('url.intended', route('workspace.environment.open', $environment->id));
+});
+
 it('renders the workspace home with the account\'s projects', function (): void {
     ['member' => $member] = provisionAccount();
 

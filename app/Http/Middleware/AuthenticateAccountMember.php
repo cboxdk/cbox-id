@@ -25,6 +25,12 @@ final class AuthenticateAccountMember
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->auth->check()) {
+            // Remember where they were headed so sign-in returns them there. This is
+            // what lets the tenant→root admin handoff round-trip: an unauthenticated
+            // admin bounced here to /open/{env} signs in once and lands back on the
+            // mint step, which hands off to the environment console.
+            $request->session()->put('url.intended', $request->fullUrl());
+
             return redirect()->route('workspace.login');
         }
 

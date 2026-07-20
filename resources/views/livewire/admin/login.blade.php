@@ -34,6 +34,26 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
 
     public string $pendingMemberId = '';
 
+    public function mount(EnvironmentContext $environments)
+    {
+        // On a multi-tenant deployment the admin door lives at the ROOT — account
+        // credentials are never entered on a tenant-controlled host (see
+        // {@see \App\Http\Middleware\AuthenticateEnvironmentAdmin}). If someone reaches
+        // this local form directly, bounce them to the root's "open environment"
+        // handoff for THIS environment so they authenticate once, at the root.
+        $bases = config('cbox-id.environments.base_domains', []);
+        $root = is_array($bases) && isset($bases[0]) && is_string($bases[0]) && $bases[0] !== ''
+            ? $bases[0]
+            : null;
+        $environment = $environments->current();
+
+        if ($root !== null && $environment !== null) {
+            return redirect()->away(
+                'https://'.$root.route('workspace.environment.open', $environment->environmentKey(), false)
+            );
+        }
+    }
+
     public function authenticate(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth): void
     {
         $this->validate(['email' => 'required|email', 'password' => 'required|string']);

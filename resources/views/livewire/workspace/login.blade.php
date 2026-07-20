@@ -24,7 +24,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     public function mount(AccountAuth $auth)
     {
         if ($auth->check()) {
-            return redirect()->route('workspace.home');
+            return redirect()->intended(route('workspace.home'));
         }
     }
 
@@ -58,11 +58,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
         RateLimiter::clear($key);
 
         // A confirmed second factor holds the member at the challenge — no full
-        // session exists yet. Otherwise the session is already established.
-        $this->redirect(
-            route($result === AttemptOutcome::Mfa ? 'workspace.login.mfa' : 'workspace.home'),
-            navigate: false,
-        );
+        // session exists yet, so leave url.intended in place for the MFA step to honor.
+        // Otherwise the session is established: return them to where they were headed
+        // (e.g. the /open/{env} handoff mint that bounced them here), else the home.
+        if ($result === AttemptOutcome::Mfa) {
+            $this->redirect(route('workspace.login.mfa'), navigate: false);
+
+            return;
+        }
+
+        $this->redirect(session()->pull('url.intended', route('workspace.home')), navigate: false);
     }
 }; ?>
 
