@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
@@ -23,23 +22,26 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] class extends Component
 {
-    public function approve(string $id): void
-    {
-        $request = $this->pendingRequest($id);
-
-        app(BackchannelAuthentication::class)->approve(
-            $request->id,
-            app(EnvironmentAdminAuth::class)->current()?->id ?? '',
-        );
-
-        session()->flash('status', 'Request approved.');
-    }
-
+    /*
+     * There is deliberately NO approve() here.
+     *
+     * A CIBA approval is the USER's consent for an agent to act as them, and the token
+     * that follows is minted for that user — so an operator approving on their behalf
+     * would be granting consent they were never asked for. That is the same bypass the
+     * service layer now refuses (approve() requires the acting subject to BE the
+     * request's subject), and this console previously passed the env-admin's own member
+     * id, which could never match: the button silently did nothing.
+     *
+     * Denying is the safe half of the pair — it withholds access rather than granting it
+     * — so an operator keeps the ability to shut a pending request down.
+     */
     public function deny(string $id): void
     {
         $request = $this->pendingRequest($id);
 
-        app(BackchannelAuthentication::class)->deny($request->id);
+        // Act as the request's own subject: denial cannot grant anything, so this is a
+        // fail-closed operator action rather than consent on someone else's behalf.
+        app(BackchannelAuthentication::class)->deny($request->id, $request->user_id);
 
         session()->flash('status', 'Request denied.');
     }
@@ -138,8 +140,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
                 @endif
 
                 <div class="mt-5 flex gap-2.5">
-                    <button type="button" wire:click="approve('{{ $request['id'] }}')" class="btn btn-primary" wire:loading.attr="disabled">Approve</button>
-                    <button type="button" wire:click="deny('{{ $request['id'] }}')" wire:confirm="Deny this request?" class="btn btn-ghost" style="color:var(--destructive)" wire:loading.attr="disabled">Deny</button>
+                    <button type="button" wire:click="deny('{{ $request['id'] }}')" wire:confirm="Deny this request?" class="btn btn-danger" style="color:var(--destructive)" wire:loading.attr="disabled">Deny</button>
                 </div>
             </div>
         @empty
