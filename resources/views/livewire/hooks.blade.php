@@ -41,19 +41,19 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 
     public function pause(string $endpointId, ExternalActions $actions): void
     {
-        $actions->pause($endpointId);
+        $actions->pause($endpointId, $this->orgId());
         session()->flash('status', 'Endpoint paused.');
     }
 
     public function activate(string $endpointId, ExternalActions $actions): void
     {
-        $actions->activate($endpointId);
+        $actions->activate($endpointId, $this->orgId());
         session()->flash('status', 'Endpoint activated.');
     }
 
     public function remove(string $endpointId, ExternalActions $actions): void
     {
-        $actions->remove($endpointId);
+        $actions->remove($endpointId, $this->orgId());
         session()->flash('status', 'Endpoint removed.');
     }
 

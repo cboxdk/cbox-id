@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cbox\Id\TokenVault\Contracts\SecretVault;
+use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Livewire\Attributes\Layout;
@@ -65,7 +66,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         $secret = $this->secret();
         $this->validateOnly('rotateSecret');
 
-        $vault->rotate($secret->id, $this->rotateSecret);
+        $vault->rotate($secret->id, $this->rotateSecret, VaultOwner::fromRow($secret->owner_type, $secret->owner_id));
 
         $this->reset('rotating', 'rotateSecret');
         session()->flash('status', 'Secret rotated — the sealed value was replaced.');
@@ -76,7 +77,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         $secret = $this->secret();
         $this->validateOnly('grantClient');
 
-        $vault->grant($secret->id, $this->grantClient);
+        $vault->grant($secret->id, $this->grantClient, VaultOwner::fromRow($secret->owner_type, $secret->owner_id));
 
         $this->reset('grantClient');
         session()->flash('status', 'Access granted.');
@@ -84,13 +85,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
     public function revokeGrant(string $clientId, SecretVault $vault): void
     {
-        $vault->revokeGrant($this->secret()->id, $clientId);
+        $vault->revokeGrant($this->secret()->id, $clientId, VaultOwner::fromRow($this->secret()->owner_type, $this->secret()->owner_id));
         session()->flash('status', 'Access revoked.');
     }
 
     public function revoke(SecretVault $vault): mixed
     {
-        $vault->revoke($this->secret()->id);
+        $vault->revoke($this->secret()->id, VaultOwner::fromRow($this->secret()->owner_type, $this->secret()->owner_id));
 
         session()->flash('status', 'Secret revoked — no future lease can open it.');
 

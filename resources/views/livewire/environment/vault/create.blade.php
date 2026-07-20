@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
+use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -45,7 +46,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New stored token'])]
         // Scope to an organization only when one is chosen; otherwise the secret is
         // environment-wide. Both stay within this environment (BelongsToEnvironment).
         $model = $this->ownerId !== ''
-            ? $vault->store($this->name, $this->provider, $this->secret, 'organization', $this->ownerId)
+            ? $vault->store($this->name, $this->provider, $this->secret, VaultOwner::organization($this->ownerId))
             : $vault->store($this->name, $this->provider, $this->secret);
 
         session()->flash('status', 'Secret sealed and stored — its value is never shown again.');

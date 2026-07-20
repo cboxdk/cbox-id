@@ -11,6 +11,7 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
+use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
@@ -51,7 +52,7 @@ it('stores a secret sealed at rest, scoped to the org', function (): void {
 
 it('grants then revokes a client', function (): void {
     $orgId = vaultAdmin();
-    $secret = app(SecretVault::class)->store('openai', 'openai', 'sk-live-x', 'organization', $orgId);
+    $secret = app(SecretVault::class)->store('openai', 'openai', 'sk-live-x', VaultOwner::organization($orgId));
 
     $component = Volt::test('vault');
 
@@ -67,7 +68,7 @@ it('grants then revokes a client', function (): void {
 
 it('revokes a secret', function (): void {
     $orgId = vaultAdmin();
-    $secret = app(SecretVault::class)->store('openai', 'openai', 'sk-live-x', 'organization', $orgId);
+    $secret = app(SecretVault::class)->store('openai', 'openai', 'sk-live-x', VaultOwner::organization($orgId));
 
     Volt::test('vault')->call('revoke', $secret->id)->assertHasNoErrors();
 

@@ -11,6 +11,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Exceptions\LeaseDenied;
 use Cbox\Id\TokenVault\Exceptions\SecretNotFound;
 use Cbox\Id\TokenVault\Models\VaultSecret;
+use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,6 +27,29 @@ use Illuminate\Http\Request;
  */
 final class VaultController extends Controller
 {
+    /**
+     * The organization the CALLER is entitled to act within, taken from the verified
+     * access token — never from the request body.
+     *
+     * This is the vault's tenancy boundary. Reading it from input would let any caller
+     * label a secret with, or reach a secret belonging to, an organization that is not
+     * theirs; the body previously carried `owner_type`/`owner_id` directly. A token with
+     * no org claim addresses only unowned (platform) secrets, which is the operator's
+     * own set — not a wildcard.
+     */
+    private function owner(Request $request): ?VaultOwner
+    {
+        $token = $request->attributes->get('cbox_token');
+
+        if (! $token instanceof Introspection) {
+            return null;
+        }
+
+        $org = $token->claims['org'] ?? null;
+
+        return is_string($org) && $org !== '' ? VaultOwner::organization($org) : null;
+    }
+
     /** Ingest a downstream credential, sealed at rest. */
     public function store(Request $request, SecretVault $vault): JsonResponse
     {
@@ -33,8 +57,6 @@ final class VaultController extends Controller
             'name' => ['required', 'string', 'max:200'],
             'provider' => ['required', 'string', 'max:100'],
             'secret' => ['required', 'string'],
-            'owner_type' => ['nullable', 'string', 'in:organization,user'],
-            'owner_id' => ['nullable', 'string', 'max:100', 'required_with:owner_type'],
             'expires_at' => ['nullable', 'date'],
         ]);
 
@@ -42,8 +64,7 @@ final class VaultController extends Controller
             $request->string('name')->toString(),
             $request->string('provider')->toString(),
             $request->string('secret')->toString(),
-            $request->filled('owner_type') ? $request->string('owner_type')->toString() : null,
-            $request->filled('owner_id') ? $request->string('owner_id')->toString() : null,
+            $this->owner($request),
             $request->date('expires_at'),
         );
 
@@ -56,7 +77,7 @@ final class VaultController extends Controller
         $request->validate(['secret' => ['required', 'string']]);
 
         try {
-            $secret = $vault->rotate($id, $request->string('secret')->toString());
+            $secret = $vault->rotate($id, $request->string('secret')->toString(), $this->owner($request));
         } catch (SecretNotFound) {
             return $this->notFound();
         }
@@ -65,10 +86,10 @@ final class VaultController extends Controller
     }
 
     /** Revoke a secret permanently — no future lease can open it. */
-    public function revoke(string $id, SecretVault $vault): JsonResponse
+    public function revoke(Request $request, string $id, SecretVault $vault): JsonResponse
     {
         try {
-            $vault->revoke($id);
+            $vault->revoke($id, $this->owner($request));
         } catch (SecretNotFound) {
             return $this->notFound();
         }
@@ -88,6 +109,7 @@ final class VaultController extends Controller
             $grant = $vault->grant(
                 $id,
                 $request->string('client_id')->toString(),
+                $this->owner($request),
                 $request->filled('max_ttl_seconds') ? $request->integer('max_ttl_seconds') : null,
             );
         } catch (SecretNotFound) {
@@ -102,9 +124,9 @@ final class VaultController extends Controller
     }
 
     /** Revoke an agent's authorization (idempotent). */
-    public function revokeGrant(string $id, string $clientId, SecretVault $vault): JsonResponse
+    public function revokeGrant(Request $request, string $id, string $clientId, SecretVault $vault): JsonResponse
     {
-        $vault->revokeGrant($id, $clientId);
+        $vault->revokeGrant($id, $clientId, $this->owner($request));
 
         return new JsonResponse(null, 204);
     }
@@ -126,7 +148,7 @@ final class VaultController extends Controller
         }
 
         try {
-            $lease = $vault->lease($id, $token->clientId, $request->string('purpose')->toString());
+            $lease = $vault->lease($id, $token->clientId, $request->string('purpose')->toString(), $this->owner($request));
         } catch (LeaseDenied) {
             return new JsonResponse(['error' => 'lease_denied'], 403);
         }

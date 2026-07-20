@@ -44,12 +44,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
 
     public function certify(string $itemId, AccessReviews $reviews): void
     {
-        $reviews->certify($itemId, $this->reviewerId());
+        $reviews->certify($itemId, $this->reviewerId(), $this->campaign()->organization_id);
     }
 
     public function revoke(string $itemId, AccessReviews $reviews): void
     {
-        $reviews->revoke($itemId, $this->reviewerId());
+        $reviews->revoke($itemId, $this->reviewerId(), $this->campaign()->organization_id);
     }
 
     /**
@@ -64,7 +64,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
             return;
         }
 
-        $reviews->close($campaign->id);
+        $reviews->close($campaign->id, $campaign->organization_id);
         session()->flash('status', 'Access review closed — revoked access was applied.');
     }
 

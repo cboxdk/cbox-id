@@ -39,21 +39,28 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
         return $endpoint;
     }
 
+    /*
+     * The acting scope is the endpoint's OWN org: this is the environment plane, whose
+     * admin is the operator ABOVE the orgs in it, so managing an org-scoped hook here is
+     * legitimate. The real boundary is EnvironmentScope — an endpoint in another
+     * environment is not visible to this console at all. The tenant-facing /hooks console
+     * is where the per-org restriction bites.
+     */
     public function pause(ExternalActions $actions): void
     {
-        $actions->pause($this->endpoint()->id);
+        $actions->pause($this->endpoint()->id, $this->endpoint()->organization_id);
         session()->flash('status', 'Endpoint paused — it will stop being called at the hook point.');
     }
 
     public function activate(ExternalActions $actions): void
     {
-        $actions->activate($this->endpoint()->id);
+        $actions->activate($this->endpoint()->id, $this->endpoint()->organization_id);
         session()->flash('status', 'Endpoint activated.');
     }
 
     public function remove(ExternalActions $actions): mixed
     {
-        $actions->remove($this->endpoint()->id);
+        $actions->remove($this->endpoint()->id, $this->endpoint()->organization_id);
         session()->flash('status', 'Endpoint removed.');
 
         return $this->redirectRoute('environment.hooks', navigate: true);

@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateAccountMember;
+use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateOperator;
+use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireSudo;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\CurrentUser;
 use App\Platform\ImpersonationAwareAuditLog;
@@ -55,6 +60,11 @@ final class PlatformServiceProvider extends ServiceProvider
         // vendored edit that `composer install` would silently revert. Without this
         // the org console loses CurrentUser on every action, and a suspended
         // operator keeps full powers because AuthenticateOperator never re-checks.
+        // EVERY route-level guard belongs here. A guard that is absent enforces on the
+        // first page load and then silently stops: the component's actions all POST to
+        // /livewire/update, where only this list re-runs. PersistentMiddlewareTest holds
+        // the invariant — it walks the real route table and fails on any app middleware
+        // guarding a web route that is missing here.
         Livewire::addPersistentMiddleware([
             // Ahead of Authenticate: a Livewire action on an impersonated page must
             // also self-terminate once the time-box lapses, not just full loads.
@@ -65,6 +75,19 @@ final class PlatformServiceProvider extends ServiceProvider
             // The guest Admin Portal setup screen is Livewire too — keep its
             // scoped-session guard on every /livewire/update, not just first load.
             PortalSession::class,
+            // The environment control plane and the account plane are Livewire consoles:
+            // without these, their actions answered unauthenticated. The snapshot checksum
+            // is keyed on APP_KEY — identical on every tenant host — so a snapshot captured
+            // in one tenant could be replayed against another tenant's host.
+            AuthenticateEnvironmentAdmin::class,
+            AuthenticateAccountMember::class,
+            // Plane bulkheads and the step-up gate must hold per action too, or a retained
+            // snapshot bypasses sudo permanently once confirmed.
+            EnforcePlane::class,
+            RequireSudo::class,
+            // Keeps the "an impersonator cannot plant persistence" property true for
+            // component actions, not just full page loads.
+            BlockDuringImpersonation::class,
         ]);
 
         // Make impersonation effectively READ-ONLY across the whole console. Route
