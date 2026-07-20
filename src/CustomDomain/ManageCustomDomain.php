@@ -19,6 +19,13 @@ use Cbox\Ssrf\Exceptions\BlockedUrl;
  * are refused so a tenant can't alias the platform to an internal name. DNS is NOT
  * resolved here — the vanity host is resolved by the browser at request time, so a
  * domain that has not finished pointing at us can still be saved and verified later.
+ *
+ * This is a BRANDING/ROUTING domain, not an identity claim: laravel-id's issuer
+ * resolver only adopts a custom domain as the OIDC `iss` / SAML entityID once DNS
+ * control is proven via `EnvironmentDomainService` (which stamps `domain_verified_at`).
+ * A domain set here therefore never asserts an issuer for a host the tenant has not
+ * shown they control. It also cannot collide with another environment's domain —
+ * that is refused up front (below) as well as by the column's unique constraint.
  */
 final class ManageCustomDomain
 {
@@ -50,7 +57,16 @@ final class ManageCustomDomain
             }
         }
 
-        $this->currentEnvironment()->forceFill(['domain' => $host])->save();
+        $environment = $this->currentEnvironment();
+
+        // A domain belongs to at most one environment — refuse one already taken by
+        // another (a clean error rather than the raw unique-constraint violation).
+        $owner = EnvironmentModel::query()->where('domain', $host)->value('id');
+        if (is_string($owner) && $owner !== $environment->id) {
+            throw InvalidCustomDomain::taken($host);
+        }
+
+        $environment->forceFill(['domain' => $host])->save();
 
         return $host;
     }

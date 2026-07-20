@@ -22,4 +22,9 @@ final class InvalidCustomDomain extends RuntimeException
     {
         return new self("“{$host}” cannot be used as a custom domain.");
     }
+
+    public static function taken(string $host): self
+    {
+        return new self("“{$host}” is already in use by another environment.");
+    }
 }
