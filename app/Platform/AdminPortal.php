@@ -108,7 +108,12 @@ final class AdminPortal
             return false;
         }
 
-        $link->forceFill(['consumed_at' => now()])->save();
+        // The link was already burned at redemption (single-use); don't clobber that
+        // timestamp — consumed_at should read as the REDEMPTION moment. Only stamp it
+        // here for a legacy link redeemed before single-use landed.
+        if ($link->consumed_at === null) {
+            $link->forceFill(['consumed_at' => now()])->save();
+        }
 
         $this->audit->record(new AuditEvent(
             // The redeemer is an external IT admin with no platform identity, so
