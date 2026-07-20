@@ -46,17 +46,17 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
 
     public function certify(string $itemId, AccessReviews $reviews): void
     {
-        $reviews->certify($itemId, app(CurrentUser::class)->id());
+        $reviews->certify($itemId, app(CurrentUser::class)->id(), $this->orgId());
     }
 
     public function revoke(string $itemId, AccessReviews $reviews): void
     {
-        $reviews->revoke($itemId, app(CurrentUser::class)->id());
+        $reviews->revoke($itemId, app(CurrentUser::class)->id(), $this->orgId());
     }
 
     public function close(string $id, AccessReviews $reviews): void
     {
-        $reviews->close($id);
+        $reviews->close($id, $this->orgId());
         session()->flash('status', 'Access review closed — revoked access was applied.');
     }
 
