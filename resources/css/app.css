@@ -475,6 +475,11 @@
         background: var(--destructive-soft);
         border-color: color-mix(in oklch, var(--destructive) 20%, transparent);
     }
+    .badge-info {
+        color: var(--accent);
+        background: color-mix(in oklch, var(--accent) 12%, transparent);
+        border-color: color-mix(in oklch, var(--accent) 22%, transparent);
+    }
 
     /* ── Nav item — filled active state; NO left-edge accent rail (forbidden). */
     .nav-link {

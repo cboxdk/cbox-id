@@ -60,8 +60,13 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
      */
     public function with(): array
     {
+        $catalog = Permission::query()->whereNull('orphaned_at')->orderBy('name')->get(['id', 'name', 'description', 'client_id']);
+
         return [
-            'catalog' => Permission::query()->whereNull('orphaned_at')->orderBy('name')->get(['id', 'name', 'description']),
+            'catalog' => $catalog,
+            'appNames' => \Cbox\Id\OAuthServer\Models\Client::query()
+                ->whereIn('client_id', $catalog->pluck('client_id')->filter()->unique()->all())
+                ->pluck('name', 'client_id'),
         ];
     }
 }; ?>
@@ -87,8 +92,11 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
                 @forelse ($catalog as $perm)
                     <label class="flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-[var(--surface-2)]" wire:key="perm-{{ $perm->id }}">
                         <input type="checkbox" wire:model="permissions" value="{{ $perm->id }}" class="mt-0.5 rounded">
-                        <span class="min-w-0">
-                            <span class="text-sm mono">{{ $perm->name }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm mono">{{ $perm->name }}</span>
+                                @if ($perm->client_id)<span class="badge badge-info">{{ $appNames[$perm->client_id] ?? 'App' }}</span>@else<span class="badge">Manual</span>@endif
+                            </span>
                             @if ($perm->description)<span class="block text-xs" style="color:var(--faint)">{{ $perm->description }}</span>@endif
                         </span>
                     </label>
@@ -96,7 +104,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
                     <div class="cbx-empty">
                         <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
                         <h3>No permissions declared</h3>
-                        <p>You can add permissions here once an app registers its catalog with this environment.</p>
+                        <p>An app can register its catalog over the SDK, or you can <a href="{{ route('environment.permissions') }}" style="color:var(--accent)">add permissions manually</a>.</p>
                     </div>
                 @endforelse
             </div>

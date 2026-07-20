@@ -7,6 +7,7 @@ use App\Mail\PasswordResetMail;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
@@ -398,4 +399,86 @@ it('renders the detail pages for login methods, event hooks, conflict rules and 
     $this->get("/admin/event-hooks/{$hook->id}")->assertOk()->assertSee('example.com');
     $this->get("/admin/conflict-rules/{$policy->id}")->assertOk()->assertSee('Maker/Checker');
     $this->get("/admin/outbound-sync/{$sync->id}")->assertOk()->assertSee('Downstream');
+});
+
+// --- B: org RBAC access-role assignment (distinct from the coarse membership tier) ---
+
+it('adds a member with an RBAC access role from the organization screen', function (): void {
+    crudSetup();
+    $user = app(Subjects::class)->create('dan@acme.example', 'Dan');
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant C', slug: 'tenant-c'));
+    // An environment-wide manual role — the kind the Roles console authors.
+    $role = app(Roles::class)->define(null, 'Team leads', 'Team leads across the org', null);
+
+    Volt::test('environment.organizations.show', ['organization' => $org->id])
+        ->set('memberEmail', 'dan@acme.example')
+        ->set('memberRole', 'member')
+        ->set('memberAccessRoles', [$role->id])
+        ->call('addMember')
+        ->assertHasNoErrors();
+
+    expect(RoleAssignment::query()
+        ->where('organization_id', $org->id)->where('user_id', $user->id)->where('role_id', $role->id)
+        ->exists())->toBeTrue();
+});
+
+it('grants then revokes an access role for a member via the manage toggle', function (): void {
+    crudSetup();
+    $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant D', slug: 'tenant-d'));
+    app(Memberships::class)->add($org->id, $user->id, 'member');
+    $role = app(Roles::class)->define(null, 'Approver', null, null);
+
+    $held = fn (): bool => RoleAssignment::query()
+        ->where('organization_id', $org->id)->where('user_id', $user->id)->where('role_id', $role->id)->exists();
+
+    $c = Volt::test('environment.organizations.show', ['organization' => $org->id]);
+    $c->call('toggleAccessRole', $user->id, $role->id);
+    expect($held())->toBeTrue();
+    $c->call('toggleAccessRole', $user->id, $role->id);
+    expect($held())->toBeFalse();
+});
+
+it('ignores an access-role id that is not assignable in the org (deny-by-default)', function (): void {
+    crudSetup();
+    $user = app(Subjects::class)->create('fred@acme.example', 'Fred');
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant E', slug: 'tenant-e'));
+    app(Memberships::class)->add($org->id, $user->id, 'member');
+
+    Volt::test('environment.organizations.show', ['organization' => $org->id])
+        ->call('toggleAccessRole', $user->id, 'role_does_not_exist');
+
+    expect(RoleAssignment::query()->where('organization_id', $org->id)->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('assigns a user to an org WITH access roles from the user screen', function (): void {
+    crudSetup();
+    $user = app(Subjects::class)->create('gwen@acme.example', 'Gwen');
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant F', slug: 'tenant-f'));
+    $role = app(Roles::class)->define(null, 'Manager', null, null);
+
+    Volt::test('environment.users.show', ['user' => $user->id])
+        ->set('assignOrgId', $org->id)
+        ->set('assignRole', 'member')
+        ->set('assignAccessRoles', [$role->id])
+        ->call('assignOrg')
+        ->assertHasNoErrors();
+
+    expect(RoleAssignment::query()
+        ->where('organization_id', $org->id)->where('user_id', $user->id)->where('role_id', $role->id)
+        ->exists())->toBeTrue();
+});
+
+it('renders a member\'s assigned access role on the organization screen', function (): void {
+    crudSetup();
+    $user = app(Subjects::class)->create('hana@acme.example', 'Hana');
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant G', slug: 'tenant-g'));
+    app(Memberships::class)->add($org->id, $user->id, 'member');
+    $role = app(Roles::class)->define(null, 'Team leads', null, null);
+    app(Roles::class)->assign($org->id, $user->id, $role->id);
+
+    $this->get("/admin/organizations/{$org->id}")
+        ->assertOk()
+        ->assertSee('Access roles')  // the new RBAC surface label
+        ->assertSee('Team leads');   // the assigned role, rendered as a chip
 });

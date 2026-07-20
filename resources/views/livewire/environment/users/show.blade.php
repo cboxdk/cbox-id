@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
+use App\Platform\OrgAccessRoles;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Enums\GrantSource;
+use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\PasswordReset;
@@ -41,6 +45,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     public string $assignOrgId = '';
 
     public string $assignRole = 'member';
+
+    /** @var list<string> Access-role ids to grant as the user is added to the org. */
+    public array $assignAccessRoles = [];
+
+    /** The org whose access-roles drawer is expanded, if any. */
+    public ?string $managingOrgId = null;
 
     public function mount(string $user): void
     {
@@ -177,13 +187,15 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         session()->flash('status', 'All sessions revoked.');
     }
 
-    public function assignOrg(Memberships $memberships): void
+    public function assignOrg(Memberships $memberships, Roles $roles, OrgAccessRoles $catalog): void
     {
         $user = $this->user();
 
         $this->validate([
             'assignOrgId' => ['required', 'string'],
             'assignRole' => ['required', 'in:member,admin,owner'],
+            'assignAccessRoles' => ['array'],
+            'assignAccessRoles.*' => ['string'],
         ]);
 
         if (Organization::query()->whereKey($this->assignOrgId)->doesntExist()) {
@@ -198,10 +210,19 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             return;
         }
 
+        // Belonging record (tier governs org administration + impersonation safety),
+        // then the RBAC access roles that decide what the user can do in the apps.
         $memberships->add($this->assignOrgId, $user->id, $this->assignRole);
+
+        foreach ($this->assignAccessRoles as $roleId) {
+            if ($catalog->isAssignable($this->assignOrgId, $roleId)) {
+                $roles->assign($this->assignOrgId, $user->id, $roleId, GrantSource::Manual);
+            }
+        }
 
         $this->assignOrgId = '';
         $this->assignRole = 'member';
+        $this->assignAccessRoles = [];
         session()->flash('status', 'User added to the organization.');
     }
 
@@ -214,9 +235,36 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         try {
             $memberships->changeRole($orgId, $user->id, $role);
-            session()->flash('status', 'Role updated.');
+            session()->flash('status', 'Org access updated.');
         } catch (LastOwner) {
             session()->flash('status', 'An organization must keep at least one owner.');
+        }
+    }
+
+    public function toggleManageOrg(string $orgId): void
+    {
+        $this->managingOrgId = $this->managingOrgId === $orgId ? null : $orgId;
+    }
+
+    /** Grant or revoke one RBAC access-role for this user in the given org. */
+    public function toggleAccessRole(string $orgId, string $roleId, Roles $roles, Memberships $memberships, OrgAccessRoles $catalog): void
+    {
+        $user = $this->user();
+
+        if ($memberships->of($orgId, $user->id) === null || ! $catalog->isAssignable($orgId, $roleId)) {
+            return;
+        }
+
+        $held = RoleAssignment::query()
+            ->where('organization_id', $orgId)
+            ->where('user_id', $user->id)
+            ->where('role_id', $roleId)
+            ->exists();
+
+        if ($held) {
+            $roles->unassign($orgId, $user->id, $roleId);
+        } else {
+            $roles->assign($orgId, $user->id, $roleId, GrantSource::Manual);
         }
     }
 
@@ -238,7 +286,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     /**
      * @return array<string, mixed>
      */
-    public function with(Memberships $memberships): array
+    public function with(Memberships $memberships, OrgAccessRoles $catalog): array
     {
         $user = $this->user();
 
@@ -247,17 +295,32 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         $rows = [];
         $impersonatable = [];
+        $orgCatalog = [];
         foreach ($memberships->forUser($user->id) as $m) {
             $rows[] = ['org' => $m->organization_id, 'orgName' => $orgNames[$m->organization_id] ?? $m->organization_id, 'role' => $m->role];
             if (! in_array($m->role, ['owner', 'admin'], true)) {
                 $impersonatable[] = ['org' => $m->organization_id, 'orgName' => $orgNames[$m->organization_id] ?? $m->organization_id];
             }
+
+            // Per-org RBAC access-role catalog + what this user holds there. Roles are
+            // largely environment-wide, but app-declared roles are scoped per org.
+            $roles = $catalog->assignable($m->organization_id);
+            $orgCatalog[$m->organization_id] = [
+                'roles' => $roles,
+                'rolesById' => $roles->keyBy('id'),
+                'appNames' => $catalog->appNames($roles),
+                'permsByRole' => $catalog->permissions($roles),
+                'assigned' => $catalog->assignedTo($m->organization_id, $user->id),
+            ];
         }
 
         return [
             'user' => $user,
             'allOrgs' => $orgNames,
             'memberships' => $rows,
+            'orgCatalog' => $orgCatalog,
+            'assignableForNewOrg' => $this->assignOrgId !== '' ? $catalog->assignable($this->assignOrgId) : collect(),
+            'assignableForNewOrgApps' => $this->assignOrgId !== '' ? $catalog->appNames($catalog->assignable($this->assignOrgId)) : [],
             'impersonatableOrgs' => $impersonatable,
             'hasMfa' => app(Mfa::class)->hasConfirmedTotp($user->id),
             'sessions' => Session::query()
@@ -355,16 +418,37 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {{-- Organizations --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <p class="text-sm font-medium">Organizations</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)"><b>Org access</b> is the user's administration level; <b>access roles</b> are what they can do inside that org's apps.</p>
         <div class="mt-4 space-y-2">
             @forelse ($memberships as $m)
-                <div class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="mem-{{ $m['org'] }}">
-                    <a href="{{ route('environment.organizations.show', $m['org']) }}" class="min-w-0 flex-1 truncate text-sm font-medium" style="color:var(--accent)">{{ $m['orgName'] }}</a>
-                    <select class="select" style="width:auto" wire:change="changeMembershipRole('{{ $m['org'] }}', $event.target.value)">
-                        @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
-                            <option value="{{ $val }}" @selected($m['role'] === $val)>{{ $lbl }}</option>
-                        @endforeach
-                    </select>
-                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMembership('{{ $m['org'] }}')" wire:confirm="Remove from this organization?">Remove</button>
+                @php $cat = $orgCatalog[$m['org']] ?? ['roles' => collect(), 'rolesById' => collect(), 'appNames' => [], 'permsByRole' => [], 'assigned' => []]; @endphp
+                <div class="rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="mem-{{ $m['org'] }}">
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('environment.organizations.show', $m['org']) }}" class="min-w-0 flex-1 truncate text-sm font-medium" style="color:var(--accent)">{{ $m['orgName'] }}</a>
+                        <select class="select" style="width:auto" aria-label="Org access" wire:change="changeMembershipRole('{{ $m['org'] }}', $event.target.value)">
+                            @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
+                                <option value="{{ $val }}" @selected($m['role'] === $val)>{{ $lbl }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMembership('{{ $m['org'] }}')" wire:confirm="Remove from this organization?">Remove</button>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span class="text-xs" style="color:var(--faint)">Access roles:</span>
+                        @forelse ($cat['assigned'] as $rid)
+                            @php $r = $cat['rolesById'][$rid] ?? null; @endphp
+                            @if ($r)<span class="badge">{{ $r->name }}</span>@endif
+                        @empty
+                            <span class="text-xs" style="color:var(--faint)">None</span>
+                        @endforelse
+                        @if ($cat['roles']->isNotEmpty())
+                            <button type="button" wire:click="toggleManageOrg('{{ $m['org'] }}')" class="btn btn-ghost btn-sm" style="height:24px;padding:0 8px;font-size:11px">{{ $managingOrgId === $m['org'] ? 'Done' : 'Manage' }}</button>
+                        @endif
+                    </div>
+                    @if ($managingOrgId === $m['org'])
+                        <div class="mt-3 rounded-lg p-3" style="background:color-mix(in oklch, var(--secondary) 55%, transparent)">
+                            <x-access-roles-manager :roles="$cat['roles']" :app-names="$cat['appNames']" :perms-by-role="$cat['permsByRole']" :assigned="$cat['assigned']" toggle="toggleAccessRole" :arg="$m['org']" :subject="$user->name ?? $user->email" />
+                        </div>
+                    @endif
                 </div>
             @empty
                 <div class="cbx-empty">
@@ -374,22 +458,27 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                 </div>
             @endforelse
         </div>
-        <form wire:submit="assignOrg" class="mt-4 grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
-            <div>
-                <select wire:model="assignOrgId" class="select">
-                    <option value="">Add to organization…</option>
-                    @foreach ($allOrgs as $orgId => $orgName)
-                        <option value="{{ $orgId }}">{{ $orgName }}</option>
-                    @endforeach
+        <form wire:submit="assignOrg" class="mt-4 space-y-3">
+            <div class="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
+                <div>
+                    <select wire:model.live="assignOrgId" class="select" aria-label="Organization">
+                        <option value="">Add to organization…</option>
+                        @foreach ($allOrgs as $orgId => $orgName)
+                            <option value="{{ $orgId }}">{{ $orgName }}</option>
+                        @endforeach
+                    </select>
+                    @error('assignOrgId') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+                <select wire:model="assignRole" class="select" aria-label="Org access">
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
                 </select>
-                @error('assignOrgId') <p class="field-error">{{ $message }}</p> @enderror
+                <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="assignOrg">Add</button>
             </div>
-            <select wire:model="assignRole" class="select">
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                <option value="owner">Owner</option>
-            </select>
-            <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="assignOrg">Add</button>
+            @if ($assignOrgId !== '')
+                <x-access-roles-field :roles="$assignableForNewOrg" :app-names="$assignableForNewOrgApps" model="assignAccessRoles" hint="granted immediately (optional)" />
+            @endif
         </form>
     </div>
 

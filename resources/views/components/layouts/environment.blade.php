@@ -49,6 +49,7 @@
         ['label' => 'People', 'icon' => 'members', 'pages' => [
             ['route' => 'environment.users', 'label' => 'Users'],
             ['route' => 'environment.roles', 'label' => 'Roles'],
+            ['route' => 'environment.permissions', 'label' => 'Permissions'],
         ]],
         ['label' => 'Sign-in', 'icon' => 'connections', 'pages' => [
             ['route' => 'environment.connections', 'label' => 'Single sign-on'],

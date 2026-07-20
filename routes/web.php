@@ -271,6 +271,11 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/roles/new', 'environment.roles.create')->name('environment.roles.create');
         Volt::route('/roles/{role}', 'environment.roles.show')->name('environment.roles.show');
 
+        // Permissions — the catalog roles draw from. App-declared permissions arrive
+        // via an app's manifest (SDK/API); manual ones are authored here for orgs that
+        // don't run an SDK integration.
+        Volt::route('/permissions', 'environment.permissions.index')->name('environment.permissions');
+
         // Access reviews (certification campaigns) — routable list → create → detail.
         Volt::route('/access-reviews', 'environment.governance.index')->name('environment.governance');
         Volt::route('/access-reviews/new', 'environment.governance.create')->name('environment.governance.create');
