@@ -81,9 +81,14 @@ final class SetEnvironment
         // Unmapped host → the PLATFORM-ROOT (is_default) environment — Cbox's own,
         // never a customer's. This closes the fail-open bug where an unrecognized or
         // spoofed Host fell through to the OLDEST environment (which could be any
-        // customer's live IdP): the apex/console/signup keep working, but no
-        // unmapped host can ever be mapped to a customer tenant. A customer plane is
-        // reachable ONLY via its own custom domain or {slug}.{base_domain} subdomain.
+        // customer's live IdP): the apex/console/signup keep working, but no unmapped
+        // host can ever be mapped to a customer tenant. A customer plane is reachable
+        // ONLY via its own custom domain or {slug}.{base_domain} subdomain.
+        //
+        // NOTE (review R7): rejecting an ARBITRARY host outright (host-confusion
+        // hardening) is deployment-specific — the console/apex/signup are served on
+        // hosts that vary per deployment — so it belongs at the ingress (route only
+        // known hosts to the app), not here where it would 404 legitimate surfaces.
         return $this->resolver->defaultEnvironment();
     }
 }

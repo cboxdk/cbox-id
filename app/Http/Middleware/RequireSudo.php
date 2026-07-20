@@ -37,8 +37,14 @@ final class RequireSudo
         if ($request->expectsJson() || $request->ajax()) {
             $referer = $request->headers->get('referer');
 
-            if (is_string($referer) && $referer !== '' && str_starts_with($referer, $request->schemeAndHttpHost())) {
-                $request->session()->put('sudo.intended', $referer);
+            // Store only the ORIGIN-MATCHED, path-relative referer. A prefix check
+            // (str_starts_with) would pass a look-alike like `https://host.evil/…`;
+            // and since sudo redirects to this value, an absolute URL would be an
+            // open-redirect sink. Keep just the path+query → always same-origin.
+            $intended = $this->sameOriginPath($request, $referer);
+
+            if ($intended !== null) {
+                $request->session()->put('sudo.intended', $intended);
             }
 
             return new JsonResponse([
@@ -50,5 +56,31 @@ final class RequireSudo
         $request->session()->put('sudo.intended', $request->fullUrl());
 
         return redirect()->route('sudo');
+    }
+
+    /**
+     * The path+query of a referer that is EXACTLY same-origin as this request, or
+     * null. Returns a root-relative string so the eventual sudo redirect can never
+     * leave the app, regardless of the referer's authority.
+     */
+    private function sameOriginPath(Request $request, ?string $referer): ?string
+    {
+        if (! is_string($referer) || $referer === '') {
+            return null;
+        }
+
+        $parts = parse_url($referer);
+
+        // Exact host + scheme match (not a prefix). The returned value is root-relative
+        // regardless, so the redirect target is same-origin by construction.
+        if ($parts === false
+            || ($parts['host'] ?? null) !== $request->getHost()
+            || ($parts['scheme'] ?? null) !== $request->getScheme()) {
+            return null;
+        }
+
+        $path = $parts['path'] ?? '/';
+
+        return ! str_starts_with($path, '/') ? null : $path.(isset($parts['query']) ? '?'.$parts['query'] : '');
     }
 }

@@ -34,4 +34,24 @@ final readonly class ImpersonationMarker
     {
         return $this->actorType === ActorType::AccountMember;
     }
+
+    /**
+     * The flat session representation (the serialization boundary). Owning both
+     * directions here keeps {@see Impersonation::start()} from hand-writing a literal
+     * that must stay in sync with the reader.
+     *
+     * @return array{actor_type: string, operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int}
+     */
+    public function toSession(): array
+    {
+        return [
+            'actor_type' => $this->actorType->value,
+            'operator' => $this->operator,
+            'subject' => $this->subject,
+            'org' => $this->organizationId,
+            'env' => $this->environmentKey,
+            'reason' => $this->reason,
+            'started_at' => $this->startedAt,
+        ];
+    }
 }

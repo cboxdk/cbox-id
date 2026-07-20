@@ -63,9 +63,10 @@ final class AdminPortal
 
     /**
      * Redeem a token: if it maps to a live, unconsumed link whose org is still
-     * entitled to the link's scope, establish the scoped portal session and
-     * return the link. The link is NOT consumed here (that happens on Finish).
-     * Any failure returns null with no enumeration detail.
+     * entitled to the link's scope, CONSUME the link (single-use) and establish the
+     * scoped portal session. A leaked/re-opened URL therefore cannot mint a second,
+     * independent portal session — the session, not the link, carries the setup flow
+     * from here. Any failure returns null with no enumeration detail.
      */
     public function redeem(string $token): ?AdminPortalLink
     {
@@ -81,6 +82,9 @@ final class AdminPortal
         if (! $this->scopeEntitled($link->organization_id, PortalScope::tryFrom($link->scope))) {
             return null;
         }
+
+        // Single-use: burn the link now so a second redemption of the same URL fails.
+        $link->forceFill(['consumed_at' => now()])->save();
 
         session()->put(self::SESSION_KEY, [
             'link_id' => $link->id,
@@ -124,10 +128,10 @@ final class AdminPortal
     }
 
     /**
-     * Whether the current portal session is valid RIGHT NOW: it exists, its link
-     * is unconsumed and unexpired, and the org is still entitled to the scope.
-     * Re-queried from the database on every call (belt-and-suspenders with the
-     * middleware, and catches a mid-session plan lapse).
+     * Whether the current portal session is valid RIGHT NOW. The link is consumed at
+     * redemption (single-use), so validity is a property of the SESSION — its
+     * unexpired window plus a live re-check that the org is still entitled to the
+     * bound scope (catches a mid-session plan lapse). Re-evaluated on every call.
      */
     public function sessionValid(): bool
     {
@@ -137,13 +141,7 @@ final class AdminPortal
             return false;
         }
 
-        $link = $this->currentLink();
-
-        if ($link === null || ! $link->isRedeemable()) {
-            return false;
-        }
-
-        return $this->scopeEntitled($link->organization_id, PortalScope::tryFrom($link->scope));
+        return $this->scopeEntitled($data['org'], PortalScope::tryFrom($data['scope']));
     }
 
     /**

@@ -65,15 +65,15 @@ final class Impersonation
         // is the id recorded in the marker below — restored, and only that, on exit.
         $request->session()->forget(OperatorAuth::SESSION_KEY);
 
-        $request->session()->put(self::SESSION_KEY, [
-            'actor_type' => ActorType::Operator->value,
-            'operator' => $operatorId,
-            'subject' => $subjectId,
-            'org' => $orgId,
-            'env' => is_string($env) && $env !== '' ? $env : null,
-            'reason' => $reason,
-            'started_at' => now()->getTimestamp(),
-        ]);
+        $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
+            actorType: ActorType::Operator,
+            operator: $operatorId,
+            subject: $subjectId,
+            organizationId: $orgId,
+            environmentKey: is_string($env) && $env !== '' ? $env : null,
+            reason: $reason,
+            startedAt: now()->getTimestamp(),
+        ))->toSession());
 
         // Start the subject session with an `impersonation` amr so it is never
         // mistaken for a real login. establish() regenerates the session id; the
@@ -112,15 +112,15 @@ final class Impersonation
         // until exit. Only the member id in the marker survives, restored on exit.
         $request->session()->forget([EnvironmentAdminAuth::SESSION_KEY, EnvironmentAdminAuth::ENV_KEY]);
 
-        $request->session()->put(self::SESSION_KEY, [
-            'actor_type' => ActorType::AccountMember->value,
-            'operator' => $memberId,
-            'subject' => $subjectId,
-            'org' => $orgId,
-            'env' => is_string($env) && $env !== '' ? $env : null,
-            'reason' => $reason,
-            'started_at' => now()->getTimestamp(),
-        ]);
+        $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
+            actorType: ActorType::AccountMember,
+            operator: $memberId,
+            subject: $subjectId,
+            organizationId: $orgId,
+            environmentKey: is_string($env) && $env !== '' ? $env : null,
+            reason: $reason,
+            startedAt: now()->getTimestamp(),
+        ))->toSession());
 
         $this->platformAuth->establish($request, $subjectId, ['impersonation'], $orgId);
 

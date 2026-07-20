@@ -162,3 +162,13 @@ it('finishing marks the link consumed, records completion, and closes the sessio
 it('the setup screen redirects to the expired page without a portal session', function () {
     $this->get(route('portal.setup'))->assertRedirect(route('portal.expired'));
 });
+
+it('is single-use: a token cannot be redeemed twice (R7)', function () {
+    $orgId = gateAdmin('portal-single-use');
+    grantFeature($orgId, 'cbox-id-sso');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+
+    // First redemption succeeds and burns the link; a leaked/re-opened URL fails.
+    expect(app(AdminPortal::class)->redeem($token))->not->toBeNull()
+        ->and(app(AdminPortal::class)->redeem($token))->toBeNull();
+});
