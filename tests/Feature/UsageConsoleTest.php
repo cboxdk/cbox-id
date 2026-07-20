@@ -49,7 +49,10 @@ it('scopes usage to the current organization', function (): void {
     app(UsageMeter::class)->record('auth.login', 99, 'some-other-org');
 
     // The dashboard reads only this org's counters (3), never the other org's 99.
+    // Assert the DATA, not the rendered HTML: a bare "99" also matches Livewire's
+    // random wire:key/wire:id attributes (CI hit `wire:key="lw-2049943276-0"`), which
+    // made assertDontSee('99') flaky. The snapshot is the thing being scoped.
     Volt::test('usage')
         ->assertSee('Sign-ins')
-        ->assertDontSee('99');
+        ->assertViewHas('snapshot', fn (array $snapshot): bool => (int) ($snapshot['auth.login'] ?? 0) === 3);
 });
