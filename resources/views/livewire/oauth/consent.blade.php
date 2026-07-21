@@ -54,6 +54,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
      * second argument (mount params). Anything not supplied falls back to the
      * current request's query string.
      */
+    /**
+     * The consumed PAR payload, kept so a resumed request can be re-pushed.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[Locked]
+    public ?array $pushedPayload = null;
+
     public function mount(
         ClientRegistry $clients,
         AuthorizationCodes $codes,
@@ -78,6 +86,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $requestClientId = $client_id ?? $request->query('client_id');
         if (is_string($requestUri) && $requestUri !== '' && is_string($requestClientId)) {
             $pushed = app(PushedAuthorizationRequests::class)->consume($requestClientId, $requestUri) ?? null;
+            // Keep the payload: mount() consumes the single-use request_uri, but the
+            // request may still need to be RESUMED after sign-in or an account switch.
+            // Without this, resumeUrl() rebuilt a plain query URL and a FAPI deployment
+            // (require_par) then refused its own resumed request — every unauthenticated
+            // user dead-ended on "this server requires pushed authorization requests".
+            $this->pushedPayload = is_array($pushed) ? $pushed : null;
             if ($pushed === null) {
                 $this->error = 'This authorization request has expired or was already used. Please start again.';
 
@@ -248,6 +262,25 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
      */
     private function resumeUrl(): string
     {
+        // Re-push the original payload under a FRESH single-use request_uri, so the
+        // resumed request is a genuine PAR request rather than a query-string one that
+        // require_par must refuse. Re-pushing (not reusing) keeps the single-use property
+        // intact — and marking the resume as "already pushed" via a flag would let anyone
+        // bypass PAR by adding it to a URL.
+        if ($this->pushedPayload !== null && $this->clientId !== null) {
+            $client = app(ClientRegistry::class)->byClientId($this->clientId);
+
+            if ($client !== null) {
+                $repushed = app(PushedAuthorizationRequests::class)->push($client, $this->pushedPayload);
+
+                return route('oauth.authorize', [
+                    'client_id' => $this->clientId,
+                    'request_uri' => $repushed['request_uri'],
+                    'reauthed' => '1',
+                ]);
+            }
+        }
+
         return route('oauth.authorize', array_filter([
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,

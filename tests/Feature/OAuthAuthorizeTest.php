@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
@@ -432,4 +433,47 @@ it('does not float the port for a non-loopback host', function (): void {
     ]);
 
     $this->get('/oauth/authorize?'.$query)->assertOk();  // rendered refusal, no redirect
+});
+
+/**
+ * A FAPI deployment (require_par) dead-ended on its own resumed request.
+ *
+ * mount() consumes the single-use request_uri BEFORE the auth/prompt branches, then
+ * resumeUrl() rebuilt a plain query-string URL — which require_par must refuse. So every
+ * unauthenticated user, and every prompt=login/select_account, hit "this server requires
+ * pushed authorization requests" after signing in. The resume now re-pushes the original
+ * payload under a fresh single-use request_uri.
+ */
+it('resumes a pushed authorization request when PAR is required', function (): void {
+    config(['cbox-id.oauth.require_par' => true]);
+
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+    $client = Client::query()->where('client_id', $clientId)->firstOrFail();
+
+    $pushed = app(PushedAuthorizationRequests::class)->push($client, [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st-par',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'login',
+    ]);
+
+    // prompt=login sends the user away to add an account; the resume URL it stores must
+    // itself be a PAR request, or re-entry is refused.
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'request_uri' => $pushed['request_uri'],
+    ]);
+
+    $intended = session('url.intended');
+
+    expect($intended)->toContain('request_uri=')
+        // NOT the consumed one — a fresh single-use handle.
+        ->and($intended)->not->toContain(urlencode($pushed['request_uri']));
+
+    $component->assertHasNoErrors();
 });
