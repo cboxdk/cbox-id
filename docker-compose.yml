@@ -72,6 +72,36 @@ services:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
 
+  # Scheduler. WITHOUT THIS the app is quietly half-dead: the domain-event outbox is
+  # never relayed (so no webhook fires, no usage is metered, outbound provisioning never
+  # drains and role changes never revoke tokens), webhook retries never re-drive, SIEM
+  # streams never pump, and signing keys never rotate or retire. None of it surfaces as
+  # an error — everything simply doesn't happen. Single instance; the schedule's own
+  # withoutOverlapping guards a slow pass.
+  scheduler:
+    image: ghcr.io/cboxdk/cbox-id:dev
+    command: ["php", "artisan", "schedule:work"]
+    environment:
+      APP_ENV: local
+      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
+      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: valkey
+      REDIS_PASSWORD: secret
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      app: { condition: service_started }
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+
   postgres:
     image: postgres:17-alpine
     environment:

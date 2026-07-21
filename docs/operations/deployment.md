@@ -68,13 +68,33 @@ or bootstrap the operator on a private network first.)
 
 ## 5. Run the workers
 
-The platform relies on the queue (webhook delivery, the event outbox, async audit
-work) and the scheduler (key retirement, cleanups):
+Three processes, not one. The web container alone is **not** a working deployment:
 
 ```bash
-php artisan queue:work --tries=3        # under a supervisor (systemd/supervisord)
-php artisan schedule:run                # from cron, every minute
+php artisan queue:work --tries=3   # under a supervisor (systemd/supervisord)
+php artisan schedule:work          # a long-running process — or `schedule:run` from cron, every minute
 ```
+
+The scheduler is not optional and its absence does not raise an error. Without it the
+domain-event outbox is never relayed, and because every subscriber hangs off that
+outbox, all of the following silently do nothing:
+
+| Without the scheduler | Consequence |
+|---|---|
+| `cbox-id:events:relay` | no webhook is ever delivered; no usage is metered (plan gates read zero); outbound SCIM never provisions; role changes never revoke tokens |
+| `cbox-id:webhooks:retry` | a transient endpoint outage never recovers |
+| `cbox-id:provisioning:drain` | the provisioning outbox never drains |
+| `cbox-id:audit-streams:pump` | SIEM streams stop mid-flight |
+| `cbox-id:keys:rotate` | signing keys never rotate or retire |
+
+The app reports healthy throughout. Verify with:
+
+```bash
+php artisan schedule:list          # cbox-id:events:relay must appear, every minute
+```
+
+`docker-compose.yml` ships `app`, `queue` and `scheduler` services for exactly this
+reason — mirror all three in any k8s manifest.
 
 ## 6. Verify
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8ae2a2007fd768f838842cf0292e129d",
+    "content-hash": "4ef41a786589b0d2d7c04a671aa7ba30",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -493,16 +493,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.34.0",
+            "version": "v0.35.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "67bc05eb6a6bf5e3e956b5071bf428bec9119b1b"
+                "reference": "844a177f7d6e35c11acecef358f98a35b29410fb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/67bc05eb6a6bf5e3e956b5071bf428bec9119b1b",
-                "reference": "67bc05eb6a6bf5e3e956b5071bf428bec9119b1b",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/844a177f7d6e35c11acecef358f98a35b29410fb",
+                "reference": "844a177f7d6e35c11acecef358f98a35b29410fb",
                 "shasum": ""
             },
             "require": {
@@ -564,9 +564,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.34.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.35.0"
             },
-            "time": "2026-07-20T21:39:01+00:00"
+            "time": "2026-07-21T01:24:52+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",
