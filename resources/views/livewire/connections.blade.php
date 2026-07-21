@@ -304,11 +304,6 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
     </div>
 
     <div class="mt-8 space-y-6">
-    @if (session('status'))
-        <div class="card p-3 text-sm flex items-center gap-2" style="border-color:color-mix(in oklch, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
-            <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
-        </div>
-    @endif
 
     @if (! $entitled)
         <div class="card">

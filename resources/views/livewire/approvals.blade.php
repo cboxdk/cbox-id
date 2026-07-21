@@ -71,12 +71,6 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
         </div>
     </div>
 
-    @if (session('status'))
-        <div role="status" class="card p-3.5 mb-4 text-sm" style="color:var(--muted)">
-            {{ session('status') }}
-        </div>
-    @endif
-
     @forelse ($requests as $request)
         <div class="card p-5 mb-4">
             <div class="flex items-center gap-3">

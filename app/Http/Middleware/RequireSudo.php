@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Platform\Sudo;
 use Closure;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,10 +48,17 @@ final class RequireSudo
                 $request->session()->put('sudo.intended', $intended);
             }
 
-            return new JsonResponse([
+            // THROWN, not returned. Livewire's Utils::applyMiddleware() only honours a
+            // short-circuit that is a RedirectResponse — anything else is silently
+            // discarded and the component action runs anyway. Returning a JsonResponse
+            // here therefore made the sudo gate bypassable with one client-controlled
+            // header (`Accept: application/json`) on a replayed /livewire/update, which
+            // is exactly the retained-snapshot bypass persisting this middleware was
+            // meant to close. EnforcePlane and BlockDuringImpersonation already throw.
+            throw new HttpResponseException(new JsonResponse([
                 'error' => 'Confirm your identity first — re-enter your password, then try again.',
                 'sudo' => route('sudo'),
-            ], 403);
+            ], 403));
         }
 
         $request->session()->put('sudo.intended', $request->fullUrl());

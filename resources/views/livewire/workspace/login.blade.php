@@ -75,10 +75,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Sign in to your workspace</h1>
     <p class="mt-2 text-sm" style="color:var(--muted)">Manage your environments, users, and sign-in — all from one place.</p>
 
-    @if (session('status'))
-        <p class="mt-4 text-sm rounded-lg px-3 py-2" style="background:var(--surface-2);color:var(--muted)">{{ session('status') }}</p>
-    @endif
-
     <form wire:submit="login" class="mt-7 space-y-4">
         <div>
             <label class="label" for="email">Work email</label>

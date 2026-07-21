@@ -225,12 +225,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         </div>
     @endif
 
-    @if (session('status'))
-        <div role="status" aria-live="polite" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm inline-flex items-center gap-2" style="background:var(--success-soft);color:var(--success)">
-            <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
-        </div>
-    @endif
-
     @if (session('error'))
         <div role="alert" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">
             {{ session('error') }}

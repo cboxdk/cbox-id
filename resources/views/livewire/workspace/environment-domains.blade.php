@@ -148,9 +148,6 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
     @if ($environments->isEmpty())
         <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No environments yet</h3><p>Create an environment first, then you can give it a custom domain.</p></div>
     @else
-        @if (session('status'))
-            <div class="mb-6 rounded-xl border p-4 text-sm" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft)">{{ session('status') }}</div>
-        @endif
 
         <div class="card p-5 space-y-5">
             <div>

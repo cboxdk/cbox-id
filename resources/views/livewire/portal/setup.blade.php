@@ -253,12 +253,6 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
             title="Set up enterprise sign-in{{ $orgName ? ' · '.$orgName : '' }}"
             subtitle="You were invited to configure single sign-on for this organization. Nothing else on the account is accessible from here." />
 
-        @if (session('status'))
-            <div class="card p-3 mb-5 text-sm flex items-center gap-2" style="border-color:color-mix(in srgb, var(--success) 30%, transparent);background:var(--success-soft);color:var(--success)">
-                <x-icon name="check" class="w-4 h-4" /> {{ session('status') }}
-            </div>
-        @endif
-
         @if ($showSso)
             {{-- Step 1 — prove domain ownership. A verified domain is what routes your
                  users to this SSO connection, so it comes first. --}}

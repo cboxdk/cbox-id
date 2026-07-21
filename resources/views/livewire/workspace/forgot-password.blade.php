@@ -47,7 +47,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
             Mail::to($member->email)->send(new WorkspacePasswordResetMail($url));
         }
 
-        $this->dispatch('toast', message: 'If that email has a workspace, we\'ve sent a reset link.');
+        session()->flash('status', 'If that email has a workspace, we\'ve sent a reset link.');
         $this->redirect(route('workspace.login'), navigate: false);
     }
 }; ?>

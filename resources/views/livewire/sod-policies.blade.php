@@ -87,10 +87,6 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
         @endif
     </div>
 
-    @if (session('status'))
-        <div class="card p-3 mb-5" style="border-color:var(--success);color:var(--success)" role="status">{{ session('status') }}</div>
-    @endif
-
     @if ($creating)
         <form wire:submit="define" class="card p-4 mb-5 space-y-3">
             <div>
