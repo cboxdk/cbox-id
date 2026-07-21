@@ -1,13 +1,12 @@
 ---
 title: Enterprise self-serve (SSO, SCIM & the Admin Portal)
 weight: 4
-description: Entitlement-gated self-serve SAML/OIDC SSO and SCIM, plus a WorkOS-style single-use setup link an org admin hands to an external IT admin.
+description: Entitlement-gated self-serve SAML/OIDC SSO and SCIM, plus a single-use setup link an org admin hands to an external IT admin.
 ---
 
 # Enterprise self-serve (SSO, SCIM & the Admin Portal)
 
-Cbox ID gives your customers the same self-serve enterprise onboarding that WorkOS
-and Auth0 sell as "Admin Portal" / "Self-Service SSO": an org admin turns on SAML
+Cbox ID gives your customers self-serve enterprise onboarding: an org admin turns on SAML
 or OIDC single sign-on and SCIM directory sync themselves, and can delegate the
 IdP wiring to their own IT team through a single-use link — no support ticket, no
 shared credentials.

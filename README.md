@@ -66,7 +66,7 @@ composer run dev     # serve + queue + vite + logs
 
 ## Status
 
-Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id ^0.4`
+Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id >=0.36 <1.0`
 (a pre-1.0 framework) and has open security follow-ups. Review the
 [security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before
 running it in production. Shipped: full auth (password + magic-link + TOTP MFA +
@@ -76,3 +76,20 @@ clients, Webhooks, Audit, Settings), the **operator console** (environments,
 tenant management, operators) above every environment, branded error screens with
 telemetry trace IDs, and health/metrics endpoints. Session-cookie auth, strict
 CSP, rate limiting, and argon2id throughout.
+
+## License
+
+Cbox ID (this application) is licensed under the **Elastic License 2.0** — see
+[LICENSE](LICENSE). In short, you may use, copy, modify and redistribute it, with
+three limitations:
+
+- you may **not provide it to third parties as a hosted or managed service** that
+  gives them substantial access to its features;
+- you may not circumvent the licence-key functionality or remove/obscure protected
+  features;
+- you may not remove or alter any licensing, copyright or other notices.
+
+Note the split: the framework it is built on, [`cboxdk/laravel-id`](https://github.com/cboxdk/laravel-id),
+is **MIT** — so building your own identity product on the framework is unrestricted.
+The Elastic-2.0 terms apply to this deployable app. If you want to run Cbox ID as a
+managed service for your own customers, get in touch about a commercial licence.

@@ -37,10 +37,14 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `cboxdk/laravel-id` | `^0.4` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `>=0.36 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
-| `cboxdk/laravel-risk` | `^1.0` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
-| `cboxdk/laravel-telemetry` | `^0.3.3` | Tracing / telemetry (trace IDs on error screens). |
+| `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
+| `cboxdk/laravel-telemetry` | `^1.0` | Tracing / telemetry (trace IDs on error screens). |
+| `cboxdk/laravel-console-kit` | `^0.2` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend. |
+| `cboxdk/laravel-dns` | `^0.1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
+| `cboxdk/dns` | `^0.1` | The framework-agnostic DNS resolver beneath laravel-dns. |
+| `bacon/bacon-qr-code` | `^3.1` | TOTP enrolment QR codes. |
 | `cboxdk/laravel-queue-metrics` | `^3.2` | Queue depth/throughput metrics. |
 | `cboxdk/laravel-queue-autoscale` | `^3.0` | Worker autoscaling. |
 
@@ -52,7 +56,7 @@ Pulled in automatically by `composer install`:
 | `socialiteproviders/microsoft` | `^4.9` | Microsoft/Entra provider for Socialite. |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
 
-> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`^0.4`). Minor bumps in that
+> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.36 <1.0`). Minor bumps in that
 > range may carry breaking changes — read its changelog before upgrading.
 
 ## Building assets

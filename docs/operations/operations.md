@@ -82,7 +82,7 @@ php artisan cbox-id:doctor
 The three cache commands are separate artisan invocations (or use
 `php artisan optimize` to run them together). Roll forward one release at a time;
 run `doctor` before returning traffic. Because the framework is a versioned package
-pinned to a pre-1.0 series (`cboxdk/laravel-id ^0.4`), check its changelog for
+pinned to a pre-1.0 series (`cboxdk/laravel-id >=0.36 <1.0`), check its changelog for
 migration or config changes before bumping — minor bumps in that range may carry
 breaking changes.
 
