@@ -145,7 +145,25 @@ Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
 Route::post('/impersonation/exit', [ImpersonationController::class, 'exit'])->name('impersonation.exit');
 
 /*
- * Admin Portal — a WorkOS-style setup link. An external IT admin opens it with
+ * Interactive OIDC/OAuth consent — Cbox ID as an identity provider.
+ *
+ * Deliberately OUTSIDE `platform.auth`. OIDC Core §3.1.2.6 requires an unauthenticated
+ * `prompt=none` request to return `error=login_required` TO THE CLIENT, and an auth
+ * middleware redirects to /login before the component can answer. That broke silent
+ * renew outright: oidc-client-ts, angular-auth-oidc-client and @auth0/auth0-spa-js all
+ * load /authorize?prompt=none in a hidden iframe and await a postMessage — instead they
+ * got the login page framed (or blocked by X-Frame-Options), the promise never resolved,
+ * and the SPA signed the user out on every token refresh.
+ *
+ * The component authenticates for itself: prompt=none answers the client, anything else
+ * redirects to sign-in with the intended URL preserved.
+ */
+Volt::route('/oauth/authorize', 'oauth.consent')
+    ->middleware(['plane:subject', EnforceImpersonationWindow::class])
+    ->name('oauth.authorize');
+
+/*
+ * Admin Portal — a single-use setup link. An external IT admin opens it with
  * NO platform account and configures one org's SSO/SCIM, nothing else. These live
  * in the guest area and must never be reachable via a platform session; the
  * scoped portal session (distinct key) is the only thing that unlocks /setup.
@@ -209,9 +227,6 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // that protects credential changes.
     Volt::route('/sudo', 'auth.sudo')->middleware(BlockDuringImpersonation::class)->name('sudo');
 
-    // Interactive OIDC/OAuth consent — Cbox ID as an identity provider.
-    Volt::route('/oauth/authorize', 'oauth.consent')->name('oauth.authorize');
-
     // Blocked while impersonating: the subject session is pinned to the one org the
     // operator was authorized to enter. Pivoting to another of the subject's orgs
     // would escape that scope, so it is an unambiguous 403 (not a silent no-op).
@@ -253,7 +268,7 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
     Route::middleware('env.admin')->group(function (): void {
         Volt::route('/', 'environment.home')->name('environment.home');
 
-        // Organizations — routable list → create → detail (deep-linkable, WorkOS shape).
+        // Organizations — routable list → create → detail (deep-linkable).
         Volt::route('/organizations', 'environment.organizations.index')->name('environment.organizations');
         Volt::route('/organizations/new', 'environment.organizations.create')->name('environment.organizations.create');
         Volt::route('/organizations/{organization}', 'environment.organizations.show')->name('environment.organizations.show');

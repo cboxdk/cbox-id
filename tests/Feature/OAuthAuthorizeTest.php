@@ -6,6 +6,7 @@ use App\Platform\CurrentUser;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -317,4 +318,110 @@ it('does NOT skip consent for a non-first-party client', function () {
     ])
         ->assertSet('error', null)
         ->assertNoRedirect();
+});
+
+/**
+ * RFC 6749 §4.1.2.1: once the client and its redirect_uri are verified, an error must be
+ * RETURNED TO THE CLIENT, not rendered. These used to be checked before the client was
+ * resolved, so the code could not redirect even when it should — an RP got an HTML page,
+ * its callback never fired, and its SDK hung until timeout with no error code.
+ */
+it('returns authorize errors to the client as a redirect, not a page', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $base = [
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'code_challenge' => 'xyz',
+        'code_challenge_method' => 'S256',
+        'state' => 'st-9',
+    ];
+
+    $cases = [
+        // hybrid flow — we only support code
+        [['response_type' => 'code id_token'], 'unsupported_response_type'],
+        // PKCE omitted
+        [['code_challenge' => null], 'invalid_request'],
+        // plain PKCE
+        [['code_challenge_method' => 'plain'], 'invalid_request'],
+    ];
+
+    foreach ($cases as [$override, $expected]) {
+        $query = http_build_query(array_filter(array_merge($base, $override), fn ($v) => $v !== null));
+
+        $location = $this->get('/oauth/authorize?'.$query)->assertRedirect()->headers->get('Location');
+
+        expect($location)->toStartWith('https://app.test/cb?');
+
+        parse_str((string) parse_url((string) $location, PHP_URL_QUERY), $params);
+
+        expect($params['error'])->toBe($expected)
+            ->and($params['state'])->toBe('st-9')
+            ->and($params)->toHaveKey('error_description');
+    }
+});
+
+/**
+ * An unknown client or an unregistered redirect_uri must NOT redirect — doing so would
+ * make the authorize endpoint an open redirect. Those stay rendered pages.
+ */
+it('renders, never redirects, when the redirect target is not trustworthy', function (): void {
+    $this->get('/oauth/authorize?client_id=nope&redirect_uri=https://evil.test/cb&response_type=code&code_challenge=x&code_challenge_method=S256')
+        ->assertOk()
+        ->assertDontSee('evil.test/cb?error');
+});
+
+/** RFC 8252 §7.3: a native app binds an ephemeral loopback port on each run. */
+it('accepts any port on a loopback redirect it registered', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'CLI',
+        ClientType::Public,
+        redirectUris: ['http://127.0.0.1:8400/callback'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $query = http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'http://127.0.0.1:59123/callback',  // a different port, next run
+        'response_type' => 'code',
+        'code_challenge' => 'xyz',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'none',
+    ]);
+
+    // Reaching login_required (rather than the unregistered-redirect page) proves the
+    // loopback URI was accepted as registered.
+    $location = $this->get('/oauth/authorize?'.$query)->assertRedirect()->headers->get('Location');
+
+    expect($location)->toStartWith('http://127.0.0.1:59123/callback?');
+    expect((string) $location)->toContain('error=login_required');
+});
+
+/** A remote host still requires an exact match — the port float is loopback-only. */
+it('does not float the port for a non-loopback host', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'Web',
+        ClientType::Public,
+        redirectUris: ['https://app.test:443/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $query = http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test:8443/cb',
+        'response_type' => 'code',
+        'code_challenge' => 'xyz',
+        'code_challenge_method' => 'S256',
+    ]);
+
+    $this->get('/oauth/authorize?'.$query)->assertOk();  // rendered refusal, no redirect
 });

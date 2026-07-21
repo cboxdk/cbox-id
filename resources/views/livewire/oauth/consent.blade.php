@@ -102,12 +102,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $codeChallengeMethod = $from('code_challenge_method', $code_challenge_method) ?? 'S256';
         $nonceParam = $from('nonce', $nonce);
 
-        // response_type must be the authorization-code flow.
-        if ($responseType !== 'code') {
-            $this->error = 'Unsupported response_type. Only the authorization code flow is supported.';
-
-            return;
-        }
+        // ORDER MATTERS. RFC 6749 §4.1.2.1 splits errors in two: once the client and
+        // its redirect_uri are known-good, an error must be RETURNED TO THE CLIENT as a
+        // redirect carrying `error` and `state`; only an unknown client or an
+        // unregistered redirect_uri may be shown as a page (redirecting there would be
+        // an open redirect).
+        //
+        // response_type used to be checked FIRST, so the code could not redirect even
+        // when it should: an RP configured for hybrid flow, or one omitting PKCE, got a
+        // human-readable HTML page, its callback never fired, and its SDK hung until
+        // timeout with no error code. That is also an outright fail in the OpenID
+        // basic-certification profile.
 
         // The client must exist.
         $client = is_string($clientId) && $clientId !== '' ? $clients->byClientId($clientId) : null;
@@ -120,21 +125,32 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
 
         // The redirect_uri must exactly match one the client registered. Never
         // redirect to a URI we have not verified.
-        if (! is_string($redirectUri) || ! in_array($redirectUri, $client->redirect_uris, true)) {
+        if (! is_string($redirectUri) || ! $this->redirectUriRegistered($redirectUri, $client->redirect_uris)) {
             $this->error = 'The redirect URI does not match any registered for this application.';
+
+            return;
+        }
+
+        // From here the redirect_uri is verified, so every remaining error goes BACK to
+        // the client in the RFC-defined shape rather than being rendered.
+        if ($responseType !== 'code') {
+            $this->redirectError($redirectUri, 'unsupported_response_type', $stateParam,
+                'Only the authorization code flow is supported.');
 
             return;
         }
 
         // PKCE is mandatory, and we only accept S256.
         if (! is_string($codeChallenge) || $codeChallenge === '') {
-            $this->error = 'Missing PKCE code challenge. A code_challenge is required.';
+            $this->redirectError($redirectUri, 'invalid_request', $stateParam,
+                'A PKCE code_challenge is required.');
 
             return;
         }
 
         if ($codeChallengeMethod !== 'S256') {
-            $this->error = 'Unsupported code_challenge_method. Only S256 is supported.';
+            $this->redirectError($redirectUri, 'invalid_request', $stateParam,
+                'Only the S256 code_challenge_method is supported.');
 
             return;
         }
@@ -158,6 +174,29 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $promptParam = $from('prompt', $prompt);
         $prompts = is_string($promptParam) ? array_values(array_filter(explode(' ', $promptParam))) : [];
         $isReauthed = in_array($from('reauthed', $reauthed), ['1', 'true'], true);
+
+        // This route is deliberately NOT behind `platform.auth`, so handle the
+        // unauthenticated case here — after the client and redirect_uri are verified, so
+        // the answer can go back to the client.
+        //
+        // prompt=none is the SILENT-RENEW path: an SPA loads it in a hidden iframe and
+        // waits for a postMessage from the callback. Redirecting to /login framed the
+        // sign-in page (or X-Frame-Options blocked it), the promise never resolved, and
+        // the SPA logged the user out on every token refresh. OIDC Core §3.1.2.6 wants
+        // error=login_required returned to the redirect_uri instead.
+        if (! app(CurrentUser::class)->check()) {
+            if (in_array('none', $prompts, true)) {
+                $this->redirectError($redirectUri, 'login_required', $stateParam,
+                    'The user is not signed in and prompt=none forbids interaction.');
+
+                return;
+            }
+
+            session()->put('url.intended', $this->resumeUrl());
+            $this->redirect(route('login'), navigate: false);
+
+            return;
+        }
 
         if (! $isReauthed && in_array('select_account', $prompts, true)) {
             session()->put('url.intended', $this->resumeUrl());
@@ -303,6 +342,69 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
     /**
      * @param  array<string, string>  $params
      */
+    /**
+     * Return an RFC 6749 §4.1.2.1 error to the CLIENT rather than rendering a page.
+     *
+     * Only safe once the redirect_uri has been matched against the client's registered
+     * set — before that, redirecting would be an open redirect, which is why unknown
+     * client / bad redirect_uri stay as rendered pages.
+     */
+    /**
+     * Exact match, EXCEPT that a loopback redirect may use any port.
+     *
+     * RFC 8252 §7.3: a native app binds an ephemeral port at runtime, so the port it
+     * registered once is not the port it listens on next time. A byte-exact comparison
+     * rejected every such client on its second run. Scheme, host and path still must
+     * match exactly — only the port floats, and only for 127.0.0.1 / [::1], never for a
+     * remote host.
+     *
+     * @param  list<string>  $registered
+     */
+    private function redirectUriRegistered(string $candidate, array $registered): bool
+    {
+        if (in_array($candidate, $registered, true)) {
+            return true;
+        }
+
+        $parts = parse_url($candidate);
+        $host = $parts['host'] ?? '';
+
+        if (! in_array($host, ['127.0.0.1', '::1'], true) || ($parts['scheme'] ?? '') !== 'http') {
+            return false;
+        }
+
+        foreach ($registered as $uri) {
+            $r = parse_url($uri);
+
+            if (($r['scheme'] ?? '') === 'http'
+                && ($r['host'] ?? '') === $host
+                && ($r['path'] ?? '') === ($parts['path'] ?? '')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function redirectError(string $redirectUri, string $error, ?string $state, string $description): void
+    {
+        $params = ['error' => $error, 'error_description' => $description];
+
+        // RFC 6749 §4.1.2.1: `state` MUST be echoed when the request carried one — the
+        // client correlates the failure with the attempt it started.
+        if (is_string($state) && $state !== '') {
+            $params['state'] = $state;
+        }
+
+        // RFC 9207: the issuer belongs on the error response too, so a mix-up-hardened
+        // client can tell WHICH server refused it.
+        $params['iss'] = app(IssuerResolver::class)->issuer();
+
+        $this->redirectUri = $redirectUri;
+
+        $this->redirect($this->buildRedirect($params), navigate: false);
+    }
+
     private function buildRedirect(array $params): string
     {
         $parts = parse_url($this->redirectUri);
