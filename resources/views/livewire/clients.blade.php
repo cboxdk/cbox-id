@@ -342,7 +342,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
                 </div>
                 @if ($newSecret)
                     <div class="rounded-lg p-3 sm:col-span-2" style="background:var(--warning-soft);border:1px solid color-mix(in oklch, var(--warning) 30%, transparent)">
-                        <dt class="text-xs font-semibold" style="color:var(--warning)">Client secret — copy it now, it won't be shown again</dt>
+                        <dt class="text-xs font-semibold" style="color:var(--warning-strong)">Client secret — copy it now, it won't be shown again</dt>
                         <dd class="mono text-sm break-all mt-1" style="color:var(--foreground)">{{ $newSecret }}</dd>
                     </div>
                 @else

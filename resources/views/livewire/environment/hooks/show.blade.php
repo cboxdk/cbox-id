@@ -105,9 +105,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
     @if ($newSecret)
         <div class="rounded-xl border p-5" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent);background:var(--warning-soft)">
             <div class="min-w-0">
-                <p class="text-sm font-semibold" style="color:var(--warning)">Copy this signing secret now — it won't be shown again.</p>
+                <p class="text-sm font-semibold" style="color:var(--warning-strong)">Copy this signing secret now — it won't be shown again.</p>
                 <p class="mt-3 mono text-sm break-all select-all">{{ $newSecret }}</p>
-                <p class="mt-3 text-xs" style="color:var(--warning)">The endpoint verifies the <code class="mono">X-Cbox-Signature</code> header on each hook request with this secret.</p>
+                <p class="mt-3 text-xs" style="color:var(--warning-strong)">The endpoint verifies the <code class="mono">X-Cbox-Signature</code> header on each hook request with this secret.</p>
             </div>
         </div>
     @endif

@@ -262,7 +262,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
                                 @foreach ($environments as $env)
                                     <label class="flex items-center gap-2 text-sm">
                                         <input type="checkbox" value="{{ $env->id }}" wire:model="accessEnvIds" @disabled($accessAll)>
-                                        {{ $env->name }} @if ($env->isSandbox())<span style="color:var(--warning)">· sandbox</span>@endif
+                                        {{ $env->name }} @if ($env->isSandbox())<span style="color:var(--warning-strong)">· sandbox</span>@endif
                                     </label>
                                 @endforeach
                             </div>

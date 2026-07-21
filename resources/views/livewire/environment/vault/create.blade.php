@@ -101,7 +101,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New stored token'])]
 
         {{-- Write-only handling: the value is handled in the clear this one time and
              sealed on store — it is never echoed back, so warn before submitting. --}}
-        <div class="rounded-xl border p-5" style="border-color:color-mix(in oklch,var(--warning) 35%,transparent);background:var(--warning-soft);color:var(--warning)">
+        <div class="rounded-xl border p-5" style="border-color:color-mix(in oklch,var(--warning) 35%,transparent);background:var(--warning-soft);color:var(--warning-strong)">
             <p class="text-sm font-medium">This is the only time the value is handled in the clear.</p>
             <p class="mt-1 text-xs">It is sealed on store and never shown again — keep your own copy if you need one.</p>
         </div>

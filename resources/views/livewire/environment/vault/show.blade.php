@@ -182,7 +182,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
                 <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled" wire:target="rotate">Rotate</button>
                 <button type="button" wire:click="$set('rotating', false)" class="btn btn-ghost btn-sm">Cancel</button>
             </form>
-            <div class="mt-4 rounded-xl border p-5" style="border-color:color-mix(in oklch,var(--warning) 35%,transparent);background:var(--warning-soft);color:var(--warning)">
+            <div class="mt-4 rounded-xl border p-5" style="border-color:color-mix(in oklch,var(--warning) 35%,transparent);background:var(--warning-soft);color:var(--warning-strong)">
                 <p class="text-sm font-medium">This is the only time the value is handled in the clear.</p>
                 <p class="mt-1 text-xs">It replaces the sealed value on rotate and is never shown again — keep your own copy if you need one.</p>
             </div>

@@ -199,8 +199,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
         <div class="rounded-xl border p-5" style="border-color:color-mix(in oklch, var(--warning) 45%, transparent);background:var(--warning-soft)">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2 font-semibold" style="color:var(--warning)"><x-icon name="key" class="w-4 h-4" /> Bearer token for "{{ $oneTimeTokenName ?? $directory->name }}"</div>
-                    <p class="mt-1 text-sm" style="color:var(--warning)">Copy this now — it is shown only once and cannot be retrieved again.</p>
+                    <div class="flex items-center gap-2 font-semibold" style="color:var(--warning-strong)"><x-icon name="key" class="w-4 h-4" /> Bearer token for "{{ $oneTimeTokenName ?? $directory->name }}"</div>
+                    <p class="mt-1 text-sm" style="color:var(--warning-strong)">Copy this now — it is shown only once and cannot be retrieved again.</p>
                 </div>
                 @if ($freshToken)
                     <button type="button" wire:click="dismissToken" class="btn btn-ghost btn-sm shrink-0">Done</button>

@@ -159,7 +159,7 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
     <div>
         <h2 class="font-semibold mb-3">Violations</h2>
         @forelse ($violations as $violation)
-            <div class="card p-4 mb-3" style="border-color:var(--warning)">
+            <div class="card p-4 mb-3" style="border-color:var(--warning-strong)">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>{{ $violation->policyName }}</span>
                     <span class="mono">{{ $violation->subjectId }}</span>

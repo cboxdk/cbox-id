@@ -99,7 +99,7 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
         <div class="card p-4 mb-5" style="border-color:color-mix(in srgb, var(--warning) 40%, transparent);background:color-mix(in srgb, var(--warning) 8%, transparent)">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
-                    <p class="font-semibold text-sm" style="color:var(--warning)">Copy this signing secret now — it won't be shown again.</p>
+                    <p class="font-semibold text-sm" style="color:var(--warning-strong)">Copy this signing secret now — it won't be shown again.</p>
                     <p class="mt-3 select-all break-all mono text-sm">{{ $newSecret }}</p>
                     <p class="mt-3 text-xs" style="color:var(--faint)">The endpoint verifies the <span class="mono">X-Cbox-Signature</span> header on each hook request with this secret.</p>
                 </div>

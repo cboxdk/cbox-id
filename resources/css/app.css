@@ -70,10 +70,15 @@
     --muted-color: oklch(0.955 0.010 85);
     --muted-foreground: oklch(0.46 0.020 75);
     --accent: oklch(0.5 0.17 258);
+    --accent-strong: oklch(0.5 0.17 258);
     --accent-foreground: oklch(0.99 0.003 247);
     --accent-soft: oklch(0.5 0.17 258 / 0.08);
     --accent-edge: oklch(0.5 0.17 258 / 0.32);
     --success: oklch(0.62 0.16 145);
+    /* Text-weight siblings for the *-soft chips. The base hues are tuned as FILLS;
+       used as text on their own 12%-alpha wash they measure ~3.1:1, under the 4.5:1
+       a pill's label needs. --warning-strong already proved the pattern. */
+    --success-strong: oklch(0.40 0.14 145);
     --success-foreground: oklch(0.99 0.003 247);
     --success-soft: oklch(0.62 0.16 145 / 0.12);
     --warning: oklch(0.72 0.16 70);
@@ -82,11 +87,16 @@
     /* Darker, high-contrast amber for warning TEXT on the soft fill (AA on light). */
     --warning-strong: oklch(0.47 0.12 62);
     --info: oklch(0.62 0.16 230);
+    --info-strong: oklch(0.40 0.14 230);
     --info-soft: oklch(0.62 0.16 230 / 0.12);
     --destructive: oklch(0.58 0.21 25);
     --destructive-foreground: oklch(0.99 0.003 247);
     --destructive-soft: oklch(0.58 0.21 25 / 0.12);
     --border: oklch(0.82 0.020 85);
+    /* Controls need a 3:1 boundary (WCAG 2.2 SC 1.4.11); --border is 1.73:1 and is
+       reused for decorative dividers, where a 3:1 hairline would read as heavy. So
+       inputs get their own. */
+    --input-border: oklch(0.62 0.02 85);
     --border-strong: oklch(0.71 0.024 85);
     --input: oklch(0.905 0.014 85);
     --ring: oklch(0.5 0.17 258);
@@ -143,16 +153,22 @@
         --card-foreground: oklch(0.965 0.006 90);
         --popover: oklch(0.245 0.011 80);
         --primary: oklch(0.65 0.18 258);
-        --primary-foreground: oklch(0.99 0.01 250);
+        /* Dark text on the light-blue fill: near-white measured 3.19:1, and .btn is
+           13px/500 — normal text, needing 4.5:1. This is 5.91:1. */
+        --primary-foreground: oklch(0.16 0.02 250);
         --secondary: oklch(0.285 0.012 80);
         --secondary-foreground: oklch(0.955 0.006 90);
         --muted-color: oklch(0.275 0.012 80);
         --muted-foreground: oklch(0.70 0.016 85);
         --accent: oklch(0.65 0.18 258);
+    --accent-strong: oklch(0.82 0.12 258);
+        --accent-strong: oklch(0.82 0.12 258);
         --accent-foreground: oklch(0.99 0.01 250);
         --accent-soft: oklch(0.65 0.18 258 / 0.18);
         --accent-edge: oklch(0.65 0.18 258 / 0.42);
         --success: oklch(0.74 0.16 145);
+    --success-strong: oklch(0.88 0.15 145);
+        --success-strong: oklch(0.88 0.15 145);
         --success-foreground: oklch(0.16 0.04 145);
         --success-soft: oklch(0.74 0.16 145 / 0.16);
         --warning: oklch(0.78 0.16 70);
@@ -160,11 +176,15 @@
         --warning-soft: oklch(0.78 0.16 70 / 0.18);
     --warning-strong: oklch(0.86 0.15 82);
         --info: oklch(0.7 0.16 230);
+    --info-strong: oklch(0.88 0.13 230);
+        --info-strong: oklch(0.88 0.13 230);
         --info-soft: oklch(0.7 0.16 230 / 0.16);
         --destructive: oklch(0.68 0.21 25);
         --destructive-foreground: oklch(0.16 0.01 250);
         --destructive-soft: oklch(0.68 0.21 25 / 0.16);
         --border: oklch(0.39 0.016 80);
+    --input-border: oklch(0.55 0.016 80);
+        --input-border: oklch(0.55 0.016 80);
         --border-strong: oklch(0.50 0.018 80);
         --input: oklch(0.32 0.013 80);
         --ring: oklch(0.65 0.18 258);
@@ -191,16 +211,18 @@
     --card-foreground: oklch(0.965 0.006 90);
     --popover: oklch(0.245 0.011 80);
     --primary: oklch(0.65 0.18 258);
-    --primary-foreground: oklch(0.99 0.01 250);
+    --primary-foreground: oklch(0.16 0.02 250);
     --secondary: oklch(0.285 0.012 80);
     --secondary-foreground: oklch(0.955 0.006 90);
     --muted-color: oklch(0.275 0.012 80);
     --muted-foreground: oklch(0.70 0.016 85);
     --accent: oklch(0.65 0.18 258);
+    --accent-strong: oklch(0.82 0.12 258);
     --accent-foreground: oklch(0.99 0.01 250);
     --accent-soft: oklch(0.65 0.18 258 / 0.18);
     --accent-edge: oklch(0.65 0.18 258 / 0.42);
     --success: oklch(0.74 0.16 145);
+    --success-strong: oklch(0.88 0.15 145);
     --success-foreground: oklch(0.16 0.04 145);
     --success-soft: oklch(0.74 0.16 145 / 0.16);
     --warning: oklch(0.78 0.16 70);
@@ -208,11 +230,13 @@
     --warning-soft: oklch(0.78 0.16 70 / 0.18);
     --warning-strong: oklch(0.86 0.15 82);
     --info: oklch(0.7 0.16 230);
+    --info-strong: oklch(0.88 0.13 230);
     --info-soft: oklch(0.7 0.16 230 / 0.16);
     --destructive: oklch(0.68 0.21 25);
     --destructive-foreground: oklch(0.16 0.01 250);
     --destructive-soft: oklch(0.68 0.21 25 / 0.16);
     --border: oklch(0.39 0.016 80);
+    --input-border: oklch(0.55 0.016 80);
     --border-strong: oklch(0.50 0.018 80);
     --input: oklch(0.32 0.013 80);
     --ring: oklch(0.65 0.18 258);
@@ -393,10 +417,14 @@
     .input:hover:not(:focus) {
         border-color: var(--border-strong);
     }
-    .input:focus {
+    .input {
+    border-color: var(--input-border);
+}
+
+.input:focus {
         outline: none;
         border-color: var(--ring);
-        box-shadow: 0 0 0 2px var(--accent-soft);
+        box-shadow: 0 0 0 2px var(--ring);
     }
     .input-lg {
         height: 42px;
@@ -461,7 +489,7 @@
         background: var(--secondary);
     }
     .badge-success {
-        color: var(--success);
+        color: var(--success-strong);
         background: var(--success-soft);
         border-color: color-mix(in oklch, var(--success) 20%, transparent);
     }
@@ -476,7 +504,7 @@
         border-color: color-mix(in oklch, var(--destructive) 20%, transparent);
     }
     .badge-info {
-        color: var(--accent);
+        color: var(--accent-strong);
         background: color-mix(in oklch, var(--accent) 12%, transparent);
         border-color: color-mix(in oklch, var(--accent) 22%, transparent);
     }
@@ -647,9 +675,9 @@
     /* Status pill */
     .cbx-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid var(--border); padding: 2px 8px; font-size: 11px; line-height: 1; font-weight: 500; background: var(--secondary); color: var(--secondary-foreground); }
     .cbx-pill .dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--muted-foreground); }
-    .cbx-pill--info { border-color: color-mix(in oklch, var(--info) 20%, transparent); background: var(--info-soft); color: var(--info); }
+    .cbx-pill--info { border-color: color-mix(in oklch, var(--info) 20%, transparent); background: var(--info-soft); color: var(--info-strong); }
     .cbx-pill--info .dot { background: var(--info); }
-    .cbx-pill--success { border-color: color-mix(in oklch, var(--success) 20%, transparent); background: var(--success-soft); color: var(--success); }
+    .cbx-pill--success { border-color: color-mix(in oklch, var(--success) 20%, transparent); background: var(--success-soft); color: var(--success-strong); }
     .cbx-pill--success .dot { background: var(--success); }
     .cbx-pill--warning { border-color: color-mix(in oklch, var(--warning) 20%, transparent); background: var(--warning-soft); color: var(--warning-strong); }
     .cbx-pill--warning .dot { background: var(--warning); }

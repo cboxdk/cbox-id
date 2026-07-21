@@ -167,7 +167,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         <div class="rounded-xl border p-5" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent);background:var(--warning-soft)">
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <p class="text-sm font-semibold" style="color:var(--warning)">{{ $revealedIsFresh ? 'New client secret' : 'Client secret' }} — copy it now, it won't be shown again</p>
+                    <p class="text-sm font-semibold" style="color:var(--warning-strong)">{{ $revealedIsFresh ? 'New client secret' : 'Client secret' }} — copy it now, it won't be shown again</p>
                     <p class="mt-1 text-xs" style="color:var(--muted)">Only a hash is stored. If you lose it, rotate to issue a new one.</p>
                 </div>
                 <button type="button" wire:click="dismissSecret" class="btn btn-ghost btn-sm shrink-0">Done</button>

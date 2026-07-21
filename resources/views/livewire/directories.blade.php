@@ -308,7 +308,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 font-semibold"><x-icon name="key" class="w-4 h-4" /> Bearer token for “{{ $newTokenName }}”</div>
-                    <p class="mt-1 text-sm" style="color:var(--warning)">Copy this now — it is shown only once and cannot be retrieved again.</p>
+                    <p class="mt-1 text-sm" style="color:var(--warning-strong)">Copy this now — it is shown only once and cannot be retrieved again.</p>
                 </div>
                 <button wire:click="dismissToken" class="btn btn-ghost btn-sm">Done</button>
             </div>

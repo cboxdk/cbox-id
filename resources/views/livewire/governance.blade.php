@@ -237,7 +237,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                                             <button wire:click="certify('{{ $item->id }}')" class="btn btn-ghost btn-sm">Certify</button>
                                             <button wire:click="revoke('{{ $item->id }}')" class="btn btn-ghost btn-sm" style="color:var(--danger)">Revoke</button>
                                         @elseif (! $item->applied && $item->decision === ReviewDecision::Revoked)
-                                            <span class="text-xs" style="color:var(--warning)" title="{{ $item->application_note }}">not applied</span>
+                                            <span class="text-xs" style="color:var(--warning-strong)" title="{{ $item->application_note }}">not applied</span>
                                         @endif
                                     </td>
                                 </tr>
