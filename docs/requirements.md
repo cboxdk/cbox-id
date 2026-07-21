@@ -37,7 +37,7 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `cboxdk/laravel-id` | `>=0.36 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `>=0.42 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
 | `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
 | `cboxdk/laravel-telemetry` | `^1.0` | Tracing / telemetry (trace IDs on error screens). |
@@ -56,7 +56,7 @@ Pulled in automatically by `composer install`:
 | `socialiteproviders/microsoft` | `^4.9` | Microsoft/Entra provider for Socialite. |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
 
-> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.36 <1.0`). Minor bumps in that
+> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.42 <1.0`). Minor bumps in that
 > range may carry breaking changes — read its changelog before upgrading.
 
 ## Building assets

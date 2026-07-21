@@ -66,7 +66,7 @@ composer run dev     # serve + queue + vite + logs
 
 ## Status
 
-Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id >=0.36 <1.0`
+Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id >=0.42 <1.0`
 (a pre-1.0 framework) and has open security follow-ups. Review the
 [security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before
 running it in production. Shipped: full auth (password + magic-link + TOTP MFA +
