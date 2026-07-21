@@ -16,3 +16,4 @@ sign into.
 
 For the fast path, see the top-level [Quickstart](../quickstart.md). For production
 hardening, see [Deployment](../operations/deployment.md).
+- [Integrate your app](integrate-your-app.md) — where a `client_id` comes from: register an application, copy its credentials, point an SDK at them.

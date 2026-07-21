@@ -196,6 +196,162 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /vault/secrets:
+    post:
+      tags: [Token Vault]
+      summary: Store a downstream credential, sealed at rest
+      description: |
+        The secret is sealed with the environment's crypto key and is never returned by
+        any read endpoint — only a `lease` reveals it, and only to a client holding a
+        live grant.
+
+        Ownership is derived from the calling token's `org` claim and CANNOT be supplied
+        in the body: the owner is the vault's tenancy boundary, and a caller-chosen owner
+        would be no boundary at all.
+      security: [{ EnvironmentApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, provider, secret]
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Unique per owner — two organizations may each hold a `github-token`.
+                provider: { type: string, maxLength: 100 }
+                secret: { type: string, description: The value to seal. Never returned by a read. }
+                expires_at: { type: string, format: date-time, nullable: true }
+      responses:
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VaultSecret' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /vault/secrets/{id}/rotate:
+    post:
+      tags: [Token Vault]
+      summary: Replace the sealed value, keeping the id and its grants
+      security: [{ EnvironmentApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret]
+              properties:
+                secret: { type: string }
+      responses:
+        '200':
+          description: Rotated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VaultSecret' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: |
+            No such secret **in the caller's organization**. A secret owned by another
+            organization is indistinguishable from one that does not exist — the lookup
+            is filtered, not fetched-then-compared, so nothing leaks about what exists
+            outside the caller's own scope.
+
+  /vault/secrets/{id}:
+    delete:
+      tags: [Token Vault]
+      summary: Revoke a secret permanently
+      description: No future lease can open it. Existing leases are not recalled — they are short-lived by design.
+      security: [{ EnvironmentApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Revoked. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: No such secret in the caller's organization. }
+
+  /vault/secrets/{id}/grants:
+    post:
+      tags: [Token Vault]
+      summary: Authorize an agent client to lease this secret
+      security: [{ EnvironmentApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id]
+              properties:
+                client_id: { type: string, maxLength: 200 }
+                max_ttl_seconds: { type: integer, minimum: 1, nullable: true }
+      responses:
+        '201':
+          description: Granted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret_id: { type: string }
+                  client_id: { type: string }
+                  max_ttl_seconds: { type: integer, nullable: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: No such secret in the caller's organization. }
+
+  /vault/secrets/{id}/grants/{clientId}:
+    delete:
+      tags: [Token Vault]
+      summary: Revoke an agent's authorization
+      description: Idempotent — revoking an absent grant succeeds.
+      security: [{ EnvironmentApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Revoked (or already absent). }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /vault/secrets/{id}/lease:
+    post:
+      tags: [Token Vault]
+      summary: Redeem a grant for the plaintext secret
+      description: |
+        The only endpoint that reveals a secret. Every refusal — unknown secret, revoked,
+        expired, or no live grant — is the SAME 403 with no detail, so a caller cannot
+        use it to enumerate what exists.
+      security: [{ AgentToken: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose]
+              properties:
+                purpose: { type: string, maxLength: 200, description: Recorded on the audit trail. }
+      responses:
+        '200':
+          description: Leased.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret_id: { type: string }
+                  secret: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '403': { description: Lease denied. Deliberately uniform — see the description. }
+
 components:
   securitySchemes:
     EnvironmentApiKey:
@@ -203,6 +359,13 @@ components:
       scheme: bearer
       bearerFormat: cbid_env_
       description: An environment API key, minted in the environment's console. Bound to that environment's host.
+    AgentToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An OAuth access token carrying the `vault.lease` scope. Its `org` claim selects
+        the organization whose secrets it may open — the vault's tenancy boundary.
   parameters:
     Id:
       name: id
@@ -221,6 +384,16 @@ components:
       description: Opaque cursor — the `meta.next_cursor` from the previous page.
       schema: { type: string }
   schemas:
+    VaultSecret:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        provider: { type: string }
+        owner_type: { type: string, nullable: true, enum: [organization, user, null] }
+        owner_id: { type: string, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
     Organization:
       type: object
       properties:

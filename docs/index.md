@@ -29,6 +29,7 @@ package installed, the same files live under `vendor/cboxdk/laravel-id/docs/`.
 - [Quickstart](quickstart.md) — operator zero-to-running in a few commands.
 - [Requirements](requirements.md) — exactly what `composer.json` enforces.
 - [Getting started](getting-started/_index.md) — installation and the first-run flow.
+- [Integrate your app](getting-started/integrate-your-app.md) — where a `client_id` comes from, and the first SDK call.
 
 ## Configure and run
 
