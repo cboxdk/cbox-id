@@ -86,3 +86,17 @@ it('forbids an admin from demoting or removing the org owner', function () {
     // The owner is untouched.
     expect(app(Memberships::class)->of($org->id, $owner->id)?->role)->toBe('owner');
 });
+
+it('paginates the member roster instead of hydrating it whole', function () {
+    [, $org] = actingAsRole('owner');
+    $memberships = app(Memberships::class);
+    foreach (range(1, 30) as $i) {
+        $memberships->add($org->id, "member_{$i}", 'member');
+    }
+
+    $component = Volt::test('members');
+
+    // 31 members (owner + 30) at 25/page: the first page renders 25 rows, not 31.
+    expect($component->viewData('members')->total())->toBe(31)
+        ->and($component->viewData('rows'))->toHaveCount(25);
+});

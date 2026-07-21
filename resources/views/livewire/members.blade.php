@@ -12,16 +12,20 @@ use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
-use Illuminate\Support\Facades\DB;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Exceptions\LastOwner;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Component
 {
+    use WithPagination;
+
     #[Validate('required|email|max:190')]
     public string $inviteEmail = '';
 
@@ -141,7 +145,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         try {
             $memberships->changeRole($this->orgId(), $userId, $role);
-        } catch (\Cbox\Id\Organization\Exceptions\LastOwner) {
+        } catch (LastOwner) {
             $this->addError('inviteEmail', 'The organization must keep at least one owner.');
         }
     }
@@ -162,7 +166,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         try {
             $memberships->remove($this->orgId(), $userId);
             $this->dispatch('toast', message: 'Member removed.');
-        } catch (\Cbox\Id\Organization\Exceptions\LastOwner) {
+        } catch (LastOwner) {
             $this->addError('inviteEmail', 'The organization must keep at least one owner.');
         }
     }
@@ -177,13 +181,15 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $me = app(CurrentUser::class);
         $subjects = app(Subjects::class);
 
-        $memberships = app(Memberships::class)->forOrganization($this->orgId());
+        $page = app(Memberships::class)->paginateForOrganization($this->orgId());
+        $pageMembers = new Collection($page->items());
+        $pageUserIds = $pageMembers->pluck('user_id')->all();
 
-        // Batch-resolve every member's subject in one query (findMany) instead of a
-        // per-row find() — a 200-member org went from ~200 queries to 1.
-        $subjectsById = $subjects->findMany($memberships->pluck('user_id')->all());
+        // Batch-resolve THIS page's subjects in one query (findMany) instead of a
+        // per-row find(); pagination keeps the roster query bounded regardless of org size.
+        $subjectsById = $subjects->findMany($pageUserIds);
 
-        $rows = $memberships
+        $rows = $pageMembers
             ->map(fn ($m): array => [
                 'id' => $m->user_id,
                 'role' => $m->role,
@@ -213,6 +219,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // userId => list of assigned role ids (org-scoped).
         $assignmentsByUser = RoleAssignment::query()
             ->where('organization_id', $orgId)
+            ->whereIn('user_id', $pageUserIds)
             ->get()
             ->groupBy('user_id')
             ->map(fn ($g) => $g->pluck('role_id')->all());
@@ -229,6 +236,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         return [
             'me' => $me,
+            'members' => $page,
             'rows' => new Collection($rows),
             'invitations' => $me->isAdmin() ? app(Invitations::class)->pending($this->orgId()) : collect(),
             'accessRoles' => $accessRoles,
@@ -417,6 +425,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                     @endforelse
                 </tbody>
             </table>
+            @if ($members->hasPages())
+                <div class="mt-4">{{ $members->links() }}</div>
+            @endif
         </div>
     </div>
     </div>
