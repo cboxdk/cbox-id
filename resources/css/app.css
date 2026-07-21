@@ -90,6 +90,9 @@
     --info-strong: oklch(0.40 0.14 230);
     --info-soft: oklch(0.62 0.16 230 / 0.12);
     --destructive: oklch(0.58 0.21 25);
+    /* Text weight on --destructive-soft: the fill hue measures 4.28:1 there, under the
+       4.5:1 a pill label or a danger-zone heading needs. */
+    --destructive-strong: oklch(0.44 0.18 25);
     --destructive-foreground: oklch(0.99 0.003 247);
     --destructive-soft: oklch(0.58 0.21 25 / 0.12);
     --border: oklch(0.82 0.020 85);
@@ -180,6 +183,8 @@
         --info-strong: oklch(0.88 0.13 230);
         --info-soft: oklch(0.7 0.16 230 / 0.16);
         --destructive: oklch(0.68 0.21 25);
+    --destructive-strong: oklch(0.88 0.14 25);
+        --destructive-strong: oklch(0.88 0.14 25);
         --destructive-foreground: oklch(0.16 0.01 250);
         --destructive-soft: oklch(0.68 0.21 25 / 0.16);
         --border: oklch(0.39 0.016 80);
@@ -233,6 +238,7 @@
     --info-strong: oklch(0.88 0.13 230);
     --info-soft: oklch(0.7 0.16 230 / 0.16);
     --destructive: oklch(0.68 0.21 25);
+    --destructive-strong: oklch(0.88 0.14 25);
     --destructive-foreground: oklch(0.16 0.01 250);
     --destructive-soft: oklch(0.68 0.21 25 / 0.16);
     --border: oklch(0.39 0.016 80);
@@ -889,4 +895,35 @@
     }
 
     .cbx-toast-close:hover { opacity: 1; }
+}
+
+/* ── Environment badge ─────────────────────────────────────────────────────
+   Which realm am I acting in? Production is the one that must be unmistakable,
+   so it is the only variant that borrows the destructive hue — the point is
+   hesitation before a destructive click, not decoration. */
+@layer components {
+    .cbx-env-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.05rem 0.4rem;
+        border: 1px solid transparent;
+        border-radius: 0.375rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+
+    .cbx-env-badge[data-env-type='production'] {
+        background: var(--destructive-soft);
+        color: var(--destructive-strong, var(--destructive));
+        border-color: color-mix(in oklch, var(--destructive) 35%, transparent);
+    }
+
+    .cbx-env-badge[data-env-type='sandbox'] {
+        background: var(--warning-soft);
+        color: var(--warning-strong);
+        border-color: color-mix(in oklch, var(--warning) 30%, transparent);
+    }
 }

@@ -102,7 +102,10 @@
     <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
         <div class="flex items-center gap-2 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
             <div class="min-w-0">
-                <p class="text-sm font-semibold truncate">{{ $envName }}</p>
+                <p class="text-sm font-semibold truncate flex items-center gap-1.5">
+                    <span class="truncate">{{ $envName }}</span>
+                    <x-env-badge />
+                </p>
                 <p class="text-xs truncate" style="color:var(--faint)">Environment admin</p>
             </div>
         </div>

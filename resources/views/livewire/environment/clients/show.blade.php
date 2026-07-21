@@ -272,6 +272,15 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <p class="text-sm font-medium">Delete application</p>
         <p class="mt-1 text-sm" style="color:var(--muted)">Anything using its credentials will stop working. This cannot be undone.</p>
-        <button type="button" class="btn btn-ghost btn-sm mt-4" style="color:var(--destructive)" wire:click="deleteClient" wire:confirm="Delete this application? Anything using its credentials will stop working.">Delete application</button>
+        {{-- Irreversible AND cross-tenant-visible in effect: every integration using
+             these credentials stops working. A native confirm named neither the app nor
+             the environment, and Enter dismissed it. --}}
+        <div class="mt-4">
+            <x-confirm-delete
+                :name="$editName"
+                action="deleteClient"
+                label="Delete application"
+                consequence="Anything using this application's credentials will stop working immediately. This cannot be undone." />
+        </div>
     </div>
 </div>
