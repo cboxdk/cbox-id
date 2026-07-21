@@ -369,7 +369,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         }
 
         $parts = parse_url($candidate);
-        $host = $parts['host'] ?? '';
+        // parse_url returns an IPv6 host WITH its brackets ("[::1]"), so comparing
+        // against the bare literal never matched and every [::1] native client fell back
+        // to byte-exact matching — failing on its second run. Fails closed, but the
+        // documented behaviour was untrue.
+        $host = trim($parts['host'] ?? '', '[]');
 
         if (! in_array($host, ['127.0.0.1', '::1'], true) || ($parts['scheme'] ?? '') !== 'http') {
             return false;
@@ -379,7 +383,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $r = parse_url($uri);
 
             if (($r['scheme'] ?? '') === 'http'
-                && ($r['host'] ?? '') === $host
+                && trim($r['host'] ?? '', '[]') === $host
                 && ($r['path'] ?? '') === ($parts['path'] ?? '')) {
                 return true;
             }
