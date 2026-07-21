@@ -67,10 +67,18 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
             return;
         }
 
+        // A domain set here is NOT verified — no DNS proof has been shown for it. The
+        // per-environment issuer deliberately trusts a custom domain only once
+        // domain_verified_at is stamped, so writing `domain` now would route the host
+        // while discovery kept advertising the fallback issuer: every conformant OIDC
+        // client (including our own SDKs) rejects that mismatch per RFC 8414 §3.3, and
+        // the environment is silently unusable from the moment it is created.
+        //
+        // So create it WITHOUT the domain and let the operator run the same DNS-TXT
+        // verification flow every other writer uses. One door, one invariant.
         $environment = Environment::query()->create([
             'name' => $this->name,
             'slug' => $this->uniqueSlug($this->name),
-            'domain' => $domain,
             'status' => 'active',
         ]);
 
@@ -78,7 +86,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
         $context->runAs($environment, fn () => $keys->activeSigningKey());
 
         $this->reset('name', 'domain', 'creating');
-        session()->flash('status', 'Environment "'.$environment->name.'" created.');
+
+        session()->flash('status', $domain === null
+            ? 'Environment "'.$environment->name.'" created.'
+            : 'Environment "'.$environment->name.'" created. Add '.$domain.' from the environment\'s domain settings to verify it by DNS — an unverified domain cannot be its issuer.');
     }
 
     public function switchTo(string $id): void

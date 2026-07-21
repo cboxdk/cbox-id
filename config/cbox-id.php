@@ -73,9 +73,22 @@ return [
      * exact origin the browser reports (scheme + host + port). Both are asserted
      * during verification — a mismatch is rejected.
      */
+    /*
+     * Passkeys / WebAuthn.
+     *
+     * Both derive from APP_URL when unset. They used to have NO defaults, so a deploy
+     * that did not set them fell back to the refusing verifier and passkeys were
+     * silently unavailable — a shipped, documented, real-vector-tested security feature
+     * that was simply off. A control that is off by default is worse than one that was
+     * never claimed, so the safe default is the one that works for the host it runs on.
+     *
+     * rp_id is the registrable domain (no scheme, no port); origin is the full origin
+     * the browser will report. Set them explicitly when the sign-in host differs from
+     * APP_URL (a custom domain, or a reverse proxy terminating elsewhere).
+     */
     'webauthn' => [
-        'rp_id' => env('CBOX_ID_WEBAUTHN_RP_ID'),
-        'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN'),
+        'rp_id' => env('CBOX_ID_WEBAUTHN_RP_ID', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
+        'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN', rtrim((string) env('APP_URL', 'http://localhost'), '/')),
     ],
 
     /*

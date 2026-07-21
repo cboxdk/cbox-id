@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Exceptions\InvalidPasswordReset;
 use Livewire\Attributes\Layout;
+use App\Rules\NotBreached;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
@@ -12,10 +13,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 {
     public string $token = '';
 
-    #[Validate('required|min:12|confirmed')]
     public string $password = '';
 
-    #[Validate('required')]
     public string $password_confirmation = '';
 
     public function mount(string $token): void
@@ -25,7 +24,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 
     public function resetPassword(PasswordReset $resets): void
     {
-        $this->validate();
+        // NotBreached belongs here more than anywhere: this is the flow an attacker with
+        // a stolen reset token uses, and the one where a user is most likely to reach for
+        // a password they have used before. Every OTHER password-setting path screened
+        // it — signup, invite acceptance, the workspace reset — and this one did not.
+        $this->validate([
+            'password' => ['required', 'string', 'min:12', 'max:200', 'confirmed', new NotBreached],
+            'password_confirmation' => ['required'],
+        ]);
 
         try {
             $resets->reset($this->token, $this->password);
