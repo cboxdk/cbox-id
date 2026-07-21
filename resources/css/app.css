@@ -384,6 +384,18 @@
     .btn-ghost:hover:not(:disabled) {
         border-color: var(--border-strong);
     }
+    /* Accent-tinted secondary action — a step below the solid primary, distinct
+       from the plain ghost. Without this rule the class rendered with no fill,
+       leaving e.g. the SSO sign-in CTA invisible. */
+    .btn-secondary {
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-color: color-mix(in oklch, var(--accent) 30%, transparent);
+    }
+    .btn-secondary:hover:not(:disabled) {
+        background: color-mix(in oklch, var(--accent) 18%, transparent);
+        border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+    }
     .btn-danger {
         background: transparent;
         color: var(--destructive);

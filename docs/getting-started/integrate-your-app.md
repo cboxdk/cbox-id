@@ -75,7 +75,7 @@ composer require cboxdk/laravel-id-client
 ```
 
 ```js
-import { createCboxId } from '@cboxdk/id-js';
+import { createCboxId } from '@cboxdk/id-js/nextjs';
 
 export const cbox = createCboxId({
   issuer: 'https://acme.cboxid.com',

@@ -273,11 +273,8 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button type="button" class="cbx-search hidden md:inline-flex" style="width:160px" aria-label="Search">
-                    <x-icon name="search" class="w-4 h-4" />
-                    <span class="label">Search…</span>
-                    <kbd>⌘K</kbd>
-                </button>
+                {{-- No global command palette ships yet — a non-functional ⌘K search
+                     box was removed rather than left as a dead affordance. --}}
                 <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
             </div>
         </header>
