@@ -6,7 +6,9 @@ use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Exceptions\OidcDiscoveryFailed;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\OidcDiscovery;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
@@ -170,6 +172,14 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
                 'client_secret' => $secret,
                 'signing_key' => $key,
             ];
+
+            try {
+                $config = array_merge($config, app(OidcDiscovery::class)->fromIssuer($this->issuer)->toConfig());
+            } catch (OidcDiscoveryFailed $e) {
+                $this->addError('issuer', "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})");
+
+                return;
+            }
         }
 
         $model->name = trim($data['editName']);

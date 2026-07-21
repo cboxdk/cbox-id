@@ -282,6 +282,16 @@ it('requires and stores client_secret for an OIDC connection created via the for
         ->call('create')
         ->assertHasErrors('client_secret');
 
+    // The authorization/token endpoints are completed from the issuer's discovery
+    // document (SSRF-guarded) so the connection isn't left half-configured.
+    config(['cbox-id.federation.verify_url' => false]);
+    Http::fake(['okta.example/.well-known/openid-configuration' => Http::response([
+        'issuer' => 'https://okta.example',
+        'authorization_endpoint' => 'https://okta.example/oauth2/authorize',
+        'token_endpoint' => 'https://okta.example/oauth2/token',
+        'jwks_uri' => 'https://okta.example/oauth2/keys',
+    ], 200)]);
+
     Volt::test('environment.connections.create')
         ->set('type', 'oidc')
         ->set('organization_id', $org->id)
@@ -294,7 +304,30 @@ it('requires and stores client_secret for an OIDC connection created via the for
         ->assertHasNoErrors();
 
     $conn = Connection::query()->where('name', 'Okta OIDC')->firstOrFail();
-    expect(app(Connections::class)->config($conn)['client_secret'] ?? null)->toBe('s3cr3t-value');
+    $config = app(Connections::class)->config($conn);
+    expect($config['client_secret'] ?? null)->toBe('s3cr3t-value')
+        ->and($config['authorization_endpoint'] ?? null)->toBe('https://okta.example/oauth2/authorize')
+        ->and($config['token_endpoint'] ?? null)->toBe('https://okta.example/oauth2/token');
+});
+
+it('refuses an OIDC connection whose issuer has no reachable discovery document', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Bad OIDC', slug: 'bad-oidc'));
+    config(['cbox-id.federation.verify_url' => false]);
+    Http::fake(['badidp.example/.well-known/openid-configuration' => Http::response('nope', 404)]);
+
+    Volt::test('environment.connections.create')
+        ->set('type', 'oidc')
+        ->set('organization_id', $org->id)
+        ->set('name', 'Bad OIDC')
+        ->set('issuer', 'https://badidp.example')
+        ->set('client_id', 'abc')
+        ->set('client_secret', 's3cr3t')
+        ->set('signing_key', "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----")
+        ->call('create')
+        ->assertHasErrors('issuer');
+
+    expect(Connection::query()->where('name', 'Bad OIDC')->exists())->toBeFalse();
 });
 
 it('pins an impersonation session to the authorized org, not the subject\'s oldest membership', function (): void {

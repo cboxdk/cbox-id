@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Exceptions\OidcDiscoveryFailed;
 use Cbox\Id\Federation\Exceptions\SamlMetadataImportFailed;
 use Cbox\Id\Federation\Exceptions\UnsafeFederationUrl;
+use Cbox\Id\Federation\OidcDiscovery;
 use Cbox\Id\Federation\Saml\SamlMetadataImporter;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
@@ -127,6 +129,17 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
                 'client_secret' => 'required|string|max:500',
                 'signing_key' => 'required|string',
             ]);
+
+            // Resolve the provider's authorization/token endpoints from its issuer
+            // (SSRF-guarded discovery) so the connection is complete — OidcClient needs
+            // them at redirect time, and an issuer alone would dead-end mid-flow.
+            try {
+                $config = array_merge($config, app(OidcDiscovery::class)->fromIssuer($this->issuer)->toConfig());
+            } catch (OidcDiscoveryFailed $e) {
+                $this->addError('issuer', "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})");
+
+                return null;
+            }
         }
 
         $connection = $connections->create($this->organization_id, $type, trim($this->name), $config);

@@ -56,6 +56,16 @@ function makeOrg(string $slug): string
 
 it('exercises the connection detail mutating actions (saveConfig, activate, disable, delete)', function (): void {
     crudSetup();
+    // saveConfig completes the OIDC endpoints via SSRF-guarded discovery from the issuer.
+    config(['cbox-id.federation.verify_url' => false]);
+    Http::fake([
+        'api.pwnedpasswords.com/*' => Http::response('', 200),
+        'okta.example/issuer/.well-known/openid-configuration' => Http::response([
+            'issuer' => 'https://okta.example/issuer',
+            'authorization_endpoint' => 'https://okta.example/issuer/authorize',
+            'token_endpoint' => 'https://okta.example/issuer/token',
+        ], 200),
+    ]);
     $orgId = makeOrg('conn-org');
     $connection = app(Connections::class)->create(
         $orgId,

@@ -10,8 +10,10 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
+use Cbox\Id\Federation\Exceptions\OidcDiscoveryFailed;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
+use Cbox\Id\Federation\OidcDiscovery;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -151,6 +153,14 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                 'client_id' => 'required|string|max:500',
                 'signing_key' => 'required|string',
             ]);
+
+            try {
+                $config = array_merge($config, app(OidcDiscovery::class)->fromIssuer($this->issuer)->toConfig());
+            } catch (OidcDiscoveryFailed $e) {
+                $this->addError('issuer', "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})");
+
+                return;
+            }
         }
 
         $connections->create($orgId, $type, $this->connName, $config);
