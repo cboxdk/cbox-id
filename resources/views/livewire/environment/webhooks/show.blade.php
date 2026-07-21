@@ -126,7 +126,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
     public function pause(WebhookRegistry $webhooks): void
     {
-        $webhooks->pause($this->endpoint()->id);
+        // The env admin is the operator above the orgs here, so act in the endpoint's own
+        // scope — EnvironmentScope remains the real boundary. Mirrors the hooks console.
+        $webhooks->pause($this->endpoint()->id, $this->endpoint()->organization_id);
         $this->dispatch('toast', message: 'Endpoint paused — it will stop receiving events.');
     }
 

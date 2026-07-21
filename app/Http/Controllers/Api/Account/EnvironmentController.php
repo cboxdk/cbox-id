@@ -102,7 +102,12 @@ final class EnvironmentController extends Controller
             // Which project (billing anchor) this environment belongs to.
             'project_id' => $environment->getAttribute('project_id'),
             'domain' => $environment->domain,
-            'issuer' => 'https://'.($environment->domain ?? $environment->slug.'.'.$baseDomain),
+            // Only a VERIFIED domain may stand as the issuer — that is exactly the rule
+            // EnvironmentIssuerResolver enforces, and reporting a different one here
+            // would tell an integrator to configure an issuer the server will not assert.
+            'issuer' => 'https://'.($environment->domain_verified_at !== null && $environment->domain !== null
+                ? $environment->domain
+                : $environment->slug.'.'.$baseDomain),
         ];
     }
 }

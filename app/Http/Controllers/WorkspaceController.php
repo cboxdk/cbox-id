@@ -49,10 +49,16 @@ final class WorkspaceController extends Controller
         return redirect()->away('https://'.$this->host($env).'/admin/handoff?token='.urlencode($token));
     }
 
-    /** The environment's own host — its custom domain, else {slug}.{base_domain}. */
+    /** The environment's own host — its VERIFIED custom domain, else {slug}.{base_domain}. */
     private function host(Environment $environment): string
     {
-        if (is_string($environment->domain) && $environment->domain !== '') {
+        // The verification stamp, not just the column. This method mints a bearer handoff
+        // token and redirects to the result, so an unverified domain would send a live
+        // credential to a host nobody has proven control of. Round 2 stopped the operator
+        // console from WRITING an unverified domain; this is the READER, which still
+        // trusted any legacy row. Same invariant, both ends.
+        if (is_string($environment->domain) && $environment->domain !== ''
+            && $environment->domain_verified_at !== null) {
             return $environment->domain;
         }
 

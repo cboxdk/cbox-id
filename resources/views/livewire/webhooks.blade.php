@@ -59,7 +59,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
             return;
         }
 
-        $webhooks->pause($endpointId);
+        $webhooks->pause($endpointId, $this->orgId());
         $this->dispatch('toast', message: 'Endpoint paused.');
     }
 
