@@ -98,9 +98,13 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $this->guardFeature(PortalFeature::Sso);
         $this->ownedDomain($id, $domains);
 
-        $this->dispatch('toast', message: $domains->verify($id)
-            ? 'Domain verified — users on this domain can now sign in with SSO.'
-            : "We couldn't find the TXT record yet — DNS can take a few minutes to propagate.", severity: 'error');
+        // Two dispatches, not one with a ternary: `severity` applied to the whole
+        // expression announced a SUCCESSFUL verification in red, assertively.
+        if ($domains->verify($id)) {
+            $this->dispatch('toast', message: 'Domain verified — users on this domain can now sign in with SSO.');
+        } else {
+            $this->dispatch('toast', message: "We couldn't find the TXT record yet — DNS can take a few minutes to propagate.", severity: 'error');
+        }
     }
 
     public function removeDomain(string $id, DomainVerification $domains): void

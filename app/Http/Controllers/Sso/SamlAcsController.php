@@ -9,6 +9,7 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\FederationFlow;
+use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\ConnectionInactive;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
@@ -40,7 +41,12 @@ final class SamlAcsController extends Controller
     {
         $model = $this->connections->byId($connection);
 
-        if ($model === null || ! $model->isActive()) {
+        // The type check is not cosmetic: the validator dispatches on $connection->type,
+        // so POSTing an id_token here as "SAMLResponse" against an OIDC connection id
+        // would route to the OIDC validator — which has no nonce and no replay guard,
+        // because those live in the OIDC controller's state/nonce stash. Without this,
+        // the CSRF-exempt SAML ACS is a replay endpoint for OIDC connections.
+        if ($model === null || ! $model->isActive() || $model->type !== ConnectionType::Saml) {
             return $this->failed('That single sign-on connection is no longer active. Ask your IT administrator to re-enable it.');
         }
 

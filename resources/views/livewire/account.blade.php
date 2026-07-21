@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Rules\NotBreached;
 use App\Platform\SocialProviders;
 use App\Platform\Sudo;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -54,7 +55,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
 
         $this->validate([
             'currentPassword' => ['required'],
-            'newPassword' => ['required', 'min:12'],
+            'newPassword' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
         ], [
             'newPassword.min' => 'Use at least 12 characters.',
         ]);

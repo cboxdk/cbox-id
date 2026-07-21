@@ -32,15 +32,31 @@ final class Authenticate
 
     /**
      * @param  Closure(Request): Response  $next
+     * @param  string|null  $mode  pass `optional` to RESOLVE the subject without requiring one
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $mode = null): Response
     {
+        // `optional`: populate CurrentUser when there IS a valid session, and continue as
+        // a guest when there is not — for endpoints that must answer an unauthenticated
+        // caller themselves rather than being redirected away.
+        //
+        // /oauth/authorize is the case: OIDC Core §3.1.2.6 requires prompt=none to return
+        // error=login_required TO THE CLIENT. Moving that route out of this middleware
+        // entirely was WRONG — CurrentUser is populated ONLY here, so check() became
+        // permanently false and no authorization code could be issued at all. Optional
+        // mode keeps every re-check below (revoked session, deactivated subject,
+        // suspended org) instead of the component re-implementing them badly.
+        $optional = $mode === 'optional';
         $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
 
         $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
 
         if ($session === null) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
+
+            if ($optional) {
+                return $next($request);
+            }
 
             // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
             // /oauth/authorize?…) is returned to complete it after logging in.
@@ -54,6 +70,10 @@ final class Authenticate
         // (as OperatorAuth::current() does) and refuse an inactive subject.
         if ($subject === null || ! $this->subjects->isActive($subject->id)) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
+
+            if ($optional) {
+                return $next($request);
+            }
 
             return redirect()->guest(route('login'));
         }

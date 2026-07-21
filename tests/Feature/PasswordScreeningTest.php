@@ -19,8 +19,14 @@ uses(RefreshDatabase::class);
  * here rather than shipping quietly.
  */
 it('screens every password-accepting flow against the breach corpus', function (): void {
-    $components = glob(resource_path('views/livewire/**/*.blade.php'), GLOB_BRACE)
-        + glob(resource_path('views/livewire/*.blade.php'));
+    // array_merge, NOT `+`. Both globs are zero-indexed, so `+` keeps the left array's
+    // keys and discards every colliding key from the right — it silently dropped all 19
+    // top-level components, including the one that genuinely had no NotBreached. The
+    // test existed to catch exactly that and could not see the file.
+    $components = array_merge(
+        glob(resource_path('views/livewire/**/*.blade.php'), GLOB_BRACE) ?: [],
+        glob(resource_path('views/livewire/*.blade.php')) ?: [],
+    );
 
     /** @var list<string> $unscreened */
     $unscreened = [];
@@ -29,8 +35,11 @@ it('screens every password-accepting flow against the breach corpus', function (
         $source = file_get_contents($file) ?: '';
 
         // A component "accepts a password" when it validates one into a real credential.
-        $setsPassword = preg_match("/'password'\s*=>\s*\[/", $source) === 1
-            || str_contains($source, "#[Validate('required|min:12");
+        // Detect by what the component DOES, not by one key spelling: account.blade.php
+        // validates 'newPassword', so a 'password' => [...] pattern missed it entirely.
+        $setsPassword = preg_match("/'(password|newPassword)'\s*=>\s*\[/", $source) === 1
+            || str_contains($source, '->setPassword(')
+            || str_contains($source, '->resetPassword(');
 
         if (! $setsPassword) {
             continue;

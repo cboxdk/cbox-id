@@ -16,17 +16,48 @@
 <div
     x-data="{
         toasts: [],
+        politeMsg: '',
+        assertiveMsg: '',
+        timers: {},
         push(detail) {
             const id = Date.now() + Math.random();
-            this.toasts.push({ id, message: detail.message, severity: detail.severity ?? 'success' });
-            setTimeout(() => this.dismiss(id), detail.severity === 'error' ? 8000 : 4500);
+            const severity = detail.severity ?? 'success';
+            this.toasts.push({ id, message: detail.message, severity });
+
+            // Announce by writing into a region that ALREADY EXISTS. A region that is
+            // inserted carrying its own text is registered by the a11y tree as a new
+            // subtree, not a live update — NVDA and VoiceOver stay silent. This was the
+            // whole point of the component, and the first version got it wrong.
+            if (severity === 'error') { this.assertiveMsg = ''; this.$nextTick(() => this.assertiveMsg = detail.message); }
+            else { this.politeMsg = ''; this.$nextTick(() => this.politeMsg = detail.message); }
+
+            this.arm(id, severity);
         },
-        dismiss(id) { this.toasts = this.toasts.filter(t => t.id !== id); },
+        arm(id, severity) {
+            clearTimeout(this.timers[id]);
+            // SC 2.2.1: auto-dismiss is pausable — a magnifier user at 400%, or anyone
+            // reaching for the close button, must not lose the message mid-read.
+            this.timers[id] = setTimeout(() => this.dismiss(id), severity === 'error' ? 8000 : 4500);
+        },
+        hold(id) { clearTimeout(this.timers[id]); },
+        release(id, severity) { this.arm(id, severity); },
+        dismiss(id) {
+            clearTimeout(this.timers[id]);
+            delete this.timers[id];
+            this.toasts = this.toasts.filter(t => t.id !== id);
+        },
     }"
     @toast.window="push($event.detail)"
     class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-4 sm:items-end"
     style="padding-bottom:calc(1rem + env(safe-area-inset-bottom))"
 >
+    {{-- The announcement channels. Present on FIRST PAINT and never removed; only their
+         text changes, which is what a live region actually reacts to. --}}
+    <div class="sr-only" role="status" aria-live="polite" x-text="politeMsg"></div>
+    <div class="sr-only" role="alert" aria-live="assertive" x-text="assertiveMsg"></div>
+
+    {{-- A redirect-then-flash (sign-in, invitation acceptance) renders server-side. These
+         DO pre-exist in the DOM on load, so they keep their own live-region roles. --}}
     @if (session('status'))
         <div class="cbx-toast" data-severity="success" role="status" aria-live="polite">{{ session('status') }}</div>
     @endif
@@ -45,8 +76,13 @@
         <div
             class="cbx-toast pointer-events-auto"
             :data-severity="toast.severity"
-            :role="toast.severity === 'error' ? 'alert' : 'status'"
-            :aria-live="toast.severity === 'error' ? 'assertive' : 'polite'"
+            {{-- Purely visual: announcing is the sr-only regions' job, and marking this
+                 live too would double-announce every message. --}}
+            aria-hidden="true"
+            @mouseenter="hold(toast.id)"
+            @mouseleave="release(toast.id, toast.severity)"
+            @focusin="hold(toast.id)"
+            @focusout="release(toast.id, toast.severity)"
             x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="opacity-0 translate-y-2"
             x-transition:leave="transition ease-in duration-150"

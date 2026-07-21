@@ -153,8 +153,12 @@ it('refuses an environment console action even with no route middleware at all',
 });
 
 it('guards every environment console component, so a new one cannot skip it', function (): void {
-    $components = glob(resource_path('views/livewire/environment/*.blade.php'))
-        + glob(resource_path('views/livewire/environment/*/*.blade.php'));
+    // array_merge, NOT `+` — see PasswordScreeningTest. With `+` this checked 43 of 49
+    // components, skipping all three environment/clients/* (which reveal client secrets).
+    $components = array_merge(
+        glob(resource_path('views/livewire/environment/*.blade.php')) ?: [],
+        glob(resource_path('views/livewire/environment/*/*.blade.php')) ?: [],
+    );
 
     $unguarded = [];
 

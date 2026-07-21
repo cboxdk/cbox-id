@@ -272,7 +272,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $client = $clients->byClientId($this->clientId);
 
         if (! $client instanceof Client
-            || ! in_array($this->redirectUri, $client->redirect_uris, true)
+            || ! $this->redirectUriRegistered($this->redirectUri, $client->redirect_uris)
             || $this->codeChallenge === ''
             || $this->codeChallengeMethod !== 'S256') {
             $this->error = 'This authorization request can no longer be completed. Please start again.';

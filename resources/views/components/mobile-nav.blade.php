@@ -25,7 +25,13 @@
         <span class="grid place-items-center w-8 h-8 rounded-lg text-sm font-semibold shrink-0" style="background:var(--accent);color:var(--accent-fg)" aria-hidden="true">{{ $initial }}</span>
     @endif
     <span class="min-w-0 flex-1">
-        <span class="block text-[13px] font-semibold truncate leading-tight">{{ $heading }}</span>
+        <span class="block text-[13px] font-semibold truncate leading-tight">
+            {{ $heading }}
+            {{-- The realm indicator must survive below the lg breakpoint: the sidebar
+                 that carries it is `hidden lg:flex`, which is the very defect this was
+                 added to fix. --}}
+            <x-env-badge />
+        </span>
         @if ($subheading)
             <span class="block text-[11px] leading-tight" style="color:var(--muted-foreground)">{{ $subheading }}</span>
         @endif

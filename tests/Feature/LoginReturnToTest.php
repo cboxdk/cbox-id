@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -81,4 +87,43 @@ it('answers an unauthenticated prompt=none with login_required at the redirect_u
         // §4.1.2.1: state MUST be echoed so the client can correlate the failure.
         ->and($params['state'])->toBe('st-123')
         ->and($params)->toHaveKey('iss');
+});
+
+/**
+ * The test that would have caught a dead authorization endpoint.
+ *
+ * Moving /oauth/authorize out of `platform.auth` made CurrentUser::check() permanently
+ * false — that middleware is the ONLY thing that populates it — so a signed-in user was
+ * redirected to /login, bounced back to the dashboard by platform.guest, and NO
+ * authorization code could ever be issued. Every existing test missed it because they
+ * hand-populate CurrentUser and drive the Volt component directly, never the real HTTP
+ * path with a real session. This one goes through HTTP.
+ */
+it('reaches the consent screen over HTTP for a genuinely signed-in user', function (): void {
+    $subject = app(Subjects::class)->create('rp-user@acme.test', 'RP User', 'a-strong-unbreached-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-http'));
+    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $query = http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'code_challenge' => 'xyz',
+        'code_challenge_method' => 'S256',
+    ]);
+
+    // Not a redirect to /login: the signed-in subject must be RESOLVED here.
+    $this->withSession([PlatformAuth::SESSION_KEY => $session->id])
+        ->get('/oauth/authorize?'.$query)
+        ->assertOk()
+        ->assertSee('RP');
 });

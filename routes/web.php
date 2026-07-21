@@ -159,7 +159,10 @@ Route::post('/impersonation/exit', [ImpersonationController::class, 'exit'])->na
  * redirects to sign-in with the intended URL preserved.
  */
 Volt::route('/oauth/authorize', 'oauth.consent')
-    ->middleware(['plane:subject', EnforceImpersonationWindow::class])
+    // `platform.auth:optional` RESOLVES the signed-in subject without requiring one.
+    // Removing the middleware outright was wrong: CurrentUser is populated only there,
+    // so check() was permanently false and NO authorization code could be issued.
+    ->middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth:optional'])
     ->name('oauth.authorize');
 
 /*
