@@ -16,8 +16,13 @@ use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
+use App\Platform\EnvironmentAdminAuth;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware;
+use Livewire\Volt\Volt;
+
+uses(RefreshDatabase::class);
 
 /**
  * Livewire re-runs only *persistent* middleware on POST /livewire/update. Any route-level
@@ -123,5 +128,48 @@ it('registers EVERY app middleware guarding a web route as persistent', function
         'These app middleware guard a web route but are NOT persistent, so they stop enforcing on '
         .'every Livewire action: '.implode(', ', array_keys($unguarded)).'. Either register them in '
         .'PlatformServiceProvider::boot() or document the exemption in nonPersistentByDesign().'
+    );
+});
+
+/**
+ * The second layer, tested WITHOUT the first.
+ *
+ * The persistent-middleware fix above closes the hole, but it is one line in one
+ * provider — and its absence is exactly what made the environment console answer
+ * unauthenticated action requests. So every environment/* component now also asserts an
+ * env-admin session in boot() (boot, not mount: only boot re-runs per action).
+ *
+ * This test proves that layer stands on its own, by driving a component directly through
+ * Volt::test — which does not run route middleware at all, and is therefore a faithful
+ * simulation of the middleware being missing.
+ */
+it('refuses an environment console action even with no route middleware at all', function (): void {
+    // No env-admin session established.
+    expect(session()->has(EnvironmentAdminAuth::SESSION_KEY))->toBeFalse();
+
+    // Livewire converts the abort into a RESPONSE rather than letting it propagate, so
+    // assert the status — expecting a thrown HttpException here silently passes.
+    Volt::test('environment.audit')->assertForbidden();
+});
+
+it('guards every environment console component, so a new one cannot skip it', function (): void {
+    $components = glob(resource_path('views/livewire/environment/*.blade.php'))
+        + glob(resource_path('views/livewire/environment/*/*.blade.php'));
+
+    $unguarded = [];
+
+    foreach ($components as $file) {
+        $source = file_get_contents($file) ?: '';
+
+        if (! str_contains($source, 'public function boot(')
+            || ! str_contains($source, 'EnvironmentAdminAuth')) {
+            $unguarded[] = str_replace(resource_path('views/livewire/environment/'), '', $file);
+        }
+    }
+
+    expect($unguarded)->toBe(
+        [],
+        'These environment console components have no in-component env-admin guard: '
+        .implode(', ', $unguarded)
     );
 });

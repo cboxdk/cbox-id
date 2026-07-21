@@ -1,11 +1,23 @@
 <?php
 declare(strict_types=1);
+use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Kernel\Usage\Models\UsageCounter;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 /** Environment control plane › Analytics. Usage across the environment (env-scoped),
  *  aggregated per metric. */
 new #[Layout('components.layouts.environment', ['title' => 'Analytics'])] class extends Component {
+    /**
+     * Second layer — see the sweep note in the sibling components: the route's
+     * `env.admin` middleware is primary, this makes a middleware regression
+     * non-exploitable rather than merely unlikely. boot(), not mount(), because
+     * only boot() re-runs on each Livewire action.
+     */
+    public function boot(): void
+    {
+        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+    }
+
     public function with(): array {
         $metrics = UsageCounter::query()->selectRaw('metric, SUM(count) as total')->groupBy('metric')->orderByDesc('total')->get();
         return ['metrics' => $metrics];

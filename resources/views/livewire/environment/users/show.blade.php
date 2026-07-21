@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\EnvironmentAdminAuth;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\OrgAccessRoles;
@@ -36,6 +37,18 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'User'])] class extends Component
 {
+    /**
+     * Second layer. The route's `env.admin` middleware is the primary gate and IS
+     * re-run on Livewire actions (PersistentMiddlewareTest holds that), but this
+     * console previously had NO in-component authorization at all — so when that
+     * middleware was missing from the persistent list, every action here answered
+     * unauthenticated. boot() rather than mount(): only boot() runs on each action.
+     */
+    public function boot(): void
+    {
+        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+    }
+
     public string $userId = '';
 
     public string $editName = '';
