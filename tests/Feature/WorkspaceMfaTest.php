@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
@@ -71,6 +72,7 @@ it('redirects the challenge page to login when no 2FA is pending', function (): 
 it('enrolls TOTP from the security page and issues recovery codes', function (): void {
     $member = mfaAccountMember();
     session()->put(AccountAuth::SESSION_KEY, $member->id);
+    app(WorkspaceSudo::class)->confirm();
     $totp = app(TotpAuthenticator::class);
 
     $component = Volt::test('workspace.security')->call('startEnroll');

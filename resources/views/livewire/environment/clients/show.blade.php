@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Rules\SecureRedirectUri;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
@@ -91,8 +92,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         $redirects = $this->splitLines($data['editRedirectUris']);
 
         foreach ($redirects as $uri) {
-            if (filter_var($uri, FILTER_VALIDATE_URL) === false) {
-                $this->addError('editRedirectUris', 'Each redirect URI must be an absolute URL (e.g. https://app.example.com/callback).');
+            if (! SecureRedirectUri::isSecure($uri)) {
+                $this->addError('editRedirectUris', 'Each redirect URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/callback.');
 
                 return;
             }

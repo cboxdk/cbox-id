@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
 use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Platform\Models\AccountApiKey;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -34,6 +36,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 
     public function createKey(AccountAuth $auth, AccountApiKeys $keys): void
     {
+        if ($this->requiresSudo('workspace.api-keys')) {
+            return;
+        }
+
         $account = $auth->current()?->account;
 
         if ($account === null || ! ($auth->current()?->role->canManageMembers() ?? false)) {
@@ -72,11 +78,23 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
     /**
      * @return array<string, mixed>
      */
+    private function requiresSudo(string $returnRoute): bool
+    {
+        if (app(WorkspaceSudo::class)->confirmed()) {
+            return false;
+        }
+
+        session()->put('workspace.sudo.intended', route($returnRoute));
+        $this->redirectRoute('workspace.sudo', navigate: false);
+
+        return true;
+    }
+
     public function with(AccountAuth $auth, AccountApiKeys $keys): array
     {
         $current = $auth->current();
 
-        /** @var Collection<int, \Cbox\Id\Platform\Models\AccountApiKey> $list */
+        /** @var Collection<int, AccountApiKey> $list */
         $list = $current === null ? collect() : $keys->forAccount($current->account_id);
 
         return ['keys' => $list, 'assignableRoles' => AccountRole::assignable()];

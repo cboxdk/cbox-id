@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\Identity\Testing\FakeWebAuthnVerifier;
 use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -33,7 +34,7 @@ it('issues registration options for a signed-in member', function (): void {
     $memberId = workspaceCeremonyMember();
     workspaceFakePasskeys();
 
-    $this->withSession([AccountAuth::SESSION_KEY => $memberId])
+    $this->withSession([AccountAuth::SESSION_KEY => $memberId, WorkspaceSudo::SESSION_KEY => time()])
         ->postJson(route('workspace.passkeys.register.options'))
         ->assertOk()
         ->assertJsonStructure(['challenge', 'rp' => ['id', 'name'], 'user' => ['id', 'name']]);
@@ -44,7 +45,7 @@ it('completes register (options → create) and passwordless login in one sessio
     $repo = workspaceFakePasskeys('cred_flow', assertionSignCount: 7);
 
     // Enrol: options then register, sharing the session so the challenge survives.
-    $session = ['_token' => 'x', AccountAuth::SESSION_KEY => $memberId];
+    $session = ['_token' => 'x', AccountAuth::SESSION_KEY => $memberId, WorkspaceSudo::SESSION_KEY => time()];
     $this->withSession($session)->postJson(route('workspace.passkeys.register.options'))->assertOk();
     // Seed a credential directly (the Fake ignores the assertion body anyway).
     $repo->register($memberId, 'chal', '{}', 'MacBook');

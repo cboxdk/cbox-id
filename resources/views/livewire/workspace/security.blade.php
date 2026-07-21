@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountPasskeys;
+use Cbox\Id\Platform\Models\AccountWebAuthnCredential;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -51,6 +53,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public function startEnroll(AccountAuth $auth, AccountMemberMfa $mfa): void
     {
+        if ($this->requiresSudo('workspace.security')) {
+            return;
+        }
+
         $member = $auth->current();
 
         if ($member === null || $mfa->hasConfirmedTotp($member->id)) {
@@ -90,6 +96,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public function regenerateRecoveryCodes(AccountAuth $auth, AccountMemberMfa $mfa): void
     {
+        if ($this->requiresSudo('workspace.security')) {
+            return;
+        }
+
         $member = $auth->current();
 
         if ($member === null || ! $mfa->hasConfirmedTotp($member->id)) {
@@ -101,6 +111,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public function disable(AccountAuth $auth, AccountMemberMfa $mfa): void
     {
+        if ($this->requiresSudo('workspace.security')) {
+            return;
+        }
+
         $member = $auth->current();
 
         if ($member === null) {
@@ -114,6 +128,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public function removePasskey(string $id, AccountAuth $auth, AccountPasskeys $passkeys): void
     {
+        if ($this->requiresSudo('workspace.security')) {
+            return;
+        }
+
         $member = $auth->current();
 
         if ($member !== null && $passkeys->remove($id, $member->id)) {
@@ -131,11 +149,23 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
     /**
      * @return array<string, mixed>
      */
+    private function requiresSudo(string $returnRoute): bool
+    {
+        if (app(WorkspaceSudo::class)->confirmed()) {
+            return false;
+        }
+
+        session()->put('workspace.sudo.intended', route($returnRoute));
+        $this->redirectRoute('workspace.sudo', navigate: false);
+
+        return true;
+    }
+
     public function with(AccountAuth $auth, AccountMemberMfa $mfa, AccountPasskeys $passkeys): array
     {
         $member = $auth->current();
 
-        /** @var Collection<int, \Cbox\Id\Platform\Models\AccountWebAuthnCredential> $keys */
+        /** @var Collection<int, AccountWebAuthnCredential> $keys */
         $keys = $member === null ? collect() : $passkeys->forMember($member->id);
 
         return [

@@ -23,6 +23,7 @@ beforeEach(function (): void {
                 'agent-tok' => Introspection::active(null, 'agent-1', ['vault.lease'], []),
                 'other-agent-tok' => Introspection::active(null, 'agent-2', ['vault.lease'], []),
                 'noscope-tok' => Introspection::active(null, 'issuer-client', [], []),
+                'wrong-aud-tok' => Introspection::active(null, 'issuer-client', ['vault.manage'], ['aud' => 'https://mcp.example.com']),
                 default => Introspection::inactive(),
             };
         }
@@ -48,6 +49,16 @@ it('rejects a token missing the required scope', function (): void {
     ], bearer('noscope-tok'))
         ->assertStatus(403)
         ->assertJson(['error' => 'insufficient_scope']);
+});
+
+it('rejects a token audienced for another resource (RFC 8707)', function (): void {
+    // The token is valid and scoped, but minted for a different resource server —
+    // it must not be replayable against this first-party API.
+    $this->postJson('/api/v1/vault/secrets', [
+        'name' => 'openai', 'provider' => 'openai', 'secret' => 'sk-x',
+    ], bearer('wrong-aud-tok'))
+        ->assertStatus(401)
+        ->assertJson(['error' => 'invalid_token']);
 });
 
 it('stores, grants, and leases a secret end to end', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
@@ -57,6 +58,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 
     public function createKey(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
     {
+        if ($this->requiresSudo('workspace.environment-keys')) {
+            return;
+        }
+
         if (! $this->guard($auth, $members)) {
             return;
         }
@@ -117,6 +122,18 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
     /**
      * @return array<string, mixed>
      */
+    private function requiresSudo(string $returnRoute): bool
+    {
+        if (app(WorkspaceSudo::class)->confirmed()) {
+            return false;
+        }
+
+        session()->put('workspace.sudo.intended', route($returnRoute));
+        $this->redirectRoute('workspace.sudo', navigate: false);
+
+        return true;
+    }
+
     public function with(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys): array
     {
         $member = $auth->current();

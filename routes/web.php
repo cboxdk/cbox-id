@@ -21,6 +21,7 @@ use App\Http\Middleware\AuthenticateAccountMember;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -246,7 +247,13 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // Also a new way in, so it likewise requires a fresh step-up (and is closed to
     // an impersonator).
     Route::get('/settings/connect/{provider}/redirect', [SocialController::class, 'connect'])->middleware([BlockDuringImpersonation::class, 'sudo'])->name('social.connect');
-    Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])->name('social.connect.callback');
+    // The link is a NEW, durable sign-in method, established here at callback time —
+    // gate it with the same fresh step-up + impersonation bulkhead as the start, so a
+    // flow begun under sudo can't complete after it lapses, and an impersonator can't
+    // plant a provider link.
+    Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])
+        ->middleware([BlockDuringImpersonation::class, 'sudo'])
+        ->name('social.connect.callback');
 });
 
 /*
@@ -448,8 +455,19 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
         Volt::route('/members', 'workspace.members')->name('workspace.members');
         Volt::route('/activity', 'workspace.activity')->name('workspace.activity');
         Volt::route('/security', 'workspace.security')->name('workspace.security');
-        Route::post('/passkeys/register/options', [WorkspacePasskeyController::class, 'registerOptions'])->name('workspace.passkeys.register.options');
-        Route::post('/passkeys/register', [WorkspacePasskeyController::class, 'register'])->name('workspace.passkeys.register');
+
+        // Step-up ("sudo") re-authentication for the account plane. Blocked during
+        // impersonation so an impersonator can never satisfy it.
+        Volt::route('/sudo', 'workspace.sudo')->middleware(BlockDuringImpersonation::class)->name('workspace.sudo');
+
+        // Enrolling a passkey establishes a new, persistent credential — gate it behind
+        // a fresh step-up, exactly as the subject plane gates passkey enrolment.
+        Route::post('/passkeys/register/options', [WorkspacePasskeyController::class, 'registerOptions'])
+            ->middleware([BlockDuringImpersonation::class, RequireWorkspaceSudo::class])
+            ->name('workspace.passkeys.register.options');
+        Route::post('/passkeys/register', [WorkspacePasskeyController::class, 'register'])
+            ->middleware([BlockDuringImpersonation::class, RequireWorkspaceSudo::class])
+            ->name('workspace.passkeys.register');
         Volt::route('/api-keys', 'workspace.api-keys')->name('workspace.api-keys');
         Volt::route('/environment-keys', 'workspace.environment-api-keys')->name('workspace.environment-keys');
         Volt::route('/environment-domains', 'workspace.environment-domains')->name('workspace.environment-domains');

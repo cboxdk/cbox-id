@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\ScopeCatalog;
+use App\Rules\SecureRedirectUri;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -86,8 +87,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
                 return null;
             }
             foreach ($redirects as $uri) {
-                if (filter_var($uri, FILTER_VALIDATE_URL) === false) {
-                    $this->addError('redirectUris', 'Each redirect URI must be an absolute URL (e.g. https://app.example.com/callback).');
+                if (! SecureRedirectUri::isSecure($uri)) {
+                    $this->addError('redirectUris', 'Each redirect URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/callback.');
 
                     return null;
                 }

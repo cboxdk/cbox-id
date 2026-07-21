@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\ScopeCatalog;
+use App\Rules\SecureRedirectUri;
 use Cbox\Id\AccessControl\AppManifestPuller;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -83,8 +84,8 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
                 return;
             }
             foreach ($redirects as $uri) {
-                if (filter_var($uri, FILTER_VALIDATE_URL) === false) {
-                    $this->addError('redirectUris', 'Each redirect URI must be an absolute URL (e.g. https://app.example.com/callback).');
+                if (! SecureRedirectUri::isSecure($uri)) {
+                    $this->addError('redirectUris', 'Each redirect URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/callback.');
 
                     return;
                 }
@@ -183,7 +184,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
         try {
             $result = $puller->pull($client->refresh());
             $this->dispatch('toast', message: $result !== null ? 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).' : 'Saved.');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->addError('editManifestUrl', 'Saved, but the sync failed: '.$e->getMessage());
         }
     }
@@ -202,7 +203,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             $this->dispatch('toast', message: $result !== null && ! $result->unchanged
                 ? 'Synced — '.$result->rolesDeclared.' role(s).'
                 : 'Already up to date.');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->dispatch('toast', message: 'Sync failed: '.$e->getMessage(), severity: 'error');
         }
     }

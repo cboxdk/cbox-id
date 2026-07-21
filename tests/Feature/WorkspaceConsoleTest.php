@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
@@ -171,6 +172,7 @@ it('shows a scoped member only the environments they are granted', function (): 
 it('lets a manager mint an API key and shows the plaintext once', function (): void {
     ['account' => $account, 'member' => $owner] = provisionAccount();
     session()->put(AccountAuth::SESSION_KEY, $owner->id);
+    app(WorkspaceSudo::class)->confirm();
 
     $component = Volt::test('workspace.api-keys')
         ->set('newKeyName', 'CI deploy')

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Rules\SecureRedirectUri;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\Models\ServiceProvider;
@@ -92,7 +93,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
 
         $data = $this->validate([
             'entity_id' => ['required', 'string', 'max:500'],
-            'acs_url' => ['required', 'url', 'max:1000'],
+            'acs_url' => ['required', new SecureRedirectUri, 'max:1000'],
             'name_id_format' => ['required', 'string'],
             'name_id_attribute' => ['required', 'string', 'max:120'],
         ]);

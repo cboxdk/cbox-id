@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Rules\SecureRedirectUri;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
@@ -35,7 +36,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New login method'])]
     #[Validate('required|string|max:500')]
     public string $entity_id = '';
 
-    #[Validate('required|url|max:1000')]
+    #[Validate('required|max:1000')]
     public string $acs_url = '';
 
     #[Validate('required|string')]
@@ -55,6 +56,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New login method'])]
     public function create(ServiceProviders $providers): mixed
     {
         $data = $this->validate();
+        $this->validate(['acs_url' => [new SecureRedirectUri]]);
 
         // A signed-request SP is useless without a cert to verify against — refuse the
         // half-configured combination rather than silently never verifying.

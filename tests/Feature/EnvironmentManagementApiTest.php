@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -136,6 +137,7 @@ it('lets an environment manager mint a scoped key for their environment in the c
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
     session()->put(AccountAuth::SESSION_KEY, $result->member->id);
+    app(WorkspaceSudo::class)->confirm();
 
     $component = Volt::test('workspace.environment-api-keys')
         ->set('newKeyName', 'Provisioner')

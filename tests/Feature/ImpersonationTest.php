@@ -212,8 +212,10 @@ it('blocks credential and factor changes while impersonating (403)', function ()
     $this->post(route('passkeys.register.options'))->assertForbidden();
     $this->post(route('passkeys.register'))->assertForbidden();
 
-    // Linking a social provider is closed.
+    // Linking a social provider is closed — at both the start AND the callback,
+    // where the durable link is actually established.
     $this->get(route('social.connect', ['provider' => 'google']))->assertForbidden();
+    $this->get(route('social.connect.callback', ['provider' => 'google']))->assertForbidden();
 });
 
 /*

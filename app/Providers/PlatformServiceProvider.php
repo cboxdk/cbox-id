@@ -14,6 +14,7 @@ use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequireSudo;
+use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\CurrentUser;
 use App\Platform\ImpersonationAwareAuditLog;
@@ -85,6 +86,7 @@ final class PlatformServiceProvider extends ServiceProvider
             // snapshot bypasses sudo permanently once confirmed.
             EnforcePlane::class,
             RequireSudo::class,
+            RequireWorkspaceSudo::class,
             // Keeps the "an impersonator cannot plant persistence" property true for
             // component actions, not just full page loads.
             BlockDuringImpersonation::class,

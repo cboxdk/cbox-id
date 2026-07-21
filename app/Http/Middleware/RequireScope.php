@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
 use Cbox\Id\OAuthServer\Exceptions\InvalidDpopProof;
@@ -28,6 +29,7 @@ final class RequireScope
     public function __construct(
         private readonly DpopResourceGuard $dpop,
         private readonly TokenIntrospector $introspector,
+        private readonly IssuerResolver $issuers,
     ) {}
 
     /**
@@ -45,6 +47,12 @@ final class RequireScope
 
         if (! $token->active || $token->clientId === null) {
             return $this->challenge('invalid_token', 'The access token is invalid or expired.', 401);
+        }
+
+        // A token minted for a specific RFC 8707 resource must not be replayable
+        // against this first-party API: accept only tokens audienced for this issuer.
+        if (! $token->isAudience($this->issuers->issuer())) {
+            return $this->challenge('invalid_token', 'The access token was not issued for this API.', 401);
         }
 
         if (! $token->hasScope($scope)) {
