@@ -36,25 +36,25 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 
         $this->reset('url', 'creating');
         $this->hook = 'token_minting';
-        session()->flash('status', 'Inline hook endpoint registered.');
+        $this->dispatch('toast', message: 'Inline hook endpoint registered.');
     }
 
     public function pause(string $endpointId, ExternalActions $actions): void
     {
         $actions->pause($endpointId, $this->orgId());
-        session()->flash('status', 'Endpoint paused.');
+        $this->dispatch('toast', message: 'Endpoint paused.');
     }
 
     public function activate(string $endpointId, ExternalActions $actions): void
     {
         $actions->activate($endpointId, $this->orgId());
-        session()->flash('status', 'Endpoint activated.');
+        $this->dispatch('toast', message: 'Endpoint activated.');
     }
 
     public function remove(string $endpointId, ExternalActions $actions): void
     {
         $actions->remove($endpointId, $this->orgId());
-        session()->flash('status', 'Endpoint removed.');
+        $this->dispatch('toast', message: 'Endpoint removed.');
     }
 
     public function dismissSecret(): void

@@ -169,7 +169,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
         // Never keep a secret in component state once it has been sealed.
         $this->reset('idp_x509cert', 'signing_key', 'client_secret');
 
-        session()->flash('status', 'Connection updated.');
+        $this->dispatch('toast', message: 'Connection updated.');
     }
 
     public function activate(Connections $connections): void
@@ -178,7 +178,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
         // The service scopes the flip to the owning org, so a draft can't be activated
         // across tenants.
         $connections->activate($model->organization_id, $model->id);
-        session()->flash('status', 'Connection activated.');
+        $this->dispatch('toast', message: 'Connection activated.');
     }
 
     public function disable(): void
@@ -188,7 +188,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
         $model = $this->connection();
         $model->status = ConnectionStatus::Inactive;
         $model->save();
-        session()->flash('status', 'Connection disabled.');
+        $this->dispatch('toast', message: 'Connection disabled.');
     }
 
     public function deleteConnection(): mixed
@@ -196,7 +196,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
         // No service delete exists; the env-scoped model is removed directly.
         $this->connection()->delete();
 
-        session()->flash('status', 'Connection deleted.');
+        $this->dispatch('toast', message: 'Connection deleted.');
 
         return $this->redirectRoute('environment.connections', navigate: true);
     }

@@ -75,7 +75,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
 
         $subjects->setPassword($me->id(), $this->newPassword);
         $this->reset('currentPassword', 'newPassword', 'newPasswordConfirmation');
-        session()->flash('status', 'Password updated.');
+        $this->dispatch('toast', message: 'Password updated.');
     }
 
     public function enable(Mfa $mfa): void
@@ -129,7 +129,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
 
         $this->recoveryCodes = $mfa->generateRecoveryCodes(app(CurrentUser::class)->id());
         $this->reset('enrolling', 'secret', 'provisioningUri', 'code');
-        session()->flash('status', 'Two-factor authentication is now enabled. Save your recovery codes below.');
+        $this->dispatch('toast', message: 'Two-factor authentication is now enabled. Save your recovery codes below.');
     }
 
     public function regenerateRecoveryCodes(Mfa $mfa): void
@@ -145,7 +145,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         }
 
         $this->recoveryCodes = $mfa->generateRecoveryCodes($me->id());
-        session()->flash('status', 'New recovery codes generated. Your previous codes no longer work.');
+        $this->dispatch('toast', message: 'New recovery codes generated. Your previous codes no longer work.');
     }
 
     public function cancel(): void
@@ -165,7 +165,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
             ->where('id', $id)
             ->delete();
 
-        session()->flash('status', 'Passkey removed.');
+        $this->dispatch('toast', message: 'Passkey removed.');
     }
 
     public function signOutOtherSessions(SessionManager $sessions): void
@@ -184,7 +184,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
             ->pluck('id')
             ->each(fn (string $id) => $sessions->revoke($id));
 
-        session()->flash('status', 'Signed out of all other sessions.');
+        $this->dispatch('toast', message: 'Signed out of all other sessions.');
     }
 
     public function unlinkProvider(string $provider, Subjects $subjects): void
@@ -208,7 +208,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         }
 
         $subjects->unlink($me->id(), 'social:'.$provider);
-        session()->flash('status', ucfirst($provider).' disconnected.');
+        $this->dispatch('toast', message: ucfirst($provider).' disconnected.');
     }
 
     private function requiresSudo(): bool

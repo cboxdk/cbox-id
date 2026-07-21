@@ -84,7 +84,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
         $this->idp_x509cert = $metadata->x509cert;
         $this->reset('metadataInput');
 
-        session()->flash('status', 'Metadata imported — review the fields and create the connection.');
+        $this->dispatch('toast', message: 'Metadata imported — review the fields and create the connection.');
     }
 
     public function create(Connections $connections): mixed
@@ -118,7 +118,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
 
         $connection = $connections->create($this->organization_id, $type, trim($this->name), $config);
 
-        session()->flash('status', 'Connection created as a draft.');
+        $this->dispatch('toast', message: 'Connection created as a draft.');
 
         return $this->redirectRoute('environment.connections.show', ['connection' => $connection->id], navigate: true);
     }

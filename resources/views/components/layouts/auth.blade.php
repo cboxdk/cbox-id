@@ -96,5 +96,6 @@
             </div>
         </div>
     </div>
+    <x-toast />
 </body>
 </html>

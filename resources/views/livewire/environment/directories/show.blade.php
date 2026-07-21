@@ -60,7 +60,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
         $directory->name = trim($data['editName']);
         $directory->save();
 
-        session()->flash('status', 'Directory updated.');
+        $this->dispatch('toast', message: 'Directory updated.');
     }
 
     /**
@@ -82,7 +82,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
         $directory->save();
 
         $this->freshToken = $token;
-        session()->flash('status', 'Bearer token rotated — the previous token no longer works.');
+        $this->dispatch('toast', message: 'Bearer token rotated — the previous token no longer works.');
     }
 
     public function dismissToken(): void
@@ -99,7 +99,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
             : DirectoryStatus::Active;
         $directory->save();
 
-        session()->flash('status', $directory->status === DirectoryStatus::Active
+        $this->dispatch('toast', message: $directory->status === DirectoryStatus::Active
             ? 'Directory enabled — provisioning resumes.'
             : 'Directory paused — provisioning is suspended.');
     }
@@ -108,7 +108,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
     {
         $this->directory()->delete();
 
-        session()->flash('status', 'Directory deleted.');
+        $this->dispatch('toast', message: 'Directory deleted.');
 
         return $this->redirectRoute('environment.directories', navigate: true);
     }

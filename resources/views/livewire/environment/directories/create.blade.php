@@ -43,7 +43,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New directory'])] cl
         // hash is persisted, so it can never be retrieved again after this hand-off.
         session()->flash('newToken', $registered->token);
         session()->flash('newTokenName', $registered->directory->name);
-        session()->flash('status', 'Directory registered — copy the bearer token below, it is shown only once.');
+        $this->dispatch('toast', message: 'Directory registered — copy the bearer token below, it is shown only once.');
 
         return $this->redirectRoute('environment.directories.show', ['directory' => $registered->directory->id], navigate: true);
     }

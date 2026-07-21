@@ -48,7 +48,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New access review'])
             createdBy: $this->reviewerId(),
         );
 
-        session()->flash('status', 'Access review "'.$campaign->name.'" opened with '.count($reviews->itemsFor($campaign->id)).' item(s).');
+        $this->dispatch('toast', message: 'Access review "'.$campaign->name.'" opened with '.count($reviews->itemsFor($campaign->id)).' item(s).');
 
         return $this->redirectRoute('environment.governance.show', ['campaign' => $campaign->id], navigate: true);
     }

@@ -46,7 +46,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'
     public function pause(ProvisioningConnections $connections): void
     {
         $connections->pause($this->connection()->id);
-        session()->flash('status', 'Connection paused.');
+        $this->dispatch('toast', message: 'Connection paused.');
     }
 
     public function resume(): void
@@ -55,14 +55,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'
         $connection->status = ConnectionStatus::Active;
         $connection->save();
 
-        session()->flash('status', 'Connection resumed.');
+        $this->dispatch('toast', message: 'Connection resumed.');
     }
 
     public function deleteConnection(): mixed
     {
         $this->connection()->delete();
 
-        session()->flash('status', 'Connection deleted.');
+        $this->dispatch('toast', message: 'Connection deleted.');
 
         return $this->redirectRoute('environment.provisioning', navigate: true);
     }

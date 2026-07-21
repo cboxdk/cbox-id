@@ -87,7 +87,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         $this->recoveryCodes = $mfa->generateRecoveryCodes($operator->id);
 
         $this->reset('secret', 'provisioningUri', 'code');
-        session()->flash('status', 'Two-factor authentication is now enabled. Save your recovery codes below.');
+        $this->dispatch('toast', message: 'Two-factor authentication is now enabled. Save your recovery codes below.');
     }
 
     public function regenerateRecoveryCodes(OperatorAuth $auth, OperatorMfa $mfa): void
@@ -99,7 +99,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         }
 
         $this->recoveryCodes = $mfa->generateRecoveryCodes($operator->id);
-        session()->flash('status', 'New recovery codes generated. Your previous codes no longer work.');
+        $this->dispatch('toast', message: 'New recovery codes generated. Your previous codes no longer work.');
     }
 
     public function disable(OperatorAuth $auth, OperatorMfa $mfa, PlatformOperators $operators): void
@@ -121,7 +121,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         $mfa->disable($operator->id);
         $this->resetErrorBag();
         $this->reset('confirmingDisable', 'disablePassword', 'recoveryCodes');
-        session()->flash('status', 'Two-factor authentication disabled.');
+        $this->dispatch('toast', message: 'Two-factor authentication disabled.');
     }
 
     public function cancel(): void

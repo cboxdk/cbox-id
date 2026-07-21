@@ -43,7 +43,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         $this->newSecret = $registered->secret;
 
         $this->reset('url', 'eventTypes', 'creating');
-        session()->flash('status', 'Webhook endpoint created.');
+        $this->dispatch('toast', message: 'Webhook endpoint created.');
     }
 
     public function pause(string $endpointId, WebhookRegistry $webhooks): void
@@ -60,7 +60,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         }
 
         $webhooks->pause($endpointId);
-        session()->flash('status', 'Endpoint paused.');
+        $this->dispatch('toast', message: 'Endpoint paused.');
     }
 
     public function dismissSecret(): void

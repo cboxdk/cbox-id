@@ -70,10 +70,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
 
         if ($org->status === OrganizationStatus::Active) {
             $orgs->suspend($this->orgId, $actorId);
-            session()->flash('status', 'Organization suspended.');
+            $this->dispatch('toast', message: 'Organization suspended.');
         } else {
             $orgs->reactivate($this->orgId, $actorId);
-            session()->flash('status', 'Organization reactivated.');
+            $this->dispatch('toast', message: 'Organization reactivated.');
         }
     }
 

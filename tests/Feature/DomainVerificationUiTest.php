@@ -99,7 +99,10 @@ it('verifies a domain when the TXT record is present', function () {
     Volt::test('connections')
         ->call('verifyDomain', $record->id)
         ->assertHasNoErrors()
-        ->assertSee('Domain verified');
+        // The confirmation is dispatched to the layout's toast now, not rendered into
+        // the component — Livewire never re-rendered the layout on an action, so a
+        // flash from a non-redirecting action displayed nothing at all.
+        ->assertDispatched('toast', message: 'Domain verified.');
 
     expect($record->refresh()->isVerified())->toBeTrue();
 });
@@ -113,7 +116,10 @@ it('flashes a not-found message when the TXT record is missing', function () {
 
     Volt::test('connections')
         ->call('verifyDomain', $record->id)
-        ->assertSee('DNS can take a few minutes');
+        ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
+            (string) ($params['message'] ?? ''),
+            'DNS can take a few minutes',
+        ));
 
     expect($record->refresh()->isVerified())->toBeFalse();
 });

@@ -36,7 +36,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
 
         $this->reset('name', 'creating');
         $this->selected = $campaign->id;
-        session()->flash('status', 'Access review "'.$campaign->name.'" opened with '.count($reviews->itemsFor($campaign->id)).' item(s).');
+        $this->dispatch('toast', message: 'Access review "'.$campaign->name.'" opened with '.count($reviews->itemsFor($campaign->id)).' item(s).');
     }
 
     public function select(string $id): void
@@ -57,7 +57,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
     public function close(string $id, AccessReviews $reviews): void
     {
         $reviews->close($id, $this->orgId());
-        session()->flash('status', 'Access review closed — revoked access was applied.');
+        $this->dispatch('toast', message: 'Access review closed — revoked access was applied.');
     }
 
     public function with(): array

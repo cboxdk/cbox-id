@@ -121,11 +121,6 @@
             <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
         </header>
 
-        @if (session('status'))
-            <div role="status" aria-live="polite" class="mx-6 mt-4 rounded-lg px-4 py-3 text-sm"
-                 style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in oklch,var(--success) 20%,transparent)">{{ session('status') }}</div>
-        @endif
-
         <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
             <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:72rem">{{ $slot }}</div>
         </main>
@@ -157,5 +152,6 @@
         @endif
     </x-mobile-nav>
 </div>
+    <x-toast />
 </body>
 </html>

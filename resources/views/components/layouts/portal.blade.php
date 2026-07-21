@@ -33,5 +33,6 @@
             <span>© {{ date('Y') }}</span>
         </footer>
     </div>
+    <x-toast />
 </body>
 </html>

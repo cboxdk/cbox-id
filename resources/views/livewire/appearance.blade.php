@@ -56,7 +56,7 @@ new #[Layout('components.layouts.app', ['title' => 'Appearance'])] class extends
         $this->appearance['logo'] = $logo ?? '';
         $this->appearance['name'] = app(CurrentUser::class)->organization()?->name ?? '';
 
-        session()->flash('status', 'Appearance saved.');
+        $this->dispatch('toast', message: 'Appearance saved.');
     }
 
     private static function normalizeLogo(mixed $value): ?string

@@ -118,14 +118,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
         // The replacement cert has been persisted; never keep it in component state.
         $this->certificate = '';
 
-        session()->flash('status', 'Login method updated.');
+        $this->dispatch('toast', message: 'Login method updated.');
     }
 
     public function remove(): mixed
     {
         $this->ownedProvider()->delete();
 
-        session()->flash('status', 'Login method removed.');
+        $this->dispatch('toast', message: 'Login method removed.');
 
         return $this->redirectRoute('environment.sso-providers', navigate: true);
     }

@@ -50,7 +50,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $vault->store($this->name, $this->provider, $this->secret, VaultOwner::organization($this->orgId()));
 
         $this->reset('name', 'provider', 'secret', 'creating');
-        session()->flash('status', 'Secret sealed and stored — its value is never shown again.');
+        $this->dispatch('toast', message: 'Secret sealed and stored — its value is never shown again.');
     }
 
     public function startRotate(string $id): void
@@ -68,7 +68,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $vault->rotate($id, $this->rotateSecret, VaultOwner::organization($this->orgId()));
 
         $this->reset('rotating', 'rotateSecret');
-        session()->flash('status', 'Secret rotated — the sealed value was replaced.');
+        $this->dispatch('toast', message: 'Secret rotated — the sealed value was replaced.');
     }
 
     public function revoke(string $id, SecretVault $vault): void
@@ -76,7 +76,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $this->authorizeSecret($id);
 
         $vault->revoke($id, VaultOwner::organization($this->orgId()));
-        session()->flash('status', 'Secret revoked — no future lease can open it.');
+        $this->dispatch('toast', message: 'Secret revoked — no future lease can open it.');
     }
 
     public function toggleGrants(string $id): void
@@ -94,7 +94,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $vault->grant($id, $this->grantClient, VaultOwner::organization($this->orgId()));
 
         $this->reset('grantClient');
-        session()->flash('status', 'Access granted.');
+        $this->dispatch('toast', message: 'Access granted.');
     }
 
     public function revokeGrant(string $id, string $clientId, SecretVault $vault): void
@@ -102,7 +102,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $this->authorizeSecret($id);
 
         $vault->revokeGrant($id, $clientId, VaultOwner::organization($this->orgId()));
-        session()->flash('status', 'Access revoked.');
+        $this->dispatch('toast', message: 'Access revoked.');
     }
 
     public function with(): array

@@ -45,7 +45,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         $member = $auth->current();
         if ($member !== null) {
             $member->forceFill(['name' => trim($this->name)])->save();
-            session()->flash('status', 'Profile updated.');
+            $this->dispatch('toast', message: 'Profile updated.');
         }
     }
 
@@ -85,7 +85,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         // Fresh recovery codes, shown exactly once.
         $this->recoveryCodes = $mfa->generateRecoveryCodes($member->id);
         $this->reset('enrolling', 'secret', 'provisioningUri', 'confirmCode');
-        session()->flash('status', 'Two-factor authentication is on.');
+        $this->dispatch('toast', message: 'Two-factor authentication is on.');
     }
 
     public function regenerateRecoveryCodes(AccountAuth $auth, AccountMemberMfa $mfa): void
@@ -109,7 +109,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
         $mfa->disable($member->id);
         $this->reset('recoveryCodes');
-        session()->flash('status', 'Two-factor authentication is off.');
+        $this->dispatch('toast', message: 'Two-factor authentication is off.');
     }
 
     public function removePasskey(string $id, AccountAuth $auth, AccountPasskeys $passkeys): void
@@ -117,7 +117,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         $member = $auth->current();
 
         if ($member !== null && $passkeys->remove($id, $member->id)) {
-            session()->flash('status', 'Passkey removed.');
+            $this->dispatch('toast', message: 'Passkey removed.');
         }
     }
 

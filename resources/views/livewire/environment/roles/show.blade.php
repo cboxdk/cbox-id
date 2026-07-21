@@ -60,7 +60,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
         $role->description = trim($data['editDescription']) !== '' ? trim($data['editDescription']) : null;
         $role->save();
 
-        session()->flash('status', 'Role updated.');
+        $this->dispatch('toast', message: 'Role updated.');
     }
 
     public function togglePermission(string $permissionId): void
@@ -85,10 +85,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
                 ->where('role_id', $role->id)
                 ->where('permission_id', $permission->id)
                 ->delete();
-            session()->flash('status', 'Permission revoked.');
+            $this->dispatch('toast', message: 'Permission revoked.');
         } else {
             DB::table('role_permission')->insertOrIgnore(['role_id' => $role->id, 'permission_id' => $permission->id]);
-            session()->flash('status', 'Permission granted.');
+            $this->dispatch('toast', message: 'Permission granted.');
         }
     }
 
@@ -103,7 +103,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
         DB::table('role_assignments')->where('role_id', $role->id)->delete();
         $role->delete();
 
-        session()->flash('status', 'Role deleted.');
+        $this->dispatch('toast', message: 'Role deleted.');
 
         return $this->redirectRoute('environment.roles', navigate: true);
     }

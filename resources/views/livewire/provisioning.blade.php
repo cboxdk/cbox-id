@@ -44,7 +44,7 @@ new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] cl
         );
 
         $this->reset('name', 'baseUrl', 'scheme', 'secret', 'creating');
-        session()->flash('status', 'Provisioning connection registered.');
+        $this->dispatch('toast', message: 'Provisioning connection registered.');
     }
 
     public function pause(string $connectionId, ProvisioningConnections $connections): void
@@ -59,7 +59,7 @@ new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] cl
         }
 
         $connections->pause($connectionId);
-        session()->flash('status', 'Connection paused.');
+        $this->dispatch('toast', message: 'Connection paused.');
     }
 
     public function with(): array

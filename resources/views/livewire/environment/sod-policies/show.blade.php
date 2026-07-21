@@ -72,7 +72,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
         $name = $policy->name;
         $policy->delete();
 
-        session()->flash('status', 'Policy "'.$name.'" removed.');
+        $this->dispatch('toast', message: 'Policy "'.$name.'" removed.');
 
         return $this->redirectRoute('environment.sod-policies', navigate: true);
     }

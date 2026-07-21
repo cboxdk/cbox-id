@@ -43,7 +43,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
         $roles->define($this->orgId(), trim($this->name), trim($this->description) ?: null, $clientId);
 
         $this->reset('name', 'description', 'scope', 'creating');
-        session()->flash('status', 'Role created.');
+        $this->dispatch('toast', message: 'Role created.');
     }
 
     public function grant(string $roleId, string $permission, Roles $roles): void
@@ -73,7 +73,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
         }
 
         $roles->grantPermission($this->orgId(), $roleId, $permission);
-        session()->flash('status', 'Permission granted.');
+        $this->dispatch('toast', message: 'Permission granted.');
     }
 
     /**

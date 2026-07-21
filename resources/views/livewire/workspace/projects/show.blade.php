@@ -80,7 +80,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
 
         $this->validate(['editName' => 'required|string|max:120']);
         $projects->rename($this->project($auth)->id, trim($this->editName));
-        session()->flash('status', 'Project renamed.');
+        $this->dispatch('toast', message: 'Project renamed.');
     }
 
     public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner, AccountActivity $activity): void
@@ -109,21 +109,21 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
 
         $this->newEnvironment = '';
         $this->newEnvironmentType = 'production';
-        session()->flash('status', 'Environment created.');
+        $this->dispatch('toast', message: 'Environment created.');
     }
 
     public function suspend(AccountAuth $auth, Projects $projects): void
     {
         $this->assertCanManage($auth);
         $projects->suspend($this->project($auth)->id);
-        session()->flash('status', 'Project suspended — its environments stay live but no new ones can be added until reactivated.');
+        $this->dispatch('toast', message: 'Project suspended — its environments stay live but no new ones can be added until reactivated.');
     }
 
     public function reactivate(AccountAuth $auth, Projects $projects): void
     {
         $this->assertCanManage($auth);
         $projects->reactivate($this->project($auth)->id);
-        session()->flash('status', 'Project reactivated.');
+        $this->dispatch('toast', message: 'Project reactivated.');
     }
 
     /**

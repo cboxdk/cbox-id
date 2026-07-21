@@ -65,7 +65,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 
         if ($key !== null) {
             $keys->revoke($id);
-            session()->flash('status', 'API key revoked.');
+            $this->dispatch('toast', message: 'API key revoked.');
         }
     }
 

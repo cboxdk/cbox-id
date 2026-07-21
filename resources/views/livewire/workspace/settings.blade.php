@@ -38,7 +38,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Settings'])] class ext
         $this->validate(['name' => ['required', 'string', 'max:120']]);
 
         $accounts->rename($account->id, trim($this->name));
-        session()->flash('status', 'Account settings saved.');
+        $this->dispatch('toast', message: 'Account settings saved.');
     }
 }; ?>
 

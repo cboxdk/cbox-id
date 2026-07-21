@@ -108,7 +108,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             session()->flash('revealed_secret', $registered->secret);
         }
 
-        session()->flash('status', 'Application "'.$registered->client->name.'" created.');
+        $this->dispatch('toast', message: 'Application "'.$registered->client->name.'" created.');
 
         return $this->redirectRoute('environment.clients.show', ['client' => $registered->client->id], navigate: true);
     }

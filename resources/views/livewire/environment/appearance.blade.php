@@ -53,7 +53,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Appearance'])] class
         $this->appearance['logo'] = $logo ?? '';
         $this->appearance['name'] = $env->name;
 
-        session()->flash('status', 'Environment appearance saved.');
+        $this->dispatch('toast', message: 'Environment appearance saved.');
     }
 
     private function environment(EnvironmentContext $environments): ?Environment

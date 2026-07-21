@@ -127,7 +127,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
         $this->grantAuthorizationCode = true;
         $this->selectedScopes = $catalog->signInDefaults();
 
-        session()->flash('status', 'App "'.$registered->client->name.'" created.');
+        $this->dispatch('toast', message: 'App "'.$registered->client->name.'" created.');
     }
 
     public function delete(string $clientId): void
@@ -139,7 +139,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             ->where('client_id', $clientId)
             ->delete();
 
-        session()->flash('status', 'App deleted.');
+        $this->dispatch('toast', message: 'App deleted.');
     }
 
     public function dismissSecret(): void
@@ -174,7 +174,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
         $client->forceFill(['manifest_url' => trim($this->editManifestUrl) ?: null])->save();
 
         if ($client->manifest_url === null) {
-            session()->flash('status', 'Manifest URL cleared.');
+            $this->dispatch('toast', message: 'Manifest URL cleared.');
 
             return;
         }
@@ -182,7 +182,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
         // Pull immediately so the app's roles appear without waiting for the sweep.
         try {
             $result = $puller->pull($client->refresh());
-            session()->flash('status', $result !== null ? 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).' : 'Saved.');
+            $this->dispatch('toast', message: $result !== null ? 'Manifest synced — '.$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).' : 'Saved.');
         } catch (\Throwable $e) {
             $this->addError('editManifestUrl', 'Saved, but the sync failed: '.$e->getMessage());
         }
@@ -199,11 +199,11 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
 
         try {
             $result = $puller->pull($client);
-            session()->flash('status', $result !== null && ! $result->unchanged
+            $this->dispatch('toast', message: $result !== null && ! $result->unchanged
                 ? 'Synced — '.$result->rolesDeclared.' role(s).'
                 : 'Already up to date.');
         } catch (\Throwable $e) {
-            session()->flash('status', 'Sync failed: '.$e->getMessage());
+            $this->dispatch('toast', message: 'Sync failed: '.$e->getMessage(), severity: 'error');
         }
     }
 

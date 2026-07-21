@@ -49,7 +49,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New stored token'])]
             ? $vault->store($this->name, $this->provider, $this->secret, VaultOwner::organization($this->ownerId))
             : $vault->store($this->name, $this->provider, $this->secret);
 
-        session()->flash('status', 'Secret sealed and stored — its value is never shown again.');
+        $this->dispatch('toast', message: 'Secret sealed and stored — its value is never shown again.');
 
         return $this->redirectRoute('environment.vault.show', ['secret' => $model->id], navigate: true);
     }

@@ -108,13 +108,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
         $endpoint->event_types = array_values($this->editEvents);
         $endpoint->save();
 
-        session()->flash('status', 'Subscription updated.');
+        $this->dispatch('toast', message: 'Subscription updated.');
     }
 
     public function pause(WebhookRegistry $webhooks): void
     {
         $webhooks->pause($this->endpoint()->id);
-        session()->flash('status', 'Endpoint paused — it will stop receiving events.');
+        $this->dispatch('toast', message: 'Endpoint paused — it will stop receiving events.');
     }
 
     public function resume(): void
@@ -123,7 +123,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
         $endpoint->status = EndpointStatus::Active;
         $endpoint->save();
 
-        session()->flash('status', 'Endpoint resumed.');
+        $this->dispatch('toast', message: 'Endpoint resumed.');
     }
 
     public function rotateSecret(SecretBox $secretBox): void
@@ -136,7 +136,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
         // Shown once here; the sealed form is all that persists.
         $this->newSecret = $secret;
-        session()->flash('status', 'Signing secret rotated — update your endpoint now.');
+        $this->dispatch('toast', message: 'Signing secret rotated — update your endpoint now.');
     }
 
     public function dismissSecret(): void
@@ -147,7 +147,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
     public function deleteEndpoint(): mixed
     {
         $this->endpoint()->delete();
-        session()->flash('status', 'Webhook endpoint deleted.');
+        $this->dispatch('toast', message: 'Webhook endpoint deleted.');
 
         return $this->redirectRoute('environment.webhooks', navigate: true);
     }

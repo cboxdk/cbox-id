@@ -59,7 +59,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
             $this->description !== '' ? $this->description : null,
         );
 
-        session()->flash('status', 'Policy "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
+        $this->dispatch('toast', message: 'Policy "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
 
         return $this->redirectRoute('environment.sod-policies.show', ['policy' => $policy->id], navigate: true);
     }

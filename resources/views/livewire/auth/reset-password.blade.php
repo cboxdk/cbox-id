@@ -41,7 +41,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
             return;
         }
 
-        session()->flash('status', 'Your password has been reset — sign in with your new password.');
+        $this->dispatch('toast', message: 'Your password has been reset — sign in with your new password.');
         $this->redirectRoute('login', navigate: false);
     }
 }; ?>

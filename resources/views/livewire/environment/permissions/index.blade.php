@@ -63,7 +63,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
 
         $this->reset('name', 'description');
         $this->tenantAssignable = true;
-        session()->flash('status', 'Permission created.');
+        $this->dispatch('toast', message: 'Permission created.');
     }
 
     public function startEdit(string $id): void
@@ -103,7 +103,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
         $perm->save();
 
         $this->cancelEdit();
-        session()->flash('status', 'Permission updated.');
+        $this->dispatch('toast', message: 'Permission updated.');
     }
 
     public function delete(string $id): void
@@ -117,7 +117,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
         DB::table('role_permission')->where('permission_id', $perm->id)->delete();
         $perm->delete();
 
-        session()->flash('status', 'Permission deleted.');
+        $this->dispatch('toast', message: 'Permission deleted.');
     }
 
     /** Resolve a permission id, but only if it's a MANUAL one (deny-by-default). */

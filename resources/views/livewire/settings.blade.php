@@ -52,7 +52,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             'to' => trim($this->orgName),
         ]));
 
-        session()->flash('status', 'Organization name updated.');
+        $this->dispatch('toast', message: 'Organization name updated.');
     }
 
     public function with(): array

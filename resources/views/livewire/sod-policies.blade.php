@@ -38,7 +38,7 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
         $policy = $sod->definePolicy($this->orgId(), $this->name, array_values($this->roleIds));
 
         $this->reset('name', 'roleIds', 'creating');
-        session()->flash('status', 'Policy "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
+        $this->dispatch('toast', message: 'Policy "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
     }
 
     public function toggle(string $id, SegregationOfDuties $sod): void

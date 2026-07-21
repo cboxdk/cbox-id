@@ -58,7 +58,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New organization'])]
 
         $org = $organizations->create(new NewOrganization(name: trim($this->name), slug: $slug, settings: $settings));
 
-        session()->flash('status', 'Organization created.');
+        $this->dispatch('toast', message: 'Organization created.');
 
         return $this->redirectRoute('environment.organizations.show', ['organization' => $org->id], navigate: true);
     }

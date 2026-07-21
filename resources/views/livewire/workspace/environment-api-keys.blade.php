@@ -98,7 +98,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
                     context: ['key_id' => $id], request: request());
             }
 
-            session()->flash('status', 'Environment key revoked.');
+            $this->dispatch('toast', message: 'Environment key revoked.');
         }
     }
 

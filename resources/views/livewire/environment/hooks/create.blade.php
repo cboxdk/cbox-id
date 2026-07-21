@@ -53,7 +53,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New event hook'])] c
         // The plaintext secret exists only in this response; hand it to the detail page
         // as a one-time flash — it is never retrievable again.
         session()->flash('newSecret', $registered->secret);
-        session()->flash('status', 'Event hook endpoint registered.');
+        $this->dispatch('toast', message: 'Event hook endpoint registered.');
 
         return $this->redirectRoute('environment.hooks.show', ['hook' => $registered->endpoint->id], navigate: true);
     }

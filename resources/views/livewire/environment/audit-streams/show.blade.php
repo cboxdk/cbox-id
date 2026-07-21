@@ -54,7 +54,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
     public function disable(LogStreams $streams): void
     {
         $streams->disable($this->resolveStream()->id);
-        session()->flash('status', 'Stream disabled.');
+        $this->dispatch('toast', message: 'Stream disabled.');
     }
 
     /**
@@ -64,7 +64,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
     public function resume(LogStreams $streams): void
     {
         $streams->update($this->resolveStream()->id, ['enabled' => true]);
-        session()->flash('status', 'Stream resumed.');
+        $this->dispatch('toast', message: 'Stream resumed.');
     }
 
     public function dismissSecret(): void
@@ -75,7 +75,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
     public function deleteStream(): mixed
     {
         $this->resolveStream()->delete();
-        session()->flash('status', 'Log stream deleted.');
+        $this->dispatch('toast', message: 'Log stream deleted.');
 
         return $this->redirectRoute('environment.audit-streams', navigate: true);
     }

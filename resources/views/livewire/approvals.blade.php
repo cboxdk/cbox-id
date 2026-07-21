@@ -18,13 +18,13 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
         // Approval is consent: bind it to the acting subject, so a request belonging to
         // someone else is refused by the service rather than silently approved.
         app(BackchannelAuthentication::class)->approve($id, $me->id(), $me->organizationId());
-        session()->flash('status', 'Request approved.');
+        $this->dispatch('toast', message: 'Request approved.');
     }
 
     public function deny(string $id): void
     {
         app(BackchannelAuthentication::class)->deny($id, app(CurrentUser::class)->id());
-        session()->flash('status', 'Request denied.');
+        $this->dispatch('toast', message: 'Request denied.', severity: 'error');
     }
 
     public function with(): array

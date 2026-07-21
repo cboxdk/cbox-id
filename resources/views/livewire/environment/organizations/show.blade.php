@@ -145,19 +145,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $org->settings = $settings;
         $org->save();
 
-        session()->flash('status', 'Organization updated.');
+        $this->dispatch('toast', message: 'Organization updated.');
     }
 
     public function suspend(Organizations $organizations): void
     {
         $organizations->suspend($this->org()->id, $this->actorId());
-        session()->flash('status', 'Organization suspended.');
+        $this->dispatch('toast', message: 'Organization suspended.');
     }
 
     public function reactivate(Organizations $organizations): void
     {
         $organizations->reactivate($this->org()->id, $this->actorId());
-        session()->flash('status', 'Organization reactivated.');
+        $this->dispatch('toast', message: 'Organization reactivated.');
     }
 
     public function deleteOrg(): mixed
@@ -166,7 +166,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $org->status = OrganizationStatus::Deleted;
         $org->save();
 
-        session()->flash('status', 'Organization deleted.');
+        $this->dispatch('toast', message: 'Organization deleted.');
 
         return $this->redirectRoute('environment.organizations', navigate: true);
     }
@@ -211,7 +211,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $this->memberEmail = '';
         $this->memberRole = 'member';
         $this->memberAccessRoles = [];
-        session()->flash('status', 'Member added.');
+        $this->dispatch('toast', message: 'Member added.');
     }
 
     public function changeMemberRole(string $userId, string $role, Memberships $memberships): void
@@ -223,9 +223,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         try {
             $memberships->changeRole($org->id, $userId, $role);
-            session()->flash('status', 'Org access updated.');
+            $this->dispatch('toast', message: 'Org access updated.');
         } catch (LastOwner) {
-            session()->flash('status', 'An organization must keep at least one owner.');
+            $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
         }
     }
 
@@ -266,9 +266,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         try {
             $memberships->remove($org->id, $userId);
-            session()->flash('status', 'Member removed.');
+            $this->dispatch('toast', message: 'Member removed.');
         } catch (LastOwner) {
-            session()->flash('status', 'An organization must keep at least one owner.');
+            $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
         }
     }
 
@@ -308,13 +308,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $this->inviteEmail = '';
         $this->inviteRole = 'member';
         $this->inviteAccessRoles = [];
-        session()->flash('status', 'Invitation sent to '.$pending->invitation->email.'.');
+        $this->dispatch('toast', message: 'Invitation sent to '.$pending->invitation->email.'.');
     }
 
     public function revokeInvitation(string $id, Invitations $invitations): void
     {
         $invitations->revoke($this->org()->id, $id);
-        session()->flash('status', 'Invitation revoked.');
+        $this->dispatch('toast', message: 'Invitation revoked.');
     }
 
     public function addDomain(DomainVerification $domains): void
@@ -332,7 +332,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         }
 
         $this->newDomain = '';
-        session()->flash('status', 'Domain added — add the DNS TXT record shown below, then verify.');
+        $this->dispatch('toast', message: 'Domain added — add the DNS TXT record shown below, then verify.');
     }
 
     public function verifyDomain(string $id, DomainVerification $domains): void
@@ -341,9 +341,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             return;
         }
 
-        session()->flash('status', $domains->verify($id)
+        $this->dispatch('toast', message: $domains->verify($id)
             ? 'Domain verified.'
-            : 'Verification failed — the DNS TXT record was not found yet.');
+            : 'Verification failed — the DNS TXT record was not found yet.', severity: 'error');
     }
 
     public function toggleCapture(string $id, DomainVerification $domains): void
@@ -351,7 +351,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $domain = VerifiedDomain::query()->whereKey($id)->where('organization_id', $this->org()->id)->first();
         if ($domain !== null) {
             $domains->setCapture($id, ! $domain->capture);
-            session()->flash('status', 'Domain capture updated.');
+            $this->dispatch('toast', message: 'Domain capture updated.');
         }
     }
 
@@ -359,7 +359,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
     {
         if ($this->ownsDomain($id)) {
             $domains->remove($id);
-            session()->flash('status', 'Domain removed.');
+            $this->dispatch('toast', message: 'Domain removed.');
         }
     }
 

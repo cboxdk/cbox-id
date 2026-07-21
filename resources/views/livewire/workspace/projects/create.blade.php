@@ -32,7 +32,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'New project'])] class 
 
         $project = $provisioner->addProject($account, trim($this->name));
 
-        session()->flash('status', 'Project created — add its first environment.');
+        $this->dispatch('toast', message: 'Project created — add its first environment.');
 
         return $this->redirectRoute('workspace.projects.show', ['project' => $project->id], navigate: true);
     }

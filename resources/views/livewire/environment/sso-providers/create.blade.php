@@ -67,7 +67,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New login method'])]
             wantAuthnRequestsSigned: $this->want_authn_requests_signed,
         ));
 
-        session()->flash('status', 'Login method registered.');
+        $this->dispatch('toast', message: 'Login method registered.');
 
         return $this->redirectRoute('environment.sso-providers.show', ['provider' => $model->id], navigate: true);
     }

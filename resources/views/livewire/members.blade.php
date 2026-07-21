@@ -94,7 +94,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         $this->reset('inviteEmail', 'inviting', 'inviteAccessRoles');
         $this->inviteRole = 'member';
-        session()->flash('status', 'Invitation sent to '.$email.'.');
+        $this->dispatch('toast', message: 'Invitation sent to '.$email.'.');
     }
 
     /**
@@ -123,7 +123,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     {
         $this->authorizeAdmin();
         $invitations->revoke($this->orgId(), $id);
-        session()->flash('status', 'Invitation revoked.');
+        $this->dispatch('toast', message: 'Invitation revoked.');
     }
 
     public function setRole(string $userId, string $role, Memberships $memberships): void
@@ -161,7 +161,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         try {
             $memberships->remove($this->orgId(), $userId);
-            session()->flash('status', 'Member removed.');
+            $this->dispatch('toast', message: 'Member removed.');
         } catch (\Cbox\Id\Organization\Exceptions\LastOwner) {
             $this->addError('inviteEmail', 'The organization must keep at least one owner.');
         }

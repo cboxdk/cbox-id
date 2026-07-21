@@ -145,7 +145,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             // workspace — sign them straight in there, not into an environment's
             // own domain. This is the account plane's single sign-in.
             app(AccountAuth::class)->establish($result->member->id);
-            session()->flash('status', 'Your identity platform is ready.');
+            $this->dispatch('toast', message: 'Your identity platform is ready.');
             $this->redirect(route('workspace.home'), navigate: false);
 
             return;
@@ -157,7 +157,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         // domains explicitly flagged; non-captured domains fall through untouched.
         if ($domains->forEmail($this->email)?->capture === true
             && ($connection = $domains->connectionForEmail($this->email)) !== null) {
-            session()->flash('status', 'Your organization requires signing in through SSO.');
+            $this->dispatch('toast', message: 'Your organization requires signing in through SSO.');
             $this->redirect(SsoStart::url($connection), navigate: false);
 
             return;

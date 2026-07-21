@@ -95,19 +95,19 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         }
         $user->save();
 
-        session()->flash('status', 'Profile updated.');
+        $this->dispatch('toast', message: 'Profile updated.');
     }
 
     public function suspend(Subjects $subjects): void
     {
         $subjects->deactivate($this->user()->id);
-        session()->flash('status', 'User deactivated — they can no longer sign in.');
+        $this->dispatch('toast', message: 'User deactivated — they can no longer sign in.');
     }
 
     public function reactivate(Subjects $subjects): void
     {
         $subjects->reactivate($this->user()->id);
-        session()->flash('status', 'User reactivated.');
+        $this->dispatch('toast', message: 'User reactivated.');
     }
 
     public function deleteUser(Memberships $memberships): mixed
@@ -120,12 +120,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             }
             $user->delete();
         } catch (\Throwable) {
-            session()->flash('status', 'Could not delete this user (they still have linked records) — deactivate instead.');
+            $this->dispatch('toast', message: 'Could not delete this user (they still have linked records) — deactivate instead.', severity: 'error');
 
             return null;
         }
 
-        session()->flash('status', 'User deleted.');
+        $this->dispatch('toast', message: 'User deleted.');
 
         return $this->redirectRoute('environment.users', navigate: true);
     }
@@ -139,7 +139,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             Mail::to($user->email)->send(new PasswordResetMail(route('password.reset', $token)));
         }
 
-        session()->flash('status', 'Password reset email sent to '.$user->email.'.');
+        $this->dispatch('toast', message: 'Password reset email sent to '.$user->email.'.');
     }
 
     public function resendVerification(EmailVerification $verification): void
@@ -152,14 +152,14 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $token = $verification->issue($user->id, $user->email);
         Mail::to($user->email)->send(new EmailVerificationMail(route('verification.verify', $token)));
 
-        session()->flash('status', 'Verification email sent to '.$user->email.'.');
+        $this->dispatch('toast', message: 'Verification email sent to '.$user->email.'.');
     }
 
     public function markVerified(Subjects $subjects): void
     {
         $user = $this->user();
         $subjects->markEmailVerified($user->id, $user->email);
-        session()->flash('status', 'Email marked as verified.');
+        $this->dispatch('toast', message: 'Email marked as verified.');
     }
 
     public function resetMfa(): void
@@ -169,7 +169,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         // codes forces a fresh enrollment on next sign-in.
         MfaFactor::query()->where('user_id', $user->id)->delete();
         MfaRecoveryCode::query()->where('user_id', $user->id)->delete();
-        session()->flash('status', 'Two-factor authentication reset — the user must re-enroll.');
+        $this->dispatch('toast', message: 'Two-factor authentication reset — the user must re-enroll.');
     }
 
     public function revokeSession(string $sessionId, SessionManager $sessions): void
@@ -177,14 +177,14 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         // Only a session belonging to THIS env-scoped user (deny-by-default).
         if (Session::query()->whereKey($sessionId)->where('user_id', $this->user()->id)->exists()) {
             $sessions->revoke($sessionId);
-            session()->flash('status', 'Session revoked.');
+            $this->dispatch('toast', message: 'Session revoked.');
         }
     }
 
     public function revokeAllSessions(SessionManager $sessions): void
     {
         $sessions->revokeAllForUser($this->user()->id);
-        session()->flash('status', 'All sessions revoked.');
+        $this->dispatch('toast', message: 'All sessions revoked.');
     }
 
     public function assignOrg(Memberships $memberships, Roles $roles, OrgAccessRoles $catalog): void
@@ -223,7 +223,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $this->assignOrgId = '';
         $this->assignRole = 'member';
         $this->assignAccessRoles = [];
-        session()->flash('status', 'User added to the organization.');
+        $this->dispatch('toast', message: 'User added to the organization.');
     }
 
     public function changeMembershipRole(string $orgId, string $role, Memberships $memberships): void
@@ -235,9 +235,9 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         try {
             $memberships->changeRole($orgId, $user->id, $role);
-            session()->flash('status', 'Org access updated.');
+            $this->dispatch('toast', message: 'Org access updated.');
         } catch (LastOwner) {
-            session()->flash('status', 'An organization must keep at least one owner.');
+            $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
         }
     }
 
@@ -277,9 +277,9 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         try {
             $memberships->remove($orgId, $user->id);
-            session()->flash('status', 'Removed from the organization.');
+            $this->dispatch('toast', message: 'Removed from the organization.');
         } catch (LastOwner) {
-            session()->flash('status', 'An organization must keep at least one owner.');
+            $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
         }
     }
 

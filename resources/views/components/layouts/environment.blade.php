@@ -176,9 +176,6 @@
 
         <main id="main-content" class="flex-1 min-w-0 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
             <div class="mx-auto w-full max-w-5xl px-5 py-8">
-                @if (session('status'))
-                    <div class="mb-6 rounded-xl border p-3 text-sm" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft);color:var(--success)">{{ session('status') }}</div>
-                @endif
                 {{ $slot }}
             </div>
         </main>
@@ -203,5 +200,6 @@
     </x-mobile-nav>
 </div>
 @livewireScripts
+    <x-toast />
 </body>
 </html>

@@ -83,7 +83,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
                 context: ['domain' => $result->domain], request: request());
         }
 
-        session()->flash('status', $result->domain.' is verified and now serves this environment.');
+        $this->dispatch('toast', message: $result->domain.' is verified and now serves this environment.');
     }
 
     public function remove(AccountAuth $auth, AccountMembers $members, EnvironmentDomains $domains, AccountActivity $activity): void
@@ -101,7 +101,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
                 targetType: 'environment', targetId: $this->selectedEnvironment, request: request());
         }
 
-        session()->flash('status', 'Custom domain removed.');
+        $this->dispatch('toast', message: 'Custom domain removed.');
     }
 
     /** The member manages environments AND the selected one is theirs to reach. */

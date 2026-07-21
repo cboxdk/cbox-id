@@ -93,7 +93,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             'sp_entity_id', 'sp_acs_url', 'issuer', 'client_id', 'signing_key',
         );
         $this->type = 'saml';
-        session()->flash('status', 'Connection created as a draft.');
+        $this->dispatch('toast', message: 'Connection created as a draft.');
     }
 
     /**
@@ -130,7 +130,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->idp_x509cert = $metadata->x509cert;
         $this->reset('metadataInput');
 
-        session()->flash('status', 'Metadata imported — review the fields and create the connection.');
+        $this->dispatch('toast', message: 'Metadata imported — review the fields and create the connection.');
     }
 
     public function activate(string $id, Connections $connections): void
@@ -139,7 +139,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->authorizeAdmin();
 
         $connections->activate($this->orgId(), $id);
-        session()->flash('status', 'Connection activated.');
+        $this->dispatch('toast', message: 'Connection activated.');
     }
 
     /**
@@ -197,12 +197,12 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->ownedDomain($id, $domains);
 
         if ($domains->verify($id)) {
-            session()->flash('status', 'Domain verified.');
+            $this->dispatch('toast', message: 'Domain verified.');
 
             return;
         }
 
-        session()->flash('status', "We couldn't find the TXT record yet — DNS can take a few minutes.");
+        $this->dispatch('toast', message: "We couldn't find the TXT record yet — DNS can take a few minutes.", severity: 'error');
     }
 
     /**
@@ -218,7 +218,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         abort_unless($domain->isVerified(), 403);
 
         $domains->setCapture($id, ! $domain->capture);
-        session()->flash('status', $domain->capture ? 'Capture disabled.' : 'Capture enabled — matching users must use SSO.');
+        $this->dispatch('toast', message: $domain->capture ? 'Capture disabled.' : 'Capture enabled — matching users must use SSO.');
     }
 
     public function removeDomain(string $id, DomainVerification $domains): void
@@ -228,7 +228,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->ownedDomain($id, $domains);
 
         $domains->remove($id);
-        session()->flash('status', 'Domain removed.');
+        $this->dispatch('toast', message: 'Domain removed.');
     }
 
     /**

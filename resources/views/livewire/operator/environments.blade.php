@@ -87,7 +87,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
 
         $this->reset('name', 'domain', 'creating');
 
-        session()->flash('status', $domain === null
+        $this->dispatch('toast', message: $domain === null
             ? 'Environment "'.$environment->name.'" created.'
             : 'Environment "'.$environment->name.'" created. Add '.$domain.' from the environment\'s domain settings to verify it by DNS — an unverified domain cannot be its issuer.');
     }
@@ -147,7 +147,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
 
         $name = $environment->name;
         $this->reset('orgName', 'adminName', 'adminEmail', 'adminPassword', 'provisioningEnvId');
-        session()->flash('status', 'Provisioned an organization and admin in "'.$name.'".');
+        $this->dispatch('toast', message: 'Provisioned an organization and admin in "'.$name.'".');
     }
 
     private function uniqueSlug(string $name): string

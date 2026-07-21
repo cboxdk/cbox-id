@@ -98,9 +98,9 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $this->guardFeature(PortalFeature::Sso);
         $this->ownedDomain($id, $domains);
 
-        session()->flash('status', $domains->verify($id)
+        $this->dispatch('toast', message: $domains->verify($id)
             ? 'Domain verified — users on this domain can now sign in with SSO.'
-            : "We couldn't find the TXT record yet — DNS can take a few minutes to propagate.");
+            : "We couldn't find the TXT record yet — DNS can take a few minutes to propagate.", severity: 'error');
     }
 
     public function removeDomain(string $id, DomainVerification $domains): void
@@ -109,7 +109,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $this->ownedDomain($id, $domains);
 
         $domains->remove($id);
-        session()->flash('status', 'Domain removed.');
+        $this->dispatch('toast', message: 'Domain removed.');
     }
 
     /** Confirm the domain belongs to the portal-bound org before acting on it. */
@@ -156,7 +156,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
             'sp_entity_id', 'sp_acs_url', 'issuer', 'client_id', 'signing_key',
         );
         $this->type = 'saml';
-        session()->flash('status', 'Connection created as a draft.');
+        $this->dispatch('toast', message: 'Connection created as a draft.');
     }
 
     public function activate(string $id, Connections $connections): void
@@ -164,7 +164,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $orgId = $this->guardFeature(PortalFeature::Sso);
 
         $connections->activate($orgId, $id);
-        session()->flash('status', 'Connection activated.');
+        $this->dispatch('toast', message: 'Connection activated.');
     }
 
     public function registerDirectory(Directories $directories): void

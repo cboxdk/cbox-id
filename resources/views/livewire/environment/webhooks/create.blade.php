@@ -70,7 +70,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New webhook'])] clas
         // The plaintext secret exists only in this response; hand it to the detail page
         // as a one-time flash — it is never retrievable again.
         session()->flash('newSecret', $registered->secret);
-        session()->flash('status', 'Webhook endpoint created.');
+        $this->dispatch('toast', message: 'Webhook endpoint created.');
 
         return $this->redirectRoute('environment.webhooks.show', ['webhook' => $registered->endpoint->id], navigate: true);
     }

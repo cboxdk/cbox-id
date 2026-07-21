@@ -56,7 +56,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New outbound connect
             $this->secret,
         )->connection;
 
-        session()->flash('status', 'Provisioning connection registered.');
+        $this->dispatch('toast', message: 'Provisioning connection registered.');
 
         return $this->redirectRoute('environment.provisioning.show', ['sync' => $model->id], navigate: true);
     }

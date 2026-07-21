@@ -53,7 +53,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         ));
 
         $this->reset('name', 'type', 'parentId', 'creating');
-        session()->flash('status', 'Organization created.');
+        $this->dispatch('toast', message: 'Organization created.');
     }
 
     public function toggleStatus(string $id, Organizations $orgs, OperatorAuth $auth): void
@@ -73,10 +73,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
 
         if ($org->status === OrganizationStatus::Active) {
             $orgs->suspend($id, $actorId);
-            session()->flash('status', 'Organization suspended.');
+            $this->dispatch('toast', message: 'Organization suspended.');
         } else {
             $orgs->reactivate($id, $actorId);
-            session()->flash('status', 'Organization reactivated.');
+            $this->dispatch('toast', message: 'Organization reactivated.');
         }
     }
 
@@ -86,12 +86,12 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
             // move() rewrites the closure subtree and guards against cycles.
             $hierarchy->move($id, $parentId !== '' ? $parentId : null);
         } catch (CannotReparent) {
-            session()->flash('status', 'That would create a cycle in the hierarchy — ignored.');
+            $this->dispatch('toast', message: 'That would create a cycle in the hierarchy — ignored.');
 
             return;
         }
 
-        session()->flash('status', 'Hierarchy updated.');
+        $this->dispatch('toast', message: 'Hierarchy updated.');
     }
 
     private function uniqueSlug(string $name): string

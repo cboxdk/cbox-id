@@ -69,7 +69,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         $vault->rotate($secret->id, $this->rotateSecret, VaultOwner::fromRow($secret->owner_type, $secret->owner_id));
 
         $this->reset('rotating', 'rotateSecret');
-        session()->flash('status', 'Secret rotated — the sealed value was replaced.');
+        $this->dispatch('toast', message: 'Secret rotated — the sealed value was replaced.');
     }
 
     public function addGrant(SecretVault $vault): void
@@ -80,20 +80,20 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         $vault->grant($secret->id, $this->grantClient, VaultOwner::fromRow($secret->owner_type, $secret->owner_id));
 
         $this->reset('grantClient');
-        session()->flash('status', 'Access granted.');
+        $this->dispatch('toast', message: 'Access granted.');
     }
 
     public function revokeGrant(string $clientId, SecretVault $vault): void
     {
         $vault->revokeGrant($this->secret()->id, $clientId, VaultOwner::fromRow($this->secret()->owner_type, $this->secret()->owner_id));
-        session()->flash('status', 'Access revoked.');
+        $this->dispatch('toast', message: 'Access revoked.');
     }
 
     public function revoke(SecretVault $vault): mixed
     {
         $vault->revoke($this->secret()->id, VaultOwner::fromRow($this->secret()->owner_type, $this->secret()->owner_id));
 
-        session()->flash('status', 'Secret revoked — no future lease can open it.');
+        $this->dispatch('toast', message: 'Secret revoked — no future lease can open it.');
 
         return $this->redirectRoute('environment.vault', navigate: true);
     }

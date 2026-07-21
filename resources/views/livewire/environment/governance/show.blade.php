@@ -65,7 +65,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
         }
 
         $reviews->close($campaign->id, $campaign->organization_id);
-        session()->flash('status', 'Access review closed — revoked access was applied.');
+        $this->dispatch('toast', message: 'Access review closed — revoked access was applied.');
     }
 
     /**

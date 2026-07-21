@@ -63,7 +63,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
         if (is_string($registered->secret)) {
             session()->flash('newSecret', $registered->secret);
         }
-        session()->flash('status', 'Log stream created.');
+        $this->dispatch('toast', message: 'Log stream created.');
 
         return $this->redirectRoute('environment.audit-streams.show', ['stream' => $registered->stream->id], navigate: true);
     }

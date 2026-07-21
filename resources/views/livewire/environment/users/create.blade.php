@@ -34,7 +34,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
         $subject = $subjects->create(trim($this->email), trim($this->name) !== '' ? trim($this->name) : null);
         $user = User::query()->where('email', $this->email)->first();
 
-        session()->flash('status', 'User created.');
+        $this->dispatch('toast', message: 'User created.');
 
         return $this->redirectRoute('environment.users.show', ['user' => $user?->id ?? $subject->id], navigate: true);
     }

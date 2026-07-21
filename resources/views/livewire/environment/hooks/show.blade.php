@@ -49,19 +49,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
     public function pause(ExternalActions $actions): void
     {
         $actions->pause($this->endpoint()->id, $this->endpoint()->organization_id);
-        session()->flash('status', 'Endpoint paused — it will stop being called at the hook point.');
+        $this->dispatch('toast', message: 'Endpoint paused — it will stop being called at the hook point.');
     }
 
     public function activate(ExternalActions $actions): void
     {
         $actions->activate($this->endpoint()->id, $this->endpoint()->organization_id);
-        session()->flash('status', 'Endpoint activated.');
+        $this->dispatch('toast', message: 'Endpoint activated.');
     }
 
     public function remove(ExternalActions $actions): mixed
     {
         $actions->remove($this->endpoint()->id, $this->endpoint()->organization_id);
-        session()->flash('status', 'Endpoint removed.');
+        $this->dispatch('toast', message: 'Endpoint removed.');
 
         return $this->redirectRoute('environment.hooks', navigate: true);
     }

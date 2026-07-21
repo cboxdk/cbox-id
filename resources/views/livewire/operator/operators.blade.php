@@ -46,7 +46,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
         $operators->create($this->email, $this->password, $this->name);
 
         $this->reset('name', 'email', 'password', 'creating');
-        session()->flash('status', 'Operator created.');
+        $this->dispatch('toast', message: 'Operator created.');
     }
 
     public function toggleStatus(string $id, PlatformOperators $operators, OperatorAuth $auth): void
@@ -65,7 +65,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
             // Self-lockout guard: never suspend the account you are signed in as.
             // Checked before the contract call so it can't be reached at all.
             if ($id === $actorId) {
-                session()->flash('status', 'You cannot suspend the operator you are currently signed in as.');
+                $this->dispatch('toast', message: 'You cannot suspend the operator you are currently signed in as.');
 
                 return;
             }
@@ -75,15 +75,15 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
                 // to suspend the final active operator (would lock everyone out).
                 $operators->suspend($id, $actorId);
             } catch (CannotSuspendLastOperator) {
-                session()->flash('status', 'You cannot suspend the last active operator — the console would lock everyone out.');
+                $this->dispatch('toast', message: 'You cannot suspend the last active operator — the console would lock everyone out.');
 
                 return;
             }
 
-            session()->flash('status', 'Operator suspended.');
+            $this->dispatch('toast', message: 'Operator suspended.');
         } else {
             $operators->reactivate($id, $actorId);
-            session()->flash('status', 'Operator reactivated.');
+            $this->dispatch('toast', message: 'Operator reactivated.');
         }
     }
 

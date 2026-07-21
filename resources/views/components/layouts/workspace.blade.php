@@ -94,10 +94,6 @@
 
     <div class="flex flex-col min-w-0 flex-1">
         <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
-            @if (session('status'))
-                <div role="status" aria-live="polite" class="mx-6 mt-6 -mb-2 rounded-lg px-4 py-3 text-sm"
-                     style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in oklch,var(--success) 20%,transparent)">{{ session('status') }}</div>
-            @endif
             <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:48rem">{{ $slot }}</div>
         </main>
     </div>
@@ -106,5 +102,6 @@
                   subheading="Account" :initial="$accountInitial" logout-route="workspace.logout"
                   :member-name="$member?->name" :member-email="$member?->email" />
 </div>
+    <x-toast />
 </body>
 </html>

@@ -50,7 +50,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
             DB::table('role_permission')->insertOrIgnore(['role_id' => $role->id, 'permission_id' => $permissionId]);
         }
 
-        session()->flash('status', 'Role created.');
+        $this->dispatch('toast', message: 'Role created.');
 
         return $this->redirectRoute('environment.roles.show', ['role' => $role->id], navigate: true);
     }

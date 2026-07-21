@@ -74,7 +74,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
             context: ['email' => $invited->email, 'role' => $this->inviteRole], request: request());
 
         $this->reset('inviteEmail', 'inviteName');
-        session()->flash('status', 'Invitation sent to '.$invited->email.'.');
+        $this->dispatch('toast', message: 'Invitation sent to '.$invited->email.'.');
     }
 
     public function changeRole(string $memberId, string $role, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
@@ -92,7 +92,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
             targetType: 'account_member', targetId: $memberId,
             context: ['role' => $next->value], request: request());
 
-        session()->flash('status', 'Role updated.');
+        $this->dispatch('toast', message: 'Role updated.');
     }
 
     public function removeMember(string $memberId, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
@@ -105,7 +105,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
             $activity->record($auth->current()->account_id, 'account.member_removed', $auth->id(),
                 targetType: 'account_member', targetId: $memberId, request: request());
 
-            session()->flash('status', 'Member removed.');
+            $this->dispatch('toast', message: 'Member removed.');
         }
     }
 
@@ -125,7 +125,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         }
 
         $members->transferOwnership($current->account_id, $memberId);
-        session()->flash('status', 'Ownership transferred to '.($target->name ?? $target->email).'.');
+        $this->dispatch('toast', message: 'Ownership transferred to '.($target->name ?? $target->email).'.');
     }
 
     public function manageAccess(string $memberId, AccountAuth $auth, AccountMembers $members): void
@@ -149,7 +149,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 
         $members->setEnvironmentAccess($this->editingAccessFor, $this->accessAll, $this->accessEnvIds);
         $this->editingAccessFor = null;
-        session()->flash('status', 'Environment access updated.');
+        $this->dispatch('toast', message: 'Environment access updated.');
     }
 
     public function cancelAccess(): void

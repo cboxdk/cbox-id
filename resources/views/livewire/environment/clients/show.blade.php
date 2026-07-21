@@ -89,7 +89,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         $client->redirect_uris = $redirects;
         $client->save();
 
-        session()->flash('status', 'Application updated.');
+        $this->dispatch('toast', message: 'Application updated.');
     }
 
     /**
@@ -101,7 +101,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         $client = $this->client();
 
         if ($client->type !== ClientType::Confidential) {
-            session()->flash('status', 'Public clients use PKCE and have no secret to rotate.');
+            $this->dispatch('toast', message: 'Public clients use PKCE and have no secret to rotate.');
 
             return;
         }
@@ -113,7 +113,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         $this->revealedSecret = $secret;
         $this->revealedIsFresh = true;
 
-        session()->flash('status', 'A new secret was issued — copy it now, it will not be shown again.');
+        $this->dispatch('toast', message: 'A new secret was issued — copy it now, it will not be shown again.');
     }
 
     public function dismissSecret(): void
@@ -125,7 +125,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
     {
         $this->client()->delete();
 
-        session()->flash('status', 'Application deleted.');
+        $this->dispatch('toast', message: 'Application deleted.');
 
         return $this->redirectRoute('environment.clients', navigate: true);
     }

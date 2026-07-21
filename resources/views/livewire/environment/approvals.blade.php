@@ -43,7 +43,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
         // fail-closed operator action rather than consent on someone else's behalf.
         app(BackchannelAuthentication::class)->deny($request->id, $request->user_id);
 
-        session()->flash('status', 'Request denied.');
+        $this->dispatch('toast', message: 'Request denied.', severity: 'error');
     }
 
     /**

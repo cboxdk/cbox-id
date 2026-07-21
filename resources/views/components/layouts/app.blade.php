@@ -282,16 +282,12 @@
             </div>
         </header>
 
-        @if (session('status'))
-            <div role="status" aria-live="polite" class="mx-6 mt-4 rounded-lg px-4 py-3 text-sm"
-                 style="background:var(--success-soft);color:var(--success);border:1px solid color-mix(in oklch,var(--success) 20%,transparent)">{{ session('status') }}</div>
-        @endif
-
         <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient">
             <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:72rem">{{ $slot }}</div>
         </main>
     </div>
 </div>
 
+    <x-toast />
 </body>
 </html>

@@ -106,7 +106,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
         }
 
         $this->reset('googleServiceAccountJson', 'googleAdminEmail', 'entraTenantId', 'entraClientId', 'entraClientSecret');
-        session()->flash('status', $provider->label().' connected — users are syncing.');
+        $this->dispatch('toast', message: $provider->label().' connected — users are syncing.');
     }
 
     /**
