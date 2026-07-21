@@ -226,11 +226,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         // first-party client), do so; otherwise return the OIDC error to the client
         // rather than showing the consent screen.
         if (in_array('none', $prompts, true) && ! $skipConsent) {
-            $this->redirect($this->buildRedirect(array_filter([
-                'error' => 'interaction_required',
-                'error_description' => 'User interaction is required to authorize this request.',
-                'state' => $this->state,
-            ], static fn (?string $v): bool => $v !== null)));
+            // Through redirectError() so this branch carries the RFC 9207 `iss` too —
+            // building the redirect directly here was the one error path that omitted
+            // it, and a mix-up-hardened client checks it on errors as well.
+            $this->redirectError($this->redirectUri, 'interaction_required', $this->state,
+                'User interaction is required to authorize this request.');
+
+            return;
 
             return;
         }

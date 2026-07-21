@@ -65,7 +65,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
             // Self-lockout guard: never suspend the account you are signed in as.
             // Checked before the contract call so it can't be reached at all.
             if ($id === $actorId) {
-                $this->dispatch('toast', message: 'You cannot suspend the operator you are currently signed in as.');
+                $this->dispatch('toast', message: 'You cannot suspend the operator you are currently signed in as.', severity: 'error');
 
                 return;
             }
@@ -75,7 +75,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
                 // to suspend the final active operator (would lock everyone out).
                 $operators->suspend($id, $actorId);
             } catch (CannotSuspendLastOperator) {
-                $this->dispatch('toast', message: 'You cannot suspend the last active operator — the console would lock everyone out.');
+                $this->dispatch('toast', message: 'You cannot suspend the last active operator — the console would lock everyone out.', severity: 'error');
 
                 return;
             }

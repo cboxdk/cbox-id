@@ -86,7 +86,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
             // move() rewrites the closure subtree and guards against cycles.
             $hierarchy->move($id, $parentId !== '' ? $parentId : null);
         } catch (CannotReparent) {
-            $this->dispatch('toast', message: 'That would create a cycle in the hierarchy — ignored.');
+            $this->dispatch('toast', message: 'That would create a cycle in the hierarchy — ignored.', severity: 'error');
 
             return;
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -144,7 +145,14 @@ it('returns interaction_required on prompt=none when consent would be shown', fu
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
         'prompt' => 'none',
-    ])->assertRedirect('https://app.test/cb?error=interaction_required&error_description=User+interaction+is+required+to+authorize+this+request.&state=xyz');
+    ])->assertRedirect(
+        // `iss` is REQUIRED here too (RFC 9207): a mix-up-hardened client checks it on
+        // error responses as well, and this branch used to be the one path that built
+        // its redirect directly and omitted it.
+        'https://app.test/cb?error=interaction_required'
+        .'&error_description=User+interaction+is+required+to+authorize+this+request.'
+        .'&state=xyz&iss='.urlencode(app(IssuerResolver::class)->issuer())
+    );
 });
 
 it('locks validated request parameters so the browser cannot tamper with them between requests', function () {
