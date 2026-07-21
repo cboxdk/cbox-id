@@ -11,6 +11,26 @@ return [
      */
     'issuer' => env('CBOX_ID_ISSUER'),
 
+    'oauth' => [
+        /*
+         * This app DOES serve the interactive /authorize endpoint (routes/web.php), so
+         * it tells the framework where it lives. A PATH, not an absolute URL: it is
+         * joined to the per-environment issuer, so every tenant advertises its own
+         * authorize endpoint on its own host.
+         *
+         * An absolute URL would pin all environments to one host — and since RFC 9207
+         * (`iss` on the authorization response) is advertised alongside it, a
+         * mix-up-hardened client would then compare the two, find them different, and
+         * abort every login outside the platform root.
+         *
+         * Configured here rather than left to an env var because it is a property of
+         * this app's routes, not of a deployment: a docs-following deploy that never set
+         * the variable served a discovery document with no authorization_endpoint at
+         * all — a field OpenID Connect Discovery marks REQUIRED.
+         */
+        'authorization_endpoint_path' => '/oauth/authorize',
+    ],
+
     /*
      * Override a package model with your own subclass to add relations, casts or
      * behaviour. Your class must extend the package model; the platform still owns

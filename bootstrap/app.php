@@ -60,6 +60,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // XML signature and every assertion is pinned to the SP's registered ACS).
         $middleware->validateCsrfTokens(except: [
             'sso/saml/idp/sso',
+            // The INBOUND ACS is the mirror case: the customer's IdP cross-site
+            // POSTs the signed SAMLResponse here, carrying no Laravel CSRF token.
+            // Same fail-closed reasoning — the XML signature is the authentication,
+            // and the assertion is validated before any identity is read.
+            'sso/saml/*/acs',
         ]);
 
         // The sidebar pin state is a pure UI preference written by JS

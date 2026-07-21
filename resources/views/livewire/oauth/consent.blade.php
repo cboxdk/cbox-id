@@ -10,6 +10,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends Component
@@ -266,10 +267,15 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
 
         // RFC 9207: return the issuer in the authorization response so the client
         // can detect a mix-up (a code minted by a different AS than it expects).
-        $issuer = config('cbox-id.issuer');
+        // Resolve the issuer the SAME way discovery and the id_token do. Reading
+        // config('cbox-id.issuer') here returned the platform APEX, so a tenant on its
+        // own host advertised one issuer and returned another in the authorization
+        // response — and a mix-up-hardened RP (which is what RFC 9207 exists to serve)
+        // compares the two and aborts the callback. Login was impossible for every
+        // environment that was not the platform root.
         $params = [
             'code' => $code,
-            'iss' => is_string($issuer) && $issuer !== '' ? $issuer : rtrim((string) url('/'), '/'),
+            'iss' => app(IssuerResolver::class)->issuer(),
         ];
 
         if ($this->state !== null) {

@@ -12,6 +12,8 @@ use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
+use App\Http\Controllers\Sso\OidcCallbackController;
+use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\WorkspacePasskeyController;
@@ -69,6 +71,21 @@ Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver 
  * metadata (GET /sso/saml/idp/metadata) and SLO endpoints stay with the package.
  */
 Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)->name('sso.saml.idp.sso');
+
+/*
+ * INBOUND federation — the browser half. The package's own ACS/callback validate the
+ * assertion and return the resulting session as JSON, on the explicit understanding
+ * that a hosting app turns it into a cookie. Nothing did, so an enterprise user
+ * authenticated at their IdP and landed on a raw JSON blob — never signed in. That is
+ * the entire value proposition of B2B SSO, so these override the package routes (this
+ * file is registered first, so the app's binding wins).
+ *
+ * Unauthenticated by design on both: the assertion signature / id_token IS the
+ * authentication. The SAML ACS is a cross-site form POST from the IdP, so it is
+ * CSRF-exempt in bootstrap/app.php exactly as the package's route was.
+ */
+Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)->name('sso.saml.acs');
+Route::get('/sso/oidc/{connection}/callback', OidcCallbackController::class)->name('sso.oidc.callback');
 
 /*
  * Account signup — "create your identity platform" — is an ACCOUNT-plane action in the
