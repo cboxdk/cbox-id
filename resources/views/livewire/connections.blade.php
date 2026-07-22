@@ -53,6 +53,8 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
     public string $client_id = '';
 
+    public string $client_secret = '';
+
     public string $signing_key = '';
 
     // Verified domains
@@ -84,12 +86,13 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             $config = $this->validate([
                 'issuer' => 'required|url|max:500',
                 'client_id' => 'required|string|max:500',
+                'client_secret' => 'required|string|max:500',
                 'signing_key' => 'required|string',
             ]);
 
             try {
                 $config = array_merge($config, app(OidcDiscovery::class)->fromIssuer($this->issuer)->toConfig());
-            } catch (OidcDiscoveryFailed $e) {
+            } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
                 $this->addError('issuer', "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})");
 
                 return;
@@ -100,7 +103,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
         $this->reset(
             'creating', 'name', 'idp_entity_id', 'idp_sso_url', 'idp_x509cert',
-            'sp_entity_id', 'sp_acs_url', 'issuer', 'client_id', 'signing_key',
+            'sp_entity_id', 'sp_acs_url', 'issuer', 'client_id', 'client_secret', 'signing_key',
         );
         $this->type = 'saml';
         $this->dispatch('toast', message: 'Connection created as a draft.');
@@ -409,6 +412,11 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                         <label class="label" for="client_id">Client ID</label>
                         <input wire:model="client_id" id="client_id" type="text" class="input mono" placeholder="cbox-id-app">
                         @error('client_id') <p class="field-error">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="label" for="client_secret">Client secret</label>
+                        <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••" autocomplete="off">
+                        @error('client_secret') <p class="field-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>

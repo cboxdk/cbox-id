@@ -86,6 +86,12 @@ final class AdminPortal
         // Single-use: burn the link now so a second redemption of the same URL fails.
         $link->forceFill(['consumed_at' => now()])->save();
 
+        // Regenerate the session id on this privilege elevation (as every other auth
+        // path does) so a pre-fixed session cookie cannot ride the redemption into the
+        // scoped portal — session fixation is especially reachable under a shared
+        // parent SESSION_DOMAIN.
+        session()->regenerate();
+
         session()->put(self::SESSION_KEY, [
             'link_id' => $link->id,
             'org' => $link->organization_id,

@@ -135,7 +135,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
             // them at redirect time, and an issuer alone would dead-end mid-flow.
             try {
                 $config = array_merge($config, app(OidcDiscovery::class)->fromIssuer($this->issuer)->toConfig());
-            } catch (OidcDiscoveryFailed $e) {
+            } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
                 $this->addError('issuer', "Couldn't read the provider's OpenID configuration — check the issuer URL. ({$e->getMessage()})");
 
                 return null;

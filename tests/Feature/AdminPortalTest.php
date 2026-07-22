@@ -48,6 +48,20 @@ it('opens the portal for a valid token', function () {
         ->assertSee('SSO connection');
 });
 
+it('regenerates the session id when a setup link is redeemed (anti-fixation)', function () {
+    $orgId = gateAdmin('portal-fixation');
+    grantFeature($orgId, 'cbox-id-sso');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+
+    session()->start();
+    $before = session()->getId();
+
+    expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
+
+    // A pre-fixed session cookie cannot ride the privilege elevation into the portal.
+    expect(session()->getId())->not->toBe($before);
+});
+
 it('creates a connection only for the org bound to the portal session', function () {
     $orgA = gateAdmin('portal-a');
     grantFeature($orgA, 'cbox-id-sso');

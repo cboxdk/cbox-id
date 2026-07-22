@@ -49,6 +49,6 @@ final class SecureRedirectUri implements ValidationRule
             return true;
         }
 
-        return $scheme === 'http' && in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+        return $scheme === 'http' && in_array($host, ['localhost', '127.0.0.1', '::1', '[::1]'], true);
     }
 }

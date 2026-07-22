@@ -11,6 +11,7 @@ it('accepts https and loopback http, rejects cleartext and dangerous schemes', f
     ['https://app.example.com/cb?x=1', true],
     ['http://localhost:3000/cb', true],
     ['http://127.0.0.1:8080/cb', true],
+    ['http://[::1]:8080/cb', true],              // IPv6 loopback (RFC 8252 §7.3)
     ['com.example.app://oauth2redirect', true],       // reverse-domain native scheme
     ['http://app.example.com/cb', false],             // cleartext on a public host
     ['https://app.example.com/cb#frag', false],       // fragment
