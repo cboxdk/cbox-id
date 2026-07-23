@@ -311,7 +311,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $orgCatalog = [];
         foreach ($memberships->forUser($user->id) as $m) {
             $rows[] = ['org' => $m->organization_id, 'orgName' => $orgNames[$m->organization_id] ?? $m->organization_id, 'role' => $m->role];
-            if (! in_array($m->role, ['owner', 'admin'], true)) {
+            if (! $m->role->canManageOrganization()) {
                 $impersonatable[] = ['org' => $m->organization_id, 'orgName' => $orgNames[$m->organization_id] ?? $m->organization_id];
             }
 
@@ -368,12 +368,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             <div>
                 <label class="label" for="editName">Name</label>
                 <input wire:model="editName" id="editName" type="text" class="input" placeholder="Full name">
-                @error('editName') <p class="field-error">{{ $message }}</p> @enderror
+                @error('editName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="editEmail">Email</label>
                 <input wire:model="editEmail" id="editEmail" type="email" class="input">
-                @error('editEmail') <p class="field-error">{{ $message }}</p> @enderror
+                @error('editEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="saveProfile">Save</button>
         </form>
@@ -440,7 +440,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                         <a href="{{ route('environment.organizations.show', $m['org']) }}" class="min-w-0 flex-1 truncate text-sm font-medium" style="color:var(--accent)">{{ $m['orgName'] }}</a>
                         <select class="select" style="width:auto" aria-label="Org access" wire:change="changeMembershipRole('{{ $m['org'] }}', $event.target.value)">
                             @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
-                                <option value="{{ $val }}" @selected($m['role'] === $val)>{{ $lbl }}</option>
+                                <option value="{{ $val }}" @selected($m['role']->value === $val)>{{ $lbl }}</option>
                             @endforeach
                         </select>
                         <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMembership('{{ $m['org'] }}')" wire:confirm="Remove from this organization?">Remove</button>
@@ -480,7 +480,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                             <option value="{{ $orgId }}">{{ $orgName }}</option>
                         @endforeach
                     </select>
-                    @error('assignOrgId') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('assignOrgId') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <select wire:model="assignRole" class="select" aria-label="Org access">
                     <option value="member">Member</option>

@@ -49,7 +49,7 @@ final class ImpersonationController extends Controller
 
         // An operator may only step into a regular member — never an owner or admin,
         // whose elevated surface would hand durable tenant control to the operator.
-        abort_if(in_array($membership->role, ['owner', 'admin'], true), 403);
+        abort_if($membership->role->canManageOrganization(), 403);
 
         $request->validate([
             'reason' => ['required', 'string', 'max:200'],
@@ -83,7 +83,7 @@ final class ImpersonationController extends Controller
 
         // Never step into an owner/admin — that would hand durable tenant control to
         // the account member (defense-in-depth on top of the read-only screen).
-        abort_if(in_array($membership->role, ['owner', 'admin'], true), 403);
+        abort_if($membership->role->canManageOrganization(), 403);
 
         $request->validate(['reason' => ['required', 'string', 'max:200']]);
 

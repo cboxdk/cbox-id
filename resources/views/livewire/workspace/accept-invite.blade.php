@@ -32,7 +32,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
         $invited = $members->find($member);
 
         // Already accepted, revoked, or unknown — the link is spent.
-        if ($invited === null || $invited->status !== 'invited') {
+        if ($invited === null || $invited->status !== \Cbox\Id\Platform\Enums\AccountMemberStatus::Invited) {
             return redirect()->route('workspace.login')
                 ->with('status', 'This invitation is no longer valid. Try signing in.');
         }

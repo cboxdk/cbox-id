@@ -10,6 +10,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Subject;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
@@ -31,7 +32,7 @@ function impersonatingSubject(string $role = 'owner'): array
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-impersonated'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['impersonation']);
-    app(CurrentUser::class)->set($subject, $session, $org, $role);
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
 
     session()->put(Impersonation::SESSION_KEY, [
         'operator' => 'op_readonly',

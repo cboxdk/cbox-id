@@ -13,6 +13,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -31,7 +32,7 @@ function actingAsConsentUser(): array
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-consent'));
     app(Memberships::class)->add($org->id, $subject->id, 'owner');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return [$subject->id, $org];
 }
@@ -210,7 +211,7 @@ it('refuses to mint a code for a suspended organization', function () {
     $org->update(['status' => OrganizationStatus::Suspended]);
     $org->refresh();
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     $clientId = registerConsentClient($org->id);
 

@@ -250,21 +250,21 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
                 <div>
                     <label class="label" for="editName">Project name</label>
                     <input wire:model="editName" id="editName" type="text" class="input">
-                    @error('editName') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('editName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="rename">Save</button>
             </form>
 
             <div class="mt-5 pt-5 flex items-center justify-between gap-4" style="border-top:1px solid var(--border)">
                 <div>
-                    <p class="text-sm font-medium">{{ $project->status === 'suspended' ? 'Reactivate project' : 'Suspend project' }}</p>
+                    <p class="text-sm font-medium">{{ $project->status === \Cbox\Id\Platform\Enums\ProjectStatus::Suspended ? 'Reactivate project' : 'Suspend project' }}</p>
                     <p class="mt-1 text-xs" style="color:var(--faint)">
-                        {{ $project->status === 'suspended'
+                        {{ $project->status === \Cbox\Id\Platform\Enums\ProjectStatus::Suspended
                             ? 'Bring the project back — new environments can be added again.'
                             : 'Existing environments stay live, but no new ones can be added until reactivated.' }}
                     </p>
                 </div>
-                @if ($project->status === 'suspended')
+                @if ($project->status === \Cbox\Id\Platform\Enums\ProjectStatus::Suspended)
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="reactivate">Reactivate</button>
                 @else
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="suspend" wire:confirm="Suspend this project?">Suspend</button>

@@ -13,6 +13,7 @@ use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
@@ -28,7 +29,7 @@ function ssoAdmin(string $slug, bool $entitled = true): string
     $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
     app(Memberships::class)->add($org->id, $subject->id, 'owner');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     if ($entitled) {
         app(EntitlementWriter::class)->set(

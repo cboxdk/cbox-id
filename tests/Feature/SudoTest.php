@@ -10,6 +10,7 @@ use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -22,7 +23,7 @@ function signIn(): string
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-sudo'));
     app(Memberships::class)->add($org->id, $subject->id, 'owner');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return $subject->id;
 }
@@ -73,7 +74,7 @@ it('refuses to unlink a user\'s only sign-in method', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme2', 'acme-social'));
     app(Memberships::class)->add($org->id, $subject->id, 'owner');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['sso']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
     app(Subjects::class)->link($subject->id, new FederatedPrincipal('social:google', 'google|1'));
     app(Sudo::class)->confirm();
 

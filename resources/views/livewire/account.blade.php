@@ -198,7 +198,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
 
         // Last-factor guard: never strip the only remaining way to sign in.
         $remainingProviders = collect($subjects->linkedIdentities($me->id()))
-            ->reject(fn (array $identity): bool => $identity['provider'] === 'social:'.$provider)
+            ->reject(fn (\Cbox\Id\Identity\ValueObjects\LinkedIdentity $identity): bool => $identity->provider === 'social:'.$provider)
             ->isNotEmpty();
         $hasPasskey = WebAuthnCredential::query()->where('user_id', $me->id())->exists();
 
@@ -336,7 +336,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
                     <div class="cbx-kv"><dt>Name</dt><dd class="prose">{{ $me->name() }}</dd></div>
                     <div class="cbx-kv"><dt>Email</dt><dd>{{ $me->email() ?? '—' }}</dd></div>
                     @if ($org)
-                        <div class="cbx-kv"><dt>Organization</dt><dd class="prose">{{ $org->name }} <span class="badge">{{ ucfirst($me->role() ?? 'member') }}</span></dd></div>
+                        <div class="cbx-kv"><dt>Organization</dt><dd class="prose">{{ $org->name }} <span class="badge">{{ $me->role()?->label() ?? 'Member' }}</span></dd></div>
                     @endif
                 </dl>
             </div>
@@ -357,18 +357,18 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
                     <div>
                         <label class="label" for="currentPassword">Current password</label>
                         <input wire:model="currentPassword" id="currentPassword" type="password" class="input" autocomplete="current-password">
-                        @error('currentPassword') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('currentPassword') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                 @endif
                 <div>
                     <label class="label" for="newPassword">New password</label>
                     <input wire:model="newPassword" id="newPassword" type="password" class="input" autocomplete="new-password" placeholder="At least 12 characters">
-                    @error('newPassword') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('newPassword') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="newPasswordConfirmation">Confirm new password</label>
                     <input wire:model="newPasswordConfirmation" id="newPasswordConfirmation" type="password" class="input" autocomplete="new-password">
-                    @error('newPasswordConfirmation') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('newPasswordConfirmation') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">{{ $hasPassword ? 'Update password' : 'Set password' }}</button>
@@ -439,7 +439,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
                     <div class="min-w-[10rem]">
                         <label class="label" for="code">6-digit code</label>
                         <input wire:model="code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="input mono" placeholder="000000" autofocus>
-                        @error('code') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('code') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Confirm</button>
                     <button type="button" wire:click="cancel" class="btn btn-ghost">Cancel</button>
@@ -510,7 +510,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
                         </li>
                     @endforeach
                 </ul>
-                @error('unlink') <p class="field-error mt-2">{{ $message }}</p> @enderror
+                @error('unlink') <p class="field-error mt-2" role="alert">{{ $message }}</p> @enderror
             </div>
         </section>
     @endif

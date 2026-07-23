@@ -293,10 +293,10 @@ it('suspends and reactivates a project', function (): void {
     session()->put(AccountAuth::SESSION_KEY, $member->id);
 
     Volt::test('workspace.projects.show', ['project' => $project->id])->call('suspend');
-    expect(Project::query()->whereKey($project->id)->value('status'))->toBe('suspended');
+    expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('suspended');
 
     Volt::test('workspace.projects.show', ['project' => $project->id])->call('reactivate');
-    expect(Project::query()->whereKey($project->id)->value('status'))->toBe('active');
+    expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('active');
 });
 
 it('lets a member create a second project and drills into it empty', function (): void {

@@ -9,6 +9,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -25,7 +26,7 @@ it('signs out every other session but keeps the current one', function (): void 
     $other1 = $sessions->start($subject->id, $org->id, ['pwd']);
     $other2 = $sessions->start($subject->id, $org->id, ['pwd']);
 
-    app(CurrentUser::class)->set($subject, $current, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $current, $org, MembershipRole::Owner);
     app(Sudo::class)->confirm(); // sensitive action
 
     Volt::test('account')->call('signOutOtherSessions')->assertHasNoErrors();
@@ -42,7 +43,7 @@ it('requires step-up before signing out other sessions', function (): void {
     app(Memberships::class)->add($org->id, $subject->id, 'owner');
     $current = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     $other = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $current, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $current, $org, MembershipRole::Owner);
 
     // No sudo confirmation -> redirected, nothing revoked.
     Volt::test('account')->call('signOutOtherSessions')->assertRedirect(route('sudo'));

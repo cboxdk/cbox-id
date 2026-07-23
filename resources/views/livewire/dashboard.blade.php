@@ -110,7 +110,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
         </div>
         <div class="card p-5">
             <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="shield" class="w-4 h-4" /> Your role</div>
-            <p class="mt-2 text-lg font-semibold">{{ ucfirst($me->role() ?? 'member') }}</p>
+            <p class="mt-2 text-lg font-semibold">{{ $me->role()?->label() ?? 'Member' }}</p>
         </div>
     </div>
 
@@ -176,7 +176,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
         <div class="grid gap-4 sm:grid-cols-2">
             <div class="card p-5">
                 <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="shield" class="w-4 h-4" /> Your role</div>
-                <p class="mt-2 text-lg font-semibold">{{ ucfirst($me->role() ?? 'member') }}<span style="color:var(--muted);font-weight:400"> · {{ $me->organization()?->name }}</span></p>
+                <p class="mt-2 text-lg font-semibold">{{ $me->role()?->label() ?? 'Member' }}<span style="color:var(--muted);font-weight:400"> · {{ $me->organization()?->name }}</span></p>
             </div>
             <div class="card p-5 flex flex-col">
                 <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="key" class="w-4 h-4" /> Your security</div>

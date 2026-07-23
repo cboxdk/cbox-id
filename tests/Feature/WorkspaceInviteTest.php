@@ -50,7 +50,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
 
     $invited = app(AccountMembers::class)->findByEmail('new@acme.example');
     expect($invited)->not->toBeNull()
-        ->and($invited->status)->toBe('invited');
+        ->and($invited->status->value)->toBe('invited');
 
     Mail::assertSent(AccountInviteMail::class, fn (AccountInviteMail $m): bool => $m->hasTo('new@acme.example'));
 });
@@ -88,7 +88,7 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
         ->assertRedirect(route('workspace.home'));
 
     $members = app(AccountMembers::class);
-    expect($members->find($invited->id)->status)->toBe('active')
+    expect($members->find($invited->id)->status->value)->toBe('active')
         ->and($members->verifyPassword($invited->id, 'a-strong-unbreached-passphrase'))->toBeTrue()
         ->and(session()->get(AccountAuth::SESSION_KEY))->toBe($invited->id);
 });

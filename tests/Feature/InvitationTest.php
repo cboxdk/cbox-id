@@ -20,7 +20,7 @@ it('grants membership only after the invitee accepts the emailed link', function
 
     $subject = app(Subjects::class)->findByEmail('joiner@acme.test');
     expect($subject)->not->toBeNull()
-        ->and(app(Memberships::class)->of($org->id, $subject->id)?->role)->toBe('member')
+        ->and(app(Memberships::class)->of($org->id, $subject->id)?->role?->value)->toBe('member')
         ->and(session()->has(PlatformAuth::SESSION_KEY))->toBeTrue();
 });
 

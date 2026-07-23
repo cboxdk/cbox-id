@@ -13,6 +13,7 @@ use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
@@ -32,7 +33,7 @@ function owner(): string
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-console'));
     app(Memberships::class)->add($org->id, $subject->id, 'owner');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return $org->id;
 }
@@ -93,7 +94,7 @@ it('forbids a non-admin from registering a directory', function () {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-m'));
     app(Memberships::class)->add($org->id, $subject->id, 'member');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'member');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
     // The read gate now blocks a member at mount — they never reach register().
     Volt::test('directories')->assertForbidden();
@@ -105,7 +106,7 @@ function member(): string
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-reader'));
     app(Memberships::class)->add($org->id, $subject->id, 'member');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, 'member');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
     return $org->id;
 }

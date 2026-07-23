@@ -146,7 +146,11 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         try {
             $memberships->changeRole($this->orgId(), $userId, $role);
         } catch (LastOwner) {
-            $this->addError('inviteEmail', 'The organization must keep at least one owner.');
+            // Surface as an announced error toast, NOT addError('inviteEmail', …): the
+            // only @error('inviteEmail') sink lives inside the collapsed invite form, so
+            // a roster-row guard would block silently — the UI looks broken and a screen
+            // reader hears nothing. The toast is role=alert/assertive.
+            $this->dispatch('toast', message: 'The organization must keep at least one owner.', severity: 'error');
         }
     }
 
@@ -155,7 +159,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $this->authorizeAdmin();
 
         if ($userId === app(CurrentUser::class)->id()) {
-            $this->addError('inviteEmail', 'You cannot remove yourself.');
+            $this->dispatch('toast', message: 'You cannot remove yourself.', severity: 'error');
 
             return;
         }
@@ -167,13 +171,13 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             $memberships->remove($this->orgId(), $userId);
             $this->dispatch('toast', message: 'Member removed.');
         } catch (LastOwner) {
-            $this->addError('inviteEmail', 'The organization must keep at least one owner.');
+            $this->dispatch('toast', message: 'The organization must keep at least one owner.', severity: 'error');
         }
     }
 
     private function isOwner(string $userId, Memberships $memberships): bool
     {
-        return $memberships->of($this->orgId(), $userId)?->role === 'owner';
+        return $memberships->of($this->orgId(), $userId)?->role === \Cbox\Id\Organization\Enums\MembershipRole::Owner;
     }
 
     public function with(): array
@@ -279,7 +283,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                 <div class="flex-1 min-w-[14rem]">
                     <label class="label" for="inviteEmail">Email address</label>
                     <input wire:model="inviteEmail" id="inviteEmail" type="email" class="input" placeholder="teammate@company.com" autofocus>
-                    @error('inviteEmail') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('inviteEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="inviteRole">Workspace access</label>
@@ -369,7 +373,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                         @endforeach
                                     </select>
                                 @else
-                                    <span class="cbx-pill">{{ ucfirst($row['role']) }}</span>
+                                    <span class="cbx-pill">{{ $row['role']->label() }}</span>
                                 @endif
                             </td>
                             <td>

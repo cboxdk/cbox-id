@@ -6,6 +6,7 @@ namespace App\Platform;
 
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\Subject;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 
 /**
@@ -21,9 +22,9 @@ final class CurrentUser
 
     private ?Organization $organization = null;
 
-    private ?string $role = null;
+    private ?MembershipRole $role = null;
 
-    public function set(Subject $subject, Session $session, ?Organization $organization, ?string $role = null): void
+    public function set(Subject $subject, Session $session, ?Organization $organization, ?MembershipRole $role = null): void
     {
         $this->subject = $subject;
         $this->session = $session;
@@ -31,19 +32,19 @@ final class CurrentUser
         $this->role = $role;
     }
 
-    public function role(): ?string
+    public function role(): ?MembershipRole
     {
         return $this->role;
     }
 
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return $this->role === MembershipRole::Owner;
     }
 
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['owner', 'admin'], true);
+        return $this->role !== null && $this->role->canManageOrganization();
     }
 
     public function check(): bool

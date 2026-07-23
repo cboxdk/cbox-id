@@ -249,7 +249,7 @@
                         <span class="grid place-items-center rounded-md text-[11px] font-bold shrink-0" style="width:26px;height:26px;background:var(--accent-soft);color:var(--primary)">{{ $orgInitial }}</span>
                         <span class="min-w-0 text-left hidden sm:block">
                             <span class="block text-[13px] font-semibold truncate leading-tight">{{ $me->organization()?->name ?? 'No organization' }}</span>
-                            <span class="block text-[11px] truncate leading-tight" style="color:var(--muted-foreground)">{{ $me->role() ? ucfirst($me->role()) : 'Member' }}</span>
+                            <span class="block text-[11px] truncate leading-tight" style="color:var(--muted-foreground)">{{ $me->role()?->label() ?? 'Member' }}</span>
                         </span>
                         @if ($canSwitch)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
                     </button>
@@ -262,7 +262,7 @@
                                     <input type="hidden" name="organization" value="{{ $o->id }}">
                                     <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $o->id === $activeOrgId ? 'background:var(--secondary)' : '' }}">
                                         <span class="grid place-items-center rounded-md text-[10px] font-bold shrink-0" style="width:24px;height:24px;background:var(--accent-soft);color:var(--primary)">{{ strtoupper(substr($o->name, 0, 1)) }}</span>
-                                        <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ $o->name }}</span><span class="block text-[11px] truncate" style="color:var(--muted-foreground)">{{ $o->role ? ucfirst($o->role) : 'Member' }}</span></span>
+                                        <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ $o->name }}</span><span class="block text-[11px] truncate" style="color:var(--muted-foreground)">{{ $o->role?->label() ?? 'Member' }}</span></span>
                                         @if ($o->id === $activeOrgId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" />@endif
                                     </button>
                                 </form>

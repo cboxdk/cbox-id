@@ -22,8 +22,8 @@ it('links a pending social identity once the user signs in to the existing accou
         ->call('login')
         ->assertRedirect(route('dashboard'));
 
-    expect(app(Subjects::class)->linkedIdentities($subject->id))
-        ->toContain(['provider' => 'social:google', 'subject' => 'g|1']);
+    expect(collect(app(Subjects::class)->linkedIdentities($subject->id))
+        ->contains(fn ($identity): bool => $identity->provider === 'social:google' && $identity->subject === 'g|1'))->toBeTrue();
 });
 
 it('does not apply a pending social link whose email differs from the signed-in account', function () {

@@ -148,7 +148,7 @@ it('adds a member to an organization by email', function (): void {
         ->call('addMember')
         ->assertHasNoErrors();
 
-    expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe('admin');
+    expect(app(Memberships::class)->of($org->id, $user->id)?->role?->value)->toBe('admin');
 });
 
 it('starts an env-admin impersonation of a member (redirect + marker)', function (): void {
@@ -354,7 +354,7 @@ it('keeps the last owner when a demotion is attempted (no uncaught 500)', functi
     Volt::test('environment.organizations.show', ['organization' => $org->id])
         ->call('changeMemberRole', $user->id, 'member');
 
-    expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe('owner');
+    expect(app(Memberships::class)->of($org->id, $user->id)?->role?->value)->toBe('owner');
 });
 
 it('rejects an event-hook create with an out-of-environment organization', function (): void {

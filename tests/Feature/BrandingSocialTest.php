@@ -9,6 +9,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
@@ -47,7 +48,7 @@ it('redirects a member away from org settings to their own account', function ()
     app(Memberships::class)->add($org->id, $subject->id, 'member');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
-    app(CurrentUser::class)->set($subject, $session, $org, 'member');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
     // The member/admin split is enforced at the door: a member who lands on the
     // admin settings surface is sent to their own security centre, so they never

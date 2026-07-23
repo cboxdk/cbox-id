@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
@@ -24,7 +25,7 @@ function actingAsRole(string $role): array
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, $role);
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
 
     return [$subject->id, $org];
 }
@@ -50,7 +51,7 @@ it('changes a member role and removes a member', function () {
     app(Memberships::class)->add($org->id, $target->id, 'member');
 
     Volt::test('members')->call('setRole', $target->id, 'admin');
-    expect(app(Memberships::class)->of($org->id, $target->id)?->role)->toBe('admin');
+    expect(app(Memberships::class)->of($org->id, $target->id)?->role?->value)->toBe('admin');
 
     Volt::test('members')->call('remove', $target->id);
     expect(app(Memberships::class)->of($org->id, $target->id))->toBeNull();
@@ -59,7 +60,11 @@ it('changes a member role and removes a member', function () {
 it('will not let an admin remove themselves', function () {
     [$meId, $org] = actingAsRole('owner');
 
-    Volt::test('members')->call('remove', $meId)->assertHasErrors('inviteEmail');
+    // The guard now surfaces via an announced error toast (role=alert), not an
+    // addError to the collapsed invite form's hidden sink — so the block is visible
+    // in the roster and announced to a screen reader.
+    Volt::test('members')->call('remove', $meId)
+        ->assertDispatched('toast', message: 'You cannot remove yourself.', severity: 'error');
 
     expect(app(Memberships::class)->of($org->id, $meId))->not->toBeNull();
 });
@@ -84,7 +89,7 @@ it('forbids an admin from demoting or removing the org owner', function () {
     Volt::test('members')->call('remove', $owner->id)->assertStatus(403);
 
     // The owner is untouched.
-    expect(app(Memberships::class)->of($org->id, $owner->id)?->role)->toBe('owner');
+    expect(app(Memberships::class)->of($org->id, $owner->id)?->role?->value)->toBe('owner');
 });
 
 it('paginates the member roster instead of hydrating it whole', function () {

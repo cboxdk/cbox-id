@@ -10,6 +10,7 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -22,7 +23,7 @@ function signInUserHttp(): string
     app(Memberships::class)->add($org->id, $subject->id, 'member');
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
-    app(CurrentUser::class)->set($subject, $session, $org, 'member');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
     return $org->id;
 }

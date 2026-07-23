@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -19,7 +20,7 @@ function dashboardOwner(): array
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
     app(Memberships::class)->add($org->id, $owner->id, 'owner');
     $session = app(SessionManager::class)->start($owner->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($owner, $session, $org, 'owner');
+    app(CurrentUser::class)->set($owner, $session, $org, MembershipRole::Owner);
 
     return [$org, $owner];
 }

@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -22,7 +23,7 @@ function signInAdminHttp(): void
 
     // The Authenticate middleware reads this session key and rebuilds CurrentUser.
     session([PlatformAuth::SESSION_KEY => $session->id]);
-    app(CurrentUser::class)->set($subject, $session, $org, 'owner');
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 }
 
 it('renders every new console page end-to-end for an admin', function (string $route): void {

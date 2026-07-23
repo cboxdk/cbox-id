@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Provisioning\Enums\ConnectionStatus;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
@@ -21,7 +22,7 @@ function provAdmin(string $role = 'owner'): string
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-prov'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, $role);
+    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
 
     return $org->id;
 }

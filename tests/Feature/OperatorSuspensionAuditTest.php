@@ -51,11 +51,11 @@ it('records an audit event when an operator is suspended via the console', funct
 
     Volt::test('operator.operators')->call('toggleStatus', $target->id);
 
-    expect(PlatformOperator::query()->whereKey($target->id)->value('status'))->toBe('suspended');
+    expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('suspended');
     $audit->assertRecorded('operator.suspended', fn (AuditEvent $e): bool => $e->actorId === $me->id && $e->targetId === $target->id);
 
     Volt::test('operator.operators')->call('toggleStatus', $target->id);
-    expect(PlatformOperator::query()->whereKey($target->id)->value('status'))->toBe('active');
+    expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('active');
     $audit->assertRecorded('operator.reactivated');
 });
 
@@ -77,7 +77,7 @@ it('surfaces the last-operator guard as a friendly message, not a 500', function
         ->call('toggleStatus', $target->id)
         ->assertHasNoErrors();
 
-    expect(PlatformOperator::query()->whereKey($target->id)->value('status'))->toBe('active');
+    expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('active');
 });
 
 it('refuses self-suspension without touching the audit trail', function (): void {
@@ -87,6 +87,6 @@ it('refuses self-suspension without touching the audit trail', function (): void
         ->call('toggleStatus', $me->id)
         ->assertHasNoErrors();
 
-    expect(PlatformOperator::query()->whereKey($me->id)->value('status'))->toBe('active');
+    expect(PlatformOperator::query()->whereKey($me->id)->value('status')?->value)->toBe('active');
     $audit->assertNotRecorded('operator.suspended');
 });

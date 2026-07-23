@@ -215,7 +215,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
                         <div class="flex items-center gap-2">
                             <span class="font-medium truncate">{{ $m->name ?? $m->email }}</span>
                             @if ($isSelf)<span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">You</span>@endif
-                            @if ($m->status !== 'active')<span class="badge badge-warn">{{ $m->status }}</span>@endif
+                            @if ($m->status !== \Cbox\Id\Platform\Enums\AccountMemberStatus::Active)<span class="badge badge-warn">{{ $m->status->value }}</span>@endif
                         </div>
                         <p class="text-sm truncate" style="color:var(--muted)">{{ $m->email }}</p>
                     </div>
