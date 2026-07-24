@@ -17,6 +17,7 @@ use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\CurrentUser;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\ImpersonationCallGuard;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -34,6 +35,11 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
+
+        // One instance per request: the environment-admin session resolver. Consulted
+        // by the persistent middleware, the layout, and each component boot() — scoping
+        // it lets current() memoise instead of re-running ~3 identity queries per call.
+        $this->app->scoped(EnvironmentAdminAuth::class);
 
         // Dual-attribution audit for privileged impersonation: wrap the framework
         // audit logger so EVERY recorded event (framework-emitted included) carries
