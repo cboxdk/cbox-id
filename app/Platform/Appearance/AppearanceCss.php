@@ -52,6 +52,14 @@ final class AppearanceCss
         $on = Color::readableForeground($p);
 
         return implode('', [
+            // --primary drives the primary CTA (.btn-primary background); without
+            // overriding it, a white-labeled "Sign in" button rendered the platform
+            // deep-blue --primary at rest and only flipped to the tenant colour on
+            // :hover (which uses --accent) — a jarring rest→hover colour change and a
+            // broken brand promise. Map it (and its auto-contrast foreground) to the
+            // tenant primary so the button IS the chosen colour.
+            "--primary:{$p};",
+            "--primary-foreground:{$on};",
             "--accent:{$p};",
             "--ring:{$p};",
             "--accent-foreground:{$on};",

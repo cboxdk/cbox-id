@@ -362,6 +362,9 @@ document.addEventListener('alpine:init', () => {
             const m = this.draft[mode];
             const on = this.readable(m.primary);
             return {
+                // Mirror AppearanceCss::modeVars — --primary drives .btn-primary so the
+                // preview's CTA shows the chosen colour at rest, matching what the server injects.
+                '--primary': m.primary, '--primary-foreground': on,
                 '--accent': m.primary, '--ring': m.primary, '--accent-foreground': on,
                 '--accent-soft': `color-mix(in srgb, ${m.primary} 12%, transparent)`,
                 '--accent-edge': `color-mix(in srgb, ${m.primary} 32%, transparent)`,

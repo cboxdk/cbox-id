@@ -11,13 +11,20 @@ jobs:
     # ubuntu-latest if GitHub-hosted minutes are available for this repo.
     runs-on: self-hosted
 
+    strategy:
+      fail-fast: false
+      matrix:
+        # Develop and CI on 8.4 AND 8.5 (cboxdk standard) so an 8.5-only regression
+        # in the deployed app is caught, not just in the library it embeds.
+        php: ['8.4', '8.5']
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: ${{ matrix.php }}
           extensions: sodium, openssl, pdo_sqlite
           coverage: none
 
