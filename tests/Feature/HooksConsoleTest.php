@@ -37,7 +37,11 @@ it('registers a hook and reveals the signing secret once', function (): void {
         ->call('register')
         ->assertHasNoErrors();
 
-    expect($component->get('newSecret'))->toMatch('/^[0-9a-f]{64}$/');
+    // The signing secret is a protected prop (never dehydrated into the wire snapshot),
+    // surfaced only through the render — so assert the one-time reveal on the rendered
+    // output rather than reaching into component state.
+    $component->assertSee('Copy this signing secret now');
+    expect($component->html())->toMatch('/[0-9a-f]{64}/');
 
     expect(ExternalActionEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 });

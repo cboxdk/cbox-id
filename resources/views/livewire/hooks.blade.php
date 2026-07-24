@@ -19,7 +19,8 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 
     public bool $creating = false;
 
-    public ?string $newSecret = null;
+    /** One-time signing secret, held out of the wire snapshot (protected → never dehydrated into the DOM). */
+    protected ?string $newSecret = null;
 
     public function boot(): void
     {
@@ -59,7 +60,7 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 
     public function dismissSecret(): void
     {
-        $this->reset('newSecret');
+        $this->newSecret = null;
     }
 
     public function with(): array
@@ -68,6 +69,9 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 
         return [
             'me' => app(CurrentUser::class),
+            // Surfaced through render, not a public prop, so the minted secret is shown
+            // once and never dehydrated into the wire:snapshot embedded in the DOM.
+            'newSecret' => $this->newSecret,
             'rows' => ExternalActionEndpoint::query()
                 ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $orgId))
                 ->orderByDesc('id')

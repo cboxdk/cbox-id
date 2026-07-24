@@ -69,8 +69,12 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public string $dirName = '';
 
-    /** One-time SCIM bearer token, shown once right after registration. */
-    public ?string $newToken = null;
+    /**
+     * One-time SCIM bearer token, shown once right after registration. Protected, not
+     * public: this is the external Admin Portal handed to a third-party IT admin, so the
+     * minted directory credential must never dehydrate into the wire:snapshot in the DOM.
+     */
+    protected ?string $newToken = null;
 
     public ?string $newTokenName = null;
 
@@ -200,7 +204,8 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
     public function dismissToken(): void
     {
-        $this->reset('newToken', 'newTokenName');
+        $this->newToken = null;
+        $this->reset('newTokenName');
     }
 
     public function finish(AdminPortal $portal): void
@@ -218,6 +223,9 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $orgId = $portal->boundOrgId();
 
         return [
+            // Surfaced through render, not a public prop, so the minted bearer token is
+            // shown once and never dehydrated into the wire:snapshot embedded in the DOM.
+            'newToken' => $this->newToken,
             'showSso' => $portal->canConfigure(PortalFeature::Sso),
             'showScim' => $portal->canConfigure(PortalFeature::Scim),
             'orgName' => $orgId === null ? null : app(Organizations::class)->find($orgId)?->name,
