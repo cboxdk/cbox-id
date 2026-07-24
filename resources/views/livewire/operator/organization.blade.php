@@ -344,7 +344,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
                 @else
                     <form method="POST" action="{{ route('operator.impersonate', $member['user_id']) }}"
                           class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
-                          onsubmit="return confirm('Impersonate {{ $member['email'] ?? $member['user_id'] }}? Everything you do will be logged.');">
+                          x-on:submit="if (! window.confirm(@js('Impersonate '.($member['email'] ?? $member['user_id']).'? Everything you do will be logged.'))) $event.preventDefault()">
                         @csrf
                         <input type="hidden" name="organization" value="{{ $org['id'] }}">
                         <input type="text" name="reason" required maxlength="200"

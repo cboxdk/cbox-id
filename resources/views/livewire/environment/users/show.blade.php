@@ -507,7 +507,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                     @endforeach
                 </select>
                 <input name="reason" type="text" class="input" placeholder="Reason (required)" maxlength="200" required aria-label="Reason">
-                <button type="submit" class="btn btn-ghost btn-sm shrink-0" onclick="return confirm('Step into this user\'s session for support? It is time-boxed and fully audited.')">Impersonate</button>
+                <button type="submit" class="btn btn-ghost btn-sm shrink-0" x-on:click="if (! window.confirm('Step into this user\'s session for support? It is time-boxed and fully audited.')) $event.preventDefault()">Impersonate</button>
             </form>
             <p class="mt-2 text-xs" style="color:var(--faint)">Time-boxed to 30 minutes and recorded on the audit trail.</p>
         @else

@@ -116,7 +116,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
             <p class="text-sm font-medium" style="color:var(--success)">Copy your key now — you won't be able to see it again.</p>
             <div class="mt-3 flex items-center gap-2">
                 <code class="flex-1 min-w-0 truncate rounded-lg px-3 py-2 text-sm" style="background:var(--background);border:1px solid var(--border)">{{ $freshKey }}</code>
-                <button type="button" class="btn btn-primary btn-sm shrink-0" data-copy="{{ $freshKey }}" onclick="navigator.clipboard.writeText(this.getAttribute('data-copy'));var b=this,t=b.textContent;b.textContent='Copied ✓';setTimeout(function(){b.textContent=t},1500)">Copy</button>
+                <x-copy-button :value="$freshKey" class="btn-primary" />
             </div>
         </div>
     @endif
