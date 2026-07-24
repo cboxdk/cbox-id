@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -51,7 +52,7 @@ it('lets a user approve a pending agent request', function (): void {
         ->call('approve', $requestId)
         ->assertHasNoErrors();
 
-    expect(BackchannelAuthRequest::query()->whereKey($requestId)->value('status'))->toBe('approved');
+    expect(BackchannelAuthRequest::query()->whereKey($requestId)->value('status'))->toBe(GrantPollStatus::Approved);
 });
 
 it('lets a user deny a pending agent request', function (): void {
@@ -69,7 +70,7 @@ it('lets a user deny a pending agent request', function (): void {
         ->call('deny', $requestId)
         ->assertHasNoErrors();
 
-    expect(BackchannelAuthRequest::query()->whereKey($requestId)->value('status'))->toBe('denied');
+    expect(BackchannelAuthRequest::query()->whereKey($requestId)->value('status'))->toBe(GrantPollStatus::Denied);
 });
 
 it('only shows the current user their own requests', function (): void {
