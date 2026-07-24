@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\CurrentUser;
+use App\Platform\OrgAccessRoles;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
@@ -47,9 +48,19 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     }
 
     /** Assign or remove an org/app access-role for a member (manual grant). */
-    public function toggleRole(string $userId, string $roleId, Roles $roles): void
+    public function toggleRole(string $userId, string $roleId, Roles $roles, Memberships $memberships, OrgAccessRoles $catalog): void
     {
         $this->authorizeAdmin();
+
+        // Server-side authorization, not just a hidden button: the target must be a real
+        // member of THIS org, and the role must be one genuinely assignable here (which
+        // excludes another org's private-app roles). Without this, a forged Livewire
+        // toggleRole could bind an arbitrary role id — the framework's RoleService is the
+        // backstop, but the assignable/membership contract is the gate. Mirrors the
+        // env-admin console's toggleAccessRole.
+        if ($memberships->of($this->orgId(), $userId) === null || ! $catalog->isAssignable($this->orgId(), $roleId)) {
+            return;
+        }
 
         $held = RoleAssignment::query()
             ->where('organization_id', $this->orgId())
