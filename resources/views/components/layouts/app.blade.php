@@ -204,14 +204,35 @@
     {{-- ═══ Mobile drawer ═══ --}}
     <div class="lg:hidden" x-cloak>
         <div x-show="mobile" x-transition.opacity class="fixed inset-0 z-40" style="background:rgb(0 0 0 / 0.5)" @click="mobile=false" aria-hidden="true"></div>
+        {{-- Self-contained focus trap (the Alpine Focus plugin / x-trap is NOT loaded in
+             this app, so the same hand-rolled pattern as components/mobile-nav.blade.php and
+             components/confirm-delete.blade.php is used): on open, save the active element,
+             move focus into the drawer and lock background scroll; cycle Tab within the panel;
+             restore focus + unlock scroll on close. Esc is handled by the shell's window
+             listener, which flips `mobile` and so triggers onClose() through x-effect. --}}
         <div x-show="mobile"
+             x-data="{
+                prevFocus: null,
+                onOpen() { this.prevFocus = document.activeElement; document.documentElement.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.closeBtn && this.$refs.closeBtn.focus()); },
+                onClose() { document.documentElement.style.overflow = ''; if (this.prevFocus) { this.prevFocus.focus && this.prevFocus.focus(); this.prevFocus = null; } },
+                trap(e) {
+                    if (e.key !== 'Tab') return;
+                    const f = Array.from(this.$el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')).filter(el => el.offsetParent !== null);
+                    if (!f.length) return;
+                    const first = f[0], last = f[f.length - 1];
+                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+             }"
+             x-effect="mobile ? onOpen() : onClose()"
+             @keydown.tab="trap($event)"
              x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
              x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
              class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] flex flex-col" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)"
              role="dialog" aria-modal="true" aria-label="Navigation">
             <div class="cbx-sidebar-brand" style="justify-content:space-between">
                 <a href="{{ route('dashboard') }}"><x-brand /></a>
-                <button type="button" @click="mobile=false" class="cbx-subnav-toggle" aria-label="Close navigation"><x-icon name="close" class="w-[18px] h-[18px]" /></button>
+                <button type="button" x-ref="closeBtn" @click="mobile=false" class="cbx-subnav-toggle" aria-label="Close navigation"><x-icon name="close" class="w-[18px] h-[18px]" /></button>
             </div>
             <nav class="cbx-nav" aria-label="Primary">
                 @foreach ($areas as $area)
@@ -244,8 +265,8 @@
 
                 {{-- Org context crumb + switcher (Linear/Notion style). --}}
                 <div class="relative">
-                    <button type="button" class="flex items-center gap-2 rounded-lg px-2 py-1.5 {{ $canSwitch ? '' : 'pointer-events-none' }}"
-                            style="transition:background-color var(--dur-hover) var(--ease)" @if ($canSwitch) @click="org=!org" onmouseover="this.style.background='var(--secondary)'" onmouseout="this.style.background='transparent'" :aria-expanded="org" aria-haspopup="true" @endif>
+                    <button type="button" class="cbx-switcher-item flex items-center gap-2 rounded-lg px-2 py-1.5 {{ $canSwitch ? '' : 'pointer-events-none' }}"
+                            style="transition:background-color var(--dur-hover) var(--ease)" @if ($canSwitch) @click="org=!org" :aria-expanded="org" aria-haspopup="true" @endif>
                         <span class="grid place-items-center rounded-md text-[11px] font-bold shrink-0" style="width:26px;height:26px;background:var(--accent-soft);color:var(--primary)">{{ $orgInitial }}</span>
                         <span class="min-w-0 text-left hidden sm:block">
                             <span class="block text-[13px] font-semibold truncate leading-tight">{{ $me->organization()?->name ?? 'No organization' }}</span>

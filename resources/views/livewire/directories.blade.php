@@ -27,8 +27,9 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
     #[Validate('required|string|max:120')]
     public string $name = '';
 
-    /** One-time SCIM bearer token, shown once right after registration. */
-    public ?string $newToken = null;
+    /** One-time SCIM bearer token, shown once right after registration. Protected so it is
+     *  never dehydrated into the wire snapshot — revealed once, then gone on rehydration. */
+    protected ?string $newToken = null;
 
     public ?string $newTokenName = null;
 
@@ -50,7 +51,8 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
 
     public function dismissToken(): void
     {
-        $this->reset('newToken', 'newTokenName');
+        $this->reset('newTokenName');
+        $this->newToken = null;
     }
 
     // --- API-pull directory connections (Google Workspace, Microsoft Entra) ---
@@ -101,7 +103,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
         // Kick off the first sync now; failures are recorded on the directory.
         try {
             $sync->sync($directory);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // The error is stored on last_sync_error and shown in the list.
         }
 
@@ -217,6 +219,8 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
             'accessRolesById' => $accessRoles->keyBy('id'),
             'appNames' => Client::query()->whereIn('client_id', $accessRoles->pluck('client_id')->filter()->unique())->pluck('name', 'client_id'),
             'mappingsByGroup' => $mappingsByGroup,
+            // Protected → never dehydrated; passed explicitly so the token renders once.
+            'newToken' => $this->newToken,
         ];
     }
 
@@ -225,10 +229,11 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
         return app(CurrentUser::class)->organizationId() ?? '';
     }
 
-    public function mount(): void
+    public function boot(): void
     {
-        // Read gate: these pages expose org-wide config (client secrets shown
-        // once, SSO connection settings, directory tokens, audit) — admins only.
+        // Read gate re-checked on EVERY request, not just first mount: boot() runs on
+        // each hydration, so an admin demoted mid-session cannot keep re-rendering
+        // org-wide config (SCIM directory tokens, mappings) from a stale snapshot.
         $this->authorizeAdmin();
     }
 
@@ -320,8 +325,8 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
         <form wire:submit="register" class="card p-4 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="name">Directory name</label>
-                <input wire:model="name" id="name" type="text" class="input" placeholder="Acme Okta SCIM" autofocus>
-                @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                <input wire:model="name" id="name" type="text" class="input" placeholder="Acme Okta SCIM" autofocus @error('name') aria-invalid="true" aria-describedby="name-error" @enderror>
+                @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Register directory</button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
@@ -365,7 +370,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
                     <p class="text-xs" style="color:var(--faint)">An app registration with the <span class="mono">User.Read.All</span> application permission (admin-consented).</p>
                 @endif
 
-                @if ($connectError)<p class="field-error">{{ $connectError }}</p>@endif
+                @if ($connectError)<p class="field-error" role="alert">{{ $connectError }}</p>@endif
 
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="connectPull">
                     <span wire:loading.remove wire:target="connectPull">Connect &amp; sync</span>

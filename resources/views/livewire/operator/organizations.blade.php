@@ -162,7 +162,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="org-name">Name</label>
                 <input wire:model="name" id="org-name" type="text" class="input" placeholder="Acme Inc" autofocus>
-                @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="org-type">Type</label>

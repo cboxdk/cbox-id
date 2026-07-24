@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
-use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
+use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -210,7 +210,11 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
                             @endunless
                             <button wire:click="toggleGrants('{{ $s->id }}')" class="btn btn-ghost btn-sm">Grants</button>
                             @unless ($s->isRevoked())
-                                <button wire:click="revoke('{{ $s->id }}')" wire:confirm="Revoke this secret? No future lease can open it — this cannot be undone." class="btn btn-ghost btn-sm" style="color:var(--danger)">Revoke</button>
+                                <x-confirm-delete
+                                    :name="$s->name"
+                                    :action="'revoke(\''.$s->id.'\')'"
+                                    label="Revoke"
+                                    consequence="No future lease can open this secret. This cannot be undone." />
                             @endunless
                         </td>
                     </tr>

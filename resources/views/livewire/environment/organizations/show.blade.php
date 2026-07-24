@@ -19,6 +19,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -392,11 +393,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
     {
         $org = $this->org();
 
-        /** @var \Illuminate\Support\Collection<string, \Cbox\Id\Identity\Models\User> $userMap */
-        $userMap = User::query()->get()->keyBy('id');
+        // The org roster, then a name lookup scoped to JUST those members — never the
+        // whole environment. `User::query()->get()` here hydrated every user in the
+        // environment on every render (this is a `with()`, so it re-runs on each
+        // interaction), scaling with environment size; scoping to the member ids keeps
+        // the cost flat in the environment and proportional only to this org's roster.
+        $roster = $memberships->forOrganization($org->id);
+
+        /** @var Collection<string, User> $userMap */
+        $userMap = User::query()->whereIn('id', $roster->pluck('user_id')->all())->get()->keyBy('id');
 
         $members = [];
-        foreach ($memberships->forOrganization($org->id) as $m) {
+        foreach ($roster as $m) {
             $u = $userMap->get($m->user_id);
             $members[] = [
                 'userId' => $m->user_id,
@@ -443,12 +451,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                 <div>
                     <label class="label" for="editName">Name</label>
                     <input wire:model="editName" id="editName" type="text" class="input">
-                    @error('editName') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('editName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="editSlug">URL handle</label>
                     <input wire:model="editSlug" id="editSlug" type="text" class="input mono">
-                    @error('editSlug') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('editSlug') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
             <div>
@@ -456,8 +464,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                 <div class="space-y-2">
                     @foreach ($metadata as $i => $row)
                         <div class="flex items-center gap-2" wire:key="meta-{{ $i }}">
-                            <input wire:model="metadata.{{ $i }}.key" type="text" class="input mono" placeholder="tier">
-                            <input wire:model="metadata.{{ $i }}.value" type="text" class="input" placeholder="enterprise">
+                            <input wire:model="metadata.{{ $i }}.key" type="text" class="input mono" placeholder="tier" aria-label="Metadata key">
+                            <input wire:model="metadata.{{ $i }}.value" type="text" class="input" placeholder="enterprise" aria-label="Metadata value">
                             <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMetaRow({{ $i }})" aria-label="Remove"><x-icon name="close" class="w-4 h-4" /></button>
                         </div>
                     @endforeach
@@ -518,7 +526,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             <div class="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
                 <div>
                     <input wire:model="memberEmail" type="email" class="input" placeholder="existing-user@example.com" aria-label="Member email">
-                    @error('memberEmail') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('memberEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <select wire:model="memberRole" class="select" aria-label="Org access">
                     <option value="member">Member</option>
@@ -558,7 +566,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             <div class="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
                 <div>
                     <input wire:model="inviteEmail" type="email" class="input" placeholder="newteammate@example.com" aria-label="Invitee email">
-                    @error('inviteEmail') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('inviteEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <select wire:model="inviteRole" class="select" aria-label="Org access">
                     <option value="member">Member</option>
@@ -603,8 +611,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         </div>
         <form wire:submit="addDomain" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2 items-start">
             <div>
-                <input wire:model="newDomain" type="text" class="input mono" placeholder="acme.com">
-                @error('newDomain') <p class="field-error">{{ $message }}</p> @enderror
+                <input wire:model="newDomain" type="text" class="input mono" placeholder="acme.com" aria-label="Domain">
+                @error('newDomain') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="addDomain">Add domain</button>
         </form>

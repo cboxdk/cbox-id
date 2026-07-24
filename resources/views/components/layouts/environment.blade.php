@@ -153,9 +153,9 @@
                 @endif
                 <span style="color:var(--faint)" aria-hidden="true">/</span>
                 <div class="relative min-w-0">
-                    <button type="button" class="flex items-center gap-1.5 rounded-lg px-1.5 py-1 {{ $switchableEnvs->count() > 1 ? '' : 'pointer-events-none' }}"
+                    <button type="button" class="cbx-switcher-item flex items-center gap-1.5 rounded-lg px-1.5 py-1 {{ $switchableEnvs->count() > 1 ? '' : 'pointer-events-none' }}"
                             style="transition:background-color var(--dur-hover) var(--ease)"
-                            @if ($switchableEnvs->count() > 1) @click="env=!env" onmouseover="this.style.background='var(--secondary)'" onmouseout="this.style.background='transparent'" :aria-expanded="env" aria-haspopup="true" @endif>
+                            @if ($switchableEnvs->count() > 1) @click="env=!env" :aria-expanded="env" aria-haspopup="true" @endif>
                         <span class="font-semibold truncate" aria-current="page">{{ $envName }}</span>
                         @if ($switchableEnvs->count() > 1)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
                     </button>

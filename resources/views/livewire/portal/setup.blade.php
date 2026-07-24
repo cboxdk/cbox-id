@@ -282,7 +282,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                            @error('domain') aria-invalid="true" @enderror>
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Add domain</button>
                 </form>
-                @error('domain') <p class="field-error -mt-2 mb-4">{{ $message }}</p> @enderror
+                @error('domain') <p class="field-error -mt-2 mb-4" role="alert">{{ $message }}</p> @enderror
 
                 @if ($dnsToken)
                     <div class="card p-4 mb-4" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent)">
@@ -328,7 +328,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                             <div>
                                 <label class="label" for="connName">Connection name</label>
                                 <input wire:model="connName" id="connName" type="text" class="input" placeholder="Acme Okta" autofocus>
-                                @error('connName') <p class="field-error">{{ $message }}</p> @enderror
+                                @error('connName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="label" for="type">Protocol</label>
@@ -336,7 +336,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                                     <option value="saml">SAML 2.0</option>
                                     <option value="oidc">OpenID Connect</option>
                                 </select>
-                                @error('type') <p class="field-error">{{ $message }}</p> @enderror
+                                @error('type') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
@@ -345,51 +345,51 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                                 <div>
                                     <label class="label" for="idp_entity_id">IdP entity ID</label>
                                     <input wire:model="idp_entity_id" id="idp_entity_id" type="text" class="input mono" placeholder="https://idp.example.com/metadata">
-                                    @error('idp_entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('idp_entity_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="label" for="idp_sso_url">IdP SSO URL</label>
                                     <input wire:model="idp_sso_url" id="idp_sso_url" type="url" class="input mono" placeholder="https://idp.example.com/sso">
-                                    @error('idp_sso_url') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('idp_sso_url') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="label" for="sp_entity_id">SP entity ID</label>
                                     <input wire:model="sp_entity_id" id="sp_entity_id" type="text" class="input mono" placeholder="https://cbox-id/sp">
-                                    @error('sp_entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('sp_entity_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="label" for="sp_acs_url">SP ACS URL</label>
                                     <input wire:model="sp_acs_url" id="sp_acs_url" type="url" class="input mono" placeholder="https://cbox-id/sso/saml/…/acs">
-                                    @error('sp_acs_url') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('sp_acs_url') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                             </div>
                             <div>
                                 <label class="label" for="idp_x509cert">IdP X.509 certificate</label>
                                 <textarea wire:model="idp_x509cert" id="idp_x509cert" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-                                @error('idp_x509cert') <p class="field-error">{{ $message }}</p> @enderror
+                                @error('idp_x509cert') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                             </div>
                         @else
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label class="label" for="issuer">Issuer</label>
                                     <input wire:model="issuer" id="issuer" type="url" class="input mono" placeholder="https://idp.example.com">
-                                    @error('issuer') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('issuer') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="label" for="client_id">Client ID</label>
                                     <input wire:model="client_id" id="client_id" type="text" class="input mono" placeholder="cbox-id-app">
-                                    @error('client_id') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('client_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="label" for="client_secret">Client secret</label>
                                     <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••" autocomplete="off">
-                                    @error('client_secret') <p class="field-error">{{ $message }}</p> @enderror
+                                    @error('client_secret') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                                 </div>
                             </div>
                             <div>
                                 <label class="label" for="signing_key">Signing key</label>
                                 <textarea wire:model="signing_key" id="signing_key" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
-                                @error('signing_key') <p class="field-error">{{ $message }}</p> @enderror
+                                @error('signing_key') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                             </div>
                         @endif
 
@@ -461,7 +461,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                         <div class="flex-1 min-w-[14rem]">
                             <label class="label" for="dirName">Directory name</label>
                             <input wire:model="dirName" id="dirName" type="text" class="input" placeholder="Acme Okta SCIM" autofocus>
-                            @error('dirName') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('dirName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                         <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Register directory</button>
                         <button type="button" wire:click="$set('creatingDirectory', false)" class="btn btn-ghost">Cancel</button>

@@ -122,17 +122,17 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-name">Name</label>
                 <input wire:model="name" id="op-name" type="text" class="input" placeholder="Grace Hopper" autofocus>
-                @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-email">Email</label>
                 <input wire:model="email" id="op-email" type="email" class="input" placeholder="grace@yourco.example">
-                @error('email') <p class="field-error">{{ $message }}</p> @enderror
+                @error('email') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-password">Password</label>
                 <input wire:model="password" id="op-password" type="password" autocomplete="new-password" class="input" placeholder="At least 12 characters">
-                @error('password') <p class="field-error">{{ $message }}</p> @enderror
+                @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create</button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>

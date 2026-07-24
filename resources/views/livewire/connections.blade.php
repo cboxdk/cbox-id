@@ -278,10 +278,12 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         return app(CurrentUser::class)->organizationId() ?? '';
     }
 
-    public function mount(): void
+    public function boot(): void
     {
-        // Read gate: these pages expose org-wide config (client secrets shown
-        // once, SSO connection settings, directory tokens, audit) — admins only.
+        // Read gate re-checked on EVERY request, not just first mount: boot() runs on
+        // each hydration, so an admin demoted mid-session cannot keep re-rendering
+        // org-wide config (SSO connection settings, secrets) from a stale snapshot.
+        // These pages expose admin-only data, so the render path itself is gated.
         $this->authorizeAdmin();
     }
 
@@ -349,16 +351,16 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label class="label" for="name">Connection name</label>
-                    <input wire:model="name" id="name" type="text" class="input" placeholder="Acme Okta" autofocus>
-                    @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                    <input wire:model="name" id="name" type="text" class="input" placeholder="Acme Okta" autofocus @error('name') aria-invalid="true" aria-describedby="name-error" @enderror>
+                    @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="type">Protocol</label>
-                    <select wire:model.live="type" id="type" class="select">
+                    <select wire:model.live="type" id="type" class="select" @error('type') aria-invalid="true" aria-describedby="type-error" @enderror>
                         <option value="saml">SAML 2.0</option>
                         <option value="oidc">OpenID Connect</option>
                     </select>
-                    @error('type') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('type') <p id="type-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -368,8 +370,8 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 <div class="rounded-xl p-4" style="background:var(--secondary);border:1px solid var(--border)">
                     <label class="label" for="metadataInput">Import from IdP metadata <span style="color:var(--muted);font-weight:400">— optional</span></label>
                     <textarea wire:model="metadataInput" id="metadataInput" rows="2" class="input mono" style="font-size:0.78rem"
-                              placeholder="Paste the IdP metadata XML, or a metadata URL (https://idp.example.com/metadata)"></textarea>
-                    @error('metadataInput') <p class="field-error">{{ $message }}</p> @enderror
+                              placeholder="Paste the IdP metadata XML, or a metadata URL (https://idp.example.com/metadata)" @error('metadataInput') aria-invalid="true" aria-describedby="metadataInput-error" @enderror></textarea>
+                    @error('metadataInput') <p id="metadataInput-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     <button type="button" wire:click="importMetadata" class="btn btn-secondary btn-sm mt-2"
                             wire:loading.attr="disabled" wire:target="importMetadata">Prefill from metadata</button>
                 </div>
@@ -377,52 +379,52 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="label" for="idp_entity_id">IdP entity ID</label>
-                        <input wire:model="idp_entity_id" id="idp_entity_id" type="text" class="input mono" placeholder="https://idp.example.com/metadata">
-                        @error('idp_entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="idp_entity_id" id="idp_entity_id" type="text" class="input mono" placeholder="https://idp.example.com/metadata" @error('idp_entity_id') aria-invalid="true" aria-describedby="idp_entity_id-error" @enderror>
+                        @error('idp_entity_id') <p id="idp_entity_id-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="idp_sso_url">IdP SSO URL</label>
-                        <input wire:model="idp_sso_url" id="idp_sso_url" type="url" class="input mono" placeholder="https://idp.example.com/sso">
-                        @error('idp_sso_url') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="idp_sso_url" id="idp_sso_url" type="url" class="input mono" placeholder="https://idp.example.com/sso" @error('idp_sso_url') aria-invalid="true" aria-describedby="idp_sso_url-error" @enderror>
+                        @error('idp_sso_url') <p id="idp_sso_url-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="sp_entity_id">SP entity ID</label>
-                        <input wire:model="sp_entity_id" id="sp_entity_id" type="text" class="input mono" placeholder="https://cbox-id/sp">
-                        @error('sp_entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="sp_entity_id" id="sp_entity_id" type="text" class="input mono" placeholder="https://cbox-id/sp" @error('sp_entity_id') aria-invalid="true" aria-describedby="sp_entity_id-error" @enderror>
+                        @error('sp_entity_id') <p id="sp_entity_id-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="sp_acs_url">SP ACS URL</label>
-                        <input wire:model="sp_acs_url" id="sp_acs_url" type="url" class="input mono" placeholder="https://cbox-id/sso/saml/…/acs">
-                        @error('sp_acs_url') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="sp_acs_url" id="sp_acs_url" type="url" class="input mono" placeholder="https://cbox-id/sso/saml/…/acs" @error('sp_acs_url') aria-invalid="true" aria-describedby="sp_acs_url-error" @enderror>
+                        @error('sp_acs_url') <p id="sp_acs_url-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>
                     <label class="label" for="idp_x509cert">IdP X.509 certificate</label>
-                    <textarea wire:model="idp_x509cert" id="idp_x509cert" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-                    @error('idp_x509cert') <p class="field-error">{{ $message }}</p> @enderror
+                    <textarea wire:model="idp_x509cert" id="idp_x509cert" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN CERTIFICATE-----" @error('idp_x509cert') aria-invalid="true" aria-describedby="idp_x509cert-error" @enderror></textarea>
+                    @error('idp_x509cert') <p id="idp_x509cert-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @else
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="label" for="issuer">Issuer</label>
-                        <input wire:model="issuer" id="issuer" type="url" class="input mono" placeholder="https://idp.example.com">
-                        @error('issuer') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="issuer" id="issuer" type="url" class="input mono" placeholder="https://idp.example.com" @error('issuer') aria-invalid="true" aria-describedby="issuer-error" @enderror>
+                        @error('issuer') <p id="issuer-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="client_id">Client ID</label>
-                        <input wire:model="client_id" id="client_id" type="text" class="input mono" placeholder="cbox-id-app">
-                        @error('client_id') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="client_id" id="client_id" type="text" class="input mono" placeholder="cbox-id-app" @error('client_id') aria-invalid="true" aria-describedby="client_id-error" @enderror>
+                        @error('client_id') <p id="client_id-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="client_secret">Client secret</label>
-                        <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••" autocomplete="off">
-                        @error('client_secret') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••" autocomplete="off" @error('client_secret') aria-invalid="true" aria-describedby="client_secret-error" @enderror>
+                        @error('client_secret') <p id="client_secret-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>
                     <label class="label" for="signing_key">Signing key</label>
-                    <textarea wire:model="signing_key" id="signing_key" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
-                    @error('signing_key') <p class="field-error">{{ $message }}</p> @enderror
+                    <textarea wire:model="signing_key" id="signing_key" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN PUBLIC KEY-----" @error('signing_key') aria-invalid="true" aria-describedby="signing_key-error" @enderror></textarea>
+                    @error('signing_key') <p id="signing_key-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @endif
 
@@ -483,8 +485,8 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             <form wire:submit="addDomain" class="card p-5 flex flex-wrap items-end gap-3">
                 <div class="flex-1 min-w-[14rem]">
                     <label class="label" for="domain">Domain</label>
-                    <input wire:model="domain" id="domain" type="text" inputmode="url" autocapitalize="none" spellcheck="false" class="input mono" placeholder="acme.com">
-                    @error('domain') <p class="field-error">{{ $message }}</p> @enderror
+                    <input wire:model="domain" id="domain" type="text" inputmode="url" autocapitalize="none" spellcheck="false" class="input mono" placeholder="acme.com" @error('domain') aria-invalid="true" aria-describedby="domain-error" @enderror>
+                    @error('domain') <p id="domain-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="addDomain"><x-icon name="plus" class="w-4 h-4" /> Add domain</button>
             </form>
@@ -525,7 +527,11 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                                 @unless ($d->verified_at)
                                     <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-primary btn-sm"><x-icon name="check" class="w-4 h-4" /> Verify</button>
                                 @endunless
-                                <button wire:click="removeDomain('{{ $d->id }}')" wire:confirm="Remove {{ $d->domain }}?" class="btn btn-ghost btn-sm">Remove</button>
+                                <x-confirm-delete
+                                    :name="$d->domain"
+                                    :action="'removeDomain(\''.$d->id.'\')'"
+                                    label="Remove"
+                                    consequence="This domain will no longer route its users through this org's SSO. This cannot be undone." />
                             </div>
                         @endif
                     </div>

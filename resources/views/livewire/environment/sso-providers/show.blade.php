@@ -223,12 +223,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
                 <div>
                     <label class="label" for="entity_id">SP entity ID</label>
                     <input wire:model="entity_id" id="entity_id" type="text" class="input mono">
-                    @error('entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('entity_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="acs_url">Assertion Consumer Service URL</label>
                     <input wire:model="acs_url" id="acs_url" type="url" class="input mono">
-                    @error('acs_url') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('acs_url') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="name_id_format">NameID format</label>
@@ -237,12 +237,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
                             <option value="{{ $format->value }}">{{ $format->name }}</option>
                         @endforeach
                     </select>
-                    @error('name_id_format') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('name_id_format') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="name_id_attribute">NameID attribute</label>
                     <input wire:model="name_id_attribute" id="name_id_attribute" type="text" class="input mono">
-                    @error('name_id_attribute') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('name_id_attribute') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -250,7 +250,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
                 <label class="label" for="attribute_mappings">Attribute mappings</label>
                 <textarea wire:model="attribute_mappings" id="attribute_mappings" rows="3" class="input mono" style="font-size:0.78rem" placeholder="displayName = name"></textarea>
                 <p class="mt-1 text-xs" style="color:var(--faint)">One <code class="mono">samlAttribute = subjectField</code> per line.</p>
-                @error('attribute_mappings') <p class="field-error">{{ $message }}</p> @enderror
+                @error('attribute_mappings') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
             <label class="flex items-center gap-2 text-sm">
@@ -264,7 +264,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
                         <p class="mb-1 text-xs" style="color:var(--faint)">A certificate is on file. Paste a new one to replace it, or leave blank to keep it.</p>
                     @endif
                     <textarea wire:model="certificate" id="certificate" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-                    @error('certificate') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('certificate') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @endif
 

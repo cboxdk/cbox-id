@@ -177,12 +177,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
                 <div>
                     <label class="label" for="editName">Name</label>
                     <input wire:model="editName" id="editName" type="text" class="input">
-                    @error('editName') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('editName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="editDescription">Description <span style="color:var(--faint)">(optional)</span></label>
                     <input wire:model="editDescription" id="editDescription" type="text" class="input">
-                    @error('editDescription') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('editDescription') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="saveDetails">Save changes</button>
             </form>

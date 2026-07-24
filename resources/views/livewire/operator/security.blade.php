@@ -210,7 +210,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
                             <label class="label" for="disablePassword">Confirm your password to disable</label>
                             <input wire:model="disablePassword" id="disablePassword" type="password" autocomplete="current-password"
                                    class="input" placeholder="••••••••••••" autofocus>
-                            @error('disablePassword') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('disablePassword') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                         <button type="submit" class="btn btn-danger" wire:loading.attr="disabled">Disable 2FA</button>
                         <button type="button" wire:click="cancel" class="btn btn-ghost">Cancel</button>
@@ -244,7 +244,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
                         <label class="label" for="code">6-digit code</label>
                         <input wire:model="code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
                                maxlength="6" class="input mono" placeholder="000000" autofocus>
-                        @error('code') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('code') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Confirm</button>
                     <button type="button" wire:click="cancel" class="btn btn-ghost">Cancel</button>

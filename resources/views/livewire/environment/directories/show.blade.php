@@ -44,8 +44,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
 
     public string $editName = '';
 
-    /** A freshly rotated bearer token, held in memory for a single reveal, then dismissed. */
-    public ?string $freshToken = null;
+    /** A freshly rotated bearer token, held in memory for a single reveal, then dismissed.
+     *  Protected so it is never dehydrated into the wire snapshot — shown once, then gone. */
+    protected ?string $freshToken = null;
 
     public function mount(string $directory): void
     {
@@ -100,7 +101,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
 
     public function dismissToken(): void
     {
-        $this->reset('freshToken');
+        $this->freshToken = null;
     }
 
     public function toggleStatus(): void
@@ -192,6 +193,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
             // for this single render and gone on the next (shown once, never re-echoed).
             'oneTimeToken' => session('newToken'),
             'oneTimeTokenName' => session('newTokenName'),
+            // Protected → never dehydrated; passed explicitly so the rotated token renders once.
+            'freshToken' => $this->freshToken,
         ];
     }
 }; ?>
@@ -237,7 +240,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
             <div>
                 <label class="label" for="editName">Directory name</label>
                 <input wire:model="editName" id="editName" type="text" class="input">
-                @error('editName') <p class="field-error">{{ $message }}</p> @enderror
+                @error('editName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary shrink-0 self-end" wire:loading.attr="disabled" wire:target="saveName">Save</button>
         </form>

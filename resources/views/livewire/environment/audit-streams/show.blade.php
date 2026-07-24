@@ -35,8 +35,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
 
     public string $streamId = '';
 
-    /** The freshly minted secret shown once (create hand-off); never stored plaintext. */
-    public ?string $newSecret = null;
+    /** The freshly minted secret shown once (create hand-off); never stored plaintext.
+     *  Protected so it is never dehydrated into the wire snapshot — shown once, then gone. */
+    protected ?string $newSecret = null;
 
     public function mount(string $stream): void
     {
@@ -82,7 +83,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
 
     public function dismissSecret(): void
     {
-        $this->reset('newSecret');
+        $this->newSecret = null;
     }
 
     public function deleteStream(): mixed
@@ -100,6 +101,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
     {
         return [
             'stream' => $this->resolveStream(),
+            // Protected → never dehydrated; passed explicitly so the secret renders once.
+            'newSecret' => $this->newSecret,
             'destinationLabels' => [
                 'splunk_hec' => 'Splunk HEC',
                 'elastic_ecs' => 'Elastic (ECS)',

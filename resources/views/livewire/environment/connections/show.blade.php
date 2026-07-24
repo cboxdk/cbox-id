@@ -268,7 +268,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
             <div>
                 <label class="label" for="editName">Connection name</label>
                 <input wire:model="editName" id="editName" type="text" class="input">
-                @error('editName') <p class="field-error">{{ $message }}</p> @enderror
+                @error('editName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
             @if ($connection->type === ConnectionType::Saml)
@@ -276,28 +276,28 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
                     <div>
                         <label class="label" for="idp_entity_id">IdP entity ID</label>
                         <input wire:model="idp_entity_id" id="idp_entity_id" type="text" class="input mono">
-                        @error('idp_entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('idp_entity_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="idp_sso_url">IdP SSO URL</label>
                         <input wire:model="idp_sso_url" id="idp_sso_url" type="url" class="input mono">
-                        @error('idp_sso_url') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('idp_sso_url') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="sp_entity_id">SP entity ID</label>
                         <input wire:model="sp_entity_id" id="sp_entity_id" type="text" class="input mono">
-                        @error('sp_entity_id') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('sp_entity_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="sp_acs_url">SP ACS URL</label>
                         <input wire:model="sp_acs_url" id="sp_acs_url" type="url" class="input mono">
-                        @error('sp_acs_url') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('sp_acs_url') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>
                     <label class="label" for="idp_x509cert">IdP X.509 certificate <span style="color:var(--faint);font-weight:400">— leave blank to keep the current certificate</span></label>
                     <textarea wire:model="idp_x509cert" id="idp_x509cert" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-                    @error('idp_x509cert') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('idp_x509cert') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
@@ -309,23 +309,23 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
                     <div>
                         <label class="label" for="issuer">Issuer</label>
                         <input wire:model="issuer" id="issuer" type="url" class="input mono">
-                        @error('issuer') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('issuer') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="client_id">Client ID</label>
                         <input wire:model="client_id" id="client_id" type="text" class="input mono">
-                        @error('client_id') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('client_id') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="label" for="client_secret">Client secret <span style="color:var(--faint);font-weight:400">— leave blank to keep</span></label>
                         <input wire:model="client_secret" id="client_secret" type="password" class="input mono" placeholder="••••••••">
-                        @error('client_secret') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('client_secret') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div>
                     <label class="label" for="signing_key">Signing key <span style="color:var(--faint);font-weight:400">— leave blank to keep the current key</span></label>
                     <textarea wire:model="signing_key" id="signing_key" rows="4" class="input mono" style="font-size:0.78rem" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
-                    @error('signing_key') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('signing_key') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @endif
 

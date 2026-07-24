@@ -40,7 +40,8 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
 
     public ?string $newClientId = null;
 
-    public ?string $newSecret = null;
+    /** One-time client secret, held out of the wire snapshot (protected → never dehydrated). */
+    protected ?string $newSecret = null;
 
     /** @var array{redirect: ?string, scopes: array<int, string>, auth_code: bool}|null */
     public ?array $newClientMeta = null;
@@ -145,7 +146,8 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
 
     public function dismissSecret(): void
     {
-        $this->reset('newClientId', 'newSecret', 'newClientMeta');
+        $this->reset('newClientId', 'newClientMeta');
+        $this->newSecret = null;
     }
 
     public function openManifest(string $clientId): void
@@ -289,6 +291,9 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
             'rows' => $rows,
             'platformApps' => $platformApps,
             'roleCounts' => $roleCounts,
+            // Protected → never dehydrated into the snapshot; passed to the view explicitly
+            // so the secret renders once, in the request that minted it, and never again.
+            'newSecret' => $this->newSecret,
         ];
     }
 
@@ -383,8 +388,8 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label class="label" for="name">App name</label>
-                    <input wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus>
-                    @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                    <input wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus @error('name') aria-invalid="true" aria-describedby="name-error" @enderror>
+                    @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="label" for="type">Client type</label>
@@ -403,10 +408,10 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                         <input wire:model.live="grantAuthorizationCode" type="checkbox"> Sign people in <span style="color:var(--muted)">(single sign-on)</span>
                     </label>
                     <label class="flex items-center gap-2 text-sm" style="color:var(--foreground)">
-                        <input wire:model.live="grantClientCredentials" type="checkbox"> Call the API as itself <span style="color:var(--muted)">(machine-to-machine)</span>
+                        <input wire:model.live="grantClientCredentials" type="checkbox" @error('grantClientCredentials') aria-invalid="true" aria-describedby="grantClientCredentials-error" @enderror> Call the API as itself <span style="color:var(--muted)">(machine-to-machine)</span>
                     </label>
                 </div>
-                @error('grantClientCredentials') <p class="field-error">{{ $message }}</p> @enderror
+                @error('grantClientCredentials') <p id="grantClientCredentials-error" class="field-error" role="alert">{{ $message }}</p> @enderror
 
                 @if ($grantAuthorizationCode)
                     <div class="cbx-flow" role="img" aria-label="Sign-in handshake: person, your app, Cbox ID, back to your app">
@@ -433,8 +438,8 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
             @if ($grantAuthorizationCode)
                 <div>
                     <label class="label" for="redirectUris">Redirect URIs <span style="color:var(--muted);font-weight:400">— where Cbox ID sends people back (one per line)</span></label>
-                    <textarea wire:model="redirectUris" id="redirectUris" rows="2" class="input" style="height:auto;padding:8px 10px" placeholder="https://app.example.com/auth/callback"></textarea>
-                    @error('redirectUris') <p class="field-error">{{ $message }}</p> @enderror
+                    <textarea wire:model="redirectUris" id="redirectUris" rows="2" class="input" style="height:auto;padding:8px 10px" placeholder="https://app.example.com/auth/callback" @error('redirectUris') aria-invalid="true" aria-describedby="redirectUris-error" @enderror></textarea>
+                    @error('redirectUris') <p id="redirectUris-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @endif
 
@@ -464,8 +469,8 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                     @endforeach
                     <div>
                         <label class="label" for="customScopes" style="font-weight:400;font-size:12px">Advanced — custom scopes <span style="color:var(--muted)">(comma-separated)</span></label>
-                        <input wire:model="customScopes" id="customScopes" type="text" class="input" placeholder="reports.read">
-                        @error('customScopes') <p class="field-error">{{ $message }}</p> @enderror
+                        <input wire:model="customScopes" id="customScopes" type="text" class="input" placeholder="reports.read" @error('customScopes') aria-invalid="true" aria-describedby="customScopes-error" @enderror>
+                        @error('customScopes') <p id="customScopes-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -480,9 +485,9 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
 
             <div>
                 <label class="label" for="manifestUrl">Manifest URL <span style="color:var(--muted);font-weight:400">— optional; where the app publishes its roles &amp; permissions</span></label>
-                <input wire:model="manifestUrl" id="manifestUrl" type="url" class="input" placeholder="https://app.example.com/.well-known/cbox-authz">
+                <input wire:model="manifestUrl" id="manifestUrl" type="url" class="input" placeholder="https://app.example.com/.well-known/cbox-authz" @error('manifestUrl') aria-invalid="true" aria-describedby="manifestUrl-error" @enderror>
                 <p class="text-xs mt-1" style="color:var(--muted)">Cbox ID pulls this to learn the app's roles. You can also set it later, or the app can push.</p>
-                @error('manifestUrl') <p class="field-error">{{ $message }}</p> @enderror
+                @error('manifestUrl') <p id="manifestUrl-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
             <div class="flex items-center gap-2 pt-1">
@@ -535,9 +540,11 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                                 <td class="text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <button wire:click="openManifest('{{ $client->client_id }}')" class="btn btn-ghost btn-sm">Roles{{ ($roleCounts[$client->client_id] ?? 0) > 0 ? ' · '.$roleCounts[$client->client_id] : '' }}</button>
-                                        <button wire:click="delete('{{ $client->client_id }}')"
-                                                wire:confirm="Delete this app? Anything using its credentials will stop working."
-                                                class="btn btn-danger btn-sm">Delete</button>
+                                        <x-confirm-delete
+                                            :name="$client->name"
+                                            :action="'delete(\''.$client->client_id.'\')'"
+                                            label="Delete"
+                                            consequence="Anything using its credentials will stop working. This cannot be undone." />
                                     </div>
                                 </td>
                             @endif
@@ -550,8 +557,8 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                                     <form wire:submit="saveManifestUrl('{{ $client->client_id }}')" class="flex flex-wrap items-end gap-2 mb-3">
                                         <div class="flex-1 min-w-[18rem]">
                                             <label class="label" for="mf-{{ $client->client_id }}">Manifest URL</label>
-                                            <input wire:model="editManifestUrl" id="mf-{{ $client->client_id }}" type="url" class="input" placeholder="https://app.example.com/.well-known/cbox-authz">
-                                            @error('editManifestUrl') <p class="field-error">{{ $message }}</p> @enderror
+                                            <input wire:model="editManifestUrl" id="mf-{{ $client->client_id }}" type="url" class="input" placeholder="https://app.example.com/.well-known/cbox-authz" @error('editManifestUrl') aria-invalid="true" aria-describedby="editManifestUrl-error" @enderror>
+                                            @error('editManifestUrl') <p id="editManifestUrl-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                                         </div>
                                         <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled">Save & sync</button>
                                         @if ($client->manifest_url)

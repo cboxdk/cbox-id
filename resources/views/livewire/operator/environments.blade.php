@@ -207,12 +207,12 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="env-name">Name</label>
                 <input wire:model="name" id="env-name" type="text" class="input" placeholder="Production" autofocus>
-                @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="env-domain">Custom domain <span style="color:var(--faint)">(optional)</span></label>
                 <input wire:model="domain" id="env-domain" type="text" class="input" placeholder="id.acme.com">
-                @error('domain') <p class="field-error">{{ $message }}</p> @enderror
+                @error('domain') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create</button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
@@ -265,22 +265,22 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
                         <div>
                             <label class="label" for="org-name-{{ $env['id'] }}">Organization name</label>
                             <input wire:model="orgName" id="org-name-{{ $env['id'] }}" type="text" class="input" placeholder="Acme Inc">
-                            @error('orgName') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('orgName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="label" for="admin-name-{{ $env['id'] }}">Admin name</label>
                             <input wire:model="adminName" id="admin-name-{{ $env['id'] }}" type="text" class="input" placeholder="Ada Lovelace">
-                            @error('adminName') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('adminName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="label" for="admin-email-{{ $env['id'] }}">Admin email</label>
                             <input wire:model="adminEmail" id="admin-email-{{ $env['id'] }}" type="email" class="input" placeholder="admin@acme.com">
-                            @error('adminEmail') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('adminEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="label" for="admin-password-{{ $env['id'] }}">Admin password</label>
                             <input wire:model="adminPassword" id="admin-password-{{ $env['id'] }}" type="password" autocomplete="new-password" class="input" placeholder="At least 12 characters">
-                            @error('adminPassword') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('adminPassword') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                     </div>
                     <div class="mt-3 flex gap-2">

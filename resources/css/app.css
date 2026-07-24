@@ -136,7 +136,11 @@
     --surface-2: var(--secondary);
     --text: var(--foreground);
     --muted: var(--muted-foreground);
-    --faint: oklch(0.52 0.018 75);
+    /* 0.45, not 0.52: on the near-white card/background 0.52 computes to ~4.2:1 and
+     * fails WCAG 2.2 AA (4.5:1) for the small meta text --faint is used for (ids,
+     * counts, timestamps, empty-state copy). 0.45 clears AA while staying visibly
+     * lighter than --muted-foreground. Dark-mode --faint (0.67) already passes. */
+    --faint: oklch(0.45 0.018 75);
     --accent-fg: var(--accent-foreground);
     --warn: var(--warning);
     --warn-soft: var(--warning-soft);
@@ -767,6 +771,10 @@
 
     /* Topbar */
     .cbx-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: var(--topbar-h); padding: 0 16px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--background) 80%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; }
+    /* Context-switcher trigger (org/environment/target). Hover background lives here as a
+     * CSS rule rather than inline onmouseover/onmouseout handlers, which the app's own CSP
+     * (script-src without 'unsafe-inline') blocks — the handlers never fired. */
+    .cbx-switcher-item:hover { background: var(--secondary); }
 
     /* Sidebar (two-tier tier-2 subnav column) */
     .cbx-sidebar { display: flex; flex-direction: column; width: var(--sidebar-w); box-sizing: border-box; flex-shrink: 0; border-right: 1px solid var(--sidebar-border); background: var(--sidebar); }

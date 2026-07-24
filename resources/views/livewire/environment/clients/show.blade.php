@@ -42,8 +42,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
 
     public string $editRedirectUris = '';
 
-    /** Plaintext secret, held only for the single render that reveals it. */
-    public ?string $revealedSecret = null;
+    /** Plaintext secret, held only for the single render that reveals it. Protected so it is
+     *  never dehydrated into the wire snapshot — revealed once, then gone on rehydration. */
+    protected ?string $revealedSecret = null;
 
     public bool $revealedIsFresh = false;
 
@@ -132,7 +133,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
 
     public function dismissSecret(): void
     {
-        $this->reset('revealedSecret', 'revealedIsFresh');
+        $this->reset('revealedIsFresh');
+        $this->revealedSecret = null;
     }
 
     public function deleteClient(): mixed
@@ -158,7 +160,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
      */
     public function with(): array
     {
-        return ['client' => $this->client()];
+        return [
+            'client' => $this->client(),
+            // Protected → never dehydrated; passed explicitly so the secret renders once.
+            'revealedSecret' => $this->revealedSecret,
+        ];
     }
 }; ?>
 

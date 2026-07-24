@@ -7,6 +7,7 @@ use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Models\Client;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -133,9 +134,9 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
     /**
      * client_id => name for every app this org may use (platform-owned + its own).
      *
-     * @return \Illuminate\Support\Collection<string, string>
+     * @return Collection<string, string>
      */
-    private function usableApps(): \Illuminate\Support\Collection
+    private function usableApps(): Collection
     {
         return Client::query()
             ->where(fn ($query) => $query->whereNull('organization_id')->orWhere('organization_id', $this->orgId()))
@@ -148,8 +149,11 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
         return app(CurrentUser::class)->organizationId() ?? '';
     }
 
-    public function mount(): void
+    public function boot(): void
     {
+        // Read gate re-checked on EVERY request, not just first mount: boot() runs on
+        // each hydration, so an admin demoted mid-session cannot keep re-rendering the
+        // org-wide role/permission catalog from a stale snapshot.
         $this->authorizeAdmin();
     }
 
@@ -225,8 +229,8 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
             <form wire:submit="create" class="card p-4 flex flex-wrap items-end gap-3 mb-4">
                 <div class="flex-1 min-w-[12rem]">
                     <label class="label" for="name">Name</label>
-                    <input wire:model="name" id="name" type="text" class="input" placeholder="Manager" autofocus>
-                    @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                    <input wire:model="name" id="name" type="text" class="input" placeholder="Manager" autofocus @error('name') aria-invalid="true" aria-describedby="name-error" @enderror>
+                    @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div class="flex-1 min-w-[14rem]">
                     <label class="label" for="description">Description <span style="color:var(--muted-foreground);font-weight:400">(optional)</span></label>

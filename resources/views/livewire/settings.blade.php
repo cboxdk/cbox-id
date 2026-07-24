@@ -87,10 +87,10 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                     <form wire:submit="rename" class="mb-4">
                         <label class="label" for="orgName">Name</label>
                         <div class="flex items-center gap-2">
-                            <input wire:model="orgName" id="orgName" type="text" class="input" style="flex:1" maxlength="120">
+                            <input wire:model="orgName" id="orgName" type="text" class="input" style="flex:1" maxlength="120" @error('orgName') aria-invalid="true" aria-describedby="orgName-error" @enderror>
                             <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="rename">Rename</button>
                         </div>
-                        @error('orgName') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('orgName') <p id="orgName-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </form>
                 @endif
                 <dl>

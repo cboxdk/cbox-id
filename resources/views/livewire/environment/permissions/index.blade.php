@@ -181,11 +181,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
             <div class="grid sm:grid-cols-[1fr_1.4fr_auto] gap-2 items-start">
                 <div>
                     <input wire:model="name" type="text" class="input mono" placeholder="invoices:create" aria-label="Permission key">
-                    @error('name') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <input wire:model="description" type="text" class="input" placeholder="Create invoices (optional)" aria-label="Description">
-                    @error('description') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('description') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="create">Add permission</button>
             </div>
@@ -210,7 +210,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
                         <div class="space-y-2">
                             <p class="text-sm mono">{{ $perm->name }}</p>
                             <input wire:model="editDescription" type="text" class="input" placeholder="Description" aria-label="Description">
-                            @error('editDescription') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('editDescription') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                             <label class="flex items-center gap-2 text-sm cursor-pointer" style="color:var(--muted)">
                                 <input type="checkbox" wire:model="editTenantAssignable" class="rounded"> Tenant-assignable
                             </label>

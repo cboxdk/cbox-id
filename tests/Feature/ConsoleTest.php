@@ -47,8 +47,11 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
         ->call('register')
         ->assertHasNoErrors();
 
-    expect($component->get('newToken'))->toStartWith('scim_')
-        ->and(Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->exists())->toBeTrue();
+    // The token is protected (never dehydrated into the wire snapshot), so assert the
+    // one-time reveal on the rendered output rather than reaching into component state.
+    $component->assertSee('scim_');
+
+    expect(Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->exists())->toBeTrue();
 });
 
 it('registers an OAuth client for the organization', function () {
@@ -118,3 +121,29 @@ it('forbids a non-admin member from reading admin console pages', function (stri
     // audit) must be unreadable to a plain member.
     Volt::test($page)->assertForbidden();
 })->with(['audit', 'clients', 'connections', 'directories', 'roles', 'webhooks']);
+
+it('re-authorizes org-admin console pages on every request via boot(), not just mount()', function () {
+    // A member who is an admin at mount, then demoted mid-session. The read gate must
+    // catch the demotion on the NEXT request — proving the guard lives in boot()
+    // (runs every hydration), not mount() (runs once). Under a mount()-only gate the
+    // open snapshot would keep re-rendering org-wide SSO/SCIM/role/webhook config.
+    $subject = app(Subjects::class)->create('demote@acme.test', 'Dee', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-demote'));
+    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    $cu = app(CurrentUser::class);
+    $cu->set($subject, $session, $org, MembershipRole::Owner);
+
+    entitle($org->id, 'cbox-id-sso');
+    entitle($org->id, 'cbox-id-scim');
+
+    foreach (['connections', 'directories', 'roles', 'webhooks'] as $page) {
+        $component = Volt::test($page)->assertOk();          // mounts fine as admin
+
+        $cu->set($subject, $session, $org, MembershipRole::Member); // demoted
+
+        $component->call('$refresh')->assertForbidden();     // boot() re-checks → 403
+
+        $cu->set($subject, $session, $org, MembershipRole::Owner);  // restore for next page
+    }
+});

@@ -45,6 +45,7 @@ use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
@@ -514,4 +515,48 @@ it('renders a member\'s assigned access role on the organization screen', functi
         ->assertOk()
         ->assertSee('Access roles')  // the new RBAC surface label
         ->assertSee('Team leads');   // the assigned role, rendered as a chip
+});
+
+it('scopes the org-detail member lookup to the roster, not every user in the environment', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Roster Co', slug: 'roster-co'));
+    $memberships = app(Memberships::class);
+
+    // Three members in the org…
+    $members = collect(range(1, 3))->map(function (int $i) use ($org, $memberships) {
+        $u = app(Subjects::class)->create("member{$i}@roster.example", "Member {$i}");
+        $memberships->add($org->id, $u->id, 'member');
+
+        return $u;
+    });
+
+    // …and 40 unrelated users in the SAME environment. The old `User::query()->get()`
+    // hydrated ALL of these on every render; the fix scopes the name lookup to the roster.
+    collect(range(1, 40))->each(fn (int $i) => app(Subjects::class)->create("bystander{$i}@roster.example", "Bystander {$i}"));
+
+    $userQueries = [];
+    DB::listen(function ($q) use (&$userQueries): void {
+        if (str_contains($q->sql, '"users"') || str_contains($q->sql, '`users`')) {
+            $userQueries[] = $q;
+        }
+    });
+
+    Volt::test('environment.organizations.show', ['organization' => $org->id])
+        ->assertOk()
+        ->assertSee('Member 1');
+
+    // A users query scoped by `id in (…)` over exactly the roster exists — proving the
+    // name lookup is bounded by the members, never an unbounded full-table select of
+    // all 43 environment users. (Bindings also carry the environment_id global scope.)
+    $memberIds = $members->pluck('id')->map(fn ($x) => (string) $x)->all();
+    $scoped = collect($userQueries)->contains(function ($q) use ($memberIds): bool {
+        if (! str_contains($q->sql, '"id" in (')) {
+            return false;
+        }
+        $bindings = array_map('strval', $q->bindings);
+
+        return collect($memberIds)->every(fn (string $id): bool => in_array($id, $bindings, true));
+    });
+
+    expect($scoped)->toBeTrue();
 });

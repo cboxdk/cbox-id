@@ -11,6 +11,7 @@
     @consoleBrandingStyle
 </head>
 <body class="h-full" style="background:var(--bg);color:var(--text)">
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <div class="min-h-full flex flex-col">
         <header class="h-16 flex items-center justify-between px-5 sm:px-8 border-b" style="border-color:var(--border);background:var(--surface)">
             <x-brand />
@@ -24,7 +25,7 @@
             </div>
         </header>
 
-        <main class="flex-1 w-full mx-auto px-5 sm:px-8 py-8 sm:py-12" style="max-width:46rem">
+        <main id="main-content" class="flex-1 w-full mx-auto px-5 sm:px-8 py-8 sm:py-12" style="max-width:46rem">
             {{ $slot }}
         </main>
 

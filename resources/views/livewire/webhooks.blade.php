@@ -31,7 +31,8 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
 
     public bool $creating = false;
 
-    public ?string $newSecret = null;
+    /** One-time signing secret, held out of the wire snapshot (protected → never dehydrated). */
+    protected ?string $newSecret = null;
 
     public function create(WebhookRegistry $webhooks): void
     {
@@ -65,7 +66,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
 
     public function dismissSecret(): void
     {
-        $this->reset('newSecret');
+        $this->newSecret = null;
     }
 
     public function with(): array
@@ -76,6 +77,8 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
                 ->where('organization_id', $this->orgId())
                 ->orderByDesc('id')
                 ->get(),
+            // Protected → never dehydrated; passed explicitly so the secret renders once.
+            'newSecret' => $this->newSecret,
         ];
     }
 
@@ -84,10 +87,11 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         return app(CurrentUser::class)->organizationId() ?? '';
     }
 
-    public function mount(): void
+    public function boot(): void
     {
-        // Read gate: these pages expose org-wide config (client secrets shown
-        // once, SSO connection settings, directory tokens, audit) — admins only.
+        // Read gate re-checked on EVERY request, not just first mount: boot() runs on
+        // each hydration, so an admin demoted mid-session cannot keep re-rendering
+        // org-wide webhook endpoints/secrets from a stale snapshot.
         $this->authorizeAdmin();
     }
 
@@ -127,20 +131,20 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         <form wire:submit="create" class="card p-4 mb-5">
             <div class="mb-4">
                 <label class="label" for="url">Endpoint URL</label>
-                <input wire:model="url" id="url" type="url" class="input" placeholder="https://example.com/webhooks/cbox" autofocus>
-                @error('url') <p class="field-error">{{ $message }}</p> @enderror
+                <input wire:model="url" id="url" type="url" class="input" placeholder="https://example.com/webhooks/cbox" autofocus @error('url') aria-invalid="true" aria-describedby="url-error" @enderror>
+                @error('url') <p id="url-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <span class="label">Event types</span>
                 <div class="grid gap-2 sm:grid-cols-2">
                     @foreach (self::EVENT_TYPES as $event)
                         <label class="flex items-center gap-2 text-sm cursor-pointer">
-                            <input type="checkbox" wire:model="eventTypes" value="{{ $event }}">
+                            <input type="checkbox" wire:model="eventTypes" value="{{ $event }}" @error('eventTypes') aria-invalid="true" aria-describedby="eventTypes-error" @enderror>
                             <span class="mono">{{ $event }}</span>
                         </label>
                     @endforeach
                 </div>
-                @error('eventTypes') <p class="field-error">{{ $message }}</p> @enderror
+                @error('eventTypes') <p id="eventTypes-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex items-center gap-3 mt-4">
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create endpoint</button>

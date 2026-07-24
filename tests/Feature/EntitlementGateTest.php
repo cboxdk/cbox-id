@@ -86,8 +86,11 @@ it('allows SCIM directory registration once the org is entitled', function () {
         ->call('register')
         ->assertHasNoErrors();
 
-    expect($component->get('newToken'))->toStartWith('scim_')
-        ->and(Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->exists())->toBeTrue();
+    // The token is protected (never dehydrated into the wire snapshot), so assert the
+    // one-time reveal on the rendered output rather than reaching into component state.
+    $component->assertSee('scim_');
+
+    expect(Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->exists())->toBeTrue();
 });
 
 it('gates SSO and SCIM independently', function () {

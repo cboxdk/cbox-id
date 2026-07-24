@@ -72,8 +72,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
     /** @var list<string> */
     public array $editEvents = [];
 
-    /** The freshly minted secret shown once (create hand-off or rotation); never stored plaintext. */
-    public ?string $newSecret = null;
+    /** The freshly minted secret shown once (create hand-off or rotation); never stored plaintext.
+     *  Protected so it is never dehydrated into the wire snapshot — shown once, then gone. */
+    protected ?string $newSecret = null;
 
     public function mount(string $webhook): void
     {
@@ -156,7 +157,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
     public function dismissSecret(): void
     {
-        $this->reset('newSecret');
+        $this->newSecret = null;
     }
 
     public function deleteEndpoint(): mixed
@@ -181,6 +182,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
                 ->orderByDesc('id')
                 ->limit(10)
                 ->get(),
+            // Protected → never dehydrated; passed explicitly so the secret renders once.
+            'newSecret' => $this->newSecret,
         ];
     }
 }; ?>
@@ -219,7 +222,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
             <div>
                 <label class="label" for="editUrl">Endpoint URL</label>
                 <input wire:model="editUrl" id="editUrl" type="url" class="input mono">
-                @error('editUrl') <p class="field-error">{{ $message }}</p> @enderror
+                @error('editUrl') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <span class="label">Event types</span>
@@ -231,7 +234,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
                         </label>
                     @endforeach
                 </div>
-                @error('editEvents') <p class="field-error">{{ $message }}</p> @enderror
+                @error('editEvents') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="saveSubscription">Save changes</button>
         </form>
