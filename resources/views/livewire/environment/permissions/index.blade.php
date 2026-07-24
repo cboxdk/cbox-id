@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Models\Permission;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -58,17 +59,30 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
         ]);
 
         $name = mb_strtolower(trim($data['name']));
+        $environmentId = $this->environmentId();
 
-        // Uniqueness among MANUAL permissions (the table is unique on (client_id, name);
-        // an app may legitimately declare the same key under its own client_id).
-        if (Permission::query()->whereNull('client_id')->where('name', $name)->exists()) {
+        // Uniqueness among THIS environment's manual permissions. Manual rows carry a
+        // null client_id, so the DB (client_id, name) unique never actually constrains
+        // them — uniqueness is enforced here, and it is scoped to the environment so two
+        // environments may each own a "billing:refund" without colliding.
+        if (Permission::query()
+            ->whereNull('client_id')
+            ->where('environment_id', $environmentId)
+            ->where('name', $name)
+            ->exists()) {
             $this->addError('name', 'A manual permission with that key already exists.');
 
             return;
         }
 
+        // Stamp the authoring environment. A manual permission belongs to the
+        // environment that created it — NOT the platform-global (null) namespace — so no
+        // other environment's admin can see, edit, or delete it (the cross-environment
+        // create/delete-cascade this closes). Operator-seeded platform-global rows keep
+        // environment_id null and stay read-only here.
         Permission::query()->create([
             'client_id' => null,
+            'environment_id' => $environmentId,
             'name' => $name,
             'description' => trim($this->description) !== '' ? trim($this->description) : null,
             'tenant_assignable' => $this->tenantAssignable,
@@ -133,10 +147,30 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
         $this->dispatch('toast', message: 'Permission deleted.');
     }
 
-    /** Resolve a permission id, but only if it's a MANUAL one (deny-by-default). */
+    /**
+     * Resolve a permission id, but only if it's a MANUAL one owned by THIS environment
+     * (deny-by-default). Scoping the resolver to the current environment is what stops
+     * one environment's admin editing or deleting another environment's — or an
+     * operator's platform-global (null) — manual permission and cascading the
+     * role_permission purge across tenants.
+     */
     private function manual(string $id): ?Permission
     {
-        return Permission::query()->whereKey($id)->whereNull('client_id')->first();
+        return Permission::query()
+            ->whereKey($id)
+            ->whereNull('client_id')
+            ->where('environment_id', $this->environmentId())
+            ->first();
+    }
+
+    /** The current environment id, fail-closed — the manual-permission tenant boundary. */
+    private function environmentId(): string
+    {
+        $environment = app(EnvironmentContext::class)->current();
+
+        abort_if($environment === null, 403);
+
+        return $environment->environmentKey();
     }
 
     /**
@@ -146,7 +180,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
     {
         $all = Permission::query()->orderBy('name')->get();
 
-        $manual = $all->whereNull('client_id')->values();
+        // Only THIS environment's manual permissions are editable here. Operator-seeded
+        // platform-global (null environment) rows remain visible-and-bindable in the
+        // Roles editor but are not surfaced with edit/delete controls they'd no-op on.
+        $manual = $all->whereNull('client_id')->where('environment_id', $this->environmentId())->values();
         $declared = $all->whereNotNull('client_id')->values();
 
         $appNames = Client::query()
