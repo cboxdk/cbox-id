@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Mail\AdminAssignedPasswordMail;
+use App\Rules\NotBreached;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Enums\PasswordRevocationScope;
+use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
+use Illuminate\Support\Str;
 use App\Platform\EnvironmentAdminAuth;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
@@ -48,6 +54,31 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {
         abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
     }
+
+    /** Whether the set-password panel is open. */
+    public bool $settingPassword = false;
+
+    public string $pwPassword = '';
+
+    public string $pwReason = '';
+
+    /** 'temporary' → must be changed at next sign-in; 'permanent' → stands as-is. */
+    public string $pwMode = 'temporary';
+
+    /** 'reveal' → shown once in the console; 'email' → sent to the user. */
+    public string $pwDelivery = 'reveal';
+
+    /** How much existing access the change cuts ({@see PasswordRevocationScope}). */
+    public string $pwRevoke = 'sessions_and_tokens';
+
+    /** Lifetime of a temporary password in hours; 0 = until changed. */
+    public int $pwExpiryHours = 24;
+
+    /**
+     * The password just issued, held out of the wire snapshot (protected → never
+     * dehydrated into the DOM) and surfaced once through the render.
+     */
+    protected ?string $issuedPassword = null;
 
     public string $userId = '';
 
@@ -141,6 +172,74 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $this->dispatch('toast', message: 'User deleted.');
 
         return $this->redirectRoute('environment.users', navigate: true);
+    }
+
+    /**
+     * Set this user's password directly.
+     *
+     * Legitimate because this platform OWNS its user records — unlike a federation-only
+     * service, we hold the credential, so administrative recovery is ours to perform.
+     * It is only SAFE because it is gated on the env-admin capability (boot() above),
+     * fully audited by the framework, and every consequence is an explicit choice rather
+     * than a hidden default: temporary vs permanent, how it reaches the person, and how
+     * much existing access it cuts.
+     */
+    public function setPassword(AdminPasswords $admin): void
+    {
+        $user = $this->user();
+
+        $this->validate([
+            // Matches the self-service floor in account/signup. Becomes policy-driven
+            // once the per-environment password policy lands.
+            'pwPassword' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
+            'pwReason' => ['required', 'string', 'max:200'],
+        ], attributes: ['pwPassword' => 'password', 'pwReason' => 'reason']);
+
+        $temporary = $this->pwMode === 'temporary';
+        $expiresAt = $temporary && $this->pwExpiryHours > 0
+            ? now()->addHours($this->pwExpiryHours)
+            : null;
+
+        $actor = app(EnvironmentAdminAuth::class)->current();
+
+        $admin->assign(new AdminPasswordAssignment(
+            userId: $user->id,
+            password: $this->pwPassword,
+            temporary: $temporary,
+            expiresAt: $expiresAt,
+            revoke: PasswordRevocationScope::from($this->pwRevoke),
+            actorType: 'account_member',
+            actorId: $actor?->id,
+            reason: $this->pwReason,
+        ));
+
+        if ($this->pwDelivery === 'email') {
+            Mail::to($user->email)->send(new AdminAssignedPasswordMail(
+                password: $this->pwPassword,
+                temporary: $temporary,
+                expiresAt: $expiresAt?->toDayDateTimeString(),
+            ));
+
+            $this->dispatch('toast', message: 'Password set and emailed to '.$user->email.'.');
+        } else {
+            // Held in a PROTECTED prop so the credential is rendered once and never
+            // dehydrated into the wire:snapshot in the DOM.
+            $this->issuedPassword = $this->pwPassword;
+            $this->dispatch('toast', message: 'Password set. Copy it now — it is shown once.');
+        }
+
+        $this->reset('pwPassword', 'pwReason', 'settingPassword');
+    }
+
+    /** Suggest a strong password so an admin never invents a weak one by hand. */
+    public function generatePassword(): void
+    {
+        $this->pwPassword = Str::password(20, symbols: false);
+    }
+
+    public function dismissIssuedPassword(): void
+    {
+        $this->issuedPassword = null;
     }
 
     public function sendPasswordReset(PasswordReset $resets): void
@@ -329,6 +428,10 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         return [
             'user' => $user,
+            // Surfaced through render, not a public prop, so a just-issued credential is
+            // shown once and never dehydrated into the DOM snapshot.
+            'issuedPassword' => $this->issuedPassword,
+            'requiresPasswordChange' => app(AdminPasswords::class)->requiresChange($user->id),
             'allOrgs' => $orgNames,
             'memberships' => $rows,
             'orgCatalog' => $orgCatalog,
@@ -382,8 +485,101 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {{-- Security & lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <p class="text-sm font-medium">Security &amp; lifecycle</p>
+        @if ($requiresPasswordChange)
+            <p class="mt-2 text-sm" style="color:var(--muted)">This user must choose a new password the next time they sign in.</p>
+        @endif
+
+        {{-- One-time reveal of a just-issued password. --}}
+        @if ($issuedPassword)
+            <div class="mt-4 rounded-lg p-4" style="border:1px solid color-mix(in srgb, var(--warning) 40%, transparent);background:color-mix(in srgb, var(--warning) 8%, transparent)">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-semibold text-sm" style="color:var(--warning-strong)">Copy this password now — it won't be shown again.</p>
+                        <p class="mt-3 select-all break-all mono text-sm">{{ $issuedPassword }}</p>
+                        <p class="mt-3 text-xs" style="color:var(--faint)">Hand it to {{ $user->email }} over a channel you trust. We never store it in readable form.</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <x-copy-button :value="$issuedPassword" class="btn-primary" />
+                        <button type="button" class="btn btn-ghost btn-sm" wire:click="dismissIssuedPassword">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Set a password directly. We own these user records, so administrative
+             recovery is ours to perform — gated, audited, and every consequence chosen. --}}
+        @if ($settingPassword)
+            <form wire:submit="setPassword" class="mt-4 rounded-lg border p-4 space-y-4" style="border-color:var(--border)">
+                <div>
+                    <label for="pw-password" class="text-sm font-medium">New password</label>
+                    <div class="mt-1.5 flex gap-2">
+                        <input id="pw-password" wire:model="pwPassword" type="text" class="input mono" autocomplete="off"
+                               @error('pwPassword') aria-invalid="true" aria-describedby="pw-password-error" @enderror>
+                        <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="generatePassword">Generate</button>
+                    </div>
+                    @error('pwPassword') <p id="pw-password-error" class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="pw-mode" class="text-sm font-medium">Type</label>
+                        <select id="pw-mode" wire:model.live="pwMode" class="input mt-1.5">
+                            <option value="temporary">Temporary — they must change it at next sign-in</option>
+                            <option value="permanent">Permanent — stands until they change it</option>
+                        </select>
+                    </div>
+                    @if ($pwMode === 'temporary')
+                        <div>
+                            <label for="pw-expiry" class="text-sm font-medium">Valid for</label>
+                            <select id="pw-expiry" wire:model="pwExpiryHours" class="input mt-1.5">
+                                <option value="1">1 hour</option>
+                                <option value="24">24 hours</option>
+                                <option value="72">3 days</option>
+                                <option value="0">Until they change it</option>
+                            </select>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="pw-delivery" class="text-sm font-medium">How they get it</label>
+                        <select id="pw-delivery" wire:model="pwDelivery" class="input mt-1.5">
+                            <option value="reveal">Show me once — I'll pass it on</option>
+                            <option value="email">Email it to {{ $user->email }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="pw-revoke" class="text-sm font-medium">Existing access</label>
+                        <select id="pw-revoke" wire:model="pwRevoke" class="input mt-1.5">
+                            <option value="sessions_and_tokens">Sign out everywhere and revoke API tokens</option>
+                            <option value="sessions_only">Sign out everywhere, keep API tokens</option>
+                            <option value="nothing">Leave existing sessions alone</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="pw-reason" class="text-sm font-medium">Reason</label>
+                    <input id="pw-reason" wire:model="pwReason" type="text" maxlength="200" class="input mt-1.5"
+                           placeholder="e.g. Locked out after losing their phone"
+                           @error('pwReason') aria-invalid="true" aria-describedby="pw-reason-error" @enderror>
+                    @error('pwReason') <p id="pw-reason-error" class="field-error" role="alert">{{ $message }}</p> @enderror
+                    <p class="mt-1.5 text-xs" style="color:var(--faint)">Recorded on the audit trail alongside your name.</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled" wire:target="setPassword">Set password</button>
+                    <button type="button" class="btn btn-ghost btn-sm" wire:click="$set('settingPassword', false)">Cancel</button>
+                </div>
+            </form>
+        @endif
+
         <div class="mt-4 flex flex-wrap gap-2">
             <button type="button" class="btn btn-ghost btn-sm" wire:click="sendPasswordReset">Send password reset</button>
+            @unless ($settingPassword)
+                <button type="button" class="btn btn-ghost btn-sm" wire:click="$set('settingPassword', true)">Set password…</button>
+            @endunless
             @unless ($user->email_verified_at)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="resendVerification">Resend verification</button>
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="markVerified">Mark verified</button>

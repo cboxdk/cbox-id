@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -58,6 +59,7 @@ final class PlatformAuth
         private readonly Mfa $mfa,
         private readonly OtpService $otp,
         private readonly Hasher $hasher,
+        private readonly AdminPasswords $adminPasswords,
     ) {}
 
     /**
@@ -83,6 +85,13 @@ final class PlatformAuth
         }
 
         if (! $this->subjects->verifyPassword($subject->id, $password)) {
+            return AttemptOutcome::Invalid;
+        }
+
+        // A temporary password an administrator issued stops admitting anyone once its
+        // deadline passes, even though the hash still matches — otherwise a hand-off
+        // credential lingers as a permanent second way in.
+        if ($this->adminPasswords->hasExpired($subject->id)) {
             return AttemptOutcome::Invalid;
         }
 
