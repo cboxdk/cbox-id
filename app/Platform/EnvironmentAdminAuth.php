@@ -71,6 +71,16 @@ final class EnvironmentAdminAuth
             return null;
         }
 
+        // Capability, not just reachability: administering an environment's control
+        // plane is an owner/admin/developer power (AccountRole::canManageEnvironments).
+        // A viewer or billing member may be ABLE TO REACH an environment
+        // (all_environments defaults true on invite) but must never administer it —
+        // "accessible" is not "administrable". This is the single chokepoint every
+        // guard consults, so the check holds for both the handoff and admin-login paths.
+        if (! $member->role->canManageEnvironments()) {
+            return null;
+        }
+
         // Access is re-verified per request: a member whose access to THIS
         // environment was revoked loses the admin session immediately.
         if (! in_array($hostEnv, $this->members->accessibleEnvironmentIds($member), true)) {

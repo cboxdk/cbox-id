@@ -47,6 +47,7 @@ final class EnvironmentAdminController extends Controller
 
         if ($member === null
             || ! $member->isActive()
+            || ! $member->role->canManageEnvironments()
             || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {
             return redirect()->route('admin.login');
         }

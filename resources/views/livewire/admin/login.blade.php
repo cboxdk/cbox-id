@@ -77,6 +77,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         // to THIS environment — never reveal which.
         $hostEnv = $environments->current()?->environmentKey();
         $hasAccess = $ok && $member !== null && $hostEnv !== null
+            && $member->role->canManageEnvironments()
             && in_array($hostEnv, $members->accessibleEnvironmentIds($member), true);
 
         if (! $ok || ! $hasAccess || $member === null) {

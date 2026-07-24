@@ -39,7 +39,15 @@ final class WorkspaceController extends Controller
             return redirect()->route('workspace.login');
         }
 
-        abort_unless(in_array($environment, $members->accessibleEnvironmentIds($member), true), 403);
+        // Fail before a credential is minted: only owner/admin/developer administer
+        // environments. A viewer/billing member can reach an environment but must not
+        // be handed a live env-admin token for it (the anti-escalation gate; the
+        // env-admin session guard re-checks the same capability on redemption).
+        abort_unless(
+            $member->role->canManageEnvironments()
+            && in_array($environment, $members->accessibleEnvironmentIds($member), true),
+            403,
+        );
 
         $env = Environment::query()->find($environment);
         abort_if($env === null, 404);

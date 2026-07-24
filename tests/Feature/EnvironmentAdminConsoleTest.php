@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AccountAuth;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -169,4 +170,75 @@ it('uses the local admin door on a single-host deployment (no base domains)', fu
     // origin, so the local form is fine and stays put.
     $this->get('/admin/organizations')->assertRedirect(route('admin.login'));
     $this->get('/admin/login')->assertOk();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Privilege boundary — "accessible" is not "administrable"
+|--------------------------------------------------------------------------
+| A viewer/billing account member defaults to all_environments=true on invite,
+| so they CAN reach every environment. Administering an environment's control
+| plane is an owner/admin/developer capability (AccountRole::canManageEnvironments).
+| The env-admin session chokepoint and the handoff-mint door must both refuse the
+| scoped roles even though the environment is reachable.
+*/
+
+it('refuses a reachable-but-unprivileged member at the env-admin session chokepoint', function (): void {
+    ['account' => $account, 'envId' => $envId] = envAdminSetup();
+    $members = app(AccountMembers::class);
+
+    foreach ([AccountRole::Viewer, AccountRole::Billing] as $role) {
+        $m = $members->invite($account->id, $role->value.'-choke@acme.example', $role);
+        $members->activate($m->id, 'a-strong-unbreached-passphrase');
+
+        // Precondition: the default invite grants access to the environment.
+        expect($members->accessibleEnvironmentIds($members->find($m->id)))->toContain($envId);
+
+        session()->put(EnvironmentAdminAuth::SESSION_KEY, $m->id);
+        session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+        app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
+
+        // Reachable, yet the admin session must not resolve — no control-plane power.
+        expect(app(EnvironmentAdminAuth::class)->current())->toBeNull();
+    }
+});
+
+it('admits owner, admin, and developer to the env-admin session', function (): void {
+    ['account' => $account, 'member' => $owner, 'envId' => $envId] = envAdminSetup();
+    $members = app(AccountMembers::class);
+
+    $admit = ['owner' => $owner->id];
+    foreach ([AccountRole::Admin, AccountRole::Developer] as $role) {
+        $m = $members->invite($account->id, $role->value.'-ok@acme.example', $role);
+        $members->activate($m->id, 'a-strong-unbreached-passphrase');
+        $admit[$role->value] = $m->id;
+    }
+
+    foreach ($admit as $memberId) {
+        session()->put(EnvironmentAdminAuth::SESSION_KEY, $memberId);
+        session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+        app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
+        expect(app(EnvironmentAdminAuth::class)->current()?->id)->toBe($memberId);
+    }
+});
+
+it('refuses to mint a handoff for a reachable-but-unprivileged member (fail before the credential exists)', function (): void {
+    ['account' => $account, 'envId' => $envId] = envAdminSetup();
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+    $members = app(AccountMembers::class);
+
+    $viewer = $members->invite($account->id, 'viewer-mint@acme.example', AccountRole::Viewer);
+    $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
+
+    // Viewer reaches the env but is refused the mint — 403, no handoff token issued.
+    $this->withSession([AccountAuth::SESSION_KEY => $viewer->id])
+        ->get(route('workspace.environment.open', $envId))
+        ->assertForbidden();
+
+    // A developer is bounced to the environment host to redeem — a redirect, not a 403.
+    $dev = $members->invite($account->id, 'dev-mint@acme.example', AccountRole::Developer);
+    $members->activate($dev->id, 'a-strong-unbreached-passphrase');
+    $this->withSession([AccountAuth::SESSION_KEY => $dev->id])
+        ->get(route('workspace.environment.open', $envId))
+        ->assertRedirect();
 });
