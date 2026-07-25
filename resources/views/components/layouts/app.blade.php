@@ -81,7 +81,23 @@
     $activeArea = collect($areas)->first(
         fn (array $a): bool => collect($a['pages'])->contains(fn (array $p): bool => $routeActive($p['route']))
     ) ?? $areas[0];
-    $showSubnav = count($activeArea['pages']) > 1;
+
+    // Shape for the shared shell components. A single-page area needs no tier 2,
+    // so its rail icon is itself the current page and carries aria-current.
+    $railAreas = collect($areas)->map(fn (array $a): array => [
+        'key' => $a['key'],
+        'label' => $a['label'],
+        'icon' => $a['icon'],
+        'href' => route($a['pages'][0]['route']),
+        'active' => $a['key'] === $activeArea['key'],
+        'current' => $a['key'] === $activeArea['key'] && count($a['pages']) === 1,
+    ])->all();
+    $subnavPages = collect($activeArea['pages'])->map(fn (array $p): array => [
+        'href' => route($p['route']),
+        'label' => $p['label'],
+        'active' => $routeActive($p['route']),
+        'badge' => $isLocked($p) ? 'Enterprise' : null,
+    ])->all();
 
     // Organizations the signed-in subject belongs to, for the topbar switcher.
     $myOrgs = collect();
@@ -117,88 +133,23 @@
      @keydown.escape.window="mobile=false;account=false;org=false"
      @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
-    {{-- ═══ TIER 1 — icon rail (desktop). 52px icons; expands in-flow to 210px when
-         pinned via the always-visible toggle in the rail foot. ═══ --}}
-    <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned || hover }"
-           @mouseenter="hover = true" @mouseleave="hover = false" aria-label="Areas">
-        <div class="cbx-rail-hd">
-            <a href="{{ route('dashboard') }}" class="cbx-rail-brand" aria-label="{{ config('cbox-id.branding.name', 'Cbox ID') }}" title="{{ config('cbox-id.branding.name', 'Cbox ID') }}">
-                <svg viewBox="0 0 64 64" role="img" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="var(--primary)"/><text x="32" y="44" text-anchor="middle" fill="var(--primary-foreground)" font-family="var(--font-display)" font-weight="700" font-size="30" letter-spacing="-0.04em">ID</text></svg>
-            </a>
-            {{-- Pin toggle, top-right of the rail header — visible only when the rail is
-                 expanded (pinned or hover-open); tilted when loose, upright + accent pinned. --}}
-            <button type="button" class="cbx-pin-btn cbx-pintoggle" :class="{ 'is-pinned': pinned }" @click="togglePin()"
-                    :title="pinned ? 'Unpin navigation' : 'Pin navigation open'" :aria-pressed="pinned" aria-label="Pin navigation">
-                <x-icon name="pin" class="w-[17px] h-[17px]" />
-            </button>
-        </div>
-
-        <nav class="flex-1 overflow-y-auto" style="scrollbar-width:none">
-            @foreach ($areas as $area)
-                <a href="{{ route($area['pages'][0]['route']) }}" title="{{ $area['label'] }}"
-                   class="{{ $area['key'] === $activeArea['key'] ? 'cbx-on' : '' }}">
-                    <x-icon :name="$area['icon']" class="w-[18px] h-[18px]" aria-hidden="true" />
-                    <span class="lbl">{{ $area['label'] }}</span>
-                </a>
-            @endforeach
-        </nav>
-
-        <div class="cbx-rail-foot">
-            <button type="button" class="cbx-railitem" @click="account=!account" title="{{ $me->name() }}" aria-haspopup="true" :aria-expanded="account">
-                <span class="cbx-avatar" aria-hidden="true">{{ $userInitial }}</span>
-                <span class="lbl" style="overflow:hidden;text-overflow:ellipsis">{{ $me->name() }}</span>
-            </button>
-            <div x-show="account" x-transition.opacity.duration.150ms @click.outside="account=false" x-cloak
-                 class="cbx-panel" style="position:absolute;bottom:calc(100% + 8px);left:0;min-width:230px;z-index:75;box-shadow:var(--shadow-popover);padding:6px">
-                <div style="padding:8px 10px;border-bottom:1px solid var(--border);margin-bottom:4px">
-                    <p style="font-size:13px;font-weight:600;margin:0" class="truncate">{{ $me->name() }}</p>
-                    <p style="font-size:12px;color:var(--muted-foreground);margin:2px 0 0" class="truncate">{{ $me->email() }}</p>
-                </div>
+    {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
+    <x-console.rail :areas="$railAreas" :brand-href="route('dashboard')">
+        <x-slot:foot>
+            <x-console.account-menu :name="$me->name()" :email="$me->email()" :initial="$userInitial" logout-route="logout">
                 <a href="{{ route('account') }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
                     <x-icon name="key" class="w-4 h-4" /> My account
                 </a>
                 <a href="{{ route('accounts') }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
                     <x-icon name="refresh" class="w-4 h-4" /> Switch account
                 </a>
-                <button type="button" data-theme-toggle class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
-                    <x-icon name="moon" class="w-4 h-4" /> Toggle theme
-                </button>
-                <form method="POST" action="{{ route('logout') }}">@csrf
-                    <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px;color:var(--destructive)">
-                        <x-icon name="logout" class="w-4 h-4" /> Sign out
-                    </button>
-                </form>
-            </div>
-        </div>
-    </aside>
-    {{-- Reserves the collapsed floating rail's 52px+insets of flow space so opening
-         it as an overlay never pushes the page (hidden when pinned/in-flow). --}}
-    <div class="cbx-rail-spacer" aria-hidden="true"></div>
+            </x-console.account-menu>
+        </x-slot:foot>
+    </x-console.rail>
 
     {{-- ═══ TIER 2 — contextual subnav (desktop, multi-page areas only) ═══ --}}
-    @if ($showSubnav)
-        <aside class="cbx-subnav hidden lg:flex" :class="{ 'collapsed': subnav }">
-            <div class="cbx-strip" @click="subnav=false" title="Expand">
-                <span class="vlabel">{{ $activeArea['label'] }}</span>
-                <x-icon name="chevron" class="w-3.5 h-3.5" style="transform:rotate(-90deg)" />
-            </div>
-            <div class="cbx-subnav-hd">
-                <span>{{ $activeArea['label'] }}</span>
-                <button type="button" class="cbx-subnav-toggle" @click="subnav=true" title="Collapse (⌘.)" aria-label="Collapse subnav">
-                    <x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" />
-                </button>
-            </div>
-            <nav aria-label="{{ $activeArea['label'] }}">
-                @foreach ($activeArea['pages'] as $page)
-                    <a href="{{ route($page['route']) }}" class="{{ $routeActive($page['route']) ? 'cbx-on' : '' }}">
-                        <span>{{ $page['label'] }}</span>
-                        @if ($isLocked($page))
-                            <span class="cnt" style="text-transform:uppercase;letter-spacing:0.04em;font-size:9.5px;font-weight:600;color:var(--primary)">Enterprise</span>
-                        @endif
-                    </a>
-                @endforeach
-            </nav>
-        </aside>
+    @if (count($subnavPages) > 1)
+        <x-console.subnav :label="$activeArea['label']" :pages="$subnavPages" />
     @endif
 
     {{-- ═══ Mobile drawer ═══ --}}
