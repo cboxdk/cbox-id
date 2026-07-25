@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -32,7 +33,7 @@ use Throwable;
  * user: an outage at HIBP must never prevent a legitimate signup or password
  * change. The failure is logged so operators can spot sustained problems.
  */
-final class BreachedPasswords
+final class BreachedPasswords implements BreachedPasswordCheck
 {
     public function isBreached(string $password): bool
     {

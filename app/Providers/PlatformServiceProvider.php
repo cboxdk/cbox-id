@@ -16,10 +16,12 @@ use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Listeners\RevokeTokensOnRoleChange;
+use App\Platform\BreachedPasswords;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\ImpersonationCallGuard;
+use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Illuminate\Support\Facades\Event;
@@ -40,6 +42,11 @@ final class PlatformServiceProvider extends ServiceProvider
         // by the persistent middleware, the layout, and each component boot() — scoping
         // it lets current() memoise instead of re-running ~3 identity queries per call.
         $this->app->scoped(EnvironmentAdminAuth::class);
+
+        // Replace the framework's deliberately-inert breach check with the real HIBP
+        // k-anonymity lookup, so the tenant password policy's requireBreachCheck
+        // actually consults a breach corpus rather than silently passing everything.
+        $this->app->singleton(BreachedPasswordCheck::class, BreachedPasswords::class);
 
         // Dual-attribution audit for privileged impersonation: wrap the framework
         // audit logger so EVERY recorded event (framework-emitted included) carries
