@@ -317,3 +317,59 @@ it('lets a member create a second project and drills into it empty', function ()
         ->assertSee('Product Two')
         ->assertSee('No environments yet');
 });
+
+/**
+ * The launchpad lists environments UNDER their project, so opening one — the thing
+ * people actually come here for — is a single click rather than a drill-down through
+ * a project page first.
+ */
+it('lists every environment grouped under its project, each with an Open link', function (): void {
+    ['member' => $member, 'project' => $project] = provisionAccount();
+    $staging = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
+
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id])
+        ->get(route('workspace.home'))
+        ->assertOk()
+        ->assertSee('Acme')
+        // Both environments are on the launchpad itself...
+        ->assertSee('Production')
+        ->assertSee('Staging')
+        // ...each with its own open link, plus the project's settings entry point.
+        ->assertSee(route('workspace.environment.open', $staging->id), false)
+        ->assertSee(route('workspace.projects.show', $project->id), false);
+});
+
+it('creates an environment inline from the launchpad', function (): void {
+    ['member' => $member, 'project' => $project] = provisionAccount();
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id]);
+
+    Volt::test('workspace.home')
+        ->call('startCreate', $project->id)
+        ->set('newEnvironment', 'Staging')
+        ->set('newEnvironmentType', 'sandbox')
+        ->call('addEnvironment')
+        ->assertHasNoErrors();
+
+    expect(Environment::query()->where('project_id', $project->id)->where('name', 'Staging')->exists())->toBeTrue();
+});
+
+// The inline form is a convenience, never a second authorization path.
+it('refuses an inline environment create for a project on another account', function (): void {
+    ['member' => $member] = provisionAccount();
+    $other = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        accountName: 'Rival',
+        ownerEmail: 'owner@rival.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id]);
+
+    Volt::test('workspace.home')
+        ->call('startCreate', $other->project->id)
+        ->set('newEnvironment', 'Sneaky')
+        ->call('addEnvironment')
+        ->assertStatus(404);
+
+    expect(Environment::query()->where('project_id', $other->project->id)->where('name', 'Sneaky')->exists())->toBeFalse();
+});
