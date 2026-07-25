@@ -37,11 +37,33 @@
     ]), fn (array $g): bool => $g['pages'] !== []));
 
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
+
+    // ── Shared two-tier shell (design system: guidelines/app-shell). TIER 1 = one
+    // rail icon per group; TIER 2 = the active group's pages, only when it has more
+    // than one. Several groups here are single-page (Projects, Members, Profile) —
+    // those deliberately render NO tier 2 at all.
+    $activeGroup = collect($groups)->first(
+        fn (array $g): bool => collect($g['pages'])->contains(fn (array $p): bool => $isActive($p['route']))
+    ) ?? $groups[0];
+
+    $railAreas = collect($groups)->map(fn (array $g): array => [
+        'key' => $g['label'],
+        'label' => $g['label'],
+        'icon' => $g['icon'],
+        'href' => route($g['pages'][0]['route']),
+        'active' => $g['label'] === $activeGroup['label'],
+        'current' => $g['label'] === $activeGroup['label'] && count($g['pages']) === 1,
+    ])->all();
+    $subnavPages = collect($activeGroup['pages'])->map(fn (array $p): array => [
+        'href' => route($p['route']),
+        'label' => $p['label'],
+        'active' => $isActive($p['route']),
+    ])->all();
 @endphp
 {{-- The workspace console shell — the account-member (buyer) plane. Self-contained:
      it assumes NO org-user or operator context (an account member has neither). --}}
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -55,44 +77,43 @@
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="flex h-full" x-data="{ nav: false }" @keydown.escape.window="nav=false">
-    {{-- ═══ Desktop sidebar — 2-tier grouped ═══ --}}
-    <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
-        <div class="flex items-center gap-2.5 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
-            <span class="grid place-items-center w-8 h-8 rounded-lg text-sm font-semibold shrink-0" style="background:var(--accent);color:var(--accent-fg)" aria-hidden="true">{{ $accountInitial }}</span>
-            <span class="min-w-0">
-                <span class="block text-[13px] font-semibold truncate leading-tight">{{ $account?->name ?? 'Workspace' }}</span>
-                <span class="block text-[11px] leading-tight" style="color:var(--muted-foreground)">Account</span>
-            </span>
-        </div>
+<div class="flex h-full" x-data="{
+        pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
+        subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
+        nav: false, account: false, hover: false,
+        togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; },
+        toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
+     }"
+     @keydown.escape.window="nav=false;account=false"
+     @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
-        <nav class="flex-1 overflow-y-auto p-3 space-y-3" aria-label="Account areas">
-            @foreach ($groups as $group)
-                <div class="space-y-0.5">
-                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
-                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" /> {{ $group['label'] }}
-                    </p>
-                    @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
-                           @if ($isActive($page['route'])) aria-current="page" @endif>{{ $page['label'] }}</a>
-                    @endforeach
-                </div>
-            @endforeach
-        </nav>
+    {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
+    <x-console.rail :areas="$railAreas" :brand-href="route('workspace.home')" :brand-label="$account?->name ?? 'Workspace'">
+        <x-slot:foot>
+            <x-console.account-menu :name="$member?->name ?? $member?->email ?? 'Account'" :email="$member?->email"
+                                    :initial="$accountInitial" logout-route="workspace.logout" />
+        </x-slot:foot>
+    </x-console.rail>
 
-        <div class="p-3" style="border-top:1px solid var(--sidebar-border)">
-            <div class="px-1 mb-2 min-w-0">
-                <p class="text-[13px] font-medium truncate">{{ $member?->name ?? $member?->email }}</p>
-                <p class="text-[11px] truncate" style="color:var(--muted-foreground)">{{ $member?->email }}</p>
-            </div>
-            <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
-            <form method="POST" action="{{ route('workspace.logout') }}">@csrf
-                <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
-            </form>
-        </div>
-    </aside>
+    {{-- ═══ TIER 2 — contextual subnav (desktop, multi-page areas only) ═══ --}}
+    @if (count($subnavPages) > 1)
+        <x-console.subnav :label="$activeGroup['label']" :pages="$subnavPages" />
+    @endif
 
     <div class="flex flex-col min-w-0 flex-1">
+        {{-- Slim top bar — the account name the sidebar header used to carry. Without
+             it a single-page area (Projects) would name the plane nowhere on desktop. --}}
+        <header class="hidden lg:flex cbx-topbar items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="grid place-items-center rounded-md text-[11px] font-bold shrink-0" style="width:26px;height:26px;background:var(--accent-soft);color:var(--primary)" aria-hidden="true">{{ $accountInitial }}</span>
+                <span class="min-w-0">
+                    <span class="block text-[13px] font-semibold truncate leading-tight">{{ $account?->name ?? 'Workspace' }}</span>
+                    <span class="block text-[11px] truncate leading-tight" style="color:var(--muted-foreground)">Account</span>
+                </span>
+            </div>
+            <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
+        </header>
+
         <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
             <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:48rem">{{ $slot }}</div>
         </main>
