@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.22.0] - 2026-07-25
+
+Closes the remaining review findings. Adopts `cboxdk/laravel-id` v0.56.0.
+
+**Upgrading:** behavioural on the environment admin console. It now applies the SSO
+mandate, administrative password expiry and account lockout, which it previously did
+not, and refuses a temporary password outright. An environment that mandates SSO will
+stop admitting local admin passwords there — which is what mandating SSO meant.
+
+### Fixed
+
+- **The environment admin console's three doors disagreed.** The local password form
+  checked neither the SSO mandate nor administrative password expiry, so an environment
+  mandating SSO could be entered with a local password and an expired hand-off credential
+  kept working. The signed handoff re-resolved the membership but never asked whether the
+  ACCOUNT behind it was still active, so a token minted before a suspension still opened
+  the console. Both now ask `MemberCredentialGate` — the same object the account door
+  asks — which also adds the per-subject lockout none of them had.
+- **Crafted enum props answered 500 rather than refusing.** Public Livewire props on the
+  sign-in rules page, the admin set-password panel and the inline-hooks form reached
+  `Enum::from()` unvalidated.
+- **The invite form named other accounts.** Account-member emails are globally unique, so
+  "that email already belongs to a member" let an admin of one account probe whether an
+  address belonged to another. Both cases answer identically now.
+
 ## [0.21.0] - 2026-07-25
 
 The sign-in rules page stops being a page of promises. Adopts `cboxdk/laravel-id`
