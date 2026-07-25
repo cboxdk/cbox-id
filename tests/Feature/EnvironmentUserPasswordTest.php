@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Mail\AdminAssignedPasswordMail;
-use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -26,6 +25,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an environment, pin an env-admin session, and return a target subject id. */
 function pwUserSetup(): string
 {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
@@ -33,10 +33,9 @@ function pwUserSetup(): string
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    config(['cbox-id.environments.default' => $r->environment->id]);
+    serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+    actAsEnvironmentAdmin($r->member, $r->environment->id);
 
     return app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
 }
@@ -116,6 +115,7 @@ it('requires a reason and a strong password', function (): void {
 
 // The capability gate: reaching an environment is not the same as administering it.
 it('refuses a member without the environment-admin capability', function (): void {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner2@acme.example',
@@ -123,15 +123,14 @@ it('refuses a member without the environment-admin capability', function (): voi
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    config(['cbox-id.environments.default' => $r->environment->id]);
+    serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
 
     $members = app(AccountMembers::class);
     $viewer = $members->invite($r->account->id, 'viewer@acme.example', AccountRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $viewer->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+    actAsEnvironmentAdmin($viewer, $r->environment->id);
 
     $userId = app(Subjects::class)->create('target@acme.example', 'Target', 'the-original-passphrase')->id;
 

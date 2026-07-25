@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
+use App\Platform\PlaneResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,8 +27,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class EnforcePlane
 {
     public function __construct(
-        private readonly EnvironmentContext $environments,
-        private readonly EnvironmentResolver $resolver,
+        private readonly PlaneResolver $planes,
     ) {}
 
     /**
@@ -41,52 +39,21 @@ final class EnforcePlane
         // IdP — there is no account/subject host split, so the bulkheads don't apply and
         // every plane is served. Only the multi-tenant SaaS shape (base_domains set,
         // e.g. cboxid.com) has separate account-root and tenant-subdomain hosts.
-        if (! $this->multiTenant()) {
+        if (! $this->planes->isMultiTenant()) {
+            // …but an unknown plane name is still refused, in every shape.
+            abort_unless($plane === 'account' || $plane === 'subject', 404);
+
             return $next($request);
         }
 
-        $current = $this->environments->current()?->environmentKey();
-        $default = $this->platformRootKey();
-        $onRoot = $current !== null && $default !== null && $current === $default;
-
         $allowed = match ($plane) {
-            'account' => $onRoot,
-            'subject' => ! $onRoot && $current !== null,
+            'account' => $this->planes->onAccountPlane(),
+            'subject' => $this->planes->onSubjectPlane(),
             default => false,
         };
 
         abort_unless($allowed, 404);
 
         return $next($request);
-    }
-
-    /**
-     * The multi-tenant SaaS shape — subdomain→environment routing is configured, so
-     * the account plane and the tenant planes live on separate hosts. Empty
-     * `base_domains` means a single-tenant / self-hosted deployment (one forced IdP).
-     */
-    private function multiTenant(): bool
-    {
-        $bases = config('cbox-id.environments.base_domains', []);
-
-        return is_array($bases) && $bases !== [];
-    }
-
-    /**
-     * The platform-root environment key — the account plane's host. Resolved the SAME
-     * way as the SetEnvironment middleware: the configured default
-     * (`CBOX_ID_ENVIRONMENT_DEFAULT`) wins, else the database `is_default` environment.
-     * Keeping them in lock-step is what makes "is this the account-root host?" agree
-     * with which environment the request actually resolved to.
-     */
-    private function platformRootKey(): ?string
-    {
-        $configured = config('cbox-id.environments.default');
-
-        if (is_string($configured) && $configured !== '') {
-            return $configured;
-        }
-
-        return $this->resolver->defaultEnvironment()?->environmentKey();
     }
 }

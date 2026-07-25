@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
@@ -57,6 +56,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an account + env, pin the env context + an env-admin session. */
 function crudSetup(): array
 {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
@@ -64,10 +64,9 @@ function crudSetup(): array
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    config(['cbox-id.environments.default' => $r->environment->id]);
+    serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+    actAsEnvironmentAdmin($r->member, $r->environment->id);
 
     return ['member' => $r->member, 'envId' => $r->environment->id];
 }

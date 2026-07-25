@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Platform\Contracts\AccountMembers;
 use Illuminate\Http\Request;
 
 /**
@@ -46,6 +47,7 @@ final class Impersonation
         private readonly PlatformAuth $platformAuth,
         private readonly SessionManager $sessions,
         private readonly AuditLog $audit,
+        private readonly AccountMembers $members,
     ) {}
 
     /**
@@ -175,9 +177,19 @@ final class Impersonation
         // re-pin the plane it was working in — the env-admin session for an account
         // member, the operator session otherwise.
         if ($isAccountMember) {
-            $request->session()->put(EnvironmentAdminAuth::SESSION_KEY, $marker->operator);
-            if ($marker->environmentKey !== null) {
-                $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
+            // The env-admin session is keyed on the account member's platform-root
+            // SUBJECT, so restore that — resolved fresh from the member id captured at
+            // start, never carried in the marker. A member removed (or unlinked) while
+            // the impersonation was running restores nothing: they come back to the
+            // sign-in door, not to a live control-plane session.
+            $subjectId = $this->members->find($marker->operator)?->subject_id;
+
+            if ($subjectId !== null) {
+                $request->session()->put(EnvironmentAdminAuth::SESSION_KEY, $subjectId);
+
+                if ($marker->environmentKey !== null) {
+                    $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
+                }
             }
         } else {
             $request->session()->put(OperatorAuth::SESSION_KEY, $marker->operator);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Platform\BreachedPasswords;
 use App\Platform\Enums\AttemptOutcome;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
@@ -94,6 +93,7 @@ it('refuses password sign-in when ANY of the subject\'s organizations mandates S
 });
 
 it('saves the environment baseline from the console and shows what each org gets', function (): void {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(
         new AccountBlueprint(
             accountName: 'Acme',
@@ -103,11 +103,10 @@ it('saves the environment baseline from the console and shows what each org gets
         )
     );
 
-    config(['cbox-id.environments.default' => $r->environment->id]);
+    serveOnTestHost($r->environment);
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($r->environment->id));
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+    actAsEnvironmentAdmin($r->member, $r->environment->id);
 
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-'.uniqid()));
 
@@ -129,6 +128,7 @@ it('saves the environment baseline from the console and shows what each org gets
 });
 
 it('refuses the sign-in rules page to a member without the env-admin capability', function (): void {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(
         new AccountBlueprint(
             accountName: 'Acme',
@@ -138,7 +138,7 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
         )
     );
 
-    config(['cbox-id.environments.default' => $r->environment->id]);
+    serveOnTestHost($r->environment);
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($r->environment->id));
 
@@ -146,8 +146,7 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
     $viewer = $members->invite($r->account->id, 'policy-viewer@acme.example', AccountRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $viewer->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+    actAsEnvironmentAdmin($viewer, $r->environment->id);
 
     Volt::test('environment.auth-policy')->assertForbidden();
 });

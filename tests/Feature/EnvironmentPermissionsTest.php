@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -20,6 +19,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an env + pin an env-admin session. Returns the environment id. */
 function permSetup(string $accountName = 'Acme', string $ownerEmail = 'owner@acme.example'): string
 {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: $accountName,
         ownerEmail: $ownerEmail,
@@ -27,10 +27,9 @@ function permSetup(string $accountName = 'Acme', string $ownerEmail = 'owner@acm
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    config(['cbox-id.environments.default' => $r->environment->id]);
+    serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+    actAsEnvironmentAdmin($r->member, $r->environment->id);
 
     return $r->environment->id;
 }

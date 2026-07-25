@@ -6,16 +6,18 @@ use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * "Sign in as admin" — the tenant subdomain's ADMIN door. It authenticates against
- * the ACCOUNT layer (an account member), NOT the environment's subjects: the admin
- * of a tenant is an account-layer identity. On success it establishes an
- * environment-admin session bound to THIS host's environment. The end-user sign-in
- * (for the tenant's own apps) is a separate door — no layer confusion.
+ * "Sign in as admin" — the tenant subdomain's ADMIN door. It authenticates a
+ * CONTROL-PLANE identity: an account member, whose credential is their subject in the
+ * PLATFORM-ROOT environment — never a subject inside the environment being administered.
+ * On success it establishes an environment-admin session, keyed on that subject and
+ * bound to THIS host's environment. The end-user sign-in (for the tenant's own apps) is
+ * a separate door — no layer confusion.
  *
  * Two steps in one component (server-held pending id, no session marker): password,
  * then TOTP/recovery when the member has a confirmed second factor — never weaker
@@ -94,10 +96,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
             return;
         }
 
-        $this->establish($auth, $member->id, $hostEnv);
+        $this->establish($auth, $member, $hostEnv);
     }
 
-    public function verifyMfa(AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth): void
+    public function verifyMfa(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth): void
     {
         $this->validate(['code' => 'required|string']);
 
@@ -133,12 +135,35 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
             return;
         }
 
-        $this->establish($auth, $this->pendingMemberId, $hostEnv);
+        $member = $members->find($this->pendingMemberId);
+
+        if ($member === null) {
+            $this->step = 'password';
+
+            return;
+        }
+
+        $this->establish($auth, $member, $hostEnv);
     }
 
-    private function establish(EnvironmentAdminAuth $auth, string $memberId, string $environmentId): void
+    /**
+     * The admin session is keyed on the member's PLATFORM-ROOT SUBJECT, because that is
+     * the credential of record. A member without one has no control-plane identity to
+     * bind (the first-install bootstrap window only) and is refused rather than being
+     * given a session keyed on something the guard cannot resolve.
+     */
+    private function establish(EnvironmentAdminAuth $auth, AccountMember $member, string $environmentId): void
     {
-        $auth->establish($memberId, $environmentId);
+        $subjectId = $member->subject_id;
+
+        if ($subjectId === null) {
+            $this->step = 'password';
+            $this->addError('email', 'Those credentials do not grant admin access to this environment.');
+
+            return;
+        }
+
+        $auth->establish($subjectId, $environmentId);
         $this->redirect(session()->pull('url.intended', route('environment.home')), navigate: false);
     }
 }; ?>

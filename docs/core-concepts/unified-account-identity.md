@@ -114,11 +114,36 @@ tests must keep passing through the rework.
 
 ## Consequences
 
-- `AccountAuth` and its session keys are removed; `PlatformAuth` serves both planes.
+- `AccountAuth` stops being a credential store and becomes a session bridge only. The
+  password is verified against the member's subject; the SSO mandate is
+  `PlatformAuth::passwordLoginAllowedFor()`, the same method the tenant door calls; an
+  administratively-issued temporary password expires on both doors alike. The account
+  *session* stays distinct from the subject session — the account host must not mint a
+  credential for a plane it does not serve — but nothing about *how you prove who you
+  are* is implemented twice any more.
 - The `plane:account` / `plane:subject` split stops being about *which credential store*
-  and becomes purely about *which host resolves to which environment*.
+  and becomes purely about *which host resolves to which environment*. `PlaneResolver`
+  answers that question once, for both the route gate and the post-authentication
+  landings, so the two can never disagree about where a login is allowed to land.
 - `AccountProvisioner` creates the account's organization in tenant 1 alongside the
   account, and the install flow bootstraps tenant 1 and the platform organization before
   the first account exists.
 - The workspace sign-in becomes the subject sign-in, so it inherits identifier-first
   discovery, SSO, passkeys and magic links with no additional work.
+
+## What is still on the member, not the subject
+
+Two things deliberately did NOT move in the cutover, because moving them would have
+weakened something while the rest was being unified:
+
+- **Account-plane MFA and passkeys** (`AccountMemberMfa`, `AccountPasskeys`) still hang
+  off the account member. Routing the workspace login at subject MFA instead would have
+  orphaned every factor a member had already enrolled — a member with TOTP would stop
+  being challenged for it. The account factor is therefore still enforced, and it is
+  enforced on the NEW ways in too: SSO and magic-link landings hold a member with a
+  confirmed factor at the challenge rather than treating a strong first factor as
+  permission to skip the second one. Folding these onto the subject is a later batch,
+  and it is a migration, not a switch.
+- **The member's own password column.** It is still written, but it is read in exactly
+  one situation: a member created before the deployment had a platform root, where there
+  was nowhere for the subject to live. Everything else asks the subject.

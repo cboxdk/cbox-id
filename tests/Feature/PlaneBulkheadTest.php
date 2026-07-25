@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\EnforcePlane;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -24,7 +25,7 @@ function planeGate(?string $current, ?string $default): EnforcePlane
     $resolver = Mockery::mock(EnvironmentResolver::class);
     $resolver->shouldReceive('defaultEnvironment')->andReturn($default !== null ? GenericEnvironment::of($default) : null);
 
-    return new EnforcePlane($ctx, $resolver);
+    return new EnforcePlane(new PlaneResolver($ctx, $resolver));
 }
 
 function passesPlane(EnforcePlane $gate, string $plane): bool
@@ -74,7 +75,7 @@ it('does NOT split planes in a single-tenant / self-hosted deployment (no base_d
     $ctx->shouldReceive('current')->andReturn(GenericEnvironment::of('the_only_env'));
     $resolver = Mockery::mock(EnvironmentResolver::class);
     $resolver->shouldReceive('defaultEnvironment')->andReturn(GenericEnvironment::of('the_only_env'));
-    $gate = new EnforcePlane($ctx, $resolver);
+    $gate = new EnforcePlane(new PlaneResolver($ctx, $resolver));
 
     expect(passesPlane($gate, 'subject'))->toBeTrue()
         ->and(passesPlane($gate, 'account'))->toBeTrue();

@@ -427,6 +427,12 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
     Route::post('/passkeys/login/options', [WorkspacePasskeyController::class, 'loginOptions'])->name('workspace.passkeys.login.options');
     Route::post('/passkeys/login', [WorkspacePasskeyController::class, 'login'])->name('workspace.passkeys.login');
 
+    // Magic-link sign-in on the ACCOUNT plane. The account plane inherits this from the
+    // subject plane for free — account members ARE subjects in the platform root — but it
+    // needs its own door: /magic/{token} is `plane:subject` and 404s on this host, and
+    // the redemption must bridge into an account session rather than a subject one.
+    Route::get('/magic/{token}', [MagicLinkController::class, 'redeemForWorkspace'])->name('workspace.magic.redeem');
+
     // Invitation acceptance — guest-accessible but gated by a signed URL (the token
     // is the signature; no token table needed). The invitee sets their password and
     // is signed in. The component locks the member id so it can't be swapped after

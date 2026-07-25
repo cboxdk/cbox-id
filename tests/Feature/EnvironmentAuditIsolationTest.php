@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -28,6 +27,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
  */
 it('shows an environment admin only their own environment\'s audit trail', function (): void {
     // Victim environment, with an entry that must never be visible elsewhere.
+    platformRootEnvironment();
     $victim = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Victim Co',
         ownerEmail: 'owner@victim.example',
@@ -43,6 +43,7 @@ it('shows an environment admin only their own environment\'s audit trail', funct
     ));
 
     // Attacker signs up for their own environment — no special privilege.
+    platformRootEnvironment();
     $attacker = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Attacker Co',
         ownerEmail: 'owner@attacker.example',
@@ -50,10 +51,9 @@ it('shows an environment admin only their own environment\'s audit trail', funct
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    config(['cbox-id.environments.default' => $attacker->environment->id]);
+    serveOnTestHost($attacker->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $attacker->member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $attacker->environment->id);
+    actAsEnvironmentAdmin($attacker->member, $attacker->environment->id);
 
     $actions = fn ($component) => collect($component->viewData('entries')->items())
         ->pluck('action')
