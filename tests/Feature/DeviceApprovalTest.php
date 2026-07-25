@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\DeviceAuthorization;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Models\DeviceCode;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
@@ -82,7 +83,7 @@ it('denies a device', function () {
         ->call('deny')
         ->assertSet('outcome', 'denied');
 
-    expect(DeviceCode::query()->value('status'))->toBe('denied');
+    expect(DeviceCode::query()->value('status'))->toBe(GrantPollStatus::Denied);
 });
 
 it('prefills and upper-cases the code from the verification_uri_complete link', function () {

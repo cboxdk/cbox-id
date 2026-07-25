@@ -18,7 +18,7 @@
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^0.1.0",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": ">=0.45 <1.0",
+        "cboxdk/laravel-id": ">=0.51 <1.0",
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-queue-metrics": "^3.2",
         "cboxdk/laravel-risk": "^1.1",
@@ -70,10 +70,10 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test"
+            "@php -d memory_limit=1G artisan test"
         ],
         "analyse": [
-            "@php vendor/bin/phpstan analyse --no-progress"
+            "@php vendor/bin/phpstan analyse --no-progress --memory-limit=1G"
         ],
         "license-check": "@php bin/check-licenses.php",
         "sbom": "@php bin/generate-sbom.php",

@@ -9,6 +9,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -63,7 +64,7 @@ it('denies a pending agent request from the environment console', function (): v
 
     // Denial is the operator's safe half of the pair: it withholds access.
     expect(BackchannelAuthRequest::query()->whereKey($pending->requestId)->value('status'))
-        ->toBe('denied');
+        ->toBe(GrantPollStatus::Denied);
 });
 
 /**

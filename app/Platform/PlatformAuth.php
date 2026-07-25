@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -58,6 +60,8 @@ final class PlatformAuth
         private readonly Mfa $mfa,
         private readonly OtpService $otp,
         private readonly Hasher $hasher,
+        private readonly AdminPasswords $adminPasswords,
+        private readonly AuthPolicies $policies,
     ) {}
 
     /**
@@ -83,6 +87,20 @@ final class PlatformAuth
         }
 
         if (! $this->subjects->verifyPassword($subject->id, $password)) {
+            return AttemptOutcome::Invalid;
+        }
+
+        // A temporary password an administrator issued stops admitting anyone once its
+        // deadline passes, even though the hash still matches — otherwise a hand-off
+        // credential lingers as a permanent second way in.
+        if ($this->adminPasswords->hasExpired($subject->id)) {
+            return AttemptOutcome::Invalid;
+        }
+
+        // A tenant that mandates SSO means it: a local password must not be a way around
+        // the identity provider they chose. Checked AFTER the credential verifies so the
+        // refusal reveals nothing about whether the password was right.
+        if (! $this->passwordLoginAllowedFor($subject->id)) {
             return AttemptOutcome::Invalid;
         }
 
@@ -154,6 +172,24 @@ final class PlatformAuth
         $this->establish($request, $pending['subject'], ['pwd', 'otp']);
 
         return true;
+    }
+
+    /**
+     * Whether local password sign-in is still permitted for this subject.
+     *
+     * A subject belongs to organizations, each of which may mandate SSO. If ANY of them
+     * requires it, password sign-in is refused — the strictest membership wins, so a
+     * user cannot sidestep a mandating tenant by holding a second, laxer membership.
+     */
+    private function passwordLoginAllowedFor(string $subjectId): bool
+    {
+        foreach ($this->memberships->forUser($subjectId) as $membership) {
+            if (! $this->policies->resolve($membership->organization_id)->sso->allowsPasswordLogin()) {
+                return false;
+            }
+        }
+
+        return $this->policies->resolve()->sso->allowsPasswordLogin();
     }
 
     private function timingHash(): string

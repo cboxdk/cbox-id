@@ -37,6 +37,21 @@ final class EnvironmentAdminAuth
     ) {}
 
     /**
+     * Per-request memo, KEYED ON THE INPUTS it was computed from. current() is consulted
+     * on every request by the persistent middleware, the layout, and each component's
+     * boot() — three resolutions of ~3 identity queries each, for one answer.
+     *
+     * The key is deliberate rather than a plain "computed once" flag: the host-resolved
+     * environment can legitimately change within a request ({@see EnvironmentContext::runAs()}),
+     * and the anti-bleed guarantee below is a security invariant — a memo that outlived a
+     * context switch would answer for the PREVIOUS environment. Re-deriving the key each
+     * call keeps the invariant exact while still collapsing the repeat calls.
+     */
+    private ?string $memoKey = null;
+
+    private ?AccountMember $memoMember = null;
+
+    /**
      * Establish an environment-admin session for a member on a specific environment.
      * The single place this session is created — the handoff and the admin-login
      * paths can never diverge.
@@ -46,11 +61,16 @@ final class EnvironmentAdminAuth
         session()->put(self::SESSION_KEY, $memberId);
         session()->put(self::ENV_KEY, $environmentId);
         session()->regenerate();
+
+        // The session just changed under us; drop any memoised resolution.
+        $this->memoKey = null;
+        $this->memoMember = null;
     }
 
     /**
      * The account member administering the CURRENT (host-resolved) environment, or
-     * null. Every guard consults this, never the session keys directly.
+     * null. Every guard consults this, never the session keys directly. Memoised per
+     * request (see {@see $resolved}).
      */
     public function current(): ?AccountMember
     {
@@ -58,6 +78,25 @@ final class EnvironmentAdminAuth
         $boundEnv = session()->get(self::ENV_KEY);
         $hostEnv = $this->environments->current()?->environmentKey();
 
+        // Memo hit only when every input is identical to the one we resolved from.
+        $key = implode("\0", [
+            is_string($memberId) ? $memberId : '',
+            is_string($boundEnv) ? $boundEnv : '',
+            $hostEnv ?? '',
+        ]);
+
+        if ($this->memoKey === $key) {
+            return $this->memoMember;
+        }
+
+        $this->memoMember = $this->resolve($memberId, $boundEnv, $hostEnv);
+        $this->memoKey = $key;
+
+        return $this->memoMember;
+    }
+
+    private function resolve(mixed $memberId, mixed $boundEnv, ?string $hostEnv): ?AccountMember
+    {
         // Anti-bleed: the session's environment must be the one this host resolves to.
         if (! is_string($memberId) || $memberId === ''
             || ! is_string($boundEnv) || $boundEnv === ''

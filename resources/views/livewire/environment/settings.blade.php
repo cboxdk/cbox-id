@@ -71,7 +71,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Settings'])] class e
                     <p class="text-xs" style="color:var(--faint)">{{ $label }}</p>
                     <div class="mt-1 flex items-center gap-2">
                         <code class="flex-1 min-w-0 truncate mono text-sm">{{ $value }}</code>
-                        <button type="button" class="btn btn-ghost btn-sm shrink-0" data-copy="{{ $value }}" onclick="navigator.clipboard.writeText(this.getAttribute('data-copy'))">Copy</button>
+                        <x-copy-button :value="$value" class="btn-ghost" />
                     </div>
                 </div>
             @endforeach

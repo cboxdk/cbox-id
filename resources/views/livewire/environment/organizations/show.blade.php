@@ -214,9 +214,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $memberships->add($org->id, $user->id, $this->memberRole);
 
         // Grant the chosen access roles, ignoring any posted id that isn't genuinely
-        // assignable in this org (deny-by-default).
+        // assignable in this org (deny-by-default). Resolve the assignable set once
+        // rather than re-querying the catalog per selected role.
+        $assignableIds = $catalog->assignable($org->id)->pluck('id')->all();
         foreach ($this->memberAccessRoles as $roleId) {
-            if ($catalog->isAssignable($org->id, $roleId)) {
+            if (in_array($roleId, $assignableIds, true)) {
                 $roles->assign($org->id, $user->id, $roleId, GrantSource::Manual);
             }
         }
@@ -308,8 +310,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         // ({@see \App\Http\Controllers\InvitationController}), so the invitee lands
         // already holding them. Only genuinely-assignable ids are parked.
         $catalog = app(OrgAccessRoles::class);
+        $assignableIds = $catalog->assignable($org->id)->pluck('id')->all();
         foreach ($this->inviteAccessRoles as $roleId) {
-            if ($catalog->isAssignable($org->id, $roleId)) {
+            if (in_array($roleId, $assignableIds, true)) {
                 InvitationRoleGrant::query()->firstOrCreate([
                     'organization_id' => $org->id,
                     'email' => $this->inviteEmail,

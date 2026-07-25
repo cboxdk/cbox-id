@@ -93,8 +93,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New outbound connect
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>
             <label class="label" for="name">Name</label>
-            <input wire:model="name" id="name" type="text" class="input" placeholder="Downstream app" autofocus>
-            @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Downstream app" autofocus>
+            @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
         <div>
             <label class="label" for="organizationId">Organization</label>
@@ -109,8 +109,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New outbound connect
         </div>
         <div>
             <label class="label" for="baseUrl">SCIM base URL</label>
-            <input wire:model="baseUrl" id="baseUrl" type="url" class="input mono" placeholder="https://app.example.com/scim/v2">
-            @error('baseUrl') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('baseUrl') aria-invalid="true" aria-describedby="baseUrl-error" @enderror wire:model="baseUrl" id="baseUrl" type="url" class="input mono" placeholder="https://app.example.com/scim/v2">
+            @error('baseUrl') <p id="baseUrl-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
         <div>
             <label class="label" for="scheme">Auth scheme</label>
