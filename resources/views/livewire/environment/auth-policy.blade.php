@@ -108,6 +108,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
     <x-page-header title="Sign-in rules" subtitle="The baseline every organization in this environment inherits. An organization can ask for stricter rules — never looser." />
 
     <form wire:submit="save" class="rounded-xl border p-5 space-y-5" style="border-color:var(--border)">
+        {{-- Honesty over completeness: three of these are stored and inherited but nothing
+             reads them yet. A control that says "Required" and isn't is worse than one
+             that admits it, so they are marked rather than quietly presented as live. --}}
+        <p class="text-xs rounded-lg px-3 py-2" style="color:var(--warning-strong);background:var(--warning-soft)">
+            Password length, breach checking and reuse are enforced. Rotation, lockout and two-factor
+            are saved and inherited but <strong>not yet enforced at sign-in</strong> — don't rely on them as controls.
+        </p>
+
         <div class="grid sm:grid-cols-2 gap-5">
             <div>
                 <label for="min-length" class="text-sm font-medium">Minimum password length</label>
@@ -125,7 +133,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
             </div>
 
             <div>
-                <label for="max-age" class="text-sm font-medium">Force a change after</label>
+                <label for="max-age" class="text-sm font-medium">Force a change after <span class="badge badge-warn ml-1">Not enforced yet</span></label>
                 <input id="max-age" wire:model="maxAgeDays" type="number" min="1" max="3650" class="input mt-1.5" placeholder="Never"
                        @error('maxAgeDays') aria-invalid="true" aria-describedby="max-age-error" @enderror>
                 <p class="mt-1.5 text-xs" style="color:var(--faint)">Days. Leave empty to never force a rotation.</p>
@@ -133,7 +141,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
             </div>
 
             <div>
-                <label for="lockout" class="text-sm font-medium">Lock out after</label>
+                <label for="lockout" class="text-sm font-medium">Lock out after <span class="badge badge-warn ml-1">Not enforced yet</span></label>
                 <input id="lockout" wire:model="lockoutThreshold" type="number" min="3" max="100" class="input mt-1.5" placeholder="Off"
                        @error('lockoutThreshold') aria-invalid="true" aria-describedby="lockout-error" @enderror>
                 <p class="mt-1.5 text-xs" style="color:var(--faint)">Failed attempts. Leave empty to disable lockout.</p>
@@ -141,7 +149,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
             </div>
 
             <div>
-                <label for="mfa" class="text-sm font-medium">Two-factor authentication</label>
+                <label for="mfa" class="text-sm font-medium">Two-factor authentication <span class="badge badge-warn ml-1">Not enforced yet</span></label>
                 <select id="mfa" wire:model="mfa" class="input mt-1.5">
                     <option value="off">Not offered</option>
                     <option value="optional">Optional — users may enrol</option>
