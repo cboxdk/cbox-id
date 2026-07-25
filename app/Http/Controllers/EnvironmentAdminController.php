@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\MemberCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
@@ -31,6 +32,7 @@ final class EnvironmentAdminController extends Controller
         EnvironmentContext $environments,
         AccountMembers $members,
         EnvironmentAdminAuth $auth,
+        MemberCredentialGate $gate,
     ): RedirectResponse {
         $token = $request->query('token');
         $grant = is_string($token) ? $handoff->verify($token) : null;
@@ -52,8 +54,21 @@ final class EnvironmentAdminController extends Controller
 
         if ($member === null
             || ! $member->isActive()
+            // The ACCOUNT, not just the member. An account suspended in the seconds since
+            // the mint — or by an operator while the tab sat open — must not still redeem
+            // into a live admin console. Every other resolve path re-checks this
+            // (AccountAuth::current(), the workspace gate); this one did not.
+            || ! ($member->account?->isActive() ?? false)
             || ! $member->role->canManageEnvironments()
             || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {
+            return redirect()->route('admin.login');
+        }
+
+        // The same rules the doors apply to a password. A handoff is not a credential the
+        // member just proved, but it stands in for one, and a member whose SSO mandate or
+        // administrative password expiry says "no local password" must not get in through
+        // a token minted before that became true either.
+        if (! $gate->admits($member) || $gate->owesPasswordChange($member)) {
             return redirect()->route('admin.login');
         }
 

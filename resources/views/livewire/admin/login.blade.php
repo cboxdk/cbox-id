@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\MemberCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -56,7 +57,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         }
     }
 
-    public function authenticate(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth): void
+    public function authenticate(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth, MemberCredentialGate $gate): void
     {
         $this->validate(['email' => 'required|email', 'password' => 'required|string']);
 
@@ -68,6 +69,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         }
 
         $member = $members->findByEmail($this->email);
+
+        // The per-subject lockout binds here too, and is asked BEFORE the credential so a
+        // locked account cannot be used to tell a right guess from a wrong one.
+        if ($gate->isLockedOut($member)) {
+            RateLimiter::hit($key);
+            $this->addError('email', 'Those credentials do not grant admin access to this environment.');
+
+            return;
+        }
+
         $ok = $member !== null && $members->verifyPassword($member->id, $this->password);
 
         // Constant-cost miss path — no enumeration timing oracle.
@@ -84,10 +95,37 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
 
         if (! $ok || ! $hasAccess || $member === null) {
             RateLimiter::hit($key);
+            $gate->recordFailure($member);
             $this->addError('email', 'Those credentials do not grant admin access to this environment.');
 
             return;
         }
+
+        // The rules a verified password still has to satisfy — the SSO mandate and the
+        // expiry on an administratively-issued temporary password. This door checked
+        // NEITHER, so an environment mandating SSO could be entered with a local password
+        // here, and an expired hand-off credential kept working. Same gate the account
+        // door asks, so the two cannot drift apart again.
+        if (! $gate->admits($member)) {
+            RateLimiter::hit($key);
+            $this->addError('email', 'Those credentials do not grant admin access to this environment.');
+
+            return;
+        }
+
+        // A password the administrator who issued it also knows has no business opening
+        // the highest-privilege surface on a tenant. The console planes HOLD such a
+        // member on a change page; this one refuses, because there is no page here on
+        // which an account credential can be changed. Said plainly rather than as the
+        // uniform failure above — the person is already authenticated, so there is
+        // nothing left to disclose, and "wrong credentials" would send them in circles.
+        if ($gate->owesPasswordChange($member)) {
+            $this->addError('email', 'This password was issued by an administrator and must be replaced before it can be used here. Change it from your account console first.');
+
+            return;
+        }
+
+        $gate->clearFailures($member);
 
         if ($mfa->hasConfirmedTotp($member->id)) {
             $this->pendingMemberId = $member->id;

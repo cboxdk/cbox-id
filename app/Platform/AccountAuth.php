@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
-use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
-use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 
 /**
@@ -54,9 +52,7 @@ final class AccountAuth
     public function __construct(
         private readonly AccountMembers $members,
         private readonly AccountMemberMfa $mfa,
-        private readonly PlatformAuth $platform,
-        private readonly AdminPasswords $adminPasswords,
-        private readonly PlatformRoot $platformRoot,
+        private readonly MemberCredentialGate $gate,
     ) {}
 
     /**
@@ -71,6 +67,12 @@ final class AccountAuth
     {
         $member = $this->members->findByEmail($email);
 
+        // The lockout is asked BEFORE the credential, or a locked account still answers
+        // differently for a right guess than for a wrong one.
+        if ($this->gate->isLockedOut($member)) {
+            return AttemptOutcome::Invalid;
+        }
+
         $verified = $member !== null && $this->members->verifyPassword($member->id, $password);
 
         // Run a dummy verify when the email is unknown so the miss path stays
@@ -81,16 +83,19 @@ final class AccountAuth
         }
 
         if (! $verified) {
+            $this->gate->recordFailure($member);
+
             return AttemptOutcome::Invalid;
         }
 
         // The credential verified against the SUBJECT. The rules that govern whether a
-        // verified password is still a way in are the subject plane's rules, applied
-        // here through the subject plane's own code — checked AFTER the credential so a
-        // refusal reveals nothing about whether the password was right.
-        if (! $this->passwordSignInAllowed($member)) {
+        // verified password is still a way in live in one place both doors ask — checked
+        // AFTER the credential so a refusal reveals nothing about whether it was right.
+        if (! $this->gate->admits($member)) {
             return AttemptOutcome::Invalid;
         }
+
+        $this->gate->clearFailures($member);
 
         if ($this->mfa->hasConfirmedTotp($member->id)) {
             session()->put(self::PENDING_KEY, $member->id);
@@ -101,38 +106,6 @@ final class AccountAuth
         $this->establish($member->id);
 
         return AttemptOutcome::Ok;
-    }
-
-    /**
-     * Whether a verified password is still an admissible way in for this member.
-     *
-     * Both gates belong to the subject plane and are asked of the subject plane:
-     *
-     *  - An administratively-issued temporary password stops admitting anyone once its
-     *    deadline passes, even though the hash still matches — otherwise a hand-off
-     *    credential lingers as a permanent second way in.
-     *  - A tenant that mandates SSO means it. The account's organization lives in the
-     *    platform root like any other, so its policy applies to the workspace door;
-     *    without this, "require SSO" on an account could be sidestepped by signing in
-     *    at the account door instead of the tenant one.
-     *
-     * A member with no subject is the first-install bootstrap window (nowhere for the
-     * subject to live yet), and there is no policy to consult — the founder gets in.
-     */
-    private function passwordSignInAllowed(AccountMember $member): bool
-    {
-        $subjectId = $member->subject_id;
-
-        if ($subjectId === null) {
-            return true;
-        }
-
-        // Policies and memberships are environment-owned, so this must be read in the
-        // platform root's scope — the environment the account's people actually live in.
-        return $this->platformRoot->run(
-            fn (): bool => ! $this->adminPasswords->hasExpired($subjectId)
-                && $this->platform->passwordLoginAllowedFor($subjectId),
-        ) === true;
     }
 
     /**
