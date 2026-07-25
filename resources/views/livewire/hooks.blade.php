@@ -9,12 +9,12 @@ use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
+use Illuminate\Validation\Rule;
 
 new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class extends Component
 {
     public string $hook = 'token_minting';
 
-    #[Validate('required|url|max:500')]
     public string $url = '';
 
     public bool $creating = false;
@@ -29,7 +29,15 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 
     public function register(ExternalActions $actions): void
     {
-        $this->validate();
+        // Both are public props, so a crafted wire request can set either to anything.
+        // `hook` especially: without the enum rule the HookPoint::from() below throws
+        // ValueError and the console 500s instead of refusing the input. Stated here in
+        // one place rather than split between attributes and this call, so the rules
+        // cannot drift apart.
+        $this->validate([
+            'hook' => ['required', Rule::enum(HookPoint::class)],
+            'url' => ['required', 'url', 'max:500'],
+        ]);
 
         $registered = $actions->register(HookPoint::from($this->hook), $this->url, $this->orgId());
 

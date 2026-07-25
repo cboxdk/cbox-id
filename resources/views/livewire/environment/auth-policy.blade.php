@@ -10,6 +10,7 @@ use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Illuminate\Validation\Rule;
 
 /**
  * Environment control plane › Sign-in rules.
@@ -61,6 +62,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
             'maxAgeDays' => ['nullable', 'integer', 'min:1', 'max:3650'],
             'reuseHistory' => ['required', 'integer', 'min:0', 'max:24'],
             'lockoutThreshold' => ['nullable', 'integer', 'min:3', 'max:100'],
+            // Public props, so a crafted wire request can set anything. Without these,
+            // the ::from() below throws ValueError and the console 500s instead of
+            // showing a field error.
+            'mfa' => ['required', Rule::enum(MfaRequirement::class)],
+            'sso' => ['required', Rule::enum(SsoEnforcement::class)],
         ], attributes: [
             'minLength' => 'minimum length',
             'maxAgeDays' => 'maximum age',

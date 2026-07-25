@@ -59,8 +59,18 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
             'inviteRole' => ['required', Rule::in(array_map(fn (AccountRole $r) => $r->value, AccountRole::assignable()))],
         ]);
 
+        // findByEmail is GLOBAL — account-member emails are unique across every account
+        // ("one email, one root login") — so the old message, "that email already belongs
+        // to a member", let an admin of one account probe whether any address belonged to
+        // ANOTHER. One message for both cases closes that: a member of THIS account is
+        // already visible on the roster below, so nothing is lost to the person entitled
+        // to know, and nothing is disclosed to the person who is not.
+        //
+        // A residual signal remains — the invitation fails, so the address exists
+        // somewhere — and that is inherent to globally-unique emails, not something a
+        // message can hide. Rate limiting and the audit trail are what bound it.
         if ($members->findByEmail($this->inviteEmail) !== null) {
-            $this->addError('inviteEmail', 'That email already belongs to a member.');
+            $this->addError('inviteEmail', 'That email cannot be invited to this workspace.');
 
             return;
         }

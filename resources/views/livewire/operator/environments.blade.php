@@ -139,7 +139,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
             }
 
             try {
-                app(PasswordPolicyGuard::class)->assertAcceptable($this->adminPassword);
+                // No subject exists yet — this call CREATES the admin — so the
+                // no-subject variant, named rather than implied by an omitted argument.
+                app(PasswordPolicyGuard::class)->assertAcceptableForNewSubject($this->adminPassword);
             } catch (PolicyViolation $violation) {
                 return ['adminPassword', $violation->getMessage()];
             }

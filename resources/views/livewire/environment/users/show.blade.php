@@ -31,6 +31,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Illuminate\Validation\Rule;
 
 /**
  * Environment control plane › Users › detail. The full, deep-linkable lifecycle for
@@ -193,6 +194,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             // belongs to — an administrator is bound by the rules they set.
             'pwPassword' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for($user->id)],
             'pwReason' => ['required', 'string', 'max:200'],
+            // Public props: a crafted wire request can set anything, and the ::from()
+            // below would throw ValueError rather than refuse the input.
+            'pwMode' => ['required', 'in:temporary,permanent'],
+            'pwDelivery' => ['required', 'in:reveal,email'],
+            'pwRevoke' => ['required', Rule::enum(PasswordRevocationScope::class)],
+            'pwExpiryHours' => ['required', 'integer', 'min:0', 'max:8760'],
         ], attributes: ['pwPassword' => 'password', 'pwReason' => 'reason']);
 
         $temporary = $this->pwMode === 'temporary';
