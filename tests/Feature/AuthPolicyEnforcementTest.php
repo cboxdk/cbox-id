@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\BreachedPasswords;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
@@ -11,11 +12,18 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\NeverBreachedCheck;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -83,4 +91,63 @@ it('refuses password sign-in when ANY of the subject\'s organizations mandates S
         'multi@acme.test',
         'a-strong-unbreached-passphrase',
     ))->toBe(AttemptOutcome::Invalid);
+});
+
+it('saves the environment baseline from the console and shows what each org gets', function (): void {
+    $r = app(AccountProvisioner::class)->provision(
+        new AccountBlueprint(
+            accountName: 'Acme',
+            ownerEmail: 'policy-owner@acme.example',
+            ownerName: 'Owner',
+            ownerPassword: 'a-strong-unbreached-passphrase',
+        )
+    );
+
+    config(['cbox-id.environments.default' => $r->environment->id]);
+    app(EnvironmentContext::class)
+        ->set(GenericEnvironment::of($r->environment->id));
+    session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
+    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+
+    $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-'.uniqid()));
+
+    Volt::test('environment.auth-policy')
+        ->set('minLength', 18)
+        ->set('mfa', 'required')
+        ->set('sso', 'preferred')
+        ->set('reuseHistory', 3)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $effective = app(AuthPolicies::class)->resolve($org->id);
+
+    // Saved, and inherited by an organization that set no override of its own.
+    expect($effective->minLength)->toBe(18)
+        ->and($effective->mfa->value)->toBe('required')
+        ->and($effective->sso->value)->toBe('preferred')
+        ->and($effective->reuseHistory)->toBe(3);
+});
+
+it('refuses the sign-in rules page to a member without the env-admin capability', function (): void {
+    $r = app(AccountProvisioner::class)->provision(
+        new AccountBlueprint(
+            accountName: 'Acme',
+            ownerEmail: 'policy-owner2@acme.example',
+            ownerName: 'Owner',
+            ownerPassword: 'a-strong-unbreached-passphrase',
+        )
+    );
+
+    config(['cbox-id.environments.default' => $r->environment->id]);
+    app(EnvironmentContext::class)
+        ->set(GenericEnvironment::of($r->environment->id));
+
+    $members = app(AccountMembers::class);
+    $viewer = $members->invite($r->account->id, 'policy-viewer@acme.example', AccountRole::Viewer);
+    $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
+
+    session()->put(EnvironmentAdminAuth::SESSION_KEY, $viewer->id);
+    session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+
+    Volt::test('environment.auth-policy')->assertForbidden();
 });

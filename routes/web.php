@@ -356,6 +356,7 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/analytics', 'environment.analytics')->name('environment.analytics');
         Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');
         Volt::route('/settings', 'environment.settings')->name('environment.settings');
+        Volt::route('/sign-in-rules', 'environment.auth-policy')->name('environment.auth-policy');
         Volt::route('/appearance', 'environment.appearance')->name('environment.appearance');
 
         // Step into a subject's session for support (env-admin actor). Authorized in

@@ -73,6 +73,7 @@
         ]],
         ['label' => 'Settings', 'icon' => 'settings', 'pages' => [
             ['route' => 'environment.settings', 'label' => 'Settings'],
+            ['route' => 'environment.auth-policy', 'label' => 'Sign-in rules'],
             ['route' => 'environment.appearance', 'label' => 'Appearance'],
         ]],
     ];
