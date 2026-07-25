@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -28,6 +29,7 @@ final class Authenticate
         private readonly Organizations $organizations,
         private readonly Memberships $memberships,
         private readonly CurrentUser $current,
+        private readonly AdminPasswords $adminPasswords,
     ) {}
 
     /**
@@ -111,6 +113,38 @@ final class Authenticate
 
         $this->current->set($subject, $session, $organization, $role);
 
+        if (! $optional && $this->mustChangePassword($request, $subject->id)) {
+            return redirect()->route('password.change');
+        }
+
         return $next($request);
+    }
+
+    /**
+     * A temporary password carries a standing requirement to replace it. Enforcing that
+     * at the point of SIGN-IN would only cover the password door — an administrator can
+     * hand out a temporary password to someone who then arrives by magic link, SSO or an
+     * already-open session, and the requirement would evaporate. Holding every
+     * authenticated request instead means the only way past it is to satisfy it.
+     *
+     * Before this, `requiresChange()` was read in exactly one place: to render a line of
+     * prose on the user's console page. "Temporary" described nothing, and a temporary
+     * password with no expiry was simply a permanent one the administrator also knew.
+     */
+    private function mustChangePassword(Request $request, string $subjectId): bool
+    {
+        // The change page itself, and the way out — or the hold is a lock-in.
+        if ($request->routeIs('password.change', 'logout')) {
+            return false;
+        }
+
+        // OIDC prompt=none must answer the CLIENT with error=login_required rather than
+        // redirect a user agent that was told not to interact. The authorize endpoint
+        // makes that call itself; a redirect from here would break the contract.
+        if ($request->query('prompt') === 'none') {
+            return false;
+        }
+
+        return $this->adminPasswords->requiresChange($subjectId);
     }
 }

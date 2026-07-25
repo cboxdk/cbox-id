@@ -190,6 +190,11 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/accounts', 'auth.accounts')->name('accounts');
     Volt::route('/accounts/add', 'auth.login')->name('accounts.add');
 
+    // The forced password change. Inside the authenticated group on purpose: the hold
+    // that sends people here (see {@see \App\Http\Middleware\Authenticate}) exempts this
+    // one route, so it is reachable only by someone who is signed in and owes a change.
+    Volt::route('/password/change', 'auth.change-password')->name('password.change');
+
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
     Volt::route('/account', 'account')->name('account');
@@ -458,6 +463,10 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
 
         // Open an environment → signed handoff → its own admin console (no second login).
         Route::get('/open/{environment}', [WorkspaceController::class, 'openEnvironment'])->name('workspace.environment.open');
+
+        // The forced password change — the one route the temporary-password hold lets
+        // through, so it is reachable only by a member who owes one.
+        Volt::route('/password/change', 'workspace.change-password')->name('workspace.password.change');
 
         Volt::route('/members', 'workspace.members')->name('workspace.members');
         Volt::route('/activity', 'workspace.activity')->name('workspace.activity');

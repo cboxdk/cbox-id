@@ -486,7 +486,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <p class="text-sm font-medium">Security &amp; lifecycle</p>
         @if ($requiresPasswordChange)
-            <p class="mt-2 text-sm" style="color:var(--muted)">This user must choose a new password the next time they sign in.</p>
+            <p class="mt-2 text-sm" style="color:var(--muted)">This user is held at a password change — they cannot reach anything until they replace the one you issued.</p>
         @endif
 
         {{-- One-time reveal of a just-issued password. --}}
