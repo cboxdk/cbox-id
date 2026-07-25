@@ -82,11 +82,34 @@
     // → environment.users.show) but NOT on a sibling that merely shares a prefix
     // (environment.audit must not light up on environment.audit-streams).
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
+
+    // ── Shared two-tier shell. TIER 1 = one rail icon per group; TIER 2 = the active
+    // group's pages, rendered only when it has more than one (design system:
+    // guidelines/app-shell). $groups above is already that shape; below is only the
+    // projection the shell components consume. The mobile sheet keeps the flat
+    // grouped list — a rail is a pointer affordance, not a touch one.
+    $activeGroup = collect($groups)->first(
+        fn (array $g): bool => collect($g['pages'])->contains(fn (array $p): bool => $isActive($p['route']))
+    ) ?? $groups[0];
+
+    $railAreas = collect($groups)->map(fn (array $g): array => [
+        'key' => $g['label'],
+        'label' => $g['label'],
+        'icon' => $g['icon'],
+        'href' => route($g['pages'][0]['route']),
+        'active' => $g['label'] === $activeGroup['label'],
+        'current' => $g['label'] === $activeGroup['label'] && count($g['pages']) === 1,
+    ])->all();
+    $subnavPages = collect($activeGroup['pages'])->map(fn (array $p): array => [
+        'href' => route($p['route']),
+        'label' => $p['label'],
+        'active' => $isActive($p['route']),
+    ])->all();
 @endphp
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
      Distinct from the org-user console (subjects) and the account/workspace console. --}}
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -99,47 +122,31 @@
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="flex h-full" x-data="{ nav: false, env: false }" @keydown.escape.window="nav=false;env=false">
-    <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
-        <div class="flex items-center gap-2 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
-            <div class="min-w-0">
-                <p class="text-sm font-semibold truncate flex items-center gap-1.5">
-                    <span class="truncate">{{ $envName }}</span>
-                    <x-env-badge />
-                </p>
-                <p class="text-xs truncate" style="color:var(--faint)">Environment admin</p>
-            </div>
-        </div>
-        <nav class="flex-1 overflow-y-auto p-3 space-y-3" aria-label="Environment areas">
-            @foreach ($groups as $group)
-                <div class="space-y-0.5">
-                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
-                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" /> {{ $group['label'] }}
-                    </p>
-                    @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
-                           @if ($isActive($page['route'])) aria-current="page" @endif>
-                            {{ $page['label'] }}
-                        </a>
-                    @endforeach
-                </div>
-            @endforeach
-        </nav>
-        <div class="p-3 space-y-0.5" style="border-top:1px solid var(--sidebar-border)">
-            <div class="flex items-center gap-2 px-2 py-1">
-                <span class="grid place-items-center w-7 h-7 rounded-full text-xs font-semibold shrink-0" style="background:var(--accent-soft);color:var(--accent)">{{ $memberInitial }}</span>
-                <div class="min-w-0">
-                    <p class="text-sm truncate">{{ $member?->name ?? 'Admin' }}</p>
-                    <p class="text-xs truncate" style="color:var(--faint)">{{ $member?->email }}</p>
-                </div>
-            </div>
-            <a href="{{ $securityUrl }}" class="nav-link w-full"><x-icon name="shield-check" class="w-[1.15rem] h-[1.15rem]" /> Profile &amp; security</a>
-            <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
-            <form method="POST" action="{{ route('admin.logout') }}">@csrf
-                <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
-            </form>
-        </div>
-    </aside>
+<div class="flex h-full" x-data="{
+        pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
+        subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
+        nav: false, env: false, account: false, hover: false,
+        togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; },
+        toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
+     }"
+     @keydown.escape.window="nav=false;env=false;account=false"
+     @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
+
+    {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
+    <x-console.rail :areas="$railAreas" :brand-href="route('environment.home')" :brand-label="$envName" >
+        <x-slot:foot>
+            <x-console.account-menu :name="$member?->name ?? 'Admin'" :email="$member?->email" :initial="$memberInitial" logout-route="admin.logout">
+                <a href="{{ $securityUrl }}" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;font-size:13px">
+                    <x-icon name="shield-check" class="w-4 h-4" /> Profile &amp; security
+                </a>
+            </x-console.account-menu>
+        </x-slot:foot>
+    </x-console.rail>
+
+    {{-- ═══ TIER 2 — contextual subnav (desktop, multi-page areas only) ═══ --}}
+    @if (count($subnavPages) > 1)
+        <x-console.subnav :label="$activeGroup['label']" :pages="$subnavPages" />
+    @endif
 
     <div class="flex flex-col min-w-0 flex-1">
         {{-- Desktop top bar — breadcrumb home + environment switcher. Fixes the
@@ -158,6 +165,10 @@
                             style="transition:background-color var(--dur-hover) var(--ease)"
                             @if ($switchableEnvs->count() > 1) @click="env=!env" :aria-expanded="env" aria-haspopup="true" @endif>
                         <span class="font-semibold truncate" aria-current="page">{{ $envName }}</span>
+                        {{-- The realm indicator used to live in the sidebar header the
+                             shared rail replaced; it must stay visible on desktop, or
+                             staging and production read identically. --}}
+                        <x-env-badge />
                         @if ($switchableEnvs->count() > 1)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
                     </button>
                     @if ($switchableEnvs->count() > 1)

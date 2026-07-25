@@ -30,9 +30,29 @@
     ];
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
     $operatorInitial = strtoupper(substr($operator?->name ?? $operator?->email ?? 'O', 0, 1));
+
+    // ── Shared two-tier shell (design system: guidelines/app-shell). TIER 1 = one
+    // rail icon per group; TIER 2 = the active group's pages, only when it has >1.
+    $activeGroup = collect($groups)->first(
+        fn (array $g): bool => collect($g['pages'])->contains(fn (array $p): bool => $isActive($p['route']))
+    ) ?? $groups[0];
+
+    $railAreas = collect($groups)->map(fn (array $g): array => [
+        'key' => $g['label'],
+        'label' => $g['label'],
+        'icon' => $g['icon'],
+        'href' => route($g['pages'][0]['route']),
+        'active' => $g['label'] === $activeGroup['label'],
+        'current' => $g['label'] === $activeGroup['label'] && count($g['pages']) === 1,
+    ])->all();
+    $subnavPages = collect($activeGroup['pages'])->map(fn (array $p): array => [
+        'href' => route($p['route']),
+        'label' => $p['label'],
+        'active' => $isActive($p['route']),
+    ])->all();
 @endphp
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -47,51 +67,38 @@
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="flex h-full" x-data="{ nav: false, env: false }" @keydown.escape.window="nav=false;env=false">
-    {{-- ═══ Desktop sidebar — 2-tier grouped ═══ --}}
-    <aside class="hidden lg:flex flex-col shrink-0 w-60" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)">
-        <div class="flex items-center gap-2.5 px-4 h-14 shrink-0" style="border-bottom:1px solid var(--sidebar-border)">
-            <span class="grid place-items-center w-8 h-8 rounded-lg text-sm font-semibold shrink-0" style="background:var(--foreground);color:var(--background)" aria-hidden="true">OP</span>
-            <span class="min-w-0">
-                <span class="block text-[13px] font-semibold truncate leading-tight" style="font-family:var(--font-display)">Operator</span>
-                <span class="block text-[11px] leading-tight" style="color:var(--muted-foreground)">Platform console</span>
-            </span>
-        </div>
+<div class="flex h-full" x-data="{
+        pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
+        subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
+        nav: false, env: false, account: false, hover: false,
+        togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; },
+        toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
+     }"
+     @keydown.escape.window="nav=false;env=false;account=false"
+     @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
-        <nav class="flex-1 overflow-y-auto p-3 space-y-3" aria-label="Operator areas">
-            @foreach ($groups as $group)
-                <div class="space-y-0.5">
-                    <p class="cbx-nav-group flex items-center gap-2 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style="color:var(--faint)">
-                        <x-icon :name="$group['icon']" class="w-3.5 h-3.5" aria-hidden="true" /> {{ $group['label'] }}
-                    </p>
-                    @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
-                           @if ($isActive($page['route'])) aria-current="page" @endif>{{ $page['label'] }}</a>
-                    @endforeach
-                </div>
-            @endforeach
-        </nav>
+    {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
+    <x-console.rail :areas="$railAreas" :brand-href="route('operator.environments')" brand-label="Operator console">
+        <x-slot:foot>
+            <x-console.account-menu :name="$operator?->name ?? $operator?->email ?? 'Operator'"
+                                    email="Platform operator" :initial="$operatorInitial" logout-route="operator.logout" />
+        </x-slot:foot>
+    </x-console.rail>
 
-        <div class="p-3" style="border-top:1px solid var(--sidebar-border)">
-            <div class="flex items-center gap-2 px-1 mb-2 min-w-0">
-                <span class="grid place-items-center w-7 h-7 rounded-full text-xs font-semibold shrink-0" style="background:var(--accent-soft);color:var(--accent)" aria-hidden="true">{{ $operatorInitial }}</span>
-                <div class="min-w-0">
-                    <p class="text-[13px] font-medium truncate">{{ $operator?->name ?? $operator?->email }}</p>
-                    <p class="text-[11px] truncate" style="color:var(--muted-foreground)">Platform operator</p>
-                </div>
-            </div>
-            <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
-            <form method="POST" action="{{ route('operator.logout') }}">@csrf
-                <button type="submit" class="nav-link w-full" style="color:var(--destructive)"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button>
-            </form>
-        </div>
-    </aside>
+    {{-- ═══ TIER 2 — contextual subnav (desktop, multi-page areas only) ═══ --}}
+    @if (count($subnavPages) > 1)
+        <x-console.subnav :label="$activeGroup['label']" :pages="$subnavPages" />
+    @endif
 
     {{-- ═══ Main column ═══ --}}
     <div class="flex flex-col min-w-0 flex-1">
-        {{-- Slim top bar — carries the operator's target-environment context (desktop). --}}
+        {{-- Slim top bar — names the plane (this is the god-mode console; it must never
+             read as an ordinary one) and carries the target-environment context. --}}
         <header class="hidden lg:flex cbx-topbar items-center justify-between">
-            <div class="relative min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="shrink-0 text-[13px] font-semibold" style="font-family:var(--font-display)">Operator</span>
+                <span style="color:var(--faint)" aria-hidden="true">/</span>
+                <div class="relative min-w-0">
                 <button type="button" class="cbx-switcher-item flex items-center gap-2 rounded-lg px-2 py-1.5 {{ $canSwitchEnv ? '' : 'pointer-events-none' }}"
                         style="transition:background-color var(--dur-hover) var(--ease)" @if ($canSwitchEnv) @click="env=!env" :aria-expanded="env" aria-haspopup="true" @endif>
                     <x-icon name="layers" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />
@@ -117,6 +124,7 @@
                         @endforeach
                     </div>
                 @endif
+                </div>
             </div>
             <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
         </header>
