@@ -7,6 +7,8 @@ namespace App\Http\Middleware;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -30,6 +32,8 @@ final class Authenticate
         private readonly Memberships $memberships,
         private readonly CurrentUser $current,
         private readonly AdminPasswords $adminPasswords,
+        private readonly PasswordExpiry $passwordExpiry,
+        private readonly MfaMandate $mfaMandate,
     ) {}
 
     /**
@@ -113,11 +117,41 @@ final class Authenticate
 
         $this->current->set($subject, $session, $organization, $role);
 
+        if (! $optional && $this->exemptFromHolds($request)) {
+            return $next($request);
+        }
+
         if (! $optional && $this->mustChangePassword($request, $subject->id)) {
             return redirect()->route('password.change');
         }
 
+        // A tenant that requires a second factor cannot enforce it by turning people
+        // away — that locks out precisely the people who still need to enrol. Hold them
+        // on the security page instead, which is where enrolment lives.
+        if (! $optional && ! $request->routeIs('account', 'sudo') && $this->mfaMandate->requiresEnrolment($subject->id)) {
+            return redirect()->route('account')
+                ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
+        }
+
         return $next($request);
+    }
+
+    /**
+     * Routes that must never be held, whatever a policy says.
+     *
+     * The change page and the security page are how a hold is satisfied; logout is how
+     * someone leaves. Holding any of them turns a requirement into a lock-in with no way
+     * forward and no way out.
+     *
+     * `prompt=none` is exempt for a different reason: OIDC Core §3.1.2.6 requires the
+     * CLIENT to be answered with `error=login_required` rather than a user agent being
+     * redirected after being told not to interact. The authorize endpoint makes that
+     * call; a redirect from here would pre-empt it.
+     */
+    private function exemptFromHolds(Request $request): bool
+    {
+        return $request->routeIs('password.change', 'logout')
+            || $request->query('prompt') === 'none';
     }
 
     /**
@@ -133,18 +167,11 @@ final class Authenticate
      */
     private function mustChangePassword(Request $request, string $subjectId): bool
     {
-        // The change page itself, and the way out — or the hold is a lock-in.
-        if ($request->routeIs('password.change', 'logout')) {
-            return false;
-        }
-
-        // OIDC prompt=none must answer the CLIENT with error=login_required rather than
-        // redirect a user agent that was told not to interact. The authorize endpoint
-        // makes that call itself; a redirect from here would break the contract.
-        if ($request->query('prompt') === 'none') {
-            return false;
-        }
-
-        return $this->adminPasswords->requiresChange($subjectId);
+        // Two different reasons to owe a change, one hold: an administrator imposed it,
+        // or the tenant's maxAgeDays has run out. Rotation is only a policy if something
+        // acts on it, and acting on it at sign-in alone would let an already-open session
+        // outlive the rotation it was supposed to trigger.
+        return $this->adminPasswords->requiresChange($subjectId)
+            || $this->passwordExpiry->hasExpired($subjectId);
     }
 }

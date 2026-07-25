@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 use App\Http\Middleware\AuthenticateAccountMember;
 use App\Platform\AccountAuth;
+use App\Platform\Enums\AttemptOutcome;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -160,4 +164,82 @@ it('holds the workspace console until an account member replaces a temporary pas
     expect($root->run(fn () => app(AdminPasswords::class)->requiresChange($subjectId)))->toBeFalse();
 
     $this->get(route('workspace.home'))->assertOk();
+});
+
+/**
+ * `maxAgeDays` reaches the same hold as an administrative requirement. Enforcing rotation
+ * at sign-in alone would let an already-open session outlive the rotation it was meant to
+ * trigger.
+ */
+it('holds a subject whose password has outlived the policy max age', function (): void {
+    $subject = app(Subjects::class)->create('rotate@acme.test', 'Rotate', 'a-perfectly-long-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-rotate'));
+    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(maxAgeDays: 30));
+
+    // Age the PASSWORD, then sign in. Travelling with a session already open would only
+    // expire the session, and the redirect to login would say nothing about rotation.
+    $this->travel(31)->days();
+
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    $this->get('/dashboard')->assertRedirect(route('password.change'));
+
+    // Choosing a new one restarts the clock and releases the hold.
+    Volt::test('auth.change-password')
+        ->set('password', 'a-freshly-chosen-passphrase')
+        ->set('passwordConfirmation', 'a-freshly-chosen-passphrase')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $this->get('/dashboard')->assertOk();
+});
+
+/**
+ * A mandate cannot be enforced by refusing entry: that locks out precisely the people who
+ * still have to enrol. They are held on the security page, which is where enrolment is.
+ */
+it('holds a subject with no second factor when the policy requires one', function (): void {
+    $subject = app(Subjects::class)->create('needsmfa@acme.test', 'Needs', 'a-perfectly-long-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-mfa'));
+    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Required));
+
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    $this->get('/dashboard')->assertRedirect(route('account'));
+
+    // The page they are sent to must be reachable, and so must the step-up it needs.
+    $this->get(route('account'))->assertOk();
+    $this->get(route('sudo'))->assertOk();
+});
+
+/**
+ * The lockout is per SUBJECT and checked BEFORE the credential — a locked account that
+ * still distinguished a right guess from a wrong one would be an oracle.
+ */
+it('locks an account out of the password door at the policy threshold', function (): void {
+    $subject = app(Subjects::class)->create('guessed@acme.test', 'Guessed', 'the-real-passphrase-here');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-lock'));
+    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(lockoutThreshold: 3));
+
+    $auth = app(PlatformAuth::class);
+    $request = request();
+
+    foreach (range(1, 3) as $ignored) {
+        expect($auth->attemptPassword($request, 'guessed@acme.test', 'a-wrong-guess-entirely'))
+            ->toBe(AttemptOutcome::Invalid);
+    }
+
+    // The RIGHT password is now refused too, and refused identically.
+    expect($auth->attemptPassword($request, 'guessed@acme.test', 'the-real-passphrase-here'))
+        ->toBe(AttemptOutcome::Invalid);
+
+    $this->travel(16)->minutes();
+
+    expect($auth->attemptPassword($request, 'guessed@acme.test', 'the-real-passphrase-here'))
+        ->toBe(AttemptOutcome::Ok);
 });

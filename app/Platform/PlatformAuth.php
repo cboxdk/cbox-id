@@ -7,6 +7,7 @@ namespace App\Platform;
 use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\LoginAttempts;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -62,6 +63,7 @@ final class PlatformAuth
         private readonly Hasher $hasher,
         private readonly AdminPasswords $adminPasswords,
         private readonly AuthPolicies $policies,
+        private readonly LoginAttempts $loginAttempts,
     ) {}
 
     /**
@@ -86,9 +88,22 @@ final class PlatformAuth
             return AttemptOutcome::Invalid;
         }
 
-        if (! $this->subjects->verifyPassword($subject->id, $password)) {
+        // A tenant's lockout threshold binds BEFORE the credential is checked, or a
+        // locked account still tells an attacker which guess was right. The IP-keyed
+        // limiter the form already applies is a different control: it protects the
+        // service from a flood, and an attacker spreading guesses across a botnet never
+        // trips it while hammering one account.
+        if ($this->loginAttempts->isLockedOut($subject->id)) {
             return AttemptOutcome::Invalid;
         }
+
+        if (! $this->subjects->verifyPassword($subject->id, $password)) {
+            $this->loginAttempts->recordFailure($subject->id);
+
+            return AttemptOutcome::Invalid;
+        }
+
+        $this->loginAttempts->clear($subject->id);
 
         // A temporary password an administrator issued stops admitting anyone once its
         // deadline passes, even though the hash still matches — otherwise a hand-off
