@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.22.1] - 2026-07-25
+
+### Fixed
+
+- The CycloneDX SBOM still named `laravel-id v0.52.0` after four dependency bumps, so
+  every release from 0.21.0 onward carried a supply-chain record that misstated what it
+  actually ran. No dependency was added or removed — the file was simply never
+  regenerated. Releases 0.21.0 and 0.22.0 should be treated as having an inaccurate SBOM;
+  this is the first one whose record is true.
+
 ## [0.22.0] - 2026-07-25
 
 Closes the remaining review findings. Adopts `cboxdk/laravel-id` v0.56.0.
