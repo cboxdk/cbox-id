@@ -5,17 +5,27 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 
 /**
  * Session bridge for account members — the customer's buyer/admin plane, the
- * "workspace console". This is a THIRD world, distinct from both {@see PlatformAuth}
- * (org-scoped end-users, who authenticate INTO an environment) and
- * {@see OperatorAuth} (Cbox staff, above every account). An account member signs in
- * once at the platform root and administers the environments their account owns.
+ * "workspace console". A distinct SESSION from both {@see PlatformAuth} (a tenant's
+ * end-users, who authenticate INTO their own environment) and {@see OperatorAuth} (Cbox
+ * staff, above every account), but no longer a distinct CREDENTIAL: an account member is
+ * an ordinary subject in the platform-root environment, and this class authenticates
+ * against that subject.
+ *
+ * That is what removes the second identity stack. The password is verified by
+ * {@see AccountMembers::verifyPassword()}, which asks the subject; the SSO mandate is
+ * {@see PlatformAuth::passwordLoginAllowedFor()}, the same method the tenant door uses;
+ * an administratively-issued temporary password expires here exactly as it does there.
+ * None of those rules are re-implemented for this plane, so none of them can drift out
+ * of step with it. See docs/core-concepts/unified-account-identity.md.
  *
  * There is deliberately NO "current environment" session state here: environments
  * are resolved statelessly from the request host ({slug}.base_domain or a custom
@@ -44,6 +54,9 @@ final class AccountAuth
     public function __construct(
         private readonly AccountMembers $members,
         private readonly AccountMemberMfa $mfa,
+        private readonly PlatformAuth $platform,
+        private readonly AdminPasswords $adminPasswords,
+        private readonly PlatformRoot $platformRoot,
     ) {}
 
     /**
@@ -71,6 +84,14 @@ final class AccountAuth
             return AttemptOutcome::Invalid;
         }
 
+        // The credential verified against the SUBJECT. The rules that govern whether a
+        // verified password is still a way in are the subject plane's rules, applied
+        // here through the subject plane's own code — checked AFTER the credential so a
+        // refusal reveals nothing about whether the password was right.
+        if (! $this->passwordSignInAllowed($member)) {
+            return AttemptOutcome::Invalid;
+        }
+
         if ($this->mfa->hasConfirmedTotp($member->id)) {
             session()->put(self::PENDING_KEY, $member->id);
 
@@ -83,6 +104,38 @@ final class AccountAuth
     }
 
     /**
+     * Whether a verified password is still an admissible way in for this member.
+     *
+     * Both gates belong to the subject plane and are asked of the subject plane:
+     *
+     *  - An administratively-issued temporary password stops admitting anyone once its
+     *    deadline passes, even though the hash still matches — otherwise a hand-off
+     *    credential lingers as a permanent second way in.
+     *  - A tenant that mandates SSO means it. The account's organization lives in the
+     *    platform root like any other, so its policy applies to the workspace door;
+     *    without this, "require SSO" on an account could be sidestepped by signing in
+     *    at the account door instead of the tenant one.
+     *
+     * A member with no subject is the first-install bootstrap window (nowhere for the
+     * subject to live yet), and there is no policy to consult — the founder gets in.
+     */
+    private function passwordSignInAllowed(AccountMember $member): bool
+    {
+        $subjectId = $member->subject_id;
+
+        if ($subjectId === null) {
+            return true;
+        }
+
+        // Policies and memberships are environment-owned, so this must be read in the
+        // platform root's scope — the environment the account's people actually live in.
+        return $this->platformRoot->run(
+            fn (): bool => ! $this->adminPasswords->hasExpired($subjectId)
+                && $this->platform->passwordLoginAllowedFor($subjectId),
+        ) === true;
+    }
+
+    /**
      * The member id held pending a second factor, or null. Never grants access —
      * only {@see current()} (SESSION_KEY + active status) does.
      */
@@ -91,6 +144,36 @@ final class AccountAuth
         $id = session()->get(self::PENDING_KEY);
 
         return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    /**
+     * Adopt an ALREADY-AUTHENTICATED platform-root subject into an account session — the
+     * landing point for the sign-in methods the account plane inherits by being ordinary
+     * subjects: an SSO assertion from the account's own connection, or a magic link.
+     *
+     * Deny-by-default in both directions. A subject that carries no account membership is
+     * simply not a workspace sign-in ({@see AttemptOutcome::Invalid}), so authenticating
+     * as any tenant user never opens the account console. And a member who has enrolled a
+     * second factor on this plane is still held at the challenge: a new way in must not
+     * be a way AROUND the factor they added.
+     */
+    public function adoptSubject(string $subjectId): AttemptOutcome
+    {
+        $member = $subjectId !== '' ? $this->members->findBySubject($subjectId) : null;
+
+        if ($member === null || ! $member->isActive() || ! ($member->account?->isActive() ?? false)) {
+            return AttemptOutcome::Invalid;
+        }
+
+        if ($this->mfa->hasConfirmedTotp($member->id)) {
+            session()->put(self::PENDING_KEY, $member->id);
+
+            return AttemptOutcome::Mfa;
+        }
+
+        $this->establish($member->id);
+
+        return AttemptOutcome::Ok;
     }
 
     /**

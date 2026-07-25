@@ -43,7 +43,12 @@ final class EnvironmentAdminController extends Controller
             return redirect()->route('admin.login');
         }
 
-        $member = $members->find($grant->accountMemberId);
+        // The token carries the platform-root SUBJECT. Resolving it back to an account
+        // membership here — rather than trusting the token to name one — is what keeps
+        // a minted handoff from outliving the access it implies: a membership revoked,
+        // or a role downgraded, in the seconds since the mint is caught right here (and
+        // again on every request, at the session chokepoint).
+        $member = $members->findBySubject($grant->subjectId);
 
         if ($member === null
             || ! $member->isActive()
@@ -52,7 +57,7 @@ final class EnvironmentAdminController extends Controller
             return redirect()->route('admin.login');
         }
 
-        $auth->establish($member->id, $hostEnv);
+        $auth->establish($grant->subjectId, $hostEnv);
 
         return redirect()->intended(route('environment.home'));
     }

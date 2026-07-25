@@ -49,10 +49,19 @@ final class WorkspaceController extends Controller
             403,
         );
 
+        // …and a member with no platform-root subject has no control-plane identity to
+        // hand off. That is the first-install bootstrap window only; refusing is the
+        // safe reading, because the alternative is minting a token naming an identity
+        // the target environment cannot resolve.
+        $subjectId = $member->subject_id;
+        abort_if($subjectId === null, 403);
+
         $env = Environment::query()->find($environment);
         abort_if($env === null, 404);
 
-        $token = $handoff->mint($member->id, $env->id);
+        // The handoff carries the SUBJECT — the credential of record. The account
+        // membership behind it is re-resolved on redemption, not carried in the token.
+        $token = $handoff->mint($subjectId, $env->id);
 
         return redirect()->away('https://'.$this->host($env).'/admin/handoff?token='.urlencode($token));
     }

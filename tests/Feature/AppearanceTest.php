@@ -11,7 +11,6 @@ use App\Platform\Appearance\ThemePreset;
 use App\Platform\Appearance\ThemePresets;
 use App\Platform\Appearance\ThemeRadius;
 use App\Platform\CurrentUser;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -192,6 +191,7 @@ it('leaves the platform default when an org has no custom appearance', function 
 if (! function_exists('appearanceEnvSetup')) {
     function appearanceEnvSetup(): string
     {
+        platformRootEnvironment();
         $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
             accountName: 'Acme',
             ownerEmail: 'owner@acme.example',
@@ -199,10 +199,9 @@ if (! function_exists('appearanceEnvSetup')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
-        config(['cbox-id.environments.default' => $r->environment->id]);
+        serveOnTestHost($r->environment);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-        session()->put(EnvironmentAdminAuth::SESSION_KEY, $r->member->id);
-        session()->put(EnvironmentAdminAuth::ENV_KEY, $r->environment->id);
+        actAsEnvironmentAdmin($r->member, $r->environment->id);
 
         return $r->environment->id;
     }

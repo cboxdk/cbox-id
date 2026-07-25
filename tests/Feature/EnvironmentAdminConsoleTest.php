@@ -21,6 +21,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an account (owner + first environment) and return them. */
 function envAdminSetup(): array
 {
+    platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
@@ -31,6 +32,7 @@ function envAdminSetup(): array
     return [
         'member' => $r->member,
         'account' => $r->account,
+        'env' => $r->environment,
         'envId' => $r->environment->id,
         // The env's {slug}.{base_domain} tenant host (with base_domains = ['cboxid.com']).
         'host' => $r->environment->slug.'.cboxid.com',
@@ -40,8 +42,12 @@ function envAdminSetup(): array
 it('authenticates an account member as admin ONLY on their environment\'s host (anti-bleed)', function (): void {
     ['member' => $member, 'envId' => $envId] = envAdminSetup();
 
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+    // The session is keyed on the member's PLATFORM-ROOT SUBJECT — the credential of
+    // record — and bound to exactly one environment. The binding is what this test is
+    // about; who the identity is does not change it.
+    actAsEnvironmentAdmin($member, $envId);
+    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBe($member->refresh()->subject_id);
+
     $auth = app(EnvironmentAdminAuth::class);
 
     // On the bound environment's host → authenticated.
@@ -63,31 +69,33 @@ it('refuses a member with no access to the environment', function (): void {
     $members->activate($stranger->id, 'a-strong-unbreached-passphrase');
     $members->setEnvironmentAccess($stranger->id, all: false, environmentIds: []);
 
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $stranger->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+    actAsEnvironmentAdmin($stranger, $envId);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
     expect(app(EnvironmentAdminAuth::class)->current())->toBeNull();
 });
 
 it('redeems a signed handoff into an env-admin session', function (): void {
-    ['member' => $member, 'envId' => $envId] = envAdminSetup();
-    // Make the HTTP request resolve to this environment (SetEnvironment reads this).
-    config(['cbox-id.environments.default' => $envId]);
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    // Reach the environment the way its admin does: on its OWN host. An unmapped host
+    // resolves to the platform ROOT, which is where the account plane lives.
+    serveOnTestHost($env);
 
-    $token = app(EnvironmentAdminHandoff::class)->mint($member->id, $envId);
+    // The handoff carries the SUBJECT; the account membership behind it is re-resolved
+    // on redemption rather than carried in the token.
+    $subjectId = $member->refresh()->subject_id;
+    $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $envId);
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('environment.home'));
 
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBe($member->id)
+    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBe($subjectId)
         ->and(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
 });
 
 it('renders the env-admin console (overview, organizations, users) for an admin session', function (): void {
-    ['member' => $member, 'envId' => $envId] = envAdminSetup();
-    config(['cbox-id.environments.default' => $envId]);
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $member->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    serveOnTestHost($env);
+    actAsEnvironmentAdmin($member, $envId);
 
     foreach ([
         '/admin' => 'Overview',
@@ -129,11 +137,11 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
 });
 
 it('refuses a handoff minted for a different environment than the host', function (): void {
-    ['member' => $member, 'envId' => $envId] = envAdminSetup();
-    config(['cbox-id.environments.default' => $envId]);
+    ['member' => $member, 'env' => $env] = envAdminSetup();
+    serveOnTestHost($env);
 
     // Token says env X, but this host resolves env `$envId` → refused.
-    $token = app(EnvironmentAdminHandoff::class)->mint($member->id, 'a_different_env');
+    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->refresh()->subject_id, 'a_different_env');
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
     expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
@@ -160,11 +168,9 @@ it('also bounces the local admin login FORM to the root on a multi-tenant deploy
 });
 
 it('uses the local admin door on a single-host deployment (no base domains)', function (): void {
-    ['envId' => $envId] = envAdminSetup();
-    config([
-        'cbox-id.environments.default' => $envId,
-        'cbox-id.environments.base_domains' => [],
-    ]);
+    ['env' => $env] = envAdminSetup();
+    serveOnTestHost($env);
+    config(['cbox-id.environments.base_domains' => []]);
 
     // Self-hosted single tenant: the account console and this admin console share an
     // origin, so the local form is fine and stays put.
@@ -194,8 +200,7 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
         // Precondition: the default invite grants access to the environment.
         expect($members->accessibleEnvironmentIds($members->find($m->id)))->toContain($envId);
 
-        session()->put(EnvironmentAdminAuth::SESSION_KEY, $m->id);
-        session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+        actAsEnvironmentAdmin($m, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
         // Reachable, yet the admin session must not resolve — no control-plane power.
@@ -207,18 +212,17 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
     ['account' => $account, 'member' => $owner, 'envId' => $envId] = envAdminSetup();
     $members = app(AccountMembers::class);
 
-    $admit = ['owner' => $owner->id];
+    $admit = ['owner' => $owner];
     foreach ([AccountRole::Admin, AccountRole::Developer] as $role) {
         $m = $members->invite($account->id, $role->value.'-ok@acme.example', $role);
         $members->activate($m->id, 'a-strong-unbreached-passphrase');
-        $admit[$role->value] = $m->id;
+        $admit[$role->value] = $m;
     }
 
-    foreach ($admit as $memberId) {
-        session()->put(EnvironmentAdminAuth::SESSION_KEY, $memberId);
-        session()->put(EnvironmentAdminAuth::ENV_KEY, $envId);
+    foreach ($admit as $member) {
+        actAsEnvironmentAdmin($member, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-        expect(app(EnvironmentAdminAuth::class)->current()?->id)->toBe($memberId);
+        expect(app(EnvironmentAdminAuth::class)->current()?->id)->toBe($member->id);
     }
 });
 

@@ -180,8 +180,14 @@ final class PlatformAuth
      * A subject belongs to organizations, each of which may mandate SSO. If ANY of them
      * requires it, password sign-in is refused — the strictest membership wins, so a
      * user cannot sidestep a mandating tenant by holding a second, laxer membership.
+     *
+     * Public because the ACCOUNT door asks the same question of the same subject: account
+     * members are ordinary subjects in the platform-root environment, so an account whose
+     * organization mandates SSO must not be able to sidestep it by signing in at the
+     * workspace door instead. One implementation, both doors — the whole point of the
+     * unification is that this rule does not get written twice.
      */
-    private function passwordLoginAllowedFor(string $subjectId): bool
+    public function passwordLoginAllowedFor(string $subjectId): bool
     {
         foreach ($this->memberships->forUser($subjectId) as $membership) {
             if (! $this->policies->resolve($membership->organization_id)->sso->allowsPasswordLogin()) {

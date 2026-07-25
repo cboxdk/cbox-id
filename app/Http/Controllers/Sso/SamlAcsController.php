@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Sso;
 
 use App\Http\Controllers\Controller;
-use App\Platform\PlatformAuth;
+use App\Platform\FederatedLanding;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\FederationFlow;
@@ -34,7 +34,7 @@ final class SamlAcsController extends Controller
         private readonly Connections $connections,
         private readonly AssertionValidator $validator,
         private readonly FederationFlow $flow,
-        private readonly PlatformAuth $auth,
+        private readonly FederatedLanding $landing,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -74,12 +74,11 @@ final class SamlAcsController extends Controller
             );
         }
 
-        // THE missing inch. adopt() is the same seam magic-link redemption uses: it
-        // turns an already-started framework session into the browser cookie, rotating
-        // the session id against fixation.
-        $this->auth->adopt($request, $session);
-
-        return redirect()->intended(route('dashboard'));
+        // THE missing inch. The landing turns an already-started framework session into
+        // the browser cookie (rotating the session id against fixation), and picks the
+        // plane: a tenant host signs the subject in; the account host signs an account
+        // MEMBER in, and refuses a subject that is not one.
+        return $this->landing->land($request, $session);
     }
 
     private function failed(string $message): RedirectResponse
