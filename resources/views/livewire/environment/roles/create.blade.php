@@ -91,13 +91,13 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>
             <label class="label" for="name">Name</label>
-            <input wire:model="name" id="name" type="text" class="input" placeholder="Manager" autofocus>
-            @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Manager" autofocus>
+            @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
         <div>
             <label class="label" for="description">Description <span style="color:var(--faint)">(optional)</span></label>
-            <input wire:model="description" id="description" type="text" class="input" placeholder="Team leads across the organization">
-            @error('description') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('description') aria-invalid="true" aria-describedby="description-error" @enderror wire:model="description" id="description" type="text" class="input" placeholder="Team leads across the organization">
+            @error('description') <p id="description-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
         <div>
             <label class="label">Permissions <span style="color:var(--faint)">(optional)</span></label>

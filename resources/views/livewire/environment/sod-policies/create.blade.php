@@ -97,8 +97,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <label class="label" for="name">Rule name</label>
-                <input wire:model="name" id="name" type="text" class="input" placeholder="Purchase order vs. approve payment" autofocus>
-                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Purchase order vs. approve payment" autofocus>
+                @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="orgId">Applies to</label>
@@ -114,8 +114,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
 
         <div>
             <label class="label" for="description">Description <span style="color:var(--faint)">(optional)</span></label>
-            <input wire:model="description" id="description" type="text" class="input" placeholder="Why these roles conflict">
-            @error('description') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('description') aria-invalid="true" aria-describedby="description-error" @enderror wire:model="description" id="description" type="text" class="input" placeholder="Why these roles conflict">
+            @error('description') <p id="description-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
         <div>

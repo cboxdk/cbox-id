@@ -126,16 +126,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
 
             <div>
                 <label for="max-age" class="text-sm font-medium">Force a change after</label>
-                <input id="max-age" wire:model="maxAgeDays" type="number" min="1" max="3650" class="input mt-1.5" placeholder="Never">
+                <input id="max-age" wire:model="maxAgeDays" type="number" min="1" max="3650" class="input mt-1.5" placeholder="Never"
+                       @error('maxAgeDays') aria-invalid="true" aria-describedby="max-age-error" @enderror>
                 <p class="mt-1.5 text-xs" style="color:var(--faint)">Days. Leave empty to never force a rotation.</p>
-                @error('maxAgeDays') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                @error('maxAgeDays') <p id="max-age-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label for="lockout" class="text-sm font-medium">Lock out after</label>
-                <input id="lockout" wire:model="lockoutThreshold" type="number" min="3" max="100" class="input mt-1.5" placeholder="Off">
+                <input id="lockout" wire:model="lockoutThreshold" type="number" min="3" max="100" class="input mt-1.5" placeholder="Off"
+                       @error('lockoutThreshold') aria-invalid="true" aria-describedby="lockout-error" @enderror>
                 <p class="mt-1.5 text-xs" style="color:var(--faint)">Failed attempts. Leave empty to disable lockout.</p>
-                @error('lockoutThreshold') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                @error('lockoutThreshold') <p id="lockout-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
 
             <div>

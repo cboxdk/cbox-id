@@ -178,8 +178,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <label class="label" for="name">Application name</label>
-                <input wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus>
-                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus>
+                @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="type">Client type</label>
@@ -207,8 +207,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
         @if ($grantAuthorizationCode)
             <div>
                 <label class="label" for="redirectUris">Redirect URIs <span style="color:var(--faint);font-weight:400">— where Cbox ID sends people back (one per line)</span></label>
-                <textarea wire:model="redirectUris" id="redirectUris" rows="2" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/auth/callback"></textarea>
-                @error('redirectUris') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <textarea @error('redirectUris') aria-invalid="true" aria-describedby="redirectUris-error" @enderror wire:model="redirectUris" id="redirectUris" rows="2" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/auth/callback"></textarea>
+                @error('redirectUris') <p id="redirectUris-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
         @endif
 
@@ -237,8 +237,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
                 @endforeach
                 <div>
                     <label class="label" for="customScopes" style="font-weight:400;font-size:0.75rem">Advanced — custom scopes <span style="color:var(--faint)">(comma-separated)</span></label>
-                    <input wire:model="customScopes" id="customScopes" type="text" class="input mono" placeholder="reports.read">
-                    @error('customScopes') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                    <input @error('customScopes') aria-invalid="true" aria-describedby="customScopes-error" @enderror wire:model="customScopes" id="customScopes" type="text" class="input mono" placeholder="reports.read">
+                    @error('customScopes') <p id="customScopes-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
         </div>

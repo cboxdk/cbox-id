@@ -113,8 +113,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>
             <label class="label" for="name">Name</label>
-            <input wire:model="name" id="name" type="text" class="input" placeholder="Prod Splunk" autofocus>
-            @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Prod Splunk" autofocus>
+            @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
         <div>
@@ -129,8 +129,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
 
         <div>
             <label class="label" for="endpointUrl">Endpoint URL</label>
-            <input wire:model="endpointUrl" id="endpointUrl" type="url" class="input mono" placeholder="https://http-inputs.example.splunkcloud.com/services/collector">
-            @error('endpointUrl') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            <input @error('endpointUrl') aria-invalid="true" aria-describedby="endpointUrl-error" @enderror wire:model="endpointUrl" id="endpointUrl" type="url" class="input mono" placeholder="https://http-inputs.example.splunkcloud.com/services/collector">
+            @error('endpointUrl') <p id="endpointUrl-error" class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
@@ -145,8 +145,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
             </div>
             <div>
                 <label class="label" for="secret">Token / secret <span style="color:var(--faint)">(optional)</span></label>
-                <input wire:model="secret" id="secret" type="password" class="input" placeholder="HEC token — leave blank to generate an HMAC key">
-                @error('secret') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input @error('secret') aria-invalid="true" aria-describedby="secret-error" @enderror wire:model="secret" id="secret" type="password" class="input" placeholder="HEC token — leave blank to generate an HMAC key">
+                @error('secret') <p id="secret-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
         </div>
 
