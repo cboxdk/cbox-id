@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.21.0] - 2026-07-25
+
+The sign-in rules page stops being a page of promises. Adopts `cboxdk/laravel-id`
+v0.55.1.
+
+**Upgrading:** behavioural, and worth reading before deploying. Every control on the
+auth-policy page is now enforced, where three of them previously were not. Review what
+your environments and organizations have set — a `maxAgeDays` or `mfa: required` saved
+while it did nothing will start doing something on the first request after deploy.
+
+Two new tables arrive from the framework (`password_ages`, `login_attempt_counters`);
+`password_ages` is seeded with every existing subject at migration time, so a rotation
+policy starts its clock for everyone at once rather than never applying to anyone who
+predates it.
+
+### Fixed
+
+- **Every password form used a hardcoded `min:12`.** An environment demanding 24
+  characters got 24 from an administrator and 12 from signup, invitation acceptance and
+  both self-service resets. The forms apply the tenant's policy now; the framework
+  enforces it at the credential primitive regardless, so the rule is what makes a weak
+  password impossible and the form is only what makes the refusal land on the field.
+- **A temporary password was never actually temporary.** `requiresChange()` was read
+  once, to render a line of prose. With "valid until they change it" selected, the
+  result was a permanent administrator-known credential — the opposite of what the UI
+  promised.
+
+### Added
+
+- A forced password change on both planes, held on every authenticated request rather
+  than checked at sign-in: an administrator can hand a temporary password to someone who
+  then arrives by magic link, SSO, or an already-open session.
+- Rotation (`maxAgeDays`), the MFA mandate (`mfa`) and account lockout
+  (`lockoutThreshold`) are enforced. The MFA mandate holds a subject on the security page
+  rather than refusing them entry — turning away someone with no factor locks out exactly
+  the people who need to enrol. Lockout is checked before the credential, so a locked
+  account is not an oracle for which guess was right.
+- Operator creation gains the breach screen it never had. Operators sit above every
+  environment, so no tenant policy governs them, but they are the most privileged
+  accounts on the platform.
+
 ## [0.20.0] - 2026-07-25
 
 Second platform-review loop, plus unified account identity. Adopts `cboxdk/laravel-id`
