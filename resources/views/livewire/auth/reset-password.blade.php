@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Exceptions\InvalidPasswordReset;
+use Cbox\Id\Identity\Exceptions\PolicyViolation;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Livewire\Attributes\Layout;
-use App\Rules\NotBreached;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
@@ -24,12 +25,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 
     public function resetPassword(PasswordReset $resets): void
     {
-        // NotBreached belongs here more than anywhere: this is the flow an attacker with
-        // a stolen reset token uses, and the one where a user is most likely to reach for
-        // a password they have used before. Every OTHER password-setting path screened
-        // it — signup, invite acceptance, the workspace reset — and this one did not.
+        // The tenant's policy, including its breach screen — this is the flow an attacker
+        // with a stolen reset token uses, and the one where a user is most likely to
+        // reach for a password they have used before.
+        //
+        // The subject is identified by the TOKEN, which this form deliberately does not
+        // resolve (doing so would make the page an account-existence oracle), so the rule
+        // cannot check reuse history. The reset itself can, and does — hence the catch
+        // below, which turns that refusal into a field error rather than a 500.
         $this->validate([
-            'password' => ['required', 'string', 'min:12', 'max:200', 'confirmed', new NotBreached],
+            'password' => ['required', 'string', 'max:200', 'confirmed', PasswordMeetsPolicy::for()],
             'password_confirmation' => ['required'],
         ]);
 
@@ -37,6 +42,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
             $resets->reset($this->token, $this->password);
         } catch (InvalidPasswordReset) {
             $this->addError('password', 'This reset link is invalid or has expired. Request a new one.');
+
+            return;
+        } catch (PolicyViolation $violation) {
+            $this->addError('password', $violation->getMessage());
 
             return;
         }

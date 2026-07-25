@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
-use App\Rules\NotBreached;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -41,8 +41,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Set a new password'])] clas
 
     public function submit(AccountMembers $members, AccountAuth $auth): void
     {
+        // The tenant's policy, not a number this file picked. It also covers the breach
+        // screen, so NotBreached would only add a second, weaker opinion.
         $this->validate([
-            'password' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
+            'password' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for($members->find($this->member)?->subject_id)],
         ]);
 
         if (! $members->resetPassword($this->member, $this->password)) {

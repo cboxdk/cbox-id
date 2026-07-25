@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
-use App\Rules\NotBreached;
 use App\Platform\SocialProviders;
 use App\Platform\Sudo;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -15,6 +14,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -53,14 +53,12 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
             return;
         }
 
+        $me = app(CurrentUser::class);
+
         $this->validate([
             'currentPassword' => ['required'],
-            'newPassword' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
-        ], [
-            'newPassword.min' => 'Use at least 12 characters.',
+            'newPassword' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for($me->id())],
         ]);
-
-        $me = app(CurrentUser::class);
 
         if (! $subjects->verifyPassword($me->id(), $this->currentPassword)) {
             $this->addError('currentPassword', 'That password is incorrect.');

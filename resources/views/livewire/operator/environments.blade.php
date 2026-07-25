@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\OperatorAuth;
+use Cbox\Id\Identity\Contracts\PasswordPolicyGuard;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Exceptions\PolicyViolation;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -124,13 +126,29 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
             'orgName' => 'required|string|max:190',
             'adminName' => 'required|string|max:190',
             'adminEmail' => 'required|email|max:190',
-            'adminPassword' => 'required|string|min:12',
+            'adminPassword' => 'required|string|max:200',
         ]);
 
-        // The email must be unique within the target plane (checked in its scope).
-        $taken = $context->runAs($environment, fn (): bool => app(Subjects::class)->findByEmail($this->adminEmail) !== null);
-        if ($taken) {
-            $this->addError('adminEmail', 'A user with that email already exists in this environment.');
+        // Both of these questions can only be answered INSIDE the target environment:
+        // email uniqueness is per-plane, and the password policy is the TENANT's, not
+        // whichever plane the operator console happens to be sitting on. An operator
+        // provisioning into a strict tenant is bound by that tenant's rules.
+        $problem = $context->runAs($environment, function (): ?array {
+            if (app(Subjects::class)->findByEmail($this->adminEmail) !== null) {
+                return ['adminEmail', 'A user with that email already exists in this environment.'];
+            }
+
+            try {
+                app(PasswordPolicyGuard::class)->assertAcceptable($this->adminPassword);
+            } catch (PolicyViolation $violation) {
+                return ['adminPassword', $violation->getMessage()];
+            }
+
+            return null;
+        });
+
+        if ($problem !== null) {
+            $this->addError($problem[0], $problem[1]);
 
             return;
         }

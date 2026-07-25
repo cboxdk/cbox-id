@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Mail\AdminAssignedPasswordMail;
-use App\Rules\NotBreached;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
@@ -25,6 +24,7 @@ use Cbox\Id\Identity\Models\MfaFactor;
 use Cbox\Id\Identity\Models\MfaRecoveryCode;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
@@ -189,9 +189,9 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $user = $this->user();
 
         $this->validate([
-            // Matches the self-service floor in account/signup. Becomes policy-driven
-            // once the per-environment password policy lands.
-            'pwPassword' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
+            // The environment's own policy, tightened by any organization this user
+            // belongs to — an administrator is bound by the rules they set.
+            'pwPassword' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for($user->id)],
             'pwReason' => ['required', 'string', 'max:200'],
         ], attributes: ['pwPassword' => 'password', 'pwReason' => 'reason']);
 

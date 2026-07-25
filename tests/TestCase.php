@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
+use Cbox\Id\Identity\NeverBreachedCheck;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Risk\Contracts\MailDomainResolver;
@@ -26,5 +28,14 @@ abstract class TestCase extends BaseTestCase
         // Keep risk-scoring DNS/Tor lookups offline and deterministic in tests.
         $this->app->instance(MailDomainResolver::class, new FakeMailDomainResolver);
         $this->app->instance(TorExitNodes::class, new FakeTorExitNodes);
+
+        // The password policy is enforced at the credential primitive, so EVERY test
+        // that creates a subject would otherwise reach out to HaveIBeenPwned — slow,
+        // flaky, and it publishes a hash prefix for every fixture password to a third
+        // party. NeverBreachedCheck is the framework's honest inert default: it claims
+        // nothing rather than pretending it looked. Production binds the real
+        // {@see \App\Platform\BreachedPasswords}; a test that wants breach behaviour
+        // binds its own double.
+        $this->app->instance(BreachedPasswordCheck::class, new NeverBreachedCheck);
     }
 }

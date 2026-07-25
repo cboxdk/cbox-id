@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\OperatorAuth;
+use App\Rules\NotBreached;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
 use Cbox\Id\Platform\Models\PlatformOperator;
@@ -31,10 +32,13 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
 
     public function create(PlatformOperators $operators): void
     {
+        // Operators sit ABOVE every environment, so no tenant's AuthPolicy governs them —
+        // hence a fixed floor here rather than PasswordMeetsPolicy. They are also the
+        // most privileged accounts on the platform, so the breach screen is not optional.
         $this->validate([
             'name' => 'required|string|max:190',
             'email' => 'required|email|max:190',
-            'password' => 'required|string|min:12',
+            'password' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
         ]);
 
         if ($operators->findByEmail($this->email) !== null) {

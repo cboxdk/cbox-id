@@ -8,7 +8,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
 use App\Platform\SsoStart;
-use App\Rules\NotBreached;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -63,9 +63,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             'organization' => ['required', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190'],
-            // NIST SP 800-63B favors length over composition: a 12-char minimum,
-            // no forced complexity, plus a known-breach screen (HIBP k-anonymity).
-            'password' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
+            // NIST SP 800-63B favors length over composition, so the tenant's policy
+            // sets a length floor and a known-breach screen (HIBP k-anonymity) and
+            // demands no composition. There is no subject yet, so no reuse history.
+            'password' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for()],
         ];
     }
 

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
-use App\Rules\NotBreached;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -43,8 +43,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
 
     public function accept(AccountMembers $members, AccountAuth $auth): void
     {
+        // The invitee's subject already exists (deactivated), so its reuse history
+        // applies alongside the tenant's length and breach rules.
         $this->validate([
-            'password' => ['required', 'string', 'min:12', 'max:200', new NotBreached],
+            'password' => ['required', 'string', 'max:200', PasswordMeetsPolicy::for($members->find($this->member)?->subject_id)],
         ]);
 
         // activate() is a no-op unless the member is still 'invited', so a replayed

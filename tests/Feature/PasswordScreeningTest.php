@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Rules\NotBreached;
+use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Exceptions\PolicyViolation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -56,7 +59,21 @@ it('screens every password-accepting flow against the breach corpus', function (
         // so the assertion passed even with the rule deleted from the rules array —
         // a vacuous test that proved nothing. Caught by deleting the rule and watching
         // it stay green.
-        if (! str_contains($source, 'new NotBreached')) {
+        //
+        // There are now TWO ways to screen, and which one is right depends on the plane.
+        // A tenant-plane form applies the environment's AuthPolicy, whose
+        // requireBreachCheck runs the same corpus lookup — a fixed `new NotBreached`
+        // beside a policy that already screens is a second, weaker opinion. The operator
+        // plane sits above every environment, so no AuthPolicy governs it and the rule
+        // is applied directly.
+        $screened = str_contains($source, 'new NotBreached')
+            || str_contains($source, 'PasswordMeetsPolicy::for(')
+            // The reset form cannot resolve its subject without becoming an
+            // account-existence oracle, so it screens through the guard and turns the
+            // refusal into a field error.
+            || str_contains($source, 'catch (PolicyViolation');
+
+        if (! $screened) {
             $unscreened[] = str_replace(resource_path('views/livewire/'), '', $file);
         }
     }
@@ -80,4 +97,26 @@ it('rejects a known-breached password on the subject-plane reset', function (): 
     );
 
     expect($validator->fails())->toBeTrue();
+});
+
+/**
+ * The scan above proves the marker is present; this proves the mechanism works. The
+ * policy's own breach screen is what the tenant-plane forms now rely on, so it has to
+ * refuse at the primitive, not merely at the form that remembered to ask.
+ */
+it('refuses a breached password at the credential primitive itself', function (): void {
+    app()->instance(BreachedPasswordCheck::class, new class implements BreachedPasswordCheck
+    {
+        public function isBreached(string $password): bool
+        {
+            return $password === 'the-breached-passphrase';
+        }
+    });
+
+    expect(fn () => app(Subjects::class)->create('screened@corp.test', 'Screened', 'the-breached-passphrase'))
+        ->toThrow(PolicyViolation::class);
+
+    // A password the corpus does not know goes through untouched.
+    expect(app(Subjects::class)->create('clean@corp.test', 'Clean', 'an-unbreached-passphrase')->email)
+        ->toBe('clean@corp.test');
 });
