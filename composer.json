@@ -49,7 +49,7 @@
             "@analyse",
             "@test",
             "@license-check",
-            "@composer audit"
+            "@composer audit --no-dev"
         ]
     },
     "extra": {

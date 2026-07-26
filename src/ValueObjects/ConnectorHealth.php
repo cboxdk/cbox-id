@@ -13,7 +13,7 @@ use Cbox\Id\Connectors\Contracts\ConnectorAnalytics;
  * absent (null on a {@see ConnectionSummary}) until a real analytics backend is
  * wired — the framework never depends on one.
  */
-final readonly class ConnectorHealth
+readonly class ConnectorHealth
 {
     public function __construct(
         public int $delivered,

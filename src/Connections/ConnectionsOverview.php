@@ -36,7 +36,7 @@ use Cbox\Id\Webhooks\Models\WebhookEndpoint;
  * Delivery health is layered on via {@see ConnectorAnalytics}, which is inert by
  * default — so the list renders with no analytics backend, just without badges.
  */
-final class ConnectionsOverview
+class ConnectionsOverview
 {
     /**
      * @param  list<string>  $webhookEventTypes  candidate event types used to recover an org's endpoints

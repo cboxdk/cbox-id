@@ -14,7 +14,7 @@ use Cbox\Id\Connectors\Enums\ConnectorCategory;
  * console renders the catalog from these; {@see ConnectionsOverview}
  * turns the enumerable ones into per-organization {@see ConnectionSummary} rows.
  */
-final readonly class ConnectorDescriptor
+readonly class ConnectorDescriptor
 {
     public function __construct(
         public string $key,

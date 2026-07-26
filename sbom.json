@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:f73c0565-6334-4073-8260-fed83d24dc36",
+    "serialNumber": "urn:uuid:14f5fd87-94b6-4234-936b-d5df29cc2afb",
     "version": 1,
     "metadata": {
         "tools": [
@@ -69,11 +69,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.27.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.29.1",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.27.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.27.0",
+            "version": "v0.29.1",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.29.1",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -277,11 +277,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.0",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.15.0",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.0",
+            "version": "7.15.1",
+            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {

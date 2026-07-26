@@ -13,7 +13,7 @@ use Cbox\Id\Connectors\Enums\ConnectorCategory;
  * (a URL or domain, never a credential), and optional delivery {@see ConnectorHealth}
  * once an analytics backend is wired.
  */
-final readonly class ConnectionSummary
+readonly class ConnectionSummary
 {
     public function __construct(
         public ConnectorCategory $category,

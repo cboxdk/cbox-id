@@ -19,7 +19,7 @@ use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
  * of connector kinds is fixed by the modules that exist, so this is a hand-written
  * list, not a discovery mechanism that could silently trust an unregistered kind.
  */
-final class ConnectorCatalog
+class ConnectorCatalog
 {
     /**
      * Every connector type the platform speaks, in console display order.

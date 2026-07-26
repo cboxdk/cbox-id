@@ -30,7 +30,7 @@ use Throwable;
  * whose default is inert — so the framework carries no column-store dependency and
  * the SaaS host can bind a real backend later with no UI change.
  */
-final class ConnectorsServiceProvider extends ServiceProvider
+class ConnectorsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

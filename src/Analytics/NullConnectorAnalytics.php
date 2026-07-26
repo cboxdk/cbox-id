@@ -15,7 +15,7 @@ use Cbox\Id\Connectors\ValueObjects\ConnectorHealth;
  * backend is therefore safe and free — a real {@see ConnectorAnalytics} can be bound
  * by the SaaS host to light the badges up.
  */
-final class NullConnectorAnalytics implements ConnectorAnalytics
+class NullConnectorAnalytics implements ConnectorAnalytics
 {
     public function health(ConnectorCategory $category, string $connectionId): ?ConnectorHealth
     {

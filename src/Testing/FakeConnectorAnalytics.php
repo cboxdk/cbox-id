@@ -14,7 +14,7 @@ use Cbox\Id\Connectors\ValueObjects\ConnectorHealth;
  * package so a host (and this package's own suite) can assert the wired-up path
  * without ClickHouse.
  */
-final class FakeConnectorAnalytics implements ConnectorAnalytics
+class FakeConnectorAnalytics implements ConnectorAnalytics
 {
     /** @var array<string, ConnectorHealth> */
     private array $health = [];
