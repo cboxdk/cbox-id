@@ -6,6 +6,7 @@ use App\Platform\FederatedLanding;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -153,6 +154,49 @@ it('reaches the account-plane branch of FederatedLanding on the platform-root ho
     // tenant dashboard (which is what the subject branch would do).
     $response->assertRedirect(route('workspace.login'));
     $response->assertSessionHasErrors('email');
+});
+
+/**
+ * The same plane fork on the REJECTED branch, and pinned HERE because this file is the
+ * one that resolves the plane the way production does — from the request host, through
+ * SetEnvironment/ResolveEnvironment — rather than by setting the environment context
+ * directly. {@see FederatedLanding::failed()} is proven per-branch in
+ * tests/Feature/InboundSsoBrowserLoginTest.php; what is proven here is that the host
+ * which serves the ACS also serves the page the ACS sends a failure to.
+ *
+ * A 404 on this branch is worse than a lockout: it lands AFTER the member has
+ * successfully authenticated at their IdP, so they have every reason to believe SSO
+ * worked and no way to discover it did not. So the redirect is FOLLOWED — a redirect to
+ * a route that does not exist on this host IS the bug, and only following it catches that.
+ */
+it('lands a rejected assertion on a sign-in page that exists on the platform-root host', function (): void {
+    saasShape();
+
+    $connection = rootSsoConnection('saml');
+
+    app()->bind(AssertionValidator::class, fn () => new class implements AssertionValidator
+    {
+        public function validate(Connection $connection, string $rawResponse): FederatedPrincipal
+        {
+            throw InvalidAssertion::make('signature mismatch');
+        }
+    });
+
+    $response = $this->post('http://cboxid.com/sso/saml/'.$connection->id.'/acs', ['SAMLResponse' => 'forged']);
+
+    $response->assertRedirect(route('workspace.login'));
+    $response->assertSessionHasErrors('email');
+
+    // Readable, and not an assertion-forgery oracle: the reason is logged, not shown.
+    $error = session('errors')->first('email');
+    expect($error)->toContain('could not verify')
+        ->and($error)->not->toContain('signature');
+
+    // The destination must be served by THIS host. `/login` — where both callbacks used
+    // to send every failure — is `plane:subject` and 404s here; that contrast is the
+    // whole point of the fork.
+    $this->get('http://cboxid.com/workspace/login')->assertOk();
+    $this->get('http://cboxid.com/login')->assertNotFound();
 });
 
 it('serves the whole IdP surface on a tenant host', function (): void {
