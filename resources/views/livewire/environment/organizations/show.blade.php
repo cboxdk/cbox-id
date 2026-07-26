@@ -115,8 +115,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     public function removeMetaRow(int $i): void
     {
-        unset($this->metadata[$i]);
-        $this->metadata = array_values($this->metadata);
+        $rows = $this->metadata;
+        unset($rows[$i]);
+        $this->metadata = array_values($rows);
     }
 
     public function saveDetails(Organizations $organizations): void
@@ -130,7 +131,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             'metadata.*.value' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $slug = Str::slug($data['editSlug']);
+        $slug = Str::slug($this->editSlug);
         $existing = $organizations->bySlug($slug);
         if ($existing !== null && $existing->id !== $org->id) {
             $this->addError('editSlug', 'That URL handle is already used by another organization.');
@@ -153,7 +154,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             $settings['metadata'] = $metaOut;
         }
 
-        $org->name = trim($data['editName']);
+        $org->name = trim($this->editName);
         $org->slug = $slug;
         $org->settings = $settings;
         $org->save();
@@ -302,7 +303,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $pending = $invitations->invite($org->id, $this->inviteEmail, $this->inviteRole);
         Mail::to($this->inviteEmail)->send(new InvitationMail(
             organization: $org->name,
-            inviter: app(EnvironmentAdminAuth::class)->current()?->name ?? 'An administrator',
+            inviter: app(EnvironmentAdminAuth::class)->current()->name ?? 'An administrator',
             url: route('invitation.accept', $pending->token),
         ));
 
@@ -386,7 +387,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     private function actorId(): string
     {
-        return app(EnvironmentAdminAuth::class)->current()?->id ?? '';
+        return app(EnvironmentAdminAuth::class)->current()->id ?? '';
     }
 
     /**
@@ -411,7 +412,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             $u = $userMap->get($m->user_id);
             $members[] = [
                 'userId' => $m->user_id,
-                'name' => $u?->name ?? $u?->email ?? $m->user_id,
+                'name' => $u->name ?? $u->email ?? $m->user_id,
                 'email' => $u?->email,
                 'role' => $m->role,
             ];
@@ -448,7 +449,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     {{-- Details --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         <form wire:submit="saveDetails" class="mt-4 space-y-4">
             <div class="grid sm:grid-cols-2 gap-3">
                 <div>
@@ -481,7 +482,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     {{-- Members --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Members</p>
+        <h2 class="cbx-section-title">Members</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">Who belongs to this organization. <b>Org access</b> is their administration level here; <b>access roles</b> are what they can do inside the apps.</p>
         <div class="mt-4 space-y-2">
             @forelse ($members as $m)
@@ -492,12 +493,26 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                             <span class="block text-sm font-medium truncate">{{ $m['name'] }}</span>
                             @if ($m['email'])<span class="block text-xs truncate mono" style="color:var(--faint)">{{ $m['email'] }}</span>@endif
                         </a>
-                        <select class="select" style="width:auto" aria-label="Org access" wire:change="changeMemberRole('{{ $m['userId'] }}', $event.target.value)">
-                            @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
-                                <option value="{{ $val }}" @selected($m['role'] === $val)>{{ $lbl }}</option>
-                            @endforeach
-                        </select>
-                        <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMember('{{ $m['userId'] }}')" wire:confirm="Remove this member?">Remove</button>
+                        {{-- Explicit save, NOT wire:change: on a focused select a stray arrow-key
+                             fires `change` and silently demoted an Owner with no way back. --}}
+                        <div class="flex items-center gap-1.5 shrink-0" x-data="{ saved: @js($m['role']), val: @js($m['role']), busy: false }">
+                            <select class="select" style="width:auto" aria-label="Org access for {{ $m['name'] }}" x-model="val">
+                                @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
+                                    <option value="{{ $val }}" @selected($m['role'] === $val)>{{ $lbl }}</option>
+                                @endforeach
+                            </select>
+                            <button type="button" class="btn btn-primary btn-sm shrink-0" x-cloak x-show="val !== saved" :disabled="busy"
+                                    x-text="busy ? 'Saving…' : 'Save'"
+                                    @click="busy = true; $wire.changeMemberRole('{{ $m['userId'] }}', val).then(() => { saved = val; busy = false })"></button>
+                        </div>
+                        @php $removeMemberAction = "removeMember('{$m['userId']}')"; @endphp
+                        <x-confirm-delete
+                            :name="$m['email']"
+                            :action="$removeMemberAction"
+                            label="Remove"
+                            trigger-class="btn btn-ghost btn-sm shrink-0"
+                            trigger-style="color:var(--destructive)"
+                            consequence="They lose every role this organization grants them, immediately." />
                     </div>
                     <div class="mt-2 flex flex-wrap items-center gap-1.5">
                         <span class="text-xs" style="color:var(--faint)">Access roles:</span>
@@ -544,7 +559,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     {{-- Invitations (for people who don't have an account yet) --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Invitations</p>
+        <h2 class="cbx-section-title">Invitations</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">Invite someone by email — they join on their own by accepting the link.</p>
         <div class="mt-4 space-y-2">
             @forelse ($invitations as $inv)
@@ -584,7 +599,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     {{-- Verified domains (drive SSO / directory matching) --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Domains</p>
+        <h2 class="cbx-section-title">Domains</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">Verify domains this organization owns so its users are matched to it for SSO.</p>
         <div class="mt-4 space-y-2">
             @forelse ($domains as $domain)
@@ -596,9 +611,21 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                             <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="toggleCapture('{{ $domain->id }}')">{{ $domain->capture ? 'Capture on' : 'Capture off' }}</button>
                         @else
                             <span class="badge badge-warn">Pending</span>
-                            <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="verifyDomain('{{ $domain->id }}')">Verify</button>
+                            {{-- A live DNS TXT lookup — the slowest action in the console. --}}
+                            <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="verifyDomain('{{ $domain->id }}')"
+                                    wire:loading.attr="disabled" wire:target="verifyDomain('{{ $domain->id }}')">
+                                <span wire:loading.remove wire:target="verifyDomain('{{ $domain->id }}')">Verify</span>
+                                <span wire:loading wire:target="verifyDomain('{{ $domain->id }}')" class="inline-flex items-center gap-2"><span class="spinner"></span> Checking DNS…</span>
+                            </button>
                         @endif
-                        <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeDomain('{{ $domain->id }}')" wire:confirm="Remove this domain?">Remove</button>
+                        @php $removeDomainAction = "removeDomain('{$domain->id}')"; @endphp
+                        <x-confirm-delete
+                            :name="$domain->domain"
+                            :action="$removeDomainAction"
+                            label="Remove"
+                            trigger-class="btn btn-ghost btn-sm shrink-0"
+                            trigger-style="color:var(--destructive)"
+                            consequence="Anyone signing in with an address at this domain stops being routed to this organization." />
                     </div>
                     @unless ($domain->verified_at)
                         <p class="mt-2 text-xs" style="color:var(--faint)">Add a DNS TXT record: <code class="mono select-all">{{ $domain->verification_token }}</code></p>
@@ -623,14 +650,23 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($org->status === OrganizationStatus::Suspended)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="reactivate">Reactivate</button>
             @else
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="suspend" wire:confirm="Suspend this organization? Its members lose access until reactivated.">Suspend</button>
+                <x-confirm-delete
+                    :name="$org->name"
+                    action="suspend"
+                    label="Suspend"
+                    trigger-class="btn btn-ghost btn-sm"
+                    consequence="Every member of this organization loses access through it immediately, until it is reactivated." />
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteOrg" wire:confirm="Delete this organization? It is hidden and its members lose access.">Delete organization</button>
+            <x-confirm-delete
+                :name="$org->name"
+                action="deleteOrg"
+                label="Delete organization"
+                consequence="The organization is hidden and every member loses access through it. This cannot be undone." />
         </div>
     </div>
 </div>

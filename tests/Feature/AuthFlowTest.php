@@ -66,7 +66,7 @@ it('rejects a wrong password without starting a session', function () {
         ->set('email', 'dana@acme.test')->set('password', 'nope')
         ->call('login')
         ->assertHasErrors('email')
-        ->assertNoRedirect();
+        ->assertRenderedNotRedirected();
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
@@ -98,11 +98,15 @@ it('throttles repeated failed password attempts', function () {
         ->call('login')
         ->assertHasErrors('email');
 
-    // Even the correct password is blocked while throttled.
+    // Even the correct password is blocked while throttled — turned away with the
+    // lockout error, and no session started.
     Volt::test('auth.login')
         ->set('email', 'dana@acme.test')->set('password', 'supersecret123')
         ->call('login')
-        ->assertNoRedirect();
+        ->assertRenderedNotRedirected()
+        ->assertHasErrors('email');
+
+    expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
 
 it('redirects guests away from the console', function () {

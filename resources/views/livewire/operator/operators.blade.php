@@ -91,6 +91,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
         }
     }
 
+    /** @return array<string, mixed> */
     public function with(OperatorAuth $auth): array
     {
         return [
@@ -145,7 +146,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
 
     <div class="cbx-panel overflow-hidden mt-8">
         @foreach ($operators as $op)
-            <div class="px-5 py-4 border-b flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            <div wire:key="operator-{{ $op['id'] }}" class="px-5 py-4 border-b flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                  style="border-color:var(--border)">
                 <div class="min-w-0">
                     <p class="text-sm font-semibold truncate">

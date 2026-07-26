@@ -71,7 +71,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
 
         $data = $this->validate(['editName' => ['required', 'string', 'max:120']]);
 
-        $directory->name = trim($data['editName']);
+        $directory->name = trim($this->editName);
         $directory->save();
 
         $this->dispatch('toast', message: 'Directory updated.');
@@ -235,7 +235,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
 
     {{-- Details --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         <form wire:submit="saveName" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2 items-start">
             <div>
                 <label class="label" for="editName">Directory name</label>
@@ -248,11 +248,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
 
     {{-- Bearer token & status --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Access</p>
+        <h2 class="cbx-section-title">Access</h2>
         <p class="mt-1 text-xs" style="color:var(--faint)">The bearer token is stored only as a hash. Rotating it reveals a new token once and immediately invalidates the old one.</p>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($directory->provider === DirectoryProvider::Scim)
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="regenerateToken" wire:confirm="Rotate the bearer token? The current token stops working immediately and the IdP must be reconfigured."><x-icon name="refresh" class="w-4 h-4" /> Rotate token</button>
+                <x-confirm-delete
+                    :name="$directory->name"
+                    action="regenerateToken"
+                    label="Rotate token"
+                    verb="Rotate"
+                    trigger-class="btn btn-ghost btn-sm"
+                    consequence="The current SCIM bearer token stops working immediately and cannot be recovered — provisioning stops until the upstream IdP is reconfigured with the new one.">
+                    <x-icon name="refresh" class="w-4 h-4" /> Rotate token
+                </x-confirm-delete>
             @endif
             @if ($directory->status === DirectoryStatus::Active)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="toggleStatus" wire:confirm="Pause this directory? Provisioning is suspended until re-enabled.">Pause</button>
@@ -277,7 +285,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
                                     @php $role = $accessRolesById[$rid] ?? null; @endphp
                                     @if ($role)
                                         <span class="badge">{{ $role->name }}
-                                            <button type="button" wire:click="unmapGroup('{{ $group->id }}', '{{ $rid }}')" style="color:var(--destructive)" title="Remove mapping" aria-label="Remove {{ $role->name }} mapping">×</button>
+                                            @php $unmapAction = "unmapGroup('{$group->id}', '{$rid}')"; @endphp
+                                            <x-confirm-delete
+                                                :name="$group->display_name"
+                                                :action="$unmapAction"
+                                                label="×"
+                                                :verb="'Unmap '.$role->name.' from'"
+                                                trigger-class=""
+                                                trigger-style="color:var(--destructive)"
+                                                title="Remove mapping"
+                                                aria-label="Remove {{ $role->name }} mapping"
+                                                :consequence="'Every member synced through this group loses the '.$role->name.' role. It is re-applied only if you map the group again.'" />
                                         </span>
                                     @endif
                                 @empty
@@ -305,9 +323,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Directory'])] class 
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteDirectory" wire:confirm="Delete this directory? Its bearer token stops working and provisioning ends. This cannot be undone.">Delete directory</button>
+            <x-confirm-delete
+                :name="$directory->name"
+                action="deleteDirectory"
+                label="Delete directory"
+                consequence="The bearer token stops working immediately and SCIM provisioning ends. This cannot be undone." />
         </div>
     </div>
 </div>

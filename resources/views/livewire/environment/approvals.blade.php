@@ -99,7 +99,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
             ->map(function (BackchannelAuthRequest $request) use ($clients, $labels): array {
                 return [
                     'id' => $request->id,
-                    'appName' => $clients->byClientId($request->client_id)?->name ?? $request->client_id,
+                    'appName' => $clients->byClientId($request->client_id)->name ?? $request->client_id,
                     'bindingMessage' => $request->binding_message,
                     'scopeRows' => array_map(
                         fn (string $scope): array => ['scope' => $scope, 'label' => $labels[$scope] ?? $scope],
@@ -143,7 +143,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
                         <ul class="mt-2 space-y-2">
                             @foreach ($request['scopeRows'] as $row)
                                 <li class="flex items-center gap-2.5 text-sm">
-                                    <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success)" />
+                                    <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success-strong)" />
                                     <span>{{ $row['label'] }}</span>
                                     <span class="badge">{{ $row['scope'] }}</span>
                                 </li>

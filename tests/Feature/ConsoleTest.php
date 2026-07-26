@@ -74,6 +74,25 @@ it('registers an OAuth client for the organization', function () {
         ->and($client->scopes)->toContain('api.read');
 });
 
+// Sign-out only returns people to the app when the requested post_logout_redirect_uri
+// is on this client's registered allow-list, byte for byte — so the org console has to
+// be able to write that list, or every sign-out ends on Cbox ID's bare page.
+it('registers an OAuth client with post-logout redirect URIs', function () {
+    $orgId = owner();
+
+    Volt::test('clients')
+        ->set('name', 'Support Portal')
+        ->set('grantAuthorizationCode', true)
+        ->set('redirectUris', 'https://portal.acme.test/auth/callback')
+        ->set('postLogoutRedirectUris', 'https://portal.acme.test/signed-out')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $client = Client::query()->where('organization_id', $orgId)->where('name', 'Support Portal')->first();
+    expect($client)->not->toBeNull()
+        ->and($client->post_logout_redirect_uris)->toBe(['https://portal.acme.test/signed-out']);
+});
+
 it('creates and activates a SAML connection', function () {
     $orgId = owner();
     entitle($orgId, 'cbox-id-sso');

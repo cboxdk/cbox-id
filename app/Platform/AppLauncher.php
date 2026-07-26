@@ -60,7 +60,7 @@ final class AppLauncher
                 'host' => (string) parse_url($url, PHP_URL_HOST),
                 'initial' => mb_strtoupper(mb_substr($client->name, 0, 1)),
                 // A stable hue per app name, so each tile keeps a recognisable colour
-                // across sessions (Okta/Workspace-style app portal).
+                // across sessions (the app-portal pattern).
                 'hue' => (int) (crc32($client->name) % 360),
             ];
         }

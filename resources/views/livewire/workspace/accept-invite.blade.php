@@ -26,7 +26,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
 
     public ?string $accountName = null;
 
-    public function mount(string $member, AccountMembers $members)
+    public function mount(string $member, AccountMembers $members): mixed
     {
         $this->member = $member;
         $invited = $members->find($member);
@@ -39,6 +39,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
 
         $this->email = $invited->email;
         $this->accountName = $invited->account?->name;
+
+        return null;
     }
 
     public function accept(AccountMembers $members, AccountAuth $auth): void
@@ -81,8 +83,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
                    aria-describedby="password-policy @error('password') password-error @enderror"
                    @error('password') aria-invalid="true" @enderror>
             <div id="password-policy" class="mt-2 flex items-center gap-1.5 text-xs" style="color:var(--faint)">
-                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''" />
-                <span x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''">At least 12 characters</span>
+                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''" />
+                <span x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''">At least 12 characters</span>
                 <span class="mx-1" aria-hidden="true">·</span>
                 <span>checked against known breaches</span>
             </div>

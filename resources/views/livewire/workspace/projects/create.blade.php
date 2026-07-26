@@ -24,7 +24,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'New project'])] class 
         $account = $member?->account;
 
         // Only roles that manage environments may stand up a new product.
-        if ($account === null || ($member?->role->canManageEnvironments() ?? false) === false) {
+        if ($account === null || ! $member->role->canManageEnvironments()) {
             abort(403);
         }
 

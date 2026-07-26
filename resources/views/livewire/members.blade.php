@@ -6,15 +6,20 @@ use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\CurrentUser;
 use App\Platform\OrgAccessRoles;
+use App\Platform\SodGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
+use Carbon\CarbonInterface;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
+use Cbox\Id\Organization\Models\Membership;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -70,9 +75,23 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         if ($held) {
             $roles->unassign($this->orgId(), $userId, $roleId);
-        } else {
-            $roles->assign($this->orgId(), $userId, $roleId, GrantSource::Manual);
+
+            return;
         }
+
+        // Segregation of duties is a PRE-GRANT gate the host has to call — the contract
+        // says so, and evaluate()/wouldViolate() are the whole published API. The console
+        // shipped the SoD screens and never called it, so an admin could create on the
+        // Members page exactly the toxic combination the Governance page reports.
+        $refusal = app(SodGuard::class)->refuse($this->orgId(), $userId, $roleId);
+
+        if ($refusal !== null) {
+            $this->dispatch('toast', message: $refusal->message(), severity: 'error');
+
+            return;
+        }
+
+        $roles->assign($this->orgId(), $userId, $roleId, GrantSource::Manual);
     }
 
     public function invite(Invitations $invitations): void
@@ -86,20 +105,31 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $me = app(CurrentUser::class);
         $email = $this->inviteEmail;
 
+        // The parked access roles are a grant like any other, just deferred: gate them
+        // HERE, where there is a form to report on. By acceptance time the only place
+        // left to refuse is a redirect-only controller with nowhere to say why.
+        $selectedRoles = array_values(array_intersect($this->inviteAccessRoles, $this->validAccessRoleIds()));
+        $refusal = app(SodGuard::class)->refuseSet($this->orgId(), $selectedRoles);
+
+        if ($refusal !== null) {
+            $this->addError('inviteAccessRoles', $refusal->message());
+
+            return;
+        }
+
         // Create a PENDING invitation — membership is granted only when the
         // invitee accepts via the emailed token. No one is added without consent.
         $pending = $invitations->invite($me->organizationId() ?? '', $email, $this->inviteRole, invitedBy: $me->id());
 
         Mail::to($email)->send(new InvitationMail(
-            organization: $me->organization()?->name ?? 'your team',
+            organization: $me->organization()->name ?? 'your team',
             inviter: $me->name(),
             url: route('invitation.accept', $pending->token),
         ));
 
         // Park the chosen access roles for this email — applied on acceptance, so
         // there's no separate assignment step after they join.
-        $validRoleIds = $this->validAccessRoleIds();
-        foreach (array_values(array_intersect($this->inviteAccessRoles, $validRoleIds)) as $roleId) {
+        foreach ($selectedRoles as $roleId) {
             InvitationRoleGrant::query()->firstOrCreate([
                 'organization_id' => $this->orgId(),
                 'email' => $email,
@@ -125,13 +155,16 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $orgId))
             ->pluck('client_id');
 
-        return Role::query()
+        /** @var list<string> $ids */
+        $ids = Role::query()
             ->where(function ($q) use ($orgId, $clientIds): void {
                 $q->where(fn ($x) => $x->where('organization_id', $orgId)->whereNull('client_id'))
                     ->orWhere(fn ($x) => $x->whereIn('client_id', $clientIds)->whereNull('orphaned_at'));
             })
             ->pluck('id')
             ->all();
+
+        return $ids;
     }
 
     public function revokeInvitation(string $id, Invitations $invitations): void
@@ -191,13 +224,18 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         return $memberships->of($this->orgId(), $userId)?->role === \Cbox\Id\Organization\Enums\MembershipRole::Owner;
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $me = app(CurrentUser::class);
         $subjects = app(Subjects::class);
 
         $page = app(Memberships::class)->paginateForOrganization($this->orgId());
+
+        /** @var Collection<int, Membership> $pageMembers */
         $pageMembers = new Collection($page->items());
+
+        /** @var list<string> $pageUserIds */
         $pageUserIds = $pageMembers->pluck('user_id')->all();
 
         // Batch-resolve THIS page's subjects in one query (findMany) instead of a
@@ -205,12 +243,20 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $subjectsById = $subjects->findMany($pageUserIds);
 
         $rows = $pageMembers
-            ->map(fn ($m): array => [
-                'id' => $m->user_id,
-                'role' => $m->role,
-                'subject' => $subjectsById[$m->user_id] ?? null,
-                'joined' => $m->created_at,
-            ]);
+            /** @return array{id: string, role: MembershipRole, subject: Subject|null, joined: CarbonInterface|null} */
+            ->map(function (Membership $m) use ($subjectsById): array {
+                // The package's Membership model does not declare the Eloquent timestamp
+                // columns as @property, so read created_at off the attribute bag and
+                // narrow it here rather than trusting an undeclared property.
+                $joined = $m->getAttribute('created_at');
+
+                return [
+                    'id' => $m->user_id,
+                    'role' => $m->role,
+                    'subject' => $subjectsById[$m->user_id] ?? null,
+                    'joined' => $joined instanceof CarbonInterface ? $joined : null,
+                ];
+            });
 
         // Access roles assignable to people: org-wide roles + app-declared roles for
         // apps this org can use. Grouped so the picker reads clearly.
@@ -310,7 +356,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                 <div>
                     <span class="label">Access roles <span style="color:var(--muted);font-weight:400">— granted the moment they accept (optional)</span></span>
                     @foreach ($accessRoles->groupBy(fn ($r) => $r->client_id ?? '__org') as $groupKey => $group)
-                        <p class="text-xs font-semibold uppercase mb-1.5 mt-1" style="color:var(--muted);letter-spacing:0.05em">{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}</p>
+                        <p wire:key="rolegroup-{{ $groupKey }}" class="text-xs font-semibold uppercase mb-1.5 mt-1" style="color:var(--muted);letter-spacing:0.05em">{{ $groupKey === '__org' ? 'Org roles' : ($appNames[$groupKey] ?? $groupKey) }}</p>
                         <div class="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 mb-2">
                             @foreach ($group as $r)
                                 <label class="flex items-center gap-2 text-sm rounded-lg px-2.5 py-1.5 cursor-pointer" style="border:1px solid var(--border);background:var(--card)">
@@ -321,6 +367,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                             @endforeach
                         </div>
                     @endforeach
+                    @error('inviteAccessRoles') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @endif
 
@@ -334,11 +381,11 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     @if ($me->isAdmin() && $invitations->isNotEmpty())
         <div class="cbx-panel overflow-hidden">
             <div class="cbx-panel-header">
-                <h3 class="cbx-panel-title">Pending invitations</h3>
+                <h2 class="cbx-panel-title">Pending invitations</h2>
             </div>
             <ul>
                 @foreach ($invitations as $invite)
-                    <li class="px-5 py-3 border-b flex items-center justify-between gap-4" style="border-color:var(--border)">
+                    <li wire:key="invite-{{ $invite->id }}" class="px-5 py-3 border-b flex items-center justify-between gap-4" style="border-color:var(--border)">
                         <div class="min-w-0">
                             <p class="text-sm font-medium truncate">{{ $invite->email }}</p>
                             <p class="text-xs" style="color:var(--muted-foreground)">Invited as {{ ucfirst($invite->role) }} · expires {{ $invite->expires_at?->diffForHumans() }}</p>
@@ -362,7 +409,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                 </thead>
                 <tbody>
                     @forelse ($rows as $row)
-                        <tr>
+                        <tr wire:key="member-{{ $row['id'] }}">
                             <td>
                                 <div class="flex items-center gap-3">
                                     <span class="cbx-avatar">
@@ -406,9 +453,15 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                             <td class="text-sm mono" style="color:var(--muted-foreground)">{{ $row['joined']?->format('M j, Y') ?? '—' }}</td>
                             <td class="text-right">
                                 @if ($me->isAdmin() && $row['id'] !== $me->id())
-                                    <button wire:click="remove('{{ $row['id'] }}')"
-                                            wire:confirm="Remove this member from the organization?"
-                                            class="btn btn-danger btn-sm">Remove</button>
+                                    @php
+                                        $removeAction = "remove('{$row['id']}')";
+                                        $memberLabel = $row['subject']?->email ?? $row['subject']?->name ?? $row['id'];
+                                    @endphp
+                                    <x-confirm-delete
+                                        :name="$memberLabel"
+                                        :action="$removeAction"
+                                        label="Remove"
+                                        consequence="They lose every role and application this organization grants them, immediately." />
                                 @endif
                             </td>
                         </tr>

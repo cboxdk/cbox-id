@@ -19,11 +19,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor authentication']
 
     public bool $recovery = false;
 
-    public function mount(AccountAuth $auth)
+    public function mount(AccountAuth $auth): mixed
     {
         if ($auth->pendingMemberId() === null) {
             return redirect()->route('workspace.login');
         }
+
+        return null;
     }
 
     public function verify(AccountAuth $auth, AccountMemberMfa $mfa): void

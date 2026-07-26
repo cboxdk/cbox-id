@@ -15,6 +15,9 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
+use Cbox\Id\OAuthServer\Models\Client;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -176,12 +179,14 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         $me = app(CurrentUser::class);
         $currentId = $me->session()?->id;
 
-        Session::query()
+        /** @var Collection<int, string> $otherSessionIds */
+        $otherSessionIds = Session::query()
             ->where('user_id', $me->id())
             ->whereNull('revoked_at')
             ->when($currentId !== null, fn ($q) => $q->where('id', '!=', $currentId))
-            ->pluck('id')
-            ->each(fn (string $id) => $sessions->revoke($id));
+            ->pluck('id');
+
+        $otherSessionIds->each(fn (string $id) => $sessions->revoke($id));
 
         $this->dispatch('toast', message: 'Signed out of all other sessions.');
     }
@@ -226,8 +231,13 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
     {
         $model = config('cbox-id.models.user');
 
-        return is_string($model)
-            && $model::query()->whereKey($subjectId)->value('password') !== null;
+        // config() is untyped; is_a(..., allow_string: true) is what turns the value
+        // into a class-string<Model> the query builder can be resolved against.
+        if (! is_string($model) || ! is_a($model, Model::class, true)) {
+            return false;
+        }
+
+        return $model::query()->whereKey($subjectId)->value('password') !== null;
     }
 
     /**
@@ -263,13 +273,14 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         // Without this, `?return_to=https://evil.tld` renders a legitimate-looking
         // "Return to …" link: an open-redirect / phishing pivot on an IdP surface.
         // Client is env-scoped (BelongsToEnvironment), so this is the current realm's set.
-        $allowedHosts = \Cbox\Id\OAuthServer\Models\Client::query()
+        /** @var Collection<int, string> $redirectHosts */
+        $redirectHosts = Client::query()
             ->get(['redirect_uris'])
-            ->flatMap(fn ($c): array => is_array($c->redirect_uris) ? $c->redirect_uris : [])
+            ->flatMap(fn (Client $c): array => $c->redirect_uris)
             ->map(fn (string $uri): ?string => parse_url($uri, PHP_URL_HOST) ?: null)
-            ->filter()
-            ->push(request()->getHost())
-            ->unique();
+            ->filter();
+
+        $allowedHosts = $redirectHosts->push(request()->getHost())->unique();
 
         if (! $allowedHosts->contains($parts['host'])) {
             return null;
@@ -278,6 +289,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         return ['url' => $url, 'host' => $parts['host']];
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $me = app(CurrentUser::class);
@@ -323,7 +335,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
     <section class="cbx-panel">
         <div class="cbx-panel-header">
             <div>
-                <h3 class="cbx-panel-title">Profile</h3>
+                <h2 class="cbx-panel-title">Profile</h2>
                 <p class="cbx-panel-desc">How you appear across Cbox ID.</p>
             </div>
         </div>
@@ -345,7 +357,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
     <section class="cbx-panel">
         <div class="cbx-panel-header">
             <div>
-                <h3 class="cbx-panel-title">Password</h3>
+                <h2 class="cbx-panel-title">Password</h2>
                 <p class="cbx-panel-desc">{{ $hasPassword ? 'Change the password you use to sign in.' : 'Set a password to sign in without a social account or passkey.' }}</p>
             </div>
         </div>
@@ -379,7 +391,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
     <section class="cbx-panel">
         <div class="cbx-panel-header">
             <div>
-                <h3 class="cbx-panel-title">Two-factor authentication</h3>
+                <h2 class="cbx-panel-title">Two-factor authentication</h2>
                 <p class="cbx-panel-desc">An authenticator app adds a second step when you sign in.</p>
             </div>
             @if ($twoFactorEnabled)
@@ -451,7 +463,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
     <section class="cbx-panel" data-passkey-only>
         <div class="cbx-panel-header">
             <div>
-                <h3 class="cbx-panel-title">Passkeys</h3>
+                <h2 class="cbx-panel-title">Passkeys</h2>
                 <p class="cbx-panel-desc">Sign in with Face ID, Touch ID, Windows Hello, or a security key — no password.</p>
             </div>
             <button type="button" data-passkey-register data-passkey-name="{{ $me->name() }}'s device"
@@ -466,9 +478,9 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
             @else
                 <ul class="divide-y" style="border-color:var(--border)">
                     @foreach ($passkeys as $passkey)
-                        <li class="flex items-center justify-between gap-4 py-3">
+                        <li wire:key="passkey-{{ $passkey->id }}" class="flex items-center justify-between gap-4 py-3">
                             <div class="flex items-center gap-3 min-w-0">
-                                <x-icon name="shield" class="w-4 h-4 shrink-0" style="color:var(--success)" />
+                                <x-icon name="shield" class="w-4 h-4 shrink-0" style="color:var(--success-strong)" />
                                 <div class="min-w-0">
                                     <p class="text-sm font-medium truncate">{{ $passkey->name ?? 'Passkey' }}</p>
                                     <p class="text-xs" style="color:var(--faint)">Added {{ $passkey->created_at?->format('M j, Y') }} · sign-count {{ $passkey->sign_count }}</p>
@@ -487,7 +499,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         <section class="cbx-panel">
             <div class="cbx-panel-header">
                 <div>
-                    <h3 class="cbx-panel-title">Connected accounts</h3>
+                    <h2 class="cbx-panel-title">Connected accounts</h2>
                     <p class="cbx-panel-desc">Link a social account to sign in with it. Linking is deliberate — we never merge accounts by email automatically.</p>
                 </div>
             </div>
@@ -495,7 +507,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
                 <ul class="divide-y" style="border-color:var(--border)">
                     @foreach ($socialProviders as $key => $label)
                         @php $isLinked = in_array('social:'.$key, $linkedProviders, true); @endphp
-                        <li class="flex items-center justify-between gap-4 py-3">
+                        <li wire:key="social-{{ $key }}" class="flex items-center justify-between gap-4 py-3">
                             <div class="flex items-center gap-3">
                                 <span class="font-medium">{{ $label }}</span>
                                 @if ($isLinked) <span class="cbx-pill cbx-pill--success"><span class="dot"></span> Connected</span> @endif
@@ -517,7 +529,7 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
     <section class="cbx-panel">
         <div class="cbx-panel-header">
             <div>
-                <h3 class="cbx-panel-title">Current session</h3>
+                <h2 class="cbx-panel-title">Current session</h2>
                 <p class="cbx-panel-desc">The session you are signed in with right now.</p>
             </div>
         </div>

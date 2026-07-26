@@ -130,6 +130,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         $this->resetErrorBag();
     }
 
+    /** @return array<string, mixed> */
     public function with(OperatorAuth $auth, OperatorMfa $mfa): array
     {
         $operator = $auth->current();

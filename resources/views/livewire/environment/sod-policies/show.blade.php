@@ -131,7 +131,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
 
     {{-- Details --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         @if ($policy->description)
             <p class="mt-2 text-sm" style="color:var(--muted)">{{ $policy->description }}</p>
         @endif
@@ -151,13 +151,23 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
         </dl>
         <p class="mt-4 text-xs" style="color:var(--faint)">Holding two or more roles from this set at once is a violation.</p>
         <div class="mt-4">
-            <button type="button" class="btn btn-ghost btn-sm" wire:click="toggle">{{ $policy->active ? 'Deactivate' : 'Activate' }}</button>
+            @if ($policy->active)
+                {{-- Deactivating stops a live compliance control from being enforced, so it
+                     gets the same type-to-confirm as a delete. Activating does not. --}}
+                <x-confirm-delete
+                    :name="$policy->name"
+                    action="toggle"
+                    label="Deactivate"
+                    consequence="This separation-of-duties control stops being enforced until it is activated again." />
+            @else
+                <button type="button" class="btn btn-ghost btn-sm" wire:click="toggle" wire:loading.attr="disabled" wire:target="toggle">Activate</button>
+            @endif
         </div>
     </div>
 
     {{-- Evaluate --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Evaluate</p>
+        <h2 class="cbx-section-title">Evaluate</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">Scan an organization for subjects who already hold this rule's conflicting combination.</p>
 
         <form wire:submit="scan" class="mt-4 flex flex-wrap items-end gap-3">
@@ -209,9 +219,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Conflict rule'])] cl
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="remove" wire:confirm="Remove {{ $policy->name }}? This cannot be undone.">Delete rule</button>
+            <x-confirm-delete
+                :name="$policy->name"
+                action="remove"
+                label="Delete rule"
+                consequence="This separation-of-duties control stops being enforced. This cannot be undone." />
         </div>
     </div>
 </div>

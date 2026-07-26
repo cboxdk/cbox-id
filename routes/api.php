@@ -73,7 +73,7 @@ Route::middleware('throttle:120,1')
  * checked against the fine-grained scope each route requires. Because the key model
  * is hard environment-scoped, a key minted for another environment can't resolve
  * here at all — the credential is bound to the host it was created for. This is the
- * API apps use for day-to-day org/user provisioning (WorkOS/Clerk-style).
+ * API apps use for day-to-day org/user provisioning.
  */
 Route::get('v1/environment/openapi.yaml', function () {
     $spec = @file_get_contents(resource_path('openapi/environment.yaml'));

@@ -60,6 +60,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
         $this->dispatch('toast', message: 'Access review closed — revoked access was applied.');
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $reviews = app(AccessReviews::class);
@@ -97,12 +98,12 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
         foreach ($items as $item) {
             $id = $item->subject_id;
 
-            if (! is_string($id) || $id === '' || isset($labels[$id])) {
+            if ($id === '' || isset($labels[$id])) {
                 continue;
             }
 
             $subject = $subjects->find($id);
-            $name = $subject?->name ?? $subject?->email;
+            $name = $subject->name ?? $subject?->email;
 
             if (is_string($name) && $name !== '') {
                 $labels[$id] = $name;
@@ -123,7 +124,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
         $roleIds = [];
 
         foreach ($items as $item) {
-            if ($item->access_type === AccessKind::Role && is_string($item->access_ref) && $item->access_ref !== '') {
+            if ($item->access_type === AccessKind::Role && $item->access_ref !== '') {
                 $roleIds[$item->access_ref] = true;
             }
         }
@@ -132,10 +133,13 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
             return [];
         }
 
-        return Role::query()
+        /** @var array<string, string> $names */
+        $names = Role::query()
             ->whereIn('id', array_keys($roleIds))
             ->pluck('name', 'id')
             ->all();
+
+        return $names;
     }
 
     private function orgId(): string
@@ -175,7 +179,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
         {{-- Campaign list --}}
         <div class="card overflow-hidden" style="align-self:start">
             @forelse ($campaigns as $c)
-                <button wire:click="select('{{ $c->id }}')" class="cbx-row w-full text-left"
+                <button wire:key="campaign-{{ $c->id }}" wire:click="select('{{ $c->id }}')" class="cbx-row w-full text-left"
                         style="{{ $selected === $c->id ? 'background:var(--accent-soft)' : '' }}">
                     <div class="min-w-0">
                         <p class="font-medium truncate">{{ $c->name }}</p>
@@ -202,7 +206,13 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="font-semibold">{{ $campaign->name }}</h2>
                     @if ($campaign->status === CampaignStatus::Open)
-                        <button wire:click="close('{{ $campaign->id }}')" wire:confirm="Close this review? Revoked items will be removed and pending items follow the review's policy." class="btn btn-danger btn-sm">Close &amp; apply</button>
+                        @php $closeCampaignAction = "close('{$campaign->id}')"; @endphp
+                        <x-confirm-delete
+                            :name="$campaign->name"
+                            :action="$closeCampaignAction"
+                            label="Close &amp; apply"
+                            verb="Close and apply"
+                            consequence="Every revoke recorded on this review is applied for real now, and anything still un-reviewed follows the review's policy — which defaults to revoke. This cannot be undone." />
                     @endif
                 </div>
                 <div class="card overflow-hidden">
@@ -211,7 +221,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                             <thead><tr><th>Subject</th><th>Access</th><th>Decision</th><th></th></tr></thead>
                             <tbody>
                             @forelse ($items as $item)
-                                <tr>
+                                <tr wire:key="item-{{ $item->id }}">
                                     <td>
                                         @if ($label = ($subjectLabels[$item->subject_id] ?? null))
                                             <span class="font-medium">{{ $label }}</span>
@@ -234,8 +244,13 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                                     </td>
                                     <td class="text-right">
                                         @if ($campaign->status === CampaignStatus::Open)
-                                            <button wire:click="certify('{{ $item->id }}')" class="btn btn-ghost btn-sm">Certify</button>
-                                            <button wire:click="revoke('{{ $item->id }}')" class="btn btn-ghost btn-sm" style="color:var(--danger)">Revoke</button>
+                                            <button wire:click="certify('{{ $item->id }}')" class="btn btn-ghost btn-sm"
+                                                    wire:loading.attr="disabled" wire:target="certify('{{ $item->id }}')">Certify</button>
+                                            {{-- Revoke sat ~8px from Certify with no guard: a mis-click recorded a
+                                                 revoke against the wrong person. The message names WHO and WHAT. --}}
+                                            <button wire:click="revoke('{{ $item->id }}')" class="btn btn-ghost btn-sm" style="color:var(--danger)"
+                                                    wire:loading.attr="disabled" wire:target="revoke('{{ $item->id }}')"
+                                                    wire:confirm="Revoke {{ $roleNames[$item->access_ref] ?? $item->access_ref }} from {{ $subjectLabels[$item->subject_id] ?? $item->subject_id }}?&#10;&#10;The revoke is recorded now and applied when this review closes.">Revoke</button>
                                         @elseif (! $item->applied && $item->decision === ReviewDecision::Revoked)
                                             <span class="text-xs" style="color:var(--warning-strong)" title="{{ $item->application_note }}">not applied</span>
                                         @endif

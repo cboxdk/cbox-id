@@ -28,6 +28,7 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
         $this->resetPage();
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $orgId = app(CurrentUser::class)->organizationId() ?? '';

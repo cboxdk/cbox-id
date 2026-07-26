@@ -86,7 +86,7 @@ it('rate-limits operator login after repeated failures', function (): void {
         ->set('password', 'a-strong-operator-pass')
         ->call('login')
         ->assertHasErrors('email')
-        ->assertNoRedirect();
+        ->assertRenderedNotRedirected();
 
     expect(session(OperatorAuth::SESSION_KEY))->toBeNull();
 });

@@ -44,6 +44,17 @@ services:
       QUEUE_CONNECTION: redis
 
       MAIL_MAILER: log
+
+      # The app is the SINGLE owner of security response headers
+      # (App\Http\Middleware\SecurityHeaders). Blanking these hands ownership over so
+      # nginx stops adding a second, looser copy of each. See the Dockerfile and
+      # docs/operations/deployment.md — the same four must be set on every deployment
+      # (k8s ConfigMap included), and the image also ships an init script that strips
+      # the directives, because the base entrypoint currently re-fills empty values.
+      NGINX_HEADER_X_FRAME_OPTIONS: ""
+      NGINX_HEADER_X_CONTENT_TYPE_OPTIONS: ""
+      NGINX_HEADER_REFERRER_POLICY: ""
+      NGINX_HEADER_PERMISSIONS_POLICY: ""
     depends_on:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }

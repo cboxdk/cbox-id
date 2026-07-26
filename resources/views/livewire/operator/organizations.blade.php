@@ -11,6 +11,7 @@ use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -107,19 +108,25 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         return $slug;
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $orgs = Organization::query()->orderBy('name')
             ->get(['id', 'name', 'slug', 'type', 'status', 'parent_id']);
 
+        /** @var Collection<string, int> $memberCounts */
         $memberCounts = Membership::query()->selectRaw('organization_id, count(*) as c')
             ->groupBy('organization_id')->pluck('c', 'organization_id');
 
         // Depth-first flatten so the table reads as the management tree.
-        $byParent = $orgs->groupBy(fn ($o) => $o->parent_id ?? '');
+        /** @var Collection<string, Collection<int, Organization>> $byParent */
+        $byParent = $orgs->groupBy(fn (Organization $o): string => $o->parent_id ?? '');
         $rows = [];
         $walk = function (string $parentKey, int $depth) use (&$walk, $byParent, $memberCounts, &$rows): void {
-            foreach ($byParent->get($parentKey, collect()) as $o) {
+            /** @var Collection<int, Organization> $children */
+            $children = $byParent->get($parentKey, new Collection);
+
+            foreach ($children as $o) {
                 $rows[] = [
                     'id' => $o->id,
                     'name' => $o->name,
@@ -138,7 +145,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         return [
             'rows' => $rows,
             // Flat list for the parent selectors.
-            'all' => $orgs->map(fn ($o) => ['id' => $o->id, 'name' => $o->name])->values()->all(),
+            'all' => $orgs->map(fn (Organization $o) => ['id' => $o->id, 'name' => $o->name])->values()->all(),
         ];
     }
 }; ?>
@@ -192,7 +199,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         </div>
 
         @forelse ($rows as $row)
-            <div class="px-5 py-3 border-b flex flex-col gap-2 sm:grid sm:items-center sm:gap-4"
+            <div wire:key="org-{{ $row['id'] }}" class="px-5 py-3 border-b flex flex-col gap-2 sm:grid sm:items-center sm:gap-4"
                  style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr 1.4fr auto">
                 <div class="min-w-0 flex items-center" style="padding-left:{{ $row['depth'] * 1.25 }}rem">
                     @if ($row['depth'] > 0)

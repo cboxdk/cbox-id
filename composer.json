@@ -73,7 +73,7 @@
             "@php -d memory_limit=1G artisan test"
         ],
         "analyse": [
-            "@php vendor/bin/phpstan analyse --no-progress --memory-limit=1G"
+            "@php vendor/bin/phpstan analyse --no-progress --memory-limit=2G"
         ],
         "license-check": "@php bin/check-licenses.php",
         "sbom": "@php bin/generate-sbom.php",

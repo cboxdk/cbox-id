@@ -64,7 +64,7 @@ it('renders an error state for an unknown client', function () {
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
     ])
-        ->assertNoRedirect()
+        ->assertRenderedNotRedirected()
         ->assertSee('Authorization failed');
 });
 
@@ -81,7 +81,7 @@ it('rejects a redirect_uri not registered to the client', function () {
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
     ])
-        ->assertNoRedirect()
+        ->assertRenderedNotRedirected()
         ->assertSee('Authorization failed');
 });
 
@@ -131,7 +131,11 @@ it('does not re-prompt once re-authenticated (loop guard)', function () {
         'code_challenge_method' => 'S256',
         'prompt' => 'login',
         'reauthed' => '1',
-    ])->assertSet('error', null)->assertNoRedirect();
+    ])
+        ->assertRenderedNotRedirected()
+        ->assertSet('error', null)
+        // The consent screen itself is what "no re-prompt" looks like.
+        ->assertSee('wants to access your Cbox ID account');
 });
 
 it('returns interaction_required on prompt=none when consent would be shown', function () {
@@ -309,8 +313,9 @@ it('does NOT skip consent for a first-party client owned by a DIFFERENT org', fu
 
     // Cross-org: never auto-skip — the consent screen must be shown, no code minted.
     Volt::test('oauth.consent', fpAuthorizeParams($clientId))
+        ->assertRenderedNotRedirected()
         ->assertSet('error', null)
-        ->assertNoRedirect();
+        ->assertSee('wants to access your Cbox ID account');
 });
 
 it('does NOT skip consent for a non-first-party client', function () {
@@ -326,8 +331,9 @@ it('does NOT skip consent for a non-first-party client', function () {
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
     ])
+        ->assertRenderedNotRedirected()
         ->assertSet('error', null)
-        ->assertNoRedirect();
+        ->assertSee('wants to access your Cbox ID account');
 });
 
 /**
@@ -477,4 +483,32 @@ it('resumes a pushed authorization request when PAR is required', function (): v
         ->and($intended)->not->toContain(urlencode($pushed['request_uri']));
 
     $component->assertHasNoErrors();
+});
+
+/**
+ * RFC 9207 §2: the AS MUST include `iss` in authorization responses INCLUDING error
+ * responses, and a client MUST reject a response without it. deny() was the last path
+ * that omitted it — so an RP using oauth4webapi threw on user-cancel instead of showing
+ * "you declined".
+ */
+it('returns the RFC 9207 issuer when the user denies consent', function () {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+
+    Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+    ])
+        ->assertSet('error', null)
+        ->call('deny')
+        ->assertRedirect(
+            'https://app.test/cb?error=access_denied'
+            .'&iss='.urlencode(app(IssuerResolver::class)->issuer())
+            .'&state=xyz'
+        );
 });

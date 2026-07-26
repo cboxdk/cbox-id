@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Carbon\CarbonInterface;
 use App\Platform\OperatorAuth;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
@@ -77,6 +78,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
         }
     }
 
+    /** @return array<string, mixed> */
     public function with(
         Organizations $orgs,
         Memberships $memberships,
@@ -191,6 +193,11 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
             }
         }
 
+        // The package's Organization model does not declare the Eloquent timestamp
+        // columns as @property, so read created_at off the attribute bag and narrow it
+        // here rather than trusting an undeclared property.
+        $createdAt = $org->getAttribute('created_at');
+
         return [
             'org' => [
                 'id' => $org->id,
@@ -198,7 +205,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
                 'slug' => $org->slug,
                 'status' => $org->status->value,
                 'type' => $org->type->value,
-                'created_at' => $org->created_at?->toDayDateTimeString(),
+                'created_at' => $createdAt instanceof CarbonInterface ? $createdAt->toDayDateTimeString() : null,
             ],
             'members' => $members,
             'memberTotal' => $allMemberships->count(),
@@ -314,7 +321,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
     {{-- Members --}}
     <div class="cbx-panel overflow-hidden mb-5">
         <div class="cbx-panel-header">
-            <h3 class="cbx-panel-title">Members</h3>
+            <h2 class="cbx-panel-title">Members</h2>
             <span class="text-xs" style="color:var(--faint)">
                 {{ count($members) < $memberTotal ? 'Showing '.count($members).' of '.$memberTotal : $memberTotal.' total' }}
             </span>
@@ -324,7 +331,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
             <span>User</span><span>Role</span><span>Status</span><span class="text-right">Support</span>
         </div>
         @forelse ($members as $member)
-            <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
+            <div wire:key="member-{{ $member['user_id'] }}" class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
                  style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr auto">
                 <div class="min-w-0">
                     <p class="text-sm font-medium truncate">{{ $member['email'] ?? $member['name'] ?? $member['user_id'] }}</p>
@@ -406,7 +413,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
     {{-- Entitlements --}}
     <div class="cbx-panel overflow-hidden mb-5">
         <div class="cbx-panel-header">
-            <h3 class="cbx-panel-title">Entitlements</h3>
+            <h2 class="cbx-panel-title">Entitlements</h2>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
              style="border-color:var(--border);color:var(--faint);grid-template-columns:2fr 2fr 1fr 1fr">
@@ -428,7 +435,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
     {{-- Recent audit --}}
     <div class="cbx-panel overflow-hidden">
         <div class="cbx-panel-header">
-            <h3 class="cbx-panel-title">Recent activity</h3>
+            <h2 class="cbx-panel-title">Recent activity</h2>
         </div>
         @forelse ($recent as $event)
             <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"

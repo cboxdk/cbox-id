@@ -31,7 +31,11 @@
 
     <nav class="flex-1 overflow-y-auto" style="scrollbar-width:none">
         @foreach ($areas as $area)
-            <a href="{{ $area['href'] }}" title="{{ $area['label'] }}"
+            {{-- wire:navigate: swap the <body> instead of reloading the document. A
+                 plain anchor re-parses the whole stylesheet and re-boots Livewire and
+                 Alpine on every single sidebar click — the largest perceived-latency
+                 cost in the console, paid on the most-used control in it. --}}
+            <a href="{{ $area['href'] }}" title="{{ $area['label'] }}" wire:navigate
                class="{{ $area['active'] ? 'cbx-on' : '' }}"
                @if ($area['current'] ?? false) aria-current="page" @endif>
                 <x-icon :name="$area['icon']" class="w-[18px] h-[18px]" aria-hidden="true" />

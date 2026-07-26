@@ -39,7 +39,7 @@ it('shows the password form for a non-SSO email', function () {
     Volt::test('auth.login')
         ->set('email', 'jane@gmail.com')
         ->call('continue')
-        ->assertNoRedirect()
+        ->assertRenderedNotRedirected()
         ->assertSet('identified', true)
         ->assertSee('Password');
 });
@@ -65,6 +65,6 @@ it('falls through to the normal password flow for a domain with no verified clai
     Volt::test('auth.login')
         ->set('email', 'jane@acme.com')
         ->call('continue')
-        ->assertNoRedirect()
+        ->assertRenderedNotRedirected()
         ->assertSet('identified', true);
 });

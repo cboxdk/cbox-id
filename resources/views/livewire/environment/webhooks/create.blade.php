@@ -59,7 +59,13 @@ new #[Layout('components.layouts.environment', ['title' => 'New webhook'])] clas
 
     public string $url = '';
 
-    /** @var list<string> */
+    /**
+     * Livewire rehydrates this straight off the wire, so the keys are whatever the
+     * request sent — not necessarily a gapless list. Hence the array_values() before
+     * it is handed on.
+     *
+     * @var array<array-key, string>
+     */
     public array $eventTypes = [];
 
     public function create(WebhookRegistry $webhooks): mixed
@@ -105,7 +111,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New webhook'])] clas
             <span class="label">Event types</span>
             <div class="grid gap-2 sm:grid-cols-2">
                 @foreach (self::EVENT_TYPES as $event)
-                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <label wire:key="event-{{ $event }}" class="flex items-center gap-2 text-sm cursor-pointer">
                         <input type="checkbox" wire:model="eventTypes" value="{{ $event }}" class="rounded">
                         <span class="mono text-xs">{{ $event }}</span>
                     </label>

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InvitationRoleGrant;
 use App\Platform\PlatformAuth;
+use App\Platform\SodGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -22,7 +23,7 @@ use Illuminate\Http\Request;
  */
 final class InvitationController extends Controller
 {
-    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, Roles $roles): RedirectResponse
+    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, Roles $roles, SodGuard $sod): RedirectResponse
     {
         $invitation = $invitations->byToken($token);
 
@@ -45,7 +46,16 @@ final class InvitationController extends Controller
             ->where('email', $invitation->email)
             ->get();
 
+        // The SoD gate applies to a deferred grant exactly as it does to a live one. The
+        // invite form refuses a toxic SET up front, but policies can be defined between
+        // the invite and its acceptance, and the invitee may already hold roles here from
+        // an earlier membership. A conflicting grant is skipped, not fatal: the person
+        // still joins, and the governance screen reports what was withheld.
         foreach ($grants as $grant) {
+            if ($sod->refuse($invitation->organization_id, $subject->id, $grant->role_id) !== null) {
+                continue;
+            }
+
             $roles->assign($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual);
         }
 

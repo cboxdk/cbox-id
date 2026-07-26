@@ -6,6 +6,72 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.23.0] - 2026-07-26
+
+Requires `cboxdk/laravel-id ^0.57`. Output of a whole-platform review loop plus a
+re-review that caught eight regressions the fixes themselves introduced. See
+`UPGRADING.md` — **this release refuses things earlier versions accepted**, and one
+change requires infrastructure work before deploying.
+
+### Security
+
+- **Admin portal links are environment-scoped.** The token lookup was unscoped and the
+  `/setup` routes carried no plane gate, so a link minted in one environment could be
+  redeemed on another's host — and the entitlement re-check in front of it read a cache
+  keyed without the environment, which an attacker could warm on demand. Reachable
+  deterministically, not as a race, because `redeem()` checks entitlement before burning
+  the link. It allowed writing SSO connections and SCIM directories into another
+  customer's environment; it did not allow taking over a domain, which still needs DNS.
+- Every destructive console action that destroys a credential, revokes someone else's
+  access or transfers ownership now requires type-to-confirm naming the resource.
+- An org admin can no longer deactivate an environment-wide segregation-of-duties policy.
+- The console now consults the SoD gate it ships the UI for, so it can no longer create
+  on one screen the violation it reports on another.
+
+### Changed — read UPGRADING.md before deploying
+
+- **The platform-root host no longer serves the IdP surface.** Discovery, JWKS, all
+  `/oauth/*`, SCIM and the SAML IdP endpoints 404 on the apex. Anything pointing at the
+  apex as an issuer will now fail at discovery instead of half-working. Account-plane
+  federation entry and callback deliberately still answer there.
+- `/up` returns JSON, not HTML.
+- The app no longer sets security headers that the nginx layer also sets. **This needs
+  four `NGINX_HEADER_*` env vars set empty at deploy time** — see UPGRADING.md; the
+  base image refills them otherwise, so the app's stricter Referrer-Policy was being
+  silently downgraded.
+
+### Fixed
+
+- OIDC step-up worked in neither direction: `max_age` was arithmetically unsatisfiable
+  (so `max_age=0` always failed), and `acr_values` was advertised and ignored.
+- SSO failure paths redirected to a subject-plane route that 404s on the account host —
+  after a successful IdP authentication, so the user believed SSO had worked. The error
+  bag key also did not match what either sign-in screen renders, so the message was
+  dropped on both planes.
+- Published config merged block-by-block, so partial overrides silently discarded package
+  defaults — `CBOX_ID_ACCESS_TOKEN_TTL`, `CBOX_ID_REQUIRE_PAR`, `CBOX_ID_DCR_MODE` and
+  others were inert.
+- The permissions page counted the whole platform-wide pivot in PHP, showing other
+  environments' role usage and loading every row on each render.
+
+### Accessibility
+
+- Seven contrast pairs failed AA in the light theme, including the one-time API-key
+  warning and the password-strength affordance. An eighth was a hover state weaker than
+  its own resting stroke. A stray brace was closing `@layer components` early, leaving
+  ~240 lines unlayered.
+- Search inputs labelled, list results announced, section headers promoted to real
+  headings, login step two focuses and announces itself.
+
+### Testing
+
+- 70% of `assertNoRedirect()` calls asserted nothing: it inspects the Livewire effect,
+  not the response, so it was silent on mount-time redirects — the exact class the
+  `max_age` bug belonged to. Replaced with `assertRenderedNotRedirected()`, which checks
+  both, and every converted site now carries a positive assertion.
+- PHPStan now analyses `resources/views/livewire`, which was never covered despite most
+  of the app's logic living there.
+
 ## [0.22.1] - 2026-07-25
 
 ### Fixed

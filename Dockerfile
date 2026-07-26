@@ -34,5 +34,25 @@ FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm
 WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 
+# The app owns its security response headers (App\Http\Middleware\SecurityHeaders).
+# The base image's nginx adds its own X-Frame-Options / X-Content-Type-Options /
+# Referrer-Policy / Permissions-Policy on top, so production returned each one twice
+# with CONFLICTING values — and since a user agent takes the LAST Referrer-Policy, the
+# app's deliberate `same-origin` was being downgraded to nginx's looser
+# `strict-origin-when-cross-origin` on an identity provider.
+#
+# Blanking these is the documented way to hand ownership to the app. Today it is not
+# yet sufficient on its own: the base entrypoint re-fills empty values via
+# `${VAR:=default}`, which POSIX also applies to a set-but-empty variable — so the init
+# script below is what actually enforces single ownership. Both are here on purpose:
+# the env vars declare the intent (and become the whole fix once the base image
+# switches to `${VAR=default}`), the script makes it true now.
+COPY docker/entrypoint-init/10-app-owns-security-headers.sh /docker-entrypoint-init.d/10-app-owns-security-headers.sh
+RUN chmod +x /docker-entrypoint-init.d/10-app-owns-security-headers.sh
+
 ENV APP_ENV=production \
-    PHP_OPCACHE_ENABLE=1
+    PHP_OPCACHE_ENABLE=1 \
+    NGINX_HEADER_X_FRAME_OPTIONS="" \
+    NGINX_HEADER_X_CONTENT_TYPE_OPTIONS="" \
+    NGINX_HEADER_REFERRER_POLICY="" \
+    NGINX_HEADER_PERMISSIONS_POLICY=""

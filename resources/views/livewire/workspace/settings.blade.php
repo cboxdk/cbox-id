@@ -16,22 +16,24 @@ new #[Layout('components.layouts.workspace', ['title' => 'Settings'])] class ext
 {
     public string $name = '';
 
-    public function mount(AccountAuth $auth)
+    public function mount(AccountAuth $auth): mixed
     {
         $account = $auth->current()?->account;
 
-        if ($account === null || ! ($auth->current()?->role->canManageMembers() ?? false)) {
+        if ($account === null || ! $auth->current()->role->canManageMembers()) {
             return redirect()->route('workspace.home');
         }
 
         $this->name = $account->name;
+
+        return null;
     }
 
     public function save(AccountAuth $auth, Accounts $accounts): void
     {
         $account = $auth->current()?->account;
 
-        if ($account === null || ! ($auth->current()?->role->canManageMembers() ?? false)) {
+        if ($account === null || ! $auth->current()->role->canManageMembers()) {
             return;
         }
 

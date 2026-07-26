@@ -151,7 +151,8 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
         }
 
         $base = config('cbox-id.environments.base_domains', []);
-        $baseDomain = is_array($base) && $base !== [] ? (string) $base[0] : request()->getHost();
+        $firstBase = is_array($base) && isset($base[0]) && is_string($base[0]) ? $base[0] : null;
+        $baseDomain = $firstBase ?? request()->getHost();
 
         return [
             'project' => $project,
@@ -178,7 +179,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
     {{-- Environments --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <div class="flex items-center justify-between gap-4">
-            <p class="text-sm font-medium">Environments</p>
+            <h2 class="cbx-section-title">Environments</h2>
             @unless ($scoped)
                 <span class="text-xs shrink-0" style="color:var(--faint)">{{ $environments->count() }} of {{ $project->environment_limit }} used</span>
             @endunless
@@ -213,7 +214,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
         @if ($canManage && ! $scoped)
             <form wire:submit="addEnvironment" class="mt-4 flex items-start gap-2">
                 <div class="flex-1">
-                    <input wire:model="newEnvironment" type="text" class="input" placeholder="Staging" @disabled($remaining <= 0)>
+                    <input wire:model="newEnvironment" type="text" class="input" placeholder="Staging" aria-label="Environment name" @disabled($remaining <= 0)>
                     @error('newEnvironment') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <select wire:model="newEnvironmentType" class="input" style="width:auto" aria-label="Environment type" @disabled($remaining <= 0)>
@@ -232,7 +233,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
 
     {{-- Plan (billing anchor lives on the project — one account, separately-billed products) --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Plan</p>
+        <h2 class="cbx-section-title">Plan</h2>
         <div class="mt-3 flex items-center justify-between gap-4">
             <div>
                 <p class="text-sm font-medium">Early access <span class="text-xs" style="color:var(--faint)">— free</span></p>
@@ -245,7 +246,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
     {{-- Settings --}}
     @if ($canManage)
         <div class="rounded-xl border p-5" style="border-color:var(--border)">
-            <p class="text-sm font-medium">Settings</p>
+            <h2 class="cbx-section-title">Settings</h2>
             <form wire:submit="rename" class="mt-4 grid sm:grid-cols-[1fr_auto] gap-2 items-start">
                 <div>
                     <label class="label" for="editName">Project name</label>
@@ -267,7 +268,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
                 @if ($project->status === \Cbox\Id\Platform\Enums\ProjectStatus::Suspended)
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="reactivate">Reactivate</button>
                 @else
-                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="suspend" wire:confirm="Suspend this project?">Suspend</button>
+                    <x-confirm-delete
+                        :name="$project->name"
+                        action="suspend"
+                        label="Suspend"
+                        trigger-class="btn btn-ghost btn-sm shrink-0"
+                        trigger-style="color:var(--destructive)"
+                        consequence="Existing environments stay live, but no new ones can be added until it is reactivated." />
                 @endif
             </div>
         </div>

@@ -124,18 +124,18 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             'editEmail' => ['required', 'email', 'max:190'],
         ]);
 
-        $emailChanged = mb_strtolower($data['editEmail']) !== mb_strtolower($user->email);
+        $emailChanged = mb_strtolower($this->editEmail) !== mb_strtolower($user->email);
 
-        if ($emailChanged && User::query()->where('email', $data['editEmail'])->whereKeyNot($user->id)->exists()) {
+        if ($emailChanged && User::query()->where('email', $this->editEmail)->whereKeyNot($user->id)->exists()) {
             $this->addError('editEmail', 'Another user already uses that email in this environment.');
 
             return;
         }
 
-        $user->name = trim($data['editName']) !== '' ? trim($data['editName']) : null;
+        $user->name = trim($this->editName) !== '' ? trim($this->editName) : null;
         if ($emailChanged) {
             // A changed email is unverified until re-confirmed — never silently trust it.
-            $user->email = $data['editEmail'];
+            $user->email = $this->editEmail;
             $user->email_verified_at = null;
         }
         $user->save();
@@ -473,7 +473,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
     {{-- Profile --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Profile</p>
+        <h2 class="cbx-section-title">Profile</h2>
         <form wire:submit="saveProfile" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-start">
             <div>
                 <label class="label" for="editName">Name</label>
@@ -491,7 +491,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
     {{-- Security & lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Security &amp; lifecycle</p>
+        <h2 class="cbx-section-title">Security &amp; lifecycle</h2>
         @if ($requiresPasswordChange)
             <p class="mt-2 text-sm" style="color:var(--muted)">This user is held at a password change — they cannot reach anything until they replace the one you issued.</p>
         @endif
@@ -583,23 +583,48 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         @endif
 
         <div class="mt-4 flex flex-wrap gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" wire:click="sendPasswordReset">Send password reset</button>
+            {{-- Sends mail: without a busy state a double-click sent two reset links. --}}
+            <button type="button" class="btn btn-ghost btn-sm" wire:click="sendPasswordReset"
+                    wire:loading.attr="disabled" wire:target="sendPasswordReset">
+                <span wire:loading.remove wire:target="sendPasswordReset">Send password reset</span>
+                <span wire:loading wire:target="sendPasswordReset" class="inline-flex items-center gap-2"><span class="spinner"></span> Sending…</span>
+            </button>
             @unless ($settingPassword)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="$set('settingPassword', true)">Set password…</button>
             @endunless
             @unless ($user->email_verified_at)
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="resendVerification">Resend verification</button>
+                {{-- Sends mail: without a busy state a double-click sent two verification mails. --}}
+                <button type="button" class="btn btn-ghost btn-sm" wire:click="resendVerification"
+                        wire:loading.attr="disabled" wire:target="resendVerification">
+                    <span wire:loading.remove wire:target="resendVerification">Resend verification</span>
+                    <span wire:loading wire:target="resendVerification" class="inline-flex items-center gap-2"><span class="spinner"></span> Sending…</span>
+                </button>
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="markVerified">Mark verified</button>
             @endunless
             @if ($hasMfa)
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="resetMfa" wire:confirm="Reset this user's two-factor authentication? They must set it up again.">Reset 2FA</button>
+                <x-confirm-delete
+                    :name="$user->email"
+                    action="resetMfa"
+                    label="Reset 2FA"
+                    verb="Reset 2FA for"
+                    trigger-class="btn btn-ghost btn-sm"
+                    consequence="This destroys the user's enrolled second factor and their recovery codes. Until they enrol again the account is protected by its password alone." />
             @endif
             @if ($user->status === UserStatus::Active)
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="suspend" wire:confirm="Deactivate this user? They can no longer sign in.">Deactivate</button>
+                <x-confirm-delete
+                    :name="$user->email"
+                    action="suspend"
+                    label="Deactivate"
+                    trigger-class="btn btn-ghost btn-sm"
+                    consequence="This user can no longer sign in to any application in this environment." />
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="reactivate">Reactivate</button>
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteUser" wire:confirm="Permanently delete this user and their memberships? This cannot be undone.">Delete user</button>
+            <x-confirm-delete
+                :name="$user->email"
+                action="deleteUser"
+                label="Delete user"
+                consequence="This user and every one of their organization memberships are removed permanently. This cannot be undone." />
         </div>
         <p class="mt-2 text-xs" style="color:var(--faint)">Two-factor: {{ $hasMfa ? 'enabled' : 'not enrolled' }}.</p>
     </div>
@@ -607,9 +632,13 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {{-- Active sessions --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <div class="flex items-center justify-between gap-4">
-            <p class="text-sm font-medium">Active sessions</p>
+            <h2 class="cbx-section-title">Active sessions</h2>
             @if ($sessions->isNotEmpty())
-                <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="revokeAllSessions" wire:confirm="Sign this user out of all sessions?">Revoke all</button>
+                <x-confirm-delete
+                    :name="$user->email"
+                    action="revokeAllSessions"
+                    label="Revoke all"
+                    consequence="Every one of this user's sessions is terminated immediately and they are signed out on all devices." />
             @endif
         </div>
         <div class="mt-4 space-y-2">
@@ -633,7 +662,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
     {{-- Organizations --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Organizations</p>
+        <h2 class="cbx-section-title">Organizations</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)"><b>Org access</b> is the user's administration level; <b>access roles</b> are what they can do inside that org's apps.</p>
         <div class="mt-4 space-y-2">
             @forelse ($memberships as $m)
@@ -641,12 +670,27 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                 <div class="rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="mem-{{ $m['org'] }}">
                     <div class="flex items-center gap-2">
                         <a href="{{ route('environment.organizations.show', $m['org']) }}" class="min-w-0 flex-1 truncate text-sm font-medium" style="color:var(--accent)">{{ $m['orgName'] }}</a>
-                        <select class="select" style="width:auto" aria-label="Org access" wire:change="changeMembershipRole('{{ $m['org'] }}', $event.target.value)">
-                            @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
-                                <option value="{{ $val }}" @selected($m['role']->value === $val)>{{ $lbl }}</option>
-                            @endforeach
-                        </select>
-                        <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMembership('{{ $m['org'] }}')" wire:confirm="Remove from this organization?">Remove</button>
+                        {{-- Explicit save, NOT wire:change: on a focused select a stray arrow-key
+                             fires `change` and silently demoted an Owner with no way back. --}}
+                        <div class="flex items-center gap-1.5 shrink-0" x-data="{ saved: @js($m['role']->value), val: @js($m['role']->value), busy: false }">
+                            <select class="select" style="width:auto" aria-label="Org access in {{ $m['orgName'] }}" x-model="val">
+                                @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
+                                    <option value="{{ $val }}" @selected($m['role']->value === $val)>{{ $lbl }}</option>
+                                @endforeach
+                            </select>
+                            <button type="button" class="btn btn-primary btn-sm shrink-0" x-cloak x-show="val !== saved" :disabled="busy"
+                                    x-text="busy ? 'Saving…' : 'Save'"
+                                    @click="busy = true; $wire.changeMembershipRole('{{ $m['org'] }}', val).then(() => { saved = val; busy = false })"></button>
+                        </div>
+                        @php $removeMembershipAction = "removeMembership('{$m['org']}')"; @endphp
+                        <x-confirm-delete
+                            :name="$user->email"
+                            :action="$removeMembershipAction"
+                            label="Remove"
+                            verb="Remove membership for"
+                            trigger-class="btn btn-ghost btn-sm shrink-0"
+                            trigger-style="color:var(--destructive)"
+                            consequence="They lose every role this organization grants them, immediately." />
                     </div>
                     <div class="mt-2 flex flex-wrap items-center gap-1.5">
                         <span class="text-xs" style="color:var(--faint)">Access roles:</span>
@@ -700,7 +744,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
     {{-- Support impersonation (full request — changes the session) --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Support impersonation</p>
+        <h2 class="cbx-section-title">Support impersonation</h2>
         @if ($impersonatableOrgs !== [])
             <form method="POST" action="{{ route('environment.impersonate', $user->id) }}" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-start">
                 @csrf

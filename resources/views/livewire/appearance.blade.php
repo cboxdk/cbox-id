@@ -28,7 +28,7 @@ new #[Layout('components.layouts.app', ['title' => 'Appearance'])] class extends
 
         $this->appearance = Appearance::fromSettings($settings)->toArray();
         $this->appearance['logo'] = is_string($settings['brand_logo_url'] ?? null) ? $settings['brand_logo_url'] : '';
-        $this->appearance['name'] = $org?->name ?? '';
+        $this->appearance['name'] = $org->name ?? '';
     }
 
     /**
@@ -54,7 +54,7 @@ new #[Layout('components.layouts.app', ['title' => 'Appearance'])] class extends
 
         $this->appearance = $appearance->toArray();
         $this->appearance['logo'] = $logo ?? '';
-        $this->appearance['name'] = app(CurrentUser::class)->organization()?->name ?? '';
+        $this->appearance['name'] = app(CurrentUser::class)->organization()->name ?? '';
 
         $this->dispatch('toast', message: 'Appearance saved.');
     }

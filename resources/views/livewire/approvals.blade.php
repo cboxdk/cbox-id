@@ -27,6 +27,7 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
         $this->dispatch('toast', message: 'Request denied.', severity: 'error');
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $clients = app(ClientRegistry::class);
@@ -47,7 +48,7 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
             ->map(function (BackchannelAuthRequest $request) use ($clients, $labels): array {
                 return [
                     'id' => $request->id,
-                    'appName' => $clients->byClientId($request->client_id)?->name ?? $request->client_id,
+                    'appName' => $clients->byClientId($request->client_id)->name ?? $request->client_id,
                     'bindingMessage' => $request->binding_message,
                     'scopeRows' => array_map(
                         fn (string $scope): array => ['scope' => $scope, 'label' => $labels[$scope] ?? $scope],
@@ -72,7 +73,7 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
     </div>
 
     @forelse ($requests as $request)
-        <div class="card p-5 mb-4">
+        <div wire:key="request-{{ $request['id'] }}" class="card p-5 mb-4">
             <div class="flex items-center gap-3">
                 <span class="grid place-items-center rounded-full" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
                     <x-icon name="shield" class="w-5 h-5" />
@@ -95,7 +96,7 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
                 <ul class="mt-2.5 space-y-2">
                     @foreach ($request['scopeRows'] as $row)
                         <li class="flex items-center gap-2.5 text-sm">
-                            <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success)" />
+                            <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success-strong)" />
                             <span>{{ $row['label'] }}</span>
                         </li>
                     @endforeach

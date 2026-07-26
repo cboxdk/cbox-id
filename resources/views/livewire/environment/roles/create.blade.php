@@ -51,7 +51,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
         // the environment column on create.
         $role = $roles->define(
             null,
-            trim($data['name']),
+            trim($this->name),
             trim($this->description) !== '' ? trim($this->description) : null,
             null,
         );

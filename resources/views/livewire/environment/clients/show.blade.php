@@ -42,6 +42,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
 
     public string $editRedirectUris = '';
 
+    /** Where sign-out may send people back to. Validated exactly like redirect URIs. */
+    public string $editPostLogoutRedirectUris = '';
+
     /** Plaintext secret, held only for the single render that reveals it. Protected so it is
      *  never dehydrated into the wire snapshot — revealed once, then gone on rehydration. */
     protected ?string $revealedSecret = null;
@@ -55,6 +58,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         $this->clientId = $model->id;
         $this->editName = $model->name;
         $this->editRedirectUris = implode("\n", $model->redirect_uris ?? []);
+        $this->editPostLogoutRedirectUris = implode("\n", $model->post_logout_redirect_uris ?? []);
 
         // A secret handed over by the create page — shown once, then aged out.
         $flashed = session('revealed_secret');
@@ -88,9 +92,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         $data = $this->validate([
             'editName' => ['required', 'string', 'max:190'],
             'editRedirectUris' => ['nullable', 'string', 'max:2000'],
+            'editPostLogoutRedirectUris' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $redirects = $this->splitLines($data['editRedirectUris']);
+        $redirects = $this->splitLines($this->editRedirectUris);
 
         foreach ($redirects as $uri) {
             if (! SecureRedirectUri::isSecure($uri)) {
@@ -100,8 +105,21 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
             }
         }
 
-        $client->name = trim($data['editName']);
+        $postLogoutRedirects = $this->splitLines($this->editPostLogoutRedirectUris);
+
+        // Held to the same bar as the sign-in redirect URIs: sign-out hands the
+        // browser to this address, so it must not be a cleartext public URL.
+        foreach ($postLogoutRedirects as $uri) {
+            if (! SecureRedirectUri::isSecure($uri)) {
+                $this->addError('editPostLogoutRedirectUris', 'Each sign-out URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/signed-out.');
+
+                return;
+            }
+        }
+
+        $client->name = trim($this->editName);
         $client->redirect_uris = $redirects;
+        $client->post_logout_redirect_uris = $postLogoutRedirects;
         $client->save();
 
         $this->dispatch('toast', message: 'Application updated.');
@@ -198,7 +216,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
 
     {{-- Identifiers --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Credentials</p>
+        <h2 class="cbx-section-title">Credentials</h2>
         <div class="mt-4 space-y-3">
             <div>
                 <p class="label">Client ID</p>
@@ -217,7 +235,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
 
     {{-- Details --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         <form wire:submit="saveDetails" class="mt-4 space-y-4">
             <div>
                 <label class="label" for="editName">Name</label>
@@ -229,13 +247,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
                 <textarea wire:model="editRedirectUris" id="editRedirectUris" rows="3" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/auth/callback"></textarea>
                 @error('editRedirectUris') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
+            <div>
+                <label class="label" for="editPostLogoutRedirectUris">Sign-out URIs <span style="color:var(--faint);font-weight:400">— one per line</span></label>
+                <textarea wire:model="editPostLogoutRedirectUris" id="editPostLogoutRedirectUris" rows="3" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/signed-out"></textarea>
+                <p class="mt-1 text-xs" style="color:var(--muted)">Where Cbox ID sends people after they sign out of this app. The URI the app asks for has to appear here character for character — trailing slash and all — or Cbox ID leaves the person on its own signed-out page. Leave empty if the app never sends people back.</p>
+                @error('editPostLogoutRedirectUris') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            </div>
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="saveDetails">Save changes</button>
         </form>
     </div>
 
     {{-- Grant types & scopes (read-only summary) --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Connection &amp; permissions</p>
+        <h2 class="cbx-section-title">Connection &amp; permissions</h2>
         <div class="mt-4 space-y-3">
             <div>
                 <p class="label">Connects via</p>
@@ -269,15 +293,23 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
     {{-- Secret rotation --}}
     @if ($client->type === ClientType::Confidential)
         <div class="rounded-xl border p-5" style="border-color:var(--border)">
-            <p class="text-sm font-medium">Rotate secret</p>
+            <h2 class="cbx-section-title">Rotate secret</h2>
             <p class="mt-1 text-sm" style="color:var(--muted)">Issue a fresh client secret. The current one stops working — update the app before rotating.</p>
-            <button type="button" class="btn btn-ghost btn-sm mt-4" wire:click="rotateSecret" wire:confirm="Rotate the client secret? The current secret stops working immediately.">Rotate secret</button>
+            <div class="mt-4">
+                <x-confirm-delete
+                    :name="$editName"
+                    action="rotateSecret"
+                    label="Rotate secret"
+                    verb="Rotate"
+                    trigger-class="btn btn-ghost btn-sm"
+                    consequence="The current client secret stops working immediately and cannot be recovered — every deployment still holding it starts failing authentication." />
+            </div>
         </div>
     @endif
 
     {{-- Danger zone --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Delete application</p>
+        <h2 class="cbx-section-title">Delete application</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">Anything using its credentials will stop working. This cannot be undone.</p>
         {{-- Irreversible AND cross-tenant-visible in effect: every integration using
              these credentials stops working. A native confirm named neither the app nor

@@ -71,6 +71,7 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
         $this->newSecret = null;
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $orgId = $this->orgId();
@@ -148,7 +149,7 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
                 </thead>
                 <tbody>
                     @forelse ($rows as $endpoint)
-                        <tr>
+                        <tr wire:key="endpoint-{{ $endpoint->id }}">
                             <td><span class="badge mono">{{ $endpoint->hook_point->value }}</span></td>
                             <td class="mono break-all text-xs" style="color:var(--muted)">{{ $endpoint->url }}</td>
                             <td>
@@ -168,9 +169,14 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
                                         <button wire:click="activate('{{ $endpoint->id }}')"
                                                 class="btn btn-ghost btn-sm">Activate</button>
                                     @endif
-                                    <button wire:click="remove('{{ $endpoint->id }}')"
-                                            wire:confirm="Remove this endpoint? This cannot be undone."
-                                            class="btn btn-ghost btn-sm" style="color:var(--danger)">Remove</button>
+                                    @php $removeHookAction = "remove('{$endpoint->id}')"; @endphp
+                                    <x-confirm-delete
+                                        :name="$endpoint->url"
+                                        :action="$removeHookAction"
+                                        label="Remove"
+                                        trigger-class="btn btn-ghost btn-sm"
+                                        trigger-style="color:var(--danger)"
+                                        consequence="The hook stops being called and its signing secret is destroyed. This cannot be undone." />
                                 @endif
                             </td>
                         </tr>

@@ -27,7 +27,13 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        health: '/up',
+        // No `health:` entry on purpose. Laravel's built-in health route renders an
+        // HTML status page at /up, which SHADOWED the framework package's documented
+        // JSON liveness probe (`{"status":"ok"}`) that deployments and the DAST
+        // pipeline consume. Worse, that page pulls Tailwind from a CDN and fonts from
+        // bunny.net — both refused by this app's own CSP (`script-src 'self'`,
+        // `font-src 'self' data:`), so every probe rendered unstyled and emitted CSP
+        // violation noise. The package route is the one we want; leave it unshadowed.
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Behind a TLS-terminating reverse proxy (Traefik on k8s, Cloudflare,

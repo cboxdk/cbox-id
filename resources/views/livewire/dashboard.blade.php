@@ -8,11 +8,13 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends Component
 {
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $me = app(CurrentUser::class);
@@ -20,9 +22,10 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
 
         $connection = $orgId !== null ? app(Connections::class)->forOrganization($orgId) : null;
 
+        /** @var Collection<int, AuditEntry> $recent */
         $recent = $orgId !== null
             ? AuditEntry::query()->where('organization_id', $orgId)->orderByDesc('sequence')->limit(6)->get()
-            : collect();
+            : new Collection;
 
         return [
             'me' => $me,
@@ -54,7 +57,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
 
             if ($entry->target_type === 'user') {
                 $subject = $subjects->find($id);
-                $name = $subject?->name ?? $subject?->email;
+                $name = $subject->name ?? $subject?->email;
                 if (is_string($name) && $name !== '') {
                     $labels[$id] = $name;
                 }
@@ -149,22 +152,22 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
             <h3 class="font-semibold">Set up your platform</h3>
             <ul class="mt-4 space-y-3">
                 <li class="flex items-start gap-3">
-                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;background:var(--success-soft);color:var(--success)"><x-icon name="check" class="w-3 h-3" /></span>
+                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;background:var(--success-soft);color:var(--success-strong)"><x-icon name="check" class="w-3 h-3" /></span>
                     <div><p class="text-sm font-medium">Organization created</p></div>
                 </li>
                 <li class="flex items-start gap-3">
                     <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;border:1px solid var(--border)"></span>
-                    <div><a href="{{ route('members') }}" class="text-sm font-medium" style="color:var(--accent)">Invite your team →</a></div>
+                    <div><a href="{{ route('members') }}" class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">Invite your team →</a></div>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;{{ $ssoActive ? 'background:var(--success-soft);color:var(--success)' : 'border:1px solid var(--border)' }}">
+                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;{{ $ssoActive ? 'background:var(--success-soft);color:var(--success-strong)' : 'border:1px solid var(--border)' }}">
                         @if ($ssoActive)<x-icon name="check" class="w-3 h-3" />@endif
                     </span>
-                    <div><a href="{{ route('connections') }}" class="text-sm font-medium" style="color:var(--accent)">Connect enterprise SSO →</a></div>
+                    <div><a href="{{ route('connections') }}" class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">Connect enterprise SSO →</a></div>
                 </li>
                 <li class="flex items-start gap-3">
                     <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;border:1px solid var(--border)"></span>
-                    <div><a href="{{ route('directories') }}" class="text-sm font-medium" style="color:var(--accent)">Enable SCIM provisioning →</a></div>
+                    <div><a href="{{ route('directories') }}" class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">Enable SCIM provisioning →</a></div>
                 </li>
             </ul>
         </div>

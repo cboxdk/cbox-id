@@ -27,11 +27,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
     /** The just-created plaintext, shown once and never persisted. */
     public ?string $freshKey = null;
 
-    public function mount(AccountAuth $auth)
+    public function mount(AccountAuth $auth): mixed
     {
         if (! ($auth->current()?->role->canManageMembers() ?? false)) {
             return redirect()->route('workspace.home');
         }
+
+        return null;
     }
 
     public function createKey(AccountAuth $auth, AccountApiKeys $keys): void
@@ -42,7 +44,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 
         $account = $auth->current()?->account;
 
-        if ($account === null || ! ($auth->current()?->role->canManageMembers() ?? false)) {
+        if ($account === null || ! $auth->current()->role->canManageMembers()) {
             return;
         }
 
@@ -75,9 +77,6 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
         }
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     private function requiresSudo(string $returnRoute): bool
     {
         if (app(WorkspaceSudo::class)->confirmed()) {
@@ -90,6 +89,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function with(AccountAuth $auth, AccountApiKeys $keys): array
     {
         $current = $auth->current();
@@ -113,7 +113,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
     {{-- The plaintext, shown exactly once. --}}
     @if ($freshKey !== null)
         <div class="mt-6 rounded-xl border p-4" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft)">
-            <p class="text-sm font-medium" style="color:var(--success)">Copy your key now — you won't be able to see it again.</p>
+            <p class="text-sm font-medium" style="color:var(--success-strong)">Copy your key now — you won't be able to see it again.</p>
             <div class="mt-3 flex items-center gap-2">
                 <code class="flex-1 min-w-0 truncate rounded-lg px-3 py-2 text-sm" style="background:var(--background);border:1px solid var(--border)">{{ $freshKey }}</code>
                 <x-copy-button :value="$freshKey" class="btn-primary" />
@@ -135,9 +135,11 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
                     <p class="text-sm truncate mono" style="color:var(--muted)">{{ $key->prefix }}…&nbsp; · &nbsp;{{ $key->last_used_at ? 'last used '.$key->last_used_at->diffForHumans() : 'never used' }}</p>
                 </div>
                 @if ($key->isActive())
-                    <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)"
-                            wire:click="revokeKey('{{ $key->id }}')"
-                            wire:confirm="Revoke this key? Any integration using it will stop working immediately.">Revoke</button>
+                    <x-confirm-delete
+                        :name="$key->name"
+                        action="revokeKey('{{ $key->id }}')"
+                        label="Revoke"
+                        consequence="Any integration still presenting this key stops working immediately. This cannot be undone." />
                 @endif
             </div>
         @empty

@@ -73,8 +73,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
                    aria-describedby="password-policy @error('password') password-error @enderror"
                    @error('password') aria-invalid="true" @enderror>
             <div id="password-policy" class="mt-2 flex items-center gap-1.5 text-xs" style="color:var(--faint)">
-                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''" />
-                <span x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''">At least 12 characters</span>
+                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''" />
+                <span x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''">At least 12 characters</span>
             </div>
             @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
         </div>

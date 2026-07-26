@@ -150,7 +150,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
 
     {{-- Configuration --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Configuration</p>
+        <h2 class="cbx-section-title">Configuration</h2>
         <dl class="mt-4 space-y-4">
             <div>
                 <dt class="label">Destination</dt>
@@ -169,14 +169,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($stream->enabled)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="disable" wire:confirm="Disable this stream? Pending deliveries are kept but nothing new is sent.">Disable</button>
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="resume">Resume</button>
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteStream" wire:confirm="Delete this log stream? This cannot be undone and its audit trail stops being exported.">Delete stream</button>
+            <x-confirm-delete
+                :name="$stream->name"
+                action="deleteStream"
+                label="Delete stream"
+                consequence="This environment stops exporting its audit trail to your SIEM. This cannot be undone." />
         </div>
     </div>
 </div>

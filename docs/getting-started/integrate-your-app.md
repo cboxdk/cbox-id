@@ -96,3 +96,4 @@ what actually went wrong — read the description, not just the code.
 | `invalid_grant` | The code expired, was already used, or the `redirect_uri` on the exchange does not match the one on the authorize request. |
 | `invalid_request` with a PKCE mention | No `code_challenge`, or `plain` instead of `S256`. |
 | A discovery `iss` mismatch | You passed the apex URL instead of the environment's own issuer (step 4). |
+| **404 from discovery, JWKS or the token endpoint on the apex host** | Not a misconfigured client — on a multi-tenant deployment the apex host **refuses** to act as an identity provider, and 404s the whole protocol surface on purpose. Only an environment's own host serves it. Use the issuer from step 4, and see [the IdP-surface gate](../operations/deployment.md#the-idp-surface-gate-the-apex-host-404s-the-protocol-surface). |

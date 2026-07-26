@@ -420,7 +420,7 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
             </div>
             <ul>
                 @foreach ($groups as $group)
-                    <li class="px-5 py-3" style="border-top:1px solid var(--border)">
+                    <li wire:key="group-{{ $group->id }}" class="px-5 py-3" style="border-top:1px solid var(--border)">
                         <div class="flex items-start justify-between gap-4 flex-wrap">
                             <div class="min-w-0">
                                 <p class="font-medium text-sm">{{ $group->display_name }}</p>
@@ -429,7 +429,17 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
                                         @php $r = $accessRolesById[$rid] ?? null; @endphp
                                         @if ($r)
                                             <span class="badge">{{ $r->name }}
-                                                <button wire:click="unmapGroup('{{ $group->id }}', '{{ $rid }}')" style="margin-left:5px;color:var(--muted);cursor:pointer" title="Remove mapping">×</button>
+                                                @php $unmapAction = "unmapGroup('{$group->id}', '{$rid}')"; @endphp
+                                                <x-confirm-delete
+                                                    :name="$group->display_name"
+                                                    :action="$unmapAction"
+                                                    label="×"
+                                                    :verb="'Unmap '.$r->name.' from'"
+                                                    trigger-class=""
+                                                    trigger-style="margin-left:5px;color:var(--muted);cursor:pointer"
+                                                    title="Remove mapping"
+                                                    aria-label="Remove {{ $r->name }} mapping"
+                                                    :consequence="'Every member synced through this group loses the '.$r->name.' role. It is re-applied only if you map the group again.'" />
                                             </span>
                                         @endif
                                     @empty

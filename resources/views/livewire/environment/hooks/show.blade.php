@@ -127,7 +127,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
 
     {{-- Details --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         <dl class="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
                 <dt class="label">Hook point</dt>
@@ -146,14 +146,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hook'])] class
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($endpoint->status === \Cbox\Id\ExternalActions\Enums\ActionEndpointStatus::Active)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="pause" wire:confirm="Pause this endpoint? It will stop being called at the hook point.">Pause</button>
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="activate">Activate</button>
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="remove" wire:confirm="Remove this endpoint? This cannot be undone.">Delete</button>
+            <x-confirm-delete
+                :name="$endpoint->url"
+                action="remove"
+                label="Delete"
+                consequence="This endpoint stops being called at its hook point. This cannot be undone." />
         </div>
     </div>
 </div>

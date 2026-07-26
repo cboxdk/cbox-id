@@ -81,8 +81,13 @@ final class SamlAcsController extends Controller
         return $this->landing->land($request, $session);
     }
 
+    /**
+     * Delegated to the landing so the ERROR branch forks on the plane exactly as the
+     * SUCCESS branch does. This route is not plane-gated, so on the account host a
+     * hard-coded `route('login')` here was a 404.
+     */
     private function failed(string $message): RedirectResponse
     {
-        return redirect()->route('login')->withErrors(['identifier' => $message]);
+        return $this->landing->failed($message);
     }
 }

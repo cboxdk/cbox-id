@@ -68,7 +68,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound sync'])] cl
     </x-page-header>
 
     <div class="mt-6">
-        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name" aria-label="Search connections">
+        {{-- SC 4.1.3: the list re-renders on a debounced keystroke with no focus
+             change, so the result count is the only thing that can report the filter
+             narrowed to nothing. --}}
+        <p role="status" aria-live="polite" class="sr-only">{{ $connections->total() }} {{ \Illuminate\Support\Str::plural('connection', $connections->total()) }} found.</p>
     </div>
 
     <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">

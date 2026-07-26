@@ -51,7 +51,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Users'])] class exte
             $query->where(fn ($q) => $q->where('email', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%"));
         }
 
-        return ['users' => $query->paginate(25)];
+        // simplePaginate, not paginate: `paginate()` adds a COUNT(*) over the filtered
+        // set on every keystroke of the debounced search, and the search is a leading
+        // wildcard (`LIKE "%term%"`) that no B-tree index can serve — so the count is a
+        // full scan of the environment's users, twice over, to render page numbers.
+        return ['users' => $query->simplePaginate(25)];
     }
 }; ?>
 
@@ -63,7 +67,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Users'])] class exte
     </x-page-header>
 
     <div class="mt-6">
-        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by email or name">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by email or name" aria-label="Search users">
+        {{-- SC 4.1.3: the list re-renders on a debounced keystroke with no focus
+             change, so the result count is the only thing that can report the filter
+             narrowed to nothing. --}}
+        {{-- Counted on THIS page: the total is exactly what the removed COUNT(*) was
+             paying for, and "no users on this page" reports an empty filter just as
+             clearly. --}}
+        <p role="status" aria-live="polite" class="sr-only">{{ $users->count() }} {{ \Illuminate\Support\Str::plural('user', $users->count()) }} on this page.</p>
     </div>
 
     <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">

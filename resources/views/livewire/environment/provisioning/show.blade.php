@@ -112,7 +112,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'
 
     {{-- Connection --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Connection</p>
+        <h2 class="cbx-section-title">Connection</h2>
         <div class="mt-4 space-y-4">
             <div>
                 <p class="label">SCIM base URL</p>
@@ -139,14 +139,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Outbound connection'
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($connection->status === ConnectionStatus::Active)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="pause" wire:confirm="Pause this connection? It will stop provisioning changes to the downstream app.">Pause</button>
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="resume">Resume</button>
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteConnection" wire:confirm="Delete this connection? It stops provisioning and cannot be undone.">Delete connection</button>
+            <x-confirm-delete
+                :name="$connection->name"
+                action="deleteConnection"
+                label="Delete connection"
+                consequence="Provisioning to the downstream app stops immediately. This cannot be undone." />
         </div>
     </div>
 </div>

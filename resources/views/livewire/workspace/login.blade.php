@@ -45,11 +45,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
 
     public ?string $magicUrl = null;
 
-    public function mount(AccountAuth $auth)
+    public function mount(AccountAuth $auth): mixed
     {
         if ($auth->check()) {
             return redirect()->intended(route('workspace.home'));
         }
+
+        return null;
     }
 
     /**
@@ -192,8 +194,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Sign in to your workspace</h1>
     <p class="mt-2 text-sm" style="color:var(--muted)">Manage your environments, users, and sign-in — all from one place.</p>
 
+    {{-- Identifier-first step 2 is MORPHED in: no navigation, no focus move, no
+         announcement — the password field just silently appears. This region sits
+         OUTSIDE the @if so Livewire morphs its text rather than inserting the region
+         itself (a live region inserted already-populated is not reliably spoken). --}}
+    <p role="status" aria-live="polite" class="sr-only">
+        @if ($identified)
+            Password required. Enter the password for {{ $email }}.
+        @endif
+    </p>
+
     @if (session('error'))
-        <div role="alert" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">
+        <div role="alert" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger-strong)">
             {{ session('error') }}
         </div>
     @endif
@@ -243,7 +255,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
                     <label class="label" for="password">Password</label>
                     <a href="{{ route('workspace.password.request') }}" class="text-xs underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
                 </div>
-                <input wire:model="password" id="password" name="password" type="password" autocomplete="current-password" class="input input-lg" placeholder="••••••••••••" autofocus
+                {{-- x-init, not autofocus: HTML autofocus only fires at document parse,
+                     and this input is morphed in after it — so focus stayed on <body>. --}}
+                <input wire:model="password" id="password" name="password" type="password" autocomplete="current-password" class="input input-lg" placeholder="••••••••••••"
+                       x-init="$el.focus()"
                        @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
                 @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
             </div>

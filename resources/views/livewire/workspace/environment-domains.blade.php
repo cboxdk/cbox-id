@@ -163,13 +163,20 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
                 {{-- A domain is live for this environment. --}}
                 <div class="rounded-xl border p-4" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft)">
                     <div class="flex items-center gap-2">
-                        <x-icon name="shield" class="w-4 h-4" style="color:var(--success)" />
+                        <x-icon name="shield" class="w-4 h-4" style="color:var(--success-strong)" />
                         <span class="font-medium">{{ $verifiedDomain }}</span>
                         <span class="badge">Verified</span>
                     </div>
                     <p class="mt-2 text-sm" style="color:var(--muted)">This environment's issuer, discovery and JWKS are served on <span class="mono">https://{{ $verifiedDomain }}</span>. Point the host at your ingress and terminate TLS there.</p>
                 </div>
-                <button wire:click="remove" wire:confirm="Remove {{ $verifiedDomain }}? This environment falls back to its default domain." class="btn btn-ghost" style="color:var(--destructive)">Remove domain</button>
+                <x-confirm-delete
+                    :name="$verifiedDomain"
+                    action="remove"
+                    label="Remove domain"
+                    verb="Stop serving"
+                    trigger-class="btn btn-ghost"
+                    trigger-style="color:var(--destructive)"
+                    consequence="This environment falls back to its default domain. Every client pinned to the current issuer, discovery URL or JWKS URL breaks until it is repointed." />
             @elseif ($challenge)
                 {{-- Pending verification: show the exact TXT record to publish. --}}
                 <div>
@@ -193,7 +200,12 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
                     @endif
                     <div class="mt-4 flex items-center gap-2">
                         <button wire:click="verify" wire:loading.attr="disabled" wire:target="verify" class="btn btn-primary">Verify</button>
-                        <button wire:click="remove" class="btn btn-ghost">Cancel</button>
+                        {{-- Discards the pending claim, including the DNS TXT challenge the
+                             admin may already have published. Reversible, but only by
+                             re-adding the domain and publishing a NEW record. --}}
+                        <button wire:click="remove" class="btn btn-ghost"
+                                wire:loading.attr="disabled" wire:target="remove"
+                                wire:confirm="Cancel verification for {{ $challenge->domain ?? 'this domain' }}?&#10;&#10;The DNS TXT challenge below stops being valid — re-adding the domain issues a new one.">Cancel</button>
                     </div>
                 </div>
             @else

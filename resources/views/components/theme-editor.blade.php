@@ -36,7 +36,7 @@
                     <template x-for="(p, id) in presets" :key="id">
                         <button type="button" @click="applyPreset(id)"
                                 class="group flex items-center gap-2.5 rounded-lg border p-2 text-left transition"
-                                :style="draft.preset === id ? 'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)' : 'border-color:var(--border)'">
+                                :style="draft.preset === id ? 'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)' : 'border-color:var(--control-border)'">
                             <span class="grid grid-cols-2 grid-rows-2 w-8 h-8 rounded-md overflow-hidden shrink-0" style="border:1px solid var(--border)">
                                 <span :style="`background:${p.light.background}`"></span>
                                 <span :style="`background:${p.light.primary}`"></span>
@@ -96,7 +96,7 @@
                         <template x-for="r in radii" :key="r">
                             <button type="button" @click="draft.radius = r"
                                     class="px-2.5 py-1 rounded-md text-[12px] font-medium transition border"
-                                    :style="draft.radius === r ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-soft)' : 'border-color:var(--border);color:var(--muted-foreground)'"
+                                    :style="draft.radius === r ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-soft)' : 'border-color:var(--control-border);color:var(--muted-foreground)'"
                                     x-text="radiusLabel(r)"></button>
                         </template>
                     </div>
@@ -107,7 +107,7 @@
                         <template x-for="(stack, key) in fonts" :key="key">
                             <button type="button" @click="draft.font = key"
                                     class="px-2 py-2 rounded-lg text-[13px] font-medium transition border"
-                                    :style="`${draft.font === key ? 'border-color:var(--accent);background:var(--accent-soft)' : 'border-color:var(--border)'};font-family:${stack}`"
+                                    :style="`${draft.font === key ? 'border-color:var(--accent);background:var(--accent-soft)' : 'border-color:var(--control-border)'};font-family:${stack}`"
                                     x-text="fontLabel(key)"></button>
                         </template>
                     </div>
@@ -153,7 +153,12 @@
                     </span>
                 </div>
 
-                <div class="p-8 sm:p-12 transition-colors" :style="vars(mode)" style="min-height:30rem">
+                {{-- A static mockup of the hosted sign-in screen, not a form: every control
+                     inside is tabindex="-1" and the input is readonly. Exposed to a screen
+                     reader it announced a second "Sign in to…" heading and an unusable email
+                     field, so it is hidden and described by the sr-only line above instead. --}}
+                <p class="sr-only">Live preview of your hosted sign-in screen, in <span x-text="mode"></span> mode.</p>
+                <div class="p-8 sm:p-12 transition-colors" aria-hidden="true" :style="vars(mode)" style="min-height:30rem">
                     <div class="mx-auto w-full" style="max-width:22rem">
                         <template x-if="draft.logo">
                             <img :src="draft.logo" :alt="draft.name" style="max-height:2rem;max-width:11rem" x-on:error="draft.logo=''">

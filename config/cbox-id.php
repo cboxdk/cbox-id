@@ -32,6 +32,31 @@ return [
     ],
 
     /*
+     * The IdP PROTOCOL surface the framework registers — OIDC discovery, JWKS, the
+     * RFC 8414 / RFC 9728 metadata, every `/oauth/*` endpoint, SAML and SCIM — is
+     * confined to the SUBJECT plane.
+     *
+     * The platform-root host (cboxid.com) is the ACCOUNT door: sign up, manage your
+     * account and its environments. It is NOT an issuer — the interactive
+     * `/oauth/authorize` is `plane:subject` and therefore absent there. Without this
+     * gate the root still answered discovery, advertising `issuer:
+     * https://cboxid.com` alongside an `authorization_endpoint` that 404s, so a
+     * conformant client followed the document straight into a dead end. Half an IdP
+     * is worse than none: it is discoverable.
+     *
+     * `plane:subject` is the SAME gate the interactive surfaces use, so there is one
+     * answer to "is this host a tenant IdP", not two that can drift. In the
+     * single-tenant / self-hosted shape (no `base_domains`) the gate is a no-op and
+     * the one host serves the whole surface, exactly as before.
+     *
+     * `GET /up` is registered outside this group by the framework — a liveness probe
+     * must answer on every host, including a kubelet hitting the pod directly.
+     */
+    'api' => [
+        'middleware' => ['plane:subject'],
+    ],
+
+    /*
      * Override a package model with your own subclass to add relations, casts or
      * behaviour. Your class must extend the package model; the platform still owns
      * the schema. Extend the pattern to other models as you need them.

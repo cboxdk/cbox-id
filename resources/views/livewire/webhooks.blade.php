@@ -25,7 +25,13 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
     #[Validate('required|url|max:500')]
     public string $url = '';
 
-    /** @var list<string> */
+    /**
+     * Livewire rehydrates this straight off the wire, so the keys are whatever the
+     * request sent — not necessarily a gapless list. Hence the array_values() before
+     * it is handed on.
+     *
+     * @var array<array-key, string>
+     */
     #[Validate(['eventTypes' => 'required|array|min:1', 'eventTypes.*' => 'string'])]
     public array $eventTypes = [];
 
@@ -69,6 +75,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         $this->newSecret = null;
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         return [
@@ -119,7 +126,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
         <div class="card p-4 mb-5" style="border-color:color-mix(in srgb, var(--warn) 40%, transparent);background:var(--warn-soft)">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
-                    <p class="font-semibold text-sm" style="color:var(--warn)">Copy this signing secret now — it won't be shown again.</p>
+                    <p class="font-semibold text-sm" style="color:var(--warn-strong)">Copy this signing secret now — it won't be shown again.</p>
                     <p class="mt-3 mono break-all text-sm">{{ $newSecret }}</p>
                 </div>
                 <button wire:click="dismissSecret" class="btn btn-ghost btn-sm">Dismiss</button>
@@ -138,7 +145,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
                 <span class="label">Event types</span>
                 <div class="grid gap-2 sm:grid-cols-2">
                     @foreach (self::EVENT_TYPES as $event)
-                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <label wire:key="event-{{ $event }}" class="flex items-center gap-2 text-sm cursor-pointer">
                             <input type="checkbox" wire:model="eventTypes" value="{{ $event }}" @error('eventTypes') aria-invalid="true" aria-describedby="eventTypes-error" @enderror>
                             <span class="mono">{{ $event }}</span>
                         </label>
@@ -161,7 +168,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
                 </thead>
                 <tbody>
                     @forelse ($rows as $endpoint)
-                        <tr>
+                        <tr wire:key="endpoint-{{ $endpoint->id }}">
                             <td class="mono text-xs max-w-[18rem] truncate" style="color:var(--muted)">{{ $endpoint->url }}</td>
                             <td>
                                 <div class="flex flex-wrap gap-1">

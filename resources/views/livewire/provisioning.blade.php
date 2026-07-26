@@ -62,6 +62,7 @@ new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] cl
         $this->dispatch('toast', message: 'Connection paused.');
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         return [
@@ -132,7 +133,7 @@ new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] cl
                 </thead>
                 <tbody>
                     @forelse ($connections as $connection)
-                        <tr>
+                        <tr wire:key="connection-{{ $connection->id }}">
                             <td>
                                 <p class="font-medium">{{ $connection->name }}</p>
                                 @if ($connection->last_error)

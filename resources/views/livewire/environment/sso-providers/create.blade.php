@@ -64,7 +64,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New login method'])]
             $this->validate(['certificate' => 'required|string']);
         }
 
-        $format = NameIdFormat::tryFrom($data['name_id_format']);
+        $format = NameIdFormat::tryFrom($this->name_id_format);
 
         if ($format === null) {
             $this->addError('name_id_format', 'Choose a supported NameID format.');
@@ -73,10 +73,10 @@ new #[Layout('components.layouts.environment', ['title' => 'New login method'])]
         }
 
         $model = $providers->register(new NewServiceProvider(
-            entityId: $data['entity_id'],
-            acsUrl: $data['acs_url'],
+            entityId: $this->entity_id,
+            acsUrl: $this->acs_url,
             nameIdFormat: $format,
-            nameIdAttribute: $data['name_id_attribute'],
+            nameIdAttribute: $this->name_id_attribute,
             attributeMappings: $this->parseMappings(),
             certificate: $this->certificate !== '' ? $this->certificate : null,
             wantAuthnRequestsSigned: $this->want_authn_requests_signed,

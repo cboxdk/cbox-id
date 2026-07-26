@@ -129,6 +129,7 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
         $this->outcome = 'denied';
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $labels = [
@@ -158,7 +159,7 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
 
     @if ($outcome === 'approved')
         <div role="status" class="card p-5 flex items-start gap-3" style="border-color:color-mix(in srgb,var(--success) 30%,transparent)">
-            <x-icon name="check" class="w-5 h-5 mt-0.5" style="color:var(--success)" />
+            <x-icon name="check" class="w-5 h-5 mt-0.5" style="color:var(--success-strong)" />
             <div>
                 <p class="font-medium">Device connected</p>
                 <p class="text-sm" style="color:var(--muted)">You can return to your device — it's now signed in.</p>
@@ -196,7 +197,7 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
                 <ul class="mt-2.5 space-y-2">
                     @foreach ($scopeRows as $row)
                         <li class="flex items-center gap-2.5 text-sm">
-                            <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success)" />
+                            <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success-strong)" />
                             <span>{{ $row['label'] }}</span>
                         </li>
                     @endforeach
@@ -220,7 +221,7 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
         {{-- Step 1: enter the code shown on the device. --}}
         <form wire:submit="lookup" class="card p-5 space-y-4">
             @if ($error)
-                <div role="alert" class="rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">
+                <div role="alert" class="rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger-strong)">
                     {{ $error }}
                 </div>
             @endif

@@ -189,7 +189,8 @@
                 @foreach ($areas as $area)
                     <p class="cbx-nav-group">{{ $area['label'] }}</p>
                     @foreach ($area['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" class="nav-link" @click="mobile=false" @if ($routeActive($page['route'])) aria-current="page" @endif>
+                        {{-- wire:navigate — see x-console.rail. --}}
+                        <a href="{{ route($page['route']) }}" wire:navigate class="nav-link" @click="mobile=false" @if ($routeActive($page['route'])) aria-current="page" @endif>
                             <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
                             {{ $page['label'] }}
                             @if ($isLocked($page))<span class="ml-auto" style="font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--primary)">Enterprise</span>@endif

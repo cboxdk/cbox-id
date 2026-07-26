@@ -3,6 +3,8 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
+         failOnRisky="true"
+         failOnWarning="true"
 >
     <testsuites>
         <testsuite name="Unit">
@@ -21,6 +23,11 @@
         </include>
     </source>
     <php>
+        <!-- The suite boots the whole platform (Testbench + Pest 4 browser tests) and
+             does not fit in a stock 128M. Setting it here means the plain, documented
+             `vendor/bin/pest` works on any machine, instead of only where php.ini
+             happens to be generous or the caller remembered `-d memory_limit=1G`. -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

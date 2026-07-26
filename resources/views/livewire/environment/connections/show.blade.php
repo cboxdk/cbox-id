@@ -92,12 +92,26 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
     {
         $config = $this->safeConfig($model, $connections);
 
-        $this->idp_entity_id = (string) ($config['idp_entity_id'] ?? '');
-        $this->idp_sso_url = (string) ($config['idp_sso_url'] ?? '');
-        $this->sp_entity_id = (string) ($config['sp_entity_id'] ?? '');
-        $this->sp_acs_url = (string) ($config['sp_acs_url'] ?? '');
-        $this->issuer = (string) ($config['issuer'] ?? '');
-        $this->client_id = (string) ($config['client_id'] ?? '');
+        $this->idp_entity_id = $this->configString($config, 'idp_entity_id');
+        $this->idp_sso_url = $this->configString($config, 'idp_sso_url');
+        $this->sp_entity_id = $this->configString($config, 'sp_entity_id');
+        $this->sp_acs_url = $this->configString($config, 'sp_acs_url');
+        $this->issuer = $this->configString($config, 'issuer');
+        $this->client_id = $this->configString($config, 'client_id');
+    }
+
+    /**
+     * One string field out of the decrypted config. The seal holds free-form JSON, so
+     * a value can be of any shape; anything that is not a string is treated as absent
+     * rather than coerced into one.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private function configString(array $config, string $key): string
+    {
+        $value = $config[$key] ?? null;
+
+        return is_string($value) ? $value : '';
     }
 
     /**
@@ -132,7 +146,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
                 'sp_acs_url' => 'required|url|max:500',
             ]);
 
-            $cert = trim($this->idp_x509cert) !== '' ? trim($this->idp_x509cert) : (string) ($current['idp_x509cert'] ?? '');
+            $cert = trim($this->idp_x509cert) !== '' ? trim($this->idp_x509cert) : $this->configString($current, 'idp_x509cert');
             if ($cert === '') {
                 $this->addError('idp_x509cert', 'A signing certificate is required.');
 
@@ -152,7 +166,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
                 'client_id' => 'required|string|max:500',
             ]);
 
-            $key = trim($this->signing_key) !== '' ? trim($this->signing_key) : (string) ($current['signing_key'] ?? '');
+            $key = trim($this->signing_key) !== '' ? trim($this->signing_key) : $this->configString($current, 'signing_key');
             if ($key === '') {
                 $this->addError('signing_key', 'A signing key is required.');
 
@@ -160,7 +174,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
             }
 
             // Secrets are write-once: a blank field keeps the sealed value.
-            $secret = trim($this->client_secret) !== '' ? trim($this->client_secret) : (string) ($current['client_secret'] ?? '');
+            $secret = trim($this->client_secret) !== '' ? trim($this->client_secret) : $this->configString($current, 'client_secret');
             if ($secret === '') {
                 $this->addError('client_secret', 'A client secret is required.');
 
@@ -183,7 +197,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
             }
         }
 
-        $model->name = trim($data['editName']);
+        $model->name = trim($this->editName);
         $model->config_encrypted = $secretBox->seal(
             json_encode($config, JSON_THROW_ON_ERROR),
             $model->secretContext(),
@@ -253,7 +267,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
 
     {{-- Owning organization --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Organization</p>
+        <h2 class="cbx-section-title">Organization</h2>
         @if ($orgName !== null)
             <a href="{{ route('environment.organizations.show', $orgId) }}" class="mt-2 inline-block text-sm font-medium" style="color:var(--accent)">{{ $orgName }}</a>
         @else
@@ -263,7 +277,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
 
     {{-- Configuration --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Configuration</p>
+        <h2 class="cbx-section-title">Configuration</h2>
         <form wire:submit="saveConfig" class="mt-4 space-y-4">
             <div>
                 <label class="label" for="editName">Connection name</label>
@@ -335,15 +349,24 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
 
     {{-- Status & lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Status &amp; lifecycle</p>
+        <h2 class="cbx-section-title">Status &amp; lifecycle</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">A draft connection is not yet used for sign-in. Enable it to route matching users through this IdP.</p>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($connection->isActive())
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="disable" wire:confirm="Disable this connection? Users can no longer sign in through it.">Disable</button>
+                <x-confirm-delete
+                    :name="$connection->name"
+                    action="disable"
+                    label="Disable"
+                    trigger-class="btn btn-ghost btn-sm"
+                    consequence="Everyone who signs in through this connection is locked out until it is re-enabled." />
             @else
                 <button type="button" class="btn btn-primary btn-sm" wire:click="activate"><x-icon name="check" class="w-4 h-4" /> Enable</button>
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteConnection" wire:confirm="Permanently delete this connection? This cannot be undone.">Delete connection</button>
+            <x-confirm-delete
+                :name="$connection->name"
+                action="deleteConnection"
+                label="Delete connection"
+                consequence="Users routed through this IdP can no longer sign in. This cannot be undone." />
         </div>
     </div>
 </div>

@@ -143,10 +143,11 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
     {
         $orgId = $this->guardFeature(PortalFeature::Sso);
 
-        $type = ConnectionType::from($this->validate(['type' => 'required|in:saml,oidc'])['type']);
+        $type = ConnectionType::from($this->type);
         $this->validate(['connName' => 'required|string|max:120']);
 
         if ($type === ConnectionType::Saml) {
+            /** @var array<string, mixed> $config */
             $config = $this->validate([
                 'idp_entity_id' => 'required|string|max:500',
                 'idp_sso_url' => 'required|url|max:500',
@@ -155,6 +156,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                 'sp_acs_url' => 'required|url|max:500',
             ]);
         } else {
+            /** @var array<string, mixed> $config */
             $config = $this->validate([
                 'issuer' => 'required|url|max:500',
                 'client_id' => 'required|string|max:500',
@@ -217,6 +219,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
         $this->done = true;
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $portal = app(AdminPortal::class);
@@ -261,7 +264,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 <div>
     @if ($done)
         <div class="card p-10 text-center">
-            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--success-soft);color:var(--success)">
+            <div class="mx-auto grid place-items-center rounded-full" style="width:2.75rem;height:2.75rem;background:var(--success-soft);color:var(--success-strong)">
                 <x-icon name="check" class="w-5 h-5" />
             </div>
             <h2 class="mt-4 text-lg font-semibold tracking-tight">All set</h2>
@@ -286,7 +289,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                 </div>
 
                 <form wire:submit="addDomain" class="flex gap-2 mb-4">
-                    <input wire:model="domain" type="text" class="input" placeholder="acme.com"
+                    <input wire:model="domain" type="text" class="input" placeholder="acme.com" aria-label="Domain"
                            @error('domain') aria-invalid="true" @enderror>
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Add domain</button>
                 </form>
@@ -304,7 +307,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                 @endif
 
                 @forelse ($domains as $d)
-                    <div class="card p-3 mb-2 flex items-center justify-between gap-3">
+                    <div wire:key="directory-{{ $d->id }}" class="card p-3 mb-2 flex items-center justify-between gap-3">
                         <span class="mono text-sm">{{ $d->domain }}</span>
                         <div class="flex items-center gap-2">
                             @if ($d->isVerified())
@@ -313,7 +316,14 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                                 <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>Pending DNS</span>
                                 <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-ghost btn-sm">Check</button>
                             @endif
-                            <button wire:click="removeDomain('{{ $d->id }}')" wire:confirm="Remove {{ $d->domain }}?" class="btn btn-ghost btn-sm" style="color:var(--danger)">Remove</button>
+                            @php $removeDomainAction = "removeDomain('{$d->id}')"; @endphp
+                            <x-confirm-delete
+                                :name="$d->domain"
+                                :action="$removeDomainAction"
+                                label="Remove"
+                                trigger-class="btn btn-ghost btn-sm"
+                                trigger-style="color:var(--danger)"
+                                consequence="Anyone signing in with an address at this domain stops being routed here." />
                         </div>
                     </div>
                 @empty
@@ -410,7 +420,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
 
                 <div class="space-y-3">
                     @forelse ($connections as $c)
-                        <div class="card p-4">
+                        <div wire:key="connection-{{ $c->id }}" class="card p-4">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
@@ -456,7 +466,7 @@ new #[Layout('components.layouts.portal', ['title' => 'Set up SSO & SCIM'])] cla
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2 font-semibold"><x-icon name="key" class="w-4 h-4" /> Bearer token for “{{ $newTokenName }}”</div>
-                                <p class="mt-1 text-sm" style="color:var(--warn)">Copy this now — it is shown only once and cannot be retrieved again.</p>
+                                <p class="mt-1 text-sm" style="color:var(--warn-strong)">Copy this now — it is shown only once and cannot be retrieved again.</p>
                             </div>
                             <button wire:click="dismissToken" class="btn btn-ghost btn-sm">Done</button>
                         </div>

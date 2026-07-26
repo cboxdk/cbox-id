@@ -49,9 +49,31 @@ final class FederatedLanding
             // A second factor enrolled on the account plane still stands: federating in
             // must not be a way around a factor the member deliberately added.
             AttemptOutcome::Mfa => redirect()->route('workspace.login.mfa'),
-            default => redirect()->route('workspace.login')->withErrors([
-                'email' => 'That single sign-on identity is not a member of any workspace.',
-            ]),
+            default => $this->failed('That single sign-on identity is not a member of any workspace.'),
         };
+    }
+
+    /**
+     * Where an inbound federated sign-in lands when it FAILS.
+     *
+     * The same plane fork as {@see land()}, and it lives here for that reason. Both SSO
+     * callbacks used to inline `route('login')` on their error branch — but `/login` is
+     * `plane:subject`, so on the account host every failure rendered a bare 404. That is a
+     * worse failure than a lockout: it happens AFTER a successful authentication at the
+     * IdP, so the user has every reason to believe SSO worked and no way to learn it did
+     * not. The callbacks themselves are deliberately NOT plane-gated (an account org
+     * federates on the root host), which is exactly what made the error branch reachable
+     * there while the success branch had already been taught to fork.
+     *
+     * `email` is the error-bag key on purpose: it is the field BOTH sign-in screens
+     * render. The callbacks previously used `identifier`, which no view reads — so the
+     * message was silently dropped on the subject plane too, and the user was returned to
+     * a blank sign-in form with no indication of what had gone wrong.
+     */
+    public function failed(string $message): RedirectResponse
+    {
+        $route = $this->planes->onAccountPlane() ? 'workspace.login' : 'login';
+
+        return redirect()->route($route)->withErrors(['email' => $message]);
     }
 }

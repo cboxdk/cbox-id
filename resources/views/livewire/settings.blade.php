@@ -28,7 +28,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
         }
 
         $org = app(CurrentUser::class)->organization();
-        $this->orgName = $org?->name ?? '';
+        $this->orgName = $org->name ?? '';
     }
 
     public function rename(AuditLog $audit): void
@@ -55,6 +55,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
         $this->dispatch('toast', message: 'Organization name updated.');
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $me = app(CurrentUser::class);
@@ -77,7 +78,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
     <section class="cbx-panel">
         <div class="cbx-panel-header">
             <div>
-                <h3 class="cbx-panel-title">Organization</h3>
+                <h2 class="cbx-panel-title">Organization</h2>
                 <p class="cbx-panel-desc">The workspace you are currently signed in to.</p>
             </div>
         </div>
@@ -112,7 +113,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
         <section class="cbx-panel">
             <div class="cbx-panel-header">
                 <div>
-                    <h3 class="cbx-panel-title">Login branding</h3>
+                    <h2 class="cbx-panel-title">Login branding</h2>
                     <p class="cbx-panel-desc">Theme your organization's sign-in page. Your team signs in at
                         <a href="{{ route('login.branded', $org->slug) }}" class="mono underline" style="color:var(--accent)">/o/{{ $org->slug }}/login</a>.</p>
                 </div>

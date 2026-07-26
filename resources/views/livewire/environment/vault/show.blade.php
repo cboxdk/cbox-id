@@ -151,7 +151,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
     {{-- Metadata. The sealed value is never displayed here — only its shape. --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         <dl class="mt-4 grid gap-4 sm:grid-cols-2 text-sm">
             <div>
                 <dt class="label">Provider</dt>
@@ -206,12 +206,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
     {{-- Client grants. Deny-by-default: only listed clients may lease this secret. --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Client grants</p>
+        <h2 class="cbx-section-title">Client grants</h2>
         <div class="mt-4 space-y-2">
             @forelse ($grants as $g)
                 <div class="flex items-center justify-between gap-2 rounded-lg px-3 py-2" style="background:var(--surface-2)" wire:key="grant-{{ $g->client_id }}">
                     <span class="mono text-xs break-all">{{ $g->client_id }}</span>
-                    <button wire:click="revokeGrant('{{ $g->client_id }}')" wire:confirm="Revoke this client's access?" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)">Revoke</button>
+                    @php $revokeGrantAction = "revokeGrant('{$g->client_id}')"; @endphp
+                    <x-confirm-delete
+                        :name="$g->client_id"
+                        :action="$revokeGrantAction"
+                        label="Revoke"
+                        trigger-class="btn btn-ghost btn-sm shrink-0"
+                        trigger-style="color:var(--destructive)"
+                        consequence="This client can no longer lease the secret. Any lease it already holds stays valid until it expires." />
                 </div>
             @empty
                 <p class="rounded-xl border p-4 text-sm" style="border-color:var(--border);color:var(--muted)">No clients are authorized to lease this secret.</p>
@@ -231,10 +238,16 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
     {{-- Revocation. Immediate and permanent — no future lease can open the secret. --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Danger zone</p>
+        <h2 class="cbx-section-title">Danger zone</h2>
         @unless ($secret->isRevoked())
             <p class="mt-2 text-sm" style="color:var(--muted)">Revoking is immediate and permanent — no future lease can open this secret.</p>
-            <button type="button" class="btn btn-ghost btn-sm mt-4" style="color:var(--destructive)" wire:click="revoke" wire:confirm="Revoke this secret? No future lease can open it — this cannot be undone.">Delete secret</button>
+            <div class="mt-4">
+                <x-confirm-delete
+                    :name="$secret->name"
+                    action="revoke"
+                    label="Revoke secret"
+                    consequence="No future lease can open this secret. Revocation is immediate and permanent." />
+            </div>
         @else
             <p class="mt-2 text-sm" style="color:var(--muted)">This secret is revoked — no future lease can open it.</p>
         @endunless

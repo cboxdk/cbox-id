@@ -56,9 +56,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Directories'])] clas
             $query->where('name', 'like', "%{$term}%");
         }
 
+        $directories = $query->paginate(25);
+
         return [
-            'directories' => $query->paginate(25),
-            'orgNames' => Organization::query()->pluck('name', 'id'),
+            'directories' => $directories,
+            // Only the organizations this PAGE actually names. Plucking the whole
+            // environment's organizations to label at most 25 rows pulled a table that
+            // grows with the tenant count into memory on every render and every
+            // Livewire action.
+            'orgNames' => Organization::query()
+                ->whereIn('id', $directories->pluck('organization_id')->filter()->unique())
+                ->pluck('name', 'id'),
             'scimBaseUrl' => url('/scim/v2'),
         ];
     }
@@ -79,7 +87,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Directories'])] clas
     </div>
 
     <div class="mt-6">
-        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name" aria-label="Search directories">
+        {{-- SC 4.1.3: the list re-renders on a debounced keystroke with no focus
+             change, so the result count is the only thing that can report the filter
+             narrowed to nothing. --}}
+        <p role="status" aria-live="polite" class="sr-only">{{ $directories->total() }} {{ \Illuminate\Support\Str::plural('directory', $directories->total()) }} found.</p>
     </div>
 
     <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">

@@ -74,7 +74,7 @@ it('refuses a wrong TOTP code and rate-limits repeated attempts', function (): v
             ->set('code', '000000')
             ->call('verify')
             ->assertHasErrors('code')
-            ->assertNoRedirect();
+            ->assertRenderedNotRedirected();
     }
 
     // Locked out — no session was ever established.

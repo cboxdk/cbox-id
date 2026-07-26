@@ -23,7 +23,11 @@
     </div>
     <nav aria-label="{{ $label }}">
         @foreach ($pages as $page)
-            <a href="{{ $page['href'] }}" class="{{ $page['active'] ? 'cbx-on' : '' }}"
+            {{-- wire:navigate — see the rail. Moving between pages of the SAME area is
+                 the most frequent navigation in the console; a full document load here
+                 re-parses every stylesheet and re-boots Livewire and Alpine to change
+                 one column of content. --}}
+            <a href="{{ $page['href'] }}" wire:navigate class="{{ $page['active'] ? 'cbx-on' : '' }}"
                @if ($page['active']) aria-current="page" @endif>
                 <span>{{ $page['label'] }}</span>
                 @if (($page['badge'] ?? null) !== null)

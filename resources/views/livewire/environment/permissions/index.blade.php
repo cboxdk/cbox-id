@@ -58,7 +58,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
             'description' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $name = mb_strtolower(trim($data['name']));
+        $name = mb_strtolower(trim($this->name));
         $environmentId = $this->environmentId();
 
         // Uniqueness among THIS environment's manual permissions. Manual rows carry a
@@ -190,12 +190,26 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
             ->whereIn('client_id', $declared->pluck('client_id')->filter()->unique()->all())
             ->pluck('name', 'client_id');
 
-        // permissionId => how many roles reference it (context, so an admin sees what
-        // deleting a manual permission would strip from roles).
+        // permissionId => how many of THIS environment's roles reference it (context,
+        // so an admin sees what deleting a manual permission would strip from roles).
+        //
+        // Counted in SQL, over this page's permissions only. It used to pull the ENTIRE
+        // platform-wide `role_permission` pivot into PHP — the pivot has no
+        // `environment_id`, so there was no WHERE at all — and count it in memory, on
+        // every render and again on every Livewire action. At 400 environments × 40
+        // roles × 25 permissions that is ~400k rows materialised to display a handful
+        // of small integers.
+        //
+        // The join is not only for the aggregate: without it the count included OTHER
+        // environments' roles, so one tenant's page reported another tenant's usage.
+        // The sibling Roles list already does it this way.
         $usage = DB::table('role_permission')
-            ->get(['permission_id'])
-            ->groupBy('permission_id')
-            ->map(fn ($group) => $group->count());
+            ->join('roles', 'roles.id', '=', 'role_permission.role_id')
+            ->where('roles.environment_id', $this->environmentId())
+            ->whereIn('role_permission.permission_id', $all->pluck('id'))
+            ->selectRaw('role_permission.permission_id as permission_id, count(*) as aggregate')
+            ->groupBy('role_permission.permission_id')
+            ->pluck('aggregate', 'permission_id');
 
         return [
             'manual' => $manual,
@@ -212,7 +226,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
 
     {{-- Create a manual permission --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">New permission</p>
+        <h2 class="cbx-section-title">New permission</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">A <code class="mono">feature:action</code> key you can compose into roles — e.g. <code class="mono">invoices:create</code>.</p>
         <form wire:submit="create" class="mt-4 space-y-3">
             <div class="grid sm:grid-cols-[1fr_1.4fr_auto] gap-2 items-start">
@@ -263,13 +277,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] clas
                                     <span class="text-sm mono truncate">{{ $perm->name }}</span>
                                     <span class="badge">Manual</span>
                                     @unless ($perm->tenant_assignable)<span class="badge badge-warn">Internal</span>@endunless
-                                    @php $count = $usage[$perm->id] ?? 0; @endphp
+                                    @php $count = (int) ($usage[$perm->id] ?? 0); @endphp
                                     @if ($count > 0)<span class="text-xs" style="color:var(--faint)">in {{ $count }} {{ \Illuminate\Support\Str::plural('role', $count) }}</span>@endif
                                 </div>
                                 @if ($perm->description)<p class="text-xs truncate" style="color:var(--faint)">{{ $perm->description }}</p>@endif
                             </div>
                             <button type="button" class="btn btn-ghost btn-sm shrink-0" wire:click="startEdit('{{ $perm->id }}')">Edit</button>
-                            <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="delete('{{ $perm->id }}')" wire:confirm="Delete this permission? It is removed from every role that uses it.">Delete</button>
+                            <x-confirm-delete
+                                :name="$perm->name"
+                                action="delete('{{ $perm->id }}')"
+                                label="Delete"
+                                consequence="This permission is removed from every role that currently grants it. This cannot be undone." />
                         </div>
                     @endif
                 </div>

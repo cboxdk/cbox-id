@@ -493,16 +493,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.56.0",
+            "version": "v0.57.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "509d5d979e01ed30bd9ab38b3425581145bd9798"
+                "reference": "5311b2c43eeee5d6f0594173c0bab920c6c99470"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/509d5d979e01ed30bd9ab38b3425581145bd9798",
-                "reference": "509d5d979e01ed30bd9ab38b3425581145bd9798",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/5311b2c43eeee5d6f0594173c0bab920c6c99470",
+                "reference": "5311b2c43eeee5d6f0594173c0bab920c6c99470",
                 "shasum": ""
             },
             "require": {
@@ -564,9 +564,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.56.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.57.0"
             },
-            "time": "2026-07-25T15:06:46+00:00"
+            "time": "2026-07-26T04:11:52+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",

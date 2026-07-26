@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
@@ -59,7 +60,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
         return $model;
     }
 
-    public function saveDetails(): void
+    public function saveDetails(Roles $roles): void
     {
         $role = $this->role();
         abort_if($role->source === RoleSource::Manifest, 403);
@@ -69,14 +70,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
             'editDescription' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $role->name = trim($data['editName']);
-        $role->description = trim($data['editDescription']) !== '' ? trim($data['editDescription']) : null;
-        $role->save();
+        $description = trim($this->editDescription);
+        $roles->updateRole($role->id, trim($this->editName), $description !== '' ? $description : null);
 
         $this->dispatch('toast', message: 'Role updated.');
     }
 
-    public function togglePermission(string $permissionId): void
+    public function togglePermission(string $permissionId, Roles $roles): void
     {
         $role = $this->role();
         abort_if($role->source === RoleSource::Manifest, 403);
@@ -94,27 +94,25 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
             ->exists();
 
         if ($attached) {
-            DB::table('role_permission')
-                ->where('role_id', $role->id)
-                ->where('permission_id', $permission->id)
-                ->delete();
+            $roles->revokePermission($role->id, $permission->id);
             $this->dispatch('toast', message: 'Permission revoked.');
         } else {
-            DB::table('role_permission')->insertOrIgnore(['role_id' => $role->id, 'permission_id' => $permission->id]);
+            $roles->attachPermission($role->id, $permission->id);
             $this->dispatch('toast', message: 'Permission granted.');
         }
     }
 
-    public function deleteRole(): mixed
+    public function deleteRole(Roles $roles): mixed
     {
         $role = $this->role();
         abort_if($role->source === RoleSource::Manifest, 403);
 
-        // Drop the pivot rows and any live grants of this role, then the role itself,
-        // so nothing dangles pointing at a deleted id.
-        DB::table('role_permission')->where('role_id', $role->id)->delete();
-        DB::table('role_assignments')->where('role_id', $role->id)->delete();
-        $role->delete();
+        // Through the framework, never raw SQL. These writes used to be DB::table()
+        // deletes: no observer, no FK cascade, so a change to privileged access
+        // affecting EVERY holder of the role left nothing on /audit, nothing for a
+        // SIEM, and no `role.unassigned` for the downstream apps that mirror grants off
+        // it. deleteRole() drops the same rows and reports what it did.
+        $roles->deleteRole($role->id);
 
         $this->dispatch('toast', message: 'Role deleted.');
 
@@ -159,7 +157,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
 
     {{-- Details --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Details</p>
+        <h2 class="cbx-section-title">Details</h2>
         @if ($readOnly)
             <p class="mt-1 text-xs" style="color:var(--faint)">This role is declared by an application, which is its source of truth — it can't be edited here.</p>
             <div class="mt-4 space-y-3">
@@ -191,7 +189,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
 
     {{-- Permissions --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Permissions</p>
+        <h2 class="cbx-section-title">Permissions</h2>
         <p class="mt-1 text-xs" style="color:var(--faint)">What this role is allowed to do. {{ $readOnly ? 'Set by the application.' : 'Tick a permission to grant it; untick to revoke.' }}</p>
         @if ($readOnly)
             <div class="mt-4 flex flex-wrap gap-1.5">
@@ -209,7 +207,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
             <div class="mt-4 space-y-1.5 rounded-lg border p-3 max-h-96 overflow-y-auto" style="border-color:var(--border)">
                 @forelse ($catalog as $perm)
                     <label class="flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-[var(--surface-2)]" wire:key="perm-{{ $perm->id }}">
-                        <input type="checkbox" class="mt-0.5 rounded" wire:click="togglePermission('{{ $perm->id }}')" @checked(in_array($perm->id, $granted, true))>
+                        {{-- Persists on click. Disabling during the round-trip stops a second
+                             click from toggling it straight back. --}}
+                        <input type="checkbox" class="mt-0.5 rounded" wire:click="togglePermission('{{ $perm->id }}')" @checked(in_array($perm->id, $granted, true))
+                               wire:loading.attr="disabled" wire:target="togglePermission('{{ $perm->id }}')">
                         <span class="min-w-0 flex-1">
                             <span class="flex items-center gap-2 flex-wrap">
                                 <span class="text-sm mono">{{ $perm->name }}</span>
@@ -226,15 +227,21 @@ new #[Layout('components.layouts.environment', ['title' => 'Role'])] class exten
                     </div>
                 @endforelse
             </div>
+            {{-- Each tick writes immediately; SC 4.1.3 needs that reported. --}}
+            <p role="status" aria-live="polite" class="sr-only">{{ count($granted) }} of {{ count($catalog) }} permissions granted.</p>
         @endif
     </div>
 
     {{-- Danger zone --}}
     @unless ($readOnly)
         <div class="rounded-xl border p-5" style="border-color:var(--border)">
-            <p class="text-sm font-medium">Danger zone</p>
+            <h2 class="cbx-section-title">Danger zone</h2>
             <div class="mt-4">
-                <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteRole" wire:confirm="Delete this role? Anyone assigned it loses the access it grants.">Delete role</button>
+                <x-confirm-delete
+                    :name="$role->name"
+                    action="deleteRole"
+                    label="Delete role"
+                    consequence="Everyone currently assigned this role loses the access it grants. This cannot be undone." />
             </div>
         </div>
     @endunless

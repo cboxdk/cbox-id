@@ -13,6 +13,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
+use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -41,6 +42,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
         abort_unless($auth->check(), 403);
     }
 
+    /** @return array<string, mixed> */
     public function with(EnvironmentContext $environments, TenantContext $tenants): array
     {
         return $environments->withoutScope(function () use ($tenants): array {
@@ -104,7 +106,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
                 $topOrganizations[] = [
                     'id' => $org->id,
                     'name' => $org->name,
-                    'plane' => $plane?->name ?? 'Unknown plane',
+                    'plane' => $plane->name ?? 'Unknown plane',
                     'members' => is_numeric($count) ? (int) $count : 0,
                 ];
             }
@@ -141,13 +143,14 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
     private function countByEnvironment(Builder $query): array
     {
         $counts = [];
+        /** @var Collection<string, mixed> $rows */
         $rows = $query->selectRaw('environment_id, count(*) as aggregate')
             ->groupBy('environment_id')
             ->pluck('aggregate', 'environment_id');
 
         foreach ($rows as $envId => $count) {
-            if ((is_string($envId) || is_int($envId)) && is_numeric($count)) {
-                $counts[(string) $envId] = (int) $count;
+            if (is_numeric($count)) {
+                $counts[$envId] = (int) $count;
             }
         }
 
@@ -190,7 +193,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
     {{-- Per-environment breakdown --}}
     <div class="cbx-panel overflow-hidden mb-5">
         <div class="cbx-panel-header">
-            <h3 class="cbx-panel-title">Per-environment breakdown</h3>
+            <h2 class="cbx-panel-title">Per-environment breakdown</h2>
             <span class="text-xs" style="color:var(--faint)">{{ count($breakdown) }} {{ count($breakdown) === 1 ? 'plane' : 'planes' }}</span>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
@@ -216,7 +219,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends
     {{-- Top tenants by member count --}}
     <div class="cbx-panel overflow-hidden">
         <div class="cbx-panel-header">
-            <h3 class="cbx-panel-title">Top organizations by members</h3>
+            <h2 class="cbx-panel-title">Top organizations by members</h2>
             <span class="text-xs" style="color:var(--faint)">Across every plane</span>
         </div>
         <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"

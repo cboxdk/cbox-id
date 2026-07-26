@@ -11,8 +11,10 @@ use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -39,6 +41,28 @@ function ssoConnection(): object
     $connections->activate($org->id, $connection->id);
 
     return (object) ['org' => $org, 'connection' => $connection->refresh()];
+}
+
+/**
+ * Put the request on the ACCOUNT plane: base_domains set (multi-tenant SaaS shape) and
+ * the current environment IS the `is_default` platform root — which is exactly what
+ * PlaneResolver::onAccountPlane() asks. Local to this file rather than borrowed from
+ * another test's global helper, so running this file alone still stands up the plane.
+ */
+function ssoRootEnvironment(): Environment
+{
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+
+    $root = Environment::query()->create([
+        'name' => 'Production',
+        'slug' => 'production',
+        'status' => 'active',
+        'is_default' => true,
+    ]);
+
+    app(EnvironmentContext::class)->set($root);
+
+    return $root;
 }
 
 /** Bind a validator that returns a principal for the given email, bypassing XML-DSig. */
@@ -98,10 +122,13 @@ it('sends the user back to sign-in with a readable message when the assertion is
     ]);
 
     $response->assertRedirect(route('login'));
-    $response->assertSessionHasErrors('identifier');
+    // `email`, not `identifier`: it is the key BOTH sign-in screens actually render.
+    // Under `identifier` the message reached the session and no view ever read it, so
+    // the user was returned to a blank form with nothing explaining the failure.
+    $response->assertSessionHasErrors('email');
 
     // The message must not leak WHY the assertion failed — that is a forgery oracle.
-    $error = session('errors')->first('identifier');
+    $error = session('errors')->first('email');
     expect($error)->not->toContain('signature')
         ->and($error)->toContain('could not verify');
 
@@ -133,5 +160,62 @@ it('explains the collision when an account already exists for that email', funct
     $response = $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'x']);
 
     $response->assertRedirect(route('login'));
-    expect(session('errors')->first('identifier'))->toContain('already exists');
+    expect(session('errors')->first('email'))->toContain('already exists');
+});
+
+/*
+ * THE ACCOUNT PLANE'S FAILURE BRANCH.
+ *
+ * The SSO callbacks are deliberately not plane-gated: an account org with a verified
+ * domain federates on the platform-root host itself. The SUCCESS path was taught to fork
+ * on the plane; the ERROR path was not, and kept redirecting to `/login` — a
+ * `plane:subject` route that 404s here. So a member whose assertion failed validation
+ * (expired, clock skew, signature mismatch, unknown NameID) got a bare 404 AFTER
+ * authenticating successfully at their IdP, and had every reason to think SSO had worked.
+ */
+it('sends an account-plane SSO failure to the workspace sign-in, not a 404', function (): void {
+    ssoRootEnvironment();
+    $fixture = ssoConnection();
+
+    app()->bind(AssertionValidator::class, fn () => new class implements AssertionValidator
+    {
+        public function validate(Connection $connection, string $rawResponse): FederatedPrincipal
+        {
+            throw InvalidAssertion::make('clock skew');
+        }
+    });
+
+    $response = $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'forged']);
+
+    $response->assertRedirect(route('workspace.login'));
+    $response->assertSessionHasErrors('email');
+    expect(session('errors')->first('email'))->toContain('could not verify');
+
+    // The destination must actually SERVE on this plane — a redirect to a 404 is the bug.
+    $this->get(route('workspace.login'))->assertOk();
+
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
+});
+
+it('sends an account-plane OIDC failure to the workspace sign-in, not a 404', function (): void {
+    ssoRootEnvironment();
+    $fixture = ssoConnection();
+
+    // An unknown connection id is the earliest error branch, and it needs no OIDC
+    // handshake to reach — the plane fork is what is under test, not the protocol.
+    $response = $this->get('/sso/oidc/con_does_not_exist/callback?state=x&code=y');
+
+    $response->assertRedirect(route('workspace.login'));
+    expect(session('errors')->first('email'))->toContain('no longer active');
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
+});
+
+it('keeps the subject plane on /login when SSO fails there', function (): void {
+    // No base_domains → single-host / tenant shape → the subject door is the right one.
+    config(['cbox-id.environments.base_domains' => []]);
+
+    $response = $this->get('/sso/oidc/con_does_not_exist/callback?state=x&code=y');
+
+    $response->assertRedirect(route('login'));
+    expect(session('errors')->first('email'))->toContain('no longer active');
 });

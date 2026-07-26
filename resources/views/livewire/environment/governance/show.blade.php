@@ -111,12 +111,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
         foreach ($items as $item) {
             $id = $item->subject_id;
 
-            if (! is_string($id) || $id === '' || isset($labels[$id])) {
+            if ($id === '' || isset($labels[$id])) {
                 continue;
             }
 
             $subject = $subjects->find($id);
-            $name = $subject?->name ?? $subject?->email;
+            $name = $subject->name ?? $subject?->email;
 
             if (is_string($name) && $name !== '') {
                 $labels[$id] = $name;
@@ -137,7 +137,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
         $roleIds = [];
 
         foreach ($items as $item) {
-            if ($item->access_type === AccessKind::Role && is_string($item->access_ref) && $item->access_ref !== '') {
+            if ($item->access_type === AccessKind::Role && $item->access_ref !== '') {
                 $roleIds[$item->access_ref] = true;
             }
         }
@@ -146,16 +146,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
             return [];
         }
 
-        return Role::query()
+        /** @var array<string, string> $names */
+        $names = Role::query()
             ->whereIn('id', array_keys($roleIds))
             ->pluck('name', 'id')
             ->all();
+
+        return $names;
     }
 
     /** The acting reviewer: the env-admin account member for this environment. */
     private function reviewerId(): string
     {
-        return app(EnvironmentAdminAuth::class)->current()?->id ?? '';
+        return app(EnvironmentAdminAuth::class)->current()->id ?? '';
     }
 }; ?>
 
@@ -176,9 +179,16 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
     {{-- Items worklist --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <div class="flex items-center justify-between gap-3">
-            <p class="text-sm font-medium">Items</p>
+            <h2 class="cbx-section-title">Items</h2>
             @if ($campaign->status === \Cbox\Id\Governance\Enums\CampaignStatus::Open)
-                <button type="button" wire:click="close" wire:confirm="Close this review? Revoked items will be removed and pending items follow the review's policy." class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)">Close &amp; apply</button>
+                <x-confirm-delete
+                    :name="$campaign->name"
+                    action="close"
+                    label="Close &amp; apply"
+                    verb="Close and apply"
+                    trigger-class="btn btn-ghost btn-sm shrink-0"
+                    trigger-style="color:var(--destructive)"
+                    consequence="Every revoke recorded on this review is applied for real now, and anything still un-reviewed follows the review's policy — which defaults to revoke. This cannot be undone." />
             @endif
         </div>
         <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">
@@ -206,8 +216,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
 
                     @if ($campaign->status === \Cbox\Id\Governance\Enums\CampaignStatus::Open)
                         <div class="flex items-center gap-2 shrink-0">
-                            <button type="button" wire:click="certify('{{ $item->id }}')" class="btn btn-ghost btn-sm">Certify</button>
-                            <button type="button" wire:click="revoke('{{ $item->id }}')" class="btn btn-ghost btn-sm" style="color:var(--destructive)">Revoke</button>
+                            <button type="button" wire:click="certify('{{ $item->id }}')" class="btn btn-ghost btn-sm"
+                                    wire:loading.attr="disabled" wire:target="certify('{{ $item->id }}')">Certify</button>
+                            {{-- Revoke sat ~8px from Certify with no guard: a mis-click recorded a
+                                 revoke against the wrong person. The message names WHO and WHAT. --}}
+                            <button type="button" wire:click="revoke('{{ $item->id }}')" class="btn btn-ghost btn-sm" style="color:var(--destructive)"
+                                    wire:loading.attr="disabled" wire:target="revoke('{{ $item->id }}')"
+                                    wire:confirm="Revoke {{ $roleNames[$item->access_ref] ?? $item->access_ref }} from {{ $subjectLabels[$item->subject_id] ?? $item->subject_id }}?&#10;&#10;The revoke is recorded now and applied when this review closes.">Revoke</button>
                         </div>
                     @elseif (! $item->applied && $item->decision === \Cbox\Id\Governance\Enums\ReviewDecision::Revoked)
                         <span class="text-xs shrink-0" style="color:var(--destructive)" title="{{ $item->application_note }}">not applied</span>

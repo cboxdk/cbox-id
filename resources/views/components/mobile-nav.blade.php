@@ -90,7 +90,9 @@
                         <x-icon :name="$group['icon']" class="w-3.5 h-3.5" aria-hidden="true" /> {{ $group['label'] }}
                     </p>
                     @foreach ($group['pages'] as $page)
-                        <a href="{{ route($page['route']) }}" @click="nav=false" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
+                        {{-- wire:navigate — see x-console.rail. On mobile the whole
+                             shell is re-parsed on every tap without it. --}}
+                        <a href="{{ route($page['route']) }}" wire:navigate @click="nav=false" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
                            @if ($isActive($page['route'])) aria-current="page" @endif>{{ $page['label'] }}</a>
                     @endforeach
                 </div>

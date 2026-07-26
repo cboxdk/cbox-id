@@ -69,7 +69,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
     public string $editUrl = '';
 
-    /** @var list<string> */
+    /**
+     * Livewire rehydrates this straight off the wire, so the keys are whatever the
+     * request sent — not necessarily a gapless list. Hence the array_values() before
+     * it is handed on.
+     *
+     * @var array<array-key, string>
+     */
     public array $editEvents = [];
 
     /** The freshly minted secret shown once (create hand-off or rotation); never stored plaintext.
@@ -112,13 +118,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
         // Re-run the SSRF guard on any URL change — a public endpoint can never be
         // silently repointed at an internal address.
-        if (! SafeWebhookUrl::isSafe($data['editUrl'])) {
+        if (! SafeWebhookUrl::isSafe($this->editUrl)) {
             $this->addError('editUrl', 'That URL is not allowed — it must be a public HTTPS endpoint.');
 
             return;
         }
 
-        $endpoint->url = $data['editUrl'];
+        $endpoint->url = $this->editUrl;
         $endpoint->event_types = array_values($this->editEvents);
         $endpoint->save();
 
@@ -217,7 +223,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
     {{-- Subscription --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Subscription</p>
+        <h2 class="cbx-section-title">Subscription</h2>
         <form wire:submit="saveSubscription" class="mt-4 space-y-4">
             <div>
                 <label class="label" for="editUrl">Endpoint URL</label>
@@ -228,7 +234,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
                 <span class="label">Event types</span>
                 <div class="grid gap-2 sm:grid-cols-2">
                     @foreach (self::EVENT_TYPES as $event)
-                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <label wire:key="event-{{ $event }}" class="flex items-center gap-2 text-sm cursor-pointer">
                             <input type="checkbox" wire:model="editEvents" value="{{ $event }}" class="rounded">
                             <span class="mono text-xs">{{ $event }}</span>
                         </label>
@@ -242,14 +248,24 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
     {{-- Signing secret --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Signing secret</p>
+        <h2 class="cbx-section-title">Signing secret</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">The secret signs every delivery's HMAC. It is stored sealed and can't be retrieved — rotating issues a new one, shown once.</p>
-        <button type="button" class="btn btn-ghost btn-sm mt-4" wire:click="rotateSecret" wire:confirm="Rotate the signing secret? The current secret stops verifying immediately — update your endpoint right after."><x-icon name="refresh" class="w-4 h-4" /> Rotate secret</button>
+        <div class="mt-4">
+            <x-confirm-delete
+                :name="$endpoint->url"
+                action="rotateSecret"
+                label="Rotate secret"
+                verb="Rotate"
+                trigger-class="btn btn-ghost btn-sm"
+                consequence="The current signing secret stops verifying immediately and cannot be recovered — your receiver rejects every delivery until it is updated.">
+                <x-icon name="refresh" class="w-4 h-4" /> Rotate secret
+            </x-confirm-delete>
+        </div>
     </div>
 
     {{-- Recent deliveries --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Recent deliveries</p>
+        <h2 class="cbx-section-title">Recent deliveries</h2>
         <div class="mt-4 space-y-2">
             @forelse ($deliveries as $delivery)
                 <div class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="delivery-{{ $delivery->id }}">
@@ -274,14 +290,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Webhook'])] class ex
 
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Lifecycle</p>
+        <h2 class="cbx-section-title">Lifecycle</h2>
         <div class="mt-4 flex flex-wrap gap-2">
             @if ($endpoint->status === EndpointStatus::Active)
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="pause" wire:confirm="Pause this endpoint? It will stop receiving events until resumed.">Pause</button>
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="resume">Resume</button>
             @endif
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="deleteEndpoint" wire:confirm="Delete this webhook endpoint? This cannot be undone.">Delete endpoint</button>
+            <x-confirm-delete
+                :name="$endpoint->url"
+                action="deleteEndpoint"
+                label="Delete endpoint"
+                consequence="This endpoint stops receiving events and its delivery history is dropped. This cannot be undone." />
         </div>
     </div>
 </div>

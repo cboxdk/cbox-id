@@ -138,10 +138,13 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
      */
     private function usableApps(): Collection
     {
-        return Client::query()
+        /** @var Collection<string, string> $apps */
+        $apps = Client::query()
             ->where(fn ($query) => $query->whereNull('organization_id')->orWhere('organization_id', $this->orgId()))
             ->orderBy('name')
             ->pluck('name', 'client_id');
+
+        return $apps;
     }
 
     private function orgId(): string
@@ -262,7 +265,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
                         : $catalog->flatten(1))
                         ->reject(fn ($p) => in_array($p->name, $granted, true));
                 @endphp
-                <div class="px-5 py-4" style="border-bottom:1px solid var(--border)">
+                <div wire:key="role-{{ $role->id }}" class="px-5 py-4" style="border-bottom:1px solid var(--border)">
                     <div class="flex items-start justify-between gap-4 flex-wrap">
                         <div class="flex items-center gap-2">
                             <span class="grid place-items-center rounded-lg" style="width:1.75rem;height:1.75rem;background:var(--accent-soft);color:var(--primary)"><x-icon name="shield" class="w-4 h-4" /></span>

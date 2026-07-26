@@ -58,7 +58,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             // logo and the full custom sign-in appearance (Theme Editor) from it.
             View::share('cboxBrand', [
                 'name' => $org->name,
-                'settings' => is_array($org->settings) ? $org->settings : [],
+                'settings' => $org->settings,
             ]);
         }
     }
@@ -219,6 +219,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Sign in</h1>
     <p class="mt-2 text-sm" style="color:var(--muted)">Welcome back. Access your organization's identity console.</p>
 
+    {{-- Identifier-first step 2 is MORPHED in: no navigation, no focus move, no
+         announcement — the password field just silently appears. This region sits
+         OUTSIDE the @if so Livewire morphs its text rather than inserting the region
+         itself (a live region inserted already-populated is not reliably spoken). --}}
+    <p role="status" aria-live="polite" class="sr-only">
+        @if ($identified)
+            Password required. Enter the password for {{ $email }}.
+        @endif
+    </p>
+
     @if ($pendingLink)
         <div class="mt-5 rounded-lg px-3.5 py-3 text-sm" style="background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
             <b>Connect your {{ $pendingLink }} account.</b> Sign in below with your existing method and we'll link it to your account.
@@ -226,7 +236,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     @endif
 
     @if (session('error'))
-        <div role="alert" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger)">
+        <div role="alert" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm" style="background:var(--danger-soft);color:var(--danger-strong)">
             {{ session('error') }}
         </div>
     @endif
@@ -282,8 +292,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
                     <label class="label" for="password" style="margin-bottom:0">Password</label>
                     <a href="{{ route('password.request') }}" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
                 </div>
+                {{-- x-init, not autofocus: HTML autofocus only fires at document parse,
+                     and this input is morphed in after it — so focus stayed on <body>. --}}
                 <input wire:model="password" id="password" name="password" type="password"
-                       autocomplete="current-password" class="input input-lg" placeholder="••••••••••••" autofocus
+                       autocomplete="current-password" class="input input-lg" placeholder="••••••••••••"
+                       x-init="$el.focus()"
                        @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
                 @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
             </div>

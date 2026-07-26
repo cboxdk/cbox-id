@@ -47,6 +47,9 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
 
     public string $redirectUris = '';
 
+    /** Where sign-out may send people back to. Validated exactly like redirect URIs. */
+    public string $postLogoutRedirectUris = '';
+
     /** @var list<string> Scopes ticked from the catalog. */
     public array $selectedScopes = ['openid', 'profile', 'email'];
 
@@ -67,6 +70,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             'grantClientCredentials' => ['boolean'],
             'customScopes' => ['nullable', 'string', 'max:500'],
             'redirectUris' => ['nullable', 'string', 'max:2000'],
+            'postLogoutRedirectUris' => ['nullable', 'string', 'max:2000'],
             'manifestUrl' => ['nullable', 'url', 'max:500'],
         ]);
 
@@ -79,6 +83,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
         }
 
         $redirects = $this->splitLines($this->redirectUris);
+        $postLogoutRedirects = $this->splitLines($this->postLogoutRedirectUris);
 
         if (in_array('authorization_code', $grantTypes, true)) {
             if ($redirects === []) {
@@ -95,6 +100,16 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             }
         }
 
+        // Held to the same bar as the sign-in redirect URIs: sign-out hands the
+        // browser to this address, so it must not be a cleartext public URL.
+        foreach ($postLogoutRedirects as $uri) {
+            if (! SecureRedirectUri::isSecure($uri)) {
+                $this->addError('postLogoutRedirectUris', 'Each sign-out URI must use https (http is allowed only on localhost) — e.g. https://app.example.com/signed-out.');
+
+                return null;
+            }
+        }
+
         // Only catalog scopes from the picker, plus any advanced custom keys.
         $scopes = array_values(array_unique(array_merge(
             array_values(array_intersect($this->selectedScopes, $catalog->keys())),
@@ -108,6 +123,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             grantTypes: $grantTypes,
             scopes: $scopes,
             firstParty: $this->firstParty,
+            postLogoutRedirectUris: $postLogoutRedirects,
         ));
 
         // A published manifest URL (the pull transport) — stored on the app so the
@@ -210,6 +226,13 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
                 <textarea @error('redirectUris') aria-invalid="true" aria-describedby="redirectUris-error" @enderror wire:model="redirectUris" id="redirectUris" rows="2" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/auth/callback"></textarea>
                 @error('redirectUris') <p id="redirectUris-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
+
+            <div>
+                <label class="label" for="postLogoutRedirectUris">Sign-out URIs <span style="color:var(--faint);font-weight:400">— where Cbox ID sends people after signing out (one per line)</span></label>
+                <textarea @error('postLogoutRedirectUris') aria-invalid="true" aria-describedby="postLogoutRedirectUris-error" @enderror wire:model="postLogoutRedirectUris" id="postLogoutRedirectUris" rows="2" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/signed-out"></textarea>
+                <p class="mt-1 text-xs" style="color:var(--muted)">When the app signs someone out, it asks Cbox ID to send them on to one of these addresses. The URI the app asks for has to appear here character for character — trailing slash and all — or Cbox ID leaves the person on its own signed-out page. Leave empty if the app never sends people back.</p>
+                @error('postLogoutRedirectUris') <p id="postLogoutRedirectUris-error" class="field-error" role="alert">{{ $message }}</p> @enderror
+            </div>
         @endif
 
         <div>
@@ -217,7 +240,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             <p class="mt-1 text-xs" style="color:var(--muted)">Scopes decide what the app is allowed to see and do. People see the sign-in ones on the consent screen (first-party apps skip it).</p>
             <div class="mt-3 space-y-4">
                 @foreach ($scopeGroups as $group => $scopes)
-                    <div>
+                    <div wire:key="scopegroup-{{ $group }}">
                         <p class="text-xs font-semibold uppercase mb-2" style="color:var(--muted);letter-spacing:0.05em">{{ $group }}</p>
                         <div class="grid gap-2 sm:grid-cols-2">
                             @foreach ($scopes as $scope)

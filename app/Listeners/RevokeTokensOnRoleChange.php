@@ -24,6 +24,21 @@ final class RevokeTokensOnRoleChange
     {
         $event = $delivered->event;
 
+        // `role.deleted` names every subject who held the role rather than one user:
+        // deleting a role revokes it from all of them at once, and each of those people
+        // needs the same refresh-token cut as a single unassign() gives.
+        if ($event->type === 'role.deleted') {
+            $userIds = $event->payload['user_ids'] ?? null;
+
+            foreach (is_array($userIds) ? $userIds : [] as $userId) {
+                if (is_string($userId) && $userId !== '') {
+                    $this->refreshTokens->revokeForUser($userId, $event->organization_id);
+                }
+            }
+
+            return;
+        }
+
         if (! in_array($event->type, ['role.assigned', 'role.unassigned'], true)) {
             return;
         }

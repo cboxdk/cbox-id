@@ -29,7 +29,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 
     public string $newKeyName = '';
 
-    /** @var list<string> */
+    /**
+     * Livewire rehydrates this straight off the wire, so the keys are whatever the
+     * request sent — not necessarily a gapless list. Hence the array_values() before
+     * it is handed on.
+     *
+     * @var array<array-key, string>
+     */
     public array $newKeyScopes = [];
 
     /** The just-created plaintext, shown once and never persisted. */
@@ -119,9 +125,6 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         return in_array($this->selectedEnvironment, $members->accessibleEnvironmentIds($member), true);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     private function requiresSudo(string $returnRoute): bool
     {
         if (app(WorkspaceSudo::class)->confirmed()) {
@@ -134,6 +137,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function with(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys): array
     {
         $member = $auth->current();
@@ -176,7 +180,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         {{-- The plaintext, shown exactly once. --}}
         @if ($freshKey !== null)
             <div class="mt-6 rounded-xl border p-4" style="border-color:color-mix(in oklch,var(--success) 35%,transparent);background:var(--success-soft)">
-                <p class="text-sm font-medium" style="color:var(--success)">Copy your key now — you won't be able to see it again.</p>
+                <p class="text-sm font-medium" style="color:var(--success-strong)">Copy your key now — you won't be able to see it again.</p>
                 <div class="mt-3 flex items-center gap-2">
                     <code class="flex-1 min-w-0 truncate rounded-lg px-3 py-2 text-sm" style="background:var(--background);border:1px solid var(--border)">{{ $freshKey }}</code>
                     <x-copy-button :value="$freshKey" class="btn-primary" />
@@ -200,9 +204,11 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
                         <p class="text-sm truncate mono" style="color:var(--muted)">{{ $key->prefix }}…&nbsp; · &nbsp;{{ $key->last_used_at ? 'last used '.$key->last_used_at->diffForHumans() : 'never used' }}</p>
                     </div>
                     @if ($key->isActive())
-                        <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)"
-                                wire:click="revokeKey('{{ $key->id }}')"
-                                wire:confirm="Revoke this key? Any integration using it will stop working immediately.">Revoke</button>
+                        <x-confirm-delete
+                            :name="$key->name"
+                            action="revokeKey('{{ $key->id }}')"
+                            label="Revoke"
+                            consequence="Any integration still presenting this key stops working immediately. This cannot be undone." />
                     @endif
                 </div>
             @empty
@@ -220,7 +226,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
                 </div>
                 <div class="grid sm:grid-cols-2 gap-2">
                     @foreach ($scopes as $scope)
-                        <label class="flex items-center gap-2 text-sm">
+                        <label wire:key="scope-{{ $scope }}" class="flex items-center gap-2 text-sm">
                             <input type="checkbox" wire:model="newKeyScopes" value="{{ $scope->value }}">
                             <span>{{ $scope->label() }} <code class="mono text-xs" style="color:var(--faint)">{{ $scope->value }}</code></span>
                         </label>

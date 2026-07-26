@@ -34,6 +34,7 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
         'auth.vault_lease' => 'Vault leases',
     ];
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $me = app(CurrentUser::class);

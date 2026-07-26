@@ -75,10 +75,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
         ]);
 
         $policies->setForEnvironment(new AuthPolicy(
-            minLength: (int) $data['minLength'],
+            minLength: (int) $this->minLength,
             requireBreachCheck: $this->requireBreachCheck,
             maxAgeDays: $this->maxAgeDays === '' ? null : (int) $this->maxAgeDays,
-            reuseHistory: (int) $data['reuseHistory'],
+            reuseHistory: (int) $this->reuseHistory,
             mfa: MfaRequirement::from($this->mfa),
             sso: SsoEnforcement::from($this->sso),
             lockoutThreshold: $this->lockoutThreshold === '' ? null : (int) $this->lockoutThreshold,
@@ -181,7 +181,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Sign-in rules'])] cl
 
     {{-- What each organization actually ends up with. --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Per organization</p>
+        <h2 class="cbx-section-title">Per organization</h2>
         <p class="mt-1 text-xs" style="color:var(--faint)">The rules in force after this environment's baseline is applied. An organization's own override can only make these stricter.</p>
 
         <div class="mt-4 overflow-x-auto">

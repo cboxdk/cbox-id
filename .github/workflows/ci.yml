@@ -53,8 +53,11 @@ jobs:
       - name: Lint (Pint)
         run: vendor/bin/pint --test
 
+      # --memory-limit is not optional: PHPStan's own default is 128M, which this
+      # analysis blows through. Without it the step passes only on a runner whose
+      # php.ini happens to set memory_limit=-1, and OOMs everywhere else.
       - name: Static analysis (PHPStan/Larastan)
-        run: vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
 
       - name: Tests (Pest — feature, axe-core a11y, and real-browser smoke)
         run: vendor/bin/pest

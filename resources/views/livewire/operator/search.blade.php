@@ -46,6 +46,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
         abort_unless($auth->check(), 403);
     }
 
+    /** @return array<string, mixed> */
     public function with(EnvironmentContext $environments, TenantContext $tenants): array
     {
         $term = trim($this->term);
@@ -80,7 +81,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
                     'name' => $org->name,
                     'slug' => $org->slug,
                     'status' => $org->status->value,
-                    'plane' => $plane?->name ?? 'Unknown plane',
+                    'plane' => $plane->name ?? 'Unknown plane',
                 ];
             })->values()->all();
 
@@ -129,7 +130,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'plane' => $plane?->name ?? 'Unknown plane',
+                    'plane' => $plane->name ?? 'Unknown plane',
                     'organizations' => $orgs,
                 ];
             })->values()->all();
@@ -151,6 +152,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
      * SQLite has no default LIKE escape character, so it must be declared; MySQL and
      * Postgres already treat backslash as the default LIKE escape (and parse their
      * string literals differently), so only SQLite gets the explicit clause.
+     *
+     * @param  literal-string  $column
+     * @return literal-string
      */
     private function likeSql(string $column): string
     {
@@ -192,7 +196,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
         {{-- Organizations --}}
         <div class="cbx-panel overflow-hidden mb-5">
             <div class="cbx-panel-header">
-                <h3 class="cbx-panel-title">Organizations</h3>
+                <h2 class="cbx-panel-title">Organizations</h2>
                 <span class="text-xs" style="color:var(--faint)">{{ count($organizations) }} match{{ count($organizations) === 1 ? '' : 'es' }}</span>
             </div>
             @forelse ($organizations as $org)
@@ -224,7 +228,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
         {{-- Users --}}
         <div class="cbx-panel overflow-hidden">
             <div class="cbx-panel-header">
-                <h3 class="cbx-panel-title">Users</h3>
+                <h2 class="cbx-panel-title">Users</h2>
                 <span class="text-xs" style="color:var(--faint)">{{ count($users) }} match{{ count($users) === 1 ? '' : 'es' }}</span>
             </div>
             @forelse ($users as $user)

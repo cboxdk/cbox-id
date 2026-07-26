@@ -9,6 +9,8 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
+use PHPUnit\Framework\Assert as PHPUnit;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
@@ -16,6 +18,41 @@ uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 // Pest 4 browser tests (real Chromium via Playwright) — boot the full app the same
 // way, so `visit()` drives the running application with its middleware and DB.
 uses(TestCase::class, RefreshDatabase::class)->in('Browser');
+
+/**
+ * Assert the component actually RENDERED — it did not redirect, at mount OR afterwards.
+ *
+ * USE THIS INSTEAD OF `assertNoRedirect()`. Livewire's own `assertNoRedirect()` is
+ * VACUOUS for a redirect issued in `mount()`, and that asymmetry is a trap:
+ *
+ *   - `assertNoRedirect()` inspects ONLY the Livewire EFFECT payload
+ *     (`$this->effects['redirect']`).
+ *   - A redirect issued during `mount()` of a `Volt::test(...)` / `Livewire::test(...)`
+ *     is an INITIAL render, not a Livewire message — it surfaces as an HTTP 302 on the
+ *     underlying response and never reaches the effects array.
+ *   - So `assertNoRedirect()` passes, silently, on a component that redirected at mount.
+ *   - `assertRedirect()` does NOT have this hole: it falls back to the response when the
+ *     request is not a Livewire request. Only the negative form is blind.
+ *
+ * A `max_age` P0 in the OAuth consent screen survived a test written to catch it for
+ * exactly this reason. This macro closes both halves: HTTP 200 on the response (mount
+ * rendered a page rather than a 302) AND no redirect effect (no action redirected).
+ *
+ * It still only says "nothing bad happened" — always pair it with a positive assertion
+ * about what SHOULD have rendered or been set.
+ */
+Testable::macro('assertRenderedNotRedirected', function (): Testable {
+    /** @var Testable $this */
+    $this->assertStatus(200);
+
+    PHPUnit::assertArrayNotHasKey(
+        'redirect',
+        $this->effects,
+        'Component performed a redirect, but the test expected it to render.'
+    );
+
+    return $this;
+});
 
 /**
  * Stand up the PLATFORM-ROOT environment ("tenant 1"), the environment account members

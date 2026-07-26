@@ -23,7 +23,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set a new password'])] clas
 
     public ?string $email = null;
 
-    public function mount(string $member, AccountMembers $members)
+    public function mount(string $member, AccountMembers $members): mixed
     {
         $this->member = $member;
         $target = $members->find($member);
@@ -37,6 +37,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Set a new password'])] clas
         }
 
         $this->email = $target->email;
+
+        return null;
     }
 
     public function submit(AccountMembers $members, AccountAuth $auth): void
@@ -73,8 +75,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Set a new password'])] clas
                    aria-describedby="password-policy @error('password') password-error @enderror"
                    @error('password') aria-invalid="true" @enderror>
             <div id="password-policy" class="mt-2 flex items-center gap-1.5 text-xs" style="color:var(--faint)">
-                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''" />
-                <span x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''">At least 12 characters</span>
+                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''" />
+                <span x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''">At least 12 characters</span>
                 <span class="mx-1" aria-hidden="true">·</span>
                 <span>checked against known breaches</span>
             </div>

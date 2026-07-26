@@ -104,7 +104,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
 
     public function create(Connections $connections): mixed
     {
-        $type = ConnectionType::from($this->validate()['type']);
+        $type = ConnectionType::from($this->type);
 
         // The owning tenant must live in THIS environment; a foreign id never matches
         // the env-scoped organization query (deny-by-default).
@@ -115,6 +115,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
         }
 
         if ($type === ConnectionType::Saml) {
+            /** @var array<string, mixed> $config */
             $config = $this->validate([
                 'idp_entity_id' => 'required|string|max:500',
                 'idp_sso_url' => 'required|url|max:500',
@@ -123,6 +124,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New connection'])] c
                 'sp_acs_url' => 'required|url|max:500',
             ]);
         } else {
+            /** @var array<string, mixed> $config */
             $config = $this->validate([
                 'issuer' => 'required|url|max:500',
                 'client_id' => 'required|string|max:500',

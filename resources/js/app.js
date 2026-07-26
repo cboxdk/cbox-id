@@ -155,11 +155,19 @@
     });
 
     // Hide passkey affordances entirely where unsupported.
-    document.addEventListener('DOMContentLoaded', () => {
+    //
+    // Bound to `livewire:navigated` as well as `DOMContentLoaded`: the console's nav
+    // uses wire:navigate, which swaps the <body> WITHOUT a document load, so
+    // DOMContentLoaded never fires again. On its own it would leave passkey buttons
+    // visible on an unsupported browser from the second page onwards.
+    const hideUnsupportedPasskeyUi = () => {
         if (!supported()) {
             document.querySelectorAll('[data-passkey-only]').forEach((el) => (el.style.display = 'none'));
         }
-    });
+    };
+
+    document.addEventListener('DOMContentLoaded', hideUnsupportedPasskeyUi);
+    document.addEventListener('livewire:navigated', hideUnsupportedPasskeyUi);
 })();
 
 // Livewire error UX. By default Livewire drops the raw server error page into a

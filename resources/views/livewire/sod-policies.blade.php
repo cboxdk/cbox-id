@@ -15,7 +15,13 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
     #[Validate('required|string|max:190')]
     public string $name = '';
 
-    /** @var list<string> */
+    /**
+     * Livewire rehydrates this straight off the wire, so the keys are whatever the
+     * request sent — not necessarily a gapless list. Hence the array_values() before
+     * it is handed on.
+     *
+     * @var array<array-key, string>
+     */
     public array $roleIds = [];
 
     public bool $creating = false;
@@ -41,16 +47,28 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
         $this->dispatch('toast', message: 'Policy "'.$policy->name.'" defined over '.count($policy->role_ids).' roles.');
     }
 
+    /**
+     * Activate/deactivate one of THIS organization's own policies.
+     *
+     * An environment-wide policy (organization_id null) is the control plane's rule and
+     * binds every tenant, so it is listed here — the org must see what constrains it —
+     * but it is not the org's to switch off. Allowing it let any org admin disable the
+     * environment's toxic-combination rule and then grant themselves the very pair it
+     * forbids. The framework asserts ownership too (setActiveForOrganization), so this
+     * predicate is the UI's half of the same gate rather than the only one.
+     */
     public function toggle(string $id, SegregationOfDuties $sod): void
     {
         $policy = SodPolicy::query()
             ->whereKey($id)
-            ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $this->orgId()))
+            ->whereNotNull('organization_id')
+            ->where('organization_id', $this->orgId())
             ->firstOrFail();
 
-        $sod->setActive($policy->id, ! $policy->active);
+        $sod->setActiveForOrganization($this->orgId(), $policy->id, ! $policy->active);
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         $orgId = $this->orgId();
@@ -97,7 +115,7 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
             <div>
                 <span class="label">Mutually-exclusive roles</span>
                 @forelse ($roles as $role)
-                    <label class="flex items-center gap-2 py-1">
+                    <label wire:key="role-{{ $role->id }}" class="flex items-center gap-2 py-1">
                         <input type="checkbox" wire:model="roleIds" value="{{ $role->id }}">
                         <span>{{ $role->name }}</span>
                     </label>
@@ -121,8 +139,13 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
                 <thead><tr><th>Policy</th><th>Roles in set</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                 @forelse ($policies as $policy)
-                    <tr>
-                        <td class="font-medium">{{ $policy->name }}</td>
+                    <tr wire:key="policy-{{ $policy->id }}">
+                        <td class="font-medium">
+                            {{ $policy->name }}
+                            @if ($policy->organization_id === null)
+                                <span class="badge" title="Set for the whole environment — it applies here but is not yours to change.">Environment-wide</span>
+                            @endif
+                        </td>
                         <td>
                             @foreach ($policy->role_ids as $roleId)
                                 <span class="badge">{{ $roleNames[$roleId] ?? $roleId }}</span>
@@ -136,7 +159,11 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
                             @endif
                         </td>
                         <td class="text-right">
-                            <button wire:click="toggle('{{ $policy->id }}')" class="btn btn-ghost btn-sm">{{ $policy->active ? 'Deactivate' : 'Activate' }}</button>
+                            @if ($policy->organization_id === null)
+                                <span class="text-xs" style="color:var(--faint)">Managed for the environment</span>
+                            @else
+                                <button wire:click="toggle('{{ $policy->id }}')" class="btn btn-ghost btn-sm">{{ $policy->active ? 'Deactivate' : 'Activate' }}</button>
+                            @endif
                         </td>
                     </tr>
                 @empty

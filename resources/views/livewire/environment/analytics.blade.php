@@ -18,6 +18,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Analytics'])] class 
         abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
     }
 
+    /** @return array<string, mixed> */
     public function with(): array {
         $metrics = UsageCounter::query()->selectRaw('metric, SUM(count) as total')->groupBy('metric')->orderByDesc('total')->get();
         return ['metrics' => $metrics];

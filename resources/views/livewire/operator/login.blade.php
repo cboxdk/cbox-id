@@ -27,7 +27,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
     public bool $bootstrap = false;
 
-    public function mount(OperatorAuth $auth, PlatformOperators $operators)
+    public function mount(OperatorAuth $auth, PlatformOperators $operators): mixed
     {
         if ($auth->check()) {
             return redirect()->route('operator.environments');
@@ -35,6 +35,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
 
         // First run: no operator provisioned yet — offer to create the first.
         $this->bootstrap = ! $operators->exists();
+
+        return null;
     }
 
     public function login(OperatorAuth $auth): void
@@ -87,7 +89,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
         // slip past the "no operator exists" check and both claim root. The lock
         // is process-wide; the exists() check is re-evaluated inside it.
         $lock = Cache::lock('cbox:operator-bootstrap', 10);
-        abort_unless($lock->get(), 429);
+        abort_unless($lock->get() === true, 429);
 
         try {
             // Only ever while no operator exists — the window closes the moment

@@ -8,6 +8,7 @@ use App\Platform\AccountAuth;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -36,12 +37,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
     /** @var list<string> */
     public array $accessEnvIds = [];
 
-    public function mount(AccountAuth $auth)
+    public function mount(AccountAuth $auth): mixed
     {
         // The roster is PII — a Developer/Billing-only role may not read it.
         if (! ($auth->current()?->role->canReadMembers() ?? false)) {
             return redirect()->route('workspace.home');
         }
+
+        return null;
     }
 
     public function invite(AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
@@ -89,16 +92,17 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 
     public function changeRole(string $memberId, string $role, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
     {
+        $current = $auth->current();
         $target = $this->manageableTarget($memberId, $auth, $members);
         $next = AccountRole::tryFrom($role);
 
-        if ($target === null || $next === null || ! in_array($next, AccountRole::assignable(), true)) {
+        if ($current === null || $target === null || $next === null || ! in_array($next, AccountRole::assignable(), true)) {
             return;
         }
 
         $members->setRole($memberId, $next);
 
-        $activity->record($auth->current()->account_id, 'account.member_role_changed', $auth->id(),
+        $activity->record($current->account_id, 'account.member_role_changed', $auth->id(),
             targetType: 'account_member', targetId: $memberId,
             context: ['role' => $next->value], request: request());
 
@@ -107,12 +111,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 
     public function removeMember(string $memberId, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
     {
-        if ($this->manageableTarget($memberId, $auth, $members) === null) {
+        $current = $auth->current();
+
+        if ($current === null || $this->manageableTarget($memberId, $auth, $members) === null) {
             return;
         }
 
         if ($members->remove($memberId)) {
-            $activity->record($auth->current()->account_id, 'account.member_removed', $auth->id(),
+            $activity->record($current->account_id, 'account.member_removed', $auth->id(),
                 targetType: 'account_member', targetId: $memberId, request: request());
 
             $this->dispatch('toast', message: 'Member removed.');
@@ -148,7 +154,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 
         $this->editingAccessFor = $memberId;
         $this->accessAll = $target->all_environments;
-        $this->accessEnvIds = $target->environments()->pluck('environments.id')->all();
+
+        /** @var list<string> $envIds */
+        $envIds = $target->environments()->pluck('environments.id')->all();
+        $this->accessEnvIds = $envIds;
     }
 
     public function saveAccess(AccountAuth $auth, AccountMembers $members): void
@@ -168,7 +177,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
     }
 
     /** The target member IF the current member may manage it (not self, not the owner). */
-    private function manageableTarget(string $memberId, AccountAuth $auth, AccountMembers $members): ?object
+    private function manageableTarget(string $memberId, AccountAuth $auth, AccountMembers $members): ?AccountMember
     {
         $current = $auth->current();
 
@@ -217,8 +226,12 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
                 $isSelf = $current && $m->id === $current->id;
                 $manageable = $canManage && ! $isSelf && $m->role !== \Cbox\Id\Platform\Enums\AccountRole::Owner;
                 $scoped = $m->role->supportsEnvironmentScoping();
+                // Built here rather than inline: a Blade `:attr` value cannot itself
+                // contain the double quote the action string needs around the id.
+                $makeOwnerAction = "makeOwner('{$m->id}')";
+                $removeMemberAction = "removeMember('{$m->id}')";
             @endphp
-            <div class="p-4 {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
+            <div wire:key="member-{{ $m->id }}" class="p-4 {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
                 <div class="flex items-center gap-3">
                     <span class="grid place-items-center w-9 h-9 rounded-full text-sm font-semibold shrink-0" style="background:var(--surface-2);color:var(--muted)" aria-hidden="true">{{ strtoupper(substr($m->name ?? $m->email, 0, 1)) }}</span>
                     <div class="min-w-0 flex-1">
@@ -244,9 +257,23 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
                                     <button type="button" class="cbx-row w-full" style="padding:8px 10px;border-radius:6px;font-size:13px" wire:click="manageAccess('{{ $m->id }}')" @click="open = false">Manage environment access</button>
                                 @endif
                                 @if ($isOwner)
-                                    <button type="button" class="cbx-row w-full" style="padding:8px 10px;border-radius:6px;font-size:13px" wire:click="makeOwner('{{ $m->id }}')" wire:confirm="Transfer ownership to {{ $m->email }}? You will become an admin.">Transfer ownership</button>
+                                    <x-confirm-delete
+                                        :name="$m->email"
+                                        :action="$makeOwnerAction"
+                                        label="Transfer ownership"
+                                        verb="Hand this account to"
+                                        trigger-class="cbx-row w-full"
+                                        trigger-style="padding:8px 10px;border-radius:6px;font-size:13px"
+                                        consequence="They become the account owner and you are demoted to admin. Only the new owner can hand it back." />
                                 @endif
-                                <button type="button" class="cbx-row w-full" style="padding:8px 10px;border-radius:6px;font-size:13px;color:var(--destructive)" wire:click="removeMember('{{ $m->id }}')" wire:confirm="Remove {{ $m->email }} from this account?">Remove</button>
+                                <x-confirm-delete
+                                    :name="$m->email"
+                                    :action="$removeMemberAction"
+                                    label="Remove"
+                                    verb="Remove"
+                                    trigger-class="cbx-row w-full"
+                                    trigger-style="padding:8px 10px;border-radius:6px;font-size:13px;color:var(--destructive)"
+                                    consequence="They lose access to this account and every environment under it immediately." />
                             </div>
                         </div>
                     @else

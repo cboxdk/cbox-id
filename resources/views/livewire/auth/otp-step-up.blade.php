@@ -114,7 +114,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
     </p>
 
     @if ($resent)
-        <div role="status" aria-live="polite" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm inline-flex items-center gap-2" style="background:var(--success-soft);color:var(--success)">
+        <div role="status" aria-live="polite" class="mt-5 rounded-lg px-3.5 py-2.5 text-sm inline-flex items-center gap-2" style="background:var(--success-soft);color:var(--success-strong)">
             <x-icon name="check" class="w-4 h-4" /> {{ $resent }}
         </div>
     @endif

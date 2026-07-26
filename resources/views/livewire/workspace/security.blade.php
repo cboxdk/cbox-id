@@ -37,7 +37,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public function mount(AccountAuth $auth): void
     {
-        $this->name = $auth->current()?->name ?? '';
+        $this->name = $auth->current()->name ?? '';
     }
 
     public function updateProfile(AccountAuth $auth): void
@@ -146,9 +146,6 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         return $writer->writeString($this->provisioningUri);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     private function requiresSudo(string $returnRoute): bool
     {
         if (app(WorkspaceSudo::class)->confirmed()) {
@@ -161,6 +158,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function with(AccountAuth $auth, AccountMemberMfa $mfa, AccountPasskeys $passkeys): array
     {
         $member = $auth->current();
@@ -242,7 +240,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
                         <code class="mt-1 block rounded-lg px-3 py-2 text-sm break-all" style="background:var(--surface-2)">{{ $secret }}</code>
                         <form wire:submit="confirmEnroll" class="mt-4 flex items-start gap-2">
                             <div>
-                                <input wire:model="confirmCode" type="text" inputmode="numeric" autocomplete="one-time-code" class="input" placeholder="123456">
+                                <input wire:model="confirmCode" type="text" inputmode="numeric" autocomplete="one-time-code" class="input" placeholder="123456" aria-label="Authentication code">
                                 @error('confirmCode') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                             </div>
                             <button type="submit" class="btn btn-primary">Confirm</button>
@@ -268,7 +266,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         @if ($passkeys->isNotEmpty())
             <div class="mt-4 space-y-2">
                 @foreach ($passkeys as $pk)
-                    <div class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)">
+                    <div wire:key="passkey-{{ $pk->id }}" class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)">
                         <div class="min-w-0">
                             <p class="text-sm font-medium truncate">{{ $pk->name ?? 'Passkey' }}</p>
                             <p class="text-xs" style="color:var(--faint)">Added {{ $pk->created_at?->diffForHumans() }}</p>

@@ -105,6 +105,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
         $this->dispatch('toast', message: 'Access revoked.');
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         return [
@@ -191,7 +192,7 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
                 <thead><tr><th>Name</th><th>Provider</th><th>Status</th><th>Rotated</th><th></th></tr></thead>
                 <tbody>
                 @forelse ($secrets as $s)
-                    <tr>
+                    <tr wire:key="secret-{{ $s->id }}">
                         <td class="font-medium">{{ $s->name }}</td>
                         <td><span class="badge mono">{{ $s->provider }}</span></td>
                         <td>
@@ -242,7 +243,14 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
                                 @forelse ($grants as $g)
                                     <div class="cbx-row">
                                         <span class="mono">{{ $g->client_id }}</span>
-                                        <button wire:click="revokeGrant('{{ $s->id }}', '{{ $g->client_id }}')" wire:confirm="Revoke this client's access?" class="btn btn-ghost btn-sm" style="color:var(--danger)">Revoke</button>
+                                        @php $revokeGrantAction = "revokeGrant('{$s->id}', '{$g->client_id}')"; @endphp
+                                        <x-confirm-delete
+                                            :name="$g->client_id"
+                                            :action="$revokeGrantAction"
+                                            label="Revoke"
+                                            trigger-class="btn btn-ghost btn-sm"
+                                            trigger-style="color:var(--danger)"
+                                            consequence="This client can no longer lease the secret. Any lease it already holds stays valid until it expires." />
                                     </div>
                                 @empty
                                     <p class="text-xs mb-2" style="color:var(--faint)">No clients are authorized to lease this secret.</p>

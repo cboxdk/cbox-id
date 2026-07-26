@@ -78,7 +78,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New access review'])
     /** The acting reviewer: the env-admin account member for this environment. */
     private function reviewerId(): string
     {
-        return app(EnvironmentAdminAuth::class)->current()?->id ?? '';
+        return app(EnvironmentAdminAuth::class)->current()->id ?? '';
     }
 }; ?>
 

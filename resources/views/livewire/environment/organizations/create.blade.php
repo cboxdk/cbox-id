@@ -46,8 +46,9 @@ new #[Layout('components.layouts.environment', ['title' => 'New organization'])]
 
     public function removeMetaRow(int $i): void
     {
-        unset($this->metadata[$i]);
-        $this->metadata = array_values($this->metadata);
+        $rows = $this->metadata;
+        unset($rows[$i]);
+        $this->metadata = array_values($rows);
     }
 
     public function create(Organizations $organizations): mixed
@@ -119,8 +120,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New organization'])]
                     <div class="space-y-2">
                         @foreach ($metadata as $i => $row)
                             <div class="flex items-center gap-2" wire:key="meta-{{ $i }}">
-                                <input wire:model="metadata.{{ $i }}.key" type="text" class="input mono" placeholder="tier">
-                                <input wire:model="metadata.{{ $i }}.value" type="text" class="input" placeholder="enterprise">
+                                <input wire:model="metadata.{{ $i }}.key" type="text" class="input mono" placeholder="tier" aria-label="Metadata key">
+                                <input wire:model="metadata.{{ $i }}.value" type="text" class="input" placeholder="enterprise" aria-label="Metadata value">
                                 <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="removeMetaRow({{ $i }})" aria-label="Remove"><x-icon name="close" class="w-4 h-4" /></button>
                             </div>
                         @endforeach

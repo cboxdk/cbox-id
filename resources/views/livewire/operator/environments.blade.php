@@ -15,6 +15,7 @@ use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -183,13 +184,17 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
         return $slug;
     }
 
+    /** @return array<string, mixed> */
     public function with(EnvironmentContext $context): array
     {
         $activeId = $context->current()?->environmentKey();
 
         $rows = $context->withoutScope(function () {
+            /** @var Collection<string, int> $orgCounts */
             $orgCounts = Organization::query()->selectRaw('environment_id, count(*) as c')
                 ->groupBy('environment_id')->pluck('c', 'environment_id');
+
+            /** @var Collection<string, int> $userCounts */
             $userCounts = User::query()->selectRaw('environment_id, count(*) as c')
                 ->groupBy('environment_id')->pluck('c', 'environment_id');
 
@@ -246,7 +251,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
         </div>
 
         @foreach ($environments as $env)
-            <div class="px-5 py-4 border-b flex flex-col gap-3 sm:grid sm:items-center sm:gap-4"
+            <div wire:key="environment-{{ $env['id'] }}" class="px-5 py-4 border-b flex flex-col gap-3 sm:grid sm:items-center sm:gap-4"
                  style="border-color:var(--border);grid-template-columns:2fr 1.5fr 1fr 1fr auto">
                 <div class="flex items-center gap-3 min-w-0">
                     <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"

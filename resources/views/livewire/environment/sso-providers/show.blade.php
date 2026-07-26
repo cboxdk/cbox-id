@@ -98,7 +98,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
             'name_id_attribute' => ['required', 'string', 'max:120'],
         ]);
 
-        $format = NameIdFormat::tryFrom($data['name_id_format']);
+        $format = NameIdFormat::tryFrom($this->name_id_format);
 
         if ($format === null) {
             $this->addError('name_id_format', 'Choose a supported NameID format.');
@@ -114,10 +114,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
             return;
         }
 
-        $provider->entity_id = $data['entity_id'];
-        $provider->acs_url = $data['acs_url'];
+        $provider->entity_id = $this->entity_id;
+        $provider->acs_url = $this->acs_url;
         $provider->name_id_format = $format;
-        $provider->name_id_attribute = $data['name_id_attribute'];
+        $provider->name_id_attribute = $this->name_id_attribute;
         $provider->attribute_mappings = $this->parseMappings();
         $provider->want_authn_requests_signed = $this->want_authn_requests_signed;
 
@@ -217,7 +217,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
 
     {{-- Configuration --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Configuration</p>
+        <h2 class="cbx-section-title">Configuration</h2>
         <form wire:submit="save" class="mt-4 space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -274,10 +274,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Login method'])] cla
 
     {{-- Danger zone --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Remove</p>
+        <h2 class="cbx-section-title">Remove</h2>
         <p class="mt-1 text-sm" style="color:var(--muted)">Deleting this method stops the application from signing users in through this environment.</p>
         <div class="mt-4">
-            <button type="button" class="btn btn-ghost btn-sm" style="color:var(--destructive)" wire:click="remove" wire:confirm="Remove {{ $provider->entity_id }}? The application can no longer sign users in through this environment.">Delete login method</button>
+            <x-confirm-delete
+                :name="$provider->entity_id"
+                action="remove"
+                label="Delete login method"
+                consequence="The application can no longer sign users in through this environment. This cannot be undone." />
         </div>
     </div>
 </div>

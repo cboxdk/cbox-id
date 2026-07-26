@@ -61,7 +61,7 @@ it('refuses a non-PAR authorization request when PAR is required (FAPI)', functi
     [, $client] = fapiUserAndClient();
 
     Volt::test('oauth.consent', authorizeParams($client->client_id))
-        ->assertNoRedirect()
+        ->assertRenderedNotRedirected()
         ->assertSee('requires pushed authorization requests');
 });
 

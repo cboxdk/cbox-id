@@ -11,6 +11,10 @@ use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Models\Environment;
 use Livewire\Volt\Volt;
 
 // gateAdmin() and grantFeature() are shared helpers defined in EntitlementGateTest.
@@ -175,6 +179,49 @@ it('finishing marks the link consumed, records completion, and closes the sessio
 
 it('the setup screen redirects to the expired page without a portal session', function () {
     $this->get(route('portal.setup'))->assertRedirect(route('portal.expired'));
+});
+
+/**
+ * The link is matched on its token hash alone, so without the model's environment scope
+ * the redemption route was a CROSS-ENVIRONMENT primitive: hand a link to the operator of
+ * any other environment and they could redeem it on their own host, where the connection,
+ * verified domain or SCIM directory it creates is stamped with THEIR environment.
+ */
+it('refuses a setup link minted in another environment, on the service and over HTTP', function () {
+    $envA = Environment::query()->create([
+        'name' => 'Env A', 'slug' => 'portal-xenv-a', 'type' => EnvironmentType::Production,
+        'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],
+    ]);
+    $envB = Environment::query()->create([
+        'name' => 'Env B', 'slug' => 'portal-xenv-b', 'type' => EnvironmentType::Production,
+        'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],
+    ]);
+
+    // Env B owns the host this test's requests arrive on — the attacker's own IdP.
+    serveOnTestHost($envB);
+
+    // The victim mints a link on env A.
+    app(EnvironmentContext::class)->set($envA);
+    $orgId = gateAdmin('portal-xenv');
+    grantFeature($orgId, 'cbox-id-sso');
+    $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
+
+    // On env B the link does not EXIST — the hard scope removes it from the token-hash
+    // lookup redemption is built on, so nothing downstream (the entitlement re-gate, the
+    // session's org pivot) has to hold for the refusal. That matters: the entitlement
+    // re-gate was bypassable on its own, via a cross-environment cache hit.
+    app(EnvironmentContext::class)->set($envB);
+
+    expect(AdminPortalLink::query()->where('token_hash', hash('sha256', $token))->exists())->toBeFalse()
+        ->and(app(AdminPortal::class)->redeem($token))->toBeNull()
+        ->and(session()->has(AdminPortal::SESSION_KEY))->toBeFalse();
+
+    // Over HTTP the host resolves to env B, so the entry point refuses it there too.
+    $this->get(route('portal.enter', $token))->assertStatus(410);
+
+    // The link is untouched on the environment that issued it.
+    app(EnvironmentContext::class)->set($envA);
+    expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 });
 
 it('is single-use: a token cannot be redeemed twice (R7)', function () {

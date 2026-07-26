@@ -39,7 +39,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Appearance'])] class
 
         $this->appearance = Appearance::fromSettings($settings)->toArray();
         $this->appearance['logo'] = is_string($settings['brand_logo_url'] ?? null) ? $settings['brand_logo_url'] : '';
-        $this->appearance['name'] = $env?->name ?? '';
+        $this->appearance['name'] = $env->name ?? '';
     }
 
     /**
@@ -55,7 +55,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Appearance'])] class
         $appearance = Appearance::fromArray($theme);
         $logo = self::normalizeLogo($theme['logo'] ?? null);
 
-        $env->settings = array_merge(is_array($env->settings) ? $env->settings : [], [
+        $env->settings = array_merge($env->settings, [
             'appearance' => $appearance->toArray(),
             'brand_color' => $appearance->light->primary,
             'brand_logo_url' => $logo,

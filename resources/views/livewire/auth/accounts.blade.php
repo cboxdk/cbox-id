@@ -41,7 +41,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose account'])] class ex
 
     <ul class="mt-6 flex flex-col gap-2">
         @foreach ($this->accounts() as $account)
-            <li>
+            <li wire:key="account-{{ $account['subject_id'] }}">
                 <button type="button" wire:click="switchTo('{{ $account['subject_id'] }}')"
                     class="w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition hover:border-[var(--accent)]"
                     style="border-color:var(--border);background:var(--surface)">

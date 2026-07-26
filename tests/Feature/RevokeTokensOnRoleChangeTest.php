@@ -35,6 +35,32 @@ it('revokes a user\'s refresh tokens when their role changes', function (string 
     $spy->shouldHaveReceived('revokeForUser')->with('user_1', 'org_1')->once();
 })->with(['role.assigned', 'role.unassigned']);
 
+/**
+ * Deleting a role revokes it from every holder at once, so `role.deleted` names them
+ * all rather than one `user_id`. Each of those people needs the same refresh-token cut
+ * a single unassign() gives them.
+ */
+it('revokes the refresh tokens of every holder when a role is deleted', function (): void {
+    $spy = Mockery::spy(RefreshTokens::class);
+    app()->instance(RefreshTokens::class, $spy);
+
+    app(RevokeTokensOnRoleChange::class)->handle(
+        deliver('role.deleted', ['role_id' => 'role_1', 'user_ids' => ['user_1', 'user_2']], 'org_1')
+    );
+
+    $spy->shouldHaveReceived('revokeForUser')->with('user_1', 'org_1')->once();
+    $spy->shouldHaveReceived('revokeForUser')->with('user_2', 'org_1')->once();
+});
+
+it('does nothing for a deleted role nobody held', function (): void {
+    $spy = Mockery::spy(RefreshTokens::class);
+    app()->instance(RefreshTokens::class, $spy);
+
+    app(RevokeTokensOnRoleChange::class)->handle(deliver('role.deleted', ['role_id' => 'role_1', 'user_ids' => []], 'org_1'));
+
+    $spy->shouldNotHaveReceived('revokeForUser');
+});
+
 it('ignores events that are not role changes', function (): void {
     $spy = Mockery::spy(RefreshTokens::class);
     app()->instance(RefreshTokens::class, $spy);

@@ -43,7 +43,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
 
     public int $renderedAt = 0;
 
-    public function mount(SignupPolicy $signup)
+    public function mount(SignupPolicy $signup): mixed
     {
         // Self-service signup can be closed or invite-only — send would-be
         // registrants to sign-in with an explanation rather than a dead form.
@@ -51,7 +51,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             return redirect()->route('login')->with('status', $signup->closedMessage());
         }
 
-        $this->renderedAt = now()->timestamp;
+        $this->renderedAt = now()->getTimestamp();
+
+        return null;
     }
 
     /**
@@ -207,7 +209,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         }
 
         $isRoot = Environment::query()->where('is_default', true)->whereKey($current)->exists();
-        $inSsoFlow = str_contains((string) session()->get('url.intended'), 'oauth');
+        $intended = session()->get('url.intended');
+        $inSsoFlow = is_string($intended) && str_contains($intended, 'oauth');
 
         return $isRoot && ! $inSsoFlow;
     }
@@ -297,8 +300,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
                    aria-describedby="password-policy @error('password') password-error @enderror"
                    @error('password') aria-invalid="true" @enderror>
             <div id="password-policy" class="mt-2 flex items-center gap-1.5 text-xs" style="color:var(--faint)">
-                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''" />
-                <span x-bind:style="pw.length >= 12 ? 'color:var(--success)' : ''">At least 12 characters</span>
+                <x-icon name="check" class="w-3.5 h-3.5" x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''" />
+                <span x-bind:style="pw.length >= 12 ? 'color:var(--success-strong)' : ''">At least 12 characters</span>
                 <span class="mx-1" aria-hidden="true">·</span>
                 <span>checked against known breaches</span>
             </div>

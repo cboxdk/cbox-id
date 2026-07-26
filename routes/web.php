@@ -70,8 +70,15 @@ Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver 
  * Both bindings are accepted: HTTP-Redirect (GET) and HTTP-POST (cross-site form
  * POST — exempted from CSRF in bootstrap/app.php, as the package documents). The
  * metadata (GET /sso/saml/idp/metadata) and SLO endpoints stay with the package.
+ *
+ * `plane:subject`, like every other IdP surface: the platform-root host is the account
+ * door, not an identity provider, so it must not answer as one. The package's own SAML
+ * routes are gated identically via `cbox-id.api.middleware`; these app overrides would
+ * otherwise be the one hole left in that wall.
  */
-Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)->name('sso.saml.idp.sso');
+Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
+    ->middleware('plane:subject')
+    ->name('sso.saml.idp.sso');
 
 /*
  * INBOUND federation — the browser half. The package's own ACS/callback validate the
@@ -84,6 +91,22 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)-
  * Unauthenticated by design on both: the assertion signature / id_token IS the
  * authentication. The SAML ACS is a cross-site form POST from the IdP, so it is
  * CSRF-exempt in bootstrap/app.php exactly as the package's route was.
+ *
+ * NOT plane-gated, unlike the IdP endpoint above — and that is the point of the split.
+ * `plane:subject` gates the ISSUER surface: a host that is not an identity provider must
+ * not advertise or answer as one. Inbound federation is the opposite role (this server as
+ * the RELYING party), and the ACCOUNT plane genuinely does it: an account's organization
+ * lives in the platform-root environment, so home-realm discovery on `/workspace/login`
+ * and `/signup` — both `plane:account`, both root-host only — sends the member to
+ * `/sso/{oidc,saml}/{connection}/...` on the very host they are standing on. Gating these
+ * 404'd that redirect and its callback, and {@see \App\Platform\FederatedLanding}'s
+ * `onAccountPlane()` branch — which exists to land exactly this — became unreachable. An
+ * account org with SsoEnforcement::Required and a verified domain was then locked out of
+ * its own workspace: the password is refused and the SSO door does not exist.
+ *
+ * The environment scope on `Connection` is the real boundary, and it holds on either
+ * plane: the platform root IS an environment, so a tenant's connection id resolves to
+ * nothing here just as it always did.
  */
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)->name('sso.saml.acs');
 Route::get('/sso/oidc/{connection}/callback', OidcCallbackController::class)->name('sso.oidc.callback');
@@ -171,10 +194,19 @@ Volt::route('/oauth/authorize', 'oauth.consent')
  * NO platform account and configures one org's SSO/SCIM, nothing else. These live
  * in the guest area and must never be reachable via a platform session; the
  * scoped portal session (distinct key) is the only thing that unlocks /setup.
+ *
+ * `plane:subject` is defence in depth on top of the model's environment scope. A link
+ * is minted from /connections, which itself lives on the subject plane, so its URL is
+ * always generated on the tenant's own host — the very host the external IT admin
+ * opens. The account-root host (cboxid.com) can therefore never mint one and has no
+ * business redeeming one. In the single-tenant shape the plane gate is a no-op, so the
+ * one host keeps serving the whole flow.
  */
-Route::view('/setup/expired', 'portal.expired')->name('portal.expired');
-Volt::route('/setup', 'portal.setup')->middleware('portal.session')->name('portal.setup');
-Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
+Route::middleware('plane:subject')->group(function (): void {
+    Route::view('/setup/expired', 'portal.expired')->name('portal.expired');
+    Volt::route('/setup', 'portal.setup')->middleware('portal.session')->name('portal.setup');
+    Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
+});
 
 /*
  * Authenticated console — the subject/tenant plane. `plane:subject` confines it to a

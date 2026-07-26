@@ -11,6 +11,7 @@ use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Platform\Models\Project;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -97,7 +98,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
     {
         $member = $auth->current();
         $account = $member?->account;
-        $allAccess = $member?->all_environments ?? false;
+        $allAccess = $member->all_environments ?? false;
 
         // The environments this member may reach — an all-access member sees every one
         // the account owns; a scoped member only their grants.
@@ -122,7 +123,8 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
                 ->groupBy('project_id');
 
             foreach ($projectList as $project) {
-                $owned = $environments->get($project->id) ?? collect();
+                /** @var Collection<int, Environment> $owned */
+                $owned = $environments->get($project->id) ?? new Collection;
                 $visible = $allAccess
                     ? $owned
                     : $owned->filter(static fn (Environment $e): bool => in_array($e->id, $accessibleIds, true));

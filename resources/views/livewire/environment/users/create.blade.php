@@ -49,7 +49,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
 
         $this->dispatch('toast', message: 'User created.');
 
-        return $this->redirectRoute('environment.users.show', ['user' => $user?->id ?? $subject->id], navigate: true);
+        return $this->redirectRoute('environment.users.show', ['user' => $user->id ?? $subject->id], navigate: true);
     }
 }; ?>
 

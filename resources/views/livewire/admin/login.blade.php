@@ -37,7 +37,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
 
     public string $pendingMemberId = '';
 
-    public function mount(EnvironmentContext $environments)
+    public function mount(EnvironmentContext $environments): mixed
     {
         // On a multi-tenant deployment the admin door lives at the ROOT — account
         // credentials are never entered on a tenant-controlled host (see
@@ -55,6 +55,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
                 'https://'.$root.route('workspace.environment.open', $environment->environmentKey(), false)
             );
         }
+
+        return null;
     }
 
     public function authenticate(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth, MemberCredentialGate $gate): void
@@ -89,11 +91,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         // Fail identically for wrong credentials AND for a valid member with no access
         // to THIS environment — never reveal which.
         $hostEnv = $environments->current()?->environmentKey();
-        $hasAccess = $ok && $member !== null && $hostEnv !== null
+        $hasAccess = $ok && $hostEnv !== null
             && $member->role->canManageEnvironments()
             && in_array($hostEnv, $members->accessibleEnvironmentIds($member), true);
 
-        if (! $ok || ! $hasAccess || $member === null) {
+        if (! $ok || ! $hasAccess) {
             RateLimiter::hit($key);
             $gate->recordFailure($member);
             $this->addError('email', 'Those credentials do not grant admin access to this environment.');

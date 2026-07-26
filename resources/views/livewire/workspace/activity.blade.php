@@ -32,7 +32,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Activity'])] class ext
      */
     public function with(AccountAuth $auth, AccountMembers $members, AccountActivity $activity): array
     {
-        $accountId = $auth->current()?->account_id ?? '';
+        $accountId = $auth->current()->account_id ?? '';
 
         $entries = $activity->recent($accountId, 200)
             ->when(trim($this->filter) !== '', fn (Collection $rows): Collection => $rows->filter(
@@ -41,8 +41,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Activity'])] class ext
             ->values();
 
         // Resolve acting members to emails once (no per-row lookup).
-        $actors = $entries->pluck('actor_id')->filter()->unique()
-            ->mapWithKeys(fn (string $id): array => [$id => $members->find($id)?->email ?? $id]);
+        /** @var Collection<int, string> $actorIds */
+        $actorIds = $entries->pluck('actor_id')->filter()->unique();
+
+        $actors = $actorIds->mapWithKeys(fn (string $id): array => [$id => $members->find($id)->email ?? $id]);
 
         return ['entries' => $entries, 'actors' => $actors];
     }

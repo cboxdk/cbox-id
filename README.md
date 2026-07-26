@@ -51,6 +51,7 @@ Running or self-hosting this app? See [`docs/`](docs/index.md):
 - [Deployment](docs/operations/deployment.md) — fresh server to a hardened instance.
 - [Configuration](docs/configuration/environment-variables.md) — env reference + secure defaults.
 - [Operations](docs/operations/operations.md) — crypto-key backup, key rotation, upgrades, break-glass.
+- [**Upgrading**](UPGRADING.md) — breaking changes and the pre-deploy checklist for each. Read it before crossing a version; two of the current entries fail silently.
 - [Security](docs/security/_index.md) — operator security surfaces + compliance view.
 
 Integrating *against* the platform (OAuth/OIDC/SCIM, entitlements, existing users)
@@ -66,7 +67,7 @@ composer run dev     # serve + queue + vite + logs
 
 ## Status
 
-Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id >=0.45 <1.0`
+Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id >=0.52 <1.0`
 (a pre-1.0 framework) and has open security follow-ups. Review the
 [security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before
 running it in production. Shipped: full auth (password + magic-link + TOTP MFA +

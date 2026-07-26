@@ -72,9 +72,10 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         $this->guardEntitled();
         $this->authorizeAdmin();
 
-        $type = ConnectionType::from($this->validate()['type']);
+        $type = ConnectionType::from($this->type);
 
         if ($type === ConnectionType::Saml) {
+            /** @var array<string, mixed> $config */
             $config = $this->validate([
                 'idp_entity_id' => 'required|string|max:500',
                 'idp_sso_url' => 'required|url|max:500',
@@ -83,6 +84,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 'sp_acs_url' => 'required|url|max:500',
             ]);
         } else {
+            /** @var array<string, mixed> $config */
             $config = $this->validate([
                 'issuer' => 'required|url|max:500',
                 'client_id' => 'required|string|max:500',
@@ -260,6 +262,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
         abort(403);
     }
 
+    /** @return array<string, mixed> */
     public function with(): array
     {
         return [
@@ -437,7 +440,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
     <div class="space-y-4">
         @forelse ($connections as $c)
-            <div class="card p-5">
+            <div wire:key="connection-{{ $c->id }}" class="card p-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
@@ -507,7 +510,7 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 
         <div class="space-y-3">
             @forelse ($domains as $d)
-                <div class="card p-5">
+                <div wire:key="directory-{{ $d->id }}" class="card p-5">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">

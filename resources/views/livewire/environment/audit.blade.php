@@ -49,7 +49,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Audit log'])] class 
             $query->where(fn ($q) => $q->where('action', 'like', "%{$term}%")->orWhere('target_type', 'like', "%{$term}%"));
         }
 
-        return ['entries' => $query->paginate(25)];
+        // simplePaginate, not paginate: `paginate()` runs a COUNT(*) over the filtered
+        // set on every render, and this table has no retention — it only grows — so
+        // that count is a full index scan of the environment's whole audit partition
+        // just to render page numbers nobody uses on an append-only feed. A
+        // next/previous cursor answers the same question with one LIMIT n+1 read.
+        return ['entries' => $query->simplePaginate(25)];
     }
 }; ?>
 
@@ -57,7 +62,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Audit log'])] class 
     <x-page-header title="Audit log" subtitle="A tamper-evident, hash-chained record of every security-relevant action in this environment." />
 
     <div class="mt-6">
-        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Filter by action or target">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Filter by action or target" aria-label="Filter audit log">
+        {{-- SC 4.1.3: the list re-renders on a debounced keystroke with no focus
+             change, so the result count is the only thing that can report the filter
+             narrowed to nothing. Counted on THIS page rather than across the whole
+             filtered set — the total is what the removed COUNT(*) was paying for, and
+             "no entries on this page" reports the empty filter just as clearly. --}}
+        <p role="status" aria-live="polite" class="sr-only">{{ $entries->count() }} {{ \Illuminate\Support\Str::plural('entry', $entries->count()) }} on this page.</p>
     </div>
 
     <div class="mt-4 rounded-xl border overflow-hidden" style="border-color:var(--border)">

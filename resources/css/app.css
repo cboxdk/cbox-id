@@ -79,7 +79,12 @@
        used as text on their own 12%-alpha wash they measure ~3.1:1, under the 4.5:1
        a pill's label needs. --warning-strong already proved the pattern. */
     --success-strong: oklch(0.40 0.14 145);
-    --success-foreground: oklch(0.99 0.003 247);
+    /* Dark ink, not near-white: near-white on the mid-green --success fill measures
+       3.32:1, under the 4.5:1 a solid-fill label needs. This is 5.65:1, and matches
+       what --warning-foreground and the dark theme's --success-foreground already do.
+       Currently only --destructive-foreground has a consumer, so this was a latent
+       failure waiting for the first solid success banner. */
+    --success-foreground: oklch(0.16 0.04 145);
     --success-soft: oklch(0.62 0.16 145 / 0.12);
     --warning: oklch(0.72 0.16 70);
     --warning-foreground: oklch(0.18 0.04 70);
@@ -90,17 +95,34 @@
     --info-strong: oklch(0.40 0.14 230);
     --info-soft: oklch(0.62 0.16 230 / 0.12);
     --destructive: oklch(0.58 0.21 25);
-    /* Text weight on --destructive-soft: the fill hue measures 4.28:1 there, under the
-       4.5:1 a pill label or a danger-zone heading needs. */
+    /* Text weight on --destructive-soft: the fill hue measures 3.94:1 there, under the
+       4.5:1 a pill label or a danger-zone heading needs. (It measures 4.28:1 only if you
+       composite the 12% wash in LINEAR light; a browser composites in gamma-encoded
+       sRGB, which is where 3.94 comes from — and 3.94 is what .btn-danger:hover below
+       has always said.) */
     --destructive-strong: oklch(0.44 0.18 25);
     --destructive-foreground: oklch(0.99 0.003 247);
     --destructive-soft: oklch(0.58 0.21 25 / 0.12);
+    /* DECORATIVE hairline only — card outlines, table rules, dividers, the topbar
+       underline. It measures 1.73:1 on --card and 1.67:1 on --background (1.73 / 1.94
+       in dark) and is deliberately NOT raised to 3:1: solving for 3:1 lands on ~oklch
+       0.62 light / 0.56 dark, i.e. --control-border, which would collapse the two
+       tokens into one and make every table rule read as a heavy stroke. WCAG 2.2 SC
+       1.4.11 governs boundaries that identify a CONTROL or its state; a purely
+       decorative divider is out of its scope. Anything interactive must therefore use
+       --control-border, never this. */
     --border: oklch(0.82 0.020 85);
-    /* Controls need a 3:1 boundary (WCAG 2.2 SC 1.4.11); --border is 1.73:1 and is
-       reused for decorative dividers, where a 3:1 hairline would read as heavy. So
-       inputs get their own. */
-    --input-border: oklch(0.62 0.02 85);
-    --border-strong: oklch(0.71 0.024 85);
+    /* The ≥3:1 boundary every interactive control uses (WCAG 2.2 SC 1.4.11): inputs,
+       selects, ghost buttons, the command-palette trigger, the skip link, and the
+       option tiles in the theme editor. 3.61:1 on --card, 3.49:1 on --background.
+       --input-border is the original name, kept as an alias so nothing breaks. */
+    --control-border: oklch(0.62 0.02 85);
+    --input-border: var(--control-border);
+    /* The HOVER/emphasis boundary. It must be STRONGER than --control-border, and at
+       0.71 it was not: 2.55:1 on --card against the resting stroke's 3.61:1, so
+       hovering an input, select, ghost button or stat card silently dropped it under
+       SC 1.4.11's 3:1. 0.55 measures 4.81:1. */
+    --border-strong: oklch(0.55 0.024 85);
     --input: oklch(0.905 0.014 85);
     --ring: oklch(0.5 0.17 258);
     --sidebar: oklch(0.973 0.010 85);
@@ -109,6 +131,13 @@
     --sidebar-accent: oklch(0.935 0.014 85);
     --sidebar-accent-foreground: oklch(0.22 0.015 75);
     --sidebar-border: oklch(0.82 0.020 85);
+    /* "You are here" text in the rail, the subnav and the mobile nav. It is a
+       separate token because the two themes need different blues to clear AA on the
+       --accent-soft fill those items carry: --primary is 6.28:1 on it in light, but
+       only 4.24:1 in dark, so dark brightens to --accent-strong (7.80:1). This used
+       to be a literal oklch() duplicated across two unlayered override blocks at the
+       bottom of the file. */
+    --nav-active-fg: var(--primary);
 
     /* ── Radius / shadow / motion / chrome metrics (cbox-ui BRAND.md) */
     --radius: 0.75rem;   /* cards + dialogs (12px) */
@@ -168,33 +197,34 @@
         --muted-color: oklch(0.275 0.012 80);
         --muted-foreground: oklch(0.70 0.016 85);
         --accent: oklch(0.65 0.18 258);
-    --accent-strong: oklch(0.82 0.12 258);
         --accent-strong: oklch(0.82 0.12 258);
-        --accent-foreground: oklch(0.99 0.01 250);
+        /* Dark ink on the light-blue fill, for the same reason --primary-foreground
+           flips (--accent and --primary are the SAME blue in dark). Near-white
+           measured 3.19:1 on it — failing ::selection text and the avatar monograms
+           in components/mobile-nav + theme-editor. This is 5.91:1. */
+        --accent-foreground: oklch(0.16 0.02 250);
         --accent-soft: oklch(0.65 0.18 258 / 0.18);
         --accent-edge: oklch(0.65 0.18 258 / 0.42);
         --success: oklch(0.74 0.16 145);
-    --success-strong: oklch(0.88 0.15 145);
         --success-strong: oklch(0.88 0.15 145);
         --success-foreground: oklch(0.16 0.04 145);
         --success-soft: oklch(0.74 0.16 145 / 0.16);
         --warning: oklch(0.78 0.16 70);
         --warning-foreground: oklch(0.16 0.04 70);
         --warning-soft: oklch(0.78 0.16 70 / 0.18);
-    --warning-strong: oklch(0.86 0.15 82);
+        --warning-strong: oklch(0.86 0.15 82);
         --info: oklch(0.7 0.16 230);
-    --info-strong: oklch(0.88 0.13 230);
         --info-strong: oklch(0.88 0.13 230);
         --info-soft: oklch(0.7 0.16 230 / 0.16);
         --destructive: oklch(0.68 0.21 25);
-    --destructive-strong: oklch(0.88 0.14 25);
         --destructive-strong: oklch(0.88 0.14 25);
         --destructive-foreground: oklch(0.16 0.01 250);
         --destructive-soft: oklch(0.68 0.21 25 / 0.16);
         --border: oklch(0.39 0.016 80);
-    --input-border: oklch(0.55 0.016 80);
-        --input-border: oklch(0.55 0.016 80);
-        --border-strong: oklch(0.50 0.018 80);
+        --control-border: oklch(0.55 0.016 80);
+        --input-border: var(--control-border);
+        /* 0.50 was 2.78:1 — weaker than the 3.43:1 resting stroke it emphasises. */
+        --border-strong: oklch(0.64 0.018 80);
         --input: oklch(0.32 0.013 80);
         --ring: oklch(0.65 0.18 258);
         --sidebar: oklch(0.21 0.009 80);
@@ -203,12 +233,15 @@
         --sidebar-accent: oklch(0.275 0.012 80);
         --sidebar-accent-foreground: oklch(0.965 0.006 90);
         --sidebar-border: oklch(0.39 0.016 80);
+        /* --primary on the --accent-soft fill an active nav item carries measures only
+           4.24:1 in dark. --accent-strong is 7.80:1 on the same fill. */
+        --nav-active-fg: var(--accent-strong);
         --faint: oklch(0.67 0.016 85);
         --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 18px 44px -12px rgba(0, 0, 0, 0.7), 0 6px 16px -6px rgba(0, 0, 0, 0.5);
+        --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 18px 44px -12px rgba(0, 0, 0, 0.7), 0 6px 16px -6px rgba(0, 0, 0, 0.5);
     }
 }
 
@@ -227,7 +260,7 @@
     --muted-foreground: oklch(0.70 0.016 85);
     --accent: oklch(0.65 0.18 258);
     --accent-strong: oklch(0.82 0.12 258);
-    --accent-foreground: oklch(0.99 0.01 250);
+    --accent-foreground: oklch(0.16 0.02 250);
     --accent-soft: oklch(0.65 0.18 258 / 0.18);
     --accent-edge: oklch(0.65 0.18 258 / 0.42);
     --success: oklch(0.74 0.16 145);
@@ -246,8 +279,10 @@
     --destructive-foreground: oklch(0.16 0.01 250);
     --destructive-soft: oklch(0.68 0.21 25 / 0.16);
     --border: oklch(0.39 0.016 80);
-    --input-border: oklch(0.55 0.016 80);
-    --border-strong: oklch(0.50 0.018 80);
+    --control-border: oklch(0.55 0.016 80);
+    --input-border: var(--control-border);
+    /* See the @media dark block: 0.50 was weaker than the resting stroke. */
+    --border-strong: oklch(0.64 0.018 80);
     --input: oklch(0.32 0.013 80);
     --ring: oklch(0.65 0.18 258);
     --sidebar: oklch(0.21 0.009 80);
@@ -256,6 +291,8 @@
     --sidebar-accent: oklch(0.275 0.012 80);
     --sidebar-accent-foreground: oklch(0.965 0.006 90);
     --sidebar-border: oklch(0.39 0.016 80);
+    /* See the @media dark block: --primary is 4.24:1 on --accent-soft here. */
+    --nav-active-fg: var(--accent-strong);
     --faint: oklch(0.67 0.016 85);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -383,7 +420,10 @@
     .btn-ghost {
         background: var(--card);
         color: var(--foreground);
-        border-color: var(--border);
+        /* --control-border, not --border: the ghost button's only visual boundary IS
+           this stroke, and --border is 1.73:1 on --card in both themes. 3.61:1 light /
+           3.43:1 dark. */
+        border-color: var(--control-border);
     }
     .btn-ghost:hover:not(:disabled) {
         border-color: var(--border-strong);
@@ -393,20 +433,33 @@
        leaving e.g. the SSO sign-in CTA invisible. */
     .btn-secondary {
         background: var(--accent-soft);
-        color: var(--accent);
-        border-color: color-mix(in oklch, var(--accent) 30%, transparent);
+        /* --accent-strong, not --accent: on its own --accent-soft fill the base accent
+           measures 5.41:1 in light but 3.97:1 in dark, and .btn is 13px/500 — normal
+           text, needing 4.5:1. --accent-strong is 5.41:1 / 7.30:1 (it IS --accent in
+           light, so light is unchanged). */
+        color: var(--accent-strong);
+        /* 80%, not 30%: the fill is an 8–18% wash that is ~1.1:1 against the card, so
+           this stroke is the only thing that identifies the control. 30% measured
+           1.59:1 light / 1.56:1 dark against --card, under SC 1.4.11's 3:1. 80% is
+           4.06:1 / 3.71:1. */
+        border-color: color-mix(in oklch, var(--accent) 80%, transparent);
     }
     .btn-secondary:hover:not(:disabled) {
         background: color-mix(in oklch, var(--accent) 18%, transparent);
-        border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+        border-color: var(--accent);
     }
     .btn-danger {
         background: transparent;
         color: var(--destructive);
-        border-color: color-mix(in oklch, var(--destructive) 40%, transparent);
+        /* Same reason as .btn-secondary: transparent fill, so the stroke is the whole
+           boundary. 40% was 1.89:1 / 1.85:1 on --card; 80% is 3.65:1 / 3.78:1. */
+        border-color: color-mix(in oklch, var(--destructive) 80%, transparent);
     }
     .btn-danger:hover:not(:disabled) {
         background: var(--destructive-soft);
+        /* The label sits at 4.72:1 on --card but only 3.94:1 once the soft wash slides
+           under it on hover — so the colour has to move with the background. */
+        color: var(--destructive-strong);
     }
     .btn-lg {
         height: 42px;
@@ -427,7 +480,7 @@
         height: 32px;
         padding: 0 10px;
         border-radius: var(--radius-md);
-        border: 1px solid var(--border);
+        border: 1px solid var(--control-border);
         background: var(--card);
         color: var(--foreground);
         font-size: 13px;
@@ -439,11 +492,7 @@
     .input:hover:not(:focus) {
         border-color: var(--border-strong);
     }
-    .input {
-    border-color: var(--input-border);
-}
-
-.input:focus {
+    .input:focus {
         outline: none;
         border-color: var(--ring);
         box-shadow: 0 0 0 2px var(--ring);
@@ -470,7 +519,8 @@
         height: 32px;
         box-sizing: border-box;
         border-radius: var(--radius-md);
-        border: 1px solid var(--border);
+        /* A control, so the 3:1 token — .input was already moved, .select was not. */
+        border: 1px solid var(--control-border);
         background-color: var(--card);
         color: var(--foreground);
         font-size: 13px;
@@ -521,7 +571,7 @@
         border-color: color-mix(in oklch, var(--warning) 20%, transparent);
     }
     .badge-danger {
-        color: var(--destructive);
+        color: var(--destructive-strong);
         background: var(--destructive-soft);
         border-color: color-mix(in oklch, var(--destructive) 20%, transparent);
     }
@@ -550,10 +600,10 @@
     }
     .nav-link[aria-current='page'] {
         background: var(--accent-soft);
-        color: var(--primary);
+        color: var(--nav-active-fg);
         font-weight: 600;
     }
-    .nav-link[aria-current='page'] svg { color: var(--primary); }
+    .nav-link[aria-current='page'] svg { color: var(--nav-active-fg); }
 
     .field-error {
         color: var(--destructive);
@@ -625,7 +675,7 @@
         position: fixed; top: 12px; left: 12px; z-index: 100;
         transform: translateY(-150%); transition: transform 0.15s ease;
         background: var(--card); color: var(--foreground);
-        border: 1px solid var(--border); border-radius: var(--radius-md);
+        border: 1px solid var(--control-border); border-radius: var(--radius-md);
         padding: 9px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-card);
     }
     .skip-link:focus { transform: translateY(0); }
@@ -692,6 +742,12 @@
     .cbx-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
     .cbx-panel-title { font-family: var(--font-display); font-size: 15px; line-height: 1; font-weight: 600; color: var(--foreground); margin: 0; }
     .cbx-panel-desc { font-size: 14px; color: var(--muted-foreground); margin: 4px 0 0; }
+    /* Section heading inside a detail page. These were weighted <p>, so 24 pages
+       skipped h1→h3 and the 720-line users/show had a one-node outline. Promoting
+       them to real <h2> keeps the SAME dense system-ui face on purpose: at 14px in a
+       packed settings panel the display face reads as a page title, which it is not.
+       (The base h1,h2,h3 rule would otherwise switch it, hence the explicit family.) */
+    .cbx-section-title { font-family: var(--font-sans); font-size: 14px; line-height: 1.25rem; font-weight: 500; letter-spacing: normal; color: var(--foreground); margin: 0; }
     .cbx-panel-body { padding: 16px 20px; }
 
     /* Status pill */
@@ -703,7 +759,7 @@
     .cbx-pill--success .dot { background: var(--success); }
     .cbx-pill--warning { border-color: color-mix(in oklch, var(--warning) 20%, transparent); background: var(--warning-soft); color: var(--warning-strong); }
     .cbx-pill--warning .dot { background: var(--warning); }
-    .cbx-pill--destructive { border-color: color-mix(in oklch, var(--destructive) 20%, transparent); background: var(--destructive-soft); color: var(--destructive); }
+    .cbx-pill--destructive { border-color: color-mix(in oklch, var(--destructive) 20%, transparent); background: var(--destructive-soft); color: var(--destructive-strong); }
     .cbx-pill--destructive .dot { background: var(--destructive); }
 
     /* Stat tile */
@@ -711,9 +767,13 @@
     .cbx-stat:hover { border-color: var(--border-strong); }
     /* Navigational stat cards (rendered as <a>) get a tactile hover lift. */
     a.cbx-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-    .cbx-stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--info-soft); color: var(--info); }
-    .cbx-stat-icon--success { background: var(--success-soft); color: var(--success); }
-    .cbx-stat-icon--warning { background: var(--warning-soft); color: var(--warning); }
+    /* The glyph is a 20px 1.5px-stroke icon on the tile's own *-soft wash, so it is
+       held to the 3:1 of SC 1.4.11 (not the 4.5:1 of text). The base fill hues are
+       tuned for FILLS and measured 2.92 / 2.97 / 2.24 there — amber failed even the
+       non-text floor. The *-strong siblings land 7.24 / 7.48 / 6.18. */
+    .cbx-stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--info-soft); color: var(--info-strong); }
+    .cbx-stat-icon--success { background: var(--success-soft); color: var(--success-strong); }
+    .cbx-stat-icon--warning { background: var(--warning-soft); color: var(--warning-strong); }
     .cbx-stat-icon--neutral { background: var(--secondary); color: var(--foreground); }
     .cbx-stat-value { font-size: 24px; line-height: 1; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin: 0; }
     .cbx-stat-label { font-size: 12px; color: var(--muted-foreground); margin: 2px 0 0; }
@@ -731,7 +791,14 @@
     .cbx-row + .cbx-row { border-top: 1px solid var(--border); }
 
     /* Page header */
-    .cbx-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+    .cbx-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    /* Below sm the title and its action cluster cannot share a row: at 375px the
+       actions crushed the title to a two-or-three-word-per-line column on ~86 pages.
+       Stack instead, actions left-aligned under the title. */
+    @media (max-width: 639px) {
+        .cbx-page-header { flex-direction: column; align-items: stretch; }
+        .cbx-page-header > * + * { justify-content: flex-start; }
+    }
     .cbx-page-eyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 6px; }
     .cbx-page-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); margin: 0; }
     .cbx-page-desc { font-size: 14px; color: var(--muted-foreground); margin: 6px 0 0; }
@@ -764,7 +831,7 @@
     @media (max-width: 640px) { .cbx-flow-arrow { transform: rotate(90deg); width: 100%; } .cbx-flow-step { min-width: 0; } }
 
     /* Search trigger (⌘K) */
-    .cbx-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--card); font-size: 12px; color: var(--muted-foreground); cursor: pointer; transition: border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: var(--radius-md); border: 1px solid var(--control-border); background: var(--card); font-size: 12px; color: var(--muted-foreground); cursor: pointer; transition: border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
     .cbx-search:hover { border-color: var(--border-strong); color: var(--foreground); }
     .cbx-search .label { flex: 1; text-align: left; }
     .cbx-search kbd { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: -0.01em; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--secondary); padding: 2px 4px; color: var(--muted-foreground); }
@@ -804,8 +871,8 @@
     .cbx-rail a svg, .cbx-rail button.cbx-railitem svg { flex-shrink: 0; color: var(--sidebar-muted); }
     .cbx-rail a .lbl, .cbx-rail button.cbx-railitem .lbl { font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 120ms var(--ease); }
     .cbx-rail a:hover, .cbx-rail button.cbx-railitem:hover { background: var(--sidebar-accent); color: var(--foreground); }
-    .cbx-rail a.cbx-on { background: var(--accent-soft); color: var(--primary); font-weight: 600; }
-    .cbx-rail a.cbx-on svg { color: var(--primary); }
+    .cbx-rail a.cbx-on { background: var(--accent-soft); color: var(--nav-active-fg); font-weight: 600; }
+    .cbx-rail a.cbx-on svg { color: var(--nav-active-fg); }
     .cbx-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; transition: opacity 120ms var(--ease); }
     .cbx-pin:hover { background: var(--sidebar-accent); color: var(--foreground); }
     .cbx-pin.set { color: var(--primary); opacity: 1; }
@@ -849,7 +916,7 @@
      * neutral hover background: that made "where I am" and "where the pointer is"
      * identical, and the guideline names accent-soft as the one active marker (with
      * left-edge borders forbidden). */
-    .cbx-subnav nav a.cbx-on { background: var(--accent-soft); font-weight: 600; color: var(--primary); }
+    .cbx-subnav nav a.cbx-on { background: var(--accent-soft); font-weight: 600; color: var(--nav-active-fg); }
     .cbx-subnav nav a .cnt { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
     .cbx-subnav-group { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-foreground); padding: 14px 8px 3px; margin: 0; }
     .cbx-subnav-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
@@ -861,27 +928,10 @@
     .cbx-strip .vlabel { writing-mode: vertical-rl; font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
 }
 
-/* Dark mode: the active nav item is blue text on a blue-tinted (accent-soft)
- * background. At the design-system's --primary (oklch 0.65) that lands ~4.26:1 —
- * just under AA. Brighten the active text (and its icon) to a lighter blue so it
- * clears AA comfortably while keeping the blue "active" brand cue. Non-layered so
- * it overrides the @layer components rule. */
-:root[data-theme='dark'] .cbx-rail a.cbx-on,
-:root[data-theme='dark'] .cbx-rail a.cbx-on svg,
-:root[data-theme='dark'] .cbx-subnav nav a.cbx-on,
-:root[data-theme='dark'] .nav-link[aria-current='page'],
-:root[data-theme='dark'] .nav-link[aria-current='page'] svg {
-    color: oklch(0.82 0.12 258);
-}
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .cbx-rail a.cbx-on,
-    :root:not([data-theme='light']) .cbx-rail a.cbx-on svg,
-    :root:not([data-theme='light']) .cbx-subnav nav a.cbx-on,
-    :root:not([data-theme='light']) .nav-link[aria-current='page'],
-    :root:not([data-theme='light']) .nav-link[aria-current='page'] svg {
-        color: oklch(0.82 0.12 258);
-    }
-}
+/* The dark-mode active-nav colour used to live here, as a literal oklch(0.82 0.12 258)
+ * duplicated across two UNLAYERED blocks so it could out-rank the @layer components
+ * rules. It is now the --nav-active-fg token, set per theme with the other tokens, so
+ * the value exists once and the cascade does not depend on layer ordering. */
 
 /* ── Toast ─────────────────────────────────────────────────────────────────
    The console's confirmation surface. Severity is a data attribute so the

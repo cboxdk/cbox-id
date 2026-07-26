@@ -385,6 +385,49 @@ it('renders the access-review, stored-token and log-stream detail pages', functi
     $this->get("/admin/log-streaming/{$stream->id}")->assertOk()->assertSee('SIEM export');
 });
 
+// RP-initiated logout only returns the browser to the app when the requested
+// post_logout_redirect_uri is on THAT client's registered allow-list, byte for byte.
+// Until the console could write the list it was always empty, so every sign-out
+// stranded the user on Cbox ID's bare "signed out" page.
+it('registers and edits an application\'s post-logout redirect URIs', function (): void {
+    crudSetup();
+
+    Volt::test('environment.clients.create')
+        ->set('name', 'Logout App')
+        ->set('redirectUris', 'https://a.example/cb')
+        ->set('postLogoutRedirectUris', "https://a.example/signed-out\nhttps://a.example/bye")
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Logout App')->firstOrFail();
+    expect($client->post_logout_redirect_uris)->toBe([
+        'https://a.example/signed-out',
+        'https://a.example/bye',
+    ]);
+
+    // …and the detail page round-trips the stored list back into the form and saves it.
+    Volt::test('environment.clients.show', ['client' => $client->id])
+        ->assertSet('editPostLogoutRedirectUris', "https://a.example/signed-out\nhttps://a.example/bye")
+        ->set('editPostLogoutRedirectUris', 'https://a.example/farewell')
+        ->call('saveDetails')
+        ->assertHasNoErrors();
+
+    expect($client->refresh()->post_logout_redirect_uris)->toBe(['https://a.example/farewell']);
+});
+
+it('refuses a cleartext post-logout redirect URI on a public host', function (): void {
+    crudSetup();
+
+    Volt::test('environment.clients.create')
+        ->set('name', 'Insecure Logout App')
+        ->set('redirectUris', 'https://a.example/cb')
+        ->set('postLogoutRedirectUris', 'http://a.example/signed-out')
+        ->call('create')
+        ->assertHasErrors('postLogoutRedirectUris');
+
+    expect(Client::query()->where('name', 'Insecure Logout App')->exists())->toBeFalse();
+});
+
 it('rotates and deletes an application', function (): void {
     crudSetup();
     $client = app(ClientRegistry::class)->register(new NewClient(

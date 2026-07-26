@@ -13,7 +13,7 @@ use Livewire\Volt\Component;
 /**
  * Workspace › Billing — the account plane's usage rollup and per-project plans. Since
  * the plan/billing anchor lives on the PROJECT (one account can own several
- * independently-billed IdP products, the Clerk model), this page lists each project's
+ * independently-billed IdP products), this page lists each project's
  * plan + environment allowance, then rolls up account-wide usage.
  *
  * Every figure is queried live from the account's own environments — nothing is
@@ -21,13 +21,15 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class extends Component
 {
-    public function mount(AccountAuth $auth)
+    public function mount(AccountAuth $auth): mixed
     {
         // Billing is visible to roles that can read it (owner/admin/billing + the
         // read-only viewer) — not a technical Developer role.
         if (! ($auth->current()?->role->canReadBilling() ?? false)) {
             return redirect()->route('workspace.home');
         }
+
+        return null;
     }
 
     /**

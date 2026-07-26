@@ -34,6 +34,9 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
         abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
     }
 
+    /** How many options either picker will draw before the search has to narrow it. */
+    private const PICKER_LIMIT = 50;
+
     #[Validate('required|string|max:190')]
     public string $name = '';
 
@@ -48,6 +51,11 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
 
     /** @var list<string> */
     public array $roleIds = [];
+
+    /** Narrows the role checkboxes and the organization picker below. */
+    public string $roleSearch = '';
+
+    public string $orgSearch = '';
 
     public function define(SegregationOfDuties $sod): mixed
     {
@@ -80,11 +88,39 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Both pickers are SEARCHED and BOUNDED. They used to be two unbounded `get()`s
+     * in one render: every role AND every organization in the environment, materialised
+     * to draw a checkbox list and a <select>, again on every Livewire action.
+     *
+     * Already-selected roles are always included regardless of the search term —
+     * otherwise typing into the filter would hide a checked box, and the user would
+     * submit a selection they could no longer see.
+     *
+     * @return array<string, mixed>
+     */
     public function with(): array
     {
+        $roles = Role::query()->orderBy('name');
+        $term = trim($this->roleSearch);
+
+        if ($term !== '') {
+            $roles->where(fn ($query) => $query
+                ->where('name', 'like', "%{$term}%")
+                ->orWhereIn('id', $this->roleIds));
+        }
+
+        $organizations = Organization::query()->orderBy('name');
+        $orgTerm = trim($this->orgSearch);
+
+        if ($orgTerm !== '') {
+            $organizations->where('name', 'like', "%{$orgTerm}%");
+        }
+
         return [
-            'roles' => Role::query()->orderBy('name')->get(),
-            'organizations' => Organization::query()->orderBy('name')->get(),
+            'roles' => $roles->limit(self::PICKER_LIMIT)->get(),
+            'organizations' => $organizations->limit(self::PICKER_LIMIT)->get(),
+            'pickerLimit' => self::PICKER_LIMIT,
         ];
     }
 }; ?>
@@ -102,12 +138,16 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
             </div>
             <div>
                 <label class="label" for="orgId">Applies to</label>
+                <input wire:model.live.debounce.300ms="orgSearch" type="search" class="input mb-2" placeholder="Search organizations" aria-label="Search organizations" aria-controls="orgId">
                 <select wire:model="orgId" id="orgId" class="select">
                     <option value="">All organizations (environment-wide)</option>
                     @foreach ($organizations as $organization)
                         <option value="{{ $organization->id }}">{{ $organization->name }}</option>
                     @endforeach
                 </select>
+                @if ($organizations->count() === $pickerLimit)
+                    <p class="mt-1 text-xs" style="color:var(--faint)">Showing the first {{ $pickerLimit }}. Search to narrow.</p>
+                @endif
                 @error('orgId') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
         </div>
@@ -119,15 +159,26 @@ new #[Layout('components.layouts.environment', ['title' => 'New conflict rule'])
         </div>
 
         <div>
-            <span class="label">Mutually-exclusive roles</span>
-            @forelse ($roles as $role)
-                <label class="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" wire:model="roleIds" value="{{ $role->id }}" class="rounded">
-                    <span>{{ $role->name }}</span>
-                </label>
-            @empty
-                <p class="text-xs" style="color:var(--faint)">This environment has no roles to choose from yet.</p>
-            @endforelse
+            <span class="label" id="roles-label">Mutually-exclusive roles</span>
+            <input wire:model.live.debounce.300ms="roleSearch" type="search" class="input mb-2" placeholder="Search roles" aria-label="Search roles">
+            <div role="group" aria-labelledby="roles-label">
+                @forelse ($roles as $role)
+                    {{-- wire:key: without it Livewire's DOM diff reuses the checkbox
+                         element when the search reorders this list, and a tick lands on
+                         the wrong role. --}}
+                    <label class="flex items-center gap-2 py-1 text-sm" wire:key="role-{{ $role->id }}">
+                        <input type="checkbox" wire:model="roleIds" value="{{ $role->id }}" class="rounded">
+                        <span>{{ $role->name }}</span>
+                    </label>
+                @empty
+                    <p class="text-xs" style="color:var(--faint)">
+                        {{ trim($roleSearch) === '' ? 'This environment has no roles to choose from yet.' : 'No role matches that search.' }}
+                    </p>
+                @endforelse
+            </div>
+            @if ($roles->count() === $pickerLimit)
+                <p class="mt-1 text-xs" style="color:var(--faint)">Showing the first {{ $pickerLimit }}. Search to narrow.</p>
+            @endif
             @error('roleIds') <p class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
 

@@ -28,7 +28,8 @@ issuer — resolved per request from the host.
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_ENVIRONMENT_DEFAULT` | The fallback environment (plane) key used when the request host maps to none. | *(empty)* | **Set it** for a single-tenant / on-prem install (all traffic lands on one plane). **Leave empty** for multi-tenant hosting, where an unknown host is refused rather than defaulted. |
-| `CBOX_ID_ENVIRONMENT_BASE_DOMAINS` | Comma list of base domains under which a leading subdomain label resolves to an environment (e.g. `staging.auth.example.com` → the `staging` plane). | *(empty)* | Set when you host multiple planes as subdomains. A host is trusted for slug resolution **only** if it sits under one of these, so a spoofed `Host` can never select a plane. Leave empty to require exact custom-domain matches. Deployment-critical for multi-environment hosting. |
+| `CBOX_ID_ENVIRONMENT_BASE_DOMAINS` | Comma list of base domains under which a leading subdomain label resolves to an environment (e.g. `staging.auth.example.com` → the `staging` plane). | *(empty)* | Set when you host multiple planes as subdomains. A host is trusted for slug resolution **only** if it sits under one of these, so a spoofed `Host` can never select a plane. Leave empty to require exact custom-domain matches. Deployment-critical for multi-environment hosting. Setting it also switches on the host-plane bulkheads — see [the IdP-surface gate](../operations/deployment.md#the-idp-surface-gate-the-apex-host-404s-the-protocol-surface). |
+| `CBOX_ID_ENVIRONMENT_RESOLUTION_CACHE_TTL` | Seconds a host → environment resolution stays cached. Every request resolves its environment before any endpoint logic runs; uncached that is 2–3 queries against a table that changes approximately never. | `60` | Rarely. Creating, renaming, re-domaining or suspending an environment — and suspending or reactivating its account — drop the cache entry immediately, so the off-switch still bites on the next request. The TTL only bounds the one case that cannot be derived from the row: a **slug rename**, where the old subdomain keeps resolving until the entry lapses. Set `0` to disable caching entirely (correctness is unchanged; you pay the queries on every request). |
 
 ## Self-service signup
 
@@ -71,21 +72,200 @@ Laravel `SESSION_*` keys below).
 
 ## OAuth / OIDC endpoint policy
 
+> **The `oauth` and `webauthn` blocks are shadowed in this app.** `config/cbox-id.php`
+> here declares its own `oauth` array (it pins `authorization_endpoint_path` to
+> `/oauth/authorize`, which is a property of this app's routes, not of a deployment) and
+> its own `webauthn` array (`rp_id`, `origin`). Laravel merges a package's config **only
+> at the top level**, so each of those arrays replaces the framework's entirely — every
+> `CBOX_ID_` variable the framework reads from *inside* them is not consulted here, and
+> the built-in code defaults apply instead. Confirm what is actually in effect on your
+> install:
+>
+> ```bash
+> php artisan tinker --execute="var_dump(config('cbox-id.oauth'), config('cbox-id.webauthn'));"
+> ```
+>
+> Rows below marked *(not read in this app)* are documented because the framework
+> declares them and a future release of this app may stop shadowing them. Today they
+> change nothing; the stated default is what runs.
+
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_DCR_MODE` | Dynamic Client Registration (RFC 7591) mode. Controls whether clients (e.g. MCP clients) may self-register. | `disabled` | Enable when you need self-registration; pair with `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` for gated registration. |
-| `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` | Bearer token required to register a client when DCR is gated. | *(none)* | Set when DCR is enabled but should not be open. |
-| `CBOX_ID_REQUIRE_PAR` | Require Pushed Authorization Requests (RFC 9126) — clients must push params server-side instead of via the front channel. | `false` | Set `true` to harden the authorization endpoint for FAPI-style deployments. |
-| `CBOX_ID_WEBAUTHN_USER_VERIFICATION` | Require user verification (PIN/biometric) during the passkey ceremony. | `true` | Rarely changed; leave on. |
-| `CBOX_ID_EMBED_ENTITLEMENTS` | Embed entitlement claims into issued tokens. | `true` | Disable if consumers resolve entitlements out-of-band. |
+| `CBOX_ID_DCR_MODE` | Dynamic Client Registration (RFC 7591) mode. Controls whether clients (e.g. MCP clients) may self-register: `disabled`, `protected` (initial access token required) or `open`. | `disabled` | Enable when you need self-registration; pair with `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` for gated registration. *(not read in this app — registration stays disabled)* |
+| `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` | Bearer token required to register a client when DCR is gated. | *(none)* | Set when DCR is enabled but should not be open. *(not read in this app)* |
+| `CBOX_ID_REQUIRE_PAR` | Require Pushed Authorization Requests (RFC 9126) — clients must push params server-side instead of via the front channel. | `false` | Set `true` to harden the authorization endpoint for FAPI-style deployments. *(not read in this app)* |
+| `CBOX_ID_WEBAUTHN_USER_VERIFICATION` | Require user verification (PIN/biometric) during the passkey ceremony. | `true` | Rarely changed; leave on. *(not read in this app — verification stays required)* |
+| `CBOX_ID_EMBED_ENTITLEMENTS` | Embed entitlement claims into issued tokens. | `true` | Disable if consumers resolve entitlements out-of-band. *(not read in this app)* |
+| `CBOX_ID_ACCESS_TOKEN_TTL` | Lifetime of an issued access token, in seconds. | `900` (15m) | Shorten for higher assurance; lengthen only with a good reason — the refresh token, not a long access token, is the right way to keep a session alive. *(not read in this app)* |
+| `CBOX_ID_DECISIONS_MAX_BATCH` | Maximum number of decisions a single `POST /oauth/decisions` request may ask for. | `50` | Raise only if a resource server genuinely batches more; the endpoint is a hot path. *(not read in this app)* |
+| `CBOX_ID_CIBA_TTL_SECONDS` | How long a CIBA (client-initiated backchannel) authentication request stays pending. | `300` | Match your out-of-band approval window. *(not read in this app)* |
+| `CBOX_ID_CIBA_POLL_INTERVAL` | The `interval` handed back to a CIBA client, in seconds. | `5` | Raise to reduce polling load. *(not read in this app)* |
+| `CBOX_ID_AUTHORIZATION_ENDPOINT_PATH` | The **path** of the interactive authorization endpoint, joined to each environment's own issuer so every tenant advertises it on its own host. | `/oauth/authorize` | Never, in this app: it is set in `config/cbox-id.php` because it describes these routes. *(not read in this app)* |
+| `CBOX_ID_AUTHORIZATION_ENDPOINT` | An **absolute** authorization-endpoint URL, used only when no path is configured. | *(none)* | Avoid. An absolute URL pins every environment to one host, which a client that checks RFC 9207 `iss` will reject. *(not read in this app)* |
 
 ## Webhooks
+
+Delivery is **queued**, not inline — see the note on `QUEUE_CONNECTION` under
+[Standard Laravel keys](#standard-laravel-keys). Without a running worker nothing is
+delivered and nothing errors.
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_WEBHOOKS_VERIFY_URL` | SSRF-guard + verify webhook target URLs before delivery. | `true` | Keep on. Only relax in isolated test setups. |
 | `CBOX_ID_WEBHOOKS_MAX_ATTEMPTS` | Max delivery attempts before a webhook is marked failed. | `12` | Raise/lower to match your retry tolerance. |
 | `CBOX_ID_WEBHOOKS_SCHEDULE_RETRIES` | Let the scheduler re-drive failed deliveries. | `true` | Requires `schedule:run` from cron; keep on in production. |
+| `CBOX_ID_WEBHOOKS_QUEUE_CONNECTION` | Queue **connection** the delivery job is dispatched on, so webhook egress can be isolated from the rest of the app's work. | *(none — the app default connection)* | Set when you run a dedicated worker fleet for egress. The named connection must be one a worker is actually consuming. |
+| `CBOX_ID_WEBHOOKS_QUEUE` | Queue **name** within that connection. | *(none — the default queue)* | As above. |
+| `CBOX_ID_WEBHOOKS_RETRY_LIMIT` | How many pending/failed deliveries one `cbox-id:webhooks:retry` sweep picks up. | `50` | Raise if a large backlog drains too slowly; each sweep runs every scheduler tick. |
+| `CBOX_ID_WEBHOOKS_STRANDED_AFTER_SECONDS` | How long a delivery may sit `Pending` before the retry sweep treats it as stranded (its worker died) and re-drives it. | `900` (15m) | Lower for faster rescue, but keep it comfortably above your longest legitimate delivery. |
+| `CBOX_ID_WEBHOOKS_CB_FAILURE_THRESHOLD` | Consecutive failures against one endpoint before its circuit breaker opens. | `5` | Raise for flaky-but-recovering endpoints. |
+| `CBOX_ID_WEBHOOKS_CB_COOLDOWN_SECONDS` | How long an open breaker stays open before a trial delivery. | `300` | Raise to back off harder from a dead endpoint. |
+
+## Domain-event outbox
+
+Every subscriber in the platform hangs off the outbox relay — webhooks, usage metering,
+outbound provisioning, token revocation on role change. The relay itself is scheduled
+(see [Scheduled work](#scheduled-work)); these tune it.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_EVENTS_RELAY_LIMIT` | Events claimed per relay run. | `100` | Raise for high event volume; a single run should still finish well inside its cadence. |
+| `CBOX_ID_EVENTS_RELAY_CADENCE` | How often the relay runs: `every_minute`, `every_two_minutes`, `every_five_minutes`, `every_ten_minutes`, `every_fifteen_minutes`, `every_thirty_minutes`, `hourly`. An unrecognized value silently falls back to `every_minute`. | `every_minute` | Slow it down only on a very quiet instance — every downstream effect inherits this latency. |
+| `CBOX_ID_EVENTS_RECLAIM_AFTER_SECONDS` | How long a claimed-but-unfinished event waits before another relay run may reclaim it (the worker died mid-flight). | `300` | Lower for faster recovery; keep above the slowest legitimate subscriber. |
+| `CBOX_ID_EVENTS_MAX_ATTEMPTS` | Attempts before an event is given up on. | `12` | Rarely. |
+| `CBOX_ID_EVENTS_BACKLOG_WARNING_THRESHOLD` | Unrelayed-event count at which the health/doctor output starts warning. | `1000` | Tune to your normal volume so the warning stays meaningful. |
+
+## Outbound provisioning (SCIM push)
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_PROVISIONING_VERIFY_URL` | SSRF-guard + verify a directory's SCIM base URL before pushing to it. | `true` | Keep on. |
+| `CBOX_ID_PROVISIONING_MAX_ATTEMPTS` | Attempts per provisioning operation before it is marked failed. | `12` | Raise/lower to match the target's reliability. |
+| `CBOX_ID_PROVISIONING_BATCH_LIMIT` | Operations drained per `cbox-id:provisioning:drain` run. | `50` | Raise for large directory syncs. |
+| `CBOX_ID_PROVISIONING_CB_FAILURE_THRESHOLD` | Consecutive failures against one target before its breaker opens. | `5` | As for webhooks. |
+| `CBOX_ID_PROVISIONING_CB_COOLDOWN_SECONDS` | How long that breaker stays open. | `300` | As for webhooks. |
+
+## Inbound federation
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_FEDERATION_VERIFY_URL` | SSRF-guard + verify the URLs on an SSO connection (issuer, endpoints, JWKS) before they are fetched. Connections are tenant-supplied, so this is the guard against a customer pointing the server at your internal network. | `true` | Keep on. Relax only in an isolated test network. |
+
+## External actions (inline hooks)
+
+Synchronous HTTP callouts during a flow — a host-owned decision point inside token
+issuance and login.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_ACTIONS_VERIFY_URL` | SSRF-guard + verify an action endpoint's URL before calling it. | `true` | Keep on. |
+| `CBOX_ID_ACTIONS_TIMEOUT` | Total request timeout, in seconds. | `3` | Keep small — this sits inline on the token/login path. |
+| `CBOX_ID_ACTIONS_CONNECT_TIMEOUT` | Connect timeout, in seconds. | `2` | As above. |
+| `CBOX_ID_ACTIONS_CACHE_TTL` | How long the active action set is cached, in seconds. | `60` | Lower for faster propagation of a hook change; the lookup is on the hot path. |
+| `CBOX_ID_ACTIONS_FAIL_OPEN` | What happens when an action times out, errors, or returns an unparseable body. | `false` — **fails closed** (the request is denied) | Set `true` only if you have accepted that a hook outage stops being a control. A security control that fails open is not a control. |
+
+## Access control (RBAC and app manifests)
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_ACCESS_CONTROL_DRIVER` | Which authorization backend the platform and its token claims read from. `builtin` — the package's hierarchy-aware RBAC (its schema is loaded and its services bound). `external` — bring your own: the built-in tables and migrations are **not** loaded and the checker falls back to a refusing default until you bind an adapter. | `builtin` | Only when replacing RBAC wholesale. `external` is deny-by-default until your adapter is bound — nothing authorizes in between. |
+| `CBOX_ID_MANIFEST_VERIFY_URL` | SSRF-guard + verify the manifest URL an application publishes its roles/permissions at, before it is fetched. The URL is supplied by the application owner, so this is what stops it pointing at link-local or internal addresses. | `true` | Keep on. `false` removes the guard entirely. |
+| `CBOX_ID_MANIFEST_FETCH_TIMEOUT` | Seconds to wait for a manifest fetch. | `10` | Raise for slow app hosts. |
+
+> **Undeclared key: `cbox-id.access_control.schedule`.** The hourly manifest re-pull
+> (`cbox-id:access-control:sync-manifests`) is registered only when this config value is
+> `true`, and it is read with a hard-coded `true` fallback — but it is declared in
+> **neither** config file and has no `CBOX_ID_` variable, so `.env` cannot turn it off.
+> To disable the hourly pull you must set `cbox-id.access_control.schedule` to something
+> other than `true` in `config/cbox-id.php` itself. Note the comparison is strict: the
+> string `"false"` is not `true`, so any non-`true` value disables it.
+
+## One-time passcodes (OTP)
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_OTP_CODE_LENGTH` | Digits in a generated code. **Clamped to 6–10** — a smaller value is raised to 6, a larger one lowered to 10. | `6` | Raise for higher-assurance flows. |
+| `CBOX_ID_OTP_TTL_SECONDS` | How long a code stays valid. | `300` (5m) | Shorten for tighter windows; too short and legitimate mail delivery loses the race. |
+| `CBOX_ID_OTP_MAX_ATTEMPTS` | Wrong guesses against one code before it is burned. | `5` | Lower to harden against guessing. |
+| `CBOX_ID_OTP_ISSUE_MAX` | Codes one client may request per issue window. | `5` | Lower to blunt mail/SMS flooding. |
+| `CBOX_ID_OTP_ISSUE_RECIPIENT_MAX` | Codes one **recipient** may be sent per issue window. | `10` | As above. |
+| `CBOX_ID_OTP_ISSUE_WINDOW` | Length of the issue window, in seconds. | `3600` (1h) | Pair with the two limits above. |
+| `CBOX_ID_OTP_VERIFY_MAX` | Verification attempts one client may make per verify window. | `20` | Lower to harden. |
+| `CBOX_ID_OTP_VERIFY_RECIPIENT_MAX` | Verification attempts against one **recipient** per verify window. | `15` | As above. |
+| `CBOX_ID_OTP_VERIFY_WINDOW` | Length of the verify window, in seconds. | `900` (15m) | Pair with the two limits above. |
+| `CBOX_ID_OTP_EMAIL_SUBJECT` | Subject line of the code email. | `Your verification code` | Match your product voice. |
+| `CBOX_ID_OTP_EMAIL_FROM_ADDRESS` | From address for the code email. | *(none — falls back to the app's `MAIL_FROM_ADDRESS`)* | Set to send codes from a different, well-aligned sender than the rest of your mail. |
+| `CBOX_ID_OTP_EMAIL_FROM_NAME` | From name for the code email. | *(none — falls back to `MAIL_FROM_NAME`)* | As above. |
+
+## SAML identity provider (this platform AS the IdP)
+
+Published in `/sso/saml/idp/metadata` and consumed by every downstream service provider
+that federates to you.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_SAML_IDP_ENTITY_ID` | The IdP `entityID` in published metadata. | *(derived from the issuer)* | Set only if an existing SP already pins a different entity ID. Changing it after SPs are live breaks their trust config. |
+| `CBOX_ID_SAML_IDP_LOGIN_URL` | The `SingleSignOnService` location advertised in metadata. | *(derived — the app's `/sso/saml/idp/sso`)* | Set only when a proxy serves that endpoint at a different URL. |
+| `CBOX_ID_SAML_IDP_WANT_AUTHN_REQUESTS_SIGNED` | Advertises `WantAuthnRequestsSigned` in metadata. **Only a real boolean is honoured.** A value from `.env` arrives as a string, is not a boolean, and is therefore ignored — the derived behaviour applies instead: `true` only when every registered SP is itself marked as wanting signed requests, `false` if any is not (and `false` when none are registered). | *(unset — derived)* | To force it, set `'want_authn_requests_signed' => true` (or `false`) as a real boolean in `config/cbox-id.php`. Setting the environment variable alone changes nothing. |
+
+## Data retention (pruning)
+
+`cbox-id:prune` sweeps expired rows out of the operational tables. Values are **retention
+in days**, counted from each table's own expiry/creation column, and the sweep deletes in
+chunks so a first run on a never-swept table is not one enormous transaction.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_PRUNE_TIME` | Daily run time, `HH:MM`, in the app timezone. | `03:10` | Move it away from your backup window. |
+| `CBOX_ID_PRUNE_CHUNK` | Rows deleted per batch. | `1000` | Lower on a busy primary to shorten lock windows. |
+| `CBOX_ID_PRUNE_DPOP_PROOFS` | Retention for `dpop_proofs` (replay-guard jti records). | `1` | Rarely — they are worthless once the proof window has passed. |
+| `CBOX_ID_PRUNE_CONSUMED_ASSERTIONS` | Retention for `consumed_assertions` (SAML replay guard). | `1` | As above. |
+| `CBOX_ID_PRUNE_AUTHORIZATION_CODES` | Retention for `oauth_authorization_codes`. | `1` | Rarely — codes are single-use and short-lived. |
+| `CBOX_ID_PRUNE_ACCESS_TOKENS` | Retention for `oauth_access_tokens`. | `7` | Raise if you introspect historical tokens for support. |
+| `CBOX_ID_PRUNE_REFRESH_TOKENS` | Retention for `oauth_refresh_tokens`. | `30` | Keep at least as long as your refresh-token lifetime. |
+| `CBOX_ID_PRUNE_EVENTS` | Retention for the domain-event outbox (`events`). | `30` | Raise if you replay events for debugging. |
+| `CBOX_ID_PRUNE_AUTH_SESSIONS` | Retention for `auth_sessions`. | `30` | Match your session forensics needs. |
+| `CBOX_ID_PRUNE_USAGE_MARKERS` | Retention for `usage_metered_events` — the idempotency markers behind usage metering. | `30` | Raise only if your billing reconciliation window is longer than 30 days. |
+| `CBOX_ID_PRUNE_WEBHOOK_DELIVERIES` | Retention for `webhook_deliveries`. | `30` | Raise if customers debug delivery history. |
+| `CBOX_ID_PRUNE_PROVISIONING_OPERATIONS` | Retention for `provisioning_operations`. | `30` | As above. |
+
+> **An empty value disables pruning for that table — it does not fall back to the
+> default.** `CBOX_ID_PRUNE_EVENTS=` in `.env` resolves to `''`, and the pruner treats
+> `''` (like `null` and `false`) as "retention disabled" and skips the table entirely,
+> forever. Only a numeric value sets a retention; a non-numeric, non-empty value falls
+> back to the built-in default. If you mean the default, **delete the line** — do not
+> leave it blank. Check with `php artisan cbox-id:prune --dry-run`, which reports each
+> table as pruned or skipped.
+
+**`audit_logs` is deliberately not prunable** and has no key. The audit trail is the
+evidentiary record; it is retained by export/archival policy, not by a sweep that can be
+misconfigured into deleting it.
+
+## Scheduled work
+
+Every one of these needs `schedule:run` (or `schedule:work`) actually running — see
+[Deployment](../operations/deployment.md#5-run-the-workers). They are on by default;
+setting one to `false` removes that command from the schedule with no other signal.
+
+| Variable | Schedules | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_EVENTS_SCHEDULE_RELAY` | `cbox-id:events:relay` — the outbox relay every subscriber depends on. | `true` | Only when an external supervisor runs the relay itself. Turning it off with nothing else driving it silently disables webhooks, usage metering, outbound provisioning and role-change revocation. |
+| `CBOX_ID_PROVISIONING_SCHEDULE` | `cbox-id:provisioning:drain` — the outbound SCIM outbox. | `true` | As above. |
+| `CBOX_ID_AUDIT_STREAMING_SCHEDULE` | `cbox-id:audit-streams:pump` — SIEM stream delivery. | `true` | As above. |
+| `CBOX_ID_GOVERNANCE_SCHEDULE` | The governance sweeps (access reviews and their reminders/expiries). | `true` | Off only if you do not use governance campaigns. |
+| `CBOX_ID_PRUNE_SCHEDULE` | The daily `cbox-id:prune` sweep (see [Data retention](#data-retention-pruning)). | `true` | Off only if you prune out-of-band. |
+| `CBOX_ID_WEBHOOKS_SCHEDULE_RETRIES` | `cbox-id:webhooks:retry` — see [Webhooks](#webhooks). | `true` | Keep on in production. |
+
+The hourly app-manifest re-pull is scheduled too, but has **no** environment variable —
+see the undeclared-key note under [Access control](#access-control-rbac-and-app-manifests).
+
+## Token vault, usage metering and user API tokens
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_VAULT_LEASE_TTL` | Default lifetime of a token-vault lease, in seconds — how long a caller may hold a released upstream credential. | `300` (5m) | Keep short; a lease is a live third-party credential. |
+| `CBOX_ID_USAGE_ENABLED` | Whether usage is metered at all. Metering feeds plan gates and billing projections. | `true` | Set `false` only on an install that has no billing and no plan gates. With it off, anything reading usage sees zero. |
+| `CBOX_ID_USER_API_TOKEN_TTL_DAYS` | Default lifetime, in days, of a user API token (`cbid_pat_…`) minted without an explicit expiry. | `90` | Shorten for tighter credential hygiene. A non-numeric value falls back to the built-in default. |
 
 ## Risk scoring
 
@@ -116,8 +296,25 @@ production.
 
 ## Standard Laravel keys
 
-The usual `APP_KEY`, `DB_*`, `REDIS_*`, `MAIL_*`, `QUEUE_CONNECTION`, `CACHE_STORE`
-apply as in any Laravel app. `APP_KEY` is required and **distinct** from
+The usual `APP_KEY`, `DB_*`, `REDIS_*`, `MAIL_*` apply as in any Laravel app — but two
+of them carry more weight here than the framework defaults suggest:
+
+- **`CACHE_STORE` should be `redis` in anything but a throwaway install.** The platform
+  leans hard on the cache: JWKS and verification keys, host → environment resolution on
+  **every** request, the entitlement hot path, and the active inline-hook set on every
+  token mint. On the `database` store each of those becomes a query against the `cache`
+  table — the very round trip the caching exists to remove — so `database` quietly
+  undoes it and adds write contention on top. `database` is the zero-dependency default
+  for a first `php artisan serve`, and nothing more. `docker-compose.yml` already uses
+  Redis.
+- **`QUEUE_CONNECTION` is not cosmetic.** Webhook delivery is dispatched to the queue, so
+  a deployment without a running `queue:work` delivers **nothing** and raises no error —
+  deliveries simply sit `Pending` until the retry sweep re-drives them into the same
+  empty queue. See [Deployment](../operations/deployment.md#5-run-the-workers) for the
+  processes a real deployment runs, and `CBOX_ID_WEBHOOKS_QUEUE_CONNECTION` /
+  `CBOX_ID_WEBHOOKS_QUEUE` above if you isolate egress onto its own worker fleet.
+
+`APP_KEY` is required and **distinct** from
 `CBOX_ID_CRYPTO_KEY` — the former protects Laravel's own encryption/cookies, the
 latter protects the identity platform's sealed secrets. **Both must be backed up;
 neither is recoverable if lost.**
