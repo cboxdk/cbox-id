@@ -10,7 +10,7 @@ namespace Cbox\Id\Whitelabel\Assets;
  * only returns a path that begins with the expected base folder, so an arbitrary
  * external URL can never resolve to a deletable path.
  */
-final class AssetPath
+class AssetPath
 {
     public static function fromUrl(?string $url, string $basePath): ?string
     {

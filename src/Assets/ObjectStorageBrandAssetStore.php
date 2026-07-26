@@ -16,7 +16,7 @@ use RuntimeException;
  * Laravel {@see Filesystem} contract — no AWS SDK is referenced here, so the package
  * keeps no hard S3 dependency; the host binds this in place of the local store.
  */
-final class ObjectStorageBrandAssetStore implements BrandAssetStore
+class ObjectStorageBrandAssetStore implements BrandAssetStore
 {
     public function __construct(
         private readonly Filesystem $disk,

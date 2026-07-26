@@ -16,7 +16,7 @@ use Cbox\Console\Kit\Branding\Branding;
  * reach the shell's `<style>` tag. This is the plugin-side gate; the console-kit
  * {@see Branding} VO revalidates as defence in depth.
  */
-final class PaletteTokens
+class PaletteTokens
 {
     /** The brandable tokens, in the order they are emitted. Keys map to `--<key>`. */
     public const TOKENS = ['primary', 'accent', 'ring', 'foreground', 'background'];

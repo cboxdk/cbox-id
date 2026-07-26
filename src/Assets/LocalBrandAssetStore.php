@@ -15,7 +15,7 @@ use RuntimeException;
  * are namespaced per environment, with a random filename so one tenant can never
  * guess or overwrite another's.
  */
-final class LocalBrandAssetStore implements BrandAssetStore
+class LocalBrandAssetStore implements BrandAssetStore
 {
     public function __construct(
         private readonly Filesystem $disk,

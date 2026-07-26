@@ -11,7 +11,7 @@ use RuntimeException;
  * The message is safe to show a tenant (it never echoes the guard's internal
  * reachability detail).
  */
-final class InvalidCustomDomain extends RuntimeException
+class InvalidCustomDomain extends RuntimeException
 {
     public static function malformed(string $host): self
     {

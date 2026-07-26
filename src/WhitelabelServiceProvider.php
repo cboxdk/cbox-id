@@ -29,7 +29,7 @@ use Throwable;
  * edits. Removed, the resolver falls back to the null default and the shell returns to
  * its static Cbox branding.
  */
-final class WhitelabelServiceProvider extends ServiceProvider
+class WhitelabelServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

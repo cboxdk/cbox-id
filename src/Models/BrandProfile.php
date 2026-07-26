@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $email_from_name
  * @property array<string, mixed> $email_templates
  */
-final class BrandProfile extends Model implements EnvironmentOwned
+class BrandProfile extends Model implements EnvironmentOwned
 {
     use BelongsToEnvironment;
 

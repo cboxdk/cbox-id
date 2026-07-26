@@ -27,7 +27,7 @@ use Cbox\Ssrf\Exceptions\BlockedUrl;
  * shown they control. It also cannot collide with another environment's domain —
  * that is refused up front (below) as well as by the column's unique constraint.
  */
-final class ManageCustomDomain
+class ManageCustomDomain
 {
     public function __construct(
         private readonly EnvironmentContext $environment,

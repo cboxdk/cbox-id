@@ -12,7 +12,7 @@ use Cbox\Id\Whitelabel\Models\BrandProfile;
  * are constrained to the current environment by the model's global scope, so the
  * queries here need no explicit environment predicate.
  */
-final class DatabaseBrandProfiles implements BrandProfiles
+class DatabaseBrandProfiles implements BrandProfiles
 {
     public function forEnvironment(): ?BrandProfile
     {

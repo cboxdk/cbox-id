@@ -21,7 +21,7 @@ use Cbox\Id\Whitelabel\Support\PaletteTokens;
  *
  * This overrides console-kit's null resolver, turning the whole white-label feature on.
  */
-final class TenantBrandingResolver implements BrandingResolver
+class TenantBrandingResolver implements BrandingResolver
 {
     public function __construct(
         private readonly BrandProfiles $profiles,
