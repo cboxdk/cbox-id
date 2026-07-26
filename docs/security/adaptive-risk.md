@@ -47,6 +47,49 @@ Because magic-link and passkey are themselves possession / phishing-resistant
 factors, elevated-but-not-reject outcomes only trigger a step-up on the **password**
 path; those two paths honour the Reject block but need no additional factor.
 
+## Signup, specifically
+
+Signup is scored by the same guard, with two extra signals the form supplies — a
+honeypot field a human never fills, and the time between render and submit — and it
+acts on the outcome differently from sign-in, because there is no account to step up
+*into* yet.
+
+### Challenge → CAPTCHA (Cloudflare Turnstile)
+
+Under enforcement, a **Challenge / StepUp** outcome on signup demands a CAPTCHA before
+the account is created. The widget is Cloudflare Turnstile: for almost everyone it is
+non-interactive (no images to label), it sets no advertising cookies, and it renders
+**only on a submission the scorer already flagged** — an unconditional CAPTCHA would
+tax every legitimate signup to stop the small share that isn't one.
+
+- The browser's own success callback is never trusted: the token is verified
+  **server-side** against Turnstile's `siteverify` with the secret key.
+- A missing, replayed or rejected token is a **field error** on the form (with the
+  widget now shown, so the person can satisfy it) — never a 500 and never a silent pass.
+- If Cloudflare cannot be reached the submission is refused rather than waved through.
+  Only already-elevated submissions reach that path, and they can retry.
+- **With no keys configured the feature is inert**: no widget, no third-party script, no
+  CSP exception, and signup behaves exactly as it did before. Self-hosters who don't
+  want a Cloudflare dependency simply don't set the keys.
+
+The **CSP** is opened for `https://challenges.cloudflare.com` in `script-src` and
+`frame-src` **only when Turnstile is configured** — the sole third-party origin this app
+ever allows, and only on deployments that asked for it.
+
+### Verification before provisioning
+
+Independently of risk mode, a self-serve signup on the platform root no longer
+provisions an environment up front. It creates the **account, its home organization,
+its owner member and its first project**; the **environment** — the routable IdP whose
+signing key is warmed on creation — is released by `App\Platform\SignupProvisioner`
+only when the owner opens the emailed verification link.
+
+This is the control that actually removes the incentive. A CAPTCHA makes bulk signup
+harder; deferring the environment makes it **pointless**, because what an unverified
+signup walks away with is a row nobody routes to. It is also idempotent: a replayed
+link, or a second address verified on the same account, never mints a second
+environment, and a suspended account is not un-suspended by clicking a link.
+
 ## Enabling and tuning
 
 1. Set `RISK_MODE=enforce` once you've observed traffic in monitor mode.
@@ -66,3 +109,6 @@ path; those two paths honour the Reject block but need no additional factor.
   gate covers the local factors (password, magic-link, passkey), not delegated SSO.
 - **Monitor first.** The default is deliberately non-blocking. Enforcement with
   untuned thresholds is the main way to lock out real users.
+- **The signup CAPTCHA only bites under `enforce`.** In `monitor` mode a challenged
+  signup is logged and let through, exactly like every other outcome — the widget never
+  appears. Deferred environment provisioning is the half that works regardless of mode.

@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\MemberEmailVerification;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
+use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -36,6 +41,39 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
     public string $newEnvironment = '';
 
     public string $newEnvironmentType = 'production';
+
+    /** What the last resend attempt has to say, rendered inside the banner itself. */
+    public string $resendNotice = '';
+
+    /**
+     * Re-send the signup confirmation — the only way back for an owner whose email is
+     * lost, filtered or expired, now that the environment waits on it.
+     *
+     * NO ADDRESS IS ACCEPTED HERE. The action takes the member the session resolved, and
+     * mails whatever address is on that row; there is deliberately no argument an
+     * attacker (or a crafted Livewire payload) could point somewhere else.
+     */
+    public function resendVerification(AccountAuth $auth, MemberEmailVerification $verification): void
+    {
+        $member = $auth->current();
+        abort_if($member === null, 403);
+
+        // Outbound mail is the scarce, abusable resource: anyone who got as far as an
+        // account can otherwise pump mail at their own inbox and burn the sending
+        // reputation for everyone. Keyed on the MEMBER, not the address or the IP —
+        // the caller is authenticated, so there is no cheaper key to rotate.
+        $key = 'workspace-verify-resend|'.$member->id;
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $this->resendNotice = 'That is a lot of emails. Try again in '.RateLimiter::availableIn($key).' seconds, or check your spam folder in the meantime.';
+
+            return;
+        }
+
+        RateLimiter::hit($key, 600);
+
+        $this->resendNotice = $verification->resend($member)->message($member->email);
+    }
 
     public function startCreate(string $projectId): void
     {
@@ -155,7 +193,39 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
         return [
             'projects' => $rows,
             'canManage' => $member?->role->canManageEnvironments() ?? false,
+            'awaitingVerification' => $this->awaitingVerification($member),
+            'verificationEmail' => $member->email ?? '',
+            // Named in the banner so "it never arrived" has somewhere to go: this is the
+            // address to search the inbox for and to allow past a spam filter.
+            'verificationSender' => is_string($from = config('mail.from.address')) ? $from : '',
         ];
+    }
+
+    /**
+     * True while the account's first environment is still held back pending the owner's
+     * email confirmation — otherwise the page shows a project with no environments and
+     * no explanation of why.
+     */
+    private function awaitingVerification(?AccountMember $member): bool
+    {
+        $subjectId = $member?->subject_id;
+
+        if ($member === null || ! is_string($subjectId) || $subjectId === '') {
+            return false;
+        }
+
+        if (Environment::query()->where('account_id', $member->account_id)->exists()) {
+            return false;
+        }
+
+        // Account members are subjects in the PLATFORM ROOT, so the lookup has to run in
+        // that scope — the tenancy kernel is deny-by-default and would otherwise see
+        // nothing.
+        $verified = app(PlatformRoot::class)->run(
+            fn (): bool => app(Subjects::class)->find($subjectId)?->emailVerified === true,
+        );
+
+        return $verified === false;
     }
 }; ?>
 
@@ -167,6 +237,34 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
             </x-slot:actions>
         @endif
     </x-page-header>
+
+    @if ($awaitingVerification)
+        <div class="mt-6 rounded-xl border p-4" style="border-color:var(--border)" role="status">
+            <p class="font-medium">Confirm your email to finish</p>
+            <p class="mt-1 text-sm" style="color:var(--muted)">
+                We sent a link to <span class="mono">{{ $verificationEmail }}</span>. Your first environment — your live IdP,
+                with its own sign-in, users and signing keys — is created the moment you open it, and you land straight back here.
+                The link stays valid for 24 hours.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <button type="button" class="btn btn-secondary btn-sm shrink-0" wire:click="resendVerification"
+                        wire:loading.attr="disabled" wire:target="resendVerification">
+                    <span wire:loading.remove wire:target="resendVerification">Send the link again</span>
+                    <span wire:loading wire:target="resendVerification" class="inline-flex items-center gap-2"><span class="spinner"></span> Sending…</span>
+                </button>
+                @if ($verificationSender !== '')
+                    <span class="text-xs" style="color:var(--faint)">Nothing in your inbox? It comes from <span class="mono">{{ $verificationSender }}</span> — check spam too.</span>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- Outside the banner on purpose: a resend that lands just as the environment
+         is released (or after) makes the banner disappear, and the answer to a click
+         must not disappear with it. --}}
+    @if ($resendNotice !== '')
+        <p class="mt-3 text-sm" style="color:var(--muted)" role="alert" aria-live="polite" data-resend-notice>{{ $resendNotice }}</p>
+    @endif
 
     <div class="mt-6 space-y-4">
         @forelse ($projects as $project)

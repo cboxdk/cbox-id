@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.25.0] - 2026-07-27
+
+Signup had no bot protection, and production showed the bill: five of eight accounts
+were Gmail dot-abuse bot signups, each of which had provisioned a full environment and
+none of which ever verified an address.
+
+### Security
+
+- **A self-serve signup no longer provisions an environment up front.** The account, its
+  home organization, its owner and its first project are created immediately; the
+  environment — the routable IdP whose signing key is warmed on creation — is released
+  only when the owner opens the emailed verification link (new
+  `App\Platform\SignupProvisioner`, consumed by `EmailVerificationController`). This does
+  not make bulk signup harder, it makes it worthless. Idempotent: a replayed link never
+  mints a second environment, and a suspended account is not revived by one.
+- **A risk-triggered CAPTCHA on signup.** An `Outcome::Challenge` / `StepUp` from the
+  risk scorer now demands a Cloudflare Turnstile token, verified server-side against
+  `siteverify` (new `App\Platform\Turnstile`); previously the signup form consulted only
+  `shouldBlock()`, so a Challenge outcome did nothing at all. A missing or rejected token
+  is a field error, never a 500. Deliberately **not** an always-on CAPTCHA — the friction
+  lands on the submissions the scorer flagged.
+- Both keys unset (`CBOX_ID_TURNSTILE_SITE_KEY` / `CBOX_ID_TURNSTILE_SECRET_KEY`) means
+  the feature does not exist: no widget, no Cloudflare script, and the CSP keeps its
+  strict `script-src 'self' 'unsafe-eval'`. `https://challenges.cloudflare.com` is added
+  to `script-src` and `frame-src` **only** on a deployment that configured it.
+
+### Changed
+
+- `risk.mode` is untouched and still ships as `monitor`. Flipping it to `enforce` is a
+  production tuning decision that needs the monitor-mode data behind it; this release
+  only makes the Challenge branch mean something once it is flipped.
+- The workspace launchpad explains the wait, rather than showing a project with no
+  environments and no reason why. It now also names the address the confirmation went to
+  and the sender to look for, and says the link is good for 24 hours.
+
+### Added
+
+- **A resend control on the launchpad banner** (`App\Platform\MemberEmailVerification`,
+  `App\Platform\Enums\VerificationResendOutcome`). Holding the environment back until the
+  address is proven put a real owner's whole account behind one email; without a resend,
+  losing it or letting the 24-hour token lapse left an account with a member, a project
+  and no way forward. The action takes an `AccountMember`, never an address, so there is
+  no input to steer it at someone else's inbox; it retires every previously-issued link
+  before minting the next one (single-use is not the same as single-*live*); it answers
+  identically whether or not the address is already confirmed, so the button is not a
+  verification oracle; and it is a no-op once the environment is up. Throttled at **3 per
+  10 minutes per member** — outbound mail is the abusable resource, and the member id is
+  the key nobody can rotate.
+
 ## [0.24.0] - 2026-07-26
 
 Requires `cboxdk/laravel-id ^0.58`, which made `MembershipRole` a type rather than a

@@ -316,6 +316,49 @@
     });
 })();
 
+// Cloudflare Turnstile — the CAPTCHA the signup form shows only when the risk scorer
+// challenges a submission. Cloudflare's script is fetched LAZILY: nothing is loaded on
+// a page without a `[data-turnstile-host]` (i.e. Turnstile isn't configured) and nothing
+// is loaded until a `.cf-turnstile` widget actually appears inside that host, which only
+// happens after a challenge. So an ordinary signup contacts Cloudflare zero times.
+//
+// The widget's callback must be a global function name, and the strict CSP forbids
+// inline scripts — hence this bundled, same-origin shim, which re-publishes the token as
+// a window event the Alpine listener on the form hands to Livewire.
+(() => {
+    const SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+
+    window.cboxTurnstileToken = (token) => {
+        window.dispatchEvent(new CustomEvent('cbox-turnstile', { detail: token }));
+    };
+
+    const start = () => {
+        const host = document.querySelector('[data-turnstile-host]');
+        if (!host) return;
+
+        let requested = false;
+        const ensure = () => {
+            if (requested || !host.querySelector('.cf-turnstile')) return;
+            requested = true;
+            const script = document.createElement('script');
+            script.src = SRC;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        };
+
+        // The widget is usually inserted by a Livewire re-render, not present at load.
+        new MutationObserver(ensure).observe(host, { childList: true, subtree: true });
+        ensure();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+})();
+
 // ── Theme Editor — the live, client-side sign-in appearance editor.
 // Registered as an Alpine component (bundled, so it runs under the strict CSP that
 // forbids inline scripts). Editing and preview are entirely client-side for zero

@@ -58,6 +58,31 @@ Admin- and operator-initiated provisioning (invitations, the operator console) i
 `closed` for a private or internal deployment so the internet-facing signup form
 cannot be used to create tenants.
 
+### Signup abuse controls
+
+An `open` signup is an internet-facing "create infrastructure" button, so it carries
+three layers beyond the mode gate — described in full under
+[Adaptive risk](adaptive-risk.md#signup-specifically):
+
+1. **A per-IP rate limit and a honeypot + submit-timing pair**, both fed to the risk
+   scorer.
+2. **A risk-triggered CAPTCHA** (Cloudflare Turnstile) on a *challenged* signup only —
+   never on every signup, and entirely inert unless
+   [`CBOX_ID_TURNSTILE_*`](../configuration/environment-variables.md#bot-protection-captcha)
+   is configured.
+3. **Deferred environment provisioning.** A self-serve signup creates the account, its
+   owner and its first project immediately, but the **environment** — the routable IdP
+   with its own signing key — is stood up only when the owner opens the verification
+   link in their inbox. An unverified signup therefore costs nothing worth farming.
+
+Because (3) puts a real owner's whole account behind one email, the workspace launchpad
+carries a **resend** control while the environment is held back. It re-sends only to the
+signed-in member's own address (the action accepts a member, never an address), retires
+every link issued before it so exactly one is ever live, answers identically whether or
+not the address is already confirmed — so it cannot be used to test verification state —
+and is throttled to **3 sends per 10 minutes per member**, because outbound mail is the
+resource worth abusing here.
+
 ## End-user consent surfaces
 
 - **OAuth consent (`/oauth/authorize`)** — registered clients requesting access are

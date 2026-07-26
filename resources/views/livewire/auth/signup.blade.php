@@ -7,7 +7,9 @@ use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
+use App\Platform\SignupProvisioner;
 use App\Platform\SsoStart;
+use App\Platform\Turnstile;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Identity\Contracts\EmailVerification;
@@ -18,7 +20,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Database\QueryException;
@@ -43,6 +44,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
     public string $website = '';
 
     public int $renderedAt = 0;
+
+    // Set once the risk scorer has asked this submission to be challenged: the CAPTCHA
+    // widget renders from here on, and the token it produces comes back in
+    // `turnstileToken`. Both stay empty for the overwhelming majority of signups, which
+    // are never challenged and never see a CAPTCHA at all.
+    public bool $challenged = false;
+
+    public string $turnstileToken = '';
 
     public function mount(SignupPolicy $signup): mixed
     {
@@ -73,7 +82,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         ];
     }
 
-    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup, DomainVerification $domains): void
+    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup, DomainVerification $domains, Turnstile $turnstile): void
     {
         // Defense in depth: never create an account when signup isn't open, even
         // if the form was reached or replayed out of band.
@@ -105,6 +114,21 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             return;
         }
 
+        // An elevated-but-not-reject outcome (Challenge / StepUp) is where a CAPTCHA
+        // belongs: the scorer has already decided this submission is unusual, so the
+        // friction lands on it and not on everyone else. Turnstile with no keys
+        // configured verifies as true, so a deployment without it keeps today's flow.
+        if ($risk->shouldStepUp($assessment) && ! $turnstile->verify($this->turnstileToken, request()->ip())) {
+            // Show the widget (this may be the first the submitter sees of it) and burn
+            // the token that failed — Turnstile tokens are single-use, so a retry must
+            // carry a fresh one.
+            $this->challenged = true;
+            $this->turnstileToken = '';
+            $this->addError('email', 'Please complete the verification below, then submit again.');
+
+            return;
+        }
+
         // Tier 2 — on the platform root (cboxid.com), a standalone signup provisions
         // the signer's own ACCOUNT: a workspace, its first member (them), a first
         // project (their first IdP product), and that project's first environment —
@@ -125,7 +149,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             }
 
             try {
-                $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+                // NOTE what this does NOT create: the environment. A self-serve signup
+                // gets its account, its home organization, its owner and its first
+                // project — but the routable, key-bearing IdP is released only once the
+                // owner clicks the link in their inbox (see SignupProvisioner). That is
+                // what makes a bot signup worthless rather than merely inconvenient.
+                $result = app(SignupProvisioner::class)->provisionPending(new AccountBlueprint(
                     accountName: trim($this->organization),
                     ownerEmail: $this->email,
                     ownerName: trim($this->name) ?: null,
@@ -145,11 +174,24 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
                 return;
             }
 
+            $subjectId = $result->member->subject_id;
+
+            if (is_string($subjectId) && $subjectId !== '') {
+                $token = app(EmailVerification::class)->issue($subjectId, $this->email);
+                Mail::to($this->email)->send(new EmailVerificationMail(route('verification.verify', $token)));
+            } else {
+                // No platform root yet (the first-install bootstrap window) — the member
+                // has no subject, so no verification token can be bound to them. Release
+                // the environment immediately rather than stranding the install behind a
+                // link that can never be issued.
+                app(SignupProvisioner::class)->releaseEnvironment($result->member);
+            }
+
             // The buyer administers every environment they own from the root
             // workspace — sign them straight in there, not into an environment's
             // own domain. This is the account plane's single sign-in.
             app(AccountAuth::class)->establish($result->member->id);
-            session()->flash('status', 'Your identity platform is ready.');
+            session()->flash('status', 'Workspace created. Confirm your email to finish setting up your first environment.');
             $this->redirect(route('workspace.home'), navigate: false);
 
             return;
@@ -232,13 +274,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
     }
 
     /**
-     * @return array<string, bool>
+     * @return array<string, bool|string>
      */
     public function with(): array
     {
         // On the platform root this signup mints the signer's OWN IdP, so the page
         // says so; elsewhere it's an ordinary join.
-        return ['createsIdp' => $this->provisionsOwnIdp(app(EnvironmentContext::class))];
+        return [
+            'createsIdp' => $this->provisionsOwnIdp(app(EnvironmentContext::class)),
+            // '' when Turnstile isn't configured — the widget and its script are then
+            // never referenced at all, which is what keeps the CSP tight.
+            'turnstileSiteKey' => app(Turnstile::class)->siteKey(),
+        ];
     }
 
     private function uniqueSlug(Organizations $orgs): string
@@ -308,6 +355,21 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             </div>
             @error('password') <p class="field-error" id="password-error" role="alert">{{ $message }}</p> @enderror
         </div>
+
+        {{-- Risk-triggered CAPTCHA. The host element is present whenever Turnstile is
+             configured (it is what the bundled JS watches), but the widget itself only
+             appears once the risk scorer has challenged this submission — a clean signup
+             never loads Cloudflare's script and never sees a challenge. The token
+             arrives via a window event dispatched from bundled, same-origin JS, so no
+             inline script is needed and the CSP stays script-src 'self'. --}}
+        @if ($turnstileSiteKey !== '')
+            <div data-turnstile-host x-data x-on:cbox-turnstile.window="$wire.set('turnstileToken', $event.detail)">
+                @if ($challenged)
+                    <div wire:ignore class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-callback="cboxTurnstileToken" data-theme="auto"></div>
+                    <p class="mt-2 text-xs" style="color:var(--muted)">A quick check that you're not a bot. It usually completes on its own.</p>
+                @endif
+            </div>
+        @endif
 
         <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="register">
             <span wire:loading.remove wire:target="register">{{ $createsIdp ? 'Create identity platform' : 'Create organization' }}</span>

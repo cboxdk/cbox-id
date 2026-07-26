@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:64f18899-b318-4993-bf22-aae132aa0fbd",
+    "serialNumber": "urn:uuid:6220144a-5155-45f0-9788-ff22ba78b477",
     "version": 1,
     "metadata": {
         "tools": [
@@ -139,6 +139,22 @@
             "version": "v0.58.0",
             "purl": "pkg:composer/cboxdk/laravel-id@v0.58.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-postal@v0.1.1",
+            "group": "cboxdk",
+            "name": "laravel-postal",
+            "version": "v0.1.1",
+            "purl": "pkg:composer/cboxdk/laravel-postal@v0.1.1",
+            "description": "Postal mail server integration for Laravel \u2014 a typed, multi-server send transport plus a verified, event-driven webhook observability spine (delivery, bounce, open, click, DNS).",
             "licenses": [
                 {
                     "license": {

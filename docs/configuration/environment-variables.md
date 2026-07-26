@@ -37,6 +37,26 @@ issuer — resolved per request from the host.
 |---|---|---|---|
 | `CBOX_ID_SIGNUP_MODE` | Who may self-register at `/signup`: `open` (anyone), `invite_only` (public signup closed, admin invitations still work), or `closed` (no self-service at all). Admin/operator provisioning is never gated by this. | `open` | Set to `invite_only` or `closed` for a private/internal deployment. See [Security](../security/_index.md#self-service-signup-modes). |
 
+Note that a self-serve signup provisions the account, its owner and its first project
+immediately, but its **environment** only once the owner confirms their email address —
+so an unverified signup never stands up a routable IdP. Nothing configures this; it is
+how self-serve signup works. See
+[Adaptive risk](../security/adaptive-risk.md#verification-before-provisioning).
+
+### Bot protection (CAPTCHA)
+
+Optional. Wires [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) in
+as the CAPTCHA for a signup the risk scorer **challenges** (it is never shown to
+everyone). Both keys must be set for the feature to exist at all: with either missing,
+no widget renders, no Cloudflare script is loaded, the CSP keeps its strict same-origin
+`script-src`, and signup behaves exactly as it does without the feature. The challenge
+only bites when `RISK_MODE=enforce`.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_TURNSTILE_SITE_KEY` | The Turnstile **site key** (public) — rendered into the widget on a challenged signup, and what opens the CSP to `https://challenges.cloudflare.com`. | *(empty — feature off)* | Set both keys to switch bot protection on. Get them from the Cloudflare dashboard (Turnstile → add a widget for your signup hostname). |
+| `CBOX_ID_TURNSTILE_SECRET_KEY` | The Turnstile **secret key** — used server-side to verify the widget's token against Cloudflare's `siteverify`. Never sent to the browser. | *(empty — feature off)* | As above. Treat it like any other secret; a leaked secret lets someone else validate tokens against your widget. |
+
 ## Enterprise self-serve (SSO, SCIM & Admin Portal)
 
 Gate the self-serve SSO/SCIM screens on a billing-fed entitlement, and tune the
@@ -72,36 +92,37 @@ Laravel `SESSION_*` keys below).
 
 ## OAuth / OIDC endpoint policy
 
-> **The `oauth` and `webauthn` blocks are shadowed in this app.** `config/cbox-id.php`
-> here declares its own `oauth` array (it pins `authorization_endpoint_path` to
-> `/oauth/authorize`, which is a property of this app's routes, not of a deployment) and
-> its own `webauthn` array (`rp_id`, `origin`). Laravel merges a package's config **only
-> at the top level**, so each of those arrays replaces the framework's entirely — every
-> `CBOX_ID_` variable the framework reads from *inside* them is not consulted here, and
-> the built-in code defaults apply instead. Confirm what is actually in effect on your
-> install:
+> **These are read as documented.** Published config is merged **key by key**, not
+> block by block, so this app's partial `oauth` and `webauthn` blocks — it pins
+> `authorization_endpoint_path`, `rp_id` and `origin`, which are properties of this app's
+> routes rather than of a deployment — override only those keys and leave every framework
+> default beside them intact.
+>
+> This was not always true. Laravel's `mergeConfigFrom` is a shallow `array_merge`, so
+> before `cboxdk/laravel-id` v0.57.0 each partial block **replaced** the framework's
+> entirely and every variable below was silently inert. If you are on an older framework
+> release, they still are. Confirm what is actually in effect:
 >
 > ```bash
 > php artisan tinker --execute="var_dump(config('cbox-id.oauth'), config('cbox-id.webauthn'));"
 > ```
 >
-> Rows below marked *(not read in this app)* are documented because the framework
-> declares them and a future release of this app may stop shadowing them. Today they
-> change nothing; the stated default is what runs.
+> A regression test (`tests/Feature/PackageConfigDefaultsTest.php`) asserts that no
+> package default is left unreachable at any depth, so this cannot silently regress.
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_DCR_MODE` | Dynamic Client Registration (RFC 7591) mode. Controls whether clients (e.g. MCP clients) may self-register: `disabled`, `protected` (initial access token required) or `open`. | `disabled` | Enable when you need self-registration; pair with `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` for gated registration. *(not read in this app — registration stays disabled)* |
-| `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` | Bearer token required to register a client when DCR is gated. | *(none)* | Set when DCR is enabled but should not be open. *(not read in this app)* |
-| `CBOX_ID_REQUIRE_PAR` | Require Pushed Authorization Requests (RFC 9126) — clients must push params server-side instead of via the front channel. | `false` | Set `true` to harden the authorization endpoint for FAPI-style deployments. *(not read in this app)* |
-| `CBOX_ID_WEBAUTHN_USER_VERIFICATION` | Require user verification (PIN/biometric) during the passkey ceremony. | `true` | Rarely changed; leave on. *(not read in this app — verification stays required)* |
-| `CBOX_ID_EMBED_ENTITLEMENTS` | Embed entitlement claims into issued tokens. | `true` | Disable if consumers resolve entitlements out-of-band. *(not read in this app)* |
-| `CBOX_ID_ACCESS_TOKEN_TTL` | Lifetime of an issued access token, in seconds. | `900` (15m) | Shorten for higher assurance; lengthen only with a good reason — the refresh token, not a long access token, is the right way to keep a session alive. *(not read in this app)* |
-| `CBOX_ID_DECISIONS_MAX_BATCH` | Maximum number of decisions a single `POST /oauth/decisions` request may ask for. | `50` | Raise only if a resource server genuinely batches more; the endpoint is a hot path. *(not read in this app)* |
-| `CBOX_ID_CIBA_TTL_SECONDS` | How long a CIBA (client-initiated backchannel) authentication request stays pending. | `300` | Match your out-of-band approval window. *(not read in this app)* |
-| `CBOX_ID_CIBA_POLL_INTERVAL` | The `interval` handed back to a CIBA client, in seconds. | `5` | Raise to reduce polling load. *(not read in this app)* |
-| `CBOX_ID_AUTHORIZATION_ENDPOINT_PATH` | The **path** of the interactive authorization endpoint, joined to each environment's own issuer so every tenant advertises it on its own host. | `/oauth/authorize` | Never, in this app: it is set in `config/cbox-id.php` because it describes these routes. *(not read in this app)* |
-| `CBOX_ID_AUTHORIZATION_ENDPOINT` | An **absolute** authorization-endpoint URL, used only when no path is configured. | *(none)* | Avoid. An absolute URL pins every environment to one host, which a client that checks RFC 9207 `iss` will reject. *(not read in this app)* |
+| `CBOX_ID_DCR_MODE` | Dynamic Client Registration (RFC 7591) mode. Controls whether clients (e.g. MCP clients) may self-register: `disabled`, `protected` (initial access token required) or `open`. | `disabled` | Enable when you need self-registration; pair with `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` for gated registration. |
+| `CBOX_ID_DCR_INITIAL_ACCESS_TOKEN` | Bearer token required to register a client when DCR is gated. | *(none)* | Set when DCR is enabled but should not be open. |
+| `CBOX_ID_REQUIRE_PAR` | Require Pushed Authorization Requests (RFC 9126) — clients must push params server-side instead of via the front channel. | `false` | Set `true` to harden the authorization endpoint for FAPI-style deployments. |
+| `CBOX_ID_WEBAUTHN_USER_VERIFICATION` | Require user verification (PIN/biometric) during the passkey ceremony. | `true` | Rarely changed; leave on. |
+| `CBOX_ID_EMBED_ENTITLEMENTS` | Embed entitlement claims into issued tokens. | `true` | Disable if consumers resolve entitlements out-of-band. |
+| `CBOX_ID_ACCESS_TOKEN_TTL` | Lifetime of an issued access token, in seconds. | `900` (15m) | Shorten for higher assurance; lengthen only with a good reason — the refresh token, not a long access token, is the right way to keep a session alive. |
+| `CBOX_ID_DECISIONS_MAX_BATCH` | Maximum number of decisions a single `POST /oauth/decisions` request may ask for. | `50` | Raise only if a resource server genuinely batches more; the endpoint is a hot path. |
+| `CBOX_ID_CIBA_TTL_SECONDS` | How long a CIBA (client-initiated backchannel) authentication request stays pending. | `300` | Match your out-of-band approval window. |
+| `CBOX_ID_CIBA_POLL_INTERVAL` | The `interval` handed back to a CIBA client, in seconds. | `5` | Raise to reduce polling load. |
+| `CBOX_ID_AUTHORIZATION_ENDPOINT_PATH` | The **path** of the interactive authorization endpoint, joined to each environment's own issuer so every tenant advertises it on its own host. | `/oauth/authorize` | Never, in this app: it is set in `config/cbox-id.php` because it describes these routes. |
+| `CBOX_ID_AUTHORIZATION_ENDPOINT` | An **absolute** authorization-endpoint URL, used only when no path is configured. | *(none)* | Avoid. An absolute URL pins every environment to one host, which a client that checks RFC 9207 `iss` will reject. |
 
 ## Webhooks
 

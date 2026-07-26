@@ -34,7 +34,7 @@ function seedRootEnvironment(): Environment
     return $root;
 }
 
-it('provisions an account, member, and environment on a Tier 2 signup', function (): void {
+it('provisions an account and member on a Tier 2 signup, holding the environment back', function (): void {
     seedRootEnvironment();
 
     Volt::test('auth.signup')
@@ -53,11 +53,10 @@ it('provisions an account, member, and environment on a Tier 2 signup', function
     expect($account)->not->toBeNull()
         ->and($account->name)->toBe('Acme');
 
-    // …and the account owns a fresh, isolated environment (its own IdP), distinct
-    // from the Cbox root the signup ran on.
-    $owned = Environment::query()->where('account_id', $account->id)->get();
-    expect($owned)->toHaveCount(1)
-        ->and($owned->first()->is_default)->toBeFalse();
+    // …but NOT an environment: the IdP itself is deferred until the owner proves the
+    // address (see SignupDeferredEnvironmentTest). A signup that never verifies
+    // therefore costs a routable environment nothing.
+    expect(Environment::query()->where('account_id', $account->id)->get())->toHaveCount(0);
 
     // The member is signed into the workspace plane immediately.
     expect(session()->get(AccountAuth::SESSION_KEY))->toBe($member->id);

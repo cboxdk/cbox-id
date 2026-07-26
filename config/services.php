@@ -36,6 +36,17 @@ return [
     ],
 
     /*
+     * Cloudflare Turnstile — the CAPTCHA shown on a signup the risk scorer asks to
+     * challenge (see App\Platform\Turnstile). Entirely optional: with no keys the
+     * widget never renders, no third-party script is allowed by the CSP, and signup
+     * behaves exactly as it does without the feature.
+     */
+    'turnstile' => [
+        'site_key' => env('CBOX_ID_TURNSTILE_SITE_KEY'),
+        'secret_key' => env('CBOX_ID_TURNSTILE_SECRET_KEY'),
+    ],
+
+    /*
      * Social login providers. The self-host operator configures their own OAuth
      * apps; a provider only appears on the login screen once its credentials are
      * set. Account linking is EXPLICIT: a social identity only reaches an existing
