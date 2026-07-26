@@ -16,7 +16,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
  * independently of the platform database. The record is a flat, JSON-serializable
  * shape decoupled from the Eloquent model.
  */
-final readonly class AuditExportRecord
+readonly class AuditExportRecord
 {
     /**
      * @param  array<string, mixed>  $context

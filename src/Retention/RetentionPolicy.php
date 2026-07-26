@@ -25,7 +25,7 @@ use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
  * {@see apply()} returns a report whose `entriesDeleted` is always 0. The console
  * and docs state this plainly: entries are archived, not erased.
  */
-final class RetentionPolicy
+class RetentionPolicy
 {
     public function __construct(
         private readonly AuditLog $audit,

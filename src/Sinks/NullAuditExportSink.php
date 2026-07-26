@@ -13,7 +13,7 @@ use Cbox\Id\Compliance\ValueObjects\AuditExportBatch;
  * without configuring a sink is safe and costs nothing. Configure a `jsonl` or
  * `http` sink (via `compliance.export.sink`) to ship the trail somewhere real.
  */
-final class NullAuditExportSink implements AuditExportSink
+class NullAuditExportSink implements AuditExportSink
 {
     public function export(AuditExportBatch $batch): void
     {

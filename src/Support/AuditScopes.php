@@ -11,7 +11,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
  * the system trail (`null`). `null` selects the system scope inside the audit
  * reader/log, so the list is directly usable as `?string $organizationId` arguments.
  */
-final class AuditScopes
+class AuditScopes
 {
     /**
      * @return list<string|null>

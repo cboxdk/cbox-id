@@ -12,7 +12,7 @@ use Cbox\Id\Compliance\Contracts\AuditExportSink;
  * belongs to and the sequence range it covers, so a sink can dedupe idempotently
  * (scope + `[fromSequence, toSequence]`) and a reader can confirm continuity.
  */
-final readonly class AuditExportBatch
+readonly class AuditExportBatch
 {
     /**
      * @param  list<AuditExportRecord>  $records

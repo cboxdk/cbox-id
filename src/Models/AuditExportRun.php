@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-final class AuditExportRun extends Model
+class AuditExportRun extends Model
 {
     public const STATUS_COMPLETED = 'completed';
 

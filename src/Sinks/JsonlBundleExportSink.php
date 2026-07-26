@@ -19,7 +19,7 @@ use Illuminate\Contracts\Filesystem\Filesystem;
  * It throws if the disk write fails, so the engine holds its cursor and re-offers
  * the batch — the archive is never silently short a segment.
  */
-final class JsonlBundleExportSink implements AuditExportSink
+class JsonlBundleExportSink implements AuditExportSink
 {
     public function __construct(
         private readonly Filesystem $disk,

@@ -13,7 +13,7 @@ use Cbox\Id\Compliance\ValueObjects\AuditExportRecord;
  * every batch handed to it and flattens their records, so a test can prove exactly
  * which entries were shipped (and that a resumed run ships only the new ones).
  */
-final class FakeAuditExportSink implements AuditExportSink
+class FakeAuditExportSink implements AuditExportSink
 {
     /** @var list<AuditExportBatch> */
     private array $batches = [];

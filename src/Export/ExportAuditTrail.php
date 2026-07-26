@@ -27,7 +27,7 @@ use Throwable;
  * (its entries are re-offered next run) and the engine moves on, recording the run
  * as failed rather than aborting the process or corrupting other scopes' progress.
  */
-final class ExportAuditTrail
+class ExportAuditTrail
 {
     private const SYSTEM_SCOPE = '__system__';
 

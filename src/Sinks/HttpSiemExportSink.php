@@ -18,7 +18,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
  * cursor and re-offers the batch on the next run, so a SIEM outage degrades to
  * "export lag", never to dropped entries.
  */
-final class HttpSiemExportSink implements AuditExportSink
+class HttpSiemExportSink implements AuditExportSink
 {
     public function __construct(
         private readonly HttpFactory $http,

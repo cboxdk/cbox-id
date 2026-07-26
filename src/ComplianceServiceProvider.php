@@ -38,7 +38,7 @@ use Throwable;
  * (nothing is exported, the cursor never moves), so installing without wiring a
  * destination is safe and the open framework stays free of any SIEM dependency.
  */
-final class ComplianceServiceProvider extends ServiceProvider
+class ComplianceServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

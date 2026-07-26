@@ -14,7 +14,7 @@ use Cbox\Id\Compliance\ValueObjects\AuditExportRecord;
  * The bundle is machine-readable (portable JSON). It intentionally does NOT offer
  * erasure — see {@see SubjectDataExport} for why that is scoped out honestly.
  */
-final readonly class SubjectDataBundle
+readonly class SubjectDataBundle
 {
     /**
      * @param  list<AuditExportRecord>  $auditTrail

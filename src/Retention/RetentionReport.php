@@ -8,7 +8,7 @@ namespace Cbox\Id\Compliance\Retention;
  * The result of applying the retention policy. Deliberately has no "deleted" count:
  * retention over a hash-chained trail never removes rows (see {@see RetentionPolicy}).
  */
-final readonly class RetentionReport
+readonly class RetentionReport
 {
     /**
      * @param  list<string>  $checkpointedScopes  scopes anchored by a fresh checkpoint

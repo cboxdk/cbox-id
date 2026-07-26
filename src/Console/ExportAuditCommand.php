@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * resumable (cursor-based), so it is safe to run on a schedule — e.g. every few
  * minutes from the host's console kernel. With the inert null sink it is a no-op.
  */
-final class ExportAuditCommand extends Command
+class ExportAuditCommand extends Command
 {
     protected $signature = 'id-compliance:export';
 

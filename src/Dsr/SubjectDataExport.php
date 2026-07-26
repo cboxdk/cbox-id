@@ -26,7 +26,7 @@ use Cbox\Id\Compliance\ValueObjects\AuditExportRecord;
  *    subject is only the `target_id` need a target filter the reader does not yet
  *    expose — also a framework-seam follow-up.
  */
-final class SubjectDataExport
+class SubjectDataExport
 {
     private const PAGE_SIZE = 200;
 
