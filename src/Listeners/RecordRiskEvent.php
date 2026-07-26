@@ -14,7 +14,7 @@ use Throwable;
  * console to review. It fails open — a write error is swallowed, never propagated
  * — because risk *logging* must never be what breaks a sign-in.
  */
-final class RecordRiskEvent
+class RecordRiskEvent
 {
     public function handle(RiskAssessed $event): void
     {

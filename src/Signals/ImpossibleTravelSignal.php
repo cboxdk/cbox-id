@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * Locations are keyed by the HMAC'd subject only; the last-seen point is stored
  * with a TTL and overwritten each sign-in, so no durable location history is kept.
  */
-final class ImpossibleTravelSignal implements Signal
+class ImpossibleTravelSignal implements Signal
 {
     public function __construct(
         private readonly GeoLocator $locator,

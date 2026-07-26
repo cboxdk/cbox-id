@@ -21,7 +21,7 @@ use Illuminate\Contracts\Cache\Repository as Cache;
  * an account ever makes is treated as known (there's no prior device to be "new"
  * relative to), so enrolment isn't punished — only *subsequent* new devices score.
  */
-final class NewDeviceSignal implements Signal
+class NewDeviceSignal implements Signal
 {
     public function __construct(
         private readonly SubjectKey $subjectKey,

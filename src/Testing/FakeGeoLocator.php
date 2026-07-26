@@ -12,7 +12,7 @@ use Cbox\Id\RiskPlus\Geo\Coordinates;
  * local development, with no GeoIP database. Bind it in place of the null locator
  * to exercise the impossible-travel signal.
  */
-final class FakeGeoLocator implements GeoLocator
+class FakeGeoLocator implements GeoLocator
 {
     /**
      * @var array<string, Coordinates>

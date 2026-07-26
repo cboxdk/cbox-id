@@ -16,7 +16,7 @@ use Cbox\Risk\ValueObjects\RiskContext;
  * laravel-risk's velocity signal). Returns null when there's nothing to key on, so
  * the signal cleanly no-ops rather than tracking anonymous traffic.
  */
-final readonly class SubjectKey
+readonly class SubjectKey
 {
     public function __construct(private string $secret) {}
 

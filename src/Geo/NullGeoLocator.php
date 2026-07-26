@@ -12,7 +12,7 @@ use Cbox\Id\RiskPlus\Contracts\GeoLocator;
  * without wiring a real GeoLocator is safe — no false positives from a missing
  * geo source. Bind a real {@see GeoLocator} to switch geo scoring on.
  */
-final class NullGeoLocator implements GeoLocator
+class NullGeoLocator implements GeoLocator
 {
     public function locate(string $ip): ?Coordinates
     {

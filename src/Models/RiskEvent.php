@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property array<int, string> $reasons
  * @property Carbon $created_at
  */
-final class RiskEvent extends Model
+class RiskEvent extends Model
 {
     public const UPDATED_AT = null;
 

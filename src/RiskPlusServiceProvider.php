@@ -30,7 +30,7 @@ use Throwable;
  * elevated events — all with zero edits to the host. Removed, the risk pipeline
  * falls back to laravel-risk's free-core signals and the console area disappears.
  */
-final class RiskPlusServiceProvider extends ServiceProvider
+class RiskPlusServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

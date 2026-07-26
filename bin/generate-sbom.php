@@ -42,7 +42,7 @@ $bom = [
     'metadata' => [
         'tools' => [[
             'vendor' => 'cboxdk',
-            'name' => 'laravel-billing-client-sbom',
+            'name' => 'laravel-id-risk-plus-sbom',
             'version' => '1.0.0',
         ]],
         'component' => [
@@ -121,7 +121,7 @@ function licenseEntries(array|string $license): array
 
 function deterministicUuid(string $seed): string
 {
-    $hash = md5('cboxdk/laravel-billing-client:'.$seed);
+    $hash = md5('cboxdk/laravel-id-risk-plus:'.$seed);
 
     return sprintf(
         '%s-%s-4%s-%s-%s',

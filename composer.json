@@ -36,7 +36,7 @@
         "test": "pest",
         "license-check": "@php bin/check-licenses.php",
         "sbom": "@php bin/generate-sbom.php",
-        "qa": ["@lint", "@analyse", "@test", "@license-check", "@composer audit"]
+        "qa": ["@lint", "@analyse", "@test", "@license-check", "@composer audit --no-dev"]
     },
     "extra": {
         "laravel": {

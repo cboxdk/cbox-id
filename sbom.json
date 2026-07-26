@@ -1,13 +1,13 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:2a860bed-cb90-406d-ab43-7aa5bb90c506",
+    "serialNumber": "urn:uuid:ee3f6c22-7e80-484e-9222-dde84054d311",
     "version": 1,
     "metadata": {
         "tools": [
             {
                 "vendor": "cboxdk",
-                "name": "laravel-billing-client-sbom",
+                "name": "laravel-id-risk-plus-sbom",
                 "version": "1.0.0"
             }
         ],
@@ -197,11 +197,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.14.2",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.14.2",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.14.2",
+            "version": "7.15.1",
+            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {
@@ -229,11 +229,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/psr7@2.12.5",
+            "bom-ref": "pkg:composer/guzzlehttp/psr7@2.13.0",
             "group": "guzzlehttp",
             "name": "psr7",
-            "version": "2.12.5",
-            "purl": "pkg:composer/guzzlehttp/psr7@2.12.5",
+            "version": "2.13.0",
+            "purl": "pkg:composer/guzzlehttp/psr7@2.13.0",
             "description": "PSR-7 message implementation that also provides common utility methods",
             "licenses": [
                 {

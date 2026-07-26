@@ -9,7 +9,7 @@ namespace Cbox\Id\RiskPlus\Geo;
  * accurate to well within the tolerance an impossible-travel check needs (we care
  * about "1000 km in 5 minutes", not metres).
  */
-final readonly class Coordinates
+readonly class Coordinates
 {
     public function __construct(
         public float $latitude,
