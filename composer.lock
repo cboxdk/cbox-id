@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8fb1fe10431fab05518e06cefef41602",
+    "content-hash": "460ed87493e12969284bfd44939dde38",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -567,6 +567,92 @@
                 "source": "https://github.com/cboxdk/laravel-id/tree/v0.58.0"
             },
             "time": "2026-07-26T07:09:38+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-postal",
+            "version": "v0.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-postal.git",
+                "reference": "250f6bee0aa06482e5a09f4927cf2eff2a4b517f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-postal/zipball/250f6bee0aa06482e5a09f4927cf2eff2a4b517f",
+                "reference": "250f6bee0aa06482e5a09f4927cf2eff2a4b517f",
+                "shasum": ""
+            },
+            "require": {
+                "ext-openssl": "*",
+                "illuminate/console": "^12.0 || ^13.0",
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/database": "^12.0 || ^13.0",
+                "illuminate/http": "^12.0 || ^13.0",
+                "illuminate/mail": "^12.0 || ^13.0",
+                "illuminate/queue": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "php": "^8.4",
+                "symfony/mailer": "^7.4 || ^8.0"
+            },
+            "require-dev": {
+                "cboxdk/laravel-health": "^2.0",
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^3.5 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0 || ^4.0"
+            },
+            "suggest": {
+                "cboxdk/laravel-health": "Register Cbox\\LaravelPostal\\Health\\PostalConnectionCheck in health.checks to monitor every configured Postal server"
+            },
+            "bin": [
+                "bin/check-licenses.php",
+                "bin/generate-sbom.php"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Postal": "Cbox\\LaravelPostal\\Facades\\Postal"
+                    },
+                    "providers": [
+                        "Cbox\\LaravelPostal\\LaravelPostalServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\LaravelPostal\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Postal mail server integration for Laravel — a typed, multi-server send transport plus a verified, event-driven webhook observability spine (delivery, bounce, open, click, DNS).",
+            "homepage": "https://github.com/cboxdk/laravel-postal",
+            "keywords": [
+                "bounce-handling",
+                "deliverability",
+                "email",
+                "laravel",
+                "mail",
+                "mail-transport",
+                "postal",
+                "webhooks"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-postal/issues",
+                "source": "https://github.com/cboxdk/laravel-postal/tree/v0.1.1"
+            },
+            "time": "2026-07-20T21:28:14+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",

@@ -37,6 +37,14 @@ return [
 
     'mailers' => [
 
+        // Self-hosted Postal (postal.cbox.dk). The transport itself is registered by
+        // cboxdk/laravel-postal; this entry is what MAIL_MAILER=postal resolves against.
+        // Configured by POSTAL_URL + POSTAL_KEY (the per-server X-Server-API-Key), so
+        // each product sends through its own Postal mail server.
+        'postal' => [
+            'transport' => 'postal',
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
