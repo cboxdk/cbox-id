@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Testing\InteractsWithTenancy;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
@@ -121,7 +122,7 @@ it('jumps from a user result to that user\'s organization in its plane', functio
     $orgId = $this->runAsEnvironment($planeB, function (): string {
         $org = app(Organizations::class)->create(new NewOrganization('Gamma Org', 'gamma-org'));
         $user = app(Subjects::class)->create('gamma@acme.test', 'Gamma User', 'supersecret123');
-        app(Memberships::class)->add($org->id, $user->id, 'owner');
+        app(Memberships::class)->add($org->id, $user->id, MembershipRole::Owner);
 
         return $org->id;
     });

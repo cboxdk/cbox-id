@@ -20,7 +20,7 @@ function signInUserHttp(): string
 {
     $subject = app(Subjects::class)->create('member@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-ret'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);

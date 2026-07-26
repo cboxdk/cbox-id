@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -67,7 +68,7 @@ it('has no WCAG 2.1 A/AA violations on the public auth pages', function (string 
 it('has no WCAG 2.1 A/AA violations on the console pages', function (string $path): void {
     $subject = app(Subjects::class)->create('a11y@acme.test', 'A11y Admin', 'super-secret-1234');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     // A magic-link redemption establishes the platform session for later requests.
     $this->get('/magic/'.app(MagicLink::class)->request('a11y@acme.test'));

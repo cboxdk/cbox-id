@@ -15,6 +15,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -39,7 +40,7 @@ it('binds the real breach check so requireBreachCheck is not silently inert', fu
 it('refuses password sign-in for a subject whose organization mandates SSO', function (): void {
     $subject = app(Subjects::class)->create('sso@acme.test', 'Dana', 'a-strong-unbreached-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.uniqid()));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
 
     $auth = app(PlatformAuth::class);
     $request = Request::create('/login', 'POST');
@@ -80,8 +81,8 @@ it('refuses password sign-in when ANY of the subject\'s organizations mandates S
     $strict = $orgs->create(new NewOrganization('Strict Corp', 'strict-'.uniqid()));
 
     $memberships = app(Memberships::class);
-    $memberships->add($lax->id, $subject->id, 'member');
-    $memberships->add($strict->id, $subject->id, 'member');
+    $memberships->add($lax->id, $subject->id, MembershipRole::Member);
+    $memberships->add($strict->id, $subject->id, MembershipRole::Member);
 
     app(AuthPolicies::class)->setForOrganization($strict->id, new AuthPolicy(sso: SsoEnforcement::Required));
 

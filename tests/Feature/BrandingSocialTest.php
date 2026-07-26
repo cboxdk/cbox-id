@@ -14,7 +14,7 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
 it('lets an admin theme the branded login page via the appearance editor', function () {
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
 
     // Branding now lives in the dedicated Appearance editor (Theme Editor), which
     // writes the full appearance block AND keeps the legacy brand_color in sync.
@@ -34,7 +34,7 @@ it('lets an admin theme the branded login page via the appearance editor', funct
 });
 
 it('points org settings at the appearance editor', function () {
-    actingAsRole('owner');
+    actingAsRole(MembershipRole::Owner);
 
     // The old inline brand-colour form is gone; settings now links to the editor.
     Volt::test('settings')->assertSee(route('appearance'));
@@ -45,7 +45,7 @@ it('redirects a member away from org settings to their own account', function ()
     // GET /settings runs the real middleware + component mount as this member.
     $subject = app(Subjects::class)->create('plainmember@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-plain'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
@@ -57,7 +57,7 @@ it('redirects a member away from org settings to their own account', function ()
 });
 
 it('lets an admin rename their organization', function () {
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
 
     Volt::test('settings')
         ->set('orgName', 'Acme Rocketry')
@@ -68,7 +68,7 @@ it('lets an admin rename their organization', function () {
 });
 
 it('rejects an empty organization name', function () {
-    actingAsRole('owner');
+    actingAsRole(MembershipRole::Owner);
 
     Volt::test('settings')->set('orgName', '')->call('rename')->assertHasErrors('orgName');
 });

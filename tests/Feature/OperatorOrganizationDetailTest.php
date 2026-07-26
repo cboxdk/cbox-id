@@ -14,6 +14,7 @@ use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\Kernel\Tenancy\Testing\InteractsWithTenancy;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -37,7 +38,7 @@ it('shows a tenant\'s name, members, verified domain and entitlement in the curr
 
     $org = app(Organizations::class)->create(new NewOrganization('Acme Inc', 'acme-inc'));
     $member = app(Subjects::class)->create('member@acme.test', 'Member One', 'supersecret123');
-    app(Memberships::class)->add($org->id, $member->id, 'owner');
+    app(Memberships::class)->add($org->id, $member->id, MembershipRole::Owner);
     $this->makeVerifiedDomain($org->id, 'acme.test');
     app(EntitlementWriter::class)->set($org->id, new EntitlementInput('sso', ['enabled' => true]), EntitlementSource::Manual);
 

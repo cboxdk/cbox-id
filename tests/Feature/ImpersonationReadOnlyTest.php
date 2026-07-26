@@ -26,13 +26,13 @@ use Livewire\Volt\Volt;
  *
  * @return array{0: Subject, 1: Organization}
  */
-function impersonatingSubject(string $role = 'owner'): array
+function impersonatingSubject(MembershipRole $role = MembershipRole::Owner): array
 {
     $subject = app(Subjects::class)->create('imp-subject@acme.test', 'Impersonated', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-impersonated'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['impersonation']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     session()->put(Impersonation::SESSION_KEY, [
         'operator' => 'op_readonly',

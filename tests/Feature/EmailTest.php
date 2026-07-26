@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Mail\MagicLinkMail;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
 
@@ -20,7 +21,7 @@ it('emails a single-use magic link', function () {
 
 it('emails an invitation when an admin invites a member', function () {
     Mail::fake();
-    actingAsRole('owner');
+    actingAsRole(MembershipRole::Owner);
 
     Volt::test('members')
         ->set('inviteEmail', 'invitee@acme.test')

@@ -11,6 +11,7 @@ use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 
@@ -127,7 +128,7 @@ function accountWithOrg(string $email): array
 {
     $subject = app(Subjects::class)->create($email, 'Holder', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.substr(md5($email), 0, 6)));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     return [$subject, $org];
 }

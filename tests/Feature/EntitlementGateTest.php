@@ -20,13 +20,13 @@ use Livewire\Volt\Volt;
  * Sign an admin into a fresh org and return its id. The org starts with NO
  * entitlements — deny-by-default is the thing under test.
  */
-function gateAdmin(string $slug = 'gate-acme', string $role = 'owner'): string
+function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = MembershipRole::Owner): string
 {
     $subject = app(Subjects::class)->create("admin@{$slug}.test", 'Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return $org->id;
 }

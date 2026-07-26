@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.24.0] - 2026-07-26
+
+Requires `cboxdk/laravel-id ^0.58`, which made `MembershipRole` a type rather than a
+string on the membership and invitation contracts. Adopting it surfaced four latent
+bugs the type change had nothing to do with.
+
+### Fixed
+
+- **Any page listing pending invitations would have 500'd.** `Invitation::$role` is now
+  cast to the enum upstream, and two templates still called `ucfirst()` on it —
+  `environment/organizations/show.blade.php` and `members.blade.php`. Neither had a test.
+- **The role dropdowns never pre-selected a member's current role**, because
+  `@selected($m['role'] === $val)` compared an enum case to a string. Pre-existing.
+- Role validation is now deny-by-default against the *assignable* set rather than merely
+  a valid enum case. `MembershipRole::tryFrom('viewer')` returns a real case that this
+  console must never assign, so a non-null check was not sufficient — `'viewer'` is now
+  refused exactly like `'archduke'`.
+- The three JS-invoked role actions had no field to report into and previously used
+  `in_array()`; they now go through the same deny-by-default parse.
+
+### Changed
+
+- New `App\Platform\OrgRoles` — the subject-plane analogue of the framework's
+  `AccountRole::assignable()`, exposing the assignable set, a validation rule, a message
+  naming the accepted roles, and a parse for actions with no field. All four role selects
+  now render from it instead of hand-written option triples, and each gained an `@error`
+  sink so the message is visible.
+- `cboxdk/laravel-id` floor raised to `>=0.58` — the app does not run below it.
+
+### Testing
+
+- Four regression tests drive each affected form with both an unknown value and a
+  real-but-unassignable enum case, asserting a field error rather than a 500, no side
+  effect, and no mail. Mutation-checked: swapping the guard back to `from()` makes them
+  fail with the `ValueError` at the component line, so they pin the distinction rather
+  than the presence of a rule.
+
 ## [0.23.0] - 2026-07-26
 
 Requires `cboxdk/laravel-id ^0.57`. Output of a whole-platform review loop plus a

@@ -6,6 +6,7 @@ use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\CurrentUser;
 use App\Platform\OrgAccessRoles;
+use App\Platform\OrgRoles;
 use App\Platform\SodGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
@@ -35,13 +36,35 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     #[Validate('required|email|max:190')]
     public string $inviteEmail = '';
 
-    #[Validate('required|in:member,admin,owner')]
+    /**
+     * Rules live in {@see self::rules()} rather than a #[Validate] attribute: the rule
+     * is a Rule object derived from {@see OrgRoles::assignable()}, which an attribute
+     * (a constant expression) cannot express — and a hand-copied `in:` list is exactly
+     * the drift this enum exists to prevent.
+     */
     public string $inviteRole = 'member';
 
     /** @var array<int, string> Access-role ids to grant the invitee on acceptance. */
     public array $inviteAccessRoles = [];
 
     public bool $inviting = false;
+
+    /**
+     * Merged with the #[Validate] attribute rules by Livewire, so `$this->validate()`
+     * covers both.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    public function rules(): array
+    {
+        return ['inviteRole' => ['required', OrgRoles::rule()]];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return ['inviteRole' => OrgRoles::message()];
+    }
 
     /** The member whose access-roles panel is expanded, if any. */
     public ?string $managingUserId = null;
@@ -99,8 +122,12 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $this->authorizeAdmin();
         $this->validate();
 
+        // Safe to parse rather than tryFrom: the rule above is derived from the same
+        // assignable set, so a value that reached here is a case of the enum.
+        $role = MembershipRole::from($this->inviteRole);
+
         // Only an owner may invite someone straight to owner.
-        abort_if($this->inviteRole === 'owner' && ! app(CurrentUser::class)->isOwner(), 403);
+        abort_if($role === MembershipRole::Owner && ! app(CurrentUser::class)->isOwner(), 403);
 
         $me = app(CurrentUser::class);
         $email = $this->inviteEmail;
@@ -119,7 +146,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         // Create a PENDING invitation — membership is granted only when the
         // invitee accepts via the emailed token. No one is added without consent.
-        $pending = $invitations->invite($me->organizationId() ?? '', $email, $this->inviteRole, invitedBy: $me->id());
+        $pending = $invitations->invite($me->organizationId() ?? '', $email, $role, invitedBy: $me->id());
 
         Mail::to($email)->send(new InvitationMail(
             organization: $me->organization()->name ?? 'your team',
@@ -178,17 +205,22 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     {
         $this->authorizeAdmin();
 
-        if (! in_array($role, ['member', 'admin', 'owner'], true)) {
+        // Invoked from JS with the <select>'s value, so the role is untrusted and there
+        // is no form field to report into: an unassignable or unknown role is refused
+        // outright rather than coerced to a default.
+        $next = OrgRoles::parse($role);
+
+        if ($next === null) {
             return;
         }
 
         // Only an owner may grant the owner role, and only an owner may act on an
         // existing owner (an admin cannot demote the org's owner).
-        abort_if($role === 'owner' && ! app(CurrentUser::class)->isOwner(), 403);
+        abort_if($next === MembershipRole::Owner && ! app(CurrentUser::class)->isOwner(), 403);
         abort_if($this->isOwner($userId, $memberships) && ! app(CurrentUser::class)->isOwner(), 403);
 
         try {
-            $memberships->changeRole($this->orgId(), $userId, $role);
+            $memberships->changeRole($this->orgId(), $userId, $next);
         } catch (LastOwner) {
             // Surface as an announced error toast, NOT addError('inviteEmail', …): the
             // only @error('inviteEmail') sink lives inside the collapsed invite form, so
@@ -221,7 +253,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
     private function isOwner(string $userId, Memberships $memberships): bool
     {
-        return $memberships->of($this->orgId(), $userId)?->role === \Cbox\Id\Organization\Enums\MembershipRole::Owner;
+        return $memberships->of($this->orgId(), $userId)?->role === MembershipRole::Owner;
     }
 
     /** @return array<string, mixed> */
@@ -305,6 +337,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             'appNames' => $appNames,
             'assignmentsByUser' => $assignmentsByUser,
             'permsByRole' => $permsByRole,
+            'assignableRoles' => OrgRoles::assignable(),
         ];
     }
 
@@ -345,10 +378,11 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                 <div>
                     <label class="label" for="inviteRole">Workspace access</label>
                     <select wire:model="inviteRole" id="inviteRole" class="select">
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                        <option value="owner">Owner</option>
+                        @foreach ($assignableRoles as $role)
+                            <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                        @endforeach
                     </select>
+                    @error('inviteRole') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -388,7 +422,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                     <li wire:key="invite-{{ $invite->id }}" class="px-5 py-3 border-b flex items-center justify-between gap-4" style="border-color:var(--border)">
                         <div class="min-w-0">
                             <p class="text-sm font-medium truncate">{{ $invite->email }}</p>
-                            <p class="text-xs" style="color:var(--muted-foreground)">Invited as {{ ucfirst($invite->role) }} · expires {{ $invite->expires_at?->diffForHumans() }}</p>
+                            <p class="text-xs" style="color:var(--muted-foreground)">Invited as {{ $invite->role->label() }} · expires {{ $invite->expires_at?->diffForHumans() }}</p>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="cbx-pill cbx-pill--warning"><span class="dot"></span> Pending</span>
@@ -426,8 +460,8 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                     <select class="select"
                                             aria-label="Role for {{ $row['subject']?->name ?? $row['subject']?->email ?? 'this member' }}"
                                             wire:change="setRole('{{ $row['id'] }}', $event.target.value)">
-                                        @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $label)
-                                            <option value="{{ $val }}" @selected($row['role'] === $val)>{{ $label }}</option>
+                                        @foreach ($assignableRoles as $role)
+                                            <option value="{{ $role->value }}" @selected($row['role'] === $role)>{{ $role->label() }}</option>
                                         @endforeach
                                     </select>
                                 @else

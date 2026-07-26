@@ -18,13 +18,13 @@ use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
-function vaultAdmin(string $role = 'owner'): string
+function vaultAdmin(MembershipRole $role = MembershipRole::Owner): string
 {
     $subject = app(Subjects::class)->create('vault@acme.test', 'Vault Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-vault'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return $org->id;
 }
@@ -77,7 +77,7 @@ it('revokes a secret', function (): void {
 });
 
 it('forbids a non-admin member', function (): void {
-    vaultAdmin('member');
+    vaultAdmin(MembershipRole::Member);
 
     Volt::test('vault')->assertForbidden();
 });

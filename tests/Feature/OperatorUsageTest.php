@@ -12,6 +12,7 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Testing\InteractsWithTenancy;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
@@ -63,7 +64,7 @@ it('sums headline totals and breaks them down per environment across every plane
 
         $uA1 = app(Subjects::class)->create('a1@acme.test', 'A One', 'supersecret123');
         $uA2 = app(Subjects::class)->create('a2@acme.test', 'A Two', 'supersecret123');
-        app(Memberships::class)->add($orgA1->id, $uA1->id, 'owner');
+        app(Memberships::class)->add($orgA1->id, $uA1->id, MembershipRole::Owner);
 
         activeSessionFor($uA1->id);
         // A revoked session must NOT count towards "active".
@@ -79,7 +80,7 @@ it('sums headline totals and breaks them down per environment across every plane
     $this->runAsEnvironment($planeB, function (): void {
         $orgB1 = app(Organizations::class)->create(new NewOrganization('Gamma B', 'gamma-b'));
         $uB1 = app(Subjects::class)->create('b1@gamma.test', 'B One', 'supersecret123');
-        app(Memberships::class)->add($orgB1->id, $uB1->id, 'owner');
+        app(Memberships::class)->add($orgB1->id, $uB1->id, MembershipRole::Owner);
         activeSessionFor($uB1->id);
     });
 
@@ -112,8 +113,8 @@ it('ranks top organizations by member count across planes, each linking to its p
         $orgA1 = app(Organizations::class)->create(new NewOrganization('Acme A', 'acme-a'));
         $u1 = app(Subjects::class)->create('m1@acme.test', 'M1', 'supersecret123');
         $u2 = app(Subjects::class)->create('m2@acme.test', 'M2', 'supersecret123');
-        app(Memberships::class)->add($orgA1->id, $u1->id, 'owner');
-        app(Memberships::class)->add($orgA1->id, $u2->id, 'member');
+        app(Memberships::class)->add($orgA1->id, $u1->id, MembershipRole::Owner);
+        app(Memberships::class)->add($orgA1->id, $u2->id, MembershipRole::Member);
 
         return $orgA1->id;
     });
@@ -121,7 +122,7 @@ it('ranks top organizations by member count across planes, each linking to its p
     $orgB1Id = $this->runAsEnvironment($planeB, function (): string {
         $orgB1 = app(Organizations::class)->create(new NewOrganization('Gamma B', 'gamma-b'));
         $u3 = app(Subjects::class)->create('m3@gamma.test', 'M3', 'supersecret123');
-        app(Memberships::class)->add($orgB1->id, $u3->id, 'owner');
+        app(Memberships::class)->add($orgB1->id, $u3->id, MembershipRole::Owner);
 
         return $orgB1->id;
     });
@@ -166,7 +167,7 @@ it('shows the per-tenant usage panel with member, MFA, domain and sign-in metric
     $userIds = [];
     foreach (range(1, 4) as $i) {
         $user = app(Subjects::class)->create("member{$i}@acme.test", "Member {$i}", 'supersecret123');
-        app(Memberships::class)->add($org->id, $user->id, $i === 1 ? 'owner' : 'member');
+        app(Memberships::class)->add($org->id, $user->id, $i === 1 ? MembershipRole::Owner : MembershipRole::Member);
         $userIds[] = $user->id;
     }
     foreach ([$userIds[0], $userIds[1]] as $mfaUserId) {

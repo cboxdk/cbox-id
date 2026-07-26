@@ -9,6 +9,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\SamlIdp\Testing\InteractsWithSamlIdp;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -24,7 +25,7 @@ function samlSubjectSession(string $email = 'sso.user@sp-test.example'): string
 {
     $subject = app(Subjects::class)->create($email, 'SSO User', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'saml-'.substr(md5($email), 0, 8)));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     return app(SessionManager::class)->start($subject->id, $org->id, ['pwd'])->id;
 }

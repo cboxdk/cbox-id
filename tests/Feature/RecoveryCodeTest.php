@@ -18,7 +18,7 @@ function signedInOwner(): string
 {
     $subject = app(Subjects::class)->create('mfa-owner@acme.test', 'MFA Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-mfa'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 

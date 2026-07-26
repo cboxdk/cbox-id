@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -17,7 +18,7 @@ function pluginAdmin(): void
 {
     $subject = app(Subjects::class)->create('plug@acme.test', 'Plug Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-plug'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
 }

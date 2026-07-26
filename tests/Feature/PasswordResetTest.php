@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -22,7 +23,7 @@ function resetAccount(string $email = 'dana@acme.test'): string
 {
     $subject = app(Subjects::class)->create($email, 'Dana', 'old-password-1234');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.substr(md5($email), 0, 6)));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     return $subject->id;
 }

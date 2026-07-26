@@ -18,7 +18,7 @@ function signInAdminHttp(): void
 {
     $subject = app(Subjects::class)->create('smoke@acme.test', 'Smoke Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-smoke'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
 
     // The Authenticate middleware reads this session key and rebuilds CurrentUser.

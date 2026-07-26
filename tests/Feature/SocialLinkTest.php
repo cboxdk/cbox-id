@@ -7,6 +7,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Livewire\Volt\Volt;
 
 it('links a pending social identity once the user signs in to the existing account', function () {
@@ -46,7 +47,7 @@ it('does not apply a pending social link whose email differs from the signed-in 
 
 it('shows connected accounts and lets a user disconnect one', function () {
     config(['services.google.client_id' => 'client', 'services.google.client_secret' => 'secret']);
-    actingAsRole('owner');
+    actingAsRole(MembershipRole::Owner);
     $id = app(CurrentUser::class)->id();
 
     // The user explicitly linked Google earlier.
@@ -64,7 +65,7 @@ it('shows connected accounts and lets a user disconnect one', function () {
 });
 
 it('resolves a returning linked social identity back to the same account', function () {
-    actingAsRole('owner');
+    actingAsRole(MembershipRole::Owner);
     $id = app(CurrentUser::class)->id();
     $subjects = app(Subjects::class);
 

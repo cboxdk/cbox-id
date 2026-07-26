@@ -16,13 +16,13 @@ use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
-function hooksAdmin(string $role = 'owner'): string
+function hooksAdmin(MembershipRole $role = MembershipRole::Owner): string
 {
     $subject = app(Subjects::class)->create('hooks@acme.test', 'Hooks Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-hooks'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return $org->id;
 }
@@ -65,7 +65,7 @@ it('pauses then removes an endpoint', function (): void {
 });
 
 it('forbids a non-admin member', function (): void {
-    hooksAdmin('member');
+    hooksAdmin(MembershipRole::Member);
 
     Volt::test('hooks')->assertForbidden();
 });

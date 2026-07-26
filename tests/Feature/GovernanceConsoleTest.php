@@ -18,13 +18,13 @@ use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
-function govAdmin(string $role = 'owner'): string
+function govAdmin(MembershipRole $role = MembershipRole::Owner): string
 {
     $subject = app(Subjects::class)->create('gov@acme.test', 'Gov Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-gov'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return $org->id;
 }
@@ -51,7 +51,7 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
 });
 
 it('forbids a non-admin member', function (): void {
-    govAdmin('member');
+    govAdmin(MembershipRole::Member);
 
     Volt::test('governance')->assertForbidden();
 });

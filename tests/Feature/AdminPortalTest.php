@@ -14,6 +14,7 @@ use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Livewire\Volt\Volt;
 
@@ -34,7 +35,7 @@ it('lets an entitled admin generate a setup link, recorded in the audit trail', 
 });
 
 it('a non-admin cannot reach the invite action even on an entitled org', function () {
-    $orgId = gateAdmin('portal-member', 'member');
+    $orgId = gateAdmin('portal-member', MembershipRole::Member);
     grantFeature($orgId, 'cbox-id-sso');
 
     // The admin read-gate blocks a member at mount — they never reach invite().

@@ -21,7 +21,7 @@ function signIn(): string
 {
     $subject = app(Subjects::class)->create('sudo@acme.test', 'Sudo User', 'a-strong-unbreached-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-sudo'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
@@ -72,7 +72,7 @@ it('refuses to unlink a user\'s only sign-in method', function (): void {
     // A social-only account: no password, no passkey, one linked provider.
     $subject = app(Subjects::class)->create('social-only@acme.test', 'Social Only');
     $org = app(Organizations::class)->create(new NewOrganization('Acme2', 'acme-social'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['sso']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
     app(Subjects::class)->link($subject->id, new FederatedPrincipal('social:google', 'google|1'));

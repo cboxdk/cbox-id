@@ -19,19 +19,19 @@ use Livewire\Volt\Volt;
  *
  * @return array{0: string, 1: Organization}
  */
-function actingAsRole(string $role): array
+function actingAsRole(MembershipRole $role): array
 {
-    $subject = app(Subjects::class)->create($role.'@acme.test', ucfirst($role), 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role));
+    $subject = app(Subjects::class)->create($role->value.'@acme.test', $role->label(), 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role->value));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return [$subject->id, $org];
 }
 
 it('creates a pending invitation without granting membership', function () {
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
 
     Volt::test('members')
         ->set('inviteEmail', 'newbie@acme.test')
@@ -46,9 +46,9 @@ it('creates a pending invitation without granting membership', function () {
 });
 
 it('changes a member role and removes a member', function () {
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
     $target = app(Subjects::class)->create('target@acme.test', 'Target');
-    app(Memberships::class)->add($org->id, $target->id, 'member');
+    app(Memberships::class)->add($org->id, $target->id, MembershipRole::Member);
 
     Volt::test('members')->call('setRole', $target->id, 'admin');
     expect(app(Memberships::class)->of($org->id, $target->id)?->role?->value)->toBe('admin');
@@ -58,7 +58,7 @@ it('changes a member role and removes a member', function () {
 });
 
 it('will not let an admin remove themselves', function () {
-    [$meId, $org] = actingAsRole('owner');
+    [$meId, $org] = actingAsRole(MembershipRole::Owner);
 
     // The guard now surfaces via an announced error toast (role=alert), not an
     // addError to the collapsed invite form's hidden sink — so the block is visible
@@ -70,7 +70,7 @@ it('will not let an admin remove themselves', function () {
 });
 
 it('forbids a plain member from inviting', function () {
-    actingAsRole('member');
+    actingAsRole(MembershipRole::Member);
 
     Volt::test('members')
         ->set('inviteEmail', 'x@acme.test')
@@ -80,10 +80,10 @@ it('forbids a plain member from inviting', function () {
 });
 
 it('forbids an admin from demoting or removing the org owner', function () {
-    [, $org] = actingAsRole('admin');
+    [, $org] = actingAsRole(MembershipRole::Admin);
     // Seed an existing owner in the same org.
     $owner = app(Subjects::class)->create('theowner@acme.test', 'Owner', 'supersecret123');
-    app(Memberships::class)->add($org->id, $owner->id, 'owner');
+    app(Memberships::class)->add($org->id, $owner->id, MembershipRole::Owner);
 
     Volt::test('members')->call('setRole', $owner->id, 'member')->assertStatus(403);
     Volt::test('members')->call('remove', $owner->id)->assertStatus(403);
@@ -93,10 +93,10 @@ it('forbids an admin from demoting or removing the org owner', function () {
 });
 
 it('paginates the member roster instead of hydrating it whole', function () {
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
     $memberships = app(Memberships::class);
     foreach (range(1, 30) as $i) {
-        $memberships->add($org->id, "member_{$i}", 'member');
+        $memberships->add($org->id, "member_{$i}", MembershipRole::Member);
     }
 
     $component = Volt::test('members');

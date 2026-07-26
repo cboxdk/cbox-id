@@ -6,6 +6,7 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
 
@@ -18,7 +19,7 @@ function makeAccount(string $email): array
 {
     $subject = app(Subjects::class)->create($email, 'User '.$email, 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Org', 'org-'.substr(md5($email), 0, 6)));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     return [$subject->id, $org->id];
 }

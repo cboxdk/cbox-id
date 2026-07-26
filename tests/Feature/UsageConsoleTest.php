@@ -19,7 +19,7 @@ function usageOwner(): string
 {
     $owner = app(Subjects::class)->create('usage@acme.test', 'Uma Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-usage'));
-    app(Memberships::class)->add($org->id, $owner->id, 'owner');
+    app(Memberships::class)->add($org->id, $owner->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($owner->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($owner, $session, $org, MembershipRole::Owner);
 

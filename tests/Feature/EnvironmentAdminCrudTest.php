@@ -29,6 +29,7 @@ use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -155,7 +156,7 @@ it('starts an env-admin impersonation of a member (redirect + marker)', function
     ['member' => $member] = crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant D', slug: 'tenant-d'));
     $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
-    app(Memberships::class)->add($org->id, $user->id, 'member');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
     $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'support ticket 42'])
         ->assertRedirect(route('dashboard'));
@@ -170,7 +171,7 @@ it('expires an env-admin impersonation back to the env console (not the operator
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant I', slug: 'tenant-i'));
     $user = app(Subjects::class)->create('gina@acme.example', 'Gina');
-    app(Memberships::class)->add($org->id, $user->id, 'member');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
     $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'support']);
 
@@ -187,7 +188,7 @@ it('refuses to impersonate an owner/admin', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant E', slug: 'tenant-e'));
     $user = app(Subjects::class)->create('frank@acme.example', 'Frank');
-    app(Memberships::class)->add($org->id, $user->id, 'admin');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Admin);
 
     $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'nope'])
         ->assertForbidden();
@@ -335,8 +336,8 @@ it('pins an impersonation session to the authorized org, not the subject\'s olde
     $ownerOrg = app(Organizations::class)->create(new NewOrganization(name: 'OwnerCo', slug: 'ownerco'));
     $memberOrg = app(Organizations::class)->create(new NewOrganization(name: 'MemberCo', slug: 'memberco'));
     $user = app(Subjects::class)->create('victim@acme.example', 'Victim');
-    app(Memberships::class)->add($ownerOrg->id, $user->id, 'owner');   // oldest membership
-    app(Memberships::class)->add($memberOrg->id, $user->id, 'member'); // the one we authorize
+    app(Memberships::class)->add($ownerOrg->id, $user->id, MembershipRole::Owner);   // oldest membership
+    app(Memberships::class)->add($memberOrg->id, $user->id, MembershipRole::Member); // the one we authorize
 
     $this->post("/admin/impersonate/{$user->id}", ['organization' => $memberOrg->id, 'reason' => 'support'])
         ->assertRedirect(route('dashboard'));
@@ -349,7 +350,7 @@ it('keeps the last owner when a demotion is attempted (no uncaught 500)', functi
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Solo', slug: 'solo'));
     $user = app(Subjects::class)->create('soleowner@acme.example', 'Sole Owner');
-    app(Memberships::class)->add($org->id, $user->id, 'owner');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Owner);
 
     Volt::test('environment.organizations.show', ['organization' => $org->id])
         ->call('changeMemberRole', $user->id, 'member');
@@ -502,7 +503,7 @@ it('grants then revokes an access role for a member via the manage toggle', func
     crudSetup();
     $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant D', slug: 'tenant-d'));
-    app(Memberships::class)->add($org->id, $user->id, 'member');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
     $role = app(Roles::class)->define(null, 'Approver', null, null);
 
     $held = fn (): bool => RoleAssignment::query()
@@ -519,7 +520,7 @@ it('ignores an access-role id that is not assignable in the org (deny-by-default
     crudSetup();
     $user = app(Subjects::class)->create('fred@acme.example', 'Fred');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant E', slug: 'tenant-e'));
-    app(Memberships::class)->add($org->id, $user->id, 'member');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
     Volt::test('environment.organizations.show', ['organization' => $org->id])
         ->call('toggleAccessRole', $user->id, 'role_does_not_exist');
@@ -549,7 +550,7 @@ it('renders a member\'s assigned access role on the organization screen', functi
     crudSetup();
     $user = app(Subjects::class)->create('hana@acme.example', 'Hana');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant G', slug: 'tenant-g'));
-    app(Memberships::class)->add($org->id, $user->id, 'member');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
     $role = app(Roles::class)->define(null, 'Team leads', null, null);
     app(Roles::class)->assign($org->id, $user->id, $role->id);
 
@@ -567,7 +568,7 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
     // Three members in the org…
     $members = collect(range(1, 3))->map(function (int $i) use ($org, $memberships) {
         $u = app(Subjects::class)->create("member{$i}@roster.example", "Member {$i}");
-        $memberships->add($org->id, $u->id, 'member');
+        $memberships->add($org->id, $u->id, MembershipRole::Member);
 
         return $u;
     });

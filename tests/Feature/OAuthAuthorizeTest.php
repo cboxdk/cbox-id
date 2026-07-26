@@ -30,7 +30,7 @@ function actingAsConsentUser(): array
 {
     $subject = app(Subjects::class)->create('member@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-consent'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
@@ -211,7 +211,7 @@ it('refuses to mint a code at approval if the client/redirect is no longer valid
 it('refuses to mint a code for a suspended organization', function () {
     $subject = app(Subjects::class)->create('susp-consent@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-susp-consent'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $org->update(['status' => OrganizationStatus::Suspended]);
     $org->refresh();
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);

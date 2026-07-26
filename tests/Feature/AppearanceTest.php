@@ -115,31 +115,31 @@ it('computes WCAG contrast and picks a readable accent foreground', function ():
 // ─────────────────────────── feature: editor ───────────────────────────
 
 if (! function_exists('signInOrg')) {
-    function signInOrg(string $role = 'admin'): object
+    function signInOrg(MembershipRole $role = MembershipRole::Admin): object
     {
         $subject = app(Subjects::class)->create('user@acme.test', 'User', 'supersecret123');
         $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-appear'));
         app(Memberships::class)->add($org->id, $subject->id, $role);
         $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
         session([PlatformAuth::SESSION_KEY => $session->id]);
-        app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+        app(CurrentUser::class)->set($subject, $session, $org, $role);
 
         return $org;
     }
 }
 
 it('renders the editor for an admin', function (): void {
-    signInOrg('admin');
+    signInOrg(MembershipRole::Admin);
     $this->get(route('appearance'))->assertOk()->assertSee('Live preview');
 });
 
 it('refuses the editor for a non-admin member', function (): void {
-    signInOrg('member');
+    signInOrg(MembershipRole::Member);
     $this->get(route('appearance'))->assertForbidden();
 });
 
 it('persists a saved theme to org settings and keeps brand_color in sync', function (): void {
-    $org = signInOrg('admin');
+    $org = signInOrg(MembershipRole::Admin);
 
     $theme = Appearance::fromPreset('warm')->toArray();
     $theme['light']['primary'] = '#123456';
@@ -155,7 +155,7 @@ it('persists a saved theme to org settings and keeps brand_color in sync', funct
 });
 
 it('rejects a non-https logo on save', function (): void {
-    $org = signInOrg('admin');
+    $org = signInOrg(MembershipRole::Admin);
 
     $theme = Appearance::fromPreset('cbox')->toArray();
     $theme['logo'] = 'http://insecure.example/logo.png';

@@ -31,7 +31,7 @@ function owner(): string
 {
     $subject = app(Subjects::class)->create('owner@acme.test', 'Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-console'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
@@ -114,7 +114,7 @@ it('creates and activates a SAML connection', function () {
 it('forbids a non-admin from registering a directory', function () {
     $subject = app(Subjects::class)->create('member@acme.test', 'Member');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-m'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
@@ -126,7 +126,7 @@ function member(): string
 {
     $subject = app(Subjects::class)->create('plain@acme.test', 'Plain Member');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-reader'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
@@ -148,7 +148,7 @@ it('re-authorizes org-admin console pages on every request via boot(), not just 
     // open snapshot would keep re-rendering org-wide SSO/SCIM/role/webhook config.
     $subject = app(Subjects::class)->create('demote@acme.test', 'Dee', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-demote'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     $cu = app(CurrentUser::class);
     $cu->set($subject, $session, $org, MembershipRole::Owner);

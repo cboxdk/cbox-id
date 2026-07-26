@@ -15,6 +15,7 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
@@ -31,7 +32,7 @@ function impersonationOperator(string $email = 'imp-op@platform.test'): Platform
  * owners and admins are not impersonable (an operator inheriting their elevated
  * surface is exactly the risk we close), so the happy-path helper must be a member.
  */
-function impersonationMember(string $email = 'member@acme.test', string $role = 'member'): array
+function impersonationMember(string $email = 'member@acme.test', MembershipRole $role = MembershipRole::Member): array
 {
     $org = app(Organizations::class)->create(new NewOrganization('Acme Inc', 'acme-'.substr(md5($email), 0, 6)));
     $subject = app(Subjects::class)->create($email, 'Member One', 'supersecret123');
@@ -112,7 +113,7 @@ it('refuses to impersonate a member of an org in another plane (403)', function 
     [$foreignOrgId, $foreignUserId] = app(EnvironmentContext::class)->runAs($env, function (): array {
         $org = app(Organizations::class)->create(new NewOrganization('Foreign', 'foreign'));
         $subject = app(Subjects::class)->create('foreign@acme.test', 'F', 'supersecret123');
-        app(Memberships::class)->add($org->id, $subject->id, 'owner');
+        app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
         return [$org->id, $subject->id];
     });
@@ -224,7 +225,7 @@ it('blocks credential and factor changes while impersonating (403)', function ()
  */
 it('refuses to impersonate an owner (403)', function (): void {
     $op = impersonationOperator();
-    [$org, $owner] = impersonationMember('owner@acme.test', 'owner');
+    [$org, $owner] = impersonationMember('owner@acme.test', MembershipRole::Owner);
 
     $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
         ->post(route('operator.impersonate', $owner->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
@@ -235,7 +236,7 @@ it('refuses to impersonate an owner (403)', function (): void {
 
 it('refuses to impersonate an admin (403)', function (): void {
     $op = impersonationOperator();
-    [$org, $admin] = impersonationMember('admin@acme.test', 'admin');
+    [$org, $admin] = impersonationMember('admin@acme.test', MembershipRole::Admin);
 
     $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
         ->post(route('operator.impersonate', $admin->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
@@ -290,7 +291,7 @@ it('blocks switching organizations while impersonating (403)', function (): void
 
     // Give the member a second org they legitimately belong to — the escape target.
     $other = app(Organizations::class)->create(new NewOrganization('Beta', 'beta-org'));
-    app(Memberships::class)->add($other->id, $member->id, 'member');
+    app(Memberships::class)->add($other->id, $member->id, MembershipRole::Member);
 
     $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
         ->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);

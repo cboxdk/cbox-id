@@ -19,7 +19,7 @@ uses(RefreshDatabase::class);
 it('signs out every other session but keeps the current one', function (): void {
     $subject = app(Subjects::class)->create('multi@acme.test', 'Multi Device', 'a-strong-unbreached-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-multi'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     $sessions = app(SessionManager::class);
     $current = $sessions->start($subject->id, $org->id, ['pwd']);
@@ -40,7 +40,7 @@ it('signs out every other session but keeps the current one', function (): void 
 it('requires step-up before signing out other sessions', function (): void {
     $subject = app(Subjects::class)->create('multi2@acme.test', 'Multi Device', 'a-strong-unbreached-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-multi2'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $current = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     $other = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $current, $org, MembershipRole::Owner);

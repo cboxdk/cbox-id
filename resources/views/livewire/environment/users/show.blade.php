@@ -11,6 +11,7 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\OrgAccessRoles;
+use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
@@ -26,6 +27,7 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Mail;
@@ -312,10 +314,10 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         $this->validate([
             'assignOrgId' => ['required', 'string'],
-            'assignRole' => ['required', 'in:member,admin,owner'],
+            'assignRole' => ['required', OrgRoles::rule()],
             'assignAccessRoles' => ['array'],
             'assignAccessRoles.*' => ['string'],
-        ]);
+        ], ['assignRole' => OrgRoles::message()]);
 
         if (Organization::query()->whereKey($this->assignOrgId)->doesntExist()) {
             $this->addError('assignOrgId', 'That organization is not in this environment.');
@@ -331,7 +333,9 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
         // Belonging record (tier governs org administration + impersonation safety),
         // then the RBAC access roles that decide what the user can do in the apps.
-        $memberships->add($this->assignOrgId, $user->id, $this->assignRole);
+        // Safe to parse rather than tryFrom: the rule above is derived from the same
+        // assignable set, so a value that reached here is a case of the enum.
+        $memberships->add($this->assignOrgId, $user->id, MembershipRole::from($this->assignRole));
 
         foreach ($this->assignAccessRoles as $roleId) {
             if ($catalog->isAssignable($this->assignOrgId, $roleId)) {
@@ -348,12 +352,18 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     public function changeMembershipRole(string $orgId, string $role, Memberships $memberships): void
     {
         $user = $this->user();
-        if (! in_array($role, ['member', 'admin', 'owner'], true) || $memberships->of($orgId, $user->id) === null) {
+
+        // Invoked from JS with the <select>'s value, so the role is untrusted and there
+        // is no form field to report into: an unassignable or unknown role is refused
+        // outright rather than coerced to a default.
+        $next = OrgRoles::parse($role);
+
+        if ($next === null || $memberships->of($orgId, $user->id) === null) {
             return;
         }
 
         try {
-            $memberships->changeRole($orgId, $user->id, $role);
+            $memberships->changeRole($orgId, $user->id, $next);
             $this->dispatch('toast', message: 'Org access updated.');
         } catch (LastOwner) {
             $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
@@ -445,6 +455,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             'assignableForNewOrg' => $this->assignOrgId !== '' ? $catalog->assignable($this->assignOrgId) : collect(),
             'assignableForNewOrgApps' => $this->assignOrgId !== '' ? $catalog->appNames($catalog->assignable($this->assignOrgId)) : [],
             'impersonatableOrgs' => $impersonatable,
+            'assignableRoles' => OrgRoles::assignable(),
             'hasMfa' => app(Mfa::class)->hasConfirmedTotp($user->id),
             'sessions' => Session::query()
                 ->where('user_id', $user->id)
@@ -674,8 +685,8 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                              fires `change` and silently demoted an Owner with no way back. --}}
                         <div class="flex items-center gap-1.5 shrink-0" x-data="{ saved: @js($m['role']->value), val: @js($m['role']->value), busy: false }">
                             <select class="select" style="width:auto" aria-label="Org access in {{ $m['orgName'] }}" x-model="val">
-                                @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
-                                    <option value="{{ $val }}" @selected($m['role']->value === $val)>{{ $lbl }}</option>
+                                @foreach ($assignableRoles as $role)
+                                    <option value="{{ $role->value }}" @selected($m['role'] === $role)>{{ $role->label() }}</option>
                                 @endforeach
                             </select>
                             <button type="button" class="btn btn-primary btn-sm shrink-0" x-cloak x-show="val !== saved" :disabled="busy"
@@ -729,11 +740,14 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                     </select>
                     @error('assignOrgId') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
-                <select wire:model="assignRole" class="select" aria-label="Org access">
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
-                </select>
+                <div>
+                    <select wire:model="assignRole" class="select" aria-label="Org access">
+                        @foreach ($assignableRoles as $role)
+                            <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                        @endforeach
+                    </select>
+                    @error('assignRole') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
                 <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="assignOrg">Add</button>
             </div>
             @if ($assignOrgId !== '')

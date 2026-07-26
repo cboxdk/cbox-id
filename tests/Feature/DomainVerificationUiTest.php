@@ -27,7 +27,7 @@ function ssoAdmin(string $slug, bool $entitled = true): string
 {
     $subject = app(Subjects::class)->create("admin@{$slug}.test", 'Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 

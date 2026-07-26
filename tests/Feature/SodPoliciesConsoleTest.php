@@ -17,13 +17,13 @@ use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
-function sodAdmin(string $role = 'owner'): string
+function sodAdmin(MembershipRole $role = MembershipRole::Owner): string
 {
     $subject = app(Subjects::class)->create('sod@acme.test', 'Sod Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-sod'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::from($role));
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return $org->id;
 }
@@ -60,7 +60,7 @@ it('detects a violation', function (): void {
 });
 
 it('forbids a non-admin member', function (): void {
-    sodAdmin('member');
+    sodAdmin(MembershipRole::Member);
 
     Volt::test('sod-policies')->assertForbidden();
 });

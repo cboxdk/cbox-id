@@ -7,11 +7,12 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Livewire\Volt\Volt;
 
 it('grants membership only after the invitee accepts the emailed link', function () {
-    [, $org] = actingAsRole('owner');
-    $pending = app(Invitations::class)->invite($org->id, 'joiner@acme.test', 'member', invitedBy: app(CurrentUser::class)->id());
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $pending = app(Invitations::class)->invite($org->id, 'joiner@acme.test', MembershipRole::Member, invitedBy: app(CurrentUser::class)->id());
 
     // No membership yet — only a pending invitation.
     expect(app(Memberships::class)->forOrganization($org->id))->toHaveCount(1);
@@ -25,8 +26,8 @@ it('grants membership only after the invitee accepts the emailed link', function
 });
 
 it('rejects an unknown or reused invitation token', function () {
-    [, $org] = actingAsRole('owner');
-    $pending = app(Invitations::class)->invite($org->id, 'once@acme.test', 'member');
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $pending = app(Invitations::class)->invite($org->id, 'once@acme.test', MembershipRole::Member);
 
     $this->get('/invitations/'.$pending->token.'/accept')->assertRedirect(route('dashboard'));
 
@@ -36,8 +37,8 @@ it('rejects an unknown or reused invitation token', function () {
 });
 
 it('lets an admin revoke a pending invitation', function () {
-    [, $org] = actingAsRole('owner');
-    $pending = app(Invitations::class)->invite($org->id, 'revoke@acme.test', 'member');
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $pending = app(Invitations::class)->invite($org->id, 'revoke@acme.test', MembershipRole::Member);
 
     Volt::test('members')->call('revokeInvitation', $pending->invitation->id);
 

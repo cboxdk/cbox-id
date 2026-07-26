@@ -37,7 +37,7 @@ function stepUpUser(array $amr = ['pwd'], ?int $sessionAgeSeconds = null): array
 {
     $subject = app(Subjects::class)->create('member@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-stepup'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     $session = app(SessionManager::class)->start($subject->id, $org->id, $amr);
 

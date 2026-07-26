@@ -18,7 +18,7 @@ function dashboardOwner(): array
 {
     $owner = app(Subjects::class)->create('owner@acme.test', 'Olive Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
-    app(Memberships::class)->add($org->id, $owner->id, 'owner');
+    app(Memberships::class)->add($org->id, $owner->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($owner->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($owner, $session, $org, MembershipRole::Owner);
 
@@ -30,7 +30,7 @@ it('renders the recent-activity feed with member names, not raw ids', function (
 
     // Adding a member writes an audit entry whose target is the new member's id.
     $member = app(Subjects::class)->create('grace@acme.test', 'Grace Hopper', 'supersecret123');
-    app(Memberships::class)->add($org->id, $member->id, 'member');
+    app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
 
     Volt::test('dashboard')
         ->assertSee('Grace Hopper')      // resolved name is shown

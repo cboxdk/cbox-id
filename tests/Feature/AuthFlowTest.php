@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -19,7 +20,7 @@ function account(string $email = 'dana@acme.test', string $password = 'supersecr
 {
     $subject = app(Subjects::class)->create($email, 'Dana Reeves', $password);
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.substr(md5($email), 0, 6)));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
     return [$subject, $org];
 }

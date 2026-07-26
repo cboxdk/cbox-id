@@ -31,8 +31,8 @@ function sodEnforcementOrg(): array
     $admin = app(Subjects::class)->create('admin@acme.test', 'Admin', 'supersecret123');
     $member = app(Subjects::class)->create('member@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-sod-enforce'));
-    app(Memberships::class)->add($org->id, $admin->id, 'owner');
-    app(Memberships::class)->add($org->id, $member->id, 'member');
+    app(Memberships::class)->add($org->id, $admin->id, MembershipRole::Owner);
+    app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($admin->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($admin, $session, $org, MembershipRole::Owner);
 
@@ -157,7 +157,7 @@ it('withholds a parked grant that has become conflicting by the time it is accep
     [$createPo, $approvePay] = sodEnforcementRoles($orgId);
 
     $invitee = app(Subjects::class)->create('later@acme.test', 'Later', 'supersecret123');
-    $invitation = app(Invitations::class)->invite($orgId, 'later@acme.test', 'member');
+    $invitation = app(Invitations::class)->invite($orgId, 'later@acme.test', MembershipRole::Member);
 
     InvitationRoleGrant::query()->create(['organization_id' => $orgId, 'email' => 'later@acme.test', 'role_id' => $createPo->id]);
     InvitationRoleGrant::query()->create(['organization_id' => $orgId, 'email' => 'later@acme.test', 'role_id' => $approvePay->id]);

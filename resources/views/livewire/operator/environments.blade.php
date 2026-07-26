@@ -11,6 +11,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
@@ -163,7 +164,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
             $org = app(Organizations::class)->create(
                 new NewOrganization(name: $this->orgName, slug: Str::slug($this->orgName), type: OrganizationType::Customer),
             );
-            app(Memberships::class)->add($org->id, $subject->id, 'owner');
+            app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
         });
 
         $name = $environment->name;

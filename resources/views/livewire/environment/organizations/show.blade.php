@@ -6,6 +6,7 @@ use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\OrgAccessRoles;
+use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
@@ -16,6 +17,7 @@ use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
@@ -191,10 +193,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         $this->validate([
             'memberEmail' => ['required', 'email', 'max:190'],
-            'memberRole' => ['required', 'in:member,admin,owner'],
+            'memberRole' => ['required', OrgRoles::rule()],
             'memberAccessRoles' => ['array'],
             'memberAccessRoles.*' => ['string'],
-        ]);
+        ], ['memberRole' => OrgRoles::message()]);
 
         $user = User::query()->where('email', $this->memberEmail)->first();
         if ($user === null) {
@@ -212,7 +214,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         // The membership is the "belongs to org" record; its tier governs org
         // administration + support-impersonation safety. What the person can DO in the
         // apps comes from the access roles below.
-        $memberships->add($org->id, $user->id, $this->memberRole);
+        // Safe to parse rather than tryFrom: the rule above is derived from the same
+        // assignable set, so a value that reached here is a case of the enum.
+        $memberships->add($org->id, $user->id, MembershipRole::from($this->memberRole));
 
         // Grant the chosen access roles, ignoring any posted id that isn't genuinely
         // assignable in this org (deny-by-default). Resolve the assignable set once
@@ -233,12 +237,18 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
     public function changeMemberRole(string $userId, string $role, Memberships $memberships): void
     {
         $org = $this->org();
-        if (! in_array($role, ['member', 'admin', 'owner'], true) || $memberships->of($org->id, $userId) === null) {
+
+        // Invoked from JS with the <select>'s value, so the role is untrusted and there
+        // is no form field to report into: an unassignable or unknown role is refused
+        // outright rather than coerced to a default.
+        $next = OrgRoles::parse($role);
+
+        if ($next === null || $memberships->of($org->id, $userId) === null) {
             return;
         }
 
         try {
-            $memberships->changeRole($org->id, $userId, $role);
+            $memberships->changeRole($org->id, $userId, $next);
             $this->dispatch('toast', message: 'Org access updated.');
         } catch (LastOwner) {
             $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
@@ -294,13 +304,13 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         $this->validate([
             'inviteEmail' => ['required', 'email', 'max:190'],
-            'inviteRole' => ['required', 'in:member,admin,owner'],
+            'inviteRole' => ['required', OrgRoles::rule()],
             'inviteAccessRoles' => ['array'],
             'inviteAccessRoles.*' => ['string'],
-        ]);
+        ], ['inviteRole' => OrgRoles::message()]);
 
         // The invitee accepts via the emailed token — no one is added without consent.
-        $pending = $invitations->invite($org->id, $this->inviteEmail, $this->inviteRole);
+        $pending = $invitations->invite($org->id, $this->inviteEmail, MembershipRole::from($this->inviteRole));
         Mail::to($this->inviteEmail)->send(new InvitationMail(
             organization: $org->name,
             inviter: app(EnvironmentAdminAuth::class)->current()->name ?? 'An administrator',
@@ -432,6 +442,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             'appNames' => $catalog->appNames($accessRoles),
             'permsByRole' => $catalog->permissions($accessRoles),
             'assignmentsByUser' => $catalog->assignmentsByUser($org->id),
+            'assignableRoles' => OrgRoles::assignable(),
         ];
     }
 }; ?>
@@ -495,10 +506,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                         </a>
                         {{-- Explicit save, NOT wire:change: on a focused select a stray arrow-key
                              fires `change` and silently demoted an Owner with no way back. --}}
-                        <div class="flex items-center gap-1.5 shrink-0" x-data="{ saved: @js($m['role']), val: @js($m['role']), busy: false }">
+                        <div class="flex items-center gap-1.5 shrink-0" x-data="{ saved: @js($m['role']->value), val: @js($m['role']->value), busy: false }">
                             <select class="select" style="width:auto" aria-label="Org access for {{ $m['name'] }}" x-model="val">
-                                @foreach (['member' => 'Member', 'admin' => 'Admin', 'owner' => 'Owner'] as $val => $lbl)
-                                    <option value="{{ $val }}" @selected($m['role'] === $val)>{{ $lbl }}</option>
+                                @foreach ($assignableRoles as $role)
+                                    <option value="{{ $role->value }}" @selected($m['role'] === $role)>{{ $role->label() }}</option>
                                 @endforeach
                             </select>
                             <button type="button" class="btn btn-primary btn-sm shrink-0" x-cloak x-show="val !== saved" :disabled="busy"
@@ -546,11 +557,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                     <input wire:model="memberEmail" type="email" class="input" placeholder="existing-user@example.com" aria-label="Member email">
                     @error('memberEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
-                <select wire:model="memberRole" class="select" aria-label="Org access">
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
-                </select>
+                <div>
+                    <select wire:model="memberRole" class="select" aria-label="Org access">
+                        @foreach ($assignableRoles as $role)
+                            <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                        @endforeach
+                    </select>
+                    @error('memberRole') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
                 <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="addMember">Add member</button>
             </div>
             <x-access-roles-field :roles="$accessRoles" :app-names="$appNames" model="memberAccessRoles" hint="granted immediately (optional)" />
@@ -566,7 +580,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                 <div class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="inv-{{ $inv->id }}">
                     <div class="min-w-0 flex-1">
                         <span class="block text-sm font-medium truncate">{{ $inv->email }}</span>
-                        <span class="block text-xs" style="color:var(--faint)">{{ ucfirst($inv->role) }} · expires {{ $inv->expires_at?->diffForHumans() }}</span>
+                        <span class="block text-xs" style="color:var(--faint)">{{ $inv->role->label() }} · expires {{ $inv->expires_at?->diffForHumans() }}</span>
                     </div>
                     @php $invVariant = match ($inv->status->value) { 'accepted' => 'badge-success', 'pending' => 'badge-warn', 'revoked' => 'badge-danger', default => '' }; @endphp
                     <span class="badge {{ $invVariant }}">{{ $inv->status->value }}</span>
@@ -586,11 +600,14 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                     <input wire:model="inviteEmail" type="email" class="input" placeholder="newteammate@example.com" aria-label="Invitee email">
                     @error('inviteEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
-                <select wire:model="inviteRole" class="select" aria-label="Org access">
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
-                </select>
+                <div>
+                    <select wire:model="inviteRole" class="select" aria-label="Org access">
+                        @foreach ($assignableRoles as $role)
+                            <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                        @endforeach
+                    </select>
+                    @error('inviteRole') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
                 <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="invite">Send invite</button>
             </div>
             <x-access-roles-field :roles="$accessRoles" :app-names="$appNames" model="inviteAccessRoles" hint="granted when they accept (optional)" />

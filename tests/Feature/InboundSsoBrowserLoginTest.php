@@ -14,6 +14,7 @@ use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -147,7 +148,7 @@ it('explains the collision when an account already exists for that email', funct
 
     // A password account already owns this address.
     $existing = app(Subjects::class)->create('collide@acme.example', 'Existing', password: 'a-strong-unbreached-passphrase');
-    app(Memberships::class)->add($fixture->org->id, $existing->id, 'member');
+    app(Memberships::class)->add($fixture->org->id, $existing->id, MembershipRole::Member);
 
     app()->bind(AssertionValidator::class, fn () => new class implements AssertionValidator
     {

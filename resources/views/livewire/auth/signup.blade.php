@@ -15,6 +15,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -175,7 +176,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         $subject = $subjects->create($this->email, $this->name, $this->password);
 
         $organization = $orgs->create(new NewOrganization($this->organization, $this->uniqueSlug($orgs)));
-        $memberships->add($organization->id, $subject->id, 'owner');
+        $memberships->add($organization->id, $subject->id, MembershipRole::Owner);
 
         // Send a confirmation link; the account is usable immediately, verification
         // just confirms the address out of band.

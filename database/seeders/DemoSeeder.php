@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -54,10 +55,10 @@ class DemoSeeder extends Seeder
             $org = $orgs->bySlug('acme')
                 ?? $orgs->create(new NewOrganization(name: 'Acme Inc', slug: 'acme', type: OrganizationType::Customer));
             if (! $members->of($org->id, $adminId)) {
-                $members->add($org->id, $adminId, 'owner');
+                $members->add($org->id, $adminId, MembershipRole::Owner);
             }
 
-            foreach ([['Grace Hopper', 'grace@acme.test', 'admin'], ['Alan Turing', 'alan@acme.test', 'member'], ['Katherine Johnson', 'kat@acme.test', 'member']] as [$name, $email, $role]) {
+            foreach ([['Grace Hopper', 'grace@acme.test', MembershipRole::Admin], ['Alan Turing', 'alan@acme.test', MembershipRole::Member], ['Katherine Johnson', 'kat@acme.test', MembershipRole::Member]] as [$name, $email, $role]) {
                 $id = $mk($name, $email);
                 if (! $members->of($org->id, $id)) {
                     $members->add($org->id, $id, $role);
@@ -68,7 +69,7 @@ class DemoSeeder extends Seeder
             $org2 = $orgs->bySlug('globex')
                 ?? $orgs->create(new NewOrganization(name: 'Globex', slug: 'globex', type: OrganizationType::Customer));
             if (! $members->of($org2->id, $adminId)) {
-                $members->add($org2->id, $adminId, 'admin');
+                $members->add($org2->id, $adminId, MembershipRole::Admin);
             }
 
             echo "ADMIN_ID={$adminId}\nORG_ID={$org->id}\nORG2_ID={$org2->id}\n";

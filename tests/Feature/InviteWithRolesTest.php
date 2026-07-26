@@ -7,6 +7,7 @@ use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
@@ -15,7 +16,7 @@ uses(RefreshDatabase::class);
 
 it('parks chosen access roles at invite time', function (): void {
     Mail::fake();
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
     $role = app(Roles::class)->define($org->id, 'Editor');
 
     Volt::test('members')
@@ -34,10 +35,10 @@ it('parks chosen access roles at invite time', function (): void {
 
 it('applies parked access roles when the invitation is accepted', function (): void {
     Mail::fake();
-    [, $org] = actingAsRole('owner');
+    [, $org] = actingAsRole(MembershipRole::Owner);
     $role = app(Roles::class)->define($org->id, 'Editor');
 
-    $pending = app(Invitations::class)->invite($org->id, 'newbie@acme.test', 'member');
+    $pending = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
     InvitationRoleGrant::query()->create([
         'organization_id' => $org->id,
         'email' => 'newbie@acme.test',

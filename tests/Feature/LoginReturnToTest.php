@@ -10,6 +10,7 @@ use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -102,7 +103,7 @@ it('answers an unauthenticated prompt=none with login_required at the redirect_u
 it('reaches the consent screen over HTTP for a genuinely signed-in user', function (): void {
     $subject = app(Subjects::class)->create('rp-user@acme.test', 'RP User', 'a-strong-unbreached-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-http'));
-    app(Memberships::class)->add($org->id, $subject->id, 'owner');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
 
     $registered = app(ClientRegistry::class)->register(new NewClient(

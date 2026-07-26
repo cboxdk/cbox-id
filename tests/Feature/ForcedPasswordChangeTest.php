@@ -16,6 +16,7 @@ use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
@@ -35,7 +36,7 @@ function subjectOwingAChange(bool $temporary = true): string
 {
     $subject = app(Subjects::class)->create('dana@acme.test', 'Dana', 'the-handed-over-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-forced'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
 
     app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
         userId: $subject->id,
@@ -174,7 +175,7 @@ it('holds the workspace console until an account member replaces a temporary pas
 it('holds a subject whose password has outlived the policy max age', function (): void {
     $subject = app(Subjects::class)->create('rotate@acme.test', 'Rotate', 'a-perfectly-long-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-rotate'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(maxAgeDays: 30));
 
     // Age the PASSWORD, then sign in. Travelling with a session already open would only
@@ -203,7 +204,7 @@ it('holds a subject whose password has outlived the policy max age', function ()
 it('holds a subject with no second factor when the policy requires one', function (): void {
     $subject = app(Subjects::class)->create('needsmfa@acme.test', 'Needs', 'a-perfectly-long-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-mfa'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Required));
 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
@@ -223,7 +224,7 @@ it('holds a subject with no second factor when the policy requires one', functio
 it('locks an account out of the password door at the policy threshold', function (): void {
     $subject = app(Subjects::class)->create('guessed@acme.test', 'Guessed', 'the-real-passphrase-here');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-lock'));
-    app(Memberships::class)->add($org->id, $subject->id, 'member');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(lockoutThreshold: 3));
 
     $auth = app(PlatformAuth::class);
