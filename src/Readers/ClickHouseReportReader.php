@@ -18,7 +18,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
  * Every value is bound as a server-side query parameter — never interpolated — so
  * organization/metric input can't reach the SQL text.
  */
-final class ClickHouseReportReader implements ReportReader
+class ClickHouseReportReader implements ReportReader
 {
     public function __construct(
         private readonly ClickHouseConnection $connection,

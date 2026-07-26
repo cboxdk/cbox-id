@@ -15,7 +15,7 @@ use Cbox\Id\Kernel\Usage\Models\UsageCounter;
  * dashboards work with no ClickHouse. Everything is environment-scoped by the
  * meter and the counter model's hard environment scope.
  */
-final class UsageMeterReportReader implements ReportReader
+class UsageMeterReportReader implements ReportReader
 {
     public function __construct(private readonly UsageMeter $meter) {}
 

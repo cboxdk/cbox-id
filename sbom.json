@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:3a1bc58a-db4b-40e5-ba0a-d73567c9e583",
+    "serialNumber": "urn:uuid:b354a002-3c3e-422c-9c99-765ab23d3e6e",
     "version": 1,
     "metadata": {
         "tools": [
@@ -53,12 +53,12 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.1",
             "group": "cboxdk",
             "name": "laravel-console-kit",
-            "version": "v0.2.0",
-            "purl": "pkg:composer/cboxdk/laravel-console-kit@v0.2.0",
-            "description": "Extension hooks for a Cbox admin console \u2014 nav areas, feature gates, UI slots and dashboard cards that an optional package registers into via composer, with zero host edits. The plugin pattern behind billing and other drop-in modules.",
+            "version": "v0.2.1",
+            "purl": "pkg:composer/cboxdk/laravel-console-kit@v0.2.1",
+            "description": "Extension hooks for a Cbox admin console \u2014 nav areas, feature gates, UI slots, dashboard cards and per-tenant branding that an optional package registers into via composer, with zero host edits. The plugin pattern behind billing and other drop-in modules.",
             "licenses": [
                 {
                     "license": {
@@ -69,11 +69,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.27.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.29.1",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.27.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.27.0",
+            "version": "v0.29.1",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.29.1",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -277,11 +277,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.0",
+            "bom-ref": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "group": "guzzlehttp",
             "name": "guzzle",
-            "version": "7.15.0",
-            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.0",
+            "version": "7.15.1",
+            "purl": "pkg:composer/guzzlehttp/guzzle@7.15.1",
             "description": "Guzzle is a PHP HTTP client library",
             "licenses": [
                 {

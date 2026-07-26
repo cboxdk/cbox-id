@@ -12,7 +12,7 @@ use Cbox\Id\Analytics\Contracts\ReportSink;
  * costs nothing on the hot delivery path. Configure a ClickHouse DSN to swap in a
  * real {@see ClickHouseReportSink}.
  */
-final class NullReportSink implements ReportSink
+class NullReportSink implements ReportSink
 {
     public function write(array $records): void
     {

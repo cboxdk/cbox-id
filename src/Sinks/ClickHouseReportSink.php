@@ -18,7 +18,7 @@ use Throwable;
  * It fails open: a ClickHouse outage is swallowed so event delivery is never blocked
  * by an analytics write.
  */
-final class ClickHouseReportSink implements ReportSink
+class ClickHouseReportSink implements ReportSink
 {
     public function __construct(
         private readonly ClickHouseConnection $connection,

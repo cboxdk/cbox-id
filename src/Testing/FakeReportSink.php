@@ -14,7 +14,7 @@ use Cbox\Id\Analytics\ValueObjects\ReportRecord;
  * single stored record — while also counting raw write invocations so a test can
  * prove at-least-once delivery actually happened more than once.
  */
-final class FakeReportSink implements ReportSink
+class FakeReportSink implements ReportSink
 {
     /**
      * @var array<string, ReportRecord>

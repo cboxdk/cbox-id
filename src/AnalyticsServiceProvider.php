@@ -37,7 +37,7 @@ use Throwable;
  * read the platform's own Postgres usage counters, so the open framework stays
  * ClickHouse-free.
  */
-final class AnalyticsServiceProvider extends ServiceProvider
+class AnalyticsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

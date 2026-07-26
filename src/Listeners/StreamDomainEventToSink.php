@@ -23,7 +23,7 @@ use Throwable;
  * construction: the record's `eventId` lets the sink collapse the at-least-once
  * re-deliveries the outbox is allowed to make.
  */
-final class StreamDomainEventToSink
+class StreamDomainEventToSink
 {
     public function __construct(
         private readonly ReportSink $sink,

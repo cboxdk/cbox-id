@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
  * `resources/clickhouse/schema.sql` and this command applies it over the HTTP
  * interface, or prints it for an operator to run by hand.
  */
-final class AnalyticsInstallCommand extends Command
+class AnalyticsInstallCommand extends Command
 {
     protected $signature = 'id-analytics:install {--print : Print the ClickHouse DDL instead of executing it}';
 

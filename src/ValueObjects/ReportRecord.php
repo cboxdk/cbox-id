@@ -17,7 +17,7 @@ use Cbox\Id\Analytics\Contracts\ReportSink;
  * `eventId` is the natural, stable key — sinks dedupe on it so at-least-once
  * outbox re-delivery collapses to one row.
  */
-final readonly class ReportRecord
+readonly class ReportRecord
 {
     public function __construct(
         public string $eventId,

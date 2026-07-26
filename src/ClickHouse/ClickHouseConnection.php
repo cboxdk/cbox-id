@@ -20,7 +20,7 @@ use RuntimeException;
  * Server-side query parameters (`{name:Type}` + `param_name=`) are used for every
  * value so untrusted input can never be interpolated into SQL.
  */
-final class ClickHouseConnection
+class ClickHouseConnection
 {
     public function __construct(
         private readonly HttpFactory $http,
