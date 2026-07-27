@@ -62,7 +62,15 @@ function documentedOperations(): array
 
         foreach ($paths as $path => $methods) {
             // A spec path is relative to the server's base URL; the routes carry it.
-            $base = str_contains($file, 'account') || str_contains($file, 'environment') ? '/api/v1' : '';
+            //
+            // Unconditional, and it has to be: ApiContract::operation() — the checker
+            // that actually validates response bodies — hardcodes '/api/v1'.$specPath.
+            // This used to derive the base from a FILENAME heuristic instead, and the
+            // two disagreeing was a live trap. A new spec file whose name contained
+            // neither "account" nor "environment" either failed this test, or (worse)
+            // passed it while ApiContract silently found no operation and skipped
+            // schema validation entirely — a green build asserting nothing.
+            $base = '/api/v1';
 
             foreach (array_keys($methods) as $method) {
                 if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description'], true)) {
