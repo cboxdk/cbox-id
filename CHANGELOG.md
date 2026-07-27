@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.29.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.62.0.
+
+### Changed
+
+- **Requires a migration.** laravel-id v0.62.0 moves 225 identifier columns across 81
+  tables off PostgreSQL's blank-padded `char` to `varchar`, because `char(26)` handed any
+  identifier shorter than 26 characters back to PHP padded — so a strict comparison
+  against the unpadded value was false. This deployment is **not** currently affected:
+  every id in production is a full 26-character ULID, verified by
+  `SELECT count(*) … WHERE octet_length(id) <> length(id)` returning 0 on every table
+  checked. The migration is therefore preventive and changes no data. On PostgreSQL it
+  rewrites each table but keeps every foreign key throughout, so there is no integrity
+  window; set `lock_timeout` so the `ACCESS EXCLUSIVE` queue fails fast rather than
+  blocking readers behind it.
+
 ## [0.28.0] - 2026-07-27
 
 Requires `cboxdk/laravel-id` v0.61.0.
