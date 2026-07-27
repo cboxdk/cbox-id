@@ -6,7 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
-## [Unreleased]
+## [0.28.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.61.0.
+
+### Security
+
+- **A "deleted" organization kept authenticating its members.** The console wrote
+  `OrganizationStatus::Deleted`, but all three enforcement points tested only
+  `=== Suspended`, and every other reference to `Deleted` was cosmetic — list filtering
+  and badge colours. Its members kept signing in, kept consenting, and kept minting
+  tokens. Production had no organization in that state, so this was latent rather than
+  breached. `Deleted` is now enforced everywhere `Suspended` is, via
+  `App\Platform\OrganizationAccess`, whose `match` is exhaustive with no `default` — so a
+  status added upstream fails static analysis instead of defaulting to "allowed", which
+  is exactly how this slipped through. The delete path now writes an audit entry.
+
+### Fixed
+
+- **The console claimed to delete a user and did not.** `deleteUser()` removed
+  memberships, called `$user->delete()`, and caught `Throwable` with "they still have
+  linked records — deactivate instead". There is no foreign key on `user_id` anywhere in
+  the schema, so that catch was structurally unreachable: the delete always succeeded and
+  always reported "User deleted", while the person's sessions, passkeys, MFA factors,
+  TOTP seeds, password history, `identities.raw`, magic links, OAuth tokens, role
+  assignments and `directory_users.resource` (their full SCIM payload, including phone,
+  title and manager) stayed behind. It emitted no domain event, so nothing propagated
+  downstream, and wrote no audit entry. The action is removed rather than repaired:
+  deactivation is the honest capability today, and erasure is a designed programme that
+  must not be faked with a `->delete()`.
+- `docs/security/compliance.md` inherited the framework's Art. 17 claim wholesale without
+  restating it, so a reader had no signal to go and check. There is no erasure
+  implementation. It now states what exists — deactivate, revoke, soft-delete — and that
+  erasure is manual and out-of-band.
+- Operators can suspend and reactivate an account. `Accounts::suspend()` was fully
+  implemented in the package with zero callers and no screen anywhere, so five junk
+  signups could not even be disabled.
 
 ### Added
 
