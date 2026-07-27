@@ -22,7 +22,16 @@ info:
     **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
     a sibling `meta` on lists). Lists are cursor-paginated: pass `?after=<next_cursor>`
     from the previous page's `meta`. Every error returns
-    `{ "error": "<code>", "message": "<human message>" }`.
+    `{ "error": "<code>", "message": "<human message>" }`; a validation failure adds a
+    field-keyed `errors` map alongside the pair.
+
+    **Token Vault** is the exception, and deliberately so: those endpoints authenticate
+    an OAuth access token, so their 401/403 are RFC 6750 bearer challenges
+    (`{ "error", "error_description" }` plus `WWW-Authenticate`) rather than this
+    envelope. Protocol conformance beats local consistency there.
+
+    **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
+    runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
 servers:
   - url: https://{host}/api/v1
     description: The environment's own host
@@ -56,6 +65,7 @@ paths:
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       tags: [Organizations]
       summary: Create an organization
@@ -88,6 +98,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /organizations/{id}:
     get:
       tags: [Organizations]
@@ -107,6 +118,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /users:
     get:
       tags: [Users]
@@ -129,6 +141,7 @@ paths:
                   meta: { $ref: "#/components/schemas/PageMeta" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       tags: [Users]
       summary: Create a user
@@ -142,8 +155,8 @@ paths:
               required: [email]
               properties:
                 email: { type: string, format: email, maxLength: 190 }
-                name: { type: string, maxLength: 190, nullable: true }
-                password: { type: string, minLength: 8, maxLength: 255, nullable: true }
+                name: { type: ["string", "null"], maxLength: 190 }
+                password: { type: ["string", "null"], minLength: 8, maxLength: 255 }
       responses:
         "201":
           description: Created
@@ -156,6 +169,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /users/{id}:
     get:
       tags: [Users]
@@ -175,6 +189,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
       tags: [Users]
       summary: Deactivate a user
@@ -196,6 +211,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /vault/secrets:
     post:
       tags: [Token Vault]
@@ -223,15 +239,17 @@ paths:
                   description: Unique per owner — two organizations may each hold a `github-token`.
                 provider: { type: string, maxLength: 100 }
                 secret: { type: string, description: The value to seal. Never returned by a read. }
-                expires_at: { type: string, format: date-time, nullable: true }
+                expires_at: { type: ["string", "null"], format: date-time }
       responses:
         '201':
           description: Stored.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/VaultSecret' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /vault/secrets/{id}/rotate:
     post:
@@ -254,13 +272,20 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/VaultSecret' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
         '404':
           description: |
             No such secret **in the caller's organization**. A secret owned by another
             organization is indistinguishable from one that does not exist — the lookup
             is filtered, not fetched-then-compared, so nothing leaks about what exists
-            outside the caller's own scope.
+            outside the caller's own scope. The message is a constant for the same reason.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: not_found, message: "No such secret." }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /vault/secrets/{id}:
     delete:
@@ -271,8 +296,14 @@ paths:
       parameters: [{ $ref: '#/components/parameters/Id' }]
       responses:
         '204': { description: Revoked. }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: No such secret in the caller's organization. }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404':
+          description: No such secret in the caller's organization.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /vault/secrets/{id}/grants:
     post:
@@ -289,7 +320,7 @@ paths:
               required: [client_id]
               properties:
                 client_id: { type: string, maxLength: 200 }
-                max_ttl_seconds: { type: integer, minimum: 1, nullable: true }
+                max_ttl_seconds: { type: ["integer", "null"], minimum: 1 }
       responses:
         '201':
           description: Granted.
@@ -300,9 +331,16 @@ paths:
                 properties:
                   secret_id: { type: string }
                   client_id: { type: string }
-                  max_ttl_seconds: { type: integer, nullable: true }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: No such secret in the caller's organization. }
+                  max_ttl_seconds: { type: ["integer", "null"] }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404':
+          description: No such secret in the caller's organization.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /vault/secrets/{id}/grants/{clientId}:
     delete:
@@ -318,7 +356,9 @@ paths:
           schema: { type: string }
       responses:
         '204': { description: Revoked (or already absent). }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /vault/secrets/{id}/lease:
     post:
@@ -346,11 +386,28 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [secret_id, provider, secret, expires_at]
                 properties:
                   secret_id: { type: string }
+                  provider: { type: string, description: The downstream provider the secret belongs to. }
                   secret: { type: string }
                   expires_at: { type: string, format: date-time }
-        '403': { description: Lease denied. Deliberately uniform — see the description. }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403':
+          description: |
+            Lease denied. Deliberately uniform — unknown secret, revoked, expired and
+            ungranted are ONE response, with a constant message, so it cannot be used to
+            enumerate. A token missing the `vault.lease` scope is an RFC 6750 challenge
+            instead, and is distinguishable only because it never reaches the vault.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - $ref: '#/components/schemas/BearerChallenge'
+              example: { error: lease_denied, message: "The lease was denied." }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
 components:
   securitySchemes:
@@ -386,14 +443,18 @@ components:
   schemas:
     VaultSecret:
       type: object
+      required: [id, name, provider, revoked]
       properties:
         id: { type: string }
         name: { type: string }
         provider: { type: string }
-        owner_type: { type: string, nullable: true, enum: [organization, user, null] }
-        owner_id: { type: string, nullable: true }
-        expires_at: { type: string, format: date-time, nullable: true }
-        revoked_at: { type: string, format: date-time, nullable: true }
+        owner_type: { type: ["string", "null"], enum: [organization, user, null] }
+        owner_id: { type: ["string", "null"] }
+        expires_at: { type: ["string", "null"], format: date-time }
+        # The payload has never carried a `revoked_at` timestamp — it reports a boolean
+        # `revoked`. A client generated from the old spec read a field that is not there
+        # and concluded every secret was live.
+        revoked: { type: boolean, description: Whether the secret has been revoked. }
     Organization:
       type: object
       properties:
@@ -402,26 +463,45 @@ components:
         slug: { type: string }
         type: { type: string, enum: [customer, internal, reseller] }
         status: { type: string, enum: [active, suspended] }
-        parent_id: { type: string, nullable: true }
+        parent_id: { type: ["string", "null"] }
     User:
       type: object
       properties:
         id: { type: string }
         email: { type: string, format: email }
-        name: { type: string, nullable: true }
+        name: { type: ["string", "null"] }
         status: { type: string, enum: [active, disabled, locked] }
-        email_verified_at: { type: string, format: date-time, nullable: true }
+        email_verified_at: { type: ["string", "null"], format: date-time }
     PageMeta:
       type: object
       properties:
         limit: { type: integer }
         has_more: { type: boolean }
-        next_cursor: { type: string, nullable: true }
+        next_cursor: { type: ["string", "null"] }
     Error:
       type: object
+      required: [error, message]
       properties:
-        error: { type: string }
-        message: { type: string }
+        error: { type: string, description: Stable machine code }
+        message: { type: string, description: Human-readable explanation }
+        errors:
+          type: object
+          description: |
+            Present on `validation_failed` only: the offending request fields, each
+            mapped to its messages.
+          additionalProperties:
+            type: array
+            items: { type: string }
+    BearerChallenge:
+      type: object
+      required: [error, error_description]
+      description: |
+        RFC 6750 §3 error shape, used by the OAuth-token-authenticated Token Vault
+        endpoints. NOT the `{error, message}` envelope — restating the envelope here
+        would be a protocol conformance bug.
+      properties:
+        error: { type: string, enum: [invalid_request, invalid_token, insufficient_scope] }
+        error_description: { type: string }
   responses:
     Unauthorized:
       description: Missing or invalid environment API key.
@@ -439,7 +519,38 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     UnprocessableEntity:
-      description: Validation failed, or a uniqueness conflict (e.g. slug/email taken).
+      description: |
+        Validation failed (`error: validation_failed`, with a field-keyed `errors` map),
+        or a uniqueness conflict (e.g. slug/email taken).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: |
+        The key's rate limit for this plane is exhausted. The bucket is keyed on the API
+        KEY, so this reflects only your own traffic.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BearerUnauthorized:
+      description: Missing, expired, or wrongly-audienced access token (RFC 6750 challenge).
+      headers:
+        WWW-Authenticate:
+          description: 'Bearer error="invalid_token", error_description="…"'
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BearerChallenge" }
+    BearerForbidden:
+      description: The access token does not carry the scope this endpoint requires.
+      headers:
+        WWW-Authenticate:
+          description: 'Bearer error="insufficient_scope", scope="…"'
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BearerChallenge" }

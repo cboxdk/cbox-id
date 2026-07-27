@@ -288,6 +288,23 @@ see the undeclared-key note under [Access control](#access-control-rbac-and-app-
 | `CBOX_ID_USAGE_ENABLED` | Whether usage is metered at all. Metering feeds plan gates and billing projections. | `true` | Set `false` only on an install that has no billing and no plan gates. With it off, anything reading usage sees zero. |
 | `CBOX_ID_USER_API_TOKEN_TTL_DAYS` | Default lifetime, in days, of a user API token (`cbid_pat_…`) minted without an explicit expiry. | `90` | Shorten for tighter credential hygiene. A non-numeric value falls back to the built-in default. |
 
+## REST management API rate limits
+
+Buckets are keyed on the **API key**, not the caller's IP — a customer whose CI egresses
+through a shared NAT gets its own allowance instead of sharing one with every other
+tenant behind that address. Each value is requests **per minute, per credential**.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_API_RATE_LIMIT_ACCOUNT` | Budget for the account plane (`/api/v1/account/*`). | `120` | Raise for an account driving many projects/environments from CI. |
+| `CBOX_ID_API_RATE_LIMIT_ENVIRONMENT` | Budget for the environment plane (`/api/v1/organizations`, `/api/v1/users`). | `240` | Raise for bulk provisioning; this is the plane a Terraform/SDK sync hammers. |
+| `CBOX_ID_API_RATE_LIMIT_VAULT` | Budget for the token-vault endpoints. | `120` | Rarely. |
+| `CBOX_ID_API_RATE_LIMIT_APPS` | Budget for the app-manifest push endpoint. | `60` | Rarely — a manifest push is a deploy-time event. |
+| `CBOX_ID_API_RATE_LIMIT_IP_MULTIPLIER` | Abuse backstop, as a multiple of the plane budget, applied per source IP. Bounds a flood of distinct **invalid** credentials, which a per-credential bucket alone cannot. | `10` | Raise if one egress address genuinely fronts more than ~10 busy tenants. `0` disables the backstop. |
+
+A throttled request returns `429` with the standard `{ "error": "rate_limited", "message": … }`
+envelope plus `Retry-After` and the `X-RateLimit-*` headers.
+
 ## Risk scoring
 
 | Variable | What it does | Default | When to change |

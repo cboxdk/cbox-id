@@ -20,10 +20,15 @@ use Illuminate\Support\Facades\Route;
  *
  * Token Vault (v1): provision + grant downstream credentials (vault.manage), and
  * lease them to an authorized agent client (vault.lease).
+ *
+ * Throttling is by NAMED limiter (`api-<plane>`, registered in App\Http\ApiRateLimiters),
+ * not by `throttle:<n>,<m>`: the bare form keys on the client IP, so every tenant behind
+ * one NAT — which is every hosted CI runner — shared a single bucket. The named limiters
+ * key on the CREDENTIAL. Budgets live in config/api.php.
  */
 // App authorization manifest — the PUSH transport. An app declares its own
 // roles/permissions with an `apps.manifest`-scoped token.
-Route::middleware([ResolveEnvironment::class, 'throttle:60,1'])
+Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
     ->prefix('v1/apps')
     ->group(function (): void {
         Route::post('manifest', [AppManifestController::class, 'push'])
@@ -47,7 +52,7 @@ Route::get('v1/openapi.yaml', function () {
     return response($spec, 200, ['Content-Type' => 'application/yaml']);
 })->name('api.openapi');
 
-Route::middleware('throttle:120,1')
+Route::middleware('throttle:api-account')
     ->prefix('v1/account')
     ->group(function (): void {
         // Every route resolves the key exactly once, with the capability its data
@@ -82,7 +87,7 @@ Route::get('v1/environment/openapi.yaml', function () {
     return response($spec, 200, ['Content-Type' => 'application/yaml']);
 })->middleware(ResolveEnvironment::class)->name('api.environment.openapi');
 
-Route::middleware([ResolveEnvironment::class, 'throttle:240,1'])
+Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
     ->prefix('v1')
     ->group(function (): void {
         Route::get('organizations', [OrganizationController::class, 'index'])->middleware('env.api:organizations:read');
@@ -95,7 +100,7 @@ Route::middleware([ResolveEnvironment::class, 'throttle:240,1'])
         Route::delete('users/{id}', [UserController::class, 'destroy'])->middleware('env.api:users:write');
     });
 
-Route::middleware([ResolveEnvironment::class, 'throttle:120,1'])
+Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])
     ->prefix('v1/vault')
     ->group(function (): void {
         Route::post('secrets', [VaultController::class, 'store'])

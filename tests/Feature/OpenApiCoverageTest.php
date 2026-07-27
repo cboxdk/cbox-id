@@ -141,15 +141,29 @@ function undocumentedByDesign(): array
 
         // Management API — DEBT, and the most valuable to close: these are OURS, not an
         // RFC's, so nothing else describes them.
+        //
+        // The seven vault operations used to sit here too, long after environment.yaml
+        // grew a `Token Vault` section documenting all of them. Listing an operation as
+        // debt AND documenting it is harmless to the diff checks (array_diff subtracts
+        // both), which is exactly why it rotted unnoticed — and a debt list with entries
+        // that are not debt stops meaning anything. Removed; the fourth test below now
+        // holds the list to only-real-routes, and this one to only-real-debt.
         'POST /api/v1/apps/manifest',
-        'POST /api/v1/vault/secrets',
-        'DELETE /api/v1/vault/secrets/{id}',
-        'POST /api/v1/vault/secrets/{id}/grants',
-        'DELETE /api/v1/vault/secrets/{id}/grants/{clientId}',
-        'POST /api/v1/vault/secrets/{id}/lease',
-        'POST /api/v1/vault/secrets/{id}/rotate',
     ];
 }
+
+it('lists nothing as debt that the specs already document', function (): void {
+    // The mirror of the staleness check: an entry that IS documented is not debt.
+    // Without this, a documented operation can linger on the list indefinitely — both
+    // diffs subtract it, so nothing complains, and the list slowly becomes fiction.
+    $notDebt = array_values(array_intersect(undocumentedByDesign(), documentedOperations()));
+
+    expect($notDebt)->toBe(
+        [],
+        "These operations are documented, so they are no longer debt — delete them from\n"
+        ."undocumentedByDesign():\n  ".implode("\n  ", $notDebt)
+    );
+});
 
 it('documents every API route, or records it as known debt', function (): void {
     $missing = array_values(array_diff(apiOperations(), documentedOperations(), undocumentedByDesign()));

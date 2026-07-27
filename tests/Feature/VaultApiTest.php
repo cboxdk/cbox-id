@@ -91,11 +91,21 @@ it('denies a lease to an agent with no grant, uniformly', function (): void {
     $secret = app(SecretVault::class)->store('stripe', 'stripe', 'sk-stripe');
 
     // agent-2 was never granted this secret.
+    // The API's one error envelope, and NOTHING else: the message is a constant, so a
+    // refusal for "no grant" is byte-identical to one for "no such secret" — the
+    // no-enumeration property survives carrying `message`.
     $this->postJson("/api/v1/vault/secrets/{$secret->id}/lease", [
         'purpose' => 'charge',
     ], bearer('other-agent-tok'))
         ->assertStatus(403)
-        ->assertExactJson(['error' => 'lease_denied']);
+        ->assertExactJson(['error' => 'lease_denied', 'message' => 'The lease was denied.']);
+
+    // …and a lease against a secret that does not exist at all is the same response.
+    $this->postJson('/api/v1/vault/secrets/does-not-exist/lease', [
+        'purpose' => 'charge',
+    ], bearer('other-agent-tok'))
+        ->assertStatus(403)
+        ->assertExactJson(['error' => 'lease_denied', 'message' => 'The lease was denied.']);
 });
 
 it('denies a lease after the grant is revoked', function (): void {

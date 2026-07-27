@@ -150,7 +150,10 @@ final class VaultController extends Controller
         try {
             $lease = $vault->lease($id, $token->clientId, $request->string('purpose')->toString(), $this->owner($request));
         } catch (LeaseDenied) {
-            return new JsonResponse(['error' => 'lease_denied'], 403);
+            // Uniform on purpose (see the docblock): unknown, revoked, expired and
+            // ungranted are one indistinguishable refusal. The `message` is a CONSTANT
+            // so carrying the API's standard envelope adds no signal to enumerate with.
+            return new JsonResponse(['error' => 'lease_denied', 'message' => 'The lease was denied.'], 403);
         }
 
         return new JsonResponse([
@@ -177,7 +180,10 @@ final class VaultController extends Controller
 
     private function notFound(): JsonResponse
     {
-        return new JsonResponse(['error' => 'not_found'], 404);
+        // A constant message, for the same no-enumeration reason as `lease_denied`:
+        // "no such secret in YOUR organization" and "no such secret at all" must be
+        // one response.
+        return new JsonResponse(['error' => 'not_found', 'message' => 'No such secret.'], 404);
     }
 
     private function challengeExpired(): JsonResponse

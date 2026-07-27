@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [Unreleased]
+
+### Added
+
+- **Response-schema validation for the REST management API.** Every `/api/*` response
+  the test suite produces is now validated against the documented OpenAPI response
+  schema for that operation, and against the status list the spec declares
+  (`Tests\Support\ApiContract`, wired into `Tests\TestCase::createTestResponse()` so
+  there is no per-test opt-in). `OpenApiCoverageTest` kept the spec honest about paths;
+  this keeps it honest about bodies. Validation is by `opis/json-schema` — **dev-only**,
+  so the production dependency surface and the SBOM are unchanged.
+- `OpenApiCoverageTest` gained a fourth check: an operation that is documented can no
+  longer sit on the known-debt list.
+
+### Changed
+
+- **The REST API rate limit is keyed on the API key, not the client IP.** The routes
+  carried a bare `throttle:240,1` (Laravel's default IP key) and the repo had no
+  `RateLimiter::for()` at all, so every customer whose CI egressed through one NAT
+  shared a single bucket — one noisy tenant throttled the rest. Named limiters
+  (`api-account`, `api-environment`, `api-vault`, `api-apps`) now bucket per credential,
+  with a per-IP backstop for floods of invalid credentials. Budgets are configurable via
+  `CBOX_ID_API_RATE_LIMIT_*` (see `config/api.php`).
+
+### Fixed
+
+- **One error shape on the REST API, actually honoured.** `bootstrap/app.php` had an
+  empty `withExceptions()`, so `$request->validate()` rendered Laravel's default
+  `{"message": …, "errors": {…}}` — with no `error` key, which both specs declare
+  REQUIRED. A generated client that switched on `error` broke on the most common failure
+  there is. `App\Http\ApiErrorRenderer` now maps every exception off the API surface into
+  `{error, message}` (plus `errors` on a validation failure), preserving `Retry-After` /
+  `X-RateLimit-*` on a 429. The RFC-specified surfaces are untouched: OAuth's
+  `{error, error_description}` bearer challenges and SCIM's Error envelope are protocol
+  conformance, not inconsistency.
+- The two stragglers that spelled the envelope differently: `AppManifestController`
+  returned `{error, detail}`, and `VaultController` returned a bare `{error}` for
+  `not_found` and `lease_denied`. Both now carry `message` — constant strings in the
+  vault's case, so the no-enumeration property of a uniform refusal is preserved.
+- **Spec/controller drift, found by the new schema gate.** `environment.yaml` documented
+  a `revoked_at` timestamp on a vault secret that the API has never returned (it returns
+  a boolean `revoked`); the lease response omitted the `provider` field it does return;
+  the vault's 401/403 were documented as the standard error envelope when they are
+  RFC 6750 bearer challenges; and every nullable field in both specs used OpenAPI 3.0's
+  `nullable: true`, which a 3.1 document (these declare `openapi: 3.1.0`) ignores — so
+  eight fields that are routinely null were typed as non-nullable. Undocumented statuses
+  (403 on the vault, 404/422 on several account operations, 429 everywhere) are now
+  documented.
+
 ## [0.27.0] - 2026-07-27
 
 ### Added

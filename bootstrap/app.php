@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\ApiErrorRenderer;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateAccountApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
@@ -103,5 +104,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // One error shape on the REST API, actually honoured. Both OpenAPI specs
+        // promise `{error, message}` on every failure and account.yaml marks both
+        // REQUIRED — but an empty withExceptions() meant `$request->validate()`
+        // rendered Laravel's default `{message, errors}` with no `error` key, and a
+        // throttled request rendered a bare `{"message":"Too Many Attempts."}`. Those
+        // are the two most common failures a generated client meets.
+        $exceptions->render(ApiErrorRenderer::render(...));
     })->create();

@@ -14,7 +14,11 @@ info:
 
     **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
     a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
-    "<human message>" }`.
+    "<human message>" }` — including validation failures, which add a field-keyed
+    `errors` map alongside the pair.
+
+    **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
+    runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
 servers:
   - url: https://api.cboxid.com/api/v1
     description: Hosted (global account plane)
@@ -45,6 +49,8 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/Account" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /account/projects:
     get:
       tags: [Projects]
@@ -60,6 +66,8 @@ paths:
                 properties:
                   data: { type: array, items: { $ref: "#/components/schemas/Project" } }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       tags: [Projects]
       summary: Create a project
@@ -85,6 +93,9 @@ paths:
                   data: { $ref: "#/components/schemas/Project" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /account/environments:
     get:
       tags: [Environments]
@@ -102,6 +113,7 @@ paths:
                   data: { type: array, items: { $ref: "#/components/schemas/Environment" } }
                   meta: { $ref: "#/components/schemas/ListMeta" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       tags: [Environments]
       summary: Create an environment
@@ -128,12 +140,19 @@ paths:
                   data: { $ref: "#/components/schemas/Environment" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: No such project on this account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: not_found, message: "Project not found." }
         "422":
-          description: Plan limit reached
+          description: Validation failed, or the project's plan limit is reached
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
               example: { error: environment_limit_reached, message: "Project [01J…] has reached its plan limit of 2 environment(s)." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /account/members:
     get:
       tags: [Members]
@@ -153,6 +172,7 @@ paths:
                   meta: { $ref: "#/components/schemas/ListMeta" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       tags: [Members]
       summary: Invite a member
@@ -166,7 +186,7 @@ paths:
               required: [email, role]
               properties:
                 email: { type: string, format: email }
-                name: { type: string, nullable: true }
+                name: { type: ["string", "null"] }
                 role: { type: string, enum: [admin, billing, developer, viewer] }
       responses:
         "201":
@@ -179,11 +199,14 @@ paths:
                   data: { $ref: "#/components/schemas/Member" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "422":
-          description: Email already belongs to a member
+          description: Validation failed, or the email already belongs to a member
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+              example: { error: email_taken, message: "That email already belongs to a member." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 components:
   securitySchemes:
     AccountApiKey:
@@ -196,6 +219,24 @@ components:
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Forbidden:
       description: The key's role lacks the required capability
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: No such resource on this account
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    UnprocessableEntity:
+      description: |
+        Validation failed (`error: validation_failed`, with a field-keyed `errors` map),
+        or the request was well-formed but refused for a domain reason — a taken email,
+        a reached plan limit.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: |
+        The key's rate limit for this plane is exhausted. The bucket is keyed on the API
+        KEY, so this reflects only your own traffic.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer }
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
     Account:
@@ -226,7 +267,10 @@ components:
         type: { type: string, enum: [production, sandbox] }
         status: { type: string }
         project_id: { type: string, description: The project (billing anchor) this environment belongs to. }
-        domain: { type: string, nullable: true }
+        # OpenAPI 3.1 IS JSON Schema 2020-12, which dropped `nullable: true` — a 3.0-ism
+        # that a 3.1 parser ignores, so it silently typed this field as non-nullable
+        # while the API returns null for every environment on the platform domain.
+        domain: { type: ["string", "null"] }
         issuer:
           type: string
           format: uri
@@ -236,7 +280,7 @@ components:
       properties:
         id: { type: string }
         email: { type: string, format: email }
-        name: { type: string, nullable: true }
+        name: { type: ["string", "null"] }
         role: { type: string, enum: [owner, admin, billing, developer, viewer] }
         status: { type: string, enum: [active, invited] }
         all_environments: { type: boolean }
@@ -251,3 +295,11 @@ components:
       properties:
         error: { type: string, description: Stable machine code }
         message: { type: string, description: Human-readable explanation }
+        errors:
+          type: object
+          description: |
+            Present on `validation_failed` only: the offending request fields, each
+            mapped to its messages.
+          additionalProperties:
+            type: array
+            items: { type: string }

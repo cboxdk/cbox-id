@@ -26,13 +26,19 @@ final class AppManifestController
 
         // RequireScope guarantees an active token with a client_id; narrow for types.
         if (! $token instanceof Introspection || $token->clientId === null) {
-            return new JsonResponse(['error' => 'invalid_token'], 401);
+            return new JsonResponse(
+                ['error' => 'invalid_token', 'message' => 'The access token is invalid or expired.'],
+                401,
+                ['WWW-Authenticate' => 'Bearer error="invalid_token"'],
+            );
         }
 
         try {
             $manifest = $parser->parse($request->json()->all());
         } catch (InvalidManifest $e) {
-            return new JsonResponse(['error' => 'invalid_manifest', 'detail' => $e->getMessage()], 422);
+            // `message`, not `detail`: the API has ONE error envelope and this was the
+            // only endpoint spelling the human half differently.
+            return new JsonResponse(['error' => 'invalid_manifest', 'message' => $e->getMessage()], 422);
         }
 
         $result = $manifests->sync($token->clientId, $manifest);

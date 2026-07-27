@@ -11,9 +11,30 @@ use Cbox\Risk\Contracts\TorExitNodes;
 use Cbox\Risk\Testing\FakeMailDomainResolver;
 use Cbox\Risk\Testing\FakeTorExitNodes;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Http\Request;
+use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Tests\Support\ApiContract;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Every HTTP response the suite produces passes through here, so the API contract
+     * is checked on every `/api/*` request any test makes — no per-test opt-in.
+     *
+     * See {@see ApiContract}: one error envelope on failures, and a body that validates
+     * against the documented OpenAPI response schema on documented operations.
+     *
+     * @param  Request  $request
+     * @param  Response  $response
+     */
+    protected function createTestResponse($response, $request): TestResponse
+    {
+        ApiContract::verify($request, $response);
+
+        return parent::createTestResponse($response, $request);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

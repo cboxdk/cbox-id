@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\ApiRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Platform\AccountApiContext;
 use App\Platform\AuthoritativeDnsResolver;
@@ -47,5 +48,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Real email never leaves a sandbox environment.
         Event::listen(MessageSending::class, SuppressSandboxMail::class);
+
+        // The REST management API's named rate limiters. Without these registered,
+        // `throttle:api-account` would be read as a numeric limit of 0.
+        ApiRateLimiters::register();
     }
 }
