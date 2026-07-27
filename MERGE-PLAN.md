@@ -7,6 +7,40 @@ Working doc. Delete once executed.
 
 ---
 
+## Status
+
+Everything below is kept as written, including the parts that turned out to be wrong,
+because the reasoning is what makes the remaining steps legible.
+
+**Landed** on `feat/merge-console-modules`:
+
+- **Phase 0 §1.1 — entitlement blast radius.** Answered: entitlements are not an
+  isolation control. `DefaultPolicyDecisionPoint::decide()` resolves allow/deny purely
+  from the relationship store, and every read is keyed by an organization id the caller
+  proved. Phase 2 was safe to do.
+- **Phase 0 §1.2 — engine coverage.** CI now runs MySQL 8.4 and PostgreSQL 17. The
+  first run found four defects sqlite had been hiding, two of them live bugs on an
+  engine that ran in production; all fixed, and `SchemaPortabilityTest` is ported so
+  the `CHAR` class of them cannot return.
+- **Phase 0 §1.3 — ClickHouse.** Resolved differently than any option listed: a
+  relational event store was built instead, so `ID_ANALYTICS_STORE=database` is the
+  answer for Cloud rather than "inert" or "external ClickHouse". See
+  [docs/operations/analytics.md](docs/operations/analytics.md).
+- **Phase 1 — the merge.** Five modules vendored with history, wired, tests migrated,
+  gate green.
+- **Phase 2 — un-gating.** `CBOX_ID_ENTITLEMENTS=open` is the default;
+  §3.2 (killing the licensing layer) is still open.
+
+796 tests green on sqlite, MySQL 8.4 and PostgreSQL 17; pint, phpstan level max,
+license-check, SBOM and audit clean.
+
+**Not started:** §3.2 (remove `EntitlementSource::License`, archive the licensing
+repo), Phase 3 (relicense and publish the two billing packages), Phase 4 (Laravel
+Cloud bring-up), Phase 5 (release and repo archival). Each of those touches a
+repository other than this one, or publishes something.
+
+---
+
 ## 0. Where we are today
 
 | Repo | License | LOC | Fate |
