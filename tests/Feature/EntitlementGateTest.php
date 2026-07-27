@@ -16,6 +16,15 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
+// This file is ABOUT the entitlement gate, so it declares the mode it exercises.
+// The default is now `open` — an unset entitlement means granted, which is what a
+// self-hosted deployment runs and what most of the suite therefore sees. Gating
+// only means anything under `metered`, where the billing projection is the sole
+// source of a grant.
+beforeEach(function (): void {
+    config(['cbox-id.entitlements.mode' => 'metered']);
+});
+
 /**
  * Sign an admin into a fresh org and return its id. The org starts with NO
  * entitlements — deny-by-default is the thing under test.

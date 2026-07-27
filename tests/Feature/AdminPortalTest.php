@@ -18,6 +18,15 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Livewire\Volt\Volt;
 
+// This file is ABOUT the entitlement gate, so it declares the mode it exercises.
+// The default is now `open` — an unset entitlement means granted, which is what a
+// self-hosted deployment runs and what most of the suite therefore sees. Gating
+// only means anything under `metered`, where the billing projection is the sole
+// source of a grant.
+beforeEach(function (): void {
+    config(['cbox-id.entitlements.mode' => 'metered']);
+});
+
 // gateAdmin() and grantFeature() are shared helpers defined in EntitlementGateTest.
 
 it('lets an entitled admin generate a setup link, recorded in the audit trail', function () {

@@ -14,6 +14,11 @@ use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
+use Cbox\Id\Analytics\AnalyticsServiceProvider;
+use Cbox\Id\Compliance\ComplianceServiceProvider;
+use Cbox\Id\Connectors\ConnectorsServiceProvider;
+use Cbox\Id\RiskPlus\RiskPlusServiceProvider;
+use Cbox\Id\Whitelabel\WhitelabelServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,6 +28,17 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         PlatformServiceProvider::class,
         ConsoleServiceProvider::class,
+
+        // The console modules under modules/. They were separate Composer packages
+        // and reached the app through Laravel's package auto-discovery; vendored
+        // in-repo there is no installed package to discover, so they are named here.
+        // Each still registers its own nav, routes, views, migrations and feature
+        // gate through the same console-kit sockets a third-party plugin would use.
+        AnalyticsServiceProvider::class,
+        ComplianceServiceProvider::class,
+        ConnectorsServiceProvider::class,
+        RiskPlusServiceProvider::class,
+        WhitelabelServiceProvider::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

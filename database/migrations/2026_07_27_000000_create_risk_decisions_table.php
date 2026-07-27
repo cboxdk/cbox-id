@@ -33,7 +33,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('risk_decisions', function (Blueprint $table): void {
-            $table->ulid('id')->primary();
+            $table->string('id', 26)->primary();
 
             // The environment whose host the attempt landed on. A PLAIN column, not the
             // `BelongsToEnvironment` scope: tuning a threshold is a deployment-wide

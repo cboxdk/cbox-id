@@ -6,6 +6,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.32.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.65.0.
+
+The open-core split is gone. Cbox ID is now one application that self-hosts with no
+licence key, no limits, and every capability present; billing becomes something you add
+where you actually bill someone.
+
+### Added
+
+- **Five console modules are now part of the application** — analytics, compliance,
+  connectors, risk-plus and whitelabel, previously five separate proprietary packages.
+  They live under `modules/` and still register themselves the way an external package
+  would, through the public console-kit sockets with no edit to `app/`. See
+  [Console modules](docs/core-concepts/modules.md).
+- **`CBOX_ID_ENTITLEMENTS=open` (the new default)** — an unset entitlement is granted.
+  It is a floor, not an override: an explicit entitlement still wins in both directions,
+  so per-organization differentiation by hand keeps working and a revocation still
+  revokes. Set `metered` where a billing transport is wired to restore deny-by-default.
+  See [Entitlements](docs/core-concepts/entitlements.md).
+- **A relational analytics event store** (`ID_ANALYTICS_STORE=database`). Analytics could
+  previously stream to ClickHouse or nowhere; this is the third option, for deployments
+  with no column store. Idempotent through the engine — `event_id` is the primary key and
+  writes are `insertOrIgnore` — and swept by the daily `model:prune`, which it needs:
+  this is the one table that grows with traffic rather than with tenants. See
+  [Analytics storage](docs/operations/analytics.md).
+- **CI runs the suite against MySQL 8.4 and PostgreSQL 17.** Until now this application
+  had only ever executed against sqlite, while production ran PostgreSQL.
+
+### Fixed
+
+Four defects the new engine coverage surfaced on its first run, two of them live bugs on
+an engine that ran in production:
+
+- **The Apps & API keys console 500s on MySQL.** It filtered `oauth_clients` on
+  `orphaned_at`, a column that lives on `roles`/`permissions` and exists on
+  `oauth_clients` on no engine. sqlite hid it by falling back to treating the
+  unresolvable double-quoted identifier as a string literal, so the query matched nothing
+  instead of failing.
+- **The environment-scope guard refused legitimate writes on PostgreSQL.** Thirteen
+  `ulid()` declarations across this app's own migrations and two modules compiled to
+  `char(26)`, which PostgreSQL blank-pads — so a row's `environment_id` came back padded
+  and compared false against the very environment that owned it. `SchemaPortabilityTest`
+  is ported from the framework, widened to scan `modules/`, so it cannot return.
+- **The compliance audit export failed outright on PostgreSQL**, which ordered a
+  `SELECT DISTINCT` by an expression not in the select list.
+- **Analytics read across every environment** when none was in context: the ClickHouse
+  reader dropped the environment clause entirely. Both readers now deny by default.
+
+- `docs/security/adaptive-risk.md` told operators to run `CAST(… AS INTEGER)`, which
+  MySQL spells `SIGNED`. Query 1 is now portable; queries 2–5 are marked PostgreSQL-only
+  rather than left silently wrong.
+
+### Changed
+
+- `BrandProfile`'s `palette` and `email_templates` leave the `array` cast for `Palette`
+  and `EmailTemplates` value objects. The palette was previously validated at *render* —
+  an invalid colour could reach storage and was only rejected on the way out.
+- The brand asset stores depend on the `Cloud` filesystem contract rather than
+  `Filesystem`, which does not declare the `url()` they were calling.
+- `ReportSink` and `AuditExportSink` gained `isInert()`. The providers were sniffing the
+  concrete class to decide whether a feature was live, which missed a host binding its
+  own no-op sink.
+- Module Volt components converted from the functional API to the class API used
+  everywhere else in this application, so they carry typed properties and pass analysis.
+
+### Removed
+
+- The licensing layer. `cboxdk/laravel-id-licensing` is retired and
+  `EntitlementSource::License` is gone from the framework; there is nothing left to
+  unlock.
+
 ## [0.31.0] - 2026-07-27
 
 Requires `cboxdk/laravel-id` v0.64.0.

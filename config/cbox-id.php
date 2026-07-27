@@ -119,11 +119,24 @@ return [
     /*
      * Entitlement keys that gate the enterprise self-serve surfaces (SSO & SCIM).
      * These are NAMESPACED so they never clash with the entitlements a tenant
-     * product pushes through the same billing-fed projection. An org sees the SSO
-     * or SCIM screens as usable only when billing has set the matching key's
-     * `enabled` flag true — deny-by-default otherwise.
+     * product pushes through the same billing-fed projection.
+     *
+     * `mode` decides what an UNSET key means:
+     *
+     *   open     (default) — unset means granted. No billing plane, no limits: a
+     *                        self-hosted deployment gets every feature. An explicit
+     *                        row still wins, so per-org differentiation by hand
+     *                        (including revoking with `enabled: false`) keeps working.
+     *   metered            — unset means denied, and the billing projection is the
+     *                        only thing that grants. Set this where a billing
+     *                        transport is actually wired; it is what the hosted
+     *                        plane runs so plan tiers mean something there.
+     *
+     * See App\Platform\OpenEntitlements for why widening this is not an isolation
+     * concern: authorization resolves from the relationship store, not from here.
      */
     'entitlements' => [
+        'mode' => env('CBOX_ID_ENTITLEMENTS', 'open'),
         'sso' => env('CBOX_ID_ENTITLEMENT_SSO', 'cbox-id-sso'),
         'scim' => env('CBOX_ID_ENTITLEMENT_SCIM', 'cbox-id-scim'),
     ],

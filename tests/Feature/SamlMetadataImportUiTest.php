@@ -17,6 +17,15 @@ use Livewire\Volt\Volt;
 
 uses(InteractsWithFederation::class);
 
+// This file is ABOUT the entitlement gate, so it declares the mode it exercises.
+// The default is now `open` — an unset entitlement means granted, which is what a
+// self-hosted deployment runs and what most of the suite therefore sees. Gating
+// only means anything under `metered`, where the billing projection is the sole
+// source of a grant.
+beforeEach(function (): void {
+    config(['cbox-id.entitlements.mode' => 'metered']);
+});
+
 function ssoConsoleAdmin(string $slug, bool $entitled = true): string
 {
     $subject = app(Subjects::class)->create("admin@{$slug}.test", 'Admin', 'supersecret123');

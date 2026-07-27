@@ -21,9 +21,13 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\ImpersonationCallGuard;
+use App\Platform\OpenEntitlements;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Authorization\CachedEntitlements;
+use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -55,6 +59,21 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->extend(AuditLog::class, function (AuditLog $inner): AuditLog {
             return new ImpersonationAwareAuditLog($inner);
         });
+
+        // Entitlements: grant-by-default unless this deployment is metered.
+        //
+        // A fresh BIND rather than extend(): the framework registers
+        // EntitlementReader and EntitlementWriter as two ALIASES of the same
+        // CachedEntitlements singleton, and extend() resolves aliases — so
+        // extending the reader would hand the writer an OpenEntitlements that does
+        // not implement EntitlementWriter, and every write would fail. Binding the
+        // reader abstract on its own leaves the writer alias pointing at the real
+        // implementation, which is what we want: writes must always reach the
+        // projection, only reads get a floor.
+        $this->app->singleton(EntitlementReader::class, fn (Application $app): EntitlementReader => new OpenEntitlements(
+            $app->make(CachedEntitlements::class),
+            $app->make('config'),
+        ));
     }
 
     public function boot(): void

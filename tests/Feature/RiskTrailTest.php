@@ -175,7 +175,10 @@ it('answers the threshold-setting question the docs pose', function (): void {
     $bands = RiskDecision::query()
         ->where('action', 'register')
         ->where('assessed_at', '>=', now()->subDays(7))
-        ->selectRaw('CAST(score / 10 AS INTEGER) * 10 AS band, COUNT(*) AS decisions')
+        // FLOOR rather than a cast: MySQL has no INTEGER cast target (it is SIGNED
+        // there), so `CAST(… AS INTEGER)` is a syntax error on the engine this app
+        // deploys to. The docs query this mirrors had the same defect.
+        ->selectRaw('FLOOR(score / 10) * 10 AS band, COUNT(*) AS decisions')
         ->groupBy('band')
         ->orderBy('band')
         ->pluck('decisions', 'band')
