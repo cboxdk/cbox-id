@@ -593,7 +593,11 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
     // all 43 environment users. (Bindings also carry the environment_id global scope.)
     $memberIds = $members->pluck('id')->map(fn ($x) => (string) $x)->all();
     $scoped = collect($userQueries)->contains(function ($q) use ($memberIds): bool {
-        if (! str_contains($q->sql, '"id" in (')) {
+        // Strip identifier quoting first — sqlite/PostgreSQL emit `"id" in (`,
+        // MySQL `` `id` in ( ``. The capture above already handled both spellings
+        // for `users`; this check did not, so it reported an unbounded query on
+        // MySQL while the query was correctly scoped.
+        if (! str_contains(str_replace(['"', '`'], '', $q->sql), 'id in (')) {
             return false;
         }
         $bindings = array_map('strval', $q->bindings);

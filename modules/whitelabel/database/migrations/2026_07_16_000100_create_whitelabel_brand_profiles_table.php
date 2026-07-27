@@ -13,9 +13,9 @@ return new class extends Migration
         Schema::create('whitelabel_brand_profiles', function (Blueprint $table): void {
             $table->id();
             // The hard environment boundary this profile belongs to (BelongsToEnvironment).
-            $table->ulid('environment_id')->index();
+            $table->string('environment_id', 26)->index();
             // Null = the environment-wide default brand; set = an org-specific override.
-            $table->ulid('organization_id')->nullable()->index();
+            $table->string('organization_id', 26)->nullable()->index();
             $table->string('name')->nullable();
             $table->string('logo_url')->nullable();
             $table->string('favicon_url')->nullable();

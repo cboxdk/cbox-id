@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('audit_export_cursors', function (Blueprint $table): void {
             $table->id();
             $table->string('scope')->unique();      // organization key, or '__system__'
-            $table->ulid('organization_id')->nullable();
+            $table->string('organization_id', 26)->nullable();
             $table->unsignedBigInteger('last_sequence')->default(0);
             $table->timestamps();
         });

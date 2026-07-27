@@ -99,11 +99,18 @@ it('counts a permission\'s usage without loading the whole platform-wide pivot',
         // replaced was a bare `select permission_id from role_permission` with no
         // WHERE at all — every row of a table with no `environment_id`, pulled into
         // PHP and grouped there, on every render and every Livewire action.
-        expect($sql)
+        // Identifier quoting is per-engine — `"roles"` on sqlite/PostgreSQL,
+        // `` `roles` `` on MySQL — so strip the quoting before matching rather than
+        // asserting one engine's dialect. What matters is the SHAPE of the query,
+        // and asserting it in sqlite's spelling made this fail on the engine the app
+        // actually deploys to while the query itself was correct.
+        $bare = str_replace(['"', '`'], '', $sql);
+
+        expect($bare)
             ->toContain('count(*)')
-            ->toContain('inner join "roles"')
+            ->toContain('inner join roles')
             ->toContain('environment_id')
-            ->toContain('permission_id" in');
+            ->toContain('permission_id in');
     }
 });
 

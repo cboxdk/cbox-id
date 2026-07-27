@@ -18,10 +18,16 @@ class AuditScopes
      */
     public static function all(): array
     {
+        // Ordered in PHP, not SQL, on purpose. The system trail must sort last, and
+        // the natural spelling — `ORDER BY organization_id IS NULL, organization_id`
+        // — is rejected by PostgreSQL alongside SELECT DISTINCT: every ORDER BY
+        // expression has to appear in the select list, and `organization_id IS NULL`
+        // does not. MySQL and SQLite accept it, which is why this shipped. There is
+        // no portable SQL spelling that keeps both the DISTINCT and the expression,
+        // and the result set is bounded by the number of organizations that have
+        // ever been audited, so sorting it here costs nothing.
         $ids = AuditEntry::query()
             ->distinct()
-            ->orderByRaw('organization_id is null')
-            ->orderBy('organization_id')
             ->pluck('organization_id');
 
         $scopes = [];
@@ -29,6 +35,16 @@ class AuditScopes
         foreach ($ids as $id) {
             $scopes[] = is_string($id) ? $id : null;
         }
+
+        usort($scopes, static function (?string $a, ?string $b): int {
+            // System trail (null) last; organizations alphabetically before it.
+            return match (true) {
+                $a === null && $b === null => 0,
+                $a === null => 1,
+                $b === null => -1,
+                default => strcmp($a, $b),
+            };
+        });
 
         return $scopes;
     }

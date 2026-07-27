@@ -285,10 +285,16 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
         // shown in the launcher, but not registered BY this org, so read-only here.
         // Surfacing them keeps this page consistent with the dashboard launcher
         // (otherwise an app the user sees in their launcher looks missing here).
+        // NB no orphaned_at filter: that column lives on `roles`/`permissions`, which
+        // are tombstoned when an app's manifest stops declaring them. `oauth_clients`
+        // has no such column — an app is deleted, not orphaned. Filtering on it here
+        // (copied from the Role query below) was a query against a column that exists
+        // on no engine; sqlite hid it by falling back to treating the double-quoted
+        // identifier as a string literal, so it silently matched nothing instead of
+        // failing, and MySQL 500s the page.
         $platformApps = Client::query()
             ->whereNull('organization_id')
             ->where('first_party', true)
-            ->whereNull('orphaned_at')
             ->orderBy('name')
             ->get();
 

@@ -210,16 +210,26 @@ would count one sign-in twice and silently double every number below.
 
 ## Setting a threshold
 
-Everything here assumes PostgreSQL (the deployed engine) and is run from
-`php artisan tinker` or a read-only psql session.
+Run from `php artisan tinker` or a read-only SQL session.
+
+Query 1 below is portable. **Queries 2–5 are PostgreSQL-only** — they use
+`COUNT(*) FILTER (WHERE …)`, `generate_series`, a `VALUES` CTE and
+`jsonb_each_text`, none of which MySQL accepts. MySQL 8 can express all of them
+(via `SUM(CASE WHEN …)`, a recursive CTE and `JSON_TABLE`) but those rewrites are
+not yet written or tested, so on MySQL treat 2–5 as sketches of the *question*,
+not as SQL to paste. Date arithmetic differs throughout: PostgreSQL's
+`now() - interval '7 days'` is `NOW() - INTERVAL 7 DAY` on MySQL.
 
 **1. What does the current traffic actually look like?**
 
 ```sql
-SELECT (score::int / 10) * 10 AS band, COUNT(*) AS decisions
+-- FLOOR, not a cast: MySQL has no INTEGER cast target (it spells it SIGNED), and
+-- `score::int` is PostgreSQL-only syntax. FLOOR is the one spelling all three
+-- supported engines accept.
+SELECT FLOOR(score / 10) * 10 AS band, COUNT(*) AS decisions
 FROM risk_decisions
 WHERE action = 'register'
-  AND assessed_at >= now() - interval '7 days'
+  AND assessed_at >= NOW() - INTERVAL 7 DAY   -- PostgreSQL: now() - interval '7 days'
 GROUP BY band
 ORDER BY band;
 ```

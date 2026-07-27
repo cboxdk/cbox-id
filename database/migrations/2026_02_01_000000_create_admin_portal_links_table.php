@@ -16,8 +16,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('admin_portal_links', function (Blueprint $table): void {
-            $table->ulid('id')->primary();
-            $table->ulid('organization_id')->index();
+            $table->string('id', 26)->primary();
+            $table->string('organization_id', 26)->index();
             // 'sso' | 'scim' | 'both' — which surfaces the redeemer may configure.
             $table->string('scope');
             // SHA-256 hex of the random token; the plaintext is never stored.
