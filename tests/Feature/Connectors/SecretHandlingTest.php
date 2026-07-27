@@ -3,12 +3,19 @@
 declare(strict_types=1);
 
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
-use Cbox\Id\Provisioning\Models\ProvisioningConnection;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Cbox\Id\Organization\Testing\InteractsWithOrganizations;
+use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Cbox\Id\Provisioning\Testing\InteractsWithProvisioning;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithProvisioning::class);
+
+// Registration SSRF-checks the target URL; these fixtures use non-routable example
+// hosts and never egress. What this file asserts — that the raw secret is sealed and
+// never surfaced — is unaffected by the guard.
+beforeEach(function (): void {
+    config(['ssrf.enforce' => false, 'cbox-id.provisioning.verify_url' => false]);
+});
 
 it('never stores a raw connector secret — registration seals it via the module contract', function (): void {
     $org = $this->makeOrganization('Acme');

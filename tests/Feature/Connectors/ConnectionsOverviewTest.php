@@ -5,13 +5,21 @@ declare(strict_types=1);
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Cbox\Id\Connectors\Enums\ConnectorCategory;
 use Cbox\Id\Connectors\ValueObjects\ConnectionSummary;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Cbox\Id\Organization\Testing\InteractsWithOrganizations;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
+use Cbox\Id\Organization\Testing\InteractsWithOrganizations;
 use Cbox\Id\Provisioning\Testing\InteractsWithProvisioning;
 use Cbox\Id\Webhooks\Testing\InteractsWithWebhooks;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithFederation::class, InteractsWithProvisioning::class, InteractsWithWebhooks::class);
+
+// The connector modules SSRF-check every target URL on registration. These tests
+// register against non-routable example hosts and never make real egress, so the
+// guard is off for the happy paths — the same stance laravel-id's own provisioning
+// tests take. The module under test loosens nothing; it only reads existing rows.
+beforeEach(function (): void {
+    config(['ssrf.enforce' => false, 'cbox-id.provisioning.verify_url' => false]);
+});
 
 /** @return array<string, ConnectionSummary> */
 function summariesByCategory(ConnectionsOverview $overview, ?string $organizationId): array

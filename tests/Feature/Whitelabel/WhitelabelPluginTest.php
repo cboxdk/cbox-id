@@ -13,15 +13,21 @@ it('activates the whitelabel console feature when installed', function (): void 
     expect(Console::featureActive('whitelabel'))->toBeTrue();
 });
 
-it('adds a gated Settings nav area with a Branding page', function (): void {
+it('adds a gated Branding page to the Settings nav area', function (): void {
     $area = collect(Console::nav()->areas())->firstWhere('key', 'settings');
 
     expect($area)->not->toBeNull();
     expect($area->label)->toBe('Settings');
 
-    $pages = $area->pages();
-    expect($pages[0]->route)->toBe('whitelabel.branding')
-        ->and($pages[0]->feature)->toBe('whitelabel');
+    // Looked up by route, not by position. In the module's own package suite it was
+    // the only contributor to this area, so `pages()[0]` was it; in the app the host's
+    // own Settings pages register first and the module appends to them. Position is
+    // not what this asserts — that the module contributes a whitelabel-gated Branding
+    // page is.
+    $page = collect($area->pages())->firstWhere('route', 'whitelabel.branding');
+
+    expect($page)->not->toBeNull()
+        ->and($page->feature)->toBe('whitelabel');
 });
 
 it('registers the gated branding route', function (): void {

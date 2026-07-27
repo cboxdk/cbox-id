@@ -8,9 +8,9 @@ use Cbox\Id\Connectors\Contracts\ConnectorAnalytics;
 use Cbox\Id\Connectors\Enums\ConnectorCategory;
 use Cbox\Id\Connectors\Testing\FakeConnectorAnalytics;
 use Cbox\Id\Connectors\ValueObjects\ConnectorHealth;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Cbox\Id\Organization\Testing\InteractsWithOrganizations;
 use Cbox\Id\Webhooks\Testing\InteractsWithWebhooks;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithWebhooks::class);
 

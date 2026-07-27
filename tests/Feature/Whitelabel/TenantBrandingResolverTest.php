@@ -5,11 +5,11 @@ declare(strict_types=1);
 use Cbox\Console\Kit\Branding\Branding;
 use Cbox\Console\Kit\Contracts\BrandingResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\Testing\InteractsWithTenancy;
 use Cbox\Id\Whitelabel\Branding\TenantBrandingResolver;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Cbox\Id\Kernel\Tenancy\Testing\InteractsWithTenancy;
 
 uses(RefreshDatabase::class, InteractsWithTenancy::class);
 
