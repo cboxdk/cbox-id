@@ -23,6 +23,7 @@
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-queue-metrics": "^3.2",
         "cboxdk/laravel-risk": "^1.1",
+        "cboxdk/laravel-ssrf": "^1.1",
         "cboxdk/laravel-telemetry": "^1.0",
         "laravel/framework": "^13.0",
         "laravel/socialite": "^5.28",
@@ -47,6 +48,11 @@
     "autoload": {
         "psr-4": {
             "App\\": "app/",
+            "Cbox\\Id\\Analytics\\": "modules/analytics/src/",
+            "Cbox\\Id\\Compliance\\": "modules/compliance/src/",
+            "Cbox\\Id\\Connectors\\": "modules/connectors/src/",
+            "Cbox\\Id\\RiskPlus\\": "modules/risk-plus/src/",
+            "Cbox\\Id\\Whitelabel\\": "modules/whitelabel/src/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }
