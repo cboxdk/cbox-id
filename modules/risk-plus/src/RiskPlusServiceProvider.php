@@ -24,11 +24,15 @@ use Livewire\Volt\Volt;
 use Throwable;
 
 /**
- * The Cbox ID risk-plus plugin. Installed alongside laravel-risk and a
- * console-kit host, it registers premium adaptive-risk signals (impossible-travel,
+ * The Cbox ID risk-plus module. It registers adaptive-risk signals (impossible-travel,
  * new-device) into the risk pipeline and lights up a Security console to review
  * elevated events — all with zero edits to the host. Removed, the risk pipeline
  * falls back to laravel-risk's free-core signals and the console area disappears.
+ *
+ * Vendored in-tree under modules/, but it still registers itself the way an external
+ * package would — its own provider, nav, routes, views and gates through the public
+ * console-kit sockets, with no edit to app/. That is deliberate: a first-party module
+ * that needed a private hook would make the extension point a fiction.
  */
 class RiskPlusServiceProvider extends ServiceProvider
 {
@@ -78,7 +82,8 @@ class RiskPlusServiceProvider extends ServiceProvider
         // Record elevated assessments for the console to review.
         $this->app->make(Dispatcher::class)->listen(RiskAssessed::class, RecordRiskEvent::class);
 
-        // Console — present whenever the plugin is installed (licensed).
+        // Console — always present. This was a licence check when the module shipped as
+        // a separate paid package; vendored in-tree there is nothing to unlock.
         Console::features()->register('risk-plus', static fn (): bool => true);
 
         Console::nav()->area('security', 'Security', 'shield', 60)

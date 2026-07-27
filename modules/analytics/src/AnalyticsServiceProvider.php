@@ -28,16 +28,21 @@ use Livewire\Volt\Volt;
 use Throwable;
 
 /**
- * The Cbox ID analytics plugin. Installed alongside laravel-id and a console-kit
- * host, it streams the platform's transactional-outbox domain events (the public
+ * The Cbox ID analytics module. It streams the platform's transactional-outbox domain events (the public
  * {@see EventDelivered} seam) into a pluggable {@see ReportSink}, and lights up an
  * Analytics console reading through a {@see ReportReader} — all with zero edits to
  * the host.
  *
- * ClickHouse is referenced ONLY behind those contracts and ONLY when a DSN is
- * configured; with no DSN the sink is inert (events go nowhere) and the dashboards
- * read the platform's own Postgres usage counters, so the open framework stays
- * ClickHouse-free.
+ * Three stores sit behind those contracts, chosen by config and always swapped as a
+ * MATCHED pair so the dashboards read back what the sink wrote: nothing (the default
+ * — events are discarded and the dashboards read the platform's own usage counters),
+ * the app's own database, or ClickHouse. ClickHouse is referenced ONLY when a DSN is
+ * configured, so an installation that has none never speaks to one.
+ *
+ * Vendored in-tree under modules/, but it still registers itself the way an external
+ * package would — its own provider, nav, routes, views and gates through the public
+ * console-kit sockets, with no edit to app/. That is deliberate: a first-party module
+ * that needed a private hook would make the extension point a fiction.
  */
 class AnalyticsServiceProvider extends ServiceProvider
 {
@@ -71,7 +76,7 @@ class AnalyticsServiceProvider extends ServiceProvider
         Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/analytics.php');
 
-        // The plugin hook: project every delivered outbox event onto the bound sink.
+        // The seam: project every delivered outbox event onto the bound sink.
         $this->app->make(Dispatcher::class)->listen(EventDelivered::class, StreamDomainEventToSink::class);
 
         // Console — present when a real sink is wired or analytics is explicitly on.

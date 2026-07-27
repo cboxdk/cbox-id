@@ -19,8 +19,7 @@ use Livewire\Volt\Volt;
 use Throwable;
 
 /**
- * The Cbox ID connectors plugin. Installed alongside laravel-id and a console-kit
- * host, it plugs a unified connector catalog and a per-organization connections
+ * The Cbox ID connectors module. It plugs a unified connector catalog and a per-organization connections
  * console OVER the platform's existing Provisioning, Webhook, Directory and
  * Federation module contracts — making zero edits to the host and adding no schema.
  * Removed, the extra "Connectors" console area simply disappears; the host's own
@@ -29,6 +28,11 @@ use Throwable;
  * Delivery-health analytics is referenced ONLY behind {@see ConnectorAnalytics},
  * whose default is inert — so the framework carries no column-store dependency and
  * the SaaS host can bind a real backend later with no UI change.
+ *
+ * Vendored in-tree under modules/, but it still registers itself the way an external
+ * package would — its own provider, nav, routes, views and gates through the public
+ * console-kit sockets, with no edit to app/. That is deliberate: a first-party module
+ * that needed a private hook would make the extension point a fiction.
  */
 class ConnectorsServiceProvider extends ServiceProvider
 {

@@ -26,8 +26,7 @@ use Livewire\Volt\Volt;
 use Throwable;
 
 /**
- * The Cbox ID compliance plugin. Installed alongside laravel-id and a console-kit
- * host, it exports the platform's append-only, hash-chained audit trail — read
+ * The Cbox ID compliance module. It exports the platform's append-only, hash-chained audit trail — read
  * through the existing {@see AuditReader} pull cursor — to a pluggable
  * {@see AuditExportSink}, and lights up a Compliance console (audit search + chain
  * verification, export runs, honest append-only retention, and a data-subject
@@ -37,6 +36,11 @@ use Throwable;
  * and ONLY when configured; with the default `null` sink the plugin is inert
  * (nothing is exported, the cursor never moves), so installing without wiring a
  * destination is safe and the open framework stays free of any SIEM dependency.
+ *
+ * Vendored in-tree under modules/, but it still registers itself the way an external
+ * package would — its own provider, nav, routes, views and gates through the public
+ * console-kit sockets, with no edit to app/. That is deliberate: a first-party module
+ * that needed a private hook would make the extension point a fiction.
  */
 class ComplianceServiceProvider extends ServiceProvider
 {

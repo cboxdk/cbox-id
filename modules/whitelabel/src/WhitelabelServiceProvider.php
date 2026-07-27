@@ -22,12 +22,17 @@ use Livewire\Volt\Volt;
 use Throwable;
 
 /**
- * The Cbox ID white-label plugin. Installed alongside a console-kit host, it OVERRIDES
+ * The Cbox ID white-label module. It OVERRIDES
  * console-kit's null {@see BrandingResolver} with a tenant-aware one, so the shell and
  * hosted auth theme themselves from each environment's/organization's BrandProfile —
  * palette, logo, favicon, app name, custom domain and email sender — with zero host
  * edits. Removed, the resolver falls back to the null default and the shell returns to
  * its static Cbox branding.
+ *
+ * Vendored in-tree under modules/, but it still registers itself the way an external
+ * package would — its own provider, nav, routes, views and gates through the public
+ * console-kit sockets, with no edit to app/. That is deliberate: a first-party module
+ * that needed a private hook would make the extension point a fiction.
  */
 class WhitelabelServiceProvider extends ServiceProvider
 {
@@ -60,7 +65,8 @@ class WhitelabelServiceProvider extends ServiceProvider
         Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/whitelabel.php');
 
-        // Console — present whenever the plugin is installed (licensed).
+        // Console — always present. This was a licence check when the module shipped as
+        // a separate paid package; vendored in-tree there is nothing to unlock.
         Console::features()->register('whitelabel', static fn (): bool => true);
 
         Console::nav()->area('settings', 'Settings', 'palette', 80)
