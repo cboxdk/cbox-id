@@ -34,7 +34,9 @@ guarded webhooks, and the standards conformance matrix.
 
 → **[Framework compliance mapping](https://github.com/cboxdk/laravel-id/blob/main/docs/security/compliance.md)** —
 the authoritative control-by-control table. Everything there applies to this
-deployment because this app composes that package.
+deployment because this app composes that package — with one **exception you must read
+before citing that table**: [erasure (GDPR Art. 17) is not
+implemented](#not-implemented-erasure-gdpr-art-17), here or in the framework.
 
 ## App-layer controls this deployment adds
 
@@ -53,6 +55,32 @@ These are provided by `cbox-id` (the host), not the framework — so they belong
 See [Configuration](../configuration/environment-variables.md) for the settings
 behind these and [Operations](../operations/operations.md) for key custody,
 rotation, and break-glass.
+
+## Not implemented: erasure (GDPR Art. 17)
+
+**This deployment cannot erase a person's data, and nothing in it should be presented
+to an assessor as a right-to-erasure control.** State this plainly in your own
+records; a control claimed but absent is worse than a control acknowledged as missing,
+because it stops anyone from building it.
+
+What actually exists today, and what it does:
+
+| Capability | What it does | What it does **not** do |
+|---|---|---|
+| **Deactivate a user** (environment console › Users) | Sets the subject to `disabled`. Sign-in is refused and existing sessions stop working on their next request. Reversible. | Removes nothing. Sessions, passkeys, MFA factors and TOTP seeds, password history, identity-provider profiles (`identities.raw`), magic links, verification tokens, OAuth access/refresh tokens, directory/SCIM records (`directory_users.resource`) and role assignments are all retained. |
+| **Revoke sessions and tokens** | Terminates sessions and revokes issued credentials. | Removes no stored personal data. |
+| **Delete an organization** (environment console › Organizations) | Soft status change to `deleted`: the tenant leaves every list and its members are refused at sign-in, device authorization and consent. | Erases nothing — the tenant's rows, and its members', are kept for audit. |
+| **Risk-decision retention** (`risk_decisions`, default 90 days) | Bounds how long pseudonymised signup/login scoring data is held; rows matching a subject's pseudonym can be deleted on request (see [Adaptive risk](./adaptive-risk.md)). | Is a retention window on one table, not subject erasure. |
+
+There is no erasure service, command, endpoint or console action anywhere in this
+codebase. Satisfying an Art. 17 request against this deployment is a **manual,
+out-of-band** exercise today, and the DPIA and records of processing you maintain
+under [*What remains yours*](#what-remains-yours-organizational-controls) must say so.
+
+Erasure is **planned** — a designed programme with an erasure ledger, a grace window,
+downstream deprovisioning and crypto-shredded audit, rather than a row delete. It is
+not built, so nothing above is written in the present tense. This section changes only
+when the code does.
 
 ## What remains yours (organizational controls)
 

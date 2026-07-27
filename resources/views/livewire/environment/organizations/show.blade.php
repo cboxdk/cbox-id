@@ -14,6 +14,9 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Models\User;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -35,7 +38,13 @@ use Livewire\Volt\Component;
  * Reads/writes resolve within THIS environment (BelongsToEnvironment) and 404 on a
  * foreign id. suspend/reactivate go through the audited {@see Organizations} service
  * (actor = the env-admin account member); rename/handle/metadata persist on the
- * env-scoped model (no rename service exists); delete is a soft status change.
+ * env-scoped model (no rename service exists); delete is a soft status change, audited
+ * here because the contract carries no delete verb.
+ *
+ * "Delete" means status → Deleted: the tenant leaves every list and, since
+ * {@see \App\Platform\OrganizationAccess}, its members are refused everywhere a
+ * suspended tenant's are. Nothing is erased — the rows stay for audit. Deleting an
+ * organization is not a data-erasure control and must not be described as one.
  */
 new #[Layout('components.layouts.environment', ['title' => 'Organization'])] class extends Component
 {
@@ -176,11 +185,35 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $this->dispatch('toast', message: 'Organization reactivated.');
     }
 
-    public function deleteOrg(): mixed
+    /**
+     * Soft-delete the tenant: status → Deleted, which takes it out of every list AND —
+     * since {@see OrganizationAccess} — refuses its members at the request pipeline,
+     * the device flow and the consent screen, exactly as a suspension does. It used to
+     * do only the first half.
+     *
+     * The audit entry is written here rather than by a service: the {@see Organizations}
+     * contract has suspend/reactivate but no delete verb, and a status change that
+     * revokes everyone's access must be on the record even when no service owns it.
+     * Recording it on the org's OWN chain keeps it with the rest of that tenant's trail.
+     */
+    public function deleteOrg(AuditLog $audit): mixed
     {
         $org = $this->org();
+        $previous = $org->status;
+
         $org->status = OrganizationStatus::Deleted;
         $org->save();
+
+        $audit->record(new AuditEvent(
+            action: 'organization.deleted',
+            actorType: ActorType::AccountMember,
+            actorId: $this->actorId(),
+            organizationId: $org->id,
+            targetType: 'organization',
+            targetId: $org->id,
+            context: ['from' => $previous->value, 'to' => OrganizationStatus::Deleted->value],
+            ip: request()->ip(),
+        ));
 
         $this->dispatch('toast', message: 'Organization deleted.');
 
@@ -668,22 +701,31 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
     {{-- Lifecycle --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <h2 class="cbx-section-title">Lifecycle</h2>
-        <div class="mt-4 flex flex-wrap gap-2">
-            @if ($org->status === OrganizationStatus::Suspended)
-                <button type="button" class="btn btn-ghost btn-sm" wire:click="reactivate">Reactivate</button>
-            @else
+        @if ($org->status === OrganizationStatus::Deleted)
+            <p class="mt-2 text-sm" style="color:var(--muted)">
+                This organization is deleted. It no longer appears in any list, and every
+                member is refused access through it — sign-in, device authorization and
+                application consent all fail. Its records are retained for audit; nothing
+                about the people in it has been erased.
+            </p>
+        @else
+            <div class="mt-4 flex flex-wrap gap-2">
+                @if ($org->status === OrganizationStatus::Suspended)
+                    <button type="button" class="btn btn-ghost btn-sm" wire:click="reactivate">Reactivate</button>
+                @else
+                    <x-confirm-delete
+                        :name="$org->name"
+                        action="suspend"
+                        label="Suspend"
+                        trigger-class="btn btn-ghost btn-sm"
+                        consequence="Every member of this organization loses access through it immediately, until it is reactivated." />
+                @endif
                 <x-confirm-delete
                     :name="$org->name"
-                    action="suspend"
-                    label="Suspend"
-                    trigger-class="btn btn-ghost btn-sm"
-                    consequence="Every member of this organization loses access through it immediately, until it is reactivated." />
-            @endif
-            <x-confirm-delete
-                :name="$org->name"
-                action="deleteOrg"
-                label="Delete organization"
-                consequence="The organization is hidden and every member loses access through it. This cannot be undone." />
-        </div>
+                    action="deleteOrg"
+                    label="Delete organization"
+                    consequence="The organization is hidden from every list and every member is refused access through it — sign-in, devices and consent alike. Its records are kept for audit, and the console offers no way back." />
+            </div>
+        @endif
     </div>
 </div>

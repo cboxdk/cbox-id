@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\OrganizationAccess;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
@@ -11,7 +12,6 @@ use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
@@ -511,9 +511,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
 
         $me = app(CurrentUser::class);
 
-        // A suspended organization cannot authorize applications or mint tokens.
-        if ($me->organization()?->status === OrganizationStatus::Suspended) {
-            $this->error = 'This organization has been suspended and cannot authorize applications.';
+        // An organization that is no longer live — suspended OR deleted — cannot
+        // authorize applications or mint tokens. {@see OrganizationAccess} is the one
+        // place that decides which statuses those are.
+        $refusal = OrganizationAccess::refusalPhrase($me->organization()?->status);
+        if ($refusal !== null) {
+            $this->error = 'This organization has been '.$refusal.' and cannot authorize applications.';
 
             return;
         }

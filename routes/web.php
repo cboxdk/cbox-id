@@ -425,6 +425,7 @@ Route::prefix('operator')->group(function (): void {
         Volt::route('/', 'operator.environments')->name('operator.environments');
         Volt::route('/usage', 'operator.usage')->name('operator.usage');
         Volt::route('/search', 'operator.search')->name('operator.search');
+        Volt::route('/accounts', 'operator.accounts')->name('operator.accounts');
         Volt::route('/organizations', 'operator.organizations')->name('operator.organizations');
         Volt::route('/organizations/{organization}', 'operator.organization')->name('operator.organization');
         Volt::route('/operators', 'operator.operators')->name('operator.operators');

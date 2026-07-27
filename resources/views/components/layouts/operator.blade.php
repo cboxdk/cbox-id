@@ -17,6 +17,7 @@
     $groups = [
         ['label' => 'Platform', 'icon' => 'layers', 'pages' => [
             ['route' => 'operator.environments', 'label' => 'Environments'],
+            ['route' => 'operator.accounts', 'label' => 'Accounts'],
             ['route' => 'operator.organizations', 'label' => 'Organizations'],
         ]],
         ['label' => 'Insights', 'icon' => 'dashboard', 'pages' => [

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
+use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
@@ -13,7 +14,6 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -108,11 +108,14 @@ final class Authenticate
             }
         }
 
-        // Deny-by-default on tenant suspension: an operator can suspend an org, and
-        // that must take effect on the very next request — no console access, no
-        // token minting — not just at the next login.
-        if ($organization !== null && $organization->status === OrganizationStatus::Suspended) {
-            abort(403, 'This organization has been suspended. Contact your platform operator.');
+        // Deny-by-default on a tenant that is no longer live: an operator can suspend an
+        // org and an environment admin can delete one, and either must take effect on
+        // the very next request — no console access, no token minting — not just at the
+        // next login. Both statuses route through OrganizationAccess so no enforcement
+        // point can drift out of step with the others again.
+        $refusal = OrganizationAccess::refusalPhrase($organization?->status);
+        if ($organization !== null && $refusal !== null) {
+            abort(403, 'This organization has been '.$refusal.'. Contact your platform operator.');
         }
 
         $this->current->set($subject, $session, $organization, $role);

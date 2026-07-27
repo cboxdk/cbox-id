@@ -37,12 +37,28 @@ use Illuminate\Validation\Rule;
 
 /**
  * Environment control plane › Users › detail. The full, deep-linkable lifecycle for
- * one end-user: profile, email verification, password reset, activate/suspend/delete,
+ * one end-user: profile, email verification, password reset, deactivate/reactivate,
  * organization memberships and support impersonation.
  *
  * Every mutation re-resolves the target within THIS environment (the User model's
  * BelongsToEnvironment scope) and 404s otherwise — an id from another plane never
  * matches (deny-by-default).
+ *
+ * THERE IS DELIBERATELY NO DELETE HERE. This page once carried one: it stripped the
+ * memberships, called `$user->delete()`, and reported "User deleted." The schema
+ * carries no foreign key on `user_id` anywhere, so nothing ever refused the delete and
+ * the "they still have linked records" guard it was wrapped in could not fire. What
+ * actually survived the row: sessions, passkeys, MFA factors and TOTP seeds, password
+ * history, `identities.raw` (the person's whole IdP profile), magic links,
+ * email-verification tokens, OAuth access/refresh tokens, `directory_users.resource`
+ * (the whole SCIM payload) and role assignments. No domain event fired, so nothing
+ * downstream was deprovisioned, and no audit entry recorded the act.
+ *
+ * An administrator being told an erasure happened when it did not is worse than having
+ * no button at all — it retires the request. Deactivation is what this console can
+ * honestly do, so deactivation is what it offers. Real erasure needs a designed
+ * programme (ledger, grace window, downstream deprovisioning, crypto-shredded audit)
+ * and must not be faked with a `->delete()`.
  */
 new #[Layout('components.layouts.environment', ['title' => 'User'])] class extends Component
 {
@@ -155,26 +171,6 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {
         $subjects->reactivate($this->user()->id);
         $this->dispatch('toast', message: 'User reactivated.');
-    }
-
-    public function deleteUser(Memberships $memberships): mixed
-    {
-        $user = $this->user();
-
-        try {
-            foreach ($memberships->forUser($user->id) as $membership) {
-                $memberships->remove($membership->organization_id, $user->id);
-            }
-            $user->delete();
-        } catch (\Throwable) {
-            $this->dispatch('toast', message: 'Could not delete this user (they still have linked records) — deactivate instead.', severity: 'error');
-
-            return null;
-        }
-
-        $this->dispatch('toast', message: 'User deleted.');
-
-        return $this->redirectRoute('environment.users', navigate: true);
     }
 
     /**
@@ -627,17 +623,29 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                     action="suspend"
                     label="Deactivate"
                     trigger-class="btn btn-ghost btn-sm"
-                    consequence="This user can no longer sign in to any application in this environment." />
+                    consequence="This user can no longer sign in to any application in this environment, and their existing sessions stop working on their next request. Their records are kept and you can reactivate them at any time." />
             @else
                 <button type="button" class="btn btn-ghost btn-sm" wire:click="reactivate">Reactivate</button>
             @endif
-            <x-confirm-delete
-                :name="$user->email"
-                action="deleteUser"
-                label="Delete user"
-                consequence="This user and every one of their organization memberships are removed permanently. This cannot be undone." />
         </div>
         <p class="mt-2 text-xs" style="color:var(--faint)">Two-factor: {{ $hasMfa ? 'enabled' : 'not enrolled' }}.</p>
+
+        {{-- Says what the console does NOT do. The delete button that used to sit above
+             reported success without erasing anything (see the class docblock); an
+             administrator who believes an erasure happened stops pursuing it, which is
+             the worse failure. --}}
+        <div class="mt-4 rounded-lg p-3 text-xs" style="border:1px solid var(--border);color:var(--muted)">
+            <p><b>Deactivation is the only off-switch here — there is no delete.</b></p>
+            <p class="mt-1.5">
+                Deactivating stops all sign-in but keeps the person's records: sessions,
+                passkeys and second factors, identity-provider profiles, directory data,
+                issued tokens, role assignments and audit history all remain.
+            </p>
+            <p class="mt-1.5">
+                Erasing a person is not implemented in this platform. A right-to-erasure
+                request has to be handled outside the console until it is.
+            </p>
+        </div>
     </div>
 
     {{-- Active sessions --}}
