@@ -1,0 +1,70 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "cboxdk/laravel-id-connectors",
+    "description": "Cbox ID connectors plugin (commercial) \u2014 a unified catalog and console over the platform's existing outbound-SCIM provisioning, outbound webhook, inbound directory-sync and upstream IdP-federation contracts. Presents one per-organization connections view, with delivery health behind a pluggable, inert-by-default analytics contract. Zero edits to the host.",
+    "keywords": [
+        "cbox",
+        "identity",
+        "connectors",
+        "scim",
+        "webhooks",
+        "federation",
+        "plugin",
+        "laravel"
+    ],
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.4",
+        "cboxdk/laravel-id": ">=0.19 <1.0",
+        "cboxdk/laravel-console-kit": "^0.2",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "livewire/volt": "^1.6.0 || ^2.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^3.5 || ^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cbox\\Id\\Connectors\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cbox\\Id\\Connectors\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "lint": "pint --test",
+        "analyse": "phpstan analyse --no-progress --memory-limit=1G",
+        "test": "pest",
+        "license-check": "@php bin/check-licenses.php",
+        "sbom": "@php bin/generate-sbom.php",
+        "qa": [
+            "@lint",
+            "@analyse",
+            "@test",
+            "@license-check",
+            "@composer audit --no-dev"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Cbox\\Id\\Connectors\\ConnectorsServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
