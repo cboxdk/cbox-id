@@ -72,3 +72,122 @@ jobs:
         run: |
           composer sbom
           git diff --exit-code sbom.json
+
+  # ---------------------------------------------------------------------------
+  # SERVER ENGINES
+  #
+  # The job above runs the whole suite on sqlite :memory:, and until this job
+  # existed that was the ONLY engine this application had ever been executed
+  # against — production ran PostgreSQL and CI ran sqlite, so nothing tested what
+  # was deployed. The framework it embeds (cboxdk/laravel-id) has its own engines
+  # matrix and is green on MySQL; that proves the FRAMEWORK's migrations, not this
+  # app's own migrations, its five console modules, or 53k lines of Livewire
+  # queries.
+  #
+  # It matters because sqlite forgives what the servers do not: it accepts a
+  # literal DEFAULT on a json column (MySQL: error 1101), enforces no index-key
+  # size limit (InnoDB: 3072 bytes, and utf8mb4 charges 4 bytes a character), and
+  # has no identifier length cap (MySQL 64, PostgreSQL 63). It is also
+  # case-sensitive where MySQL's utf8mb4_unicode_ci is not.
+  #
+  # NB the suite really does follow DB_CONNECTION here: a process environment
+  # variable takes precedence over phpunit.xml's <env>, so setting it below
+  # redirects the whole run rather than silently leaving it on sqlite. Verified by
+  # pointing it at a non-existent driver and watching the suite fail to resolve it
+  # — worth re-checking if this job ever goes suspiciously green.
+  #
+  # Requires Docker on the self-hosted runner for service containers.
+  # ---------------------------------------------------------------------------
+  engines:
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The deployment target: Laravel Cloud runs MySQL 8.4. Floored at 8.0.13
+          # in the docs because that is where EXPRESSION column defaults landed,
+          # which is the only spelling MySQL accepts for a json default.
+          - driver: mysql
+            image: mysql:8.4
+            # Host ports differ per engine so two cells can share one self-hosted
+            # runner without fighting over the default port.
+            port: 33306
+            service_port: 3306
+            health: mysqladmin ping -h 127.0.0.1 -u root -proot
+          # Kept green for self-hosters, and because it was production until the
+          # move to Cloud — dropping it would quietly un-support it.
+          - driver: pgsql
+            image: postgres:17
+            port: 55432
+            service_port: 5432
+            health: pg_isready -U cbox_id -d cbox_id
+    name: ${{ matrix.image }}
+    services:
+      db:
+        image: ${{ matrix.image }}
+        # Both families' variables are set; each image ignores the other's.
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cbox_id
+          MYSQL_USER: cbox_id
+          MYSQL_PASSWORD: secret
+          POSTGRES_DB: cbox_id
+          POSTGRES_USER: cbox_id
+          POSTGRES_PASSWORD: secret
+        ports:
+          - ${{ matrix.port }}:${{ matrix.service_port }}
+        options: >-
+          --health-cmd "${{ matrix.health }}"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DB_CONNECTION: ${{ matrix.driver }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.port }}
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_pgsql, sodium, openssl
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # The Feature suite renders the console layout, which resolves the Vite
+      # manifest — without built assets those tests fail on a missing manifest
+      # rather than on anything to do with the database.
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force
+
+      # A fresh migrate on an empty database is exactly what a first deploy does,
+      # and it is where the portability rules bite — json defaults, CHAR padding,
+      # index key length, identifier length. Run it before the suite so a schema
+      # failure reads as a schema failure instead of 700 test errors.
+      - name: Migrate from empty (what a first deploy runs)
+        run: php artisan migrate --force
+
+      # Browser tests are excluded on purpose: they need Chromium and prove
+      # rendering, not persistence. This job is about the engine.
+      - name: Tests (Unit + Feature) on ${{ matrix.image }}
+        run: php -d memory_limit=1G vendor/bin/pest --testsuite=Unit,Feature
