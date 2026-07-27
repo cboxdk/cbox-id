@@ -33,8 +33,6 @@ class WhitelabelServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/whitelabel.php', 'whitelabel');
-
         // The profile store — swappable, but Eloquent by default.
         $this->app->bindIf(BrandProfiles::class, DatabaseBrandProfiles::class);
 

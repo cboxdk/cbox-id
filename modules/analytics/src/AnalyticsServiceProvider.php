@@ -41,8 +41,6 @@ class AnalyticsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/id-analytics.php', 'id-analytics');
-
         // Inert-until-wired defaults: events stream to a no-op sink and dashboards
         // read the platform's own usage counters (works self-hosted, no ClickHouse).
         $this->app->bindIf(ReportSink::class, NullReportSink::class);

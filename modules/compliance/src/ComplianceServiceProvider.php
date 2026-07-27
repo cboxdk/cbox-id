@@ -42,8 +42,6 @@ class ComplianceServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/compliance.php', 'compliance');
-
         // Inert-until-wired default: no destination, so the engine exports nothing.
         $this->app->bindIf(AuditExportSink::class, NullAuditExportSink::class);
 

@@ -34,8 +34,6 @@ class RiskPlusServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/risk-plus.php', 'risk-plus');
-
         // Geo source is the operator's to provide; default to a locator that
         // locates nothing so impossible-travel is safely inert until wired.
         $this->app->bindIf(GeoLocator::class, NullGeoLocator::class);

@@ -34,8 +34,6 @@ class ConnectorsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/connectors.php', 'connectors');
-
         // Delivery-health analytics is the host's to provide; default to a backend
         // that reports nothing, so the console renders without any analytics store.
         $this->app->bindIf(ConnectorAnalytics::class, NullConnectorAnalytics::class);
