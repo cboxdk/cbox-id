@@ -14,6 +14,56 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## 0.32.0
+
+### Every capability is now on by default
+
+`CBOX_ID_ENTITLEMENTS` defaults to `open`, meaning an unset entitlement is **granted**.
+If your deployment relies on the entitlement projection to gate SSO/SCIM per
+organization — that is, if you have a billing plane feeding it — you must set it
+explicitly or every organization gains those screens on deploy:
+
+```dotenv
+CBOX_ID_ENTITLEMENTS=metered
+```
+
+An explicit entitlement still wins in both directions under `open`, so hand-written
+grants and revocations (`{"enabled": false}`) keep working either way.
+
+### The five console modules are no longer separate packages
+
+If you ran the composed image or installed the plugins yourself, remove them — the code
+is in the application now and Composer will otherwise resolve two copies of the same
+namespaces:
+
+```bash
+composer remove cboxdk/laravel-id-analytics cboxdk/laravel-id-compliance \
+    cboxdk/laravel-id-connectors cboxdk/laravel-id-risk-plus \
+    cboxdk/laravel-id-whitelabel cboxdk/laravel-id-licensing
+```
+
+No private Composer registry and no read-only GitHub token are needed any more. Their
+configuration keys are unchanged, so existing env values keep binding.
+
+### The licensing layer is gone
+
+`CBOX_ID_LICENSE_*` is no longer read; drop those keys. `EntitlementSource::License` is
+removed from the framework — if you ever ran the licensing plugin **with a real key**,
+check for rows before upgrading, because a stored `license` source will no longer
+hydrate:
+
+```sql
+SELECT count(*) FROM entitlements WHERE source = 'license';
+```
+
+Migrate any to `manual` and they keep working.
+
+### If you switch on the relational analytics store
+
+`ID_ANALYTICS_STORE=database` is opt-in and off by default. If you enable it, **the
+scheduler must be running**: `id_analytics_events` is the only table that grows with
+traffic rather than with tenants, and the daily `model:prune` is what bounds it.
+
 ## Unreleased (from 0.22.x)
 
 ### Pre-deploy checklist
