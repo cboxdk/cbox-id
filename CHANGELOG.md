@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.26.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id ^0.59.1`.
+
+### Added
+
+- Five more inline hook points are now registrable from the console — `post_login`,
+  `pre_registration`, `post_registration`, `pre_password_change`,
+  `post_password_change`, alongside the existing `token_minting`. The console reads
+  `HookPoint::cases()`, so they appeared as soon as the framework shipped them.
+
+### Fixed
+
+- The hook picker rendered the raw PHP case name, so an admin chose between
+  "TokenMinting" and "PrePasswordChange", and the list showed the machine value
+  `token_minting`. Both now use the framework's `label()`, and the picker shows
+  `description()` beside each option — which states whether that hook can refuse the
+  operation, the fact you need before wiring a URL that can stop people signing in.
+
 ## [0.25.0] - 2026-07-27
 
 Signup had no bot protection, and production showed the bill: five of eight accounts

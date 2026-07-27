@@ -93,7 +93,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New event hook'])] c
             <label class="label" for="hook">Hook point</label>
             <select wire:model="hook" id="hook" class="select">
                 @foreach ($hookPoints as $hookPoint)
-                    <option value="{{ $hookPoint->value }}">{{ $hookPoint->name }}</option>
+                    <option value="{{ $hookPoint->value }}">{{ $hookPoint->label() }} — {{ $hookPoint->description() }}</option>
                 @endforeach
             </select>
             @error('hook') <p class="field-error" role="alert">{{ $message }}</p> @enderror

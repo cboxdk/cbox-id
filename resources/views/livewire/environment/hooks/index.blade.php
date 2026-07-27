@@ -86,7 +86,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Event hooks'])] clas
                class="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="badge mono">{{ $endpoint->hook_point->value }}</span>
+                        <span class="badge" title="{{ $endpoint->hook_point->description() }}">{{ $endpoint->hook_point->label() }}</span>
                         <span class="badge">{{ $endpoint->organization_id !== null ? ($orgNames[$endpoint->organization_id] ?? $endpoint->organization_id) : 'All organizations' }}</span>
                     </div>
                     <p class="mt-1 text-xs truncate mono" style="color:var(--faint)">{{ $endpoint->url }}</p>
