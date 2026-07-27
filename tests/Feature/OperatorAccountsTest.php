@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AccountActivity;
 use App\Platform\OperatorAuth;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -61,14 +62,27 @@ it('suspends and reactivates an account, and the toggle is reversible', function
     expect(Account::query()->whereKey($account->id)->value('status'))->toBe(AccountStatus::Active);
 });
 
-it('records both directions on the account’s own audit chain, as the operator', function (): void {
+/**
+ * The entries land on the SYSTEM chain, not the account's own.
+ *
+ * This screen used to write the audit itself, scoped to the account id — matching
+ * {@see AccountActivity}, which reads `where('scope', $accountId)` so an
+ * account's trail explains why it went dark. laravel-id v0.64.0 moved the audit inside
+ * `Accounts::suspend()`, which scopes it to the system chain because an account sits
+ * ABOVE the tenancy boundary — consistent with `PlatformOperators`, which does the same.
+ *
+ * The package's scoping is the right one and this test follows it rather than forcing
+ * the package to match the app. The cost is real and is tracked separately: the account
+ * activity view no longer surfaces its own suspension, so it needs to read system-chain
+ * entries that target the account. Asserting the old scope here would have hidden that.
+ */
+it('records both directions on the system chain, as the operator', function (): void {
     $account = suspendableAccount();
 
     Volt::test('operator.accounts')->call('toggleStatus', $account->id);
     Volt::test('operator.accounts')->call('toggleStatus', $account->id);
 
     $entries = AuditEntry::query()
-        ->where('scope', $account->id)
         ->whereIn('action', ['account.suspended', 'account.reactivated'])
         ->orderBy('sequence')
         ->get();
@@ -78,9 +92,13 @@ it('records both directions on the account’s own audit chain, as the operator'
         ->and($entries[0]->actor_type)->toBe(ActorType::Operator)
         ->and($entries[0]->actor_id)->toBe($this->operatorId)
         ->and($entries[0]->target_id)->toBe($account->id)
-        ->and($entries[0]->context['to'] ?? null)->toBe('suspended')
+        ->and($entries[0]->context['status'] ?? null)->toBe('suspended')
         ->and($entries[1]->action)->toBe('account.reactivated')
-        ->and($entries[1]->context['to'] ?? null)->toBe('active');
+        ->and($entries[1]->context['status'] ?? null)->toBe('active');
+
+    // The account's own chain is now empty for these actions — the gap this documents.
+    expect(AuditEntry::query()->where('scope', $account->id)
+        ->whereIn('action', ['account.suspended', 'account.reactivated'])->count())->toBe(0);
 });
 
 it('refuses the screen, and the toggle, without an operator session', function (): void {

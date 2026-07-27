@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.31.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.64.0.
+
+### Changed
+
+- The operator accounts screen no longer writes its own audit entry. `Accounts::suspend()`
+  and `reactivate()` now take an actor and record internally, so the four lines that did it
+  at the call site are gone. That is the point of the upstream change: an audit written at
+  the call site is one a second caller can silently forget, and this screen was the only
+  caller there had ever been.
+- **Known cost, accepted and tracked.** The package scopes that entry to the **system**
+  chain, because an account sits above the tenancy boundary — consistent with
+  `PlatformOperators`, which does the same. `App\Platform\AccountActivity` reads
+  `where('scope', $accountId)`, so an account's own activity view no longer surfaces its
+  suspension. The package's scoping is the right one and the test follows it rather than
+  forcing the package to match the app; `OperatorAccountsTest` now asserts both that the
+  entries land on the system chain **and** that the account's own chain is empty for those
+  actions, so the gap cannot quietly disappear.
+
 ## [0.30.0] - 2026-07-27
 
 Requires `cboxdk/laravel-id` v0.63.0.

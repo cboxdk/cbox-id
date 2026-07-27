@@ -125,7 +125,7 @@ it('guards the members and billing pages behind the account session', function (
 
 it('logs out a member the moment their account is suspended', function (): void {
     ['account' => $account, 'member' => $owner] = provisionAccount();
-    app(Accounts::class)->suspend($account->id);
+    app(Accounts::class)->suspend($account->id, $owner->id);
 
     // A live session no longer resolves — every guarded page bounces to login.
     $this->withSession([AccountAuth::SESSION_KEY => $owner->id])

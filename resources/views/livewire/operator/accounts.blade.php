@@ -44,14 +44,15 @@ new #[Layout('components.layouts.operator', ['title' => 'Accounts'])] class exte
      * Suspend or reactivate an account. Idempotent on the contract's side, so the
      * current status decides the direction rather than a separate flag.
      *
-     * The audit entry is written here because {@see Accounts} takes no actor — unlike
-     * {@see \Cbox\Id\Organization\Contracts\Organizations::suspend()}, which audits
-     * internally. It is recorded on the ACCOUNT's own chain (the account id as scope,
-     * matching {@see \App\Platform\AccountActivity}) so the account's activity trail
-     * shows why it went dark, and as {@see ActorType::Operator} — the account-plane
-     * funnel hardcodes AccountMember and would misattribute a platform operator.
+     * The audit entry is written by the CONTRACT, not here. It used to be written at
+     * this call site because {@see Accounts} took no actor — unlike
+     * {@see \Cbox\Id\Organization\Contracts\Organizations::suspend()}, which has always
+     * audited internally. laravel-id v0.64.0 closed that asymmetry: both verbs now take
+     * an `$actorId` and record on the account's own chain themselves. That matters
+     * beyond tidiness — an audit written at the call site is one a second caller can
+     * silently forget, and this screen was the only caller there had ever been.
      */
-    public function toggleStatus(string $id, Accounts $accounts, OperatorAuth $auth, AuditLog $audit): void
+    public function toggleStatus(string $id, Accounts $accounts, OperatorAuth $auth): void
     {
         $actorId = $auth->id();
         if ($actorId === null) {
@@ -66,24 +67,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Accounts'])] class exte
         $suspending = $account->isActive();
 
         if ($suspending) {
-            $accounts->suspend($id);
+            $accounts->suspend($id, $actorId);
         } else {
-            $accounts->reactivate($id);
+            $accounts->reactivate($id, $actorId);
         }
-
-        $audit->record(new AuditEvent(
-            action: $suspending ? 'account.suspended' : 'account.reactivated',
-            actorType: ActorType::Operator,
-            actorId: $actorId,
-            organizationId: $account->id,
-            targetType: 'account',
-            targetId: $account->id,
-            context: [
-                'from' => $account->status->value,
-                'to' => ($suspending ? AccountStatus::Suspended : AccountStatus::Active)->value,
-            ],
-            ip: request()->ip(),
-        ));
 
         $this->dispatch('toast', message: $suspending
             ? 'Account suspended — its members can no longer sign in and its environments stop serving auth.'
