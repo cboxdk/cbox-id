@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.27.0] - 2026-07-27
+
+### Added
+
+- **Risk decisions are now persisted and queryable.** Every `RiskGuard::assess()` call
+  writes a row to the new `risk_decisions` table (`App\Models\RiskDecision`, via
+  `App\Platform\RiskTrail`) with the score, outcome, mode, reasons, per-signal weighted
+  points and pseudonymised identity. `docs/security/adaptive-risk.md` documents the
+  queries that turn that corpus into an enforcement threshold — a score histogram, the
+  outcome mix, a threshold sweep scored against a known-bad cohort, a per-signal
+  contribution breakdown, and a provider-level aggregate for the Gmail dot-abuse shape.
+- Retention for the trail: `CBOX_ID_RISK_TRAIL_RETENTION_DAYS` (default 90), swept
+  daily by `model:prune`, scheduled in `routes/console.php`.
+
+### Fixed
+
+- **Monitor mode produced no evidence.** `RiskGuard` logged each decision with
+  `Log::info` and its docblock called that "the audit trail for tuning and review", but
+  production runs `LOG_CHANNEL=stderr` with no aggregation and no `log_streams` sink —
+  every decision went to pod stdout and was destroyed by the next rollout. Weeks of
+  monitor mode left nothing to set a threshold from, which is why the CAPTCHA wired to
+  `RiskGuard::shouldStepUp()` could not responsibly be armed. The `Log::info` is
+  replaced by the durable write; a failed write is logged at `warning` and never blocks
+  a sign-in.
+
+### Security
+
+- The trail stores an HMAC-SHA256 **pseudonym** of the email alongside the existing
+  hashed IP, never the address — a pre-auth table fed by unauthenticated traffic must
+  not become the platform's largest plaintext store of personal data. The mail domain
+  is kept in the clear (it names a provider, not a person) because provider-abuse
+  patterns are unreadable without it. Both pseudonyms are keyed under `app.key` and
+  domain-separated.
+- `RISK_MODE` is deliberately **unchanged** (`monitor`). Enforcement is the tuning
+  decision this data exists to inform.
+
+### Changed
+
+- Requires `cboxdk/laravel-id` v0.60.0, which fixes a concurrency defect that silently
+  dropped audit entries when two writers appended to the same chain. Relevant here: it
+  is the same measurement that ruled the audit chain out as the home for this trail.
+
 ## [0.26.0] - 2026-07-27
 
 Requires `cboxdk/laravel-id ^0.59.1`.

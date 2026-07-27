@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Models\RiskDecision;
 use Cbox\Risk\Contracts\RiskScorer;
 use Cbox\Risk\Enums\Outcome;
 use Cbox\Risk\ValueObjects\RiskAssessment;
 use Cbox\Risk\ValueObjects\RiskContext;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Thin app-layer bridge to the risk scorer for our Livewire auth flows (login,
@@ -19,9 +19,22 @@ use Illuminate\Support\Facades\Log;
  */
 final class RiskGuard
 {
-    public function __construct(private readonly RiskScorer $scorer) {}
+    public function __construct(
+        private readonly RiskScorer $scorer,
+        private readonly RiskTrail $trail,
+    ) {}
 
     /**
+     * Score the request and RECORD the decision — exactly once per assessment.
+     *
+     * The write lives here and nowhere else, and that placement is load-bearing.
+     * {@see shouldBlock()} and {@see shouldStepUp()} are pure predicates over an
+     * assessment that has already been made, and the callers that matter call BOTH on
+     * the SAME assessment (login.blade.php and signup.blade.php each do). Recording
+     * from either predicate — or from both — would write two rows for one sign-in
+     * attempt and quietly double every count in the tuning query, which is the one
+     * number the whole table exists to produce.
+     *
      * @param  array<string, mixed>  $attributes  extra signals (honeypot, form timing)
      */
     public function assess(Request $request, string $action, ?string $email = null, array $attributes = []): RiskAssessment
@@ -35,17 +48,12 @@ final class RiskGuard
             attributes: $attributes,
         ));
 
-        // Log every decision with its reasons (IP hashed — see the risk package's
-        // GDPR guidance). This is the audit trail for tuning and review.
-        $appKey = config('app.key');
-
-        Log::info('auth risk assessed', [
-            'action' => $action,
-            'ip_hash' => hash_hmac('sha256', (string) $request->ip(), is_string($appKey) ? $appKey : ''),
-            'score' => $assessment->score,
-            'outcome' => $assessment->outcome->value,
-            'reasons' => $assessment->reasons(),
-        ]);
+        // Persist the decision with its reasons (IP and email HMAC-pseudonymised — see
+        // the risk package's GDPR guidance). One durable {@see RiskDecision} row per
+        // assessment: this is what a threshold is actually set from, and it is why the
+        // previous `Log::info` is gone — on `LOG_CHANNEL=stderr` with no aggregation
+        // that line survived exactly until the next pod rollout.
+        $this->trail->record($action, $request->ip(), $email, $assessment);
 
         return $assessment;
     }

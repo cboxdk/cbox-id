@@ -138,6 +138,21 @@ return [
         'ttl_minutes' => (int) env('CBOX_ID_PORTAL_TTL_MINUTES', 30),
     ],
 
+    /*
+     * The adaptive-risk decision trail (`risk_decisions`) — the durable record of
+     * every score the risk engine produced, and the evidence a `RISK_MODE=enforce`
+     * threshold is set from. See docs/security/adaptive-risk.md.
+     *
+     * `retention_days` bounds it; the sweep is Laravel's own `model:prune`, scheduled
+     * daily in routes/console.php. Set the env var EMPTY to disable pruning entirely
+     * and keep the trail indefinitely (a compliance choice, not a default — this table
+     * takes a row per pre-auth sign-in attempt, including from unauthenticated
+     * traffic, so unbounded growth is driven by strangers).
+     */
+    'risk_trail' => [
+        'retention_days' => env('CBOX_ID_RISK_TRAIL_RETENTION_DAYS', 90),
+    ],
+
     'crypto' => [
 
         /*
