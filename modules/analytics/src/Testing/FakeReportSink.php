@@ -80,4 +80,10 @@ class FakeReportSink implements ReportSink
     {
         return $this->writeCalls;
     }
+
+    /** A real destination. */
+    public function isInert(): bool
+    {
+        return false;
+    }
 }

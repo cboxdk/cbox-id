@@ -7,6 +7,10 @@ namespace Cbox\Id\Whitelabel\Models;
 use Cbox\Id\Kernel\Tenancy\Concerns\BelongsToEnvironment;
 use Cbox\Id\Kernel\Tenancy\Contracts\Environment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentOwned;
+use Cbox\Id\Whitelabel\Casts\EmailTemplatesCast;
+use Cbox\Id\Whitelabel\Casts\PaletteCast;
+use Cbox\Id\Whitelabel\ValueObjects\EmailTemplates;
+use Cbox\Id\Whitelabel\ValueObjects\Palette;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -22,10 +26,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $name
  * @property string|null $logo_url
  * @property string|null $favicon_url
- * @property array<string, string> $palette
+ * @property Palette $palette
  * @property string|null $app_name
  * @property string|null $email_from_name
- * @property array<string, mixed> $email_templates
+ * @property EmailTemplates $email_templates
  */
 class BrandProfile extends Model implements EnvironmentOwned
 {
@@ -46,8 +50,8 @@ class BrandProfile extends Model implements EnvironmentOwned
     protected function casts(): array
     {
         return [
-            'palette' => 'array',
-            'email_templates' => 'array',
+            'palette' => PaletteCast::class,
+            'email_templates' => EmailTemplatesCast::class,
         ];
     }
 }

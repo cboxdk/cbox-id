@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Id\Whitelabel\Assets;
 
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Contracts\Filesystem\Cloud;
 use Illuminate\Http\UploadedFile;
 use RuntimeException;
 
@@ -18,7 +18,7 @@ use RuntimeException;
 class LocalBrandAssetStore implements BrandAssetStore
 {
     public function __construct(
-        private readonly Filesystem $disk,
+        private readonly Cloud $disk,
         private readonly EnvironmentContext $environment,
         private readonly string $basePath = 'brand',
     ) {}

@@ -8,6 +8,12 @@ use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extends Component
 {
+    /**
+     * Flattened for the table — a rendering boundary, so an array shape is the right
+     * shape here; the typed {@see ConnectionSummary} is what does the work upstream.
+     *
+     * @return list<array{category: string, name: string, status: string, target: string|null, health: string|null}>
+     */
     #[Computed]
     public function connections(): array
     {

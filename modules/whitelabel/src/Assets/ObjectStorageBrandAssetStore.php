@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Id\Whitelabel\Assets;
 
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Contracts\Filesystem\Cloud;
 use Illuminate\Http\UploadedFile;
 use RuntimeException;
 
@@ -13,13 +13,13 @@ use RuntimeException;
  * An object-storage {@see BrandAssetStore} for a horizontally-scaled deployment: it
  * writes to whatever disk it is given (typically `s3`) and, when a CDN base URL is
  * configured, returns a CDN URL instead of the disk's own. It talks only to the
- * Laravel {@see Filesystem} contract — no AWS SDK is referenced here, so the package
+ * Laravel {@see Cloud} filesystem contract — no AWS SDK is referenced here, so the package
  * keeps no hard S3 dependency; the host binds this in place of the local store.
  */
 class ObjectStorageBrandAssetStore implements BrandAssetStore
 {
     public function __construct(
-        private readonly Filesystem $disk,
+        private readonly Cloud $disk,
         private readonly EnvironmentContext $environment,
         private readonly string $basePath = 'brand',
         private readonly ?string $cdnBaseUrl = null,

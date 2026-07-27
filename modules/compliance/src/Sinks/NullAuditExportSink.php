@@ -19,4 +19,10 @@ class NullAuditExportSink implements AuditExportSink
     {
         // Intentionally empty: export is off until a real sink is wired.
     }
+
+    /** Discards everything by design — the inert default. */
+    public function isInert(): bool
+    {
+        return true;
+    }
 }

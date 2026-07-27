@@ -1,36 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
+use Cbox\Id\Compliance\Dsr\SubjectDataBundle;
 use Cbox\Id\Compliance\Dsr\SubjectDataExport;
 use Cbox\Id\Compliance\Export\ExportAuditTrail;
 use Cbox\Id\Compliance\Models\AuditExportRun;
 use Cbox\Id\Compliance\Retention\RetentionPolicy;
+use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-use function Livewire\Volt\{computed, state, layout};
-layout('components.layouts.app');
+new #[Layout('components.layouts.app')] class extends Component
+{
+    public string $subjectId = '';
 
-state(['subjectId' => '']);
-
-$runs = computed(fn () => AuditExportRun::query()->latest('id')->limit(20)->get());
-
-$subject = computed(function () {
-    $id = trim($this->subjectId);
-
-    if ($id === '') {
-        return null;
+    public function runExport(): void
+    {
+        app(ExportAuditTrail::class)->run();
     }
 
-    return app(SubjectDataExport::class)->forSubject($id);
-});
+    public function applyRetention(): void
+    {
+        app(RetentionPolicy::class)->apply();
+    }
 
-$runExport = function (): void {
-    app(ExportAuditTrail::class)->run();
-};
+    /** @return Collection<int, AuditExportRun> */
+    private function runs(): Collection
+    {
+        return AuditExportRun::query()->latest('id')->limit(20)->get();
+    }
 
-$applyRetention = function (): void {
-    app(RetentionPolicy::class)->apply();
-};
+    /** Null until a subject id is entered — the bundle is only built on demand. */
+    private function subject(): ?SubjectDataBundle
+    {
+        $id = trim($this->subjectId);
 
-?>
+        return $id === '' ? null : app(SubjectDataExport::class)->forSubject($id);
+    }
+
+    /** @return array{runs: Collection<int, AuditExportRun>, subject: SubjectDataBundle|null} */
+    public function with(): array
+    {
+        return [
+            'runs' => $this->runs(),
+            'subject' => $this->subject(),
+        ];
+    }
+}; ?>
 
 <div class="space-y-6">
     <div class="cbx-page-header">
@@ -80,7 +97,7 @@ $applyRetention = function (): void {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($this->runs as $run)
+                        @forelse ($runs as $run)
                             <tr>
                                 <td class="whitespace-nowrap mono text-xs" style="color:var(--muted)">{{ $run->finished_at?->diffForHumans() ?? $run->created_at?->diffForHumans() }}</td>
                                 <td>
@@ -120,7 +137,6 @@ $applyRetention = function (): void {
                 class="input mt-1 w-full" />
         </label>
 
-        @php($subject = $this->subject)
         @if ($subject)
             <div class="card mt-4 p-4 text-sm">
                 <p style="color:var(--foreground)">

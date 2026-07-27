@@ -1,35 +1,55 @@
 <?php
 
+declare(strict_types=1);
+
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\Kernel\Audit\ValueObjects\ChainVerification;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-use function Livewire\Volt\{computed, state, layout};
-layout('components.layouts.app');
+new #[Layout('components.layouts.app')] class extends Component
+{
+    public string $organizationId = '';
 
-state([
-    'organizationId' => '',
-    'action' => '',
-    'actorId' => '',
-]);
+    public string $action = '';
 
-$scope = computed(fn (): ?string => trim($this->organizationId) === '' ? null : trim($this->organizationId));
+    public string $actorId = '';
 
-$entries = computed(function () {
-    $filter = new AuditQueryFilter(
-        organizationId: $this->scope,
-        action: trim($this->action) === '' ? null : trim($this->action),
-        actorId: trim($this->actorId) === '' ? null : trim($this->actorId),
-        limit: 50,
-    );
+    /** An empty organization filter means the SYSTEM trail, which is its own chain. */
+    private function scope(): ?string
+    {
+        return trim($this->organizationId) === '' ? null : trim($this->organizationId);
+    }
 
-    return app(AuditReader::class)->query($filter)->items;
-});
+    /** @return list<AuditEntry> */
+    private function entries(): array
+    {
+        return app(AuditReader::class)->query(new AuditQueryFilter(
+            organizationId: $this->scope(),
+            action: trim($this->action) === '' ? null : trim($this->action),
+            actorId: trim($this->actorId) === '' ? null : trim($this->actorId),
+            limit: 50,
+        ))->items;
+    }
 
-// The chain-verification status for the scope currently being viewed.
-$verification = computed(fn () => app(AuditLog::class)->verifyChain($this->scope));
+    /** The chain-verification status for the scope currently being viewed. */
+    private function verification(): ChainVerification
+    {
+        return app(AuditLog::class)->verifyChain($this->scope());
+    }
 
-?>
+    /** @return array{entries: list<AuditEntry>, verification: ChainVerification} */
+    public function with(): array
+    {
+        return [
+            'entries' => $this->entries(),
+            'verification' => $this->verification(),
+        ];
+    }
+}; ?>
 
 <div class="space-y-6">
     <div class="cbx-page-header">
@@ -41,7 +61,6 @@ $verification = computed(fn () => app(AuditLog::class)->verifyChain($this->scope
         </div>
     </div>
 
-    @php($verification = $this->verification)
     <div class="flex items-center gap-3 rounded-xl border p-4 text-sm"
         style="{{ $verification->valid ? 'border-color:color-mix(in oklch, var(--success) 20%, transparent);background:var(--success-soft);color:var(--success)' : 'border-color:color-mix(in oklch, var(--destructive) 20%, transparent);background:var(--destructive-soft);color:var(--destructive)' }}">
         <span class="font-medium">
@@ -87,7 +106,7 @@ $verification = computed(fn () => app(AuditLog::class)->verifyChain($this->scope
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($this->entries as $entry)
+                    @forelse ($entries as $entry)
                         <tr>
                             <td class="text-right mono text-xs" style="color:var(--faint)">{{ $entry->sequence }}</td>
                             <td class="whitespace-nowrap mono text-xs" style="color:var(--muted)">{{ $entry->recorded_at?->diffForHumans() }}</td>

@@ -44,4 +44,10 @@ class HttpSiemExportSink implements AuditExportSink
 
         $request->post($this->endpoint, $batch->toArray())->throw();
     }
+
+    /** A real destination. */
+    public function isInert(): bool
+    {
+        return false;
+    }
 }

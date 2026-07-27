@@ -9,31 +9,38 @@ use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app', ['title' => 'Connectors'])] class extends Component
 {
+    /**
+     * Flattened for the card grid — a rendering boundary, so an array shape is the
+     * right shape here; the typed {@see ConnectorDescriptor} is what does the work
+     * upstream.
+     *
+     * @return list<array{key: string, name: string, category: string, description: string, direction: string, enumerable: bool, active: int|null}>
+     */
     #[Computed]
     public function catalog(): array
     {
-    $organizationId = Console::context()->organizationId();
+        $organizationId = Console::context()->organizationId();
 
-    $active = [];
-    foreach (app(ConnectionsOverview::class)->forOrganization($organizationId) as $summary) {
-        $key = $summary->category->value;
-        $active[$key] = ($active[$key] ?? 0) + ($summary->isActive() ? 1 : 0);
-    }
+        $active = [];
+        foreach (app(ConnectionsOverview::class)->forOrganization($organizationId) as $summary) {
+            $key = $summary->category->value;
+            $active[$key] = ($active[$key] ?? 0) + ($summary->isActive() ? 1 : 0);
+        }
 
-    $types = [];
-    foreach (app(ConnectorCatalog::class)->all() as $descriptor) {
-        $types[] = [
-            'key' => $descriptor->key,
-            'name' => $descriptor->name,
-            'category' => $descriptor->category->label(),
-            'description' => $descriptor->description,
-            'direction' => $descriptor->category->isOutbound() ? 'Outbound' : 'Inbound',
-            'enumerable' => $descriptor->enumerable,
-            'active' => $descriptor->enumerable ? ($active[$descriptor->category->value] ?? 0) : null,
-        ];
-    }
+        $types = [];
+        foreach (app(ConnectorCatalog::class)->all() as $descriptor) {
+            $types[] = [
+                'key' => $descriptor->key,
+                'name' => $descriptor->name,
+                'category' => $descriptor->category->label(),
+                'description' => $descriptor->description,
+                'direction' => $descriptor->category->isOutbound() ? 'Outbound' : 'Inbound',
+                'enumerable' => $descriptor->enumerable,
+                'active' => $descriptor->enumerable ? ($active[$descriptor->category->value] ?? 0) : null,
+            ];
+        }
 
-    return $types;
+        return $types;
     }
 };
 

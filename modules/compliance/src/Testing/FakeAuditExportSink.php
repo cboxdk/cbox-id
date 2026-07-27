@@ -77,4 +77,10 @@ class FakeAuditExportSink implements AuditExportSink
     {
         return count($this->batches);
     }
+
+    /** A real destination. */
+    public function isInert(): bool
+    {
+        return false;
+    }
 }

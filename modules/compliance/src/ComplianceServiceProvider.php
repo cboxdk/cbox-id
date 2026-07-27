@@ -106,9 +106,8 @@ class ComplianceServiceProvider extends ServiceProvider
 
     private function complianceActive(): bool
     {
-        $sinkIsReal = ! $this->app->make(AuditExportSink::class) instanceof NullAuditExportSink;
-
-        return $sinkIsReal || (bool) config('compliance.enabled', false);
+        return ! $this->app->make(AuditExportSink::class)->isInert()
+            || (bool) config('compliance.enabled', false);
     }
 
     /**

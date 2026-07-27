@@ -28,4 +28,12 @@ interface AuditExportSink
      * on any failure so the engine can hold its cursor and retry.
      */
     public function export(AuditExportBatch $batch): void;
+
+    /**
+     * Whether this sink discards what it is given. The provider asks the SINK rather
+     * than checking its concrete class, so a host that binds its own no-op sink is
+     * treated the same as the shipped one — and so activation does not depend on
+     * knowing every inert implementation by name.
+     */
+    public function isInert(): bool;
 }

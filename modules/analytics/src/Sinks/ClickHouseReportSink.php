@@ -42,4 +42,10 @@ class ClickHouseReportSink implements ReportSink
             // Fail open: never let an analytics write break event delivery.
         }
     }
+
+    /** A real destination. */
+    public function isInert(): bool
+    {
+        return false;
+    }
 }

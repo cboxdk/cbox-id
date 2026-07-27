@@ -10,7 +10,6 @@ use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
-use Cbox\Id\Whitelabel\Support\PaletteTokens;
 
 /**
  * Resolves the branding for the current request from the tenant's {@see BrandProfile}.
@@ -43,7 +42,7 @@ class TenantBrandingResolver implements BrandingResolver
         }
 
         return new Branding(
-            tokens: PaletteTokens::normalize($profile->palette),
+            tokens: $profile->palette->cssTokens(),
             logoUrl: $profile->logo_url,
             faviconUrl: $profile->favicon_url,
             appName: $profile->app_name,

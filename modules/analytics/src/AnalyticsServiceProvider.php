@@ -99,9 +99,8 @@ class AnalyticsServiceProvider extends ServiceProvider
 
     private function analyticsActive(): bool
     {
-        $sinkIsReal = ! $this->app->make(ReportSink::class) instanceof NullReportSink;
-
-        return $sinkIsReal || (bool) config('id-analytics.enabled', false);
+        return ! $this->app->make(ReportSink::class)->isInert()
+            || (bool) config('id-analytics.enabled', false);
     }
 
     /**

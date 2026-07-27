@@ -56,4 +56,10 @@ class JsonlBundleExportSink implements AuditExportSink
 
         return trim($this->prefix, '/')."/{$safe}.jsonl";
     }
+
+    /** A real destination. */
+    public function isInert(): bool
+    {
+        return false;
+    }
 }

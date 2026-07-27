@@ -6,6 +6,7 @@ use Cbox\Id\Whitelabel\CustomDomain\Exceptions\InvalidCustomDomain;
 use Cbox\Id\Whitelabel\CustomDomain\ManageCustomDomain;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
 use Cbox\Id\Whitelabel\Support\PaletteTokens;
+use Illuminate\Http\UploadedFile;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
@@ -31,24 +32,32 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
 
     public ?string $currentDomain = null;
 
-    public $logo = null;
+    public ?UploadedFile $logo = null;
 
-    public $favicon = null;
+    public ?UploadedFile $favicon = null;
 
     public function mount(): void
     {
+        $this->currentDomain = app(ManageCustomDomain::class)->current();
+        $this->palette = array_fill_keys(PaletteTokens::TOKENS, '');
+
         $profile = app(BrandProfiles::class)->forEnvironment();
 
-        foreach (PaletteTokens::TOKENS as $token) {
-            $this->palette[$token] = is_string($profile?->palette[$token] ?? null) ? $profile->palette[$token] : '';
+        // No profile yet: every field stays at its blank default and the form renders
+        // as "not branded", which is a different state from branded-then-cleared.
+        if ($profile === null) {
+            return;
         }
 
-        $this->appName = (string) ($profile?->app_name ?? '');
-        $this->emailFromName = (string) ($profile?->email_from_name ?? '');
-        $this->emailTemplate = is_string($profile?->email_templates['welcome'] ?? null) ? $profile->email_templates['welcome'] : '';
-        $this->logoUrl = $profile?->logo_url;
-        $this->faviconUrl = $profile?->favicon_url;
-        $this->currentDomain = app(ManageCustomDomain::class)->current();
+        foreach (PaletteTokens::TOKENS as $token) {
+            $this->palette[$token] = $profile->palette->get($token) ?? '';
+        }
+
+        $this->appName = $profile->app_name ?? '';
+        $this->emailFromName = $profile->email_from_name ?? '';
+        $this->emailTemplate = $profile->email_templates->get('welcome') ?? '';
+        $this->logoUrl = $profile->logo_url;
+        $this->faviconUrl = $profile->favicon_url;
     }
 
     public function save(): void
@@ -81,14 +90,11 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
             $this->faviconUrl = $assets->put('favicon', $this->favicon);
         }
 
-        $templates = $profile->email_templates;
-        $templates['welcome'] = $this->emailTemplate;
-
         $profile->fill([
             'palette' => $clean,
             'app_name' => $this->appName !== '' ? $this->appName : null,
             'email_from_name' => $this->emailFromName !== '' ? $this->emailFromName : null,
-            'email_templates' => $templates,
+            'email_templates' => $profile->email_templates->with('welcome', $this->emailTemplate),
             'logo_url' => $this->logoUrl,
             'favicon_url' => $this->faviconUrl,
         ]);
