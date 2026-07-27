@@ -11,8 +11,10 @@ use Cbox\Id\Analytics\Contracts\ReportReader;
 use Cbox\Id\Analytics\Contracts\ReportSink;
 use Cbox\Id\Analytics\Listeners\StreamDomainEventToSink;
 use Cbox\Id\Analytics\Readers\ClickHouseReportReader;
+use Cbox\Id\Analytics\Readers\DatabaseReportReader;
 use Cbox\Id\Analytics\Readers\UsageMeterReportReader;
 use Cbox\Id\Analytics\Sinks\ClickHouseReportSink;
+use Cbox\Id\Analytics\Sinks\DatabaseReportSink;
 use Cbox\Id\Analytics\Sinks\NullReportSink;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -46,14 +48,25 @@ class AnalyticsServiceProvider extends ServiceProvider
         $this->app->bindIf(ReportSink::class, NullReportSink::class);
         $this->app->bindIf(ReportReader::class, UsageMeterReportReader::class);
 
-        // Switch the sink + reader over to ClickHouse only when a DSN is present.
+        // A ClickHouse DSN wins; otherwise the relational store is available as an
+        // opt-in. Both replace the inert pair above as a MATCHED set — a sink and a
+        // reader over the same store — so the dashboards always read back what the
+        // sink just wrote, rather than one store's writes and another's reads.
         if ($this->configString('id-analytics.clickhouse.dsn') !== '') {
             $this->registerClickHouse();
+        } elseif ($this->configString('id-analytics.store') === 'database') {
+            $this->registerDatabaseStore();
         }
     }
 
     public function boot(): void
     {
+        // Loaded unconditionally, not only when the relational store is switched on:
+        // a table that exists and stays empty costs nothing, while a schema that
+        // appears only under one config value means enabling the store on a live
+        // deployment needs a migration run nobody scheduled.
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'id-analytics');
         Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/analytics.php');
@@ -72,6 +85,20 @@ class AnalyticsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([AnalyticsInstallCommand::class]);
         }
+    }
+
+    /**
+     * The relational store: the app's own database, one row per delivered event.
+     * No connection to configure and nothing to provision beyond a migration, which
+     * is what makes it the workable option where no column store exists.
+     */
+    private function registerDatabaseStore(): void
+    {
+        $this->app->bind(ReportSink::class, DatabaseReportSink::class);
+
+        $this->app->bind(ReportReader::class, fn (Application $app): DatabaseReportReader => new DatabaseReportReader(
+            $app->make(EnvironmentContext::class),
+        ));
     }
 
     private function registerClickHouse(): void

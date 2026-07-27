@@ -135,8 +135,14 @@ class ClickHouseReportReader implements ReportReader
     {
         $environment = $this->environments->current()?->environmentKey();
 
+        // No environment in context used to drop the clause entirely, which made an
+        // unscoped read return EVERY environment's events — the console renders
+        // dashboard cards from contexts that do not always carry one. Deny by
+        // default instead, matching DatabaseReportReader so a store swap cannot
+        // change who sees what. Not `= ''`: a record whose event carried no
+        // environment is stored with an empty string and would match.
         if ($environment === null) {
-            return '';
+            return ' AND 1 = 0';
         }
 
         $parameters['env'] = $environment;

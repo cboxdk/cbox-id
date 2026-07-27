@@ -13,6 +13,28 @@ return [
     'enabled' => (bool) env('ID_ANALYTICS_ENABLED', false),
 
     /*
+     * Where delivered events are stored, when ClickHouse is not configured below.
+     *
+     *   none      (default) — events go nowhere; dashboards read the platform's own
+     *                         usage counters through the UsageMeter. Nothing grows.
+     *   database            — events are written to `id_analytics_events` in the
+     *                         app's own database, and the dashboards read them.
+     *                         The right answer at low volume, and the only one
+     *                         available where there is no column store to point at.
+     *
+     * A ClickHouse DSN always wins over this: set one and both the sink and the
+     * reader switch to it regardless of what is set here.
+     *
+     * The relational store is a ROW store, so the dashboards' GROUP BY aggregates
+     * scan an index range. Growth shows up as dashboard latency rather than wrong
+     * numbers, and that latency — not a correctness cliff — is the signal to move to
+     * ClickHouse. Retention is enforced by the scheduled `model:prune` in
+     * routes/console.php, using `retention_days` below; without pruning the table
+     * grows with traffic forever, which is the one way this store can hurt you.
+     */
+    'store' => (string) env('ID_ANALYTICS_STORE', 'none'),
+
+    /*
      * ClickHouse is the optional column-store sink for high-volume event analytics.
      * Leave `dsn` empty (the default) and the plugin stays ClickHouse-free: events
      * go to the inert NullReportSink and dashboards read usage counters from the
