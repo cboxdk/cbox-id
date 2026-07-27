@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.30.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.63.0.
+
+### Security
+
+- Picks up two privilege fixes in the framework. `POST /user-tokens/introspect` checked no
+  scope at all, so any valid environment API key — however narrowly issued — could
+  introspect every personal access token in its environment; it now requires `users:read`.
+  And an **empty** resource-family allow-list was stored as `null`, which means
+  *unrestricted*, so the most restrictive request possible produced a token permitted on
+  everything.
+- **Both are breaking upstream, and both have zero blast radius here** — verified against
+  the production database rather than assumed: it holds **0** environment API keys and
+  **0** user API tokens, and this app has no caller of `UserApiTokens::issue()` or any
+  reference to `resource_families`.
+
+### Changed
+
+- The framework renamed `password_reset_tokens` to `cbox_id_password_reset_tokens`,
+  because the old name collided with Laravel's own skeleton migration and made a
+  greenfield install fail to migrate at all. **Requires a migration**; on PostgreSQL it is
+  a rename, not a table rewrite, so it is far cheaper than the v0.62.0 conversion.
+
 ## [0.29.0] - 2026-07-27
 
 Requires `cboxdk/laravel-id` v0.62.0.
