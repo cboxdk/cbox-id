@@ -162,22 +162,39 @@ jobs:
       # never once connected.
       - name: Locate the ${{ matrix.image }} service
         run: |
+          # The service container starts and reports healthy — the runner log says so.
+          # Reaching it is the part that depends on topology:
+          #
+          #   job on the runner host      -> 127.0.0.1 : published port
+          #   job in a container on the   -> db : service port
+          #     service network
+          #   job in a container, docker  -> the port is published on the HOST, which
+          #     socket mounted from the      is neither this container's loopback nor
+          #     host (docker-out-of-docker)  a network it is on; reach it through the
+          #                                  gateway or host.docker.internal
+          #
+          # The third is what this runner does, which is why every previous run failed
+          # on 127.0.0.1 with a bare "Connection refused".
+          GW="$(ip route 2>/dev/null | awk '/^default/ {print $3; exit}')"
+          echo "candidates: db:${{ matrix.service_port }} 127.0.0.1:${{ matrix.port }} host.docker.internal:${{ matrix.port }} ${GW:-<no gateway>}:${{ matrix.port }}"
+
+          try() {
+            (echo > "/dev/tcp/$1/$2") 2>/dev/null || return 1
+            echo "DB_HOST=$1" >> "$GITHUB_ENV"
+            echo "DB_PORT=$2" >> "$GITHUB_ENV"
+            echo "database reachable at $1:$2"
+            exit 0
+          }
+
           for attempt in $(seq 1 60); do
-            if (echo > /dev/tcp/db/${{ matrix.service_port }}) 2>/dev/null; then
-              echo "DB_HOST=db"                        >> "$GITHUB_ENV"
-              echo "DB_PORT=${{ matrix.service_port }}" >> "$GITHUB_ENV"
-              echo "reachable at db:${{ matrix.service_port }} (container network)"
-              exit 0
-            fi
-            if (echo > /dev/tcp/127.0.0.1/${{ matrix.port }}) 2>/dev/null; then
-              echo "DB_HOST=127.0.0.1"          >> "$GITHUB_ENV"
-              echo "DB_PORT=${{ matrix.port }}" >> "$GITHUB_ENV"
-              echo "reachable at 127.0.0.1:${{ matrix.port }} (published port)"
-              exit 0
-            fi
+            try db                     "${{ matrix.service_port }}"
+            try 127.0.0.1              "${{ matrix.port }}"
+            try host.docker.internal   "${{ matrix.port }}"
+            [ -n "$GW" ] && try "$GW"  "${{ matrix.port }}"
             sleep 2
           done
-          echo "::error::${{ matrix.image }} answered on neither db:${{ matrix.service_port }} nor 127.0.0.1:${{ matrix.port }} after 120s."
+
+          echo "::error::${{ matrix.image }} answered on none of db:${{ matrix.service_port }}, 127.0.0.1:${{ matrix.port }}, host.docker.internal:${{ matrix.port }} or ${GW:-<no gateway>}:${{ matrix.port }} after 120s. The service is healthy, so this is a runner topology the probe does not cover."
           exit 1
 
       - name: Setup PHP
