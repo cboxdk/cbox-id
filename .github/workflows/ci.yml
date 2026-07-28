@@ -143,13 +143,42 @@ jobs:
           --health-retries 30
     env:
       DB_CONNECTION: ${{ matrix.driver }}
-      DB_HOST: 127.0.0.1
-      DB_PORT: ${{ matrix.port }}
       DB_DATABASE: cbox_id
       DB_USERNAME: cbox_id
       DB_PASSWORD: secret
+      # DB_HOST/DB_PORT are discovered below rather than hardcoded — see that step.
     steps:
       - uses: actions/checkout@v4
+
+      # WHERE THE DATABASE ACTUALLY IS DEPENDS ON HOW THE RUNNER IS DEPLOYED, and
+      # guessing wrong produces a bare "Connection refused" stack trace forty lines
+      # into an artisan command. When the job runs directly on the runner host, the
+      # service is at 127.0.0.1 on the PUBLISHED port; when the runner is itself a
+      # container (which this one is), published ports land on the host and the job
+      # can only reach the service by its label on its OWN port. Probe both, export
+      # whichever answers, and fail with a sentence rather than a stack trace.
+      #
+      # This is what made the engines matrix look like it was passing when it had
+      # never once connected.
+      - name: Locate the ${{ matrix.image }} service
+        run: |
+          for attempt in $(seq 1 60); do
+            if (echo > /dev/tcp/db/${{ matrix.service_port }}) 2>/dev/null; then
+              echo "DB_HOST=db"                        >> "$GITHUB_ENV"
+              echo "DB_PORT=${{ matrix.service_port }}" >> "$GITHUB_ENV"
+              echo "reachable at db:${{ matrix.service_port }} (container network)"
+              exit 0
+            fi
+            if (echo > /dev/tcp/127.0.0.1/${{ matrix.port }}) 2>/dev/null; then
+              echo "DB_HOST=127.0.0.1"          >> "$GITHUB_ENV"
+              echo "DB_PORT=${{ matrix.port }}" >> "$GITHUB_ENV"
+              echo "reachable at 127.0.0.1:${{ matrix.port }} (published port)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::${{ matrix.image }} answered on neither db:${{ matrix.service_port }} nor 127.0.0.1:${{ matrix.port }} after 120s."
+          exit 1
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
