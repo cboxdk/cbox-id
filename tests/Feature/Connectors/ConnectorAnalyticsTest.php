@@ -14,6 +14,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithWebhooks::class);
 
+// Webhook registration resolves the target host to refuse SSRF. These fixtures use
+// example hosts that do not exist, so the check is off here — the module under test
+// only READS registered connections and loosens no guard of its own.
+//
+// This file passed locally without it and failed in CI: a machine running Laravel
+// Herd resolves *.test through its own resolver, so `hooks.acme.test` resolved at
+// home and did not on the runner. A test that depends on the developer's DNS is
+// green for a reason that has nothing to do with the code.
+beforeEach(function (): void {
+    config([
+        'ssrf.enforce' => false,
+        'cbox-id.webhooks.verify_url' => false,
+    ]);
+});
+
 it('binds the inert null analytics backend by default', function (): void {
     expect(app(ConnectorAnalytics::class))->toBeInstanceOf(NullConnectorAnalytics::class)
         ->and(app(ConnectorAnalytics::class)->health(ConnectorCategory::Webhook, 'anything'))->toBeNull();

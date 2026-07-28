@@ -18,7 +18,11 @@ uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithFed
 // guard is off for the happy paths — the same stance laravel-id's own provisioning
 // tests take. The module under test loosens nothing; it only reads existing rows.
 beforeEach(function (): void {
-    config(['ssrf.enforce' => false, 'cbox-id.provisioning.verify_url' => false]);
+    config([
+        'ssrf.enforce' => false,
+        'cbox-id.provisioning.verify_url' => false,
+        'cbox-id.webhooks.verify_url' => false,
+    ]);
 });
 
 /** @return array<string, ConnectionSummary> */
