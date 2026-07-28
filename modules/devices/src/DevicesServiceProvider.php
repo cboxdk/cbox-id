@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Id\Devices;
 
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Devices\Console\CreateAuthenticatorClientCommand;
 use Cbox\Id\Devices\Contracts\PushDispatcher;
 use Cbox\Id\Devices\Contracts\PushTransport;
 use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
@@ -156,6 +157,10 @@ class DevicesServiceProvider extends ServiceProvider
         // enrolled devices belong beside SSO and passkeys, not in a section of their own.
         Console::nav()->area('authentication')
             ->page('devices.index', 'Trusted devices', feature: 'devices', order: 50);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([CreateAuthenticatorClientCommand::class]);
+        }
 
         $this->scheduleRetrySweep();
         $this->warnAboutPerProcessCache();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\EnforceImpersonationWindow;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Devices\Http\Controllers\ApprovalController;
+use Cbox\Id\Devices\Http\Controllers\BootstrapController;
 use Cbox\Id\Devices\Http\Controllers\DeviceController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -42,6 +43,15 @@ Route::middleware([
  * issuer, checks the scope, and enforces DPoP sender-constraining when the token
  * carries a `cnf.jkt` — which the authenticator's tokens always do.
  */
+/*
+ * Discovery. Unauthenticated, and deliberately so: a public client's id is not a
+ * credential, and each environment mints its own because oauth_clients.client_id is
+ * globally unique — so one binary can serve every tenant only by asking.
+ */
+Route::middleware(['api', ResolveEnvironment::class, 'throttle:60,1'])
+    ->get('/.well-known/cbox-authenticator', BootstrapController::class)
+    ->name('devices.bootstrap');
+
 Route::middleware(['api', ResolveEnvironment::class, 'throttle:api-devices'])
     ->prefix('api/v1')
     ->group(function (): void {

@@ -101,6 +101,7 @@ function undocumentedByDesign(): array
 {
     return [
         // Discovery documents — served, and self-describing by definition.
+        'GET /.well-known/cbox-authenticator',
         'GET /.well-known/jwks.json',
         'GET /.well-known/oauth-authorization-server',
         'GET /.well-known/oauth-protected-resource',
