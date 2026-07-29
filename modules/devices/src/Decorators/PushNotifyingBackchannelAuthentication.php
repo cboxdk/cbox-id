@@ -146,9 +146,9 @@ final class PushNotifyingBackchannelAuthentication implements BackchannelAuthent
 
         if (DeviceConfig::bool('id-devices.include_request_id_in_push', true)) {
             $data['request_id'] = $result->requestId;
-            $data['url'] = 'cboxauth://approvals/'.$result->requestId;
+            $data['url'] = 'com.cboxid.authenticator://approvals/'.$result->requestId;
         } else {
-            $data['url'] = 'cboxauth://approvals';
+            $data['url'] = 'com.cboxid.authenticator://approvals';
         }
 
         return new PushPayload(

@@ -34,7 +34,7 @@ it('registers both a claimed HTTPS and a reverse-domain redirect URI', function 
     // outcome is a config change rather than a re-registration.
     expect(AuthenticatorClient::find()?->redirect_uris)
         ->toContain('https://acme.cboxid.com/app/oauth/callback')
-        ->toContain('dk.cbox.id.authenticator:/oauth/callback');
+        ->toContain('com.cboxid.authenticator:/oauth/callback');
 });
 
 it('is idempotent so re-running never strands enrolled handsets', function (): void {

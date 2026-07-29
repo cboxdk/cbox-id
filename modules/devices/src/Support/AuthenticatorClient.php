@@ -32,7 +32,7 @@ final class AuthenticatorClient
      * validator requires it (a scheme with no dot is rejected), which is also RFC 8252's
      * advice — an undotted scheme is far easier for another app on the device to squat.
      */
-    public const SCHEME = 'dk.cbox.id.authenticator';
+    public const SCHEME = 'com.cboxid.authenticator';
 
     /**
      * Two redirect URIs, and the HTTPS one is preferred.

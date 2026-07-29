@@ -105,7 +105,7 @@ it('carries a deep link to the specific approval', function (): void {
     $requestId = PushNotification::query()->firstOrFail()->payload->data['request_id'] ?? null;
 
     expect($requestId)->not->toBeNull()
-        ->and($transport->latest()?->payload->data['url'] ?? '')->toBe('cboxauth://approvals/'.$requestId);
+        ->and($transport->latest()?->payload->data['url'] ?? '')->toBe('com.cboxid.authenticator://approvals/'.$requestId);
 });
 
 it('omits the request id when the operator has turned it off', function (): void {
@@ -120,7 +120,7 @@ it('omits the request id when the operator has turned it off', function (): void
     $data = $transport->latest()?->payload->data ?? [];
 
     expect($data)->not->toHaveKey('request_id')
-        ->and($data['url'] ?? '')->toBe('cboxauth://approvals');
+        ->and($data['url'] ?? '')->toBe('com.cboxid.authenticator://approvals');
 });
 
 it('sets the push deadline from the CIBA expiry', function (): void {

@@ -46,7 +46,7 @@ function fcmMessage(): PushMessage
         token: 'device-token',
         platform: DevicePlatform::Ios,
         kind: NotificationKind::Approval,
-        payload: new PushPayload('Approval request', 'Open Cbox ID.', ['url' => 'cboxauth://approvals'], 'req-1'),
+        payload: new PushPayload('Approval request', 'Open Cbox ID.', ['url' => 'com.cboxid.authenticator://approvals'], 'req-1'),
     );
 }
 
