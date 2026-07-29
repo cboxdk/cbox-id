@@ -96,10 +96,16 @@ jobs:
   # pointing it at a non-existent driver and watching the suite fail to resolve it
   # — worth re-checking if this job ever goes suspiciously green.
   #
-  # Requires Docker on the self-hosted runner for service containers.
+  # RUNS ON GITHUB-HOSTED RUNNERS, unlike every other job here. Service containers
+  # are unreachable on the self-hosted runner: they start and report healthy, but it
+  # mounts the host's Docker socket, so the published port lands on the host while
+  # the job runs in a container that is on neither that loopback nor the service
+  # network. This job failed on `Connection refused` every time it ran — as does the
+  # equivalent job in cboxdk/laravel-id — and a database matrix that has never
+  # connected is worse than none, because the badge says otherwise.
   # ---------------------------------------------------------------------------
   engines:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
