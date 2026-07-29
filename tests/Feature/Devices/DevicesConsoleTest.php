@@ -87,3 +87,32 @@ it('re-checks authorization on every render, not only on mount', function (): vo
 
     $page->call('$refresh')->assertForbidden();
 });
+
+it('shows an enrolment code once an authenticator client exists', function (): void {
+    signInAs(MembershipRole::Admin);
+
+    // Nothing to connect to yet, so a code would be a dead end.
+    Volt::test('devices.index')->assertOk()->assertSee('No authenticator app is set up');
+
+    $this->artisan('cbox-id:devices:client')->assertSuccessful();
+
+    Volt::test('devices.index')
+        ->assertOk()
+        ->assertSee('Add a phone')
+        // The scheme the app actually registers, so a scan resolves to it.
+        ->assertSee('com.cboxid.authenticator://connect', escape: false)
+        ->assertSee('<svg', escape: false);
+});
+
+it('puts nothing secret in the enrolment code', function (): void {
+    signInAs(MembershipRole::Admin);
+    $this->artisan('cbox-id:devices:client')->assertSuccessful();
+
+    $uri = Volt::test('devices.index')->instance()->enrolmentUri();
+
+    // Host only. A code carrying a token would have to be short-lived and single-use,
+    // and could not be left on a screen — which is the whole point of showing one.
+    expect($uri)->toContain('connect?host=')
+        ->and($uri)->not->toContain('token')
+        ->and($uri)->not->toContain('cid_');
+});
