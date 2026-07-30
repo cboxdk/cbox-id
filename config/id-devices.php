@@ -11,7 +11,7 @@ return [
      * without configuring a transport below is still safe — pushes are recorded
      * and dropped by the NullPushTransport, which is what the test suite runs.
      */
-    'enabled' => (bool) env('ID_DEVICES_ENABLED', false),
+    'enabled' => (bool) env('CBOX_ID_DEVICES_ENABLED', env('ID_DEVICES_ENABLED', false)),
 
     /*
      * How a push actually leaves the building.
@@ -27,7 +27,7 @@ return [
      * missing the transport stays Null rather than failing at send time — a
      * misconfigured push must not be able to break a login.
      */
-    'transport' => (string) env('ID_DEVICES_TRANSPORT', 'none'),
+    'transport' => (string) env('CBOX_ID_DEVICES_TRANSPORT', env('ID_DEVICES_TRANSPORT', 'none')),
 
     /*
      * The Google service-account JSON used to mint FCM access tokens, as an absolute
@@ -40,9 +40,9 @@ return [
      * provider logs a warning at boot when that combination is detected.
      */
     'fcm' => [
-        'credentials' => (string) env('ID_DEVICES_FCM_CREDENTIALS', ''),
-        'project_id' => (string) env('ID_DEVICES_FCM_PROJECT_ID', ''),
-        'timeout' => (int) env('ID_DEVICES_FCM_TIMEOUT', 10),
+        'credentials' => (string) env('CBOX_ID_DEVICES_FCM_CREDENTIALS', env('ID_DEVICES_FCM_CREDENTIALS', '')),
+        'project_id' => (string) env('CBOX_ID_DEVICES_FCM_PROJECT_ID', env('ID_DEVICES_FCM_PROJECT_ID', '')),
+        'timeout' => (int) env('CBOX_ID_DEVICES_FCM_TIMEOUT', env('ID_DEVICES_FCM_TIMEOUT', 10)),
     ],
 
     /*
@@ -55,7 +55,7 @@ return [
      * token that FCM has told us is dead will not become alive again in eleven hours
      * of retries.
      */
-    'max_attempts' => (int) env('ID_DEVICES_MAX_ATTEMPTS', 12),
+    'max_attempts' => (int) env('CBOX_ID_DEVICES_MAX_ATTEMPTS', env('ID_DEVICES_MAX_ATTEMPTS', 12)),
 
     /*
      * A notification still Pending this long after it was written is presumed to have
@@ -67,13 +67,13 @@ return [
      * duplicate; the instant a row counts as stranded the lock has expired, so the
      * rescue can fire. Raising one without the other wedges the rescue shut.
      */
-    'stranded_after_seconds' => (int) env('ID_DEVICES_STRANDED_AFTER_SECONDS', 900),
+    'stranded_after_seconds' => (int) env('CBOX_ID_DEVICES_STRANDED_AFTER_SECONDS', env('ID_DEVICES_STRANDED_AFTER_SECONDS', 900)),
 
     /*
      * How many due notifications one sweep re-enqueues. Bounds the work a single
      * scheduler tick can create.
      */
-    'retry_limit' => (int) env('ID_DEVICES_RETRY_LIMIT', 50),
+    'retry_limit' => (int) env('CBOX_ID_DEVICES_RETRY_LIMIT', env('ID_DEVICES_RETRY_LIMIT', 50)),
 
     /*
      * Per-device circuit breaker. A device that has failed `failure_threshold` times
@@ -87,8 +87,8 @@ return [
      * single cooldown.
      */
     'circuit_breaker' => [
-        'failure_threshold' => (int) env('ID_DEVICES_CB_FAILURE_THRESHOLD', 5),
-        'cooldown_seconds' => (int) env('ID_DEVICES_CB_COOLDOWN_SECONDS', 300),
+        'failure_threshold' => (int) env('CBOX_ID_DEVICES_CB_FAILURE_THRESHOLD', env('ID_DEVICES_CB_FAILURE_THRESHOLD', 5)),
+        'cooldown_seconds' => (int) env('CBOX_ID_DEVICES_CB_COOLDOWN_SECONDS', env('ID_DEVICES_CB_COOLDOWN_SECONDS', 300)),
     ],
 
     /*
@@ -100,8 +100,8 @@ return [
      * call runs inline inside the CIBA request, bounded by the transport's own
      * connect/read timeouts. The webhook dispatcher accepts the same trade.
      */
-    'queue_connection' => env('ID_DEVICES_QUEUE_CONNECTION'),
-    'queue' => env('ID_DEVICES_QUEUE'),
+    'queue_connection' => env('CBOX_ID_DEVICES_QUEUE_CONNECTION', env('ID_DEVICES_QUEUE_CONNECTION')),
+    'queue' => env('CBOX_ID_DEVICES_QUEUE', env('ID_DEVICES_QUEUE')),
 
     /*
      * How long a security alert stays worth delivering.
@@ -116,7 +116,7 @@ return [
      *
      * Approvals get their deadline from the CIBA request's own TTL instead.
      */
-    'alert_ttl_seconds' => (int) env('ID_DEVICES_ALERT_TTL_SECONDS', 86400),
+    'alert_ttl_seconds' => (int) env('CBOX_ID_DEVICES_ALERT_TTL_SECONDS', env('ID_DEVICES_ALERT_TTL_SECONDS', 86400)),
 
     /*
      * How long settled notification rows are kept for the console's delivery history
@@ -126,7 +126,7 @@ return [
      * This table grows with TRAFFIC, not with tenants — one row per enrolled device per
      * alerted event — so the prune is not optional housekeeping.
      */
-    'retention_days' => (int) env('ID_DEVICES_RETENTION_DAYS', 30),
+    'retention_days' => (int) env('CBOX_ID_DEVICES_RETENTION_DAYS', env('ID_DEVICES_RETENTION_DAYS', 30)),
 
     /*
      * Per-minute request budget for the device API, keyed on a fingerprint of the
@@ -135,7 +135,7 @@ return [
      * one busy account throttle the whole fleet. The host's existing
      * `api.ip_ceiling_multiplier` still applies as the per-IP abuse backstop.
      */
-    'rate_limit' => (int) env('ID_DEVICES_RATE_LIMIT', 60),
+    'rate_limit' => (int) env('CBOX_ID_DEVICES_RATE_LIMIT', env('ID_DEVICES_RATE_LIMIT', 60)),
 
     /*
      * Which OAuth clients may cause a push to a user's phone via CIBA.
@@ -151,7 +151,7 @@ return [
      */
     'ciba' => [
         'client_allowlist' => array_values(array_filter(
-            explode(',', (string) env('ID_DEVICES_CIBA_CLIENT_ALLOWLIST', '')),
+            explode(',', (string) env('CBOX_ID_DEVICES_CIBA_CLIENT_ALLOWLIST', env('ID_DEVICES_CIBA_CLIENT_ALLOWLIST', ''))),
         )),
     ],
 
@@ -165,7 +165,7 @@ return [
      * exposure. Set false and the tap opens the pending list instead, which costs
      * deep-link precision when two approvals are waiting.
      */
-    'include_request_id_in_push' => (bool) env('ID_DEVICES_INCLUDE_REQUEST_ID_IN_PUSH', true),
+    'include_request_id_in_push' => (bool) env('CBOX_ID_DEVICES_INCLUDE_REQUEST_ID_IN_PUSH', env('ID_DEVICES_INCLUDE_REQUEST_ID_IN_PUSH', true)),
 
     /*
      * Domain event types that raise a security alert on the user's enrolled devices.

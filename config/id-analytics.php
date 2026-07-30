@@ -10,7 +10,7 @@ return [
      * so a self-hosted deployment reading usage from Postgres can still show the
      * dashboards without ClickHouse by flipping this on.
      */
-    'enabled' => (bool) env('ID_ANALYTICS_ENABLED', false),
+    'enabled' => (bool) env('CBOX_ID_ANALYTICS_ENABLED', env('ID_ANALYTICS_ENABLED', false)),
 
     /*
      * Where delivered events are stored, when ClickHouse is not configured below.
@@ -32,7 +32,7 @@ return [
      * routes/console.php, using `retention_days` below; without pruning the table
      * grows with traffic forever, which is the one way this store can hurt you.
      */
-    'store' => (string) env('ID_ANALYTICS_STORE', 'none'),
+    'store' => (string) env('CBOX_ID_ANALYTICS_STORE', env('ID_ANALYTICS_STORE', 'none')),
 
     /*
      * ClickHouse is the optional column-store sink for high-volume event analytics.
@@ -42,24 +42,24 @@ return [
      * endpoint (e.g. `http://clickhouse:8123`) to switch the sink + reader over.
      */
     'clickhouse' => [
-        'dsn' => (string) env('ID_ANALYTICS_CLICKHOUSE_DSN', ''),
-        'database' => (string) env('ID_ANALYTICS_CLICKHOUSE_DATABASE', 'default'),
-        'user' => (string) env('ID_ANALYTICS_CLICKHOUSE_USER', 'default'),
-        'password' => (string) env('ID_ANALYTICS_CLICKHOUSE_PASSWORD', ''),
-        'table' => (string) env('ID_ANALYTICS_CLICKHOUSE_TABLE', 'id_analytics_events'),
-        'timeout' => (int) env('ID_ANALYTICS_CLICKHOUSE_TIMEOUT', 5),
+        'dsn' => (string) env('CBOX_ID_ANALYTICS_CLICKHOUSE_DSN', env('ID_ANALYTICS_CLICKHOUSE_DSN', '')),
+        'database' => (string) env('CBOX_ID_ANALYTICS_CLICKHOUSE_DATABASE', env('ID_ANALYTICS_CLICKHOUSE_DATABASE', 'default')),
+        'user' => (string) env('CBOX_ID_ANALYTICS_CLICKHOUSE_USER', env('ID_ANALYTICS_CLICKHOUSE_USER', 'default')),
+        'password' => (string) env('CBOX_ID_ANALYTICS_CLICKHOUSE_PASSWORD', env('ID_ANALYTICS_CLICKHOUSE_PASSWORD', '')),
+        'table' => (string) env('CBOX_ID_ANALYTICS_CLICKHOUSE_TABLE', env('ID_ANALYTICS_CLICKHOUSE_TABLE', 'id_analytics_events')),
+        'timeout' => (int) env('CBOX_ID_ANALYTICS_CLICKHOUSE_TIMEOUT', env('ID_ANALYTICS_CLICKHOUSE_TIMEOUT', 5)),
     ],
 
     /*
      * How long the ClickHouse event table retains rows. Applied by the install
      * command as a TTL on the table; the Postgres UsageMeter has its own retention.
      */
-    'retention_days' => (int) env('ID_ANALYTICS_RETENTION_DAYS', 365),
+    'retention_days' => (int) env('CBOX_ID_ANALYTICS_RETENTION_DAYS', env('ID_ANALYTICS_RETENTION_DAYS', 365)),
 
     /*
      * Default look-back window (in days) for the console charts.
      */
     'chart' => [
-        'window_days' => (int) env('ID_ANALYTICS_CHART_WINDOW_DAYS', 30),
+        'window_days' => (int) env('CBOX_ID_ANALYTICS_CHART_WINDOW_DAYS', env('ID_ANALYTICS_CHART_WINDOW_DAYS', 30)),
     ],
 ];

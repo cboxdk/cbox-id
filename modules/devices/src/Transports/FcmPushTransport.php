@@ -55,7 +55,7 @@ final class FcmPushTransport implements PushTransport
      *  - NOT_FOUND / a bare HTTP 404. A dead token's 404 always carries
      *    `details[].errorCode = UNREGISTERED`, which is matched below. A 404 with NO
      *    detail is the PROJECT-level one — `POST /v1/projects/{wrong-id}/messages:send`
-     *    — so treating it as token death means one mistyped `ID_DEVICES_FCM_PROJECT_ID`
+     *    — so treating it as token death means one mistyped `CBOX_ID_DEVICES_FCM_PROJECT_ID`
      *    silently unenrols and wipes the token of every device in the estate on its
      *    first push. That is our misconfiguration, not the handset's: transient.
      *  - INVALID_ARGUMENT. FCM returns this for a malformed MESSAGE — a reserved `data`

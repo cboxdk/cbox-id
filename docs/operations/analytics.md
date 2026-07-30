@@ -13,14 +13,14 @@ what the dashboards show.
 
 ## The three stores
 
-| `ID_ANALYTICS_STORE` | Events are… | Dashboards read… | Costs |
+| `CBOX_ID_ANALYTICS_STORE` | Events are… | Dashboards read… | Costs |
 | --- | --- | --- | --- |
 | `none` (default) | discarded | the platform's own usage counters | nothing |
 | `database` | one row per event in `id_analytics_events` | that table | a table that grows with traffic |
-| — (set `ID_ANALYTICS_CLICKHOUSE_DSN`) | streamed to ClickHouse | ClickHouse | a column store to run |
+| — (set `CBOX_ID_ANALYTICS_CLICKHOUSE_DSN`) | streamed to ClickHouse | ClickHouse | a column store to run |
 
 A ClickHouse DSN always wins: set one and both the sink and the reader switch to it
-regardless of `ID_ANALYTICS_STORE`.
+regardless of `CBOX_ID_ANALYTICS_STORE`.
 
 The sink and the reader are always swapped as a **matched pair**, so the dashboards
 read back what the sink just wrote. There is no configuration in which one store is
@@ -36,9 +36,9 @@ counters cannot answer.
 ## `database` — the low-volume answer
 
 ```dotenv
-ID_ANALYTICS_STORE=database
-ID_ANALYTICS_ENABLED=true
-ID_ANALYTICS_RETENTION_DAYS=365
+CBOX_ID_ANALYTICS_STORE=database
+CBOX_ID_ANALYTICS_ENABLED=true
+CBOX_ID_ANALYTICS_RETENTION_DAYS=365
 ```
 
 One row per delivered domain event in `id_analytics_events`, in the app's own
@@ -61,7 +61,7 @@ numbers. That latency, not a correctness cliff, is the signal to move to ClickHo
 
 `id_analytics_events` is the one table in this application that grows with **traffic**
 rather than with tenants. It is swept daily by the scheduled `model:prune`, using
-`ID_ANALYTICS_RETENTION_DAYS`:
+`CBOX_ID_ANALYTICS_RETENTION_DAYS`:
 
 ```bash
 php artisan model:prune --model="Cbox\Id\Analytics\Models\AnalyticsEvent"
@@ -73,10 +73,10 @@ and that is the only way this option can hurt you.
 ## ClickHouse — the high-volume answer
 
 ```dotenv
-ID_ANALYTICS_CLICKHOUSE_DSN=http://clickhouse:8123
-ID_ANALYTICS_CLICKHOUSE_DATABASE=default
-ID_ANALYTICS_CLICKHOUSE_USER=app
-ID_ANALYTICS_CLICKHOUSE_PASSWORD=…
+CBOX_ID_ANALYTICS_CLICKHOUSE_DSN=http://clickhouse:8123
+CBOX_ID_ANALYTICS_CLICKHOUSE_DATABASE=default
+CBOX_ID_ANALYTICS_CLICKHOUSE_USER=app
+CBOX_ID_ANALYTICS_CLICKHOUSE_PASSWORD=…
 ```
 
 The target table is a `ReplacingMergeTree` keyed on `event_id`, so duplicate delivery

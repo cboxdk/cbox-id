@@ -44,6 +44,13 @@
         <env name="CBOX_ID_ISSUER" value="http://localhost"/>
         <env name="CBOX_ID_WEBAUTHN_RP_ID" value="localhost"/>
         <env name="CBOX_ID_WEBAUTHN_ORIGIN" value="http://localhost"/>
+        <!-- Pinned off so the suite is deterministic: the devices tests assert the
+             feature's default state, and a developer .env with the flag on must not
+             change what the tests see. Tests that want it on set it via config().
+             Both names pinned — the ID_ form is the pre-0.34 spelling the config
+             still honours as a fallback. -->
+        <env name="CBOX_ID_DEVICES_ENABLED" value="false"/>
+        <env name="ID_DEVICES_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

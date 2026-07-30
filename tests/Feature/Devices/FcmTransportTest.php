@@ -79,7 +79,7 @@ it('treats UNREGISTERED as permanent so the device is retired at once', function
 });
 
 it('does NOT retire the device on a project-level 404', function (): void {
-    // A wrong ID_DEVICES_FCM_PROJECT_ID returns 404 with no errorCode detail. Treating
+    // A wrong CBOX_ID_DEVICES_FCM_PROJECT_ID returns 404 with no errorCode detail. Treating
     // that as token death would wipe the sealed token of every device in the estate on
     // its first push, and recovery would need every user to re-open the app.
     $result = fcmTransport(fcmHttp([

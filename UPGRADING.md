@@ -14,6 +14,18 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## Unreleased
+
+### Module env vars renamed `ID_*` → `CBOX_ID_*`
+
+The vendored modules' env vars (`ID_DEVICES_*`, `ID_ANALYTICS_*`, `ID_COMPLIANCE_*`,
+`ID_CONNECTORS_*`) are renamed to the `CBOX_ID_` prefix the rest of the deployment
+already uses, e.g. `ID_DEVICES_ENABLED` → `CBOX_ID_DEVICES_ENABLED`.
+
+**No action required yet**: the old names are still read as a fallback wherever the
+new name is unset. Rename them in your ConfigMaps at leisure — the fallback will be
+removed in a future release. If both are set, the `CBOX_ID_` name wins.
+
 ## 0.32.0
 
 ### Every capability is now on by default
