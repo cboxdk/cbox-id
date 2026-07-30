@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
-## [Unreleased]
+## [0.34.0] - 2026-07-30
+
+Requires `cboxdk/laravel-id` v0.65.0.
+
+Devices, take two: enrolment moves to where the people it is for can actually reach
+it, and nothing about the module asks anyone to run a command any more.
 
 ### Added
 

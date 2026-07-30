@@ -14,7 +14,7 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
-## Unreleased
+## 0.34.0
 
 ### Module env vars renamed `ID_*` → `CBOX_ID_*`
 
