@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [Unreleased]
+
+### Security
+
+- **Account-plane sign-ins are now audited** (`account.signed_in`). The workspace
+  console owns environments, API keys and billing, and the act of getting into it left
+  no trace on the account's activity chain — the administration it enables was audited,
+  but not the entry, on any of the five sign-in paths. A takeover was invisible in the
+  very log an admin would open to investigate one, with `last_login_at` (a single
+  overwritten column) as the only evidence a session had ever started. Recorded in
+  `AccountAuth::establish()`, the one place a member session is created, so a sixth door
+  added later inherits it. Audit failure is reported and swallowed — an unavailable
+  audit backend must not lock members out of their own console.
+
 ## [0.34.0] - 2026-07-30
 
 Requires `cboxdk/laravel-id` v0.65.0.

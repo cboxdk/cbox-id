@@ -9,6 +9,7 @@ use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * Session bridge for account members — the customer's buyer/admin plane, the
@@ -53,6 +54,7 @@ final class AccountAuth
         private readonly AccountMembers $members,
         private readonly AccountMemberMfa $mfa,
         private readonly MemberCredentialGate $gate,
+        private readonly AccountActivity $activity,
     ) {}
 
     /**
@@ -163,6 +165,45 @@ final class AccountAuth
         session()->put(self::SESSION_KEY, $memberId);
         session()->put(self::SESSION_VERSION_KEY, $member !== null ? $member->session_version : 0);
         session()->regenerate();
+
+        $this->recordSignIn($member);
+    }
+
+    /**
+     * Put the sign-in on the account's activity chain.
+     *
+     * Recorded HERE rather than at each door precisely because establish() is the one
+     * place a session is created: password, the MFA challenge, a passkey ceremony, a
+     * magic link and an SSO assertion all land on it, and a sixth way in added later
+     * gets the record for free instead of being remembered about.
+     *
+     * This plane owns environments, API keys and billing, and until this existed the
+     * act of getting in left nothing behind — the administration it enables was
+     * audited, but not the entry. `last_login_at` is a single overwritten column, so a
+     * takeover looked exactly like the owner's own next visit.
+     *
+     * Failure is swallowed: the audit chain serialises appends on an anchor row, and an
+     * audit backend that is down or contended must not be able to lock every member out
+     * of their own console. Observation, not gate.
+     */
+    private function recordSignIn(?AccountMember $member): void
+    {
+        if ($member === null) {
+            return;
+        }
+
+        try {
+            $this->activity->record(
+                $member->account_id,
+                'account.signed_in',
+                $member->id,
+                targetType: 'account_member',
+                targetId: $member->id,
+                request: request(),
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     public function check(): bool
