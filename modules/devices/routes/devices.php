@@ -26,6 +26,11 @@ Route::middleware([
     'console.feature:devices',
 ])->group(function (): void {
     Volt::route('/sign-in/devices', 'devices.index')->name('devices.index');
+
+    // The personal half: my enrolment code, my handsets. Same stack, but no admin
+    // gate — the page scopes every read and write to the signed-in subject, the same
+    // way the account page's passkeys do.
+    Volt::route('/account/devices', 'devices.mine')->name('devices.mine');
 });
 
 /*

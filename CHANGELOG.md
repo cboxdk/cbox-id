@@ -8,6 +8,17 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Personal Trusted devices page** (`My account → Trusted devices`) — enrolment QR and
+  the caller's own handsets, with self-service removal. Enrolment was previously only on
+  the org-admin fleet page, which plain members cannot open, so members had no way to
+  enrol at all. The admin page keeps the fleet inventory and delivery health, and links
+  here instead of showing a code.
+- **The authenticator OAuth client provisions itself** on first view of the Trusted
+  devices page. `php artisan cbox-id:devices:client` is no longer a required setup step;
+  it remains for pre-provisioning an environment or adding extra redirect URIs.
+
 ### Changed
 
 - **Module env vars renamed `ID_*` → `CBOX_ID_*`** (`ID_DEVICES_*`, `ID_ANALYTICS_*`,

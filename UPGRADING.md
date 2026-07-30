@@ -26,6 +26,21 @@ already uses, e.g. `ID_DEVICES_ENABLED` → `CBOX_ID_DEVICES_ENABLED`.
 new name is unset. Rename them in your ConfigMaps at leisure — the fallback will be
 removed in a future release. If both are set, the `CBOX_ID_` name wins.
 
+### The devices authenticator client provisions itself
+
+`php artisan cbox-id:devices:client` is no longer a required setup step: the first
+visit to **My account → Trusted devices** registers the authenticator's OAuth client
+for that environment. The command remains for provisioning an environment nobody has
+opened the console in, or for adding extra redirect URIs.
+
+### Device enrolment moved to My account
+
+The enrolment QR now lives on **My account → Trusted devices**, reachable by every
+signed-in user; the admin page under **Sign-in → Trusted devices** keeps the fleet
+inventory and delivery health. If your mobile-app or help-desk copy points users at
+the Sign-in page to scan the code, update it — plain members never could open that
+page.
+
 ## 0.32.0
 
 ### Every capability is now on by default

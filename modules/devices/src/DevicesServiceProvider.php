@@ -153,10 +153,14 @@ class DevicesServiceProvider extends ServiceProvider
 
         Console::features()->register('devices', static fn (): bool => DeviceConfig::bool('id-devices.enabled', false));
 
-        // Appended to the host's existing Sign-in area rather than minting a new one:
-        // enrolled devices belong beside SSO and passkeys, not in a section of their own.
+        // Two surfaces, two areas. The fleet inventory (everyone's handsets, delivery
+        // errors) is org administration and sits beside SSO; enrolment and one's own
+        // devices are account security and sit beside passkeys, reachable by every
+        // signed-in user — a member cannot even see the Sign-in area.
         Console::nav()->area('authentication')
             ->page('devices.index', 'Trusted devices', feature: 'devices', order: 50);
+        Console::nav()->area('account')
+            ->page('devices.mine', 'Trusted devices', feature: 'devices', order: 20);
 
         if ($this->app->runningInConsole()) {
             $this->commands([CreateAuthenticatorClientCommand::class]);

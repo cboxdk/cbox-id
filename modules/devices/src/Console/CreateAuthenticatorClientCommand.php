@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace Cbox\Id\Devices\Console;
 
 use Cbox\Id\Devices\Support\AuthenticatorClient;
+use Cbox\Id\Devices\Support\AuthenticatorProvisioner;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Illuminate\Console\Command;
 
 /**
  * Provisions the OAuth client the authenticator app signs in as.
  *
- * WHY A COMMAND, AND WHY PER ENVIRONMENT
- * --------------------------------------
+ * NOT REQUIRED FOR NORMAL OPERATION — the Trusted devices console page provisions the
+ * client itself on first view (see {@see AuthenticatorProvisioner}). This command
+ * remains for what a request can't do: provisioning an environment nobody has opened
+ * the console in yet, or registering extra redirect URIs.
+ *
+ * WHY PER ENVIRONMENT
+ * -------------------
  * `oauth_clients.client_id` carries a GLOBAL unique index, not a composite on
  * (environment_id, client_id). So there is no well-known client id that every
  * environment can share, and none that can be baked into a single App Store binary
@@ -47,7 +50,7 @@ class CreateAuthenticatorClientCommand extends Command
 
     protected $description = 'Provision the OAuth client used by the Cbox ID authenticator app';
 
-    public function handle(EnvironmentContext $context, ClientRegistry $clients): int
+    public function handle(EnvironmentContext $context, AuthenticatorProvisioner $provisioner): int
     {
         $environmentId = $this->stringOption('environment')
             ?? AuthenticatorClient::defaultEnvironmentId();
@@ -60,14 +63,15 @@ class CreateAuthenticatorClientCommand extends Command
 
         return $context->runAs(
             GenericEnvironment::of($environmentId),
-            fn (): int => $this->provision($clients, $environmentId),
+            fn (): int => $this->provision($provisioner, $environmentId),
         );
     }
 
-    private function provision(ClientRegistry $clients, string $environmentId): int
+    private function provision(AuthenticatorProvisioner $provisioner, string $environmentId): int
     {
         // Idempotent: re-running must not mint a second client and silently strand every
-        // handset that enrolled against the first one.
+        // handset that enrolled against the first one. ensure() already guarantees that;
+        // the pre-check here only decides which message to print.
         $existing = AuthenticatorClient::find();
 
         if ($existing instanceof Client) {
@@ -77,22 +81,13 @@ class CreateAuthenticatorClientCommand extends Command
             return self::SUCCESS;
         }
 
-        $registered = $clients->register(new NewClient(
-            name: AuthenticatorClient::NAME,
-            // Public: a mobile binary cannot keep a secret, so it holds none. Per-device
-            // identity comes from the DPoP key and the device registry row instead.
-            type: ClientType::Public,
-            redirectUris: $this->redirectUris(),
-            grantTypes: ['authorization_code', 'refresh_token'],
-            scopes: AuthenticatorClient::SCOPES,
-            // First-party, so enrolling one's own authenticator does not present a
-            // consent screen asking the user to approve an app the platform ships.
-            firstParty: true,
-            organizationId: null,
-        ));
+        $client = $provisioner->ensure(
+            $this->stringOption('host') ?? AuthenticatorClient::hostFromAppUrl(),
+            $this->redirectOptions(),
+        );
 
         $this->info("Provisioned the authenticator client in {$environmentId}.");
-        $this->line('  client_id: '.$registered->client->client_id);
+        $this->line('  client_id: '.$client->client_id);
         $this->newLine();
         $this->line('The app discovers this at GET /.well-known/cbox-authenticator; it does');
         $this->line('not need to be copied anywhere.');
@@ -103,11 +98,9 @@ class CreateAuthenticatorClientCommand extends Command
     /**
      * @return list<string>
      */
-    private function redirectUris(): array
+    private function redirectOptions(): array
     {
-        $host = $this->stringOption('host') ?? AuthenticatorClient::hostFromAppUrl();
-
-        $uris = AuthenticatorClient::redirectUris($host);
+        $uris = [];
 
         foreach ((array) $this->option('redirect') as $uri) {
             if (is_string($uri) && $uri !== '') {
@@ -115,7 +108,7 @@ class CreateAuthenticatorClientCommand extends Command
             }
         }
 
-        return array_values(array_unique($uris));
+        return $uris;
     }
 
     private function stringOption(string $key): ?string

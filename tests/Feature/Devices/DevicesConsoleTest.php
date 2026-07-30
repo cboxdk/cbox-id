@@ -6,8 +6,10 @@ use App\Platform\CurrentUser;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Support\AuthenticatorClient;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -88,31 +90,16 @@ it('re-checks authorization on every render, not only on mount', function (): vo
     $page->call('$refresh')->assertForbidden();
 });
 
-it('shows an enrolment code once an authenticator client exists', function (): void {
+it('is a fleet inventory, not an enrolment surface', function (): void {
     signInAs(MembershipRole::Admin);
 
-    // Nothing to connect to yet, so a code would be a dead end.
-    Volt::test('devices.index')->assertOk()->assertSee('No authenticator app is set up');
-
-    $this->artisan('cbox-id:devices:client')->assertSuccessful();
-
+    // Enrolment is personal and lives under My account, where every user can reach it.
+    // The admin page points there instead of duplicating the code — and it does NOT
+    // provision the OAuth client as a side effect of an inventory read.
     Volt::test('devices.index')
         ->assertOk()
-        ->assertSee('Add a phone')
-        // The scheme the app actually registers, so a scan resolves to it.
-        ->assertSee('com.cboxid.authenticator://connect', escape: false)
-        ->assertSee('<svg', escape: false);
-});
+        ->assertSee('My account')
+        ->assertDontSee('com.cboxid.authenticator://connect', escape: false);
 
-it('puts nothing secret in the enrolment code', function (): void {
-    signInAs(MembershipRole::Admin);
-    $this->artisan('cbox-id:devices:client')->assertSuccessful();
-
-    $uri = Volt::test('devices.index')->instance()->enrolmentUri();
-
-    // Host only. A code carrying a token would have to be short-lived and single-use,
-    // and could not be left on a screen — which is the whole point of showing one.
-    expect($uri)->toContain('connect?host=')
-        ->and($uri)->not->toContain('token')
-        ->and($uri)->not->toContain('cid_');
+    expect(AuthenticatorClient::find())->toBeNull();
 });
