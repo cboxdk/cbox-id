@@ -6,6 +6,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.33.0] - 2026-07-30
+
+Requires `cboxdk/laravel-id` v0.65.0.
+
+CIBA could always *ask* a user to approve something out of band; nothing ever told them.
+This adds the notification surface the framework's own docblock says belongs to the host.
+
+### Added
+
+- **Trusted devices and push approvals** (`modules/devices`) — a registry of a user's
+  enrolled handsets and an FCM delivery pipeline, modelled on the webhook dispatcher:
+  durable row before enqueue, gap-free per-device sequence, exponential backoff, a
+  per-device circuit breaker and a stranded-job rescue. Off by default
+  (`ID_DEVICES_ENABLED=false`); with no transport configured it records notifications and
+  sends nothing.
+- **The CIBA approval push is synchronous.** The domain event goes to a transactional
+  outbox relayed once a minute, against a 300-second CIBA TTL, so approvals are pushed
+  from a decorator around `BackchannelAuthentication` and reach the handset in the same
+  request. Security alerts take the opposite trade and keep the relay, staying off the
+  login path. Note the decorator is installed even when the module is disabled, where it
+  is a pass-through.
+- **A device API for a first-party mobile client** — enrol, list, deregister, and read,
+  approve or deny pending CIBA requests. Behind `scope:` with DPoP sender-constraining;
+  the approving subject comes from the verified token, never the body.
+- **`cbox-id:devices:client`** provisions the authenticator's public OAuth client per
+  environment, and `GET /.well-known/cbox-authenticator` lets one mobile binary discover
+  it. That endpoint is load-bearing rather than convenient: `oauth_clients.client_id`
+  carries a global unique index, so no single client id can serve every environment.
+- **An enrolment QR code** on the Trusted devices page. It carries only the host — no
+  token, nothing time-limited — so it is safe on a screen.
+
+### Fixed
+
+- **The retry sweep never selected a row.** It runs from the scheduler, which has no
+  environment context, so the deny-by-default tenancy scope compiled it to `WHERE 1 = 0`.
+  The durability guarantee was inert in production while passing every test that set an
+  environment first. It now spans environments under `withoutScope()` and lets each job
+  re-enter its own.
+- **A mistyped FCM project id would have wiped every push token in the estate.** A
+  project-level 404 carries no `errorCode`, and a bare 404 was treated as token death.
+  Only `UNREGISTERED` and `SENDER_ID_MISMATCH` now retire a device; `INVALID_ARGUMENT` is
+  a malformed message, not a dead handset.
+- Delivery no longer clobbers a push token rotated while a send was in flight, and
+  circuit-breaker state is written atomically instead of read-modify-write.
+- Notifications parked by an open breaker are bounded by a deadline, so one dead handset
+  cannot accumulate a backlog that starves every other tenant's approval retries.
+- `OpenApiCoverageTest` derived its path base from a filename heuristic `ApiContract` does
+  not share, so a new spec file would either fail the build or pass it while silently
+  skipping response validation.
+
+### Security
+
+- The Trusted devices console page had no authorization gate. Any authenticated member
+  could read the environment's entire device inventory — who is enrolled, on what, and
+  which devices are failing — by typing the URL. Now gated on admin in `boot()`, so the
+  check is re-run on every hydration rather than only at mount.
+- `approve()`/`deny()` collapse unknown, expired, already-answered and wrong-subject into
+  one response, and the API preserves that collapse, so a stolen handset cannot probe
+  which request ids exist.
+- The CIBA binding message is never pushed. A lock screen is readable by anyone holding
+  the phone, and that message is the transaction detail CIBA exists to protect; it is
+  fetched over TLS after the app opens.
+
+### Not yet verified
+
+- The mobile sign-in flow has not been exercised end to end. `Browser::auth()`'s callback
+  delivery is untested, so enrolment from a real handset is unproven. Enabling
+  `ID_DEVICES_ENABLED` in production makes the console surface visible before that is
+  established.
+- Push has never left the building: no deployment has FCM credentials configured, so the
+  transport is inert and only the Null path has run outside tests.
+
 ## [0.32.0] - 2026-07-27
 
 Requires `cboxdk/laravel-id` v0.65.0.
