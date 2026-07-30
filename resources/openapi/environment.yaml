@@ -42,6 +42,8 @@ security:
 tags:
   - name: Organizations
   - name: Users
+  - name: Devices
+  - name: Approvals
 paths:
   /organizations:
     get:
@@ -409,6 +411,218 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /devices:
+    post:
+      tags: [Devices]
+      summary: Enrol a device, or re-enrol after a push-token rotation
+      description: |
+        Requires scope `devices.manage`. Idempotent on `install_id`: posting again with a
+        fresh `push_token` updates the existing enrolment and returns 200, so the app has
+        no separate rotation call to get wrong. Re-enrolling also clears circuit-breaker
+        state and revives a device that was retired by a permanent transport error.
+
+        The device is always bound to the token's own subject. Nothing in the body can
+        change whose device it is.
+      security:
+        - AuthenticatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [install_id, platform, push_token, name]
+              properties:
+                install_id:
+                  type: string
+                  minLength: 26
+                  maxLength: 26
+                  description: |
+                    A ULID the app generates on first launch and keeps in platform secure
+                    storage. Deliberately NOT a vendor device id — `identifierForVendor`
+                    and `ANDROID_ID` both reset on reinstall and are shared across one
+                    vendor's apps.
+                platform: { type: string, enum: [ios, android] }
+                push_token: { type: string, maxLength: 4096 }
+                name: { type: string, maxLength: 100, description: Shown in the console. Control characters are stripped. }
+                app_version: { type: [string, 'null'], maxLength: 32 }
+                os_version: { type: [string, 'null'], maxLength: 32 }
+                model: { type: [string, 'null'], maxLength: 64 }
+      responses:
+        '200':
+          description: The installation was already enrolled; its details were updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Device' }
+        '201':
+          description: Enrolled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Device' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '409':
+          description: |
+            This `install_id` belongs to a different user. Refused rather than reassigned:
+            silently moving it would let one user capture another's push stream by guessing
+            an install id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: install_claimed, message: 'This installation is registered to a different user.' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+    get:
+      tags: [Devices]
+      summary: List the caller's own enrolled devices
+      description: |
+        Requires scope `devices.manage`. The push token is never returned — it is a
+        capability, and nothing outside a delivery attempt needs it.
+      security:
+        - AuthenticatorToken: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Device' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /devices/{id}:
+    delete:
+      tags: [Devices]
+      summary: Deregister a device
+      description: |
+        Requires scope `devices.manage`. Another user's device answers exactly as a
+        missing one does, so this cannot be used to confirm that someone else's handset
+        exists.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204': { description: Removed. }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals:
+    get:
+      tags: [Approvals]
+      summary: List pending agent approval requests
+      description: |
+        Requires scope `approvals.read`. The same pending CIBA requests the console's
+        approvals page shows, for the signed-in subject only.
+      security:
+        - AuthenticatorToken: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Approval' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Read one pending approval request
+      description: |
+        Requires scope `approvals.read`. This is where `binding_message` is obtained. It
+        is deliberately absent from the push payload — a lock screen is readable by
+        anyone holding the phone, and the binding message is the transaction description
+        CIBA exists to protect — so the app must call this after a notification tap and
+        render only what it returns.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Approval' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals/{id}/approve:
+    post:
+      tags: [Approvals]
+      summary: Approve a pending agent request
+      description: |
+        Requires scope `approvals.write`. The approving subject is taken from the access
+        token, never the body — that binding is the consent step, and the server refuses
+        a mismatch.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Approved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ApprovalDecision' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '409': { $ref: '#/components/responses/ApprovalNotActionable' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals/{id}/deny:
+    post:
+      tags: [Approvals]
+      summary: Deny a pending agent request
+      description: Requires scope `approvals.write`.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Denied.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ApprovalDecision' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '409': { $ref: '#/components/responses/ApprovalNotActionable' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
 components:
   securitySchemes:
     EnvironmentApiKey:
@@ -423,6 +637,18 @@ components:
       description: |
         An OAuth access token carrying the `vault.lease` scope. Its `org` claim selects
         the organization whose secrets it may open — the vault's tenancy boundary.
+    AuthenticatorToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A DPoP-bound OAuth access token held by the Cbox ID authenticator app, obtained
+        via authorization_code + PKCE (S256) as a public client.
+
+        Because the token carries a `cnf.jkt`, every request must present it under the
+        `DPoP` auth scheme together with a matching proof — `htm`, `htu`, a fresh `jti`,
+        an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
+        itself. A plain `Bearer` presentation of a bound token is rejected.
   parameters:
     Id:
       name: id
@@ -441,6 +667,60 @@ components:
       description: Opaque cursor — the `meta.next_cursor` from the previous page.
       schema: { type: string }
   schemas:
+    Device:
+      type: object
+      required: [id, install_id, platform, name, status]
+      properties:
+        id: { type: string }
+        install_id: { type: string }
+        platform: { type: string, enum: [ios, android] }
+        name: { type: string }
+        status:
+          type: string
+          enum: [active, retired]
+          description: |
+            Operator/user INTENT, not delivery health. A device can be active and
+            currently failing, or retired and perfectly reachable.
+        app_version: { type: [string, 'null'] }
+        os_version: { type: [string, 'null'] }
+        model: { type: [string, 'null'] }
+        last_seen_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: [string, 'null'], format: date-time }
+    Approval:
+      type: object
+      required: [id, client_id, client_name, scopes]
+      properties:
+        id:
+          type: string
+          description: |
+            The INTERNAL request id. Never `auth_req_id`, which is the initiating
+            client's polling secret and is stored only as a SHA-256 hash — a client must
+            not be able to approve its own request.
+        client_id: { type: string }
+        client_name: { type: string }
+        binding_message:
+          type: [string, 'null']
+          description: |
+            The transaction description the user compares against what the requesting app
+            showed them. This is the anti-phishing primitive, and the reason approvals are
+            fetched rather than pushed.
+        scopes:
+          type: array
+          items:
+            type: object
+            required: [scope, label]
+            properties:
+              scope: { type: string }
+              label: { type: string, description: 'Human wording, identical to the console.' }
+        organization_id: { type: [string, 'null'] }
+        requested_at: { type: [string, 'null'], format: date-time }
+        expires_at: { type: [string, 'null'], format: date-time }
+    ApprovalDecision:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [approved, denied] }
     VaultSecret:
       type: object
       required: [id, name, provider, revoked]
@@ -545,6 +825,18 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/BearerChallenge" }
+    ApprovalNotActionable:
+      description: |
+        The request is no longer pending. Deliberately uniform — unknown, expired, already
+        answered and belonging-to-another-subject are ONE response with a constant
+        message, so someone holding a stolen handset cannot learn whether a given request
+        id exists or whose it is.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: approval_not_actionable
+            message: 'This request is no longer pending. It may have expired or already been answered.'
     BearerForbidden:
       description: The access token does not carry the scope this endpoint requires.
       headers:

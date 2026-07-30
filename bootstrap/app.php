@@ -17,6 +17,7 @@ use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Analytics\AnalyticsServiceProvider;
 use Cbox\Id\Compliance\ComplianceServiceProvider;
 use Cbox\Id\Connectors\ConnectorsServiceProvider;
+use Cbox\Id\Devices\DevicesServiceProvider;
 use Cbox\Id\RiskPlus\RiskPlusServiceProvider;
 use Cbox\Id\Whitelabel\WhitelabelServiceProvider;
 use Illuminate\Foundation\Application;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AnalyticsServiceProvider::class,
         ComplianceServiceProvider::class,
         ConnectorsServiceProvider::class,
+        DevicesServiceProvider::class,
         RiskPlusServiceProvider::class,
         WhitelabelServiceProvider::class,
     ])
