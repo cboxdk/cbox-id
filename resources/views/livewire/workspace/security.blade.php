@@ -176,7 +176,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 }; ?>
 
 <div>
-    <x-page-header title="Profile &amp; security" subtitle="Your account details and how you protect your sign-in." />
+    {{-- Plain ampersand: x-page-header escapes {{ $title }} itself, so a pre-escaped
+         entity here renders literally as "&amp;". --}}
+    <x-page-header title="Profile & security" subtitle="Your account details and how you protect your sign-in." />
 
     {{-- Profile --}}
     <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
