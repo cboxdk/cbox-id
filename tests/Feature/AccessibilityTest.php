@@ -432,3 +432,41 @@ it('gives every environment detail page a real h2 outline', function (): void {
 
     expect($flat)->toBe([]);
 });
+
+/**
+ * The page heading must not carry the help popover inside it.
+ *
+ * `<x-help>` was rendered as a CHILD of the `<h1>`, so the heading's accessible name
+ * became "Members What is Members? Members are the people who…" — on every page that
+ * passes `:help`. That heading is the primary landmark a screen-reader user navigates by,
+ * and it was reading out a paragraph.
+ */
+it('keeps the help popover out of the page heading', function (): void {
+    $header = (string) file_get_contents(base_path('resources/views/components/page-header.blade.php'));
+
+    // The h1 must be a single line with nothing but the title in it.
+    expect($header)->toMatch('/<h1 class="cbx-page-title">\{\{ \$title \}\}<\/h1>/');
+
+    $between = (string) preg_replace('/^.*<h1 class="cbx-page-title">|<\/h1>.*$/s', '', $header);
+
+    expect($between)->not->toContain('x-help', 'the help control is nested inside the page heading');
+});
+
+/**
+ * And the popover is a disclosure, not a dialog: it never takes focus, traps nothing and
+ * restores nothing, so `role="dialog"` made screen readers announce and manage it as
+ * something it is not.
+ */
+it('does not claim to be a dialog', function (): void {
+    $help = (string) file_get_contents(base_path('resources/views/components/help.blade.php'));
+
+    // Strip Blade comments first: the docblock explaining WHY the role was removed
+    // contains the string, and a check that cannot tell markup from prose would fail on
+    // its own explanation.
+    $markup = (string) preg_replace('/\{\{--.*?--\}\}/s', '', $help);
+
+    expect($markup)->not->toContain('role="dialog"')
+        // The button-to-panel relationship that IS correct must still be there.
+        ->and($markup)->toContain('aria-controls')
+        ->and($markup)->toContain('aria-expanded');
+});

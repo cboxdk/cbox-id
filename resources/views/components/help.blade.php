@@ -37,7 +37,11 @@
     @endif
 
     <span x-show="open" x-transition.opacity.duration.150ms @click.outside="open = false" x-cloak
-          id="{{ $panelId }}" role="dialog" aria-label="{{ $topic->title() }}"
+          {{-- A disclosure, not a dialog. It never takes focus, traps nothing and restores
+               nothing, so role="dialog" made NVDA and JAWS treat it as something it is
+               not. The button already owns it via aria-controls + aria-expanded, which
+               is the correct relationship for a panel that just appears. --}}
+          id="{{ $panelId }}"
           class="cbx-panel cbx-help-panel {{ $align === 'end' ? 'is-end' : '' }}">
         <span class="cbx-help-title">{{ $topic->title() }}</span>
         <span class="cbx-help-body">{{ $topic->summary() }}</span>

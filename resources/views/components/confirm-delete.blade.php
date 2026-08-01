@@ -92,7 +92,7 @@
             x-show="open"
             x-cloak
             class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-            style="background:color-mix(in oklch, var(--foreground) 45%, transparent)"
+            style="background:var(--overlay)"
             @click.self="open = false; onClose()"
         >
             <div

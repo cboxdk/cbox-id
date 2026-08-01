@@ -139,6 +139,13 @@
        bottom of the file. */
     --nav-active-fg: var(--primary);
 
+    /* The scrim behind a modal or a mobile sheet. A single token because there were
+       three spellings — `--foreground 45%`, `rgb(0 0 0 / 0.5)` and `black 45%` — and the
+       first INVERTS in dark mode, where --foreground is near-white: every type-to-confirm
+       dialog dimmed the page with a 45% WHITE veil instead of darkening it. A scrim is
+       always darkness; it is not a themed colour. */
+    --overlay: color-mix(in oklch, black 55%, transparent);
+
     /* ── Radius / shadow / motion / chrome metrics (cbox-ui BRAND.md) */
     --radius: 0.75rem;   /* cards + dialogs (12px) */
     --radius-md: 8px;    /* buttons + inputs */
@@ -528,7 +535,10 @@
         transition: border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease);
     }
     .select:hover:not(:focus) { border-color: var(--border-strong); }
-    .select:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 2px var(--accent-soft); }
+    /* Matches .input:focus. A select had `outline: none` plus the soft wash only, so the
+       whole console's dropdowns carried a weaker focus indicator than its text fields —
+       the same control, a different answer to "where am I". */
+    .select:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 2px var(--ring); }
 
     .label {
         display: block;
@@ -718,11 +728,17 @@
         box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
     }
 
-    /* Auth-surface inputs: a slightly larger, softer focus ring reads as premium
-     * without shouting — scoped so the dense console keeps its tighter 2px ring. */
+    /* Auth-surface inputs: a larger, softer focus ring reads as premium without
+     * shouting — scoped so the dense console keeps its tighter 2px ring.
+     *
+     * The soft wash ALONE was 1.12:1 against the card in light and 1.28:1 in dark, and
+     * the base rule sets `outline: none`, so the only real indicator left on the page
+     * every end user signs in on was a 1px border-colour change. The console had a
+     * measurable 2px ring the whole time. Keeping the soft look and adding a 1px
+     * --ring edge inside it restores a visible boundary at 6.08:1 / 5.08:1. */
     .auth-shell .input:focus,
     .auth-shell .input-lg:focus {
-        box-shadow: 0 0 0 3px var(--accent-soft);
+        box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--ring);
     }
     /* The primary CTA on the auth surface sits a touch more lifted. */
     .auth-shell .btn-primary {
@@ -801,6 +817,9 @@
     }
     .cbx-page-eyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 6px; }
     .cbx-page-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); margin: 0; }
+    /* The heading and its help control on one line. They used to be nested, which put
+       the entire popover inside the h1's accessible name. */
+    .cbx-page-title-row { display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
     .cbx-page-desc { font-size: 14px; color: var(--muted-foreground); margin: 6px 0 0; }
 
     /* Setup progress — a plain track and fill. The fill animates so a step ticked on
@@ -884,7 +903,12 @@
      * Pinning changes only its WIDTH (and the flow space its spacer reserves), never
      * its position, shape or the placement of a single icon — so there is no layout
      * shift toggling pin, only a clean width grow. */
-    .cbx-rail { position: fixed; left: 6px; top: 6px; bottom: 6px; z-index: 70; width: 52px; display: flex; flex-direction: column; background: var(--sidebar); border: 1px solid transparent; border-radius: 12px; padding: 8px; box-sizing: border-box; transition: width 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease); overflow: hidden; }
+    .cbx-rail { position: fixed; left: 6px; top: 6px; bottom: 6px; z-index: 70; width: 52px; display: flex; flex-direction: column; background: var(--sidebar); border: 1px solid transparent; border-radius: 12px; padding: 8px; box-sizing: border-box; transition: width 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease); overflow-x: clip; overflow-y: auto; }
+    /* overflow-x: clip rather than `hidden`, and clipping only the axis that needs it.
+       `overflow: hidden` established a clipping context in BOTH directions, so the
+       account menu — 230px wide, anchored inside a rail whose maximum is 210px — lost
+       about 36px of itself and its entire drop shadow, on all four planes. Clip keeps the
+       label truncation the rail needs without creating a scroll container. */
     /* Header monogram is centred only in the collapsed strip; left-aligned once the
      * rail is expanded (pinned or hover-open) — CSS-driven so it never shifts on load. */
     .cbx-rail-hd { position: relative; display: flex; align-items: center; justify-content: center; height: 34px; margin-bottom: 8px; flex-shrink: 0; }

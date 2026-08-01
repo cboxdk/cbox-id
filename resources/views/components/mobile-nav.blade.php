@@ -48,7 +48,7 @@
      open, cycles Tab within the panel, locks background scroll, and returns focus to
      the trigger on close. Escape is handled by the shell's window listener. --}}
 <div x-show="nav" x-cloak role="dialog" aria-modal="true" aria-label="Navigation"
-     class="lg:hidden fixed inset-0 z-40" style="background:color-mix(in oklch, black 45%, transparent)"
+     class="lg:hidden fixed inset-0 z-40" style="background:var(--overlay)"
      x-data="{
         prevFocus: null,
         onOpen() { this.prevFocus = document.activeElement; document.documentElement.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.closeBtn && this.$refs.closeBtn.focus()); },

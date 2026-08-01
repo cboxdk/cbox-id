@@ -154,7 +154,7 @@
 
     {{-- ═══ Mobile drawer ═══ --}}
     <div class="lg:hidden" x-cloak>
-        <div x-show="mobile" x-transition.opacity class="fixed inset-0 z-40" style="background:rgb(0 0 0 / 0.5)" @click="mobile=false" aria-hidden="true"></div>
+        <div x-show="mobile" x-transition.opacity class="fixed inset-0 z-40" style="background:var(--overlay)" @click="mobile=false" aria-hidden="true"></div>
         {{-- Self-contained focus trap (the Alpine Focus plugin / x-trap is NOT loaded in
              this app, so the same hand-rolled pattern as components/mobile-nav.blade.php and
              components/confirm-delete.blade.php is used): on open, save the active element,

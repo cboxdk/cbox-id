@@ -243,9 +243,47 @@
             '<button data-cbox-dismiss style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:.6rem;padding:.55rem 1.1rem;font-size:.875rem;cursor:pointer">Dismiss</button>' +
             '</div>' + traceRow(traceId) + '</div>';
 
+        // Where focus was, so it can go back. aria-modal tells assistive technology the
+        // rest of the page does not exist, and this overlay fires on session expiry —
+        // exactly when someone using a screen reader most needs to end up somewhere
+        // sensible rather than on <body>.
+        const returnFocusTo = document.activeElement;
+        const close = () => {
+            overlay.remove();
+            if (returnFocusTo instanceof HTMLElement && document.contains(returnFocusTo)) {
+                returnFocusTo.focus();
+            }
+        };
+
         overlay.querySelector('[data-cbox-reload]').addEventListener('click', () => window.location.reload());
-        overlay.querySelector('[data-cbox-dismiss]').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
+        overlay.querySelector('[data-cbox-dismiss]').addEventListener('click', close);
+
+        overlay.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                close();
+
+                return;
+            }
+
+            // Trap Tab. Without it focus walks out into a page aria-modal has just told
+            // the screen reader is not there — so the two disagree about what exists.
+            if (e.key !== 'Tab') return;
+
+            const focusable = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable.length === 0) return;
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (! e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        });
+
         document.body.appendChild(overlay);
         overlay.querySelector('[data-cbox-reload]').focus();
     };

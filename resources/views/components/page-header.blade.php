@@ -23,12 +23,16 @@
         @if ($eyebrow)
             <p class="cbx-page-eyebrow">{{ $eyebrow }}</p>
         @endif
-        <h1 class="cbx-page-title">
-            {{ $title }}
+        {{-- The help control is a SIBLING of the h1, not a child of it. Nested, the
+             heading's accessible name became "Members What is Members? Members are the
+             people who…" — the primary landmark a screen-reader user navigates by,
+             carrying the whole popover on every page that passes :help. --}}
+        <div class="cbx-page-title-row">
+            <h1 class="cbx-page-title">{{ $title }}</h1>
             @if ($help !== null)
                 <x-help :topic="$help" />
             @endif
-        </h1>
+        </div>
         @if ($subtitle)
             <p class="cbx-page-desc">{{ $subtitle }}</p>
         @endif
