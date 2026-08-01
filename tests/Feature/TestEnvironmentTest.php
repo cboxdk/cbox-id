@@ -8,11 +8,9 @@ use Cbox\Id\Devices\Support\DeviceConfig;
  * The suite runs against its own infrastructure, whatever the host exports.
  *
  * phpunit.xml's `<env>` writes $_ENV and putenv() but not $_SERVER, and Laravel's Env
- * repository reads $_SERVER first — so a machine exporting QUEUE_CONNECTION=redis used
- * to win, and this repository's self-hosted CI runner does exactly that. Every job went
- * at a Redis nobody started ("RedisException: Connection refused") on commits that were
- * green on every developer machine. tests/bootstrap.php now sets all three; this fails
- * the moment that stops being true, rather than 40 unrelated-looking tests doing it.
+ * repository reads $_SERVER first, so an exported QUEUE_CONNECTION=redis wins over the
+ * suite's own configuration. tests/bootstrap.php sets all three; this fails the moment
+ * that stops being true, rather than a dozen unrelated-looking tests doing it.
  */
 it('runs on its own infrastructure, not the host machine\'s', function (string $key, ?string $expected): void {
     expect(config($key))->toBe($expected);
@@ -24,6 +22,16 @@ it('runs on its own infrastructure, not the host machine\'s', function (string $
     // env('BROADCAST_CONNECTION') is the string "null", which env() casts to null.
     'broadcasting' => ['broadcasting.default', null],
 ]);
+
+/**
+ * The actual cause of the red CI, and the one no developer machine could see: queue
+ * metrics ship enabled with a Redis storage driver and a listener that writes on every
+ * job dispatch, so the suite required a Redis daemon nothing in this repository starts.
+ * Developer machines usually have one running; the CI runner does not.
+ */
+it('needs no service the repository does not start', function (): void {
+    expect(config('queue-metrics.enabled'))->toBeFalse();
+});
 
 /**
  * The one that survived the first fix: pinning QUEUE_CONNECTION was not enough, because

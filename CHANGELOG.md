@@ -79,18 +79,20 @@ setup checklist that measures reality instead of asserting it.
   defined; it now links to the page where you make one.
 - The accessibility guard covered eight console pages; it now covers eighteen, including
   every page this work added or renamed.
-- **CI was red on `main` for a reason no developer machine could reproduce.** The
-  self-hosted runner exports `QUEUE_CONNECTION=redis`, and phpunit.xml's `<env>` — even
-  with `force="true"` — writes `$_ENV` and `putenv()` but not `$_SERVER`, which is the
-  first place Laravel's `Env` repository looks. So the runner's value won and every job
-  went at a Redis nobody started ("RedisException: Connection refused"). It was also a
-  class of variables rather than one: pinning `QUEUE_CONNECTION` left the runner's
-  devices-module queue connection still redirecting that module's jobs on its own.
-  `tests/bootstrap.php` now strips every inherited `CBOX_ID_`/`ID_` variable and writes
-  the suite's own values to all three superglobals, so what the tests see is a function
-  of that file and nothing else. `DB_*` is the deliberate exception — the engines matrix
-  redirects the run to PostgreSQL and MySQL by exporting it — and `TestEnvironmentTest`
-  asserts both halves.
+- **CI was red on `main` for a reason no developer machine could reproduce: the suite
+  needed a Redis nobody starts.** `cboxdk/laravel-queue-metrics` ships enabled with a
+  Redis storage driver and a listener that writes on every job dispatch, so every test
+  that queues a job required a running Redis. Developer machines usually have one, and
+  CI does not — the worst possible split, because the machine with no local services is
+  the one whose red build everybody learns to ignore. Metrics are now off for the suite.
+  While proving that, the test environment was also made authoritative: phpunit.xml's
+  `<env>` writes `$_ENV` and `putenv()` but not `$_SERVER`, which Laravel's `Env`
+  repository reads first, so an exported `QUEUE_CONNECTION=redis` beat the suite's own
+  configuration. `tests/bootstrap.php` sets all three and strips every inherited
+  `CBOX_ID_`/`ID_` variable, so what the tests see is a function of that file and
+  nothing else. `DB_*` is the deliberate exception — the engines matrix redirects the
+  run to PostgreSQL and MySQL by exporting it — and `TestEnvironmentTest` asserts each
+  half.
 - **The parallel test suite is green again.** 48 tests failed under `pest --parallel`
   while the same suite passed serially: eight helpers and one constant were declared in
   one test file and called from another, and paratest gives each worker only a subset of

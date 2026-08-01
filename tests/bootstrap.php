@@ -8,23 +8,21 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 | The suite owns its own environment, and says so here rather than hoping.
 |
-| Two things make hoping insufficient:
+| Two properties, both learned the hard way:
 |
-| 1. phpunit.xml's `<env>` — even with force="true" — writes $_ENV and putenv() but
-|    NOT $_SERVER, and Laravel's Env repository reads $_SERVER first. A machine that
-|    exports QUEUE_CONNECTION=redis therefore wins over the suite's own configuration,
-|    and every job goes at a Redis nobody started.
+| 1. It must beat the host. phpunit.xml's `<env>` — even with force="true" — writes
+|    $_ENV and putenv() but NOT $_SERVER, and Laravel's Env repository reads $_SERVER
+|    first, so a machine that exports QUEUE_CONNECTION=redis silently wins. Setting all
+|    three closes that, and every variable carrying this application's own prefixes
+|    (CBOX_ID_ and the legacy ID_) is removed rather than merged: an inherited one can
+|    only be some machine's opinion about a deployment, and this is not one.
 |
-| 2. It is a class of variables, not one. This repository's self-hosted CI runner
-|    exports QUEUE_CONNECTION=redis *and* a devices queue connection; pinning the first
-|    left the second still redirecting that module's jobs on its own. Naming them one
-|    at a time is whack-a-mole — the next variable added to that machine is another red
-|    build on a commit that is green everywhere else.
-|
-| So: every variable carrying this application's own prefixes (CBOX_ID_ and the legacy
-| ID_) that was inherited from the host is REMOVED, and the suite's own values are then
-| written to all three of $_SERVER, $_ENV and putenv(). What the tests see is a function
-| of this file and nothing else.
+| 2. It must not need anything nobody started. Queue metrics ship enabled with a REDIS
+|    storage driver and a JobQueued listener, so the suite quietly required a Redis
+|    daemon. That is invisible on a developer machine — one is usually running — and
+|    fatal on CI, which is the worst possible split: the machine with no local services
+|    is the one whose red build everybody learns to ignore. It cost this repository a
+|    permanently red `pest` step.
 |
 | DB_* IS DELIBERATELY EXCLUDED and stays in phpunit.xml. The engines matrix redirects
 | the whole run to PostgreSQL or MySQL by exporting DB_CONNECTION; pinning it here would
@@ -44,6 +42,14 @@ $suiteOwned = [
     'MAIL_MAILER' => 'array',
     'QUEUE_CONNECTION' => 'sync',
     'SESSION_DRIVER' => 'array',
+    // Queue metrics default to enabled with a REDIS storage driver, and their
+    // JobQueued listener writes on every dispatch — so the suite silently required a
+    // Redis daemon that nothing in this repository starts. It passed on developer
+    // machines because a Redis happens to be running on them, and failed on CI, which
+    // is the worst possible split: the machine with no local services is the one whose
+    // red build everybody learns to ignore. The suite does not test queue metrics; a
+    // test that wants them turns them on through config().
+    'QUEUE_METRICS_ENABLED' => 'false',
     'PULSE_ENABLED' => 'false',
     'TELESCOPE_ENABLED' => 'false',
     'NIGHTWATCH_ENABLED' => 'false',
