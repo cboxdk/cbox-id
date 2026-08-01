@@ -11,10 +11,14 @@
 
      Requires the shell's x-data to provide: subnav (bool). --}}
 <aside class="cbx-subnav hidden lg:flex" :class="{ 'collapsed': subnav }">
-    <div class="cbx-strip" @click="subnav=false" title="Expand">
+    {{-- A button, not a div. The collapsed state persists in localStorage, so a
+         keyboard user who activated "Collapse" on a div lost tier-2 navigation for good:
+         no tabindex, no role, no key handler, and the only way back was a shortcut
+         documented in the title of the control that had just been hidden. --}}
+    <button type="button" class="cbx-strip" @click="subnav=false" aria-label="Expand {{ $label }} navigation">
         <span class="vlabel">{{ $label }}</span>
         <x-icon name="chevron" class="w-3.5 h-3.5" style="transform:rotate(-90deg)" />
-    </div>
+    </button>
     <div class="cbx-subnav-hd">
         <span>{{ $label }}</span>
         <button type="button" class="cbx-subnav-toggle" @click="subnav=true" title="Collapse (⌘.)" aria-label="Collapse subnav">

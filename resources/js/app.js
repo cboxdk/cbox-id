@@ -239,7 +239,7 @@
             '<h2 id="cbox-error-title" style="font-size:1.05rem;font-weight:600;color:var(--text);margin:0 0 .4rem">' + m.title + '</h2>' +
             '<p style="font-size:.875rem;color:var(--muted);margin:0 0 1.25rem;line-height:1.5">' + m.body + '</p>' +
             '<div style="display:flex;gap:.6rem;justify-content:center">' +
-            '<button data-cbox-reload style="background:var(--accent);color:#fff;border:0;border-radius:.6rem;padding:.55rem 1.1rem;font-size:.875rem;font-weight:500;cursor:pointer">' + m.cta + '</button>' +
+            '<button data-cbox-reload style="background:var(--accent);color:var(--accent-foreground);border:0;border-radius:.6rem;padding:.55rem 1.1rem;font-size:.875rem;font-weight:500;cursor:pointer">' + m.cta + '</button>' +
             '<button data-cbox-dismiss style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:.6rem;padding:.55rem 1.1rem;font-size:.875rem;cursor:pointer">Dismiss</button>' +
             '</div>' + traceRow(traceId) + '</div>';
 

@@ -64,3 +64,38 @@ it('never uses the fill accent as a text colour', function (): void {
 
     expect(array_keys($unexpected))->toBe([], 'fill accent used as text (fails AA in dark): '.$report);
 });
+
+/**
+ * `#fff` hard-coded on an accent fill.
+ *
+ * `--accent-foreground` exists precisely for this and FLIPS to dark ink in the dark theme,
+ * because the accent lightens there. Measured: white on the dark accent is 3.28:1 — below
+ * AA — while `--accent-foreground` is 5.91:1. The offenders were the error pages' primary
+ * button and brand monogram, the Livewire network-error overlay, and a whitelabel brand
+ * card that put white on an ARBITRARY tenant hex with no check at all.
+ *
+ * Those are the pages people reach when something has already gone wrong, which is a poor
+ * moment to be unreadable.
+ */
+it('never hard-codes white on an accent fill', function (): void {
+    $offenders = [];
+
+    foreach ([__DIR__.'/../../resources/views', __DIR__.'/../../modules', __DIR__.'/../../resources/js'] as $root) {
+        if (! is_dir($root)) {
+            continue;
+        }
+
+        foreach (Finder::create()->files()->in($root)->name(['*.blade.php', '*.js']) as $file) {
+            $source = (string) file_get_contents((string) $file->getRealPath());
+
+            // Only where it sits ON the accent — white on a deliberately dark brand hero
+            // is a different, and correct, decision.
+            if (preg_match('/background:\s*var\(--accent\)[^"\']*color:\s*#f{3,6}\b/i', $source) === 1
+                || preg_match('/color:\s*#f{3,6}[^"\']*background:\s*var\(--accent\)/i', $source) === 1) {
+                $offenders[] = $file->getRelativePathname();
+            }
+        }
+    }
+
+    expect($offenders)->toBe([], 'white hard-coded on the accent (3.28:1 in dark): '.implode(', ', $offenders));
+});

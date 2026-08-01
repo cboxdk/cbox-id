@@ -149,13 +149,16 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             return;
         }
 
-        $user->name = trim($this->editName) !== '' ? trim($this->editName) : null;
-        if ($emailChanged) {
-            // A changed email is unverified until re-confirmed — never silently trust it.
-            $user->email = $this->editEmail;
-            $user->email_verified_at = null;
-        }
-        $user->save();
+        // Through the contract, so the change is audited as `user.updated` and emitted —
+        // which is what makes it reach a webhook subscriber and the outbound SCIM push.
+        // This was the last direct model write on this page: it left no record of who
+        // changed the account's primary identifier, which is also its recovery channel.
+        // The contract clears the verification on a changed email for us.
+        app(Subjects::class)->update(
+            $user->id,
+            trim($this->editName) !== '' ? trim($this->editName) : '',
+            $emailChanged ? $this->editEmail : null,
+        );
 
         $this->dispatch('toast', message: 'Profile updated.');
     }

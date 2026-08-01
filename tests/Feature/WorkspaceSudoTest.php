@@ -6,6 +6,7 @@ use App\Platform\AccountAuth;
 use App\Platform\Sudo;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Models\AccountApiKey;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -95,4 +96,36 @@ it('does not require sudo for a subject-plane confirmation (planes are isolated)
     Volt::test('workspace.security')
         ->call('regenerateRecoveryCodes')
         ->assertRedirect(route('workspace.sudo'));
+});
+
+/**
+ * Revoking a machine credential is as consequential as minting one, and was ungated.
+ *
+ * A stolen but non-sudo workspace session could not create persistence — issuing requires
+ * the step-up — but it could destroy the keys that run provisioning and automation, which
+ * is a denial of service the same session was otherwise held back from. Both key pages
+ * gated create and neither gated revoke.
+ */
+it('requires the step-up to revoke an account key, not just to mint one', function (): void {
+    signInMember();
+
+    // Mint with sudo confirmed, then drop back to an unconfirmed session — the shape a
+    // stolen cookie has.
+    app(WorkspaceSudo::class)->confirm();
+    $keyId = Volt::test('workspace.api-keys')
+        ->set('newKeyName', 'automation')
+        ->call('createKey')
+        ->viewData('keys')
+        ->first()?->id;
+
+    expect($keyId)->toBeString();
+
+    session()->forget(WorkspaceSudo::SESSION_KEY);
+
+    Volt::test('workspace.api-keys')
+        ->call('revokeKey', $keyId)
+        ->assertRedirect(route('workspace.sudo'));
+
+    expect(AccountApiKey::query()->whereKey($keyId)->value('revoked_at'))
+        ->toBeNull('a non-sudo session revoked a machine credential');
 });

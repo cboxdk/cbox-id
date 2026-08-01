@@ -89,7 +89,7 @@
             x-transition:leave-end="opacity-0"
         >
             <span x-text="toast.message"></span>
-            <button type="button" class="cbx-toast-close" @click="dismiss(toast.id)" aria-label="Dismiss notification">&times;</button>
+            <button type="button" class="cbx-toast-close" tabindex="-1" @click="dismiss(toast.id)" aria-label="Dismiss notification">&times;</button>
         </div>
     </template>
 </div>

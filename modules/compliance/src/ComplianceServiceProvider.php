@@ -20,7 +20,6 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory as ViewFactory;
-use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Volt\Volt;
 use Throwable;
@@ -104,8 +103,10 @@ class ComplianceServiceProvider extends ServiceProvider
         }
 
         if ($driver === 'http' && $this->configString('compliance.export.siem.endpoint') !== '') {
+            // No injected HTTP factory: the sink goes through Http::ssrf(), which
+            // resolves the guard from the active container at call time so it survives a
+            // container rebuild.
             $this->app->bind(AuditExportSink::class, fn (Application $app): HttpSiemExportSink => new HttpSiemExportSink(
-                $app->make(HttpFactory::class),
                 $this->configString('compliance.export.siem.endpoint'),
                 $this->configString('compliance.export.siem.token'),
                 $this->configInt('compliance.export.siem.timeout', 10),

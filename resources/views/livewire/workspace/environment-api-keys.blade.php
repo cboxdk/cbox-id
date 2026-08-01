@@ -104,6 +104,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 
     public function revokeKey(string $id, AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
     {
+        // Revoking is as consequential as issuing, and was not gated. A stolen but
+        // non-sudo session could not MINT persistence — create requires the step-up — but
+        // it could destroy the machine credentials that run provisioning and automation,
+        // which is a denial of service the same session was otherwise held back from.
+        if ($this->requiresSudo('workspace.environment-keys')) {
+            return;
+        }
+
         if (! $this->guard($auth, $members)) {
             return;
         }

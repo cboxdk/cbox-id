@@ -25,7 +25,7 @@
         <div style="max-width:30rem;width:100%;text-align:center">
             <div style="display:inline-flex;align-items:center;gap:.5rem;font-weight:600;font-size:.95rem;color:var(--text);margin-bottom:2rem">
                 <span aria-hidden="true"
-                      style="width:1.4rem;height:1.4rem;border-radius:.4rem;display:inline-grid;place-items:center;background:var(--accent);color:#fff;font-size:.8rem">C</span>
+                      style="width:1.4rem;height:1.4rem;border-radius:.4rem;display:inline-grid;place-items:center;background:var(--accent);color:var(--accent-foreground);font-size:.8rem">C</span>
                 Cbox ID
             </div>
 
@@ -42,7 +42,7 @@
             <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
                 @yield('actions')
                     <a href="{{ url('/') }}"
-                       style="background:var(--accent);color:#fff;text-decoration:none;border-radius:.6rem;padding:.6rem 1.2rem;font-size:.9rem;font-weight:500">
+                       style="background:var(--accent);color:var(--accent-foreground);text-decoration:none;border-radius:.6rem;padding:.6rem 1.2rem;font-size:.9rem;font-weight:500">
                         Back to dashboard
                     </a>
                     <button type="button" data-error-reload

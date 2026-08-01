@@ -72,6 +72,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 
     public function revokeKey(string $id, AccountAuth $auth, AccountApiKeys $keys): void
     {
+        // Revoking is as consequential as issuing, and was not gated. A stolen but
+        // non-sudo session could not MINT persistence — create requires the step-up — but
+        // it could destroy the machine credentials that run provisioning and automation,
+        // which is a denial of service the same session was otherwise held back from.
+        if ($this->requiresSudo('workspace.api-keys')) {
+            return;
+        }
+
         $current = $auth->current();
 
         if ($current === null || ! $current->role->canManageMembers()) {
