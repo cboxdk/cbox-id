@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Devices\Support\DeviceConfig;
+
 /**
  * The suite runs against its own infrastructure, whatever the host exports.
  *
@@ -22,6 +24,17 @@ it('runs on its own infrastructure, not the host machine\'s', function (string $
     // env('BROADCAST_CONNECTION') is the string "null", which env() casts to null.
     'broadcasting' => ['broadcasting.default', null],
 ]);
+
+/**
+ * The one that survived the first fix: pinning QUEUE_CONNECTION was not enough, because
+ * the devices module names its own connection and the runner exported that too. Every
+ * variable carrying this application's prefixes is now stripped before the app boots, so
+ * a module cannot be redirected out from under the suite either.
+ */
+it('lets no module name its own queue connection', function (): void {
+    expect(DeviceConfig::nullableString('id-devices.queue_connection'))->toBeNull()
+        ->and(DeviceConfig::nullableString('id-devices.queue'))->toBeNull();
+});
 
 /**
  * The other half of the same contract: the database connection is NOT pinned, because

@@ -83,10 +83,14 @@ setup checklist that measures reality instead of asserting it.
   self-hosted runner exports `QUEUE_CONNECTION=redis`, and phpunit.xml's `<env>` — even
   with `force="true"` — writes `$_ENV` and `putenv()` but not `$_SERVER`, which is the
   first place Laravel's `Env` repository looks. So the runner's value won and every job
-  went at a Redis nobody started ("RedisException: Connection refused"). The suite-owned
-  drivers now live in `tests/bootstrap.php`, which sets all three; `DB_*` stays out of it
-  so the engines matrix can still redirect the run at PostgreSQL and MySQL, and
-  `TestEnvironmentTest` asserts both halves.
+  went at a Redis nobody started ("RedisException: Connection refused"). It was also a
+  class of variables rather than one: pinning `QUEUE_CONNECTION` left the runner's
+  devices-module queue connection still redirecting that module's jobs on its own.
+  `tests/bootstrap.php` now strips every inherited `CBOX_ID_`/`ID_` variable and writes
+  the suite's own values to all three superglobals, so what the tests see is a function
+  of that file and nothing else. `DB_*` is the deliberate exception — the engines matrix
+  redirects the run to PostgreSQL and MySQL by exporting it — and `TestEnvironmentTest`
+  asserts both halves.
 - **The parallel test suite is green again.** 48 tests failed under `pest --parallel`
   while the same suite passed serially: eight helpers and one constant were declared in
   one test file and called from another, and paratest gives each worker only a subset of

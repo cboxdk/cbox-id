@@ -35,15 +35,11 @@
              Laravel's Env repository looks, so a CI runner exporting
              QUEUE_CONNECTION=redis silently won. See that file for the full account.
 
-             What stays here is app configuration no host is expected to export, and
-             DB_*, which the engines matrix deliberately overrides from the process
-             environment to redirect the run at PostgreSQL or MySQL. -->
+             What stays here is DB_*, and only DB_*: the engines matrix deliberately
+             overrides it from the process environment to redirect the run at PostgreSQL
+             or MySQL, so it is the one thing the suite must NOT pin. -->
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
-        <env name="CBOX_ID_CRYPTO_KEY" value="YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE="/>
-        <env name="CBOX_ID_ISSUER" value="http://localhost"/>
-        <env name="CBOX_ID_WEBAUTHN_RP_ID" value="localhost"/>
-        <env name="CBOX_ID_WEBAUTHN_ORIGIN" value="http://localhost"/>
     </php>
 </phpunit>
