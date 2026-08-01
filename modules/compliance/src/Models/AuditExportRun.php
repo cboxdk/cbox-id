@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Compliance\Models;
 
+use Cbox\Id\Kernel\Tenancy\Concerns\BelongsToEnvironment;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentOwned;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -25,8 +27,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-class AuditExportRun extends Model
+class AuditExportRun extends Model implements EnvironmentOwned
 {
+    use BelongsToEnvironment;
+
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_FAILED = 'failed';

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Compliance\Models;
 
+use Cbox\Id\Kernel\Tenancy\Concerns\BelongsToEnvironment;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentOwned;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -20,8 +22,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-class AuditExportCursor extends Model
+class AuditExportCursor extends Model implements EnvironmentOwned
 {
+    use BelongsToEnvironment;
+
     protected $table = 'audit_export_cursors';
 
     protected $guarded = [];
