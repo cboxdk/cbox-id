@@ -25,16 +25,24 @@ new #[Layout('components.layouts.app', ['title' => 'Audit trail'])] class extend
     {
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);
     }
-    public string $organizationId = '';
 
     public string $action = '';
 
     public string $actorId = '';
 
-    /** An empty organization filter means the SYSTEM trail, which is its own chain. */
+    /**
+     * The acting admin's OWN organization, and nothing else.
+     *
+     * This used to be a text input bound to a public property and passed straight to the
+     * reader. The only guard on the page is "is an admin" — of THEIR org — so any org
+     * admin could type a peer organization's id and read that tenant's entire trail:
+     * sign-ins, actor ids, IPs, member changes, role grants, SSO configuration. An empty
+     * string selected the system trail. The console's own audit page one directory over
+     * has always bound this to CurrentUser; this one took it from the user.
+     */
     private function scope(): ?string
     {
-        return trim($this->organizationId) === '' ? null : trim($this->organizationId);
+        return app(CurrentUser::class)->organizationId();
     }
 
     /** @return list<AuditEntry> */
@@ -82,12 +90,10 @@ new #[Layout('components.layouts.app', ['title' => 'Audit trail'])] class extend
         </span>
     </div>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label class="block">
-            <span class="label">Organization</span>
-            <input type="text" wire:model.live.debounce.400ms="organizationId" placeholder="system trail"
-                class="input mt-1 w-full" />
-        </label>
+    {{-- No organization filter: this page shows YOUR organization's trail and no other.
+         It used to accept one, which made the id in a text box the only thing standing
+         between an org admin and every other tenant's records. --}}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label class="block">
             <span class="label">Action</span>
             <input type="text" wire:model.live.debounce.400ms="action" placeholder="e.g. auth.login"

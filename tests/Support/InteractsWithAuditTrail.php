@@ -21,12 +21,19 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
  */
 trait InteractsWithAuditTrail
 {
-    protected function recordAudit(string $action, ?string $organizationId = null, ?string $actorId = null): void
-    {
+    protected function recordAudit(
+        string $action,
+        ?string $organizationId = null,
+        ?string $actorId = null,
+        ?string $targetId = null,
+        string $targetType = 'user',
+    ): void {
         $this->app->make(AuditLog::class)->record(new AuditEvent(
             action: $action,
             actorId: $actorId,
             organizationId: $organizationId,
+            targetType: $targetId === null ? null : $targetType,
+            targetId: $targetId,
         ));
     }
 }

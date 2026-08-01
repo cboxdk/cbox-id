@@ -6,7 +6,6 @@ namespace Cbox\Id\Compliance\Dsr;
 
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
-use Cbox\Id\Compliance\Support\AuditScopes;
 use Cbox\Id\Compliance\ValueObjects\AuditExportRecord;
 
 /**
@@ -22,9 +21,15 @@ use Cbox\Id\Compliance\ValueObjects\AuditExportRecord;
  *    the tamper-evidence the audit kernel exists to provide. Compliant erasure needs
  *    a redaction-aware canonical-hash seam in laravel-id (a framework change), so it
  *    is deliberately out of scope here rather than faked. See docs / the report.
- *  - Lookup is by `actor_id` (actions the subject performed). Records where the
- *    subject is only the `target_id` need a target filter the reader does not yet
- *    expose — also a framework-seam follow-up.
+ *  - The bundle covers BOTH directions: what the subject did (`actor_id`) and what was
+ *    done to them (`target_id`). The second half used to be missing, on the stated
+ *    grounds that the reader exposed no target filter — it has since v0.19.0, and
+ *    `AuditQueryFilter` has carried `targetType`/`targetId` all along. Article 15 is
+ *    about personal data concerning the subject, and "an administrator reset your second
+ *    factor" concerns them a great deal more than "you signed in".
+ *  - Scoped to ONE organization. It used to sweep `AuditScopes::all()` — every chain in
+ *    the environment — so an org admin running an access request received that person's
+ *    records from organizations they have no relationship with.
  */
 class SubjectDataExport
 {
@@ -32,23 +37,31 @@ class SubjectDataExport
 
     public function __construct(private readonly AuditReader $reader) {}
 
-    public function forSubject(string $subjectId): SubjectDataBundle
+    /**
+     * @param  string  $organizationId  the chain to read — the caller's OWN organization
+     */
+    public function forSubject(string $subjectId, string $organizationId): SubjectDataBundle
     {
+        // Two passes over the same chain: once for what they did, once for what was done
+        // to them. Deduplicated by sequence, because an entry where the subject is both
+        // actor and target (changing their own password) is one event, not two.
         $records = [];
 
-        foreach (AuditScopes::all() as $organizationId) {
+        foreach ([['actorId' => $subjectId], ['targetType' => 'user', 'targetId' => $subjectId]] as $direction) {
             $afterSequence = null;
 
             while (true) {
                 $page = $this->reader->query(new AuditQueryFilter(
                     organizationId: $organizationId,
-                    actorId: $subjectId,
+                    actorId: $direction['actorId'] ?? null,
+                    targetType: $direction['targetType'] ?? null,
+                    targetId: $direction['targetId'] ?? null,
                     afterSequence: $afterSequence,
                     limit: self::PAGE_SIZE,
                 ));
 
                 foreach ($page->items as $entry) {
-                    $records[] = AuditExportRecord::fromEntry($entry);
+                    $records[$entry->sequence] = AuditExportRecord::fromEntry($entry);
                 }
 
                 if ($page->nextCursor === null) {
@@ -59,6 +72,8 @@ class SubjectDataExport
             }
         }
 
-        return new SubjectDataBundle($subjectId, $records);
+        ksort($records);
+
+        return new SubjectDataBundle($subjectId, array_values($records));
     }
 }

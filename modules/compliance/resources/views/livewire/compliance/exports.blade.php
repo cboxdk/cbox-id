@@ -28,14 +28,24 @@ new #[Layout('components.layouts.app', ['title' => 'Exports & retention'])] clas
     }
     public string $subjectId = '';
 
+    /**
+     * Both of these act on EVERY chain in the environment — `run()` advances every
+     * tenant's export cursor, `apply()` checkpoints every scope. They sat on an
+     * org-scoped page behind an "is an admin" check, so one tenant's admin could burn
+     * another tenant's cursor and make that tenant's next export skip its own entries.
+     *
+     * They are operator work, so they stay operator work: the artisan commands and the
+     * schedule. Left here only as a refusal, so the buttons that used to call them fail
+     * loudly rather than silently doing nothing if one is missed in the markup.
+     */
     public function runExport(): void
     {
-        app(ExportAuditTrail::class)->run();
+        abort(403, 'Running an export affects every organization in this environment — use the scheduled export or the artisan command.');
     }
 
     public function applyRetention(): void
     {
-        app(RetentionPolicy::class)->apply();
+        abort(403, 'Retention applies to every organization in this environment — use the scheduled job or the artisan command.');
     }
 
     /** @return Collection<int, AuditExportRun> */
@@ -44,12 +54,18 @@ new #[Layout('components.layouts.app', ['title' => 'Exports & retention'])] clas
         return AuditExportRun::query()->latest('id')->limit(20)->get();
     }
 
-    /** Null until a subject id is entered — the bundle is only built on demand. */
+    /**
+     * Null until a subject id is entered — the bundle is only built on demand, and only
+     * ever from the acting admin's OWN organization's chain.
+     */
     private function subject(): ?SubjectDataBundle
     {
         $id = trim($this->subjectId);
+        $organizationId = app(CurrentUser::class)->organizationId();
 
-        return $id === '' ? null : app(SubjectDataExport::class)->forSubject($id);
+        return $id === '' || $organizationId === null
+            ? null
+            : app(SubjectDataExport::class)->forSubject($id, $organizationId);
     }
 
     /** @return array{runs: Collection<int, AuditExportRun>, subject: SubjectDataBundle|null} */
