@@ -13,6 +13,8 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -313,4 +315,50 @@ it('leaves audit events untouched when not impersonating', function (): void {
     $decorator->record(new AuditEvent(action: 'user.login', actorType: ActorType::User, actorId: 'sub_1'));
 
     expect($inner->recorded[0]->context)->toBe([]);
+});
+
+/**
+ * The one credential an impersonator could still mint.
+ *
+ * BlockDuringImpersonation sits on every other credential-establishing route — password
+ * reset, invitation, email verification, sudo, org switch, passkey registration, social
+ * connect. /oauth/authorize was the exception, and it issues the longest-lived credential
+ * of the set: a refresh token that outlives both the 30-minute window and the operator's
+ * own session, and that is attributed to the person being impersonated.
+ *
+ * ImpersonationCallGuard did not cover it either. That guard hangs off Livewire's `call`
+ * event and its comment claims deny-by-default means "no sink can be missed" — but
+ * mount() is not a call, and the consent component reaches approve() from inside mount()
+ * whenever the client is first-party. So a plain GET issued a code with no Livewire
+ * action for the guard to refuse.
+ *
+ * The redirect target never has to be reachable: the impersonator IS the user agent and
+ * reads `code` straight out of the Location header.
+ */
+it('refuses to issue an authorization code while impersonating', function (): void {
+    $op = impersonationOperator();
+    [$org, $member] = impersonationMember('authz-victim@acme.test');
+
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        'First Party App',
+        redirectUris: ['https://app.test/cb'],
+        organizationId: null,
+        firstParty: true,
+    ))->client;
+
+    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
+        ->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+        ->assertRedirect(route('dashboard'));
+
+    $response = $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $client->client_id,
+        'response_type' => 'code',
+        'redirect_uri' => 'https://app.test/cb',
+        'scope' => 'openid offline_access',
+        'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        'code_challenge_method' => 'S256',
+    ]));
+
+    expect((string) $response->headers->get('Location'))->not->toContain('code=');
+    expect($response->getStatusCode())->not->toBe(200);
 });

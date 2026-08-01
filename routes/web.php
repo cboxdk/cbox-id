@@ -186,7 +186,13 @@ $authorize = Volt::route('/oauth/authorize', 'oauth.consent')
     // `platform.auth:optional` RESOLVES the signed-in subject without requiring one.
     // Removing the middleware outright was wrong: CurrentUser is populated only there,
     // so check() was permanently false and NO authorization code could be issued.
-    ->middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth:optional'])
+    // BlockDuringImpersonation because this endpoint MINTS CREDENTIALS. Every other
+    // credential-establishing route carries it — password reset, invitation, email
+    // verification, sudo, org switch, passkey registration, social connect — and this
+    // one issues the longest-lived credential of the set: a refresh token that
+    // outlives both the impersonation window and the operator's session, attributed
+    // to the person being impersonated.
+    ->middleware(['plane:subject', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize');
 
 /*
@@ -210,7 +216,7 @@ if (! is_string($consentAction) && ! is_callable($consentAction)) {
 }
 
 Route::post('/oauth/authorize', $consentAction)
-    ->middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth:optional'])
+    ->middleware(['plane:subject', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize.post');
 
 /*

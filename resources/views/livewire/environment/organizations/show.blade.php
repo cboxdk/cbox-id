@@ -426,10 +426,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         // Capture routes everyone on this email domain to the org's SSO connection, so
         // enabling it on an UNPROVEN domain lets an org claim addresses it does not own.
-        // The subject console has always checked this; this door did not, and the
-        // framework's setCapture() does not check it either — so the weaker of the two
-        // callers decided the rule. Refused here now; the durable fix is the same
-        // assertion inside DomainVerification::setCapture(), which is a framework change.
+        // laravel-id 0.66.0 asserts this inside DomainVerification::setCapture(), which
+        // is where the rule belongs — this check stays because a refusal a person can
+        // read beats an unhandled DomainNotVerified, and because the service is the
+        // backstop for callers that forget.
         if (! $domain->capture && ! $domain->isVerified()) {
             $this->dispatch('toast', message: 'Verify the domain before turning capture on.', severity: 'error');
 

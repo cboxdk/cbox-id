@@ -244,3 +244,36 @@ it('locks an account out of the password door at the policy threshold', function
     expect($auth->attemptPassword($request, 'guessed@acme.test', 'the-real-passphrase-here'))
         ->toBe(AttemptOutcome::Ok);
 });
+
+/**
+ * The console is not the thing worth protecting — it is the door to the thing.
+ *
+ * Both holds sat behind `! $optional`, and /oauth/authorize is the one route that runs
+ * in optional mode. So an organization's own sign-in rules were enforced on the admin UI
+ * and skipped on the endpoint that mints access and refresh tokens: a member held on the
+ * account page for not enrolling a second factor could open any connected app and — for
+ * a first-party client, with no consent screen at all — walk away with a token.
+ *
+ * The tell was already in the code. exemptFromHolds() carves out prompt=none with a
+ * docblock saying the exemption exists because "the authorize endpoint makes that call".
+ * That carve-out could never be reached from a route running in optional mode.
+ */
+it('holds an authorization request from a subject who owes a password change', function (): void {
+    subjectOwingAChange();
+
+    $this->get('/oauth/authorize?client_id=whatever&response_type=code&redirect_uri=https://app.test/cb')
+        ->assertRedirect(route('password.change'));
+});
+
+it('holds an authorization request from a subject who has not enrolled a second factor', function (): void {
+    $subject = app(Subjects::class)->create('authz-nomfa@acme.test', 'No Factor', 'a-perfectly-long-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-authz-mfa'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Required));
+
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    $this->get('/oauth/authorize?client_id=whatever&response_type=code&redirect_uri=https://app.test/cb')
+        ->assertRedirect(route('account'));
+});

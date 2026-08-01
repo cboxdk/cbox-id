@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\Impersonation;
 use App\Platform\OrganizationAccess;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -492,6 +493,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
     {
         if ($this->error !== null) {
             return;
+        }
+
+        // Never mint a credential on someone else's behalf while wearing their session.
+        // The route carries BlockDuringImpersonation, so this is the second lock — and
+        // it is here rather than only there because ImpersonationCallGuard hangs off
+        // Livewire's `call` event, which never sees mount(), and mount() reaches this
+        // method directly whenever consent is skipped for a first-party client. A route
+        // list is one edit away from being wrong; an invariant in the issuing method is
+        // not.
+        if (app(Impersonation::class)->isImpersonating()) {
+            abort(403, 'Authorization cannot be granted while impersonating a user.');
         }
 
         // Defense in depth: re-assert the critical invariants at issue time rather

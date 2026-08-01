@@ -52,6 +52,15 @@ final class Authenticate
         // permanently false and no authorization code could be issued at all. Optional
         // mode keeps every re-check below (revoked session, deactivated subject,
         // suspended org) instead of the component re-implementing them badly.
+        //
+        // Optional means "a subject is not REQUIRED", never "the rules are relaxed".
+        // The two policy holds below used to sit behind `! $optional`, so an
+        // organization's own sign-in rules were enforced on the console and skipped on
+        // the endpoint that mints tokens — a member held out of the console for not
+        // enrolling a second factor could still authorize an app and walk away with a
+        // refresh token. The tell was already in the code: exemptFromHolds() carves out
+        // prompt=none for the authorize endpoint specifically, a carve-out that could
+        // never be reached from a route running in this mode.
         $optional = $mode === 'optional';
         $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
 
@@ -120,18 +129,18 @@ final class Authenticate
 
         $this->current->set($subject, $session, $organization, $role);
 
-        if (! $optional && $this->exemptFromHolds($request)) {
+        if ($this->exemptFromHolds($request)) {
             return $next($request);
         }
 
-        if (! $optional && $this->mustChangePassword($request, $subject->id)) {
+        if ($this->mustChangePassword($request, $subject->id)) {
             return redirect()->route('password.change');
         }
 
         // A tenant that requires a second factor cannot enforce it by turning people
         // away — that locks out precisely the people who still need to enrol. Hold them
         // on the security page instead, which is where enrolment lives.
-        if (! $optional && ! $request->routeIs('account', 'sudo') && $this->mfaMandate->requiresEnrolment($subject->id)) {
+        if (! $request->routeIs('account', 'sudo') && $this->mfaMandate->requiresEnrolment($subject->id)) {
             return redirect()->route('account')
                 ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
         }
