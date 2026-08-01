@@ -96,8 +96,12 @@ function seedTenantData(string $environmentId, string $marker): array
                 scopes: ['openid'],
             ))->client;
 
+            // A resolvable host, deliberately: the registry SSRF-guards the URL by
+            // resolving it, and a .example domain is refused on any runner with a real
+            // resolver. The marker rides in the path instead, which is what the console
+            // renders anyway.
             $webhook = app(WebhookRegistry::class)
-                ->register($org->id, 'https://'.strtolower($marker).'.example/hook', ['user.created'])
+                ->register($org->id, 'https://example.com/hook-'.strtolower($marker), ['user.created'])
                 ->endpoint;
 
             $connection = app(Connections::class)->create(
