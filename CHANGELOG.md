@@ -67,6 +67,14 @@ setup checklist that measures reality instead of asserting it.
   different plane in this product — projects, environments, billing — while this control
   decides who can run *this* console. Settings stopped calling the organization a
   workspace for the same reason.
+- **One prefix, not two: the `ID_*` env var fallback is removed.** 0.34.0 renamed the
+  vendored modules' variables to `CBOX_ID_*` and kept the old names readable as a
+  fallback; 37 config reads carried both spellings. Two names for one setting is a
+  footgun in a ConfigMap nobody reads twice — and the ambiguity had already reached the
+  test suite, which was pinning both. `CBOX_ID_` is now the only prefix this deployment
+  answers to. **Breaking for anyone still setting an `ID_*` variable**: it is ignored
+  rather than refused, so the setting silently falls back to its default. See
+  UPGRADING.md, which lists the four families and the two defaults worth knowing.
 - **The mobile nav sheet carries one icon per group** rather than repeating the area's
   glyph on each of its pages, which at 375px spent the width the labels needed on three
   identical marks that distinguished nothing.

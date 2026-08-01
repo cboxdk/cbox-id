@@ -14,6 +14,33 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## 0.35.0
+
+### The `ID_*` env var fallback is gone — rename before upgrading
+
+0.34.0 renamed the vendored modules' env vars to the `CBOX_ID_` prefix and kept the old
+`ID_*` names readable as a fallback. That fallback is removed: one prefix configures
+this deployment, and two spellings for the same setting is a footgun in a ConfigMap
+nobody reads twice.
+
+**Action required if you still set any `ID_*` variable.** Rename it before deploying:
+
+| Old | New |
+| --- | --- |
+| `ID_DEVICES_*` | `CBOX_ID_DEVICES_*` |
+| `ID_ANALYTICS_*` | `CBOX_ID_ANALYTICS_*` |
+| `ID_COMPLIANCE_*` | `CBOX_ID_COMPLIANCE_*` |
+| `ID_CONNECTORS_*` | `CBOX_ID_CONNECTORS_*` |
+
+An unrenamed variable is not an error — it is silently ignored, and the setting falls
+back to its default. Two of those defaults are worth knowing before you find out the
+hard way: `CBOX_ID_DEVICES_ENABLED` defaults to **off**, and
+`CBOX_ID_COMPLIANCE_SINK` to **null**. Grep your deployment for `ID_` first:
+
+```
+grep -rn 'ID_[A-Z]' k8s/ .env | grep -v CBOX_ID_
+```
+
 ## 0.34.0
 
 ### Module env vars renamed `ID_*` → `CBOX_ID_*`
@@ -22,9 +49,7 @@ The vendored modules' env vars (`ID_DEVICES_*`, `ID_ANALYTICS_*`, `ID_COMPLIANCE
 `ID_CONNECTORS_*`) are renamed to the `CBOX_ID_` prefix the rest of the deployment
 already uses, e.g. `ID_DEVICES_ENABLED` → `CBOX_ID_DEVICES_ENABLED`.
 
-**No action required yet**: the old names are still read as a fallback wherever the
-new name is unset. Rename them in your ConfigMaps at leisure — the fallback will be
-removed in a future release. If both are set, the `CBOX_ID_` name wins.
+The fallback that shipped with this release was removed in 0.35.0 — see below.
 
 ### The devices authenticator client provisions itself
 
@@ -87,7 +112,8 @@ Migrate any to `manual` and they keep working.
 
 ### If you switch on the relational analytics store
 
-`ID_ANALYTICS_STORE=database` is opt-in and off by default. If you enable it, **the
+`CBOX_ID_ANALYTICS_STORE=database` (named `ID_ANALYTICS_STORE` when this release
+shipped) is opt-in and off by default. If you enable it, **the
 scheduler must be running**: `id_analytics_events` is the only table that grows with
 traffic rather than with tenants, and the daily `model:prune` is what bounds it.
 

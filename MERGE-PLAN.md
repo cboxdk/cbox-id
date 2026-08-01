@@ -23,7 +23,7 @@ because the reasoning is what makes the remaining steps legible.
   engine that ran in production; all fixed, and `SchemaPortabilityTest` is ported so
   the `CHAR` class of them cannot return.
 - **Phase 0 §1.3 — ClickHouse.** Resolved differently than any option listed: a
-  relational event store was built instead, so `ID_ANALYTICS_STORE=database` is the
+  relational event store was built instead, so `CBOX_ID_ANALYTICS_STORE=database` is the
   answer for Cloud rather than "inert" or "external ClickHouse". See
   [docs/operations/analytics.md](docs/operations/analytics.md).
 - **Phase 1 — the merge.** Five modules vendored with history, wired, tests migrated,
@@ -133,11 +133,11 @@ The analytics sink points at in-cluster Altinity ClickHouse
 (`clickhouse-cbox.clickhouse.svc.cluster.local:8123`) — unreachable from Laravel Cloud,
 and Cloud offers no ClickHouse service. Pick one:
 
-- **inert** — leave `ID_ANALYTICS_ENABLED=false`; the console area still renders, the
+- **inert** — leave `CBOX_ID_ANALYTICS_ENABLED=false`; the console area still renders, the
   sink is a no-op (recommended for launch);
 - **Postgres/MySQL reader** — `UsageMeterReportReader` already exists and reads the
   usage meter instead of ClickHouse;
-- **external** — expose a managed ClickHouse and keep `ID_ANALYTICS_CLICKHOUSE_DSN`.
+- **external** — expose a managed ClickHouse and keep `CBOX_ID_ANALYTICS_CLICKHOUSE_DSN`.
 
 Note the k8s secret flags `id-analytics:install` as currently broken; if you go with
 anything but "inert", that command needs fixing first.
@@ -339,7 +339,7 @@ app at nothing.
 **Dropped entirely from the k8s set:** `DB_SSLMODE` (a pgsql-only key — meaningless on
 MySQL), `REDIS_CLIENT` (unless Cloud's default differs from `phpredis`), `TRUSTED_PROXIES`
 (re-derive for Cloud's load balancer rather than copying `*`), all `CBOX_ID_LICENSE_*`,
-and the in-cluster `ID_ANALYTICS_CLICKHOUSE_*` (§1.3).
+and the in-cluster `CBOX_ID_ANALYTICS_CLICKHOUSE_*` (§1.3).
 
 `config/database.php` already carries a complete `mysql` block (utf8mb4,
 `utf8mb4_unicode_ci`, strict mode, `MYSQL_ATTR_SSL_CA` passthrough) — no change needed.

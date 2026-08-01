@@ -13,9 +13,10 @@ declare(strict_types=1);
 | 1. It must beat the host. phpunit.xml's `<env>` — even with force="true" — writes
 |    $_ENV and putenv() but NOT $_SERVER, and Laravel's Env repository reads $_SERVER
 |    first, so a machine that exports QUEUE_CONNECTION=redis silently wins. Setting all
-|    three closes that, and every variable carrying this application's own prefixes
-|    (CBOX_ID_ and the legacy ID_) is removed rather than merged: an inherited one can
-|    only be some machine's opinion about a deployment, and this is not one.
+|    three closes that, and every CBOX_ID_ variable is removed rather than merged: an
+|    inherited one can only be some machine's opinion about a deployment, and this is
+|    not one. (The bare ID_ prefix is still stripped, so a deployment that has not
+|    finished renaming cannot reach the suite through the door 0.34.0 closed.)
 |
 | 2. It must not need anything nobody started. Queue metrics ship enabled with a REDIS
 |    storage driver and a JobQueued listener, so the suite quietly required a Redis
@@ -63,19 +64,16 @@ $suiteOwned = [
 
     // Modules off, their delivery jobs inline. The devices tests assert the feature's
     // default state, and a developer .env — or a runner's shell — must not change what
-    // they see; a test that wants a module on turns it on through config(). Both
-    // spellings are pinned: ID_ is the pre-0.34 name the config still honours.
+    // they see; a test that wants a module on turns it on through config().
     'CBOX_ID_DEVICES_ENABLED' => 'false',
-    'ID_DEVICES_ENABLED' => 'false',
     'CBOX_ID_DEVICES_QUEUE_CONNECTION' => '',
-    'ID_DEVICES_QUEUE_CONNECTION' => '',
     'CBOX_ID_DEVICES_QUEUE' => '',
-    'ID_DEVICES_QUEUE' => '',
 ];
 
 // Everything this application configures through the environment is the suite's to
-// decide. An inherited CBOX_ID_*/ID_* variable is removed rather than merged: it can
-// only be some machine's opinion about a deployment, and this is not one.
+// decide. The bare ID_ prefix is included even though nothing reads it any more: a
+// machine still carrying the pre-0.34 names must not be able to reach the suite if a
+// fallback is ever reintroduced by accident.
 foreach (array_unique([...array_keys($_SERVER), ...array_keys($_ENV)]) as $name) {
     if (! is_string($name) || array_key_exists($name, $suiteOwned)) {
         continue;

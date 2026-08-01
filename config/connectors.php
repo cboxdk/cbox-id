@@ -10,7 +10,7 @@ return [
      * console-kit feature registry. Installed and true ⇒ the area shows; set false
      * to hide the plugin's UI without uninstalling it.
      */
-    'enabled' => (bool) env('CBOX_ID_CONNECTORS_ENABLED', env('ID_CONNECTORS_ENABLED', true)),
+    'enabled' => (bool) env('CBOX_ID_CONNECTORS_ENABLED', true),
 
     /*
      * The public WebhookRegistry contract lists endpoints only by event type

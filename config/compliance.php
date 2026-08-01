@@ -11,7 +11,7 @@ return [
      * automatically. Flip this on to show the console (audit search, retention, DSR)
      * without configuring an export destination.
      */
-    'enabled' => (bool) env('CBOX_ID_COMPLIANCE_ENABLED', env('ID_COMPLIANCE_ENABLED', false)),
+    'enabled' => (bool) env('CBOX_ID_COMPLIANCE_ENABLED', false),
 
     /*
      * Audit-trail export. The engine reads new entries incrementally from a persisted
@@ -24,19 +24,19 @@ return [
      *   - `http`           — POST batches to a SIEM ingest endpoint.
      */
     'export' => [
-        'sink' => (string) env('CBOX_ID_COMPLIANCE_SINK', env('ID_COMPLIANCE_SINK', 'null')),
+        'sink' => (string) env('CBOX_ID_COMPLIANCE_SINK', 'null'),
 
-        'batch_size' => (int) env('CBOX_ID_COMPLIANCE_BATCH_SIZE', env('ID_COMPLIANCE_BATCH_SIZE', 500)),
+        'batch_size' => (int) env('CBOX_ID_COMPLIANCE_BATCH_SIZE', 500),
 
         'jsonl' => [
-            'disk' => (string) env('CBOX_ID_COMPLIANCE_JSONL_DISK', env('ID_COMPLIANCE_JSONL_DISK', 'local')),
-            'path' => (string) env('CBOX_ID_COMPLIANCE_JSONL_PATH', env('ID_COMPLIANCE_JSONL_PATH', 'compliance/audit')),
+            'disk' => (string) env('CBOX_ID_COMPLIANCE_JSONL_DISK', 'local'),
+            'path' => (string) env('CBOX_ID_COMPLIANCE_JSONL_PATH', 'compliance/audit'),
         ],
 
         'siem' => [
-            'endpoint' => (string) env('CBOX_ID_COMPLIANCE_SIEM_ENDPOINT', env('ID_COMPLIANCE_SIEM_ENDPOINT', '')),
-            'token' => (string) env('CBOX_ID_COMPLIANCE_SIEM_TOKEN', env('ID_COMPLIANCE_SIEM_TOKEN', '')),
-            'timeout' => (int) env('CBOX_ID_COMPLIANCE_SIEM_TIMEOUT', env('ID_COMPLIANCE_SIEM_TIMEOUT', 10)),
+            'endpoint' => (string) env('CBOX_ID_COMPLIANCE_SIEM_ENDPOINT', ''),
+            'token' => (string) env('CBOX_ID_COMPLIANCE_SIEM_TOKEN', ''),
+            'timeout' => (int) env('CBOX_ID_COMPLIANCE_SIEM_TIMEOUT', 10),
         ],
     ],
 
@@ -48,6 +48,6 @@ return [
      * relies on the export sink to archive entries to cold storage.
      */
     'retention' => [
-        'checkpoint_on_apply' => (bool) env('CBOX_ID_COMPLIANCE_RETENTION_CHECKPOINT', env('ID_COMPLIANCE_RETENTION_CHECKPOINT', true)),
+        'checkpoint_on_apply' => (bool) env('CBOX_ID_COMPLIANCE_RETENTION_CHECKPOINT', true),
     ],
 ];
