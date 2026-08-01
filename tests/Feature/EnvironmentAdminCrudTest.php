@@ -20,6 +20,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Identity\Models\MfaFactor;
 use Cbox\Id\Identity\Models\User;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -243,6 +244,14 @@ it('resets a user\'s two-factor factors', function (): void {
     Volt::test('environment.users.show', ['user' => $user->id])->call('resetMfa');
 
     expect(MfaFactor::query()->where('user_id', $user->id)->count())->toBe(0);
+
+    // Taking away someone's second factor is the most privileged thing this page does,
+    // and it used to be the only MFA action in the console that left no trace: the page
+    // deleted the rows itself because the contract had no verb for it. Every other MFA
+    // mutation was audited. An access review looking for "who removed this user's 2FA"
+    // found nothing at all.
+    expect(AuditEntry::query()->where('action', 'user.mfa_disabled')->where('target_id', $user->id)->exists())
+        ->toBeTrue('resetting a user\'s MFA left no audit entry');
 });
 
 it('requires and stores client_secret for an OIDC connection created via the form', function (): void {

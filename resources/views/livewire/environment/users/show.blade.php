@@ -22,8 +22,6 @@ use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
-use Cbox\Id\Identity\Models\MfaFactor;
-use Cbox\Id\Identity\Models\MfaRecoveryCode;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
@@ -280,13 +278,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $this->dispatch('toast', message: 'Email marked as verified.');
     }
 
-    public function resetMfa(): void
+    public function resetMfa(Mfa $mfa): void
     {
-        $user = $this->user();
-        // No disable verb on the contract; clearing the env-scoped factors + recovery
-        // codes forces a fresh enrollment on next sign-in.
-        MfaFactor::query()->where('user_id', $user->id)->delete();
-        MfaRecoveryCode::query()->where('user_id', $user->id)->delete();
+        // Through the contract, so the reset is audited as `user.mfa_disabled`. This
+        // used to delete the rows directly — an admin taking away someone's second
+        // factor was the one MFA action in the console that left no trace.
+        $mfa->disable($this->user()->id);
         $this->dispatch('toast', message: 'Two-factor authentication reset — the user must re-enroll.');
     }
 
