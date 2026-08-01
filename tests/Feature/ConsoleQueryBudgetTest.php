@@ -111,3 +111,45 @@ it('keeps the most-loaded console pages within budget', function (string $route,
     'dashboard' => ['dashboard', 75],
     'settings' => ['settings', 30],
 ]);
+
+/**
+ * The cost of a page must not scale with how many organizations the signed-in subject
+ * belongs to.
+ *
+ * Two framework defects compounded here, both on the authentication path — which is also
+ * persistent Livewire middleware, so it ran again on every round trip. `memberships` had
+ * no index on `user_id` and `forUser()` runs unscoped, so the query scanned every
+ * membership belonging to every tenant on the platform; and inside the loop over what it
+ * returned, `overrideFor()` was the one policy read left unmemoised. Measured before the
+ * fix: 17 queries at one organization, 22 at four, 32 at nine — exactly two per
+ * organization.
+ *
+ * Asserting the SHAPE rather than a ceiling. A ceiling is a number that drifts; "adding
+ * eight memberships does not add sixteen queries" is the property.
+ */
+it('does not pay per-organization queries for the signed-in subject', function (): void {
+    [$orgId] = queryBudgetAdmin();
+    $subject = app(CurrentUser::class)->subject();
+
+    $small = queriesFor('settings');
+
+    // The SAME subject, now a member of eight more organizations. One application
+    // instance on purpose: refreshApplication() would drop the in-memory schema.
+    for ($i = 0; $i < 8; $i++) {
+        $extra = app(Organizations::class)->create(new NewOrganization("Extra {$i}", "extra-budget-{$i}"));
+        app(Memberships::class)->add($extra->id, $subject->id, MembershipRole::Member);
+    }
+
+    $large = queriesFor('settings');
+
+    fwrite(STDERR, "\n  settings: {$small} queries at 1 org, {$large} at 9\n");
+
+    // Flat, not merely bounded. Eight more memberships must not add eight more queries,
+    // and after the batch read they add none at all — measured 16 at one organization
+    // and 15 at nine, against 17 and 32 before. The small allowance is for ordinary
+    // drift, not for a per-row cost.
+    expect($large - $small)->toBeLessThan(
+        3,
+        "the page costs per-organization queries: {$small} at 1 org, {$large} at 9"
+    );
+});
