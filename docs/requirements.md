@@ -37,7 +37,7 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `cboxdk/laravel-id` | `>=0.74 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `>=0.75 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
@@ -59,7 +59,7 @@ Pulled in automatically by `composer install`:
 | `socialiteproviders/microsoft` | `^4.9` | Microsoft/Entra provider for Socialite. |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
 
-> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.74 <1.0`). Minor bumps in that
+> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.75 <1.0`). Minor bumps in that
 > range may carry breaking changes — read its changelog before upgrading.
 
 ## Building assets
