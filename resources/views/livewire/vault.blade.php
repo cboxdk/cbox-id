@@ -115,7 +115,11 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
                 ->where('owner_id', $this->orgId())
                 ->orderByDesc('id')
                 ->get(),
-            'grants' => $this->grantsFor !== null
+            // `grantsFor` is a public wire property, so it is whatever the client says.
+            // Joining through a secret this ORG owns is what makes it safe: without it,
+            // `$set('grantsFor', '<another org's secret id>')` listed that org's grants —
+            // no plaintext, but the client ids and the existence of the grant leaked.
+            'grants' => $this->grantsFor !== null && $this->ownsSecret($this->grantsFor)
                 ? VaultGrant::query()
                     ->where('secret_id', $this->grantsFor)
                     ->whereNull('revoked_at')
@@ -131,14 +135,21 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
      */
     private function authorizeSecret(string $id): void
     {
-        abort_unless(
-            VaultSecret::query()
-                ->whereKey($id)
-                ->where('owner_type', 'organization')
-                ->where('owner_id', $this->orgId())
-                ->exists(),
-            404,
-        );
+        abort_unless($this->ownsSecret($id), 404);
+    }
+
+    /**
+     * The same ownership question, asked where a RENDER rather than an action needs it:
+     * the grants expander keys on a public wire property, so it must not be trusted to
+     * name a secret this organization holds.
+     */
+    private function ownsSecret(string $id): bool
+    {
+        return VaultSecret::query()
+            ->whereKey($id)
+            ->where('owner_type', 'organization')
+            ->where('owner_id', $this->orgId())
+            ->exists();
     }
 
     private function orgId(): string

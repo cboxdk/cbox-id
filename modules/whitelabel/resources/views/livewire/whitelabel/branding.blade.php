@@ -88,6 +88,21 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
             $clean[$token] = $value;
         }
 
+        // The uploads carry NO server-side type gate beyond `accept="image/*"` on the
+        // input, which is a hint to the file picker and nothing more. The store keeps the
+        // content-guessed extension and writes to the public disk, so an SVG containing a
+        // script tag is then served from the application's OWN origin — a static path, so
+        // neither the CSP nor nosniff applies to it, and every admin's session cookie
+        // lives on that origin. SVG is excluded deliberately: it is the only raster-
+        // adjacent format that is also a script host.
+        $this->validate([
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:1024'],
+            'favicon' => ['nullable', 'image', 'mimes:png,ico,webp', 'max:256'],
+        ], [
+            'logo.mimes' => 'Use a PNG, JPEG or WebP. SVG is not accepted — it can carry a script.',
+            'favicon.mimes' => 'Use a PNG, ICO or WebP. SVG is not accepted — it can carry a script.',
+        ]);
+
         $profiles = app(BrandProfiles::class);
         $assets = app(BrandAssetStore::class);
         $profile = $profiles->forEnvironment() ?? new BrandProfile;

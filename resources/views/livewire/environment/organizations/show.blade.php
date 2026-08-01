@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
+use App\Platform\GrantAccessRole;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -255,9 +256,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         // assignable in this org (deny-by-default). Resolve the assignable set once
         // rather than re-querying the catalog per selected role.
         $assignableIds = $catalog->assignable($org->id)->pluck('id')->all();
+        // Segregation of duties refuses a toxic pair here exactly as it does on the
+        // Members page. A grant withheld is not fatal — the rest of the assignment
+        // stands and the governance screen reports what was not given.
         foreach ($this->memberAccessRoles as $roleId) {
             if (in_array($roleId, $assignableIds, true)) {
-                $roles->assign($org->id, $user->id, $roleId, GrantSource::Manual);
+                app(GrantAccessRole::class)->grant($org->id, $user->id, $roleId, GrantSource::Manual);
             }
         }
 
@@ -310,9 +314,15 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             ->exists();
 
         if ($held) {
-            $roles->unassign($org->id, $userId, $roleId);
-        } else {
-            $roles->assign($org->id, $userId, $roleId, GrantSource::Manual);
+            app(GrantAccessRole::class)->revoke($org->id, $userId, $roleId);
+
+            return;
+        }
+
+        $refusal = app(GrantAccessRole::class)->grant($org->id, $userId, $roleId, GrantSource::Manual);
+
+        if ($refusal !== null) {
+            $this->dispatch('toast', message: $refusal->message(), severity: 'error');
         }
     }
 
@@ -409,10 +419,25 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
     public function toggleCapture(string $id, DomainVerification $domains): void
     {
         $domain = VerifiedDomain::query()->whereKey($id)->where('organization_id', $this->org()->id)->first();
-        if ($domain !== null) {
-            $domains->setCapture($id, ! $domain->capture);
-            $this->dispatch('toast', message: 'Domain capture updated.');
+
+        if ($domain === null) {
+            return;
         }
+
+        // Capture routes everyone on this email domain to the org's SSO connection, so
+        // enabling it on an UNPROVEN domain lets an org claim addresses it does not own.
+        // The subject console has always checked this; this door did not, and the
+        // framework's setCapture() does not check it either — so the weaker of the two
+        // callers decided the rule. Refused here now; the durable fix is the same
+        // assertion inside DomainVerification::setCapture(), which is a framework change.
+        if (! $domain->capture && ! $domain->isVerified()) {
+            $this->dispatch('toast', message: 'Verify the domain before turning capture on.', severity: 'error');
+
+            return;
+        }
+
+        $domains->setCapture($id, ! $domain->capture);
+        $this->dispatch('toast', message: 'Domain capture updated.');
     }
 
     public function removeDomain(string $id, DomainVerification $domains): void

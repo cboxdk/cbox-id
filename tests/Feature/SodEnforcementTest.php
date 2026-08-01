@@ -215,3 +215,41 @@ it('still lets an org admin toggle its own policy', function (): void {
 
     expect(SodPolicy::query()->whereKey($own->id)->value('active'))->toBeFalse();
 });
+
+/**
+ * The structural half, and the one that would have caught the real gap.
+ *
+ * Segregation of duties is a PRE-GRANT gate the host must call. The console called it on
+ * the Members page and on invitation acceptance — and skipped it on four other grant
+ * paths, all of them on the environment-admin plane, where the most privileged
+ * administrators work. An env admin could therefore create exactly the toxic combination
+ * the Governance screen then reports: the control was advisory precisely where it
+ * mattered most, and the tests above all drove the two paths that were already gated.
+ *
+ * Every console grant now goes through App\Platform\GrantAccessRole. This asserts that
+ * no view reaches past it to the raw assign(), so a grant surface added next month is
+ * covered by construction rather than by someone remembering.
+ */
+it('routes every console role grant through the segregation-of-duties gate', function (): void {
+    $offenders = [];
+
+    $views = array_merge(
+        glob(resource_path('views/livewire/*.blade.php')) ?: [],
+        glob(resource_path('views/livewire/*/*.blade.php')) ?: [],
+        glob(resource_path('views/livewire/*/*/*.blade.php')) ?: [],
+    );
+
+    foreach ($views as $file) {
+        $source = (string) file_get_contents($file);
+
+        // The membership verb is a different thing — belonging, not an RBAC grant — and
+        // has its own rules. This is about `Roles::assign()`.
+        // Call-level, not file-level: a file that imports the service and still has one
+        // raw call left is exactly the half-migration this is meant to catch.
+        if (str_contains($source, '$roles->assign(')) {
+            $offenders[] = str_replace(resource_path('views/livewire/'), '', $file);
+        }
+    }
+
+    expect($offenders)->toBe([], 'grants a role without the SoD gate: '.implode(', ', $offenders));
+});

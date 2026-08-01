@@ -41,7 +41,7 @@ final class EnforcePlane
         // e.g. cboxid.com) has separate account-root and tenant-subdomain hosts.
         if (! $this->planes->isMultiTenant()) {
             // …but an unknown plane name is still refused, in every shape.
-            abort_unless($plane === 'account' || $plane === 'subject', 404);
+            abort_unless(in_array($plane, ['account', 'subject', 'operator'], true), 404);
 
             return $next($request);
         }
@@ -49,6 +49,15 @@ final class EnforcePlane
         $allowed = match ($plane) {
             'account' => $this->planes->onAccountPlane(),
             'subject' => $this->planes->onSubjectPlane(),
+            // The staff console. It shipped with no bulkhead at all, so the Cbox
+            // operator sign-in was served on every tenant subdomain AND on every
+            // customer-controlled brand domain (whitelabel writes environments.domain,
+            // which is what host resolution keys on). No privilege was granted there —
+            // the operator session is separate and AuthenticateOperator guards the rest
+            // — but a staff login form on a customer's own domain is a phishing surface
+            // and an unnecessary disclosure. It belongs on the platform root, with the
+            // account plane.
+            'operator' => $this->planes->onAccountPlane(),
             default => false,
         };
 

@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Illuminate\Support\Str;
+use App\Platform\GrantAccessRole;
 use App\Platform\EnvironmentAdminAuth;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
@@ -333,9 +334,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         // assignable set, so a value that reached here is a case of the enum.
         $memberships->add($this->assignOrgId, $user->id, MembershipRole::from($this->assignRole));
 
+        // Segregation of duties refuses a toxic pair here exactly as it does on the
+        // Members page. A grant withheld is not fatal — the rest of the assignment
+        // stands and the governance screen reports what was not given.
         foreach ($this->assignAccessRoles as $roleId) {
             if ($catalog->isAssignable($this->assignOrgId, $roleId)) {
-                $roles->assign($this->assignOrgId, $user->id, $roleId, GrantSource::Manual);
+                app(GrantAccessRole::class)->grant($this->assignOrgId, $user->id, $roleId, GrantSource::Manual);
             }
         }
 
@@ -387,9 +391,15 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             ->exists();
 
         if ($held) {
-            $roles->unassign($orgId, $user->id, $roleId);
-        } else {
-            $roles->assign($orgId, $user->id, $roleId, GrantSource::Manual);
+            app(GrantAccessRole::class)->revoke($orgId, $user->id, $roleId);
+
+            return;
+        }
+
+        $refusal = app(GrantAccessRole::class)->grant($orgId, $user->id, $roleId, GrantSource::Manual);
+
+        if ($refusal !== null) {
+            $this->dispatch('toast', message: $refusal->message(), severity: 'error');
         }
     }
 

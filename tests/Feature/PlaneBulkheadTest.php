@@ -63,7 +63,29 @@ it('denies BOTH planes when no environment resolves (deny-by-default)', function
 });
 
 it('rejects an unknown plane name', function (): void {
-    expect(passesPlane(planeGate('env_prod', 'env_prod'), 'operator'))->toBeFalse();
+    expect(passesPlane(planeGate('env_prod', 'env_prod'), 'not-a-plane'))->toBeFalse();
+});
+
+/**
+ * The staff console is the third interactive plane, and shipped with no bulkhead: the
+ * operator sign-in was served on every tenant subdomain and on every customer-controlled
+ * brand domain. No privilege followed — the operator session is separate — but a Cbox
+ * staff login form on a customer's own domain is a phishing surface. It belongs on the
+ * platform root, where account credentials are already entered.
+ *
+ * This test previously asserted the opposite: that 'operator' was an UNKNOWN plane. It
+ * encoded the gap rather than catching it.
+ */
+it('serves the operator plane on the platform root only', function (): void {
+    $root = planeGate('env_root', 'env_root');
+    $tenant = planeGate('env_tenant', 'env_root');
+
+    expect(passesPlane($root, 'operator'))->toBeTrue()
+        ->and(passesPlane($tenant, 'operator'))->toBeFalse();
+});
+
+it('denies the operator plane when no environment resolves', function (): void {
+    expect(passesPlane(planeGate(null, 'env_root'), 'operator'))->toBeFalse();
 });
 
 it('does NOT split planes in a single-tenant / self-hosted deployment (no base_domains)', function (): void {

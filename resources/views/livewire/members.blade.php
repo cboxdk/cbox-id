@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
+use App\Platform\GrantAccessRole;
 use App\Platform\CurrentUser;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -106,15 +107,11 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // says so, and evaluate()/wouldViolate() are the whole published API. The console
         // shipped the SoD screens and never called it, so an admin could create on the
         // Members page exactly the toxic combination the Governance page reports.
-        $refusal = app(SodGuard::class)->refuse($this->orgId(), $userId, $roleId);
+        $refusal = app(GrantAccessRole::class)->grant($this->orgId(), $userId, $roleId, GrantSource::Manual);
 
         if ($refusal !== null) {
             $this->dispatch('toast', message: $refusal->message(), severity: 'error');
-
-            return;
         }
-
-        $roles->assign($this->orgId(), $userId, $roleId, GrantSource::Manual);
     }
 
     public function invite(Invitations $invitations): void

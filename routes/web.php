@@ -440,7 +440,7 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
 | between environments and manage other operators. An org-user session grants
 | nothing here, and vice versa.
 */
-Route::prefix('operator')->group(function (): void {
+Route::middleware('plane:operator')->prefix('operator')->group(function (): void {
     Volt::route('/login', 'operator.login')->name('operator.login');
 
     // The TOTP challenge sits between password and a full operator session, so it
