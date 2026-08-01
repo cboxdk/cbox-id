@@ -59,7 +59,8 @@ new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class ex
 
 <div class="space-y-6">
     <x-page-header title="Trusted devices"
-                   subtitle="Handsets enrolled in the authenticator app. These receive approval prompts and sign-in alerts. Push tokens are never shown." />
+                   subtitle="Handsets enrolled in the authenticator app. These receive approval prompts and sign-in alerts. Push tokens are never shown."
+                   :help="App\Platform\Help\HelpTopic::TrustedDevices" />
 
     {{-- Enrolment is personal, so it lives where every user can reach it. --}}
     <p class="text-sm" style="color:var(--muted)">

@@ -288,6 +288,32 @@ see the undeclared-key note under [Access control](#access-control-rbac-and-app-
 | `CBOX_ID_USAGE_ENABLED` | Whether usage is metered at all. Metering feeds plan gates and billing projections. | `true` | Set `false` only on an install that has no billing and no plan gates. With it off, anything reading usage sees zero. |
 | `CBOX_ID_USER_API_TOKEN_TTL_DAYS` | Default lifetime, in days, of a user API token (`cbid_pat_…`) minted without an explicit expiry. | `90` | Shorten for tighter credential hygiene. A non-numeric value falls back to the built-in default. |
 
+## Trusted devices (push)
+
+The phone-as-authenticator module: approval pushes and security alerts. **Off by
+default** — a deployment with no mobile app has no devices to notify. See
+[Trusted devices](../guides/trusted-devices.md) for how the pieces fit together.
+
+| Variable | What it does | Default | When to change |
+|---|---|---|---|
+| `CBOX_ID_DEVICES_ENABLED` | Master switch for the console pages, the device API and the CIBA push decorator. | `false` | Turn on when you are running the authenticator app. Safe to enable before configuring a transport — pushes are recorded and dropped, and the console still shows the delivery history. |
+| `CBOX_ID_DEVICES_TRANSPORT` | How a push leaves the building: `none` or `fcm`. | `none` | Set `fcm` for real delivery. FCM covers Android natively and iOS by relaying to APNs, which is why there is no separate APNs driver. |
+| `CBOX_ID_DEVICES_FCM_CREDENTIALS` | Absolute path to the Google service-account JSON used to mint FCM tokens. | *(empty)* | Required for `fcm`. **This key can push to every device you have ever enrolled — server only, never bundled into the app.** If it or the project id is missing the transport stays on the null driver rather than failing at send time: a misconfigured push must not break a login. |
+| `CBOX_ID_DEVICES_FCM_PROJECT_ID` | The Firebase project id. | *(empty)* | Required for `fcm`. |
+| `CBOX_ID_DEVICES_FCM_TIMEOUT` | Connect/read timeout in seconds for the FCM call. | `10` | Lower it if you run pushes inline on `QUEUE_CONNECTION=sync`, where this bounds the CIBA request itself. |
+| `CBOX_ID_DEVICES_MAX_ATTEMPTS` | Retries before a notification dead-letters as Exhausted. Backoff is `min(60, 2^attempt)` minutes. | `12` | Rarely. Governs **transient** failures only — a permanent FCM error (`UNREGISTERED`, `INVALID_ARGUMENT`) retires the device token on the first attempt instead. |
+| `CBOX_ID_DEVICES_STRANDED_AFTER_SECONDS` | How long a Pending notification waits before the sweep presumes its queue job is lost and re-enqueues it. | `900` | Rarely — and never alone. The delivery job's unique-lock window is deliberately the same value; raising one without the other wedges the rescue shut. |
+| `CBOX_ID_DEVICES_RETRY_LIMIT` | How many due notifications one sweep re-enqueues. | `50` | Raise on a large fleet where the sweep cannot keep up; it bounds the work one scheduler tick creates. |
+| `CBOX_ID_DEVICES_CB_FAILURE_THRESHOLD` | Consecutive failures that open a device's circuit breaker. | `5` | Rarely. State lives on the device row, not in cache, so it survives a flush and is visible in the console. |
+| `CBOX_ID_DEVICES_CB_COOLDOWN_SECONDS` | How long the breaker stays open before a single half-open probe. | `300` | Rarely. While open, notifications are parked **without** being charged an attempt — the trip is the device's fault, not the notification's. |
+| `CBOX_ID_DEVICES_QUEUE_CONNECTION` | Queue connection for delivery jobs. | *(default connection)* | Set it. Approval pushes race a 300-second CIBA TTL and should not share a worker pool with slow bulk work. |
+| `CBOX_ID_DEVICES_QUEUE` | Queue name for delivery jobs. | *(default queue)* | As above. |
+| `CBOX_ID_DEVICES_ALERT_TTL_SECONDS` | How long a security alert stays worth delivering. | `86400` | Rarely. This deadline is what stops one permanently soft-failing handset accumulating Failed rows that occupy every retry slot and starve other tenants' approvals. Approvals take their deadline from the CIBA request's TTL instead. |
+| `CBOX_ID_DEVICES_RETENTION_DAYS` | How long settled notification rows are kept for the console's delivery history. | `30` | This table grows with **traffic**, not tenants — one row per enrolled device per alerted event — so the prune is not optional. Only terminal rows are pruned. |
+| `CBOX_ID_DEVICES_RATE_LIMIT` | Per-minute request budget for the device API, keyed on a fingerprint of the presented token (so, per user). | `60` | Raise for a chatty app. Keying on `client_id` instead would put every mobile user in one bucket and let one busy account throttle the fleet. |
+| `CBOX_ID_DEVICES_CIBA_CLIENT_ALLOWLIST` | Comma list of client ids that may cause a push via CIBA. Empty means every client holding the CIBA grant may. | *(empty)* | Set it to narrow the permissive default. Enforced as a refusal to notify, not a log line — an attacker who can spray approval prompts at a phone is attacking the human-in-the-loop that CIBA exists for. The CIBA request still succeeds and the client can poll; it just produces no push. |
+| `CBOX_ID_DEVICES_INCLUDE_REQUEST_ID_IN_PUSH` | Whether the approval request id travels in the FCM data payload, so a notification tap deep-links to the right approval. | `true` | Set `false` to keep the id off Google's and Apple's infrastructure. The id is an unguessable ULID conferring no capability on its own — approving still needs a DPoP-bound token whose subject matches — so this is a minor metadata trade against deep-link precision when two approvals are waiting. |
+
 ## REST management API rate limits
 
 Buckets are keyed on the **API key**, not the caller's IP — a customer whose CI egresses

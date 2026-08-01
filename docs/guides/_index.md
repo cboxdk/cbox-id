@@ -32,6 +32,7 @@ console explains itself in two or three sentences; when that is not enough, the
 - [Inline hooks](inline-hooks.md) — have a say while it happens.
 - [Token vault](token-vault.md) — credentials your apps use elsewhere.
 - [Agent approvals](agent-approvals.md) — approving something an app or agent asks to do as you.
+- [Trusted devices](trusted-devices.md) — a phone as the authenticator that answers those approvals.
 
 ## Proving it is under control
 

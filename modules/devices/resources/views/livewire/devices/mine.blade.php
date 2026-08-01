@@ -156,15 +156,9 @@ new #[Layout('components.layouts.app')] class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header mb-6">
-        <div class="min-w-0">
-            <h1 class="cbx-page-title">Trusted devices</h1>
-            <p class="cbx-page-desc">
-                Phones enrolled in the authenticator app. They receive approval prompts
-                and alerts when your account signs in somewhere new.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Trusted devices"
+                   subtitle="Phones enrolled in the authenticator app. They receive approval prompts and alerts when your account signs in somewhere new."
+                   :help="App\Platform\Help\HelpTopic::TrustedDevices" />
 
     @if ($this->enrolmentUri() !== null)
         <div class="card p-6">

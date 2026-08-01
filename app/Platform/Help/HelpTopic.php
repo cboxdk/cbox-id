@@ -27,6 +27,7 @@ enum HelpTopic: string
     case Overview = 'overview';
     case Usage = 'usage';
     case AgentApprovals = 'agent-approvals';
+    case TrustedDevices = 'trusted-devices';
     case Members = 'members';
     case Roles = 'roles';
     case SingleSignOn = 'single-sign-on';
@@ -50,6 +51,7 @@ enum HelpTopic: string
             self::Overview => 'Your organization at a glance',
             self::Usage => 'What counts as usage',
             self::AgentApprovals => 'Approving on someone else\'s screen',
+            self::TrustedDevices => 'Your phone as the key',
             self::Members => 'Members and invitations',
             self::Roles => 'What roles do',
             self::SingleSignOn => 'Signing in with your own identity provider',
@@ -76,6 +78,7 @@ enum HelpTopic: string
 
             self::Usage => 'How many people signed in, and how often your apps called the API, over the last 30 days. This is here so you can see load and spot anomalies; it is not an invoice.',
 
+            self::TrustedDevices => 'A phone with the authenticator app installed becomes the thing that answers approval requests and tells you when someone signs in as you. Enrol it once by scanning the code; remove it here the moment you lose the handset, which stops it approving anything.',
             self::AgentApprovals => 'When an app or an AI agent needs your go-ahead to act as you, it cannot always ask on the screen in front of you — so it asks here instead. Approve only requests you started yourself, and check that the code shown matches the one on the device that asked.',
 
             self::Members => 'Everyone who can sign in to this organization, and the invitations you have sent that nobody has accepted yet. Invite people by email; they set up their own sign-in, so you never handle anyone\'s password.',
@@ -129,6 +132,7 @@ enum HelpTopic: string
             self::RoleConflicts => 'guides/role-conflicts',
             self::ActivityLog => 'guides/activity-log',
             self::AgentApprovals => 'guides/agent-approvals',
+            self::TrustedDevices => 'guides/trusted-devices',
             self::Overview,
             self::Usage,
             self::Members,
