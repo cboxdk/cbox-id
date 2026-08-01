@@ -152,6 +152,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Operator sign in'])] class 
     @endif
 
     <p class="mt-6 text-xs" style="color:var(--faint)">
-        Looking for the organization console? <a href="{{ route('login') }}" class="underline underline-offset-2" style="color:var(--accent)">Sign in there</a>.
+        Looking for the organization console? <a href="{{ route('login') }}" class="underline underline-offset-2" style="color:var(--accent-strong)">Sign in there</a>.
     </p>
 </div>

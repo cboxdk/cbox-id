@@ -726,7 +726,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         <p class="mt-2 text-sm" style="color:var(--muted)">{{ $error }}</p>
         <a href="{{ url('/') }}" class="btn btn-ghost w-full mt-6">Back to Cbox ID</a>
     @else
-        <div class="grid place-items-center rounded-full mb-5" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)">
+        <div class="grid place-items-center rounded-full mb-5" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent-strong)">
             <x-icon name="shield" class="w-5 h-5" />
         </div>
 
@@ -741,7 +741,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         </p>
 
         <div class="card mt-6 p-4 flex items-center gap-3">
-            <span class="grid place-items-center rounded-full text-sm font-semibold" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+            <span class="grid place-items-center rounded-full text-sm font-semibold" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent-strong)">
                 {{ strtoupper(substr($me->name(), 0, 1)) }}
             </span>
             <div class="min-w-0">

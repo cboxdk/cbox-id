@@ -53,7 +53,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose account'])] class ex
                         @endif
                     </span>
                     @if ($account['active'])
-                        <span class="text-xs font-medium" style="color:var(--accent)">Active</span>
+                        <span class="text-xs font-medium" style="color:var(--accent-strong)">Active</span>
                     @endif
                 </button>
             </li>

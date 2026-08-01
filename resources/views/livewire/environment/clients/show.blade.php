@@ -192,7 +192,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $client->name }}</h1>
             @if ($client->first_party)
-                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">First-party</span>
+                <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent-strong)">First-party</span>
             @endif
             <span class="badge">{{ ucfirst($client->type->value) }}</span>
         </div>

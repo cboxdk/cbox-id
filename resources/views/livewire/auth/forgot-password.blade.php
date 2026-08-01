@@ -57,7 +57,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
             <p class="font-medium">Check your inbox</p>
             <p class="mt-1" style="color:var(--muted)">If an account exists for <b>{{ $email }}</b>, a reset link is on its way.</p>
             @if ($devUrl)
-                <a href="{{ $devUrl }}" class="mt-2 inline-block underline underline-offset-2 mono" style="color:var(--accent);word-break:break-all">{{ $devUrl }}</a>
+                <a href="{{ $devUrl }}" class="mt-2 inline-block underline underline-offset-2 mono" style="color:var(--accent-strong);word-break:break-all">{{ $devUrl }}</a>
             @endif
         </div>
     @else
@@ -79,6 +79,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
     @endif
 
     <p class="mt-6 text-sm text-center" style="color:var(--muted)">
-        Remembered it? <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Back to sign in</a>
+        Remembered it? <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Back to sign in</a>
     </p>
 </div>

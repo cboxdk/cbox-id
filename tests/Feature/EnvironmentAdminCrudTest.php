@@ -594,3 +594,21 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
 
     expect($scoped)->toBeTrue();
 });
+
+/**
+ * The eyebrow, in rendered HTML rather than in the resolver.
+ *
+ * The resolver is unit-tested a route at a time, which proves it can answer — not that
+ * anything asks. This walks the whole chain: layout → page-header → ConsoleLocation →
+ * ConsoleNavigation, on a real request, on the plane where the eyebrow was missing.
+ */
+it('renders the area name above the page title', function (): void {
+    crudSetup();
+
+    // Matched on the eyebrow element itself, not on the word: "People" is also the
+    // sidebar's own label for that area, so a bare assertSee passes with the eyebrow
+    // deleted — which is exactly what happened the first time this test was written.
+    $this->get(route('environment.users'))
+        ->assertOk()
+        ->assertSee('<p class="cbx-page-eyebrow">People</p>', escape: false);
+});

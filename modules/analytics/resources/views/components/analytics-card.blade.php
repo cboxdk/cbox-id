@@ -13,7 +13,7 @@
             </p>
         </div>
     </div>
-    <a href="{{ route('analytics.overview') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent)">
+    <a href="{{ route('analytics.overview') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent-strong)">
         View analytics &rarr;
     </a>
 </div>

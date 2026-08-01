@@ -672,7 +672,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                 <div class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="session-{{ $s->id }}">
                     <div class="min-w-0 flex-1">
                         <p class="text-sm truncate">{{ $s->user_agent ?? 'Unknown device' }}</p>
-                        <p class="text-xs truncate" style="color:var(--faint)">{{ $s->ip ?? '—' }} · {{ $s->last_active_at?->diffForHumans() ?? 'never' }}@if (in_array('impersonation', $s->amr, true)) · <span style="color:var(--accent)">impersonation</span>@endif</p>
+                        <p class="text-xs truncate" style="color:var(--faint)">{{ $s->ip ?? '—' }} · {{ $s->last_active_at?->diffForHumans() ?? 'never' }}@if (in_array('impersonation', $s->amr, true)) · <span style="color:var(--accent-strong)">impersonation</span>@endif</p>
                     </div>
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)" wire:click="revokeSession('{{ $s->id }}')" wire:confirm="Revoke this session?">Revoke</button>
                 </div>
@@ -695,7 +695,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                 @php $cat = $orgCatalog[$m['org']] ?? ['roles' => collect(), 'rolesById' => collect(), 'appNames' => [], 'permsByRole' => [], 'assigned' => []]; @endphp
                 <div class="rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="mem-{{ $m['org'] }}">
                     <div class="flex items-center gap-2">
-                        <a href="{{ route('environment.organizations.show', $m['org']) }}" class="min-w-0 flex-1 truncate text-sm font-medium" style="color:var(--accent)">{{ $m['orgName'] }}</a>
+                        <a href="{{ route('environment.organizations.show', $m['org']) }}" class="min-w-0 flex-1 truncate text-sm font-medium" style="color:var(--accent-strong)">{{ $m['orgName'] }}</a>
                         {{-- Explicit save, NOT wire:change: on a focused select a stray arrow-key
                              fires `change` and silently demoted an Owner with no way back. --}}
                         <div class="flex items-center gap-1.5 shrink-0" x-data="{ saved: @js($m['role']->value), val: @js($m['role']->value), busy: false }">

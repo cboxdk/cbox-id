@@ -96,7 +96,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
             </button>
         </form>
 
-        <button type="button" wire:click="$set('useRecovery', true)" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent)">
+        <button type="button" wire:click="$set('useRecovery', true)" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent-strong)">
             Use a recovery code instead
         </button>
     @else
@@ -116,7 +116,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
             </button>
         </form>
 
-        <button type="button" wire:click="$set('useRecovery', false)" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent)">
+        <button type="button" wire:click="$set('useRecovery', false)" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent-strong)">
             Use your authenticator app instead
         </button>
     @endif

@@ -202,7 +202,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
                             @endif
                             <span class="badge">{{ $environment->status }}</span>
                         </div>
-                        <a href="{{ $url }}" target="_blank" rel="noopener" class="mt-1 block text-sm truncate underline underline-offset-2" style="color:var(--accent)">{{ $url }}</a>
+                        <a href="{{ $url }}" target="_blank" rel="noopener" class="mt-1 block text-sm truncate underline underline-offset-2" style="color:var(--accent-strong)">{{ $url }}</a>
                     </div>
                     <a href="{{ route('workspace.environment.open', $environment->id) }}" class="btn btn-primary btn-sm shrink-0">Open ↗</a>
                 </div>

@@ -88,7 +88,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor authentication']
     </form>
 
     <p class="mt-6 text-sm text-center" style="color:var(--muted)">
-        <button type="button" wire:click="$toggle('recovery')" class="underline underline-offset-2" style="color:var(--accent)">
+        <button type="button" wire:click="$toggle('recovery')" class="underline underline-offset-2" style="color:var(--accent-strong)">
             {{ $recovery ? 'Use your authenticator app instead' : 'Use a recovery code instead' }}
         </button>
     </p>

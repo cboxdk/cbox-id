@@ -6,59 +6,17 @@
     $account = $member?->account;
     $accountInitial = strtoupper(substr($account?->name ?? 'W', 0, 1));
 
-    // Two-tier IA (grouped), role-aware. Same shape as the environment console so the
-    // whole product navigates consistently. Empty groups (a role sees none of a
-    // group's pages) are dropped.
-    $groups = array_values(array_filter(array_map(fn (array $g): array => [
-        'label' => $g['label'], 'icon' => $g['icon'],
-        'pages' => array_values(array_filter($g['pages'])),
-    ], [
-        ['label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
-            ['route' => 'workspace.home', 'label' => 'Projects'],
-        ]],
-        ['label' => 'People', 'icon' => 'members', 'pages' => [
-            $member?->role->canReadMembers() ? ['route' => 'workspace.members', 'label' => 'Members'] : null,
-        ]],
-        ['label' => 'Developers', 'icon' => 'clients', 'pages' => [
-            $member?->role->canManageMembers() ? ['route' => 'workspace.api-keys', 'label' => 'API keys'] : null,
-            $member?->role->canManageEnvironments() ? ['route' => 'workspace.environment-keys', 'label' => 'Environment keys'] : null,
-            $member?->role->canManageEnvironments() ? ['route' => 'workspace.environment-domains', 'label' => 'Domains'] : null,
-        ]],
-        ['label' => 'Account', 'icon' => 'settings', 'pages' => [
-            $member?->role->canReadMembers() ? ['route' => 'workspace.activity', 'label' => 'Activity'] : null,
-            $member?->role->canReadBilling() ? ['route' => 'workspace.billing', 'label' => 'Billing'] : null,
-            $member?->role->canManageMembers() ? ['route' => 'workspace.settings', 'label' => 'Settings'] : null,
-        ]],
-        // The member's OWN identity/2FA/passkeys — a personal concern, not an
-        // account-level setting, so it gets its own section.
-        ['label' => 'Personal', 'icon' => 'shield-check', 'pages' => [
-            ['route' => 'workspace.security', 'label' => 'Profile'],
-        ]],
-    ]), fn (array $g): bool => $g['pages'] !== []));
+    // Two-tier IA (grouped), role-aware — declared once in ConsoleNavigation so the
+    // sidebar and the eyebrow above each page title cannot disagree.
+    $nav = app(\App\Platform\Navigation\ConsoleNavigation::class)->workspace($member?->role);
 
+    // The projections the shell components consume live on ConsoleNav, so all three
+    // planes build their rail and sub-nav with the same code.
+    $groups = $nav->groups();
+    $activeGroup = ['label' => $nav->currentArea()->label];
+    $railAreas = $nav->rail();
+    $subnavPages = $nav->subnav();
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
-
-    // ── Shared two-tier shell (design system: guidelines/app-shell). TIER 1 = one
-    // rail icon per group; TIER 2 = the active group's pages, only when it has more
-    // than one. Several groups here are single-page (Projects, Members, Profile) —
-    // those deliberately render NO tier 2 at all.
-    $activeGroup = collect($groups)->first(
-        fn (array $g): bool => collect($g['pages'])->contains(fn (array $p): bool => $isActive($p['route']))
-    ) ?? $groups[0];
-
-    $railAreas = collect($groups)->map(fn (array $g): array => [
-        'key' => $g['label'],
-        'label' => $g['label'],
-        'icon' => $g['icon'],
-        'href' => route($g['pages'][0]['route']),
-        'active' => $g['label'] === $activeGroup['label'],
-        'current' => $g['label'] === $activeGroup['label'] && count($g['pages']) === 1,
-    ])->all();
-    $subnavPages = collect($activeGroup['pages'])->map(fn (array $p): array => [
-        'href' => route($p['route']),
-        'label' => $p['label'],
-        'active' => $isActive($p['route']),
-    ])->all();
 @endphp
 {{-- The workspace console shell — the account-member (buyer) plane. Self-contained:
      it assumes NO org-user or operator context (an account member has neither). --}}

@@ -244,3 +244,67 @@ it('lets an organization override the environment default theme', function (): v
         ->assertSee('--accent:#ff3366', false)
         ->assertDontSee('--accent:#00aa88', false);
 });
+
+/**
+ * A brand colour is chosen to look right as a button fill, where white or near-black
+ * sits on top of it. Used the other way round — as link and icon TEXT on the page
+ * ground — the same colour can land near 3:1 and fail AA for body text. The platform's
+ * own dark accent measured 3.08:1 on the card and 2.82:1 on its soft fill, and every
+ * coloured link in dark mode was rendered in it.
+ *
+ * `readableOn` walks the SAME hue toward the ground's opposite so a tenant's blue stays
+ * their blue, just a legible one.
+ */
+it('finds a legible shade of a brand colour without changing its hue', function (): void {
+    // A mid blue on a dark ground: too dim to read, and it must be brightened.
+    $dim = Color::readableOn('#3b6fd4', '#1e1e21');
+
+    expect(Color::contrastRatio('#3b6fd4', '#1e1e21'))->toBeLessThan(4.5)
+        ->and(Color::contrastRatio($dim, '#1e1e21'))->toBeGreaterThanOrEqual(4.5);
+
+    // Still blue: the blue channel stays the largest of the three.
+    [$r, $g, $b] = [hexdec(substr($dim, 1, 2)), hexdec(substr($dim, 3, 2)), hexdec(substr($dim, 5, 2))];
+    expect($b)->toBeGreaterThan($r)->and($b)->toBeGreaterThan($g);
+
+    // Already legible: returned untouched, so a tenant whose colour is fine keeps it
+    // exactly.
+    expect(Color::readableOn('#1e40af', '#ffffff'))->toBe('#1e40af');
+
+    // Nowhere left to go — white on white. Honest best effort rather than an exception
+    // or a substituted colour the tenant never picked.
+    expect(Color::readableOn('#ffffff', '#ffffff'))->toBeString();
+});
+
+/**
+ * The token has to be EMITTED per tenant, not merely used. It is not in the base
+ * override set, so on a white-labeled page it would otherwise fall through to the
+ * platform's own blue — readable, but not the customer's colour, which is a worse bug
+ * than the contrast one it fixes.
+ */
+it('emits a legible accent for the tenant colour in both modes', function (): void {
+    $appearance = new Appearance(
+        'contrast',
+        ThemeRadius::Medium,
+        ThemeFont::System,
+        new ThemeMode('#3b6fd4', '#ffffff', '#111111', '#666666'),
+        new ThemeMode('#3b6fd4', '#1e1e21', '#f5f5f5', '#a0a0a0'),
+    );
+
+    $css = (string) AppearanceCss::render($appearance);
+
+    expect($css)->toContain('--accent-strong:');
+
+    // Pull each mode's value out of the emitted block and check it against that mode's
+    // own background — the whole point is that the two modes get different answers.
+    // Three occurrences, not two: dark is emitted for both the media query and the
+    // explicit data-theme override.
+    preg_match_all('/--accent-strong:(#[0-9a-f]{6});/i', $css, $matches);
+    [$lightAccent, $darkAccent] = [$matches[1][0], $matches[1][1]];
+
+    expect($matches[1])->toHaveCount(3)
+        ->and($matches[1][2])->toBe($darkAccent);
+
+    expect(Color::contrastRatio($lightAccent, '#ffffff'))->toBeGreaterThanOrEqual(4.5)
+        ->and(Color::contrastRatio($darkAccent, '#1e1e21'))->toBeGreaterThanOrEqual(4.5)
+        ->and($lightAccent)->not->toBe($darkAccent);
+});

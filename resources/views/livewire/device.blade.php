@@ -176,7 +176,7 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
         {{-- Step 2: consent — show WHAT is being authorized before approving. --}}
         <div class="card p-5">
             <div class="flex items-center gap-3">
-                <span class="grid place-items-center rounded-full" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+                <span class="grid place-items-center rounded-full" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent-strong)">
                     <x-icon name="shield" class="w-5 h-5" />
                 </span>
                 <div class="min-w-0">
@@ -186,7 +186,7 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
             </div>
 
             <div class="mt-5 flex items-center gap-3 rounded-lg px-3 py-2.5" style="background:var(--accent-soft)">
-                <span class="grid place-items-center rounded-full text-sm font-semibold" style="width:2rem;height:2rem;background:var(--surface);color:var(--accent)">
+                <span class="grid place-items-center rounded-full text-sm font-semibold" style="width:2rem;height:2rem;background:var(--surface);color:var(--accent-strong)">
                     {{ strtoupper(substr($me->name(), 0, 1)) }}
                 </span>
                 <div class="min-w-0">

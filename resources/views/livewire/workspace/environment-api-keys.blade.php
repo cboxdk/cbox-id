@@ -161,7 +161,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Environment keys</h1>
         <p class="mt-1 text-sm" style="color:var(--muted)">
             Machine credentials for the per-environment management API — provision organizations and users inside one environment. Each key carries explicit scopes.
-            <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noopener" class="underline underline-offset-2" style="color:var(--accent)">API reference ↗</a>
+            <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noopener" class="underline underline-offset-2" style="color:var(--accent-strong)">API reference ↗</a>
         </p>
     </div>
 

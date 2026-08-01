@@ -133,7 +133,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
         </button>
     </form>
 
-    <button type="button" wire:click="resend" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent)"
+    <button type="button" wire:click="resend" class="mt-4 text-sm underline underline-offset-2" style="color:var(--accent-strong)"
             wire:loading.attr="disabled" wire:target="resend">
         Didn't get it? Resend code
     </button>

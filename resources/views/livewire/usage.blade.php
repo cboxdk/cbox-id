@@ -73,7 +73,7 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
 
     @if ($snapshot === [])
         <div class="card p-10 text-center">
-            <span class="grid place-items-center rounded-full mx-auto mb-4" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent)">
+            <span class="grid place-items-center rounded-full mx-auto mb-4" style="width:2.75rem;height:2.75rem;background:var(--accent-soft);color:var(--accent-strong)">
                 <x-icon name="audit" class="w-5 h-5" />
             </span>
             <p class="font-semibold">No activity recorded yet</p>

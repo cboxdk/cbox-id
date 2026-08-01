@@ -117,7 +117,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New role'])] class e
                     <div class="cbx-empty">
                         <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
                         <h3>No permissions declared</h3>
-                        <p>An app can register its catalog over the SDK, or you can <a href="{{ route('environment.permissions') }}" style="color:var(--accent)">add permissions manually</a>.</p>
+                        <p>An app can register its catalog over the SDK, or you can <a href="{{ route('environment.permissions') }}" style="color:var(--accent-strong)">add permissions manually</a>.</p>
                     </div>
                 @endforelse
             </div>

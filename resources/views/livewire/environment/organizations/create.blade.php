@@ -103,7 +103,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New organization'])]
         </div>
 
         <div x-data="{ open: @entangle('advanced') }">
-            <button type="button" class="text-xs font-medium inline-flex items-center gap-1" style="color:var(--accent)" x-on:click="open = !open">
+            <button type="button" class="text-xs font-medium inline-flex items-center gap-1" style="color:var(--accent-strong)" x-on:click="open = !open">
                 <x-icon name="settings" class="w-3.5 h-3.5" /> Advanced <span x-text="open ? '−' : '+'"></span>
             </button>
 

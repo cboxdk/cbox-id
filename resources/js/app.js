@@ -408,6 +408,25 @@ document.addEventListener('alpine:init', () => {
             return { ratio: r.toFixed(2), level: r >= 7 ? 'AAA' : r >= 4.5 ? 'AA' : r >= 3 ? 'AA Large' : 'Fail', pass: r >= 4.5 };
         },
 
+        // The JS twin of App\Platform\Appearance\Color::readableOn. Same 20 steps and
+        // the same 4.5 target, so the preview and the injected stylesheet agree.
+        readableOn(color, background, target = 4.5) {
+            if (this.contrast(color, background) >= target) return color
+            const toward = this._lum(background) < 0.5 ? 1 : 0
+            const c = this._chan(color)
+            let best = color, bestRatio = this.contrast(color, background)
+            for (let step = 1; step <= 20; step++) {
+                const t = step / 20
+                const candidate = '#' + c
+                    .map((v) => Math.round(Math.max(0, Math.min(1, v + (toward - v) * t)) * 255).toString(16).padStart(2, '0'))
+                    .join('')
+                const ratio = this.contrast(candidate, background)
+                if (ratio > bestRatio) { best = candidate; bestRatio = ratio }
+                if (ratio >= target) return candidate
+            }
+            return best
+        },
+
         // CSS-variable map for the preview surface — identical derivation to the resolver.
         vars(mode) {
             const m = this.draft[mode];
@@ -417,6 +436,10 @@ document.addEventListener('alpine:init', () => {
                 // preview's CTA shows the chosen colour at rest, matching what the server injects.
                 '--primary': m.primary, '--primary-foreground': on,
                 '--accent': m.primary, '--ring': m.primary, '--accent-foreground': on,
+                // Mirrors Color::readableOn — the brand colour walked along its own hue
+                // until it is legible as TEXT on this background. Without it the preview
+                // would show the platform blue where the real page shows the tenant's.
+                '--accent-strong': this.readableOn(m.primary, m.background),
                 '--accent-soft': `color-mix(in srgb, ${m.primary} 12%, transparent)`,
                 '--accent-edge': `color-mix(in srgb, ${m.primary} 32%, transparent)`,
                 '--background': m.background, '--foreground': m.foreground,

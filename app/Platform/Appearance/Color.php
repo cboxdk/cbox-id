@@ -46,6 +46,71 @@ final class Color
     }
 
     /**
+     * The nearest shade of a brand colour that is legible AS TEXT on a given ground.
+     *
+     * A brand colour is chosen to look right as a filled button, where it carries white
+     * or near-black on top of it. Used the other way round — coloured text on the page
+     * ground — a mid-tone blue that is perfect on a button can sit at 3:1, which fails
+     * AA for body text. That is not hypothetical: the platform's own dark accent
+     * measured 3.08:1 on the card and 2.82:1 on its soft fill, and every "View activity
+     * log"-style link in dark mode was rendered in it.
+     *
+     * Rather than force a second colour on the tenant, this walks the SAME hue toward
+     * the ground's opposite in small steps and stops at the first shade clearing
+     * `$target`. A tenant's blue stays their blue; it just becomes a readable one. If
+     * even the extreme is short of the target — a ground with nowhere left to go — the
+     * most legible shade found is returned, because unreadable-but-honest beats
+     * substituting a colour they never chose.
+     */
+    public static function readableOn(string $color, string $background, float $target = 4.5): string
+    {
+        if (self::contrastRatio($color, $background) >= $target) {
+            return $color;
+        }
+
+        // Toward white on a dark ground, toward black on a light one.
+        $toward = self::relativeLuminance($background) < 0.5 ? 1.0 : 0.0;
+
+        [$r, $g, $b] = self::channels($color);
+        $best = $color;
+        $bestRatio = self::contrastRatio($color, $background);
+
+        for ($step = 1; $step <= 20; $step++) {
+            $t = $step / 20;
+            $candidate = self::hex(
+                $r + ($toward - $r) * $t,
+                $g + ($toward - $g) * $t,
+                $b + ($toward - $b) * $t,
+            );
+
+            $ratio = self::contrastRatio($candidate, $background);
+
+            if ($ratio > $bestRatio) {
+                $best = $candidate;
+                $bestRatio = $ratio;
+            }
+
+            if ($ratio >= $target) {
+                return $candidate;
+            }
+        }
+
+        return $best;
+    }
+
+    private static function hex(float $r, float $g, float $b): string
+    {
+        $channel = static fn (float $c): string => str_pad(
+            dechex((int) round(max(0.0, min(1.0, $c)) * 255)),
+            2,
+            '0',
+            STR_PAD_LEFT,
+        );
+
+        return '#'.$channel($r).$channel($g).$channel($b);
+    }
+
+    /**
      * @return array{float, float, float} normalized 0–1 R,G,B
      */
     private static function channels(string $hex): array

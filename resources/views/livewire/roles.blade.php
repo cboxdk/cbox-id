@@ -183,7 +183,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
             <p class="text-sm" style="color:var(--foreground)">
                 <b>Cbox ID assigns roles; your app decides what they can do.</b>
                 A role is a label stamped into the token — <b>app roles</b> are declared by each app (below, read-only), and <b>org roles</b> are ones you define for your whole organization. This is different from
-                <a href="{{ route('members') }}" class="underline" style="color:var(--accent)">console access</a> (owner/admin/member), which is who can run this console.
+                <a href="{{ route('members') }}" class="underline" style="color:var(--accent-strong)">console access</a> (owner/admin/member), which is who can run this console.
             </p>
         </div>
     </div>

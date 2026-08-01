@@ -256,7 +256,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
                  style="border-color:var(--border);grid-template-columns:2fr 1.5fr 1fr 1fr auto">
                 <div class="flex items-center gap-3 min-w-0">
                     <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"
-                          style="width:1.9rem;height:1.9rem;background:var(--accent-soft);color:var(--accent)">
+                          style="width:1.9rem;height:1.9rem;background:var(--accent-soft);color:var(--accent-strong)">
                         {{ strtoupper(substr($env['name'], 0, 1)) }}
                     </span>
                     <div class="min-w-0">

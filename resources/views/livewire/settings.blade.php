@@ -68,7 +68,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
     <x-page-header title="Settings" :help="\App\Platform\Help\HelpTopic::Settings">
         <x-slot:subtitle>
             The organization you administer. Manage your own security under
-            <a href="{{ route('account') }}" class="underline" style="color:var(--accent)">My account</a>.
+            <a href="{{ route('account') }}" class="underline" style="color:var(--accent-strong)">My account</a>.
         </x-slot:subtitle>
     </x-page-header>
 
@@ -132,7 +132,7 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
                 <div>
                     <h2 class="cbx-panel-title">Login branding</h2>
                     <p class="cbx-panel-desc">Theme your organization's sign-in page. Your team signs in at
-                        <a href="{{ route('login.branded', $org->slug) }}" class="mono underline" style="color:var(--accent)">/o/{{ $org->slug }}/login</a>.</p>
+                        <a href="{{ route('login.branded', $org->slug) }}" class="mono underline" style="color:var(--accent-strong)">/o/{{ $org->slug }}/login</a>.</p>
                 </div>
             </div>
             <div class="cbx-panel-body">

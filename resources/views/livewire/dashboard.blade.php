@@ -147,7 +147,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
         <div class="card {{ $progress !== null ? 'lg:col-span-2' : 'lg:col-span-3' }}">
             <div class="px-5 py-4 border-b flex items-center justify-between" style="border-color:var(--border)">
                 <h3 class="font-semibold">Recent activity</h3>
-                <a href="{{ route('audit') }}" class="text-sm" style="color:var(--accent)">View activity log</a>
+                <a href="{{ route('audit') }}" class="text-sm" style="color:var(--accent-strong)">View activity log</a>
             </div>
             @if ($recent->isEmpty())
                 <div class="px-5 py-10 text-center text-sm" style="color:var(--faint)">No activity recorded yet.</div>
@@ -202,7 +202,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
                                 @if ($step->done)
                                     <p class="text-sm" style="color:var(--muted-foreground)">{{ $step->title() }}</p>
                                 @else
-                                    <a href="{{ route($step->route()) }}" wire:navigate class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">{{ $step->title() }} →</a>
+                                    <a href="{{ route($step->route()) }}" wire:navigate class="text-sm font-medium inline-flex items-center" style="color:var(--accent-strong);min-height:1.5rem">{{ $step->title() }} →</a>
                                 @endif
                             </div>
                         </li>

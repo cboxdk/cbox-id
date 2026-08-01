@@ -81,7 +81,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Applications'])] cla
                     <p class="text-sm truncate mono" style="color:var(--muted)">{{ $client->client_id }}</p>
                 </div>
                 @if ($client->first_party)
-                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent)">First-party</span>
+                    <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent-strong)">First-party</span>
                 @endif
                 <span class="badge">{{ ucfirst($client->type->value) }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />

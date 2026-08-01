@@ -46,7 +46,7 @@ new #[Layout('components.layouts.app', ['title' => 'Confirm it\'s you'])] class 
 
 <div class="max-w-md">
     <div class="mb-6">
-        <span class="grid place-items-center rounded-full mb-4" style="width:2.5rem;height:2.5rem;background:var(--accent-soft);color:var(--accent)">
+        <span class="grid place-items-center rounded-full mb-4" style="width:2.5rem;height:2.5rem;background:var(--accent-soft);color:var(--accent-strong)">
             <x-icon name="shield" class="w-5 h-5" />
         </span>
         <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Confirm it's you</h1>

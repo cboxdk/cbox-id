@@ -74,8 +74,8 @@ new #[Layout('components.layouts.app', ['title' => 'Get started'])] class extend
         @if ($progress->isComplete())
             <p class="mt-3 text-sm" style="color:var(--muted-foreground)">
                 That is everything on the list. From here the console is mostly somewhere you
-                come back to — the <a href="{{ route('audit') }}" wire:navigate class="underline" style="color:var(--accent)">activity log</a>
-                and <a href="{{ route('governance') }}" wire:navigate class="underline" style="color:var(--accent)">access reviews</a>
+                come back to — the <a href="{{ route('audit') }}" wire:navigate class="underline" style="color:var(--accent-strong)">activity log</a>
+                and <a href="{{ route('governance') }}" wire:navigate class="underline" style="color:var(--accent-strong)">access reviews</a>
                 are the two worth a standing habit.
             </p>
         @elseif ($progress->next() !== null)

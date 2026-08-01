@@ -36,75 +36,17 @@
 
     // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
     // Every resource here is env-scoped (BelongsToEnvironment); the account-member
-    // admin gets full CRUD on behalf of the environment's organizations.
-    $groups = [
-        ['label' => 'Overview', 'icon' => 'dashboard', 'pages' => [
-            ['route' => 'environment.home', 'label' => 'Overview'],
-            ['route' => 'environment.analytics', 'label' => 'Analytics'],
-            ['route' => 'environment.approvals', 'label' => 'Agent approvals'],
-        ]],
-        ['label' => 'Tenants', 'icon' => 'layers', 'pages' => [
-            ['route' => 'environment.organizations', 'label' => 'Organizations'],
-        ]],
-        ['label' => 'People', 'icon' => 'members', 'pages' => [
-            ['route' => 'environment.users', 'label' => 'Users'],
-            ['route' => 'environment.roles', 'label' => 'Roles'],
-            ['route' => 'environment.permissions', 'label' => 'Permissions'],
-        ]],
-        ['label' => 'Sign-in', 'icon' => 'connections', 'pages' => [
-            ['route' => 'environment.connections', 'label' => 'Single sign-on'],
-            ['route' => 'environment.sso-providers', 'label' => 'Login methods'],
-            ['route' => 'environment.directories', 'label' => 'Directories'],
-            ['route' => 'environment.provisioning', 'label' => 'Outbound sync'],
-        ]],
-        ['label' => 'Access control', 'icon' => 'shield-check', 'pages' => [
-            ['route' => 'environment.governance', 'label' => 'Access reviews'],
-            ['route' => 'environment.sod-policies', 'label' => 'Conflict rules'],
-        ]],
-        ['label' => 'Developers', 'icon' => 'clients', 'pages' => [
-            ['route' => 'environment.clients', 'label' => 'Applications'],
-            ['route' => 'environment.webhooks', 'label' => 'Webhooks'],
-            ['route' => 'environment.hooks', 'label' => 'Event hooks'],
-            ['route' => 'environment.vault', 'label' => 'Stored tokens'],
-        ]],
-        ['label' => 'Logs', 'icon' => 'audit', 'pages' => [
-            ['route' => 'environment.audit', 'label' => 'Audit log'],
-            ['route' => 'environment.audit-streams', 'label' => 'Log streaming'],
-        ]],
-        ['label' => 'Settings', 'icon' => 'settings', 'pages' => [
-            ['route' => 'environment.settings', 'label' => 'Settings'],
-            ['route' => 'environment.auth-policy', 'label' => 'Sign-in rules'],
-            ['route' => 'environment.appearance', 'label' => 'Appearance'],
-        ]],
-    ];
+    // admin gets full CRUD on behalf of the environment's organizations. Declared once
+    // in ConsoleNavigation so the sidebar and the page eyebrow read the same list.
+    $nav = app(\App\Platform\Navigation\ConsoleNavigation::class)->environment();
 
-    // A nav item stays active on its own detail/create routes (e.g. environment.users
-    // → environment.users.show) but NOT on a sibling that merely shares a prefix
-    // (environment.audit must not light up on environment.audit-streams).
+    // The projections the shell components consume live on ConsoleNav, so all three
+    // planes build their rail and sub-nav with the same code.
+    $groups = $nav->groups();
+    $activeGroup = ['label' => $nav->currentArea()->label];
+    $railAreas = $nav->rail();
+    $subnavPages = $nav->subnav();
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
-
-    // ── Shared two-tier shell. TIER 1 = one rail icon per group; TIER 2 = the active
-    // group's pages, rendered only when it has more than one (design system:
-    // guidelines/app-shell). $groups above is already that shape; below is only the
-    // projection the shell components consume. The mobile sheet keeps the flat
-    // grouped list — a rail is a pointer affordance, not a touch one.
-    $activeGroup = collect($groups)->first(
-        fn (array $g): bool => collect($g['pages'])->contains(fn (array $p): bool => $isActive($p['route']))
-    ) ?? $groups[0];
-
-    $railAreas = collect($groups)->map(fn (array $g): array => [
-        'key' => $g['label'],
-        'label' => $g['label'],
-        'icon' => $g['icon'],
-        'href' => route($g['pages'][0]['route']),
-        'active' => $g['label'] === $activeGroup['label'],
-        'current' => $g['label'] === $activeGroup['label'] && count($g['pages']) === 1,
-    ])->all();
-    $subnavPages = collect($activeGroup['pages'])->map(fn (array $p): array => [
-        'href' => route($p['route']),
-        'label' => $p['label'],
-        'active' => $isActive($p['route']),
-    ])->all();
 @endphp
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
      Distinct from the org-user console (subjects) and the account/workspace console. --}}

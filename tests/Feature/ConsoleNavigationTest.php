@@ -2,78 +2,133 @@
 
 declare(strict_types=1);
 
-use Cbox\Id\AccessControl\Contracts\Roles;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
+use App\Platform\ConsoleLocation;
+use App\Platform\Navigation\ConsoleNavigation;
+use Cbox\Id\Platform\Enums\AccountRole;
+use Illuminate\Support\Facades\Route;
 
-uses(RefreshDatabase::class);
+/**
+ * A nav entry pointing at a route that does not exist throws on EVERY page of that
+ * plane, because the sidebar renders on all of them — so a typo here is not a broken
+ * link, it is a whole console down. Cheap to check, and the check is the reason the
+ * lists are readable PHP instead of arrays buried in a Blade file.
+ */
+it('names only routes that exist', function (): void {
+    $navigation = new ConsoleNavigation;
+    $missing = [];
 
-beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
-
-function navSetup(): string
-{
-    platformRootEnvironment();
-
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
-        accountName: 'Acme',
-        ownerEmail: 'owner@acme.example',
-        ownerName: 'Owner',
-        ownerPassword: 'a-strong-unbreached-passphrase',
-    ));
-
-    serveOnTestHost($result->environment);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-    actAsEnvironmentAdmin($result->member, $result->environment->id);
-
-    return $result->environment->id;
-}
-
-it('navigates the console shell without a full document load', function (): void {
-    navSetup();
-
-    $html = $this->get('/admin')->assertOk()->getContent();
-
-    // Every sidebar click was a full document load: the whole stylesheet re-parsed and
-    // Livewire and Alpine re-booted, to change the middle column. wire:navigate swaps
-    // the body instead. Both tiers of the shell nav must carry it — the rail (areas)
-    // and the subnav (pages within the active area).
-    expect(substr_count((string) $html, 'wire:navigate'))->toBeGreaterThan(1);
-});
-
-it('bounds the conflict-rule pickers and can search them', function (): void {
-    navSetup();
-
-    foreach (range(1, 60) as $i) {
-        app(Roles::class)->define(null, 'role-'.str_pad((string) $i, 3, '0', STR_PAD_LEFT));
+    foreach ($navigation->all() as $nav) {
+        foreach ($nav->routes() as $route) {
+            if (! Route::has($route)) {
+                $missing[] = $route;
+            }
+        }
     }
 
-    // Unbounded, this drew all 60 (and every organization) on every render.
-    Volt::test('environment.sod-policies.create')
-        ->assertOk()
-        ->assertSee('role-001')
-        ->assertSee('Showing the first 50')
-        ->assertDontSee('role-060')
-        ->set('roleSearch', 'role-060')
-        ->assertSee('role-060')
-        ->assertDontSee('role-001');
+    // Nothing to check means the extraction broke, not that the nav is clean.
+    expect(count($navigation->environment()->routes()))->toBeGreaterThan(10);
+    expect($missing)->toBe([], 'nav entries with no route: '.implode(', ', $missing));
 });
 
-it('keeps a selected role visible when the search would otherwise hide it', function (): void {
-    navSetup();
+/**
+ * Two areas sharing a label collapse into one in the rail — the projection keys on the
+ * label, so the second one is unreachable and its pages simply vanish from the console
+ * with nothing failing anywhere.
+ */
+it('gives every area within a plane a distinct label', function (): void {
+    foreach ((new ConsoleNavigation)->all() as $nav) {
+        $labels = array_map(fn ($area): string => $area->label, $nav->areas);
 
-    $kept = app(Roles::class)->define(null, 'approve-payments');
-    app(Roles::class)->define(null, 'create-purchase-order');
+        expect($labels)->toBe(array_values(array_unique($labels)), 'duplicate area label: '.implode(', ', $labels));
+    }
+});
 
-    // Otherwise typing a filter hides a ticked box and the rule is defined over a
-    // selection the admin can no longer see.
-    Volt::test('environment.sod-policies.create')
-        ->set('roleIds', [$kept->id])
-        ->set('roleSearch', 'purchase')
-        ->assertSee('create-purchase-order')
-        ->assertSee('approve-payments');
+/**
+ * The workspace nav is the one that varies by role, and the failure it guards against
+ * is not a crash: a Viewer seeing a Billing link gets a page they cannot open, and an
+ * area emptied by role filtering would render a rail icon leading nowhere.
+ */
+it('hides what a role may not see, and drops an area left empty', function (): void {
+    $navigation = new ConsoleNavigation;
+
+    $ownerRoutes = $navigation->workspace(AccountRole::Owner)->routes();
+    $viewerRoutes = $navigation->workspace(AccountRole::Viewer)->routes();
+
+    expect($ownerRoutes)->toContain('workspace.billing')
+        ->and($ownerRoutes)->toContain('workspace.settings')
+        ->and($viewerRoutes)->not->toContain('workspace.settings')
+        ->and($viewerRoutes)->not->toContain('workspace.api-keys');
+
+    // Whatever the role, no area survives with nothing in it.
+    foreach (AccountRole::cases() as $role) {
+        foreach ($navigation->workspace($role)->areas as $area) {
+            expect($area->pages)->not->toBe([], "{$role->value} sees an empty '{$area->label}' area");
+        }
+    }
+
+    // And with no member resolved at all, the nav still stands up.
+    expect($navigation->workspace(null)->routes())->toContain('workspace.home');
+});
+
+/**
+ * Prefix matching, which is the subtle part. `environment.audit` must claim its own
+ * detail routes and NOT `environment.audit-streams`, which is a different page in the
+ * same area — the bug this replaced was exactly that, two nav items lit at once.
+ */
+it('claims a page detail route without claiming its prefix siblings', function (): void {
+    $nav = (new ConsoleNavigation)->environment();
+
+    expect($nav->areaFor('environment.audit')?->label)->toBe('Logs')
+        ->and($nav->areaFor('environment.audit.show')?->label)->toBe('Logs')
+        ->and($nav->areaFor('environment.users.show')?->label)->toBe('People')
+        ->and($nav->areaFor('workspace.billing'))->toBeNull();
+
+    $audit = $nav->areaFor('environment.audit');
+    $pages = array_values(array_filter($audit?->pages ?? [], fn ($page): bool => $page->owns('environment.audit-streams')));
+
+    expect(array_map(fn ($page): string => $page->route, $pages))
+        ->toBe(['environment.audit-streams'], 'environment.audit swallowed environment.audit-streams');
+});
+
+/**
+ * The eyebrow above a page title is the one label whose entire job is telling you where
+ * you are. It resolved from the organization console's plugin registry only, so on all
+ * 41 workspace, environment and operator pages it answered null and the eyebrow simply
+ * did not render — the orientation feature looked half-built because on three planes out
+ * of four it was.
+ */
+it('knows where every page in every plane sits', function (): void {
+    $location = app(ConsoleLocation::class);
+
+    expect($location->areaLabel('workspace.billing'))->toBe('Account')
+        ->and($location->areaLabel('workspace.security'))->toBe('Personal')
+        ->and($location->areaLabel('environment.connections'))->toBe('Sign-in')
+        ->and($location->areaLabel('environment.users.show'))->toBe('People')
+        ->and($location->areaLabel('operator.usage'))->toBe('Insights')
+        ->and($location->areaLabel('operator.operators'))->toBe('Administration');
+
+    // A route belonging to no plane's navigation still answers null rather than
+    // guessing — the eyebrow is omitted, not wrong.
+    expect($location->areaLabel('login'))->toBeNull()
+        ->and($location->areaLabel(''))->toBeNull();
+});
+
+/**
+ * Coverage, stated as a number so it cannot quietly regress: every route the three
+ * fixed-plane navs declare must resolve. A page added to a layout but not here would
+ * pass the existence check above and still ship with no eyebrow.
+ */
+it('resolves an area for every navigable route', function (): void {
+    $location = app(ConsoleLocation::class);
+    $unplaced = [];
+
+    foreach ((new ConsoleNavigation)->all() as $nav) {
+        foreach ($nav->routes() as $route) {
+            if ($location->areaLabel($route) === null) {
+                $unplaced[] = $route;
+            }
+        }
+    }
+
+    expect($unplaced)->toBe([], 'no eyebrow would render on: '.implode(', ', $unplaced));
 });

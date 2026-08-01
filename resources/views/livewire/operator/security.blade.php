@@ -156,7 +156,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
     {{-- Two-factor authentication --}}
     <section class="card p-5">
         <div class="flex items-start gap-3 mb-4">
-            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+            <span class="grid place-items-center rounded-lg shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent-strong)">
                 <x-icon name="shield" class="w-5 h-5" />
             </span>
             <div class="min-w-0 flex-1">

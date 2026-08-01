@@ -215,7 +215,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             <p class="font-medium">Check your inbox</p>
             <p class="mt-1" style="color:var(--muted)">If <b>{{ $email }}</b> belongs to a workspace, we sent it a one-time sign-in link.</p>
             @if ($magicUrl)
-                <a href="{{ $magicUrl }}" class="mt-2 inline-block text-sm underline underline-offset-2 mono" style="color:var(--accent);word-break:break-all">{{ $magicUrl }}</a>
+                <a href="{{ $magicUrl }}" class="mt-2 inline-block text-sm underline underline-offset-2 mono" style="color:var(--accent-strong);word-break:break-all">{{ $magicUrl }}</a>
                 <p class="mt-1 text-xs" style="color:var(--faint)">Shown because email isn't configured in this environment.</p>
             @endif
         </div>
@@ -243,7 +243,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             <div>
                 <div class="flex items-center justify-between mb-1.5">
                     <label class="label" for="email" style="margin-bottom:0">Work email</label>
-                    <button type="button" wire:click="$set('identified', false)" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Use a different email</button>
+                    <button type="button" wire:click="$set('identified', false)" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent-strong)">Use a different email</button>
                 </div>
                 <input wire:model="email" id="email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false"
                        class="input input-lg" placeholder="you@yourco.example"
@@ -253,7 +253,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             <div>
                 <div class="flex items-center justify-between">
                     <label class="label" for="password">Password</label>
-                    <a href="{{ route('workspace.password.request') }}" class="text-xs underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
+                    <a href="{{ route('workspace.password.request') }}" class="text-xs underline underline-offset-2" style="color:var(--accent-strong)">Forgot password?</a>
                 </div>
                 {{-- x-init, not autofocus: HTML autofocus only fires at document parse,
                      and this input is morphed in after it — so focus stayed on <body>. --}}
@@ -284,6 +284,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     </div>
 
     <p class="mt-8 text-sm text-center" style="color:var(--muted)">
-        Don't have a workspace yet? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Create your identity platform</a>
+        Don't have a workspace yet? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Create your identity platform</a>
     </p>
 </div>

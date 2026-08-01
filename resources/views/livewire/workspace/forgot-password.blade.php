@@ -69,6 +69,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
     </form>
 
     <p class="mt-8 text-sm text-center" style="color:var(--muted)">
-        Remembered it? <a href="{{ route('workspace.login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Sign in</a>
+        Remembered it? <a href="{{ route('workspace.login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Sign in</a>
     </p>
 </div>

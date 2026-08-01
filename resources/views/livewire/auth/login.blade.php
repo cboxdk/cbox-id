@@ -230,7 +230,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     </p>
 
     @if ($pendingLink)
-        <div class="mt-5 rounded-lg px-3.5 py-3 text-sm" style="background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
+        <div class="mt-5 rounded-lg px-3.5 py-3 text-sm" style="background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
             <b>Connect your {{ $pendingLink }} account.</b> Sign in below with your existing method and we'll link it to your account.
         </div>
     @endif
@@ -246,7 +246,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             <p class="font-medium">Check your inbox</p>
             <p class="mt-1" style="color:var(--muted)">We sent a one-time sign-in link to <b>{{ $email }}</b>.</p>
             @if ($magicUrl)
-                <a href="{{ $magicUrl }}" class="mt-2 inline-block text-sm underline underline-offset-2 mono" style="color:var(--accent);word-break:break-all">{{ $magicUrl }}</a>
+                <a href="{{ $magicUrl }}" class="mt-2 inline-block text-sm underline underline-offset-2 mono" style="color:var(--accent-strong);word-break:break-all">{{ $magicUrl }}</a>
                 <p class="mt-1 text-xs" style="color:var(--faint)">Shown because email isn't configured in this environment.</p>
             @endif
         </div>
@@ -278,7 +278,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             <div>
                 <div class="flex items-center justify-between mb-1.5">
                     <label class="label" for="email" style="margin-bottom:0">Email</label>
-                    <button type="button" wire:click="$set('identified', false)" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Use a different email</button>
+                    <button type="button" wire:click="$set('identified', false)" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent-strong)">Use a different email</button>
                 </div>
                 <input wire:model="email" id="email" name="email" type="email" inputmode="email"
                        autocomplete="username" autocapitalize="none" spellcheck="false"
@@ -290,7 +290,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             <div>
                 <div class="flex items-center justify-between mb-1.5">
                     <label class="label" for="password" style="margin-bottom:0">Password</label>
-                    <a href="{{ route('password.request') }}" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent)">Forgot password?</a>
+                    <a href="{{ route('password.request') }}" class="text-xs font-medium underline underline-offset-2" style="color:var(--accent-strong)">Forgot password?</a>
                 </div>
                 {{-- x-init, not autofocus: HTML autofocus only fires at document parse,
                      and this input is morphed in after it — so focus stayed on <body>. --}}
@@ -326,7 +326,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
     @if (app(\App\Platform\SignupPolicy::class)->isOpen())
         <p class="mt-8 text-sm text-center" style="color:var(--muted)">
-            New organization? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Create one</a>
+            New organization? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Create one</a>
         </p>
     @endif
 </div>

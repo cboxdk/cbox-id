@@ -14,43 +14,16 @@
     $canSwitchEnv = $environments->count() > 1;
 
     // Two-tier IA, consistent with the workspace and environment consoles.
-    $groups = [
-        ['label' => 'Platform', 'icon' => 'layers', 'pages' => [
-            ['route' => 'operator.environments', 'label' => 'Environments'],
-            ['route' => 'operator.accounts', 'label' => 'Accounts'],
-            ['route' => 'operator.organizations', 'label' => 'Organizations'],
-        ]],
-        ['label' => 'Insights', 'icon' => 'dashboard', 'pages' => [
-            ['route' => 'operator.usage', 'label' => 'Usage'],
-            ['route' => 'operator.search', 'label' => 'Search'],
-        ]],
-        ['label' => 'Administration', 'icon' => 'shield', 'pages' => [
-            ['route' => 'operator.operators', 'label' => 'Operators'],
-            ['route' => 'operator.security', 'label' => 'Security'],
-        ]],
-    ];
+    $nav = app(\App\Platform\Navigation\ConsoleNavigation::class)->operator();
+
+    // The projections the shell components consume live on ConsoleNav, so all three
+    // planes build their rail and sub-nav with the same code.
+    $groups = $nav->groups();
+    $activeGroup = ['label' => $nav->currentArea()->label];
+    $railAreas = $nav->rail();
+    $subnavPages = $nav->subnav();
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
     $operatorInitial = strtoupper(substr($operator?->name ?? $operator?->email ?? 'O', 0, 1));
-
-    // ── Shared two-tier shell (design system: guidelines/app-shell). TIER 1 = one
-    // rail icon per group; TIER 2 = the active group's pages, only when it has >1.
-    $activeGroup = collect($groups)->first(
-        fn (array $g): bool => collect($g['pages'])->contains(fn (array $p): bool => $isActive($p['route']))
-    ) ?? $groups[0];
-
-    $railAreas = collect($groups)->map(fn (array $g): array => [
-        'key' => $g['label'],
-        'label' => $g['label'],
-        'icon' => $g['icon'],
-        'href' => route($g['pages'][0]['route']),
-        'active' => $g['label'] === $activeGroup['label'],
-        'current' => $g['label'] === $activeGroup['label'] && count($g['pages']) === 1,
-    ])->all();
-    $subnavPages = collect($activeGroup['pages'])->map(fn (array $p): array => [
-        'href' => route($p['route']),
-        'label' => $p['label'],
-        'active' => $isActive($p['route']),
-    ])->all();
 @endphp
 <!DOCTYPE html>
 <html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">

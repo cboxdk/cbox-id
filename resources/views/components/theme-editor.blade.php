@@ -102,7 +102,7 @@
                         <template x-for="r in radii" :key="r">
                             <button type="button" @click="draft.radius = r"
                                     class="px-2.5 py-1 rounded-md text-[12px] font-medium transition border"
-                                    :style="draft.radius === r ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-soft)' : 'border-color:var(--control-border);color:var(--muted-foreground)'"
+                                    :style="draft.radius === r ? 'border-color:var(--accent);color:var(--accent-strong);background:var(--accent-soft)' : 'border-color:var(--control-border);color:var(--muted-foreground)'"
                                     x-text="radiusLabel(r)"></button>
                         </template>
                     </div>
@@ -195,7 +195,7 @@
                             <button type="button" class="btn btn-primary w-full mt-4" style="justify-content:center" tabindex="-1">Continue</button>
 
                             <p class="mt-6 text-center text-[13px]" style="color:var(--muted-foreground)">
-                                Don't have an account? <span style="color:var(--accent);font-weight:600">Sign up</span>
+                                Don't have an account? <span style="color:var(--accent-strong);font-weight:600">Sign up</span>
                             </p>
                         </div>
 

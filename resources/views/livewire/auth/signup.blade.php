@@ -378,6 +378,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
     </form>
 
     <p class="mt-8 text-sm text-center" style="color:var(--muted)">
-        Already have an account? <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Sign in</a>
+        Already have an account? <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Sign in</a>
     </p>
 </div>

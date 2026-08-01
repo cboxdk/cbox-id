@@ -469,7 +469,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                         @if ($r)<span class="badge">{{ $r->name }}</span>@endif
                                     @empty
                                         @if ($me->isAdmin() && $accessRoles->isEmpty())
-                                            <a href="{{ route('roles') }}" wire:navigate class="text-xs" style="color:var(--accent)">No roles defined yet →</a>
+                                            <a href="{{ route('roles') }}" wire:navigate class="text-xs" style="color:var(--accent-strong)">No roles defined yet →</a>
                                         @else
                                             <span class="text-xs" style="color:var(--faint)">None</span>
                                         @endif

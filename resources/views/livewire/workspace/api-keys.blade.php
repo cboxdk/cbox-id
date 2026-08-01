@@ -106,7 +106,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
         <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">API keys</h1>
         <p class="mt-1 text-sm" style="color:var(--muted)">
             Machine credentials for the account management API — list environments, invite members, read billing. Each key carries a role.
-            <a href="/api/v1/openapi.yaml" target="_blank" rel="noopener" class="underline underline-offset-2" style="color:var(--accent)">API reference ↗</a>
+            <a href="/api/v1/openapi.yaml" target="_blank" rel="noopener" class="underline underline-offset-2" style="color:var(--accent-strong)">API reference ↗</a>
         </p>
     </div>
 

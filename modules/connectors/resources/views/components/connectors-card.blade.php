@@ -13,7 +13,7 @@
             </p>
         </div>
     </div>
-    <a href="{{ route('connectors.connections') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent)">
+    <a href="{{ route('connectors.connections') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent-strong)">
         View connections &rarr;
     </a>
 </div>

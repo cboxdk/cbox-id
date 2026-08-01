@@ -392,9 +392,9 @@ const id = new CboxID({'{'}
 
 await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, returns signed in</span></pre>
                     <p class="text-xs mt-2" style="color:var(--muted)">SDKs:
-                        <a href="https://www.npmjs.com/package/@cboxdk/id-js" class="underline" style="color:var(--accent)">id-js</a> ·
-                        <a href="https://www.npmjs.com/package/@cboxdk/id-react" class="underline" style="color:var(--accent)">id-react</a> ·
-                        <a href="https://pypi.org/project/cbox-id/" class="underline" style="color:var(--accent)">python</a>
+                        <a href="https://www.npmjs.com/package/@cboxdk/id-js" class="underline" style="color:var(--accent-strong)">id-js</a> ·
+                        <a href="https://www.npmjs.com/package/@cboxdk/id-react" class="underline" style="color:var(--accent-strong)">id-react</a> ·
+                        <a href="https://pypi.org/project/cbox-id/" class="underline" style="color:var(--accent-strong)">python</a>
                     </p>
                 </div>
             @endif
@@ -578,7 +578,7 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                             <tr>
                                 <td colspan="6" style="background:color-mix(in oklch, var(--secondary) 55%, transparent);padding:16px 20px">
                                     <p class="text-sm font-medium mb-1" style="color:var(--foreground)">Roles & permissions for {{ $client->name }}</p>
-                                    <p class="text-xs mb-3" style="color:var(--muted)">The app declares these — Cbox ID pulls them from its manifest URL (or the app pushes). They become assignable on the <a href="{{ route('members') }}" class="underline" style="color:var(--accent)">Members</a> page.</p>
+                                    <p class="text-xs mb-3" style="color:var(--muted)">The app declares these — Cbox ID pulls them from its manifest URL (or the app pushes). They become assignable on the <a href="{{ route('members') }}" class="underline" style="color:var(--accent-strong)">Members</a> page.</p>
                                     <form wire:submit="saveManifestUrl('{{ $client->client_id }}')" class="flex flex-wrap items-end gap-2 mb-3">
                                         <div class="flex-1 min-w-[18rem]">
                                             <label class="label" for="mf-{{ $client->client_id }}">Manifest URL</label>
@@ -593,7 +593,7 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                                     @php $declared = $roleCounts[$client->client_id] ?? 0; @endphp
                                     <p class="text-xs" style="color:var(--muted)">
                                         @if ($declared > 0)
-                                            {{ $declared }} role(s) declared. See them on <a href="{{ route('roles') }}" class="underline" style="color:var(--accent)">Roles</a>.
+                                            {{ $declared }} role(s) declared. See them on <a href="{{ route('roles') }}" class="underline" style="color:var(--accent-strong)">Roles</a>.
                                         @else
                                             No roles declared yet — set a manifest URL above and sync, or have the app push its manifest.
                                         @endif
@@ -653,7 +653,7 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                                     </td>
                                     <td>
                                         @if (($roleCounts[$client->client_id] ?? 0) > 0)
-                                            <a href="{{ route('roles') }}" class="badge" style="color:var(--accent)">{{ $roleCounts[$client->client_id] }} role(s)</a>
+                                            <a href="{{ route('roles') }}" class="badge" style="color:var(--accent-strong)">{{ $roleCounts[$client->client_id] }} role(s)</a>
                                         @else
                                             <span style="color:var(--faint)">—</span>
                                         @endif

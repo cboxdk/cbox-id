@@ -92,6 +92,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
     </form>
 
     <p class="mt-6 text-sm text-center" style="color:var(--muted)">
-        <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent)">Back to sign in</a>
+        <a href="{{ route('login') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Back to sign in</a>
     </p>
 </div>

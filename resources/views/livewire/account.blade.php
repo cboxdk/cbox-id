@@ -318,7 +318,7 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
 
 <div class="space-y-6">
     @if ($returnTo)
-        <a href="{{ $returnTo['url'] }}" class="inline-flex items-center gap-2 text-sm font-medium" style="color:var(--accent)">
+        <a href="{{ $returnTo['url'] }}" class="inline-flex items-center gap-2 text-sm font-medium" style="color:var(--accent-strong)">
             <x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" /> Return to {{ $returnTo['host'] }}
         </a>
     @endif

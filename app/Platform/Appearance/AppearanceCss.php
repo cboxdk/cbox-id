@@ -61,6 +61,13 @@ final class AppearanceCss
             "--primary:{$p};",
             "--primary-foreground:{$on};",
             "--accent:{$p};",
+            // The same brand colour, walked along its own hue until it is legible as
+            // TEXT on the tenant's background. --accent is picked to look right as a
+            // button fill; used as a link or an icon colour it can sit near 3:1, which
+            // fails AA for body text. Without this the token fell through to the
+            // platform's default blue on every white-labeled page — readable, but not
+            // the customer's colour, which is worse than the contrast bug it fixed.
+            '--accent-strong:'.Color::readableOn($p, $bg).';',
             "--ring:{$p};",
             "--accent-foreground:{$on};",
             "--accent-soft:color-mix(in srgb,{$p} 12%,transparent);",

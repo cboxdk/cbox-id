@@ -269,7 +269,7 @@ new #[Layout('components.layouts.environment', ['title' => 'SSO connection'])] c
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <h2 class="cbx-section-title">Organization</h2>
         @if ($orgName !== null)
-            <a href="{{ route('environment.organizations.show', $orgId) }}" class="mt-2 inline-block text-sm font-medium" style="color:var(--accent)">{{ $orgName }}</a>
+            <a href="{{ route('environment.organizations.show', $orgId) }}" class="mt-2 inline-block text-sm font-medium" style="color:var(--accent-strong)">{{ $orgName }}</a>
         @else
             <p class="mt-2 text-sm mono" style="color:var(--faint)">{{ $orgId }}</p>
         @endif

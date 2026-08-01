@@ -20,7 +20,7 @@
             No export runs yet.
         @endif
     </p>
-    <a href="{{ route('compliance.exports') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent)">
+    <a href="{{ route('compliance.exports') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent-strong)">
         View exports &amp; retention &rarr;
     </a>
 </div>

@@ -70,7 +70,7 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
     @forelse ($requests as $request)
         <div wire:key="request-{{ $request['id'] }}" class="card p-5 mb-4">
             <div class="flex items-center gap-3">
-                <span class="grid place-items-center rounded-full" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent)">
+                <span class="grid place-items-center rounded-full" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent-strong)">
                     <x-icon name="shield" class="w-5 h-5" />
                 </span>
                 <div class="min-w-0">

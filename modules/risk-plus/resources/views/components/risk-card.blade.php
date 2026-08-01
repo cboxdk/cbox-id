@@ -13,7 +13,7 @@
     </div>
     <p class="mt-2 text-3xl font-semibold tracking-tight mono" style="color:var(--foreground)">{{ $count }}</p>
     <p class="text-xs" style="color:var(--faint)">{{ $count === 1 ? 'signal elevated' : 'elevated' }} in the last 24 hours</p>
-    <a href="{{ route('risk-plus.events') }}" class="mt-3 inline-block text-sm font-medium" style="color:var(--accent)">
+    <a href="{{ route('risk-plus.events') }}" class="mt-3 inline-block text-sm font-medium" style="color:var(--accent-strong)">
         Review risk events &rarr;
     </a>
 </div>

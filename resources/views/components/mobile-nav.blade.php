@@ -38,7 +38,7 @@
     </span>
     <button type="button" @click="nav=true" aria-label="Open menu"
             class="inline-flex items-center gap-1.5 rounded-lg px-3 h-9 text-[13px] font-medium shrink-0"
-            style="background:var(--accent-soft);color:var(--accent)">
+            style="background:var(--accent-soft);color:var(--accent-strong)">
         <x-icon name="menu" class="w-[18px] h-[18px]" /> Menu
     </button>
 </div>
