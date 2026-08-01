@@ -239,3 +239,62 @@ it('resolves every $ref in the OpenAPI specs', function (): void {
         );
     }
 });
+
+/**
+ * A spec that names the wrong CREDENTIAL is worse than one that names none: a developer
+ * reading it, or a client generated from it, sends `Bearer cbid_env_…` at a route guarded
+ * by `scope:vault.manage` and gets a bare 401 with no hint the credential TYPE is wrong.
+ *
+ * Five of the six Token Vault operations declared an environment API key while the
+ * routes introspect an OAuth access token — and the spec contradicted its own prose two
+ * hundred lines above. Neither existing gate could see it: one checks that paths are
+ * documented, the other that response bodies match.
+ */
+it('declares a security scheme that matches each route\'s real middleware', function (): void {
+    $spec = Yaml::parseFile(resource_path('openapi/environment.yaml'));
+
+    // scope:<name> on the route → the scheme the spec must name for that operation.
+    $expected = [
+        'vault.manage' => 'VaultManagerToken',
+        'vault.lease' => 'AgentToken',
+    ];
+
+    $mismatches = [];
+
+    foreach (Route::getRoutes() as $route) {
+        $scope = null;
+
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, 'scope:')) {
+                $scope = substr($middleware, 6);
+            }
+        }
+
+        if ($scope === null || ! isset($expected[$scope])) {
+            continue;
+        }
+
+        // Routes are `api/v1/vault/...`; the spec's server carries the `/api/v1` prefix
+        // and its paths start at `/vault/...`. Strip it, or the loop silently matches
+        // nothing — which is exactly what the first version of this gate did.
+        $path = '/'.ltrim((string) $route->uri(), '/');
+        $path = (string) preg_replace('#^/api/v\d+#', '', $path);
+
+        foreach ($route->methods() as $method) {
+            $method = strtolower($method);
+
+            if ($method === 'head') {
+                continue;
+            }
+
+            $declared = $spec['paths'][$path][$method]['security'][0] ?? null;
+            $declared = is_array($declared) ? array_key_first($declared) : null;
+
+            if ($declared !== null && $declared !== $expected[$scope]) {
+                $mismatches[] = strtoupper($method)." {$path}: spec says {$declared}, route requires {$scope} ({$expected[$scope]})";
+            }
+        }
+    }
+
+    expect($mismatches)->toBe([], implode('; ', $mismatches));
+});

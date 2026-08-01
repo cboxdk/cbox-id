@@ -226,7 +226,7 @@ paths:
         Ownership is derived from the calling token's `org` claim and CANNOT be supplied
         in the body: the owner is the vault's tenancy boundary, and a caller-chosen owner
         would be no boundary at all.
-      security: [{ EnvironmentApiKey: [] }]
+      security: [{ VaultManagerToken: [] }]
       requestBody:
         required: true
         content:
@@ -257,7 +257,7 @@ paths:
     post:
       tags: [Token Vault]
       summary: Replace the sealed value, keeping the id and its grants
-      security: [{ EnvironmentApiKey: [] }]
+      security: [{ VaultManagerToken: [] }]
       parameters: [{ $ref: '#/components/parameters/Id' }]
       requestBody:
         required: true
@@ -294,7 +294,7 @@ paths:
       tags: [Token Vault]
       summary: Revoke a secret permanently
       description: No future lease can open it. Existing leases are not recalled — they are short-lived by design.
-      security: [{ EnvironmentApiKey: [] }]
+      security: [{ VaultManagerToken: [] }]
       parameters: [{ $ref: '#/components/parameters/Id' }]
       responses:
         '204': { description: Revoked. }
@@ -311,7 +311,7 @@ paths:
     post:
       tags: [Token Vault]
       summary: Authorize an agent client to lease this secret
-      security: [{ EnvironmentApiKey: [] }]
+      security: [{ VaultManagerToken: [] }]
       parameters: [{ $ref: '#/components/parameters/Id' }]
       requestBody:
         required: true
@@ -349,7 +349,7 @@ paths:
       tags: [Token Vault]
       summary: Revoke an agent's authorization
       description: Idempotent — revoking an absent grant succeeds.
-      security: [{ EnvironmentApiKey: [] }]
+      security: [{ VaultManagerToken: [] }]
       parameters:
         - $ref: '#/components/parameters/Id'
         - name: clientId
@@ -630,6 +630,15 @@ components:
       scheme: bearer
       bearerFormat: cbid_env_
       description: An environment API key, minted in the environment's console. Bound to that environment's host.
+    VaultManagerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An OAuth access token carrying the `vault.manage` scope. NOT an environment API
+        key: these routes are guarded by `scope:vault.manage`, which introspects an
+        access token, and a `cbid_env_` key introspects as inactive. Its `org` claim
+        selects the organization whose secrets it administers.
     AgentToken:
       type: http
       scheme: bearer
