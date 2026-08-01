@@ -1,11 +1,8 @@
 @php
-    use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-    use Cbox\Id\Organization\Models\Environment;
-
     // The environment resolved for this request (by host). A sandbox realm is for
     // development/testing — make that unmistakable so nobody mistakes it for prod.
-    $key = app(EnvironmentContext::class)->current()?->environmentKey();
-    $sandbox = $key !== null && Environment::query()->whereKey($key)->where('type', 'sandbox')->exists();
+    // Shares the request's one environment read with the delete dialog and its badge.
+    $sandbox = app(App\Platform\CurrentEnvironment::class)->isSandbox();
 @endphp
 
 @if ($sandbox)

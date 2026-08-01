@@ -1,6 +1,4 @@
 @php
-    use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-    use Cbox\Id\Organization\Models\Environment;
 
     // Which realm am I acting in? The environment console renders identically for
     // staging and production apart from a name in the sidebar — and the breadcrumb that
@@ -9,9 +7,7 @@
     // moment of hitting Delete.
     // `type` is an EnvironmentType enum (the model casts it), so read its backing
     // value rather than stringifying the object.
-    $key = app(EnvironmentContext::class)->current()?->environmentKey();
-    $environment = $key === null ? null : Environment::query()->whereKey($key)->first(['type']);
-    $type = $environment?->type instanceof BackedEnum ? (string) $environment->type->value : null;
+    $type = app(App\Platform\CurrentEnvironment::class)->type();
 @endphp
 
 @if ($type !== null)

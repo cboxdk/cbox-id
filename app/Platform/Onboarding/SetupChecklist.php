@@ -89,7 +89,7 @@ final readonly class SetupChecklist
             // The founder is a member of their own organization, so "someone joined"
             // only counts from the second membership — or from an invitation that has
             // been sent but not yet accepted, which is just as much work done.
-            SetupStepKey::InviteTeam => $this->memberships->forOrganization($organizationId)->count() > 1
+            SetupStepKey::InviteTeam => $this->memberships->countForOrganization($organizationId) > 1
                 || $this->invitations->pending($organizationId)->isNotEmpty(),
 
             SetupStepKey::ConnectApp => Client::query()

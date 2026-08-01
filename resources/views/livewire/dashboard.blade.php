@@ -47,19 +47,21 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
             : new Collection;
 
         // Only an admin can act on any of the steps, so only an admin is measured.
+        // Dismissal first: the checklist costs a query per step, and an admin who put it
+        // away was paying for all of them on every page load, forever.
         $checklist = app(SetupChecklist::class);
-        $progress = $orgId !== null && $me->isAdmin() ? $checklist->for($orgId) : null;
-        $dismissed = $orgId !== null && $me->isAdmin() && $checklist->isDismissed($orgId, $me->id());
+        $shows = $orgId !== null && $me->isAdmin() && ! $checklist->isDismissed($orgId, $me->id());
+        $progress = $shows ? $checklist->for($orgId) : null;
 
         return [
             'me' => $me,
             'apps' => app(AppLauncher::class)->apps(),
-            'memberCount' => $orgId !== null ? app(Memberships::class)->forOrganization($orgId)->count() : 0,
+            'memberCount' => $orgId !== null ? app(Memberships::class)->countForOrganization($orgId) : 0,
             'ssoActive' => $connection !== null,
             'recent' => $recent,
             // The card earns its place only while there is something left to do and
             // this admin has not put it away.
-            'progress' => $progress !== null && ! $progress->isComplete() && ! $dismissed ? $progress : null,
+            'progress' => $progress !== null && ! $progress->isComplete() ? $progress : null,
             // Resolve opaque ids to human names so the feed reads like a story
             // ("member added · Ada Lovelace"), not a wall of ULIDs. Shared with the
             // activity log, which needs the identical mapping — this component used to

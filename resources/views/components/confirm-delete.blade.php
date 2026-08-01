@@ -16,16 +16,13 @@
 ])
 
 @php
-    use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-    use Cbox\Id\Organization\Models\Environment;
 
     $id = 'confirm-'.md5($action.$name);
     $verb = $verb ?? $label;
 
     // Name the environment IN the dialog. The failure being designed against is an
     // admin with staging and production open in two visually identical tabs.
-    $key = app(EnvironmentContext::class)->current()?->environmentKey();
-    $env = $key === null ? null : Environment::query()->whereKey($key)->first(['name', 'type']);
+    $env = app(App\Platform\CurrentEnvironment::class)->get();
 @endphp
 
 {{--

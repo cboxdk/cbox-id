@@ -17,6 +17,7 @@ use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\BreachedPasswords;
+use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\ImpersonationAwareAuditLog;
@@ -41,6 +42,10 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
+
+        // Read once per request: three view components label themselves with the current
+        // environment, and one of them renders per deletable row.
+        $this->app->scoped(CurrentEnvironment::class);
 
         // One instance per request: the environment-admin session resolver. Consulted
         // by the persistent middleware, the layout, and each component boot() — scoping
