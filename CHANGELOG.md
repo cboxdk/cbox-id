@@ -6,7 +6,87 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
-## [Unreleased]
+## [0.35.0] - 2026-08-01
+
+The console assumed you already knew what an IdP does. This is the pass that stops it
+assuming that: names that match where you clicked, an explanation on every page, and a
+setup checklist that measures reality instead of asserting it.
+
+### Added
+
+- **An in-app explanation layer.** `HelpTopic` holds one plain-language explanation per
+  concept (what it is, when you need it) and `<x-help>` puts it behind the "?" beside
+  every page title. Where a guide exists it links out; where none does it links nowhere
+  rather than shipping a 404 — `DocsLinks` returns null for a topic with no guide, and
+  for a deployment with `DOCS_BASE_URL` blanked (air-gapped installs keep the in-app
+  text and lose only the outbound links).
+- **Admin guides** under `docs/guides/` — twelve task-oriented guides for the person
+  administering an organization, one per console surface, which is what the "?" links to.
+- **A guided first run** at `/get-started`: the setup steps with room to explain
+  themselves, each linking out to the page that does the work. A fresh organization is
+  led there by a banner on an otherwise-empty dashboard, and it stays reachable from
+  Settings after it is dismissed.
+- **Empty states that teach.** `<x-empty-state>` adds the "what this is, why you want
+  it, and the three steps to get there" that a bare "No connections yet" left out;
+  applied across the console's first-use surfaces.
+
+### Changed
+
+- **The setup checklist is measured, not hardcoded.** `SetupChecklist` derives each step
+  from live state (a second member or a pending invitation, an org-registered client,
+  roles, branding, an SSO connection, a directory), so a step ticks itself whether the
+  work was done from the checklist, its own page, or the API. The old card asserted
+  "Organization created ✓" in markup and had three items that could never tick, which
+  made it inert decoration. Steps the org is not entitled to are dropped rather than
+  shown locked, so the list can actually reach 100%; dismissal is per-admin and lives in
+  `onboarding_dismissals`.
+- **Nav labels, page titles and browser titles are one string.** Six pages disagreed
+  with the sidebar entry that reached them: the rail said "Stored tokens" over a page
+  headed "Token vault", "Event hooks" over "Inline hooks", "Conflict rules" over
+  "Segregation of duties". Both halves now read **Token vault**, **Inline hooks** and
+  **Role conflicts**, and the SCIM pair became **Sync users in** / **Sync users out**,
+  which says which way people move; "User sync" beside "Outbound sync" did not.
+- **Page eyebrows come from the nav registry** (`ConsoleLocation`) instead of a string
+  typed into each page, which had drifted to "Authentication", "Security" and "You" above
+  pages reached from "Sign-in", "Developers" and "My account" — the one label whose job is
+  orientation, disagreeing with the navigation. Every console page now renders through
+  `<x-page-header>`, so a plugin's page gets a correct eyebrow for free.
+- **One rail area per subject, not per module.** The console grew to twelve top-level
+  areas because each module minted its own: Analytics sat beside Overview › Usage,
+  Compliance's audit pages beside Logs › Activity log, and a one-page "Security" area
+  collided with My account › Security. The analytics, compliance and risk modules now
+  append to the host area that already owns the subject, the way the devices module
+  already did. Area orders are unique across modules — two pairs shared a number, and
+  `DefaultNavRegistry` sorts on order alone, so the rail reshuffled with provider boot
+  order whenever a module was enabled or disabled.
+- **The activity log names people.** Actor and target were rendered as raw ULIDs, so the
+  row that says someone was added did not say who. `AuditNames` resolves both, batched
+  per page rather than per row, and the dashboard feed now shares it instead of carrying
+  its own narrower copy.
+- **"Console access", not "workspace access"** (Members). Workspace already names a
+  different plane in this product — projects, environments, billing — while this control
+  decides who can run *this* console. Settings stopped calling the organization a
+  workspace for the same reason.
+- **The mobile nav sheet carries one icon per group** rather than repeating the area's
+  glyph on each of its pages, which at 375px spent the width the labels needed on three
+  identical marks that distinguished nothing.
+
+### Fixed
+
+- The Roles empty state rendered a literal `&quot;`, and the Apps page an `&amp;amp;`,
+  from copy that pre-escaped what `<x-page-header>` and `<x-empty-state>` escape again.
+- Members showed a dead "None" in the roles column for an organization that has no roles
+  defined; it now links to the page where you make one.
+- The accessibility guard covered eight console pages; it now covers eighteen, including
+  every page this work added or renamed.
+- **The parallel test suite is green again.** 48 tests failed under `pest --parallel`
+  while the same suite passed serially: eight helpers and one constant were declared in
+  one test file and called from another, and paratest gives each worker only a subset of
+  the files, so the declaration is simply absent in the process that needs it. Which
+  files share a worker depends on the shard split, so the failures moved around and read
+  as flakiness. The shared fixtures now live in `tests/Pest.php`, which every worker
+  loads, and `SharedTestHelperTest` tokenises the suite to fail the build the next time
+  one leaks.
 
 ### Security
 

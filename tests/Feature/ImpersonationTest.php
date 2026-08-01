@@ -18,31 +18,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Platform\Models\PlatformOperator;
-
-/** An operator whose console reads are pinned to the default test plane. */
-function impersonationOperator(string $email = 'imp-op@platform.test'): PlatformOperator
-{
-    return app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Op');
-}
-
-/**
- * A member account inside the default test plane. Defaults to a REGULAR member —
- * owners and admins are not impersonable (an operator inheriting their elevated
- * surface is exactly the risk we close), so the happy-path helper must be a member.
- */
-function impersonationMember(string $email = 'member@acme.test', MembershipRole $role = MembershipRole::Member): array
-{
-    $org = app(Organizations::class)->create(new NewOrganization('Acme Inc', 'acme-'.substr(md5($email), 0, 6)));
-    $subject = app(Subjects::class)->create($email, 'Member One', 'supersecret123');
-    app(Memberships::class)->add($org->id, $subject->id, $role);
-
-    return [$org, $subject];
-}
-
-/** A valid PAM justification for the start POST. */
-const IMPERSONATION_REASON = 'Investigating support ticket #4271';
 
 it('lets an operator step into a member and become purely the subject, audited', function (): void {
     $audit = new FakeAuditLog;

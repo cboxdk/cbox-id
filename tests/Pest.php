@@ -2,11 +2,37 @@
 
 declare(strict_types=1);
 
+use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use Cbox\Id\Devices\Enums\DevicePlatform;
+use Cbox\Id\Devices\Enums\DeviceStatus;
+use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
+use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
+use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
+use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
+use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\Models\PlatformOperator;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
@@ -118,4 +144,154 @@ function actAsEnvironmentAdmin(AccountMember $member, string $environmentId): vo
 {
     session()->put(EnvironmentAdminAuth::SESSION_KEY, $member->refresh()->subject_id);
     session()->put(EnvironmentAdminAuth::ENV_KEY, $environmentId);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Shared fixtures
+|--------------------------------------------------------------------------
+| A helper used by more than one test FILE lives here, not in whichever file
+| happened to need it first.
+|
+| Under `pest --parallel`, paratest hands each worker a subset of the files: a
+| function declared in tests/Feature/A.php simply does not exist in the process
+| running tests/Feature/B.php, and B dies with "Call to undefined function". Which
+| files share a worker depends on the shard split, so the failure is intermittent
+| and looks like a flaky test rather than a missing declaration — 48 tests were
+| failing this way, all of them green when the suite ran serially.
+|
+| Pest.php is loaded by every worker, so anything here is always available.
+*/
+
+/** A valid PAM justification for the impersonation start POST. */
+const IMPERSONATION_REASON = 'Investigating support ticket #4271';
+
+/**
+ * Populate CurrentUser as the Authenticate middleware would, then drive the
+ * component directly.
+ *
+ * @return array{0: string, 1: Organization}
+ */
+function actingAsRole(MembershipRole $role): array
+{
+    $subject = app(Subjects::class)->create($role->value.'@acme.test', $role->label(), 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role->value));
+    app(Memberships::class)->add($org->id, $subject->id, $role);
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
+
+    return [$subject->id, $org];
+}
+
+/**
+ * Sign an admin into a fresh org and return its id. The org starts with NO
+ * entitlements — deny-by-default is the thing under test.
+ */
+function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = MembershipRole::Owner): string
+{
+    $subject = app(Subjects::class)->create("admin@{$slug}.test", 'Admin', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
+    app(Memberships::class)->add($org->id, $subject->id, $role);
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
+
+    return $org->id;
+}
+
+function grantFeature(string $organizationId, string $key): void
+{
+    app(EntitlementWriter::class)->set(
+        $organizationId,
+        new EntitlementInput($key, ['enabled' => true]),
+        EntitlementSource::Manual,
+    );
+}
+
+/**
+ * A subject who owns a fresh organization.
+ *
+ * @return array{0: Subject, 1: Organization}
+ */
+function accountWithOrg(string $email): array
+{
+    $subject = app(Subjects::class)->create($email, 'Holder', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.substr(md5($email), 0, 6)));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    return [$subject, $org];
+}
+
+/**
+ * Provision an account + environment, pin the environment context and an
+ * environment-admin session.
+ *
+ * @return array{member: AccountMember, envId: string}
+ */
+function crudSetup(): array
+{
+    platformRootEnvironment();
+    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        accountName: 'Acme',
+        ownerEmail: 'owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($r->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
+    actAsEnvironmentAdmin($r->member, $r->environment->id);
+
+    return ['member' => $r->member, 'envId' => $r->environment->id];
+}
+
+/**
+ * A subject with one enrolled handset, plus an agent client to raise CIBA requests.
+ *
+ * @return array{0: string, 1: Client}
+ */
+function cibaSubjectWithDevice(): array
+{
+    config()->set('id-devices.enabled', true);
+
+    $subject = app(Subjects::class)->create('ciba@acme.test', 'CIBA User', 'supersecret123');
+
+    $device = new Device;
+    $device->fill([
+        'subject_id' => $subject->id,
+        'install_id' => (string) Str::ulid(),
+        'platform' => DevicePlatform::Ios,
+        'name' => 'CIBA iPhone',
+        'status' => DeviceStatus::Active,
+    ]);
+    $device->save();
+    $device->token_encrypted = app(SecretBox::class)->seal('fcm-token', $device->secretContext());
+    $device->save();
+
+    $client = app(ClientRegistry::class)->register(
+        new NewClient('Agent', ClientType::Confidential, scopes: ['openid'])
+    )->client;
+
+    return [$subject->id, $client];
+}
+
+/** An operator whose console reads are pinned to the default test plane. */
+function impersonationOperator(string $email = 'imp-op@platform.test'): PlatformOperator
+{
+    return app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Op');
+}
+
+/**
+ * A member account inside the default test plane. Defaults to a REGULAR member —
+ * owners and admins are not impersonable (an operator inheriting their elevated
+ * surface is exactly the risk we close), so the happy-path helper must be a member.
+ *
+ * @return array{0: Organization, 1: Subject}
+ */
+function impersonationMember(string $email = 'member@acme.test', MembershipRole $role = MembershipRole::Member): array
+{
+    $org = app(Organizations::class)->create(new NewOrganization('Acme Inc', 'acme-'.substr(md5($email), 0, 6)));
+    $subject = app(Subjects::class)->create($email, 'Member One', 'supersecret123');
+    app(Memberships::class)->add($org->id, $subject->id, $role);
+
+    return [$org, $subject];
 }

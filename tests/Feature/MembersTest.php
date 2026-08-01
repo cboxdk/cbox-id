@@ -2,33 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Platform\CurrentUser;
-use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
-
-/**
- * Populate CurrentUser as the Authenticate middleware would, then drive the
- * component directly.
- *
- * @return array{0: string, 1: Organization}
- */
-function actingAsRole(MembershipRole $role): array
-{
-    $subject = app(Subjects::class)->create($role->value.'@acme.test', $role->label(), 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role->value));
-    app(Memberships::class)->add($org->id, $subject->id, $role);
-    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, $role);
-
-    return [$subject->id, $org];
-}
 
 it('creates a pending invitation without granting membership', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);

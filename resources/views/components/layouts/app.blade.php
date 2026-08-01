@@ -187,11 +187,19 @@
             </div>
             <nav class="cbx-nav" aria-label="Primary">
                 @foreach ($areas as $area)
-                    <p class="cbx-nav-group">{{ $area['label'] }}</p>
+                    <p class="cbx-nav-group">
+                        <x-icon :name="$area['icon']" class="w-[0.95rem] h-[0.95rem]" aria-hidden="true" />
+                        {{ $area['label'] }}
+                    </p>
                     @foreach ($area['pages'] as $page)
-                        {{-- wire:navigate — see x-console.rail. --}}
-                        <a href="{{ route($page['route']) }}" wire:navigate class="nav-link" @click="mobile=false" @if ($routeActive($page['route'])) aria-current="page" @endif>
-                            <x-icon :name="$area['icon']" class="w-[1.15rem] h-[1.15rem]" aria-hidden="true" />
+                        {{-- wire:navigate — see x-console.rail.
+
+                             The icon sits on the GROUP, not on every page under it: an
+                             area's icon is the same glyph for all of its pages, so
+                             repeating it three times below one heading was three
+                             identical marks that distinguished nothing and ate the
+                             width the labels needed on a 375px screen. --}}
+                        <a href="{{ route($page['route']) }}" wire:navigate class="nav-link is-nested" @click="mobile=false" @if ($routeActive($page['route'])) aria-current="page" @endif>
                             {{ $page['label'] }}
                             @if ($isLocked($page))<span class="ml-auto" style="font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--primary)">Enterprise</span>@endif
                         </a>

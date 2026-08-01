@@ -148,16 +148,14 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Security</p>
-            <h1 class="cbx-page-title">Token vault</h1>
-            <p class="cbx-page-desc">Downstream API keys your AI agents present to providers. Each value is sealed at rest and brokered only to explicitly granted clients — it is never shown again after you store it.</p>
-        </div>
+    <x-page-header title="Token vault" :help="\App\Platform\Help\HelpTopic::TokenVault"
+                   subtitle="API keys your apps and agents present to other services. Each value is sealed at rest, handed only to the apps you grant, and never shown again after you store it.">
         @if ($me->isAdmin())
-            <button wire:click="$set('creating', true)" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New secret</button>
+            <x-slot:actions>
+                <button wire:click="$set('creating', true)" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New secret</button>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     @if ($creating)
         <form wire:submit="store" class="card p-4 mb-5 space-y-3">
@@ -270,11 +268,14 @@ new #[Layout('components.layouts.app', ['title' => 'Token vault'])] class extend
                     @endif
                 @empty
                     <tr><td colspan="5">
-                        <div class="cbx-empty">
-                            <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
-                            <h3>No secrets yet</h3>
-                            <p>Store a downstream API key to broker it to your agents.</p>
-                        </div>
+                        <x-empty-state icon="key" title="No secrets stored yet"
+                                       :help="\App\Platform\Help\HelpTopic::TokenVault"
+                                       body="Every API key sitting in an app’s config or environment file is one you cannot rotate centrally or take away in a hurry. Stored here, it is encrypted, granted per app, and revocable in one click."
+                                       :steps="[
+                                           'Store the provider’s API key below — you will not see it again afterwards.',
+                                           'Grant the specific apps that may use it; nothing else can read it.',
+                                           'Rotate it here when the provider issues a new one — the apps keep working, unchanged.',
+                                       ]" />
                     </td></tr>
                 @endforelse
                 </tbody>

@@ -109,18 +109,14 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
 }; ?>
 
 <div>
-    <div class="cbx-page-header mb-8">
-        <div>
-            <p class="cbx-page-eyebrow">Developers</p>
-            <h1 class="cbx-page-title">Webhooks</h1>
-            <p class="cbx-page-desc">Endpoints that receive signed event notifications for this organization.</p>
-        </div>
-        <div class="flex items-center gap-2">
-            @if ($me->isAdmin())
+    <x-page-header title="Webhooks" :help="\App\Platform\Help\HelpTopic::Webhooks"
+                   subtitle="Your endpoints get a signed message after something happens here, so your systems can react without asking us every minute.">
+        @if ($me->isAdmin())
+            <x-slot:actions>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Add endpoint</button>
-            @endif
-        </div>
-    </div>
+            </x-slot:actions>
+        @endif
+    </x-page-header>
 
     @if ($newSecret)
         <div class="card p-4 mb-5" style="border-color:color-mix(in srgb, var(--warn) 40%, transparent);background:var(--warn-soft)">
@@ -195,11 +191,14 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
                     @empty
                         <tr>
                             <td colspan="4">
-                                <div class="cbx-empty">
-                                    <div class="cbx-empty-icon"><x-icon name="webhooks" class="w-5 h-5" /></div>
-                                    <h3>No webhook endpoints yet</h3>
-                                    <p>Add an endpoint to start receiving signed event notifications for this organization.</p>
-                                </div>
+                                <x-empty-state icon="webhooks" title="Nothing is being notified yet"
+                                               :help="\App\Platform\Help\HelpTopic::Webhooks"
+                                               body="Add an endpoint and your own systems hear about members joining, roles changing and sign-ins failing as it happens — no polling, no nightly export."
+                                               :steps="[
+                                                   'Add your HTTPS endpoint below and pick the events it should receive.',
+                                                   'Store the signing secret shown once, and verify every delivery against it.',
+                                                   'Reply 2xx quickly and do the real work in the background — deliveries are retried, so handle repeats safely.',
+                                               ]" />
                             </td>
                         </tr>
                     @endforelse

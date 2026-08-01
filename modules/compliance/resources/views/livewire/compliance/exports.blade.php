@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app')] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Exports & retention'])] class extends Component
 {
     public string $subjectId = '';
 
@@ -50,14 +50,8 @@ new #[Layout('components.layouts.app')] class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header">
-        <div>
-            <h1 class="cbx-page-title">Exports &amp; retention</h1>
-            <p class="cbx-page-desc">
-                Ship the audit trail to your SIEM or cold archive, and run data-subject exports.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Exports & retention"
+                   subtitle="Ship the audit trail to your SIEM or cold archive, and run data-subject exports." />
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="card p-5">

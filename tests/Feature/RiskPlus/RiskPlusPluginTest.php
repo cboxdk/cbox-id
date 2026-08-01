@@ -19,13 +19,17 @@ it('activates the risk-plus console feature when installed', function (): void {
     expect(Console::featureActive('risk-plus'))->toBeTrue();
 });
 
-it('adds a gated Security nav area with a Risk events page', function (): void {
-    $area = collect(Console::nav()->areas())->firstWhere('key', 'security');
+it('adds its Risk events page to the host Logs area rather than a "Security" one', function (): void {
+    // A one-page "Security" area collided with My account › Security in the rail —
+    // the same word for two unrelated destinations.
+    expect(collect(Console::nav()->areas())->firstWhere('key', 'security'))->toBeNull();
 
-    expect($area)->not->toBeNull();
-    $pages = $area->pages();
-    expect($pages[0]->route)->toBe('risk-plus.events')
-        ->and($pages[0]->feature)->toBe('risk-plus');
+    $area = collect(Console::nav()->areas())->firstWhere('key', 'audit');
+    $page = collect($area->pages())->firstWhere('route', 'risk-plus.events');
+
+    expect($page)->not->toBeNull()
+        ->and($page->feature)->toBe('risk-plus')
+        ->and($page->label)->toBe('Risk events');
 });
 
 it('renders a dashboard risk card', function (): void {

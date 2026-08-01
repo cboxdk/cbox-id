@@ -64,13 +64,8 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
 }; ?>
 
 <div class="max-w-lg">
-    <div class="cbx-page-header mb-6">
-        <div>
-            <p class="cbx-page-eyebrow">Agents</p>
-            <h1 class="cbx-page-title">Agent approvals</h1>
-            <p class="cbx-page-desc">An agent is asking to act on your behalf. Approve only requests you recognize.</p>
-        </div>
-    </div>
+    <x-page-header title="Agent approvals" :help="\App\Platform\Help\HelpTopic::AgentApprovals"
+                   subtitle="When an app or agent needs your go-ahead to act as you, it asks here. Approve only requests you started yourself." />
 
     @forelse ($requests as $request)
         <div wire:key="request-{{ $request['id'] }}" class="card p-5 mb-4">
@@ -109,10 +104,8 @@ new #[Layout('components.layouts.app', ['title' => 'Agent approvals'])] class ex
             </div>
         </div>
     @empty
-        <div class="cbx-empty" style="padding:3rem 1rem">
-            <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
-            <h3>No pending requests</h3>
-            <p>No pending requests — you're all caught up.</p>
-        </div>
+        <x-empty-state icon="shield" title="Nothing waiting for you" style="padding:3rem 1rem"
+                       :help="\App\Platform\Help\HelpTopic::AgentApprovals"
+                       body="Requests appear here on their own when an app or agent needs your approval to act as you. Nothing to do until one does — and if a request shows up you did not start, deny it." />
     @endforelse
 </div>

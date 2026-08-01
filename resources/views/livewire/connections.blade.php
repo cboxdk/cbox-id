@@ -21,7 +21,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class extends Component
 {
     public bool $creating = false;
 
@@ -307,32 +307,23 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Authentication</p>
-            <h1 class="cbx-page-title">SSO connections</h1>
-            <p class="cbx-page-desc">Federate sign-in with your enterprise identity provider.</p>
-        </div>
+    <x-page-header title="Single sign-on" :help="\App\Platform\Help\HelpTopic::SingleSignOn"
+                   subtitle="Let people sign in with the company account they already have, instead of a separate password here.">
         @if ($me->isAdmin() && $entitled)
-            <div class="flex items-center gap-2">
+            <x-slot:actions>
                 <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
-            </div>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     <div class="mt-8 space-y-6">
 
     @if (! $entitled)
         <div class="card">
-            <div class="cbx-empty">
-                <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
-                <h3>Single sign-on is an Enterprise feature</h3>
-                <p>
-                    SAML &amp; OIDC single sign-on is available on the Enterprise plan.
-                    Contact your account team to enable it for this organization.
-                </p>
-            </div>
+            <x-empty-state icon="connections" title="Single sign-on is an Enterprise feature"
+                           :help="\App\Platform\Help\HelpTopic::SingleSignOn"
+                           body="Letting your people sign in with Entra ID, Okta or Google Workspace is available on the Enterprise plan. Contact your account team to enable it for this organization." />
         </div>
     @else
 
@@ -468,11 +459,22 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
             </div>
         @empty
             <div class="card">
-                <div class="cbx-empty">
-                    <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
-                    <h3>No SSO connections yet</h3>
-                    <p>Connect an identity provider to let your team sign in with SAML or OIDC.</p>
-                </div>
+                <x-empty-state icon="connections" title="No identity provider connected yet"
+                               :help="\App\Platform\Help\HelpTopic::SingleSignOn"
+                               body="Right now people sign in with credentials held here. Connect your provider and they use the company account they already have — and lose access here the moment you disable it there."
+                               :steps="[
+                                   'In Entra ID, Okta or Google Workspace, create an application for Cbox ID.',
+                                   'Add the connection below — paste the provider’s metadata and the fields fill themselves.',
+                                   'Verify the email domains you own, so your people are routed to your provider automatically.',
+                                   'Activate the connection once a test sign-in works.',
+                               ]">
+                    @if ($me->isAdmin())
+                        <x-slot:actions>
+                            <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
+                            <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Hand it to your IT admin</button>
+                        </x-slot:actions>
+                    @endif
+                </x-empty-state>
             </div>
         @endforelse
     </div>
@@ -553,11 +555,8 @@ new #[Layout('components.layouts.app', ['title' => 'SSO connections'])] class ex
                 </div>
             @empty
                 <div class="card">
-                    <div class="cbx-empty">
-                        <div class="cbx-empty-icon"><x-icon name="directory" class="w-5 h-5" /></div>
-                        <h3>No domains yet</h3>
-                        <p>Add one to enable domain-based SSO routing.</p>
-                    </div>
+                    <x-empty-state icon="directory" title="No verified domains yet"
+                                   body="Verifying a domain you own — acme.com — lets Cbox ID recognise your people by their email address and send them straight to your provider, so nobody has to pick the right sign-in button." />
                 </div>
             @endforelse
         </div>

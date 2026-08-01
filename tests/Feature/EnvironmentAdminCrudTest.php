@@ -20,8 +20,6 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Identity\Models\MfaFactor;
 use Cbox\Id\Identity\Models\User;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -33,8 +31,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
@@ -53,24 +49,6 @@ use Livewire\Volt\Volt;
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
-
-/** Provision an account + env, pin the env context + an env-admin session. */
-function crudSetup(): array
-{
-    platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
-        accountName: 'Acme',
-        ownerEmail: 'owner@acme.example',
-        ownerName: 'Owner',
-        ownerPassword: 'a-strong-unbreached-passphrase',
-    ));
-
-    serveOnTestHost($r->environment);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    actAsEnvironmentAdmin($r->member, $r->environment->id);
-
-    return ['member' => $r->member, 'envId' => $r->environment->id];
-}
 
 it('renders the user + org detail pages and edits a user profile', function (): void {
     crudSetup();

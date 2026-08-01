@@ -95,18 +95,14 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
 }; ?>
 
 <div>
-    <div class="cbx-page-header mb-8">
-        <div>
-            <p class="cbx-page-eyebrow">Developers</p>
-            <h1 class="cbx-page-title">Inline hooks</h1>
-            <p class="cbx-page-desc">External endpoints the platform calls synchronously at a hook point to enrich or veto an operation.</p>
-        </div>
-        <div class="flex items-center gap-2">
-            @if ($me->isAdmin())
+    <x-page-header title="Inline hooks" :help="\App\Platform\Help\HelpTopic::InlineHooks"
+                   subtitle="Your endpoint is called in the middle of an operation and its answer changes the outcome — add data to a token, or refuse the sign-in.">
+        @if ($me->isAdmin())
+            <x-slot:actions>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Register endpoint</button>
-            @endif
-        </div>
-    </div>
+            </x-slot:actions>
+        @endif
+    </x-page-header>
 
     @if ($newSecret)
         <div class="card p-4 mb-5" style="border-color:color-mix(in srgb, var(--warning) 40%, transparent);background:color-mix(in srgb, var(--warning) 8%, transparent)">
@@ -183,11 +179,14 @@ new #[Layout('components.layouts.app', ['title' => 'Inline hooks'])] class exten
                     @empty
                         <tr>
                             <td colspan="4">
-                                <div class="cbx-empty">
-                                    <div class="cbx-empty-icon"><x-icon name="webhooks" class="w-5 h-5" /></div>
-                                    <h3>No inline hook endpoints yet</h3>
-                                    <p>Register an endpoint to have the platform call your external logic at a hook point.</p>
-                                </div>
+                                <x-empty-state icon="webhooks" title="No inline hooks registered"
+                                               :help="\App\Platform\Help\HelpTopic::InlineHooks"
+                                               body="Most integrations want Webhooks instead — those run after the fact and cannot hold anything up. Reach for an inline hook only when your own system must have a say while a sign-in or token is being issued."
+                                               :steps="[
+                                                   'Register the endpoint below and choose the hook point it answers at.',
+                                                   'Verify the signature on every call, and answer within the timeout — this runs while someone waits at the sign-in screen.',
+                                                   'Fail open or closed deliberately: decide now what should happen when your endpoint is down.',
+                                               ]" />
                             </td>
                         </tr>
                     @endforelse

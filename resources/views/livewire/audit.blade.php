@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Platform\AuditNames;
 use App\Platform\CurrentUser;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 
-new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Activity log'])] class extends Component
 {
     use WithPagination;
 
@@ -42,30 +43,32 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
             $query->where('action', 'like', '%'.$filter.'%');
         }
 
-        return ['entries' => $query->paginate(25)];
+        $entries = $query->paginate(25);
+
+        return [
+            'entries' => $entries,
+            // Resolved once per page, in three queries — never per row.
+            'names' => app(AuditNames::class)->for($entries->getCollection()),
+        ];
     }
 }; ?>
 
 <div>
-    <div class="cbx-page-header mb-8 flex-wrap">
-        <div>
-            <p class="cbx-page-eyebrow">Security</p>
-            <h1 class="cbx-page-title">Audit log</h1>
-            <p class="cbx-page-desc">Every change to this organization, tamper-evident and hash-chained.</p>
-        </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto">
+    <x-page-header title="Activity log" class="flex-wrap" :help="\App\Platform\Help\HelpTopic::ActivityLog"
+                   subtitle="Every change made in this organization: who did what, to what, and when. Hash-chained, so a removed entry shows up.">
+        <x-slot:actions>
             <div class="relative w-full sm:w-auto">
                 <input wire:model.live.debounce.300ms="actionFilter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…" aria-label="Filter by action">
             </div>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="width:1%">Seq</th>
+                        <th style="width:1%" class="hidden sm:table-cell">Seq</th>
                         <th scope="col">Action</th>
                         <th scope="col">Actor</th>
                         <th scope="col">Target</th>
@@ -75,20 +78,34 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
                 <tbody>
                     @forelse ($entries as $entry)
                         <tr>
-                            <td class="mono text-xs" style="color:var(--faint)">{{ $entry->sequence }}</td>
+                            <td class="mono text-xs hidden sm:table-cell" style="color:var(--faint)">{{ $entry->sequence }}</td>
                             <td class="font-medium whitespace-nowrap">{{ str_replace(['.', '_'], [' · ', ' '], $entry->action) }}</td>
+                            {{-- Name first, id underneath. Someone reading this page is
+                                 answering "who did what to whom" — the ULID is the
+                                 evidence, the name is the answer. The full id stays in
+                                 the title attribute so it is still copyable. --}}
                             <td>
-                                <span class="badge">{{ ucfirst($entry->actor_type->value) }}</span>
-                                @if ($entry->actor_id)
-                                    <span class="mono text-xs ml-1" style="color:var(--faint)">{{ Str::limit($entry->actor_id, 10, '…') }}</span>
+                                @php $actorName = $names[$entry->actor_id] ?? null; @endphp
+                                @if ($actorName !== null)
+                                    <p class="text-sm truncate" title="{{ $entry->actor_id }}">{{ $actorName }}</p>
+                                    <p class="text-xs mono truncate" style="color:var(--faint)">{{ ucfirst($entry->actor_type->value) }}</p>
+                                @else
+                                    <span class="badge">{{ ucfirst($entry->actor_type->value) }}</span>
+                                    @if ($entry->actor_id)
+                                        <span class="mono text-xs ml-1" style="color:var(--faint)" title="{{ $entry->actor_id }}">{{ Str::limit($entry->actor_id, 10, '…') }}</span>
+                                    @endif
                                 @endif
                             </td>
                             <td>
-                                @if ($entry->target_type)
-                                    <span class="text-sm" style="color:var(--muted)">{{ str_replace('_', ' ', $entry->target_type) }}</span>
-                                    <span class="mono text-xs ml-1" style="color:var(--faint)">{{ Str::limit($entry->target_id ?? '', 10, '…') }}</span>
-                                @else
+                                @php $targetName = $names[$entry->target_id] ?? null; @endphp
+                                @if ($entry->target_type === null)
                                     <span style="color:var(--faint)">—</span>
+                                @elseif ($targetName !== null)
+                                    <p class="text-sm truncate" title="{{ $entry->target_id }}">{{ $targetName }}</p>
+                                    <p class="text-xs truncate" style="color:var(--faint)">{{ str_replace('_', ' ', $entry->target_type) }}</p>
+                                @else
+                                    <span class="text-sm" style="color:var(--muted)">{{ str_replace('_', ' ', $entry->target_type) }}</span>
+                                    <span class="mono text-xs ml-1" style="color:var(--faint)" title="{{ $entry->target_id }}">{{ Str::limit($entry->target_id ?? '', 10, '…') }}</span>
                                 @endif
                             </td>
                             <td class="text-right whitespace-nowrap">
@@ -98,11 +115,9 @@ new #[Layout('components.layouts.app', ['title' => 'Audit log'])] class extends 
                     @empty
                         <tr>
                             <td colspan="5">
-                                <div class="cbx-empty">
-                                    <div class="cbx-empty-icon"><x-icon name="audit" class="w-5 h-5" /></div>
-                                    <h3>No audit entries yet</h3>
-                                    <p>Activity across this organization will appear here as it happens.</p>
-                                </div>
+                                <x-empty-state icon="audit" title="Nothing recorded yet"
+                                               :help="\App\Platform\Help\HelpTopic::ActivityLog"
+                                               body="Every administrative change — members, roles, connections, apps — lands here as it happens, with who did it and when. Nothing to configure; it records itself." />
                             </td>
                         </tr>
                     @endforelse

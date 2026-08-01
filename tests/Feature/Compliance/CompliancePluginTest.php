@@ -27,16 +27,19 @@ it('activates the compliance feature when explicitly enabled without a sink', fu
     expect(Console::featureActive('compliance'))->toBeTrue();
 });
 
-it('adds a gated Compliance nav area with Audit trail and Exports pages', function (): void {
-    $area = collect(Console::nav()->areas())->firstWhere('key', 'compliance');
+it('adds its pages to the host Logs area, beside the activity log they extend', function (): void {
+    // Two areas for the audit trail meant an admin looking for "the log" had to guess.
+    expect(collect(Console::nav()->areas())->firstWhere('key', 'compliance'))->toBeNull();
 
-    expect($area)->not->toBeNull();
+    $area = collect(Console::nav()->areas())->firstWhere('key', 'audit');
+    $routes = collect($area->pages())->pluck('route')->all();
 
-    $pages = $area->pages();
-    expect($pages[0]->route)->toBe('compliance.audit')
-        ->and($pages[0]->feature)->toBe('compliance')
-        ->and($pages[1]->route)->toBe('compliance.exports')
-        ->and($pages[1]->feature)->toBe('compliance');
+    expect($routes)->toContain('audit', 'compliance.audit', 'compliance.exports');
+
+    $pages = collect($area->pages())->keyBy('route');
+    expect($pages['compliance.audit']->feature)->toBe('compliance')
+        ->and($pages['compliance.exports']->feature)->toBe('compliance')
+        ->and($pages['compliance.exports']->label)->toBe('Exports & retention');
 });
 
 it('registers the Volt console routes', function (): void {

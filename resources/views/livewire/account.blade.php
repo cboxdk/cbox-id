@@ -27,7 +27,7 @@ use Livewire\Volt\Component;
  * passkeys, connected accounts and active sessions. Available to any signed-in
  * user, member or admin; organization management lives separately in Settings.
  */
-new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends Component
 {
     // --- Password ---
     public string $currentPassword = '';
@@ -323,13 +323,8 @@ new #[Layout('components.layouts.app', ['title' => 'My account'])] class extends
         </a>
     @endif
 
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">You</p>
-            <h1 class="cbx-page-title">My account</h1>
-            <p class="cbx-page-desc">Your profile, sign-in security, and active sessions.</p>
-        </div>
-    </div>
+    <x-page-header title="Security" :help="\App\Platform\Help\HelpTopic::AccountSecurity"
+                   subtitle="Your profile, how you sign in, and the sessions currently signed in as you." />
 
     {{-- Profile --}}
     <section class="cbx-panel">

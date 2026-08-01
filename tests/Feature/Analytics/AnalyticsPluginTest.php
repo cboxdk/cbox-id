@@ -27,13 +27,17 @@ it('activates the analytics feature when explicitly enabled without a sink', fun
     expect(Console::featureActive('analytics'))->toBeTrue();
 });
 
-it('adds a gated Analytics nav area with an Overview page', function (): void {
-    $area = collect(Console::nav()->areas())->firstWhere('key', 'analytics');
+it('adds its page to the host Overview area, labelled the way the page is titled', function (): void {
+    // Not its own area: Overview › Usage already answers "what is happening here", and
+    // a second rail entry labelled "Overview" answered it again from somewhere else.
+    expect(collect(Console::nav()->areas())->firstWhere('key', 'analytics'))->toBeNull();
 
-    expect($area)->not->toBeNull();
-    $pages = $area->pages();
-    expect($pages[0]->route)->toBe('analytics.overview')
-        ->and($pages[0]->feature)->toBe('analytics');
+    $area = collect(Console::nav()->areas())->firstWhere('key', 'overview');
+    $page = collect($area->pages())->firstWhere('route', 'analytics.overview');
+
+    expect($page)->not->toBeNull()
+        ->and($page->feature)->toBe('analytics')
+        ->and($page->label)->toBe('Analytics');
 });
 
 it('registers the Volt overview route', function (): void {

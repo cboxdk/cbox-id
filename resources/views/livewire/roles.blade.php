@@ -17,7 +17,7 @@ use Livewire\Volt\Component;
  * Roles the org's apps enforce. Two kinds: ORG roles an admin defines here (apply
  * across every app), and APP roles an app declares in its manifest (read-only — the
  * app owns what they mean). Both are assigned to people and stamped into their token.
- * Separate from "workspace access" (owner/admin/member), which is who runs THIS
+ * Separate from "console access" (owner/admin/member), which is who runs THIS
  * console.
  */
 new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Component
@@ -167,16 +167,14 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Access control</p>
-            <h1 class="cbx-page-title">Roles</h1>
-            <p class="cbx-page-desc">What people can do inside your apps. You assign roles here; each app decides what its roles are allowed to do.</p>
-        </div>
+    <x-page-header title="Roles" :help="\App\Platform\Help\HelpTopic::Roles"
+                   subtitle="What people can do inside your apps. You assign roles here; each app decides what its roles are allowed to do.">
         @if ($me->isAdmin())
-            <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New org role</button>
+            <x-slot:actions>
+                <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New org role</button>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     {{-- The one-paragraph mental model that removes the confusion. --}}
     <div class="card p-4" style="background:var(--accent-soft);border-color:var(--accent-edge)">
@@ -185,7 +183,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
             <p class="text-sm" style="color:var(--foreground)">
                 <b>Cbox ID assigns roles; your app decides what they can do.</b>
                 A role is a label stamped into the token — <b>app roles</b> are declared by each app (below, read-only), and <b>org roles</b> are ones you define for your whole organization. This is different from
-                <a href="{{ route('settings') }}" class="underline" style="color:var(--accent)">workspace access</a> (owner/admin/member), which is who can run this console.
+                <a href="{{ route('members') }}" class="underline" style="color:var(--accent)">console access</a> (owner/admin/member), which is who can run this console.
             </p>
         </div>
     </div>
@@ -313,11 +311,14 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
                     @endif
                 </div>
             @empty
-                <div class="cbx-empty">
-                    <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
-                    <h3>No custom roles yet</h3>
-                    <p>Create a role — org-wide or scoped to one app — composed from the permissions your apps declare. Or let your apps declare their own above.</p>
-                </div>
+                <x-empty-state icon="shield" title="No custom roles yet"
+                               :help="\App\Platform\Help\HelpTopic::Roles"
+                               body="Without roles, everyone who can sign in gets whatever an app gives a plain user. A role is how you say “these people are editors, those are support” once, and have every connected app honour it."
+                               :steps="[
+                                   'Let your apps declare the roles they understand — that list appears above.',
+                                   'Or create an org-wide role here and compose it from the permissions your apps have declared.',
+                                   'Assign it to people on the Members page; the role travels with them into every app.',
+                               ]" />
             @endforelse
         </div>
     </section>

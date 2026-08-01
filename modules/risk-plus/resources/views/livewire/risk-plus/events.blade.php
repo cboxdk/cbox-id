@@ -2,22 +2,21 @@
 
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 
-use function Livewire\Volt\{computed, layout};
+use function Livewire\Volt\{computed, layout, title};
+
 layout('components.layouts.app');
+
+// The document title matches the nav label, as every console page's must — the browser
+// tab and the entry you clicked are the same promise.
+title('Risk events');
 
 $events = computed(fn () => RiskEvent::query()->latest('created_at')->limit(50)->get());
 
 ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header mb-6">
-        <div class="min-w-0">
-            <h1 class="cbx-page-title">Risk events</h1>
-            <p class="cbx-page-desc">
-                Sign-ins and requests that scored at or above <em>flag</em>. Newest first.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Risk events"
+                   subtitle="Sign-ins and requests the platform scored as suspicious enough to flag. Newest first." />
 
     <div class="card" style="overflow-x:auto">
         <table class="table">
