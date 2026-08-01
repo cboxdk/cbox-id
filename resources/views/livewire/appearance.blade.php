@@ -39,6 +39,23 @@ new #[Layout('components.layouts.app', ['title' => 'Appearance'])] class extends
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);
 
         $appearance = Appearance::fromArray($theme);
+
+        // Refuse an unreadable palette rather than warn about one. hex() validates the
+        // FORMAT, so nothing stopped a "light" mode with a near-black background — and
+        // the people who then cannot read the sign-in page are not the admin choosing the
+        // colours, they are that organization's users. A warning the saver can click past
+        // puts the consequence on someone who never saw it.
+        $failures = array_merge(
+            array_map(fn (string $why): string => 'Light mode: '.$why, $appearance->light->contrastFailures()),
+            array_map(fn (string $why): string => 'Dark mode: '.$why, $appearance->dark->contrastFailures()),
+        );
+
+        if ($failures !== []) {
+            $this->dispatch('toast', message: implode(' ', $failures), severity: 'error');
+
+            return;
+        }
+
         $logo = self::normalizeLogo($theme['logo'] ?? null);
 
         $orgId = app(CurrentUser::class)->organizationId();

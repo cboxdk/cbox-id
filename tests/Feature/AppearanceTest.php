@@ -308,3 +308,45 @@ it('emits a legible accent for the tenant colour in both modes', function (): vo
         ->and(Color::contrastRatio($darkAccent, '#1e1e21'))->toBeGreaterThanOrEqual(4.5)
         ->and($lightAccent)->not->toBe($darkAccent);
 });
+
+/**
+ * A theme nobody can read is refused, not warned about.
+ *
+ * `hex()` validated the FORMAT, so a "light" mode with a near-black background was
+ * perfectly acceptable — and combined with the tokens that were not emitted per tenant,
+ * a customer could end up with near-white text on the platform's beige at about 1.02:1.
+ * The people who then cannot read the sign-in page are not the admin picking colours;
+ * they are that organization's users, which is exactly why a dismissible warning is the
+ * wrong shape for this.
+ */
+it('refuses to save a theme whose text cannot be read on its background', function (): void {
+    gateAdmin('contrast-gate');
+
+    $unreadable = [
+        'radius' => '0.5rem',
+        'font' => 'system',
+        'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
+        'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
+    ];
+
+    Volt::test('appearance')->call('save', $unreadable);
+
+    $settings = app(Organizations::class)->find(app(CurrentUser::class)->organizationId() ?? '')?->settings ?? [];
+
+    expect($settings['appearance'] ?? null)->toBeNull('an unreadable palette was saved');
+});
+
+it('saves a legible one', function (): void {
+    gateAdmin('contrast-ok');
+
+    Volt::test('appearance')->call('save', [
+        'radius' => '0.5rem',
+        'font' => 'system',
+        'light' => ['primary' => '#1e40af', 'background' => '#ffffff', 'foreground' => '#111111', 'muted' => '#5a5a5a'],
+        'dark' => ['primary' => '#8fa8e0', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a8a8a8'],
+    ]);
+
+    $settings = app(Organizations::class)->find(app(CurrentUser::class)->organizationId() ?? '')?->settings ?? [];
+
+    expect($settings['appearance'] ?? null)->not->toBeNull();
+});

@@ -81,6 +81,21 @@ final class AppearanceCss
             "--muted-foreground:{$mu};",
             "--faint:color-mix(in srgb,{$mu} 65%,{$bg});",
             "--border:color-mix(in srgb,{$fg} 14%,{$bg});",
+
+            // Ground-derived tokens the branded pages actually reach. Omitting them was
+            // not cosmetic: `.auth-shell` uses --canvas as its base surface, so every
+            // white-labeled sign-in page painted the tenant's form onto the PLATFORM's
+            // warm beige — and because --foreground IS emitted, a tenant whose light-mode
+            // background is dark got their near-white text on our beige at about 1.02:1.
+            // Their end users could not read the form they were being asked to sign in on.
+            //
+            // A stronger mix than --border because these are the edges a person has to
+            // see to know where a control is: 26% for an input's border, 34% for the
+            // separators that carry structure.
+            "--canvas:color-mix(in srgb,{$fg} 4%,{$bg});",
+            "--control-border:color-mix(in srgb,{$fg} 26%,{$bg});",
+            "--border-strong:color-mix(in srgb,{$fg} 34%,{$bg});",
+            "--popover:{$bg};",
             "--input:color-mix(in srgb,{$fg} 22%,{$bg});",
         ]);
     }
