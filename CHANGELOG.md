@@ -79,6 +79,14 @@ setup checklist that measures reality instead of asserting it.
   defined; it now links to the page where you make one.
 - The accessibility guard covered eight console pages; it now covers eighteen, including
   every page this work added or renamed.
+- **CI was red on `main` for a reason no developer machine could reproduce.** The
+  self-hosted runner exports `QUEUE_CONNECTION=redis`, and phpunit.xml's `<env>` — even
+  with `force="true"` — writes `$_ENV` and `putenv()` but not `$_SERVER`, which is the
+  first place Laravel's `Env` repository looks. So the runner's value won and every job
+  went at a Redis nobody started ("RedisException: Connection refused"). The suite-owned
+  drivers now live in `tests/bootstrap.php`, which sets all three; `DB_*` stays out of it
+  so the engines matrix can still redirect the run at PostgreSQL and MySQL, and
+  `TestEnvironmentTest` asserts both halves.
 - **The parallel test suite is green again.** 48 tests failed under `pest --parallel`
   while the same suite passed serially: eight helpers and one constant were declared in
   one test file and called from another, and paratest gives each worker only a subset of
