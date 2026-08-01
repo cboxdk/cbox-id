@@ -149,16 +149,14 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Governance</p>
-            <h1 class="cbx-page-title">Access reviews</h1>
-            <p class="cbx-page-desc">Periodically certify who holds which role and membership. Revoked access is applied when the review closes.</p>
-        </div>
+    <x-page-header title="Access reviews" :help="\App\Platform\Help\HelpTopic::AccessReviews"
+                   subtitle="Go through who holds which role and confirm they still need it. What you revoke is applied when the review closes, and the whole round is recorded.">
         @if ($me->isAdmin())
-            <button wire:click="$set('creating', true)" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New review</button>
+            <x-slot:actions>
+                <button wire:click="$set('creating', true)" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New review</button>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     @if ($creating)
         <form wire:submit="open" class="card p-4 mb-5 space-y-3">
@@ -192,11 +190,14 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                     @endif
                 </button>
             @empty
-                <div class="cbx-empty">
-                    <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
-                    <h3>No reviews yet</h3>
-                    <p>Open a review to certify access.</p>
-                </div>
+                <x-empty-state icon="shield" title="No reviews yet"
+                               :help="\App\Platform\Help\HelpTopic::AccessReviews"
+                               body="Open a review to go through everyone’s roles and confirm they are still needed."
+                               :steps="[
+                                   'Open a review and give it a name your auditor will recognise — “Q3 access review”.',
+                                   'Work down the list, keeping or revoking each grant.',
+                                   'Close the review: revocations are applied then, and the round is recorded.',
+                               ]" />
             @endforelse
         </div>
 
@@ -257,18 +258,15 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4"><div class="cbx-empty"><h3>No access in scope</h3><p>This organization has no direct role or membership grants.</p></div></td></tr>
+                                <tr><td colspan="4"><x-empty-state icon="shield" title="No access in scope" body="Nobody in this organization holds a role or membership that needs certifying, so there is nothing to review." /></td></tr>
                             @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
             @else
-                <div class="cbx-empty" style="padding:3rem 1rem">
-                    <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
-                    <h3>Select a review</h3>
-                    <p>Pick a review on the left to certify or revoke its access.</p>
-                </div>
+                <x-empty-state icon="shield" title="Select a review" style="padding:3rem 1rem"
+                               body="Pick a review on the left to certify or revoke the access it covers." />
             @endif
         </div>
     </div>

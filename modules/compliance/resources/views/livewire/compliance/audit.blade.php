@@ -10,7 +10,7 @@ use Cbox\Id\Kernel\Audit\ValueObjects\ChainVerification;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app')] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Audit trail'])] class extends Component
 {
     public string $organizationId = '';
 
@@ -52,14 +52,8 @@ new #[Layout('components.layouts.app')] class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header">
-        <div>
-            <h1 class="cbx-page-title">Audit trail</h1>
-            <p class="cbx-page-desc">
-                Search the append-only, hash-chained audit trail. Leave the organization blank for the system trail.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Audit trail" :help="\App\Platform\Help\HelpTopic::ActivityLog"
+                   subtitle="The same append-only, hash-chained trail as the activity log, searchable across organizations and verified end to end. Leave the organization blank for the system trail." />
 
     <div class="flex items-center gap-3 rounded-xl border p-4 text-sm"
         style="{{ $verification->valid ? 'border-color:color-mix(in oklch, var(--success) 20%, transparent);background:var(--success-soft);color:var(--success)' : 'border-color:color-mix(in oklch, var(--destructive) 20%, transparent);background:var(--destructive-soft);color:var(--destructive)' }}">

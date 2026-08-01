@@ -7,7 +7,7 @@ use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app')] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends Component
 {
     /**
      * @return array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, active_orgs: int, mfa_rate: int, unavailable: bool}
@@ -90,12 +90,8 @@ new #[Layout('components.layouts.app')] class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <header class="cbx-page-header">
-        <h1 class="cbx-page-title">Analytics</h1>
-        <p class="cbx-page-desc">
-            Authentication activity over the last {{ $overview['window'] }} days, from the platform's event stream.
-        </p>
-    </header>
+    <x-page-header title="Analytics"
+                   subtitle="Authentication activity over the last {{ $overview['window'] }} days, from the platform's event stream." />
 
     @if ($overview['unavailable'])
         <div class="card">

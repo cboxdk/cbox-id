@@ -10,7 +10,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Role conflicts'])] class extends Component
 {
     #[Validate('required|string|max:190')]
     public string $name = '';
@@ -94,16 +94,14 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Governance</p>
-            <h1 class="cbx-page-title">Segregation of duties</h1>
-            <p class="cbx-page-desc">Declare sets of roles that must never be held together, then detect subjects who already hold a toxic combination.</p>
-        </div>
+    <x-page-header title="Role conflicts" :help="\App\Platform\Help\HelpTopic::RoleConflicts"
+                   subtitle="Declare the roles that must never sit with the same person — segregation of duties — and see who already holds a conflicting pair.">
         @if ($me->isAdmin())
-            <button wire:click="$set('creating', true)" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New policy</button>
+            <x-slot:actions>
+                <button wire:click="$set('creating', true)" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New rule</button>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     @if ($creating)
         <form wire:submit="define" class="card p-4 mb-5 space-y-3">
@@ -167,11 +165,14 @@ new #[Layout('components.layouts.app', ['title' => 'Segregation of duties'])] cl
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4"><div class="cbx-empty">
-                        <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
-                        <h3>No policies yet</h3>
-                        <p>Define a policy to forbid a toxic combination of roles.</p>
-                    </div></td></tr>
+                    <tr><td colspan="4"><x-empty-state icon="shield" title="No rules yet"
+                        :help="\App\Platform\Help\HelpTopic::RoleConflicts"
+                        body="A rule names two or more roles that must never sit with the same person — whoever raises a payment should not also approve it."
+                        :steps="[
+                            'Name the conflict the way your auditor would — “Raise payment vs. approve payment”.',
+                            'Pick the roles that must not be combined.',
+                            'Save it: new grants that would break the rule are blocked, and anyone who already holds the pair is listed for you.',
+                        ]" /></td></tr>
                 @endforelse
                 </tbody>
             </table>

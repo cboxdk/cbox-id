@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 use App\Platform\AppLauncher;
+use App\Platform\AuditNames;
 use App\Platform\CurrentUser;
+use App\Platform\Onboarding\SetupChecklist;
 use Cbox\Id\Federation\Contracts\Connections;
-use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
@@ -14,6 +15,24 @@ use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends Component
 {
+    /**
+     * Put the setup checklist away for this admin. Progress itself is never stored,
+     * so an admin who dismisses it and later opens /get-started sees exactly where
+     * the organization actually stands — nothing was "reset" by hiding the card.
+     */
+    public function dismissChecklist(SetupChecklist $checklist): void
+    {
+        $me = app(CurrentUser::class);
+        $orgId = $me->organizationId();
+
+        if ($orgId === null || ! $me->isAdmin()) {
+            return;
+        }
+
+        $checklist->dismiss($orgId, $me->id());
+        $this->dispatch('toast', message: 'Setup guide hidden — reach it any time from Settings.');
+    }
+
     /** @return array<string, mixed> */
     public function with(): array
     {
@@ -27,51 +46,31 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
             ? AuditEntry::query()->where('organization_id', $orgId)->orderByDesc('sequence')->limit(6)->get()
             : new Collection;
 
+        // Only an admin can act on any of the steps, so only an admin is measured.
+        $checklist = app(SetupChecklist::class);
+        $progress = $orgId !== null && $me->isAdmin() ? $checklist->for($orgId) : null;
+        $dismissed = $orgId !== null && $me->isAdmin() && $checklist->isDismissed($orgId, $me->id());
+
         return [
             'me' => $me,
             'apps' => app(AppLauncher::class)->apps(),
             'memberCount' => $orgId !== null ? app(Memberships::class)->forOrganization($orgId)->count() : 0,
             'ssoActive' => $connection !== null,
             'recent' => $recent,
-            // Resolve opaque target ids to human names so the feed reads like a
-            // story ("member added · Ada Lovelace"), not a wall of ULIDs.
-            'targetLabels' => $this->resolveTargets($recent, $orgId, $me->organization()?->name),
+            // The card earns its place only while there is something left to do and
+            // this admin has not put it away.
+            'progress' => $progress !== null && ! $progress->isComplete() && ! $dismissed ? $progress : null,
+            // Resolve opaque ids to human names so the feed reads like a story
+            // ("member added · Ada Lovelace"), not a wall of ULIDs. Shared with the
+            // activity log, which needs the identical mapping — this component used to
+            // carry its own copy that resolved targets only, and one query per row.
+            'targetLabels' => app(AuditNames::class)->for($recent),
         ];
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, AuditEntry>  $entries
-     * @return array<string, string>
-     */
-    private function resolveTargets($entries, ?string $orgId, ?string $orgName): array
-    {
-        $subjects = app(Subjects::class);
-        $labels = [];
-
-        foreach ($entries as $entry) {
-            $id = $entry->target_id;
-
-            if (! is_string($id) || $id === '' || isset($labels[$id])) {
-                continue;
-            }
-
-            if ($entry->target_type === 'user') {
-                $subject = $subjects->find($id);
-                $name = $subject->name ?? $subject?->email;
-                if (is_string($name) && $name !== '') {
-                    $labels[$id] = $name;
-                }
-            } elseif ($entry->target_type === 'organization' && $id === $orgId && is_string($orgName)) {
-                $labels[$id] = $orgName;
-            }
-        }
-
-        return $labels;
     }
 }; ?>
 
 <div>
-    <x-page-header :title="'Welcome back, '.\Illuminate\Support\Str::before($me->name(), ' ')"
+    <x-page-header :title="'Welcome back, '.\Illuminate\Support\Str::before($me->name(), ' ')" :help="\App\Platform\Help\HelpTopic::Overview"
                    subtitle="Here's what's happening across {{ $me->organization()?->name ?? 'your organization' }}." />
 
     @if (count($apps) > 0)
@@ -94,6 +93,29 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
     @endif
 
     @if ($me->isAdmin())
+    {{-- First run. An organization where nothing has been set up yet has an empty
+         activity feed, no apps and a member count of one — a dashboard that reports
+         accurately that nothing has happened, which is no help to the person who
+         just arrived. Until the first step is done, the guide leads instead.
+
+         It is a banner rather than a redirect on purpose: hijacking /dashboard would
+         take a deep link away from someone who typed it, and there is no reliable
+         "this is their very first visit" signal to hang that on. --}}
+    @if ($progress !== null && $progress->completed() === 0)
+        <div class="card p-5 mb-4" style="border-color:var(--accent-edge);background:var(--accent-soft)">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-start gap-3 min-w-0">
+                    <span class="grid place-items-center rounded-lg shrink-0" style="width:2rem;height:2rem;background:var(--card);color:var(--primary)"><x-icon name="rocket" class="w-4 h-4" /></span>
+                    <div class="min-w-0">
+                        <p class="font-semibold">Nothing is set up yet</p>
+                        <p class="mt-1 text-sm" style="color:var(--muted-foreground)">{{ $progress->total() }} steps, in the order that makes sense — starting with {{ \Illuminate\Support\Str::lcfirst($progress->next()?->title() ?? 'the basics') }}.</p>
+                    </div>
+                </div>
+                <a href="{{ route('get-started') }}" wire:navigate class="btn btn-primary shrink-0">Start setting up</a>
+            </div>
+        </div>
+    @endif
+
     {{-- Plugins (billing, …) contribute cards here; each returns a `.card` block, so
          they tile as a responsive row alongside the native stat cards below. --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&:empty]:hidden mb-4">
@@ -118,10 +140,12 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
     </div>
 
     <div class="grid gap-4 lg:grid-cols-3 mt-4">
-        <div class="card lg:col-span-2">
+        {{-- Widens to the full row once the checklist beside it is gone, rather than
+             leaving a third of the grid empty for the rest of the org's life. --}}
+        <div class="card {{ $progress !== null ? 'lg:col-span-2' : 'lg:col-span-3' }}">
             <div class="px-5 py-4 border-b flex items-center justify-between" style="border-color:var(--border)">
                 <h3 class="font-semibold">Recent activity</h3>
-                <a href="{{ route('audit') }}" class="text-sm" style="color:var(--accent)">View audit log</a>
+                <a href="{{ route('audit') }}" class="text-sm" style="color:var(--accent)">View activity log</a>
             </div>
             @if ($recent->isEmpty())
                 <div class="px-5 py-10 text-center text-sm" style="color:var(--faint)">No activity recorded yet.</div>
@@ -148,29 +172,46 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
             @endif
         </div>
 
-        <div class="card p-5">
-            <h3 class="font-semibold">Set up your platform</h3>
-            <ul class="mt-4 space-y-3">
-                <li class="flex items-start gap-3">
-                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;background:var(--success-soft);color:var(--success-strong)"><x-icon name="check" class="w-3 h-3" /></span>
-                    <div><p class="text-sm font-medium">Organization created</p></div>
-                </li>
-                <li class="flex items-start gap-3">
-                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;border:1px solid var(--border)"></span>
-                    <div><a href="{{ route('members') }}" class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">Invite your team →</a></div>
-                </li>
-                <li class="flex items-start gap-3">
-                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;{{ $ssoActive ? 'background:var(--success-soft);color:var(--success-strong)' : 'border:1px solid var(--border)' }}">
-                        @if ($ssoActive)<x-icon name="check" class="w-3 h-3" />@endif
-                    </span>
-                    <div><a href="{{ route('connections') }}" class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">Connect enterprise SSO →</a></div>
-                </li>
-                <li class="flex items-start gap-3">
-                    <span class="grid place-items-center rounded-full mt-0.5" style="width:1.25rem;height:1.25rem;border:1px solid var(--border)"></span>
-                    <div><a href="{{ route('directories') }}" class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">Enable SCIM provisioning →</a></div>
-                </li>
-            </ul>
-        </div>
+        {{-- The setup checklist, measured — every tick here corresponds to something
+             that is actually true of this organization. It disappears for good once
+             the last step is done, or when this admin puts it away. --}}
+        @if ($progress !== null)
+            <div class="card p-5">
+                <div class="flex items-start justify-between gap-2">
+                    <h3 class="font-semibold">Finish setting up</h3>
+                    <button type="button" wire:click="dismissChecklist" class="cbx-help-link" style="color:var(--muted-foreground)">Hide</button>
+                </div>
+
+                <div class="mt-3 flex items-center gap-3">
+                    <div class="cbx-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                         aria-valuenow="{{ $progress->percent() }}" aria-label="Setup progress">
+                        <span style="width:{{ $progress->percent() }}%"></span>
+                    </div>
+                    <span class="text-xs mono shrink-0" style="color:var(--muted-foreground)">{{ $progress->completed() }}/{{ $progress->total() }}</span>
+                </div>
+
+                <ul class="mt-4 space-y-3">
+                    @foreach ($progress->steps as $step)
+                        <li class="flex items-start gap-3">
+                            <span class="grid place-items-center rounded-full mt-0.5 shrink-0" style="width:1.25rem;height:1.25rem;{{ $step->done ? 'background:var(--success-soft);color:var(--success-strong)' : 'border:1px solid var(--border)' }}">
+                                @if ($step->done)<x-icon name="check" class="w-3 h-3" />@endif
+                            </span>
+                            <div class="min-w-0">
+                                @if ($step->done)
+                                    <p class="text-sm" style="color:var(--muted-foreground)">{{ $step->title() }}</p>
+                                @else
+                                    <a href="{{ route($step->route()) }}" wire:navigate class="text-sm font-medium inline-flex items-center" style="color:var(--accent);min-height:1.5rem">{{ $step->title() }} →</a>
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <a href="{{ route('get-started') }}" wire:navigate class="btn btn-ghost btn-sm mt-4 w-full justify-center">
+                    <x-icon name="rocket" class="w-4 h-4" /> Open the setup guide
+                </a>
+            </div>
+        @endif
     </div>
     @else
         {{-- Member overview: their apps (above) plus a nudge to their own security.

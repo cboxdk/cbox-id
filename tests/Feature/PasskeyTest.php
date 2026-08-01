@@ -5,15 +5,8 @@ declare(strict_types=1);
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Contracts\SessionManager;
-use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
-use Cbox\Id\Identity\ValueObjects\Subject;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
 
 /**
  * A controllable Passkeys stand-in: the framework already tests the real WebAuthn
@@ -120,15 +113,3 @@ it('rejects a passkey assertion with no stored challenge', function () {
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
-
-/**
- * @return array{0: Subject, 1: Organization}
- */
-function accountWithOrg(string $email): array
-{
-    $subject = app(Subjects::class)->create($email, 'Holder', 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.substr(md5($email), 0, 6)));
-    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
-
-    return [$subject, $org];
-}

@@ -86,8 +86,12 @@ class RiskPlusServiceProvider extends ServiceProvider
         // a separate paid package; vendored in-tree there is nothing to unlock.
         Console::features()->register('risk-plus', static fn (): bool => true);
 
-        Console::nav()->area('security', 'Security', 'shield', 60)
-            ->page('risk-plus.events', 'Risk events', feature: 'risk-plus', order: 10);
+        // Appended to the host's Logs area rather than a one-page "Security" area. Risk
+        // events are a feed of what happened, which is what that area holds — and the
+        // rail already had a "Security" entry (My account › Security) meaning something
+        // entirely different, which is the worst kind of label collision.
+        Console::nav()->area('audit')
+            ->page('risk-plus.events', 'Risk events', feature: 'risk-plus', order: 40);
 
         Console::dashboardCard(fn (): string => $this->riskCard(), 6);
     }

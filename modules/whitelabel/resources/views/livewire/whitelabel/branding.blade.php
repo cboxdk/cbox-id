@@ -131,13 +131,11 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
 }; ?>
 
 <div style="display:flex;flex-direction:column;gap:24px">
-    <header class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">White-label</p>
-            <h1 class="cbx-page-title">Branding</h1>
-            <p class="cbx-page-desc">Theme the console and hosted sign-in for this environment — palette, logo, app name, custom domain and email sender.</p>
-        </div>
-    </header>
+    {{-- The eyebrow is resolved from the nav registry by <x-page-header>, so it says
+         "Settings" — the area this page actually lives in. Hand-written, it said
+         "White-label", which is the module's name and not a place in the console. --}}
+    <x-page-header title="Branding"
+                   subtitle="Theme the console and hosted sign-in for this whole environment — palette, logo, app name, custom domain and email sender. An organization can override the sign-in theme under Appearance." />
 
     @if (session('status'))
         <div role="status" aria-live="polite" class="badge badge-success" style="align-self:flex-start">{{ session('status') }}</div>

@@ -31,3 +31,12 @@ it('renders every new console page end-to-end for an admin', function (string $r
 
     $this->get(route($route))->assertOk();
 })->with(['governance', 'sod-policies', 'provisioning', 'hooks', 'approvals']);
+
+it('renders the guided setup page for an admin', function (): void {
+    signInAdminHttp();
+
+    $this->get(route('get-started'))
+        ->assertOk()
+        ->assertSee('Invite your team')
+        ->assertSee('Connect your first app');
+});

@@ -37,14 +37,8 @@ new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extend
 ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header mb-6">
-        <div class="min-w-0">
-            <h1 class="cbx-page-title">Connections</h1>
-            <p class="cbx-page-desc">
-                Every live connector for this organization, across outbound SCIM, webhooks and SSO federation.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Connections"
+                   subtitle="Every live connector for this organization, across outbound SCIM, webhooks and SSO federation." />
 
     @if ($this->connections === [])
         <div class="cbx-empty">

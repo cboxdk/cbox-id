@@ -20,7 +20,7 @@ use Livewire\Volt\Component;
  * because this page needs a boot() hook and Volt's functional boot() compiles to a
  * `void` method containing a `return`.
  */
-new #[Layout('components.layouts.app')] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class extends Component
 {
     /**
      * Read gate re-checked on EVERY request, not just first mount — boot() runs on each
@@ -58,15 +58,8 @@ new #[Layout('components.layouts.app')] class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header mb-6">
-        <div class="min-w-0">
-            <h1 class="cbx-page-title">Trusted devices</h1>
-            <p class="cbx-page-desc">
-                Handsets enrolled in the authenticator app. These receive approval prompts
-                and sign-in alerts. Push tokens are never shown.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Trusted devices"
+                   subtitle="Handsets enrolled in the authenticator app. These receive approval prompts and sign-in alerts. Push tokens are never shown." />
 
     {{-- Enrolment is personal, so it lives where every user can reach it. --}}
     <p class="text-sm" style="color:var(--muted)">

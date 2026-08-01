@@ -9,7 +9,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Organization settings — the workspace an admin manages. A user's own security
+ * Organization settings — the organization an admin manages. A user's own security
  * (password, 2FA, passkeys, sessions) lives in "My account" instead.
  */
 new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends Component
@@ -65,21 +65,19 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Organization</p>
-            <h1 class="cbx-page-title">Settings</h1>
-            <p class="cbx-page-desc">The workspace you administer. Manage your own security under
-                <a href="{{ route('account') }}" class="underline" style="color:var(--accent)">My account</a>.</p>
-        </div>
-    </div>
+    <x-page-header title="Settings" :help="\App\Platform\Help\HelpTopic::Settings">
+        <x-slot:subtitle>
+            The organization you administer. Manage your own security under
+            <a href="{{ route('account') }}" class="underline" style="color:var(--accent)">My account</a>.
+        </x-slot:subtitle>
+    </x-page-header>
 
     {{-- Organization --}}
     <section class="cbx-panel">
         <div class="cbx-panel-header">
             <div>
                 <h2 class="cbx-panel-title">Organization</h2>
-                <p class="cbx-panel-desc">The workspace you are currently signed in to.</p>
+                <p class="cbx-panel-desc">The organization you are currently signed in to.</p>
             </div>
         </div>
         <div class="cbx-panel-body">
@@ -107,6 +105,25 @@ new #[Layout('components.layouts.app', ['title' => 'Settings'])] class extends C
             @endif
         </div>
     </section>
+
+    {{-- The way back to the setup guide. Dismissing it on the dashboard is meant to
+         be reversible, and this is where someone looks for the switch. --}}
+    @if ($me->isAdmin() && $org)
+        <section class="cbx-panel">
+            <div class="cbx-panel-header">
+                <div>
+                    <h2 class="cbx-panel-title">Setup guide</h2>
+                    <p class="cbx-panel-desc">The steps worth doing for a new organization, with what each one gets you.</p>
+                </div>
+            </div>
+            <div class="cbx-panel-body">
+                <div class="flex items-center justify-between gap-4">
+                    <p class="text-sm min-w-0" style="color:var(--muted-foreground)">Each step is measured from live state, so the guide always shows where this organization actually stands.</p>
+                    <a href="{{ route('get-started') }}" wire:navigate class="btn btn-secondary shrink-0">Open guide <x-icon name="chevron" class="w-4 h-4" style="transform:rotate(-90deg)" /></a>
+                </div>
+            </div>
+        </section>
+    @endif
 
     {{-- Login branding --}}
     @if ($me->isAdmin() && $org)

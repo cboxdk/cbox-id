@@ -68,7 +68,7 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
 }; ?>
 
 <div>
-    <x-page-header title="Usage"
+    <x-page-header title="Usage" :help="\App\Platform\Help\HelpTopic::Usage"
                    subtitle="Activity across {{ $org?->name ?? 'your organization' }} — last 30 days. This is analytics; the SaaS bills separately." />
 
     @if ($snapshot === [])

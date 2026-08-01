@@ -78,13 +78,23 @@ it('has no WCAG 2.1 A/AA violations on the console pages', function (string $pat
     expect(axeViolations($html))->toBe([]);
 })->with([
     'dashboard' => '/dashboard',
+    'get-started' => '/get-started',
+    'usage' => '/usage',
+    'approvals' => '/approvals',
     'members' => '/members',
-    'connections' => '/connections',
     'roles' => '/roles',
+    'connections' => '/connections',
+    'directories' => '/directories',
+    'provisioning' => '/provisioning',
+    'governance' => '/governance',
+    'sod-policies' => '/sod-policies',
     'clients' => '/clients',
     'webhooks' => '/webhooks',
+    'hooks' => '/hooks',
     'audit' => '/audit',
     'settings' => '/settings',
+    'appearance' => '/appearance',
+    'account' => '/account',
 ]);
 
 /*

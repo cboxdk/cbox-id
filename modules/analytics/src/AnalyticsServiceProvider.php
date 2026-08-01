@@ -82,8 +82,13 @@ class AnalyticsServiceProvider extends ServiceProvider
         // Console — present when a real sink is wired or analytics is explicitly on.
         Console::features()->register('analytics', fn (): bool => $this->analyticsActive());
 
-        Console::nav()->area('analytics', 'Analytics', 'chart', 55)
-            ->page('analytics.overview', 'Overview', feature: 'analytics', order: 10);
+        // Appended to the host's Overview area rather than minting an "Analytics" area
+        // of its own. A single-page area for the same subject the Overview area already
+        // covers gave the console two answers to "where do I see what is happening?" —
+        // and the page label read "Overview" in a second place in the rail. The label
+        // matches the page's own <h1>, as every nav entry must.
+        Console::nav()->area('overview')
+            ->page('analytics.overview', 'Analytics', feature: 'analytics', order: 15);
 
         Console::dashboardCard(fn (): string => $this->loginsCard(), 4);
 

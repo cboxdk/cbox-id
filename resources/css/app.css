@@ -803,11 +803,37 @@
     .cbx-page-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); margin: 0; }
     .cbx-page-desc { font-size: 14px; color: var(--muted-foreground); margin: 6px 0 0; }
 
-    /* Empty state */
+    /* Setup progress — a plain track and fill. The fill animates so a step ticked on
+       the previous page reads as progress made, not as a different picture. */
+    .cbx-progress { position: relative; flex: 1; height: 6px; border-radius: 9999px; background: var(--secondary); overflow: hidden; }
+    .cbx-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width var(--dur-hover) var(--ease); }
+
+    /* Help — the "?" next to a title, and the panel it opens. The trigger stays
+       quiet until hovered: it is available on every page, so at full contrast it
+       would be the loudest thing in a header it is not the subject of. */
+    .cbx-help { position: relative; display: inline-flex; vertical-align: middle; }
+    .cbx-help-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 9999px; color: var(--muted-foreground); background: transparent; border: 0; cursor: pointer; transition: color var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease); }
+    .cbx-help-btn:hover, .cbx-help-btn[aria-expanded="true"] { color: var(--foreground); background: var(--secondary); }
+    .cbx-help-link { border: 0; background: transparent; padding: 0; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+    .cbx-help-panel { position: absolute; top: calc(100% + 8px); z-index: 70; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px; box-shadow: var(--shadow-popover); text-align: left; white-space: normal; }
+    .cbx-help-panel { left: 0; }
+    .cbx-help-panel.is-end { left: auto; right: 0; }
+    .cbx-help-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--foreground); }
+    .cbx-help-body { font-size: 13px; line-height: 1.55; color: var(--muted-foreground); }
+    .cbx-help-more { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .cbx-help-more:hover { text-decoration: underline; }
+
+    /* Empty state — not a shrug, a first task. The icon/title/body sit centred as
+       before; `.cbx-empty-steps` adds the numbered "what to do" list, and
+       `.cbx-empty-actions` the button row under it. */
     .cbx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; text-align: center; }
     .cbx-empty-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--secondary); color: var(--muted-foreground); }
     .cbx-empty h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--foreground); font-family: var(--font-display); }
     .cbx-empty p { margin: 4px 0 0; max-width: 384px; font-size: 14px; color: var(--muted-foreground); }
+    .cbx-empty-steps { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 0; padding: 0; max-width: 420px; text-align: left; list-style: none; counter-reset: cbx-step; }
+    .cbx-empty-steps li { position: relative; padding-left: 30px; font-size: 13px; line-height: 1.5; color: var(--muted-foreground); counter-increment: cbx-step; }
+    .cbx-empty-steps li::before { content: counter(cbx-step); position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 9999px; background: var(--secondary); color: var(--foreground); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+    .cbx-empty-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
 
     /* Avatar */
     .cbx-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--accent-soft); color: var(--foreground); font-size: 11px; font-weight: 600; }
@@ -847,7 +873,10 @@
     .cbx-sidebar { display: flex; flex-direction: column; width: var(--sidebar-w); box-sizing: border-box; flex-shrink: 0; border-right: 1px solid var(--sidebar-border); background: var(--sidebar); }
     .cbx-sidebar-brand { display: flex; align-items: center; height: var(--topbar-h); padding: 0 16px; flex-shrink: 0; border-bottom: 1px solid color-mix(in oklch, var(--sidebar-border) 70%, transparent); }
     .cbx-nav { flex: 1; overflow-y: auto; padding: 16px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
-    .cbx-nav-group { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 10px 4px; margin: 0; }
+    .cbx-nav-group { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 10px 4px; margin: 0; }
+    /* Pages of an area, in the mobile sheet: indented under the group heading that
+       carries the icon, rather than each repeating the same glyph. */
+    .nav-link.is-nested { padding-left: 34px; }
 
     /* ── TIER 1: icon rail (Intercom 3-state model). Active = filled bg; NO left-edge rail. */
     /* The rail is ALWAYS a floating inset card with identical geometry whether

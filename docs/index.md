@@ -30,6 +30,9 @@ package installed, the same files live under `vendor/cboxdk/laravel-id/docs/`.
 - [Requirements](requirements.md) — exactly what `composer.json` enforces.
 - [Getting started](getting-started/_index.md) — installation and the first-run flow.
 - [Integrate your app](getting-started/integrate-your-app.md) — where a `client_id` comes from, and the first SDK call.
+- [Admin guides](guides/_index.md) — for the person administering an organization in
+  the console: single sign-on, user sync, roles, access reviews. These are what the
+  "?" beside each console page title links to.
 
 ## Configure and run
 

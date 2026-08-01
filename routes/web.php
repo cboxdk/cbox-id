@@ -216,6 +216,11 @@ Route::middleware('plane:subject')->group(function (): void {
 Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
 
+    // The guided first run. Deliberately NOT in the nav registry: it is where a fresh
+    // organization is sent once, and where the dashboard checklist links back to —
+    // an entry that would sit there dead for the rest of the org's life is clutter.
+    Volt::route('/get-started', 'get-started')->name('get-started');
+
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.

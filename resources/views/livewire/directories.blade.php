@@ -20,7 +20,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Sync users in'])] class extends Component
 {
     public bool $creating = false;
 
@@ -254,31 +254,21 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Sign-in</p>
-            <h1 class="cbx-page-title">User sync</h1>
-            <p class="cbx-page-desc">Provision and de-provision users automatically over SCIM, and map their groups onto roles.</p>
-        </div>
+    <x-page-header title="Sync users in" :help="\App\Platform\Help\HelpTopic::SyncUsersIn"
+                   subtitle="Let your identity provider create, update and deactivate people here on its own — and map its groups onto your roles.">
         @if ($me->isAdmin() && $entitled)
-            <div class="flex items-center gap-2">
+            <x-slot:actions>
                 <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New directory</button>
-            </div>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     @if (! $entitled)
         <div class="card mt-8">
-            <div class="cbx-empty">
-                <div class="cbx-empty-icon"><x-icon name="directory" class="w-5 h-5" /></div>
-                <h3>SCIM directory sync is an Enterprise feature</h3>
-                <p>
-                    Automatic user provisioning and de-provisioning over SCIM 2.0 is
-                    available on the Enterprise plan. Contact your account team to enable
-                    it for this organization.
-                </p>
-            </div>
+            <x-empty-state icon="directory" title="Syncing users in is an Enterprise feature"
+                           :help="\App\Platform\Help\HelpTopic::SyncUsersIn"
+                           body="Having your identity provider create and deactivate people here automatically, over SCIM 2.0, is available on the Enterprise plan. Contact your account team to enable it for this organization." />
         </div>
     @else
 
@@ -402,7 +392,16 @@ new #[Layout('components.layouts.app', ['title' => 'User sync'])] class extends 
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="2" class="text-center py-10" style="color:var(--muted-foreground)">No directories connected yet.</td></tr>
+                        <tr><td colspan="2" class="p-0">
+                            <x-empty-state icon="directory" title="No directory connected yet"
+                                           :help="\App\Platform\Help\HelpTopic::SyncUsersIn"
+                                           body="Until one is connected, every joiner and leaver is a manual change here. A directory closes that gap: someone deactivated in your provider loses access to every connected app within seconds."
+                                           :steps="[
+                                               'Connect Google Workspace or Microsoft Entra directly with the buttons above — or register a directory to get a SCIM endpoint and token for any other provider.',
+                                               'Point your provider at that endpoint and assign the people who should have access.',
+                                               'Map the groups it sends onto your roles, so access follows the group.',
+                                           ]" />
+                        </td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -2,18 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Platform\CurrentUser;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Models\Connection;
-use Cbox\Id\Identity\Contracts\SessionManager;
-use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
-use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
-use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
 // This file is ABOUT the entitlement gate, so it declares the mode it exercises.
@@ -24,30 +14,6 @@ use Livewire\Volt\Volt;
 beforeEach(function (): void {
     config(['cbox-id.entitlements.mode' => 'metered']);
 });
-
-/**
- * Sign an admin into a fresh org and return its id. The org starts with NO
- * entitlements — deny-by-default is the thing under test.
- */
-function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = MembershipRole::Owner): string
-{
-    $subject = app(Subjects::class)->create("admin@{$slug}.test", 'Admin', 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
-    app(Memberships::class)->add($org->id, $subject->id, $role);
-    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, $org, $role);
-
-    return $org->id;
-}
-
-function grantFeature(string $organizationId, string $key): void
-{
-    app(EntitlementWriter::class)->set(
-        $organizationId,
-        new EntitlementInput($key, ['enabled' => true]),
-        EntitlementSource::Manual,
-    );
-}
 
 it('shows the SSO upsell and refuses every SSO action for a non-entitled org', function () {
     gateAdmin('gate-sso-deny');

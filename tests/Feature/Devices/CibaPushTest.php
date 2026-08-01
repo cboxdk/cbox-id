@@ -4,53 +4,14 @@ declare(strict_types=1);
 
 use Cbox\Id\Devices\Contracts\PushTransport;
 use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
-use Cbox\Id\Devices\Enums\DevicePlatform;
-use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Enums\NotificationKind;
-use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Models\PushNotification;
 use Cbox\Id\Devices\Testing\FakePushTransport;
-use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
-use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
-
-/**
- * A subject with one enrolled handset, plus an agent client to raise CIBA requests.
- *
- * @return array{0: string, 1: Client}
- */
-function cibaSubjectWithDevice(): array
-{
-    config()->set('id-devices.enabled', true);
-
-    $subject = app(Subjects::class)->create('ciba@acme.test', 'CIBA User', 'supersecret123');
-
-    $device = new Device;
-    $device->fill([
-        'subject_id' => $subject->id,
-        'install_id' => (string) Str::ulid(),
-        'platform' => DevicePlatform::Ios,
-        'name' => 'CIBA iPhone',
-        'status' => DeviceStatus::Active,
-    ]);
-    $device->save();
-    $device->token_encrypted = app(SecretBox::class)->seal('fcm-token', $device->secretContext());
-    $device->save();
-
-    $client = app(ClientRegistry::class)->register(
-        new NewClient('Agent', ClientType::Confidential, scopes: ['openid'])
-    )->client;
-
-    return [$subject->id, $client];
-}
 
 it('decorates the CIBA contract so the prompt is pushed, not relayed', function (): void {
     // The whole design rests on this: the domain event goes to an outbox that is

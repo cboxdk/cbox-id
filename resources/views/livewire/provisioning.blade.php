@@ -10,7 +10,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Sync users out'])] class extends Component
 {
     #[Validate('required|string|max:190')]
     public string $name = '';
@@ -81,16 +81,14 @@ new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] cl
 }; ?>
 
 <div>
-    <div class="cbx-page-header mb-8">
-        <div>
-            <p class="cbx-page-eyebrow">Authentication</p>
-            <h1 class="cbx-page-title">Outbound provisioning</h1>
-            <p class="cbx-page-desc">Push users out to your downstream SaaS apps over their SCIM 2.0 endpoints. Changes here are provisioned to each connected app.</p>
-        </div>
+    <x-page-header title="Sync users out" :help="\App\Platform\Help\HelpTopic::SyncUsersOut"
+                   subtitle="Push your people into the other SaaS products your company uses, so onboarding and offboarding happen once here instead of once per vendor.">
         @if ($me->isAdmin())
-            <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Register connection</button>
+            <x-slot:actions>
+                <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Register connection</button>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     @if ($creating && $me->isAdmin())
         <form wire:submit="register" class="card p-4 mb-5 space-y-4">
@@ -160,11 +158,14 @@ new #[Layout('components.layouts.app', ['title' => 'Outbound provisioning'])] cl
                     @empty
                         <tr>
                             <td colspan="5">
-                                <div class="cbx-empty">
-                                    <div class="cbx-empty-icon"><x-icon name="connections" class="w-5 h-5" /></div>
-                                    <h3>No provisioning connections yet</h3>
-                                    <p>Register a connection to start pushing user changes out to a downstream app over its SCIM endpoint.</p>
-                                </div>
+                                <x-empty-state icon="connections" title="No apps are being kept in sync yet"
+                                               :help="\App\Platform\Help\HelpTopic::SyncUsersOut"
+                                               body="Each app you connect here is created, updated and deactivated for you — so a leaver loses their seat everywhere, not just here."
+                                               :steps="[
+                                                   'Find the SCIM endpoint in the downstream app’s admin settings, and generate a token there.',
+                                                   'Register the connection below with that URL and token.',
+                                                   'Watch the first push in the activity log, then leave it to run.',
+                                               ]" />
                             </td>
                         </tr>
                     @endforelse

@@ -1,4 +1,10 @@
-@props(['appearance', 'title' => 'Appearance', 'subtitle' => null, 'scope' => null])
+@props([
+    'appearance',
+    'title' => 'Appearance',
+    'subtitle' => null,
+    'scope' => null,
+    'help' => \App\Platform\Help\HelpTopic::Appearance,
+])
 @php
     use App\Platform\Appearance\ThemeFont;
     use App\Platform\Appearance\ThemePresets;
@@ -16,7 +22,7 @@
      host Volt component only needs a `save(array $theme)` action. Used by both the
      organization and environment appearance pages. --}}
 <div x-data="themeEditor(@js($appearance), @js($presets), @js($fonts), @js($radii))" x-cloak>
-    <x-page-header :title="$title" :subtitle="$subtitle">
+    <x-page-header :title="$title" :subtitle="$subtitle" :help="$help">
         <x-slot:actions>
             <button type="button" @click="save()" class="btn btn-primary shrink-0" :disabled="saved">
                 <template x-if="!saved"><span class="inline-flex items-center gap-1.5"><x-icon name="check" class="w-4 h-4" /> Save changes</span></template>

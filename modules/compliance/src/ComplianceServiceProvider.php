@@ -74,9 +74,14 @@ class ComplianceServiceProvider extends ServiceProvider
         // Console — present when a real sink is wired or compliance is explicitly on.
         Console::features()->register('compliance', fn (): bool => $this->complianceActive());
 
-        Console::nav()->area('compliance', 'Compliance', 'shield-check', 75)
-            ->page('compliance.audit', 'Audit trail', feature: 'compliance', order: 10)
-            ->page('compliance.exports', 'Exports', feature: 'compliance', order: 20);
+        // Appended to the host's Logs area rather than a "Compliance" area of its own.
+        // These pages are the same subject as Activity log — the audit trail — viewed
+        // with chain verification and export; two areas meant an admin looking for
+        // "the log" had to guess which of them held the one they wanted. The Exports
+        // label carries the page's full title, as every nav entry must.
+        Console::nav()->area('audit')
+            ->page('compliance.audit', 'Audit trail', feature: 'compliance', order: 20)
+            ->page('compliance.exports', 'Exports & retention', feature: 'compliance', order: 30);
 
         Console::dashboardCard(fn (): string => $this->exportCard(), 8);
 

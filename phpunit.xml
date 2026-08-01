@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
          failOnRisky="true"
          failOnWarning="true"
@@ -29,30 +29,17 @@
              `vendor/bin/pest` works on any machine, instead of only where php.ini
              happens to be generous or the caller remembered `-d memory_limit=1G`. -->
         <ini name="memory_limit" value="1G"/>
-        <env name="APP_ENV" value="testing"/>
-        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
+        <!-- The suite-owned infrastructure (APP_ENV, CACHE_STORE, QUEUE_CONNECTION,
+             SESSION_DRIVER, …) is set in tests/bootstrap.php instead of here: `<env>`
+             writes $_ENV and putenv() but not $_SERVER, which is the first place
+             Laravel's Env repository looks, so a CI runner exporting
+             QUEUE_CONNECTION=redis silently won. See that file for the full account.
+
+             What stays here is DB_*, and only DB_*: the engines matrix deliberately
+             overrides it from the process environment to redirect the run at PostgreSQL
+             or MySQL, so it is the one thing the suite must NOT pin. -->
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="CBOX_ID_CRYPTO_KEY" value="YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE="/>
-        <env name="CBOX_ID_ISSUER" value="http://localhost"/>
-        <env name="CBOX_ID_WEBAUTHN_RP_ID" value="localhost"/>
-        <env name="CBOX_ID_WEBAUTHN_ORIGIN" value="http://localhost"/>
-        <!-- Pinned off so the suite is deterministic: the devices tests assert the
-             feature's default state, and a developer .env with the flag on must not
-             change what the tests see. Tests that want it on set it via config().
-             Both names pinned — the ID_ form is the pre-0.34 spelling the config
-             still honours as a fallback. -->
-        <env name="CBOX_ID_DEVICES_ENABLED" value="false"/>
-        <env name="ID_DEVICES_ENABLED" value="false"/>
-        <env name="PULSE_ENABLED" value="false"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>
 </phpunit>

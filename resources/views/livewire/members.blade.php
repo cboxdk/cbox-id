@@ -353,18 +353,14 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Organization</p>
-            <h1 class="cbx-page-title">Members</h1>
-            <p class="cbx-page-desc">People with access to this organization.</p>
-        </div>
+    <x-page-header title="Members" :help="\App\Platform\Help\HelpTopic::Members"
+                   subtitle="Everyone who can sign in to this organization, and the invitations nobody has accepted yet.">
         @if ($me->isAdmin())
-            <div class="flex items-center gap-2">
+            <x-slot:actions>
                 <button wire:click="$toggle('inviting')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> Invite member</button>
-            </div>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-page-header>
 
     <div class="mt-8 space-y-6">
     @if ($inviting && $me->isAdmin())
@@ -376,7 +372,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                     @error('inviteEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label class="label" for="inviteRole">Workspace access</label>
+                    <label class="label" for="inviteRole">Console access</label>
                     <select wire:model="inviteRole" id="inviteRole" class="select">
                         @foreach ($assignableRoles as $role)
                             <option value="{{ $role->value }}">{{ $role->label() }}</option>
@@ -439,7 +435,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr><th scope="col">Member</th><th scope="col">Workspace access</th><th scope="col">Access roles</th><th scope="col">Joined</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+                    <tr><th scope="col">Member</th><th scope="col">Console access</th><th scope="col">Roles in your apps</th><th scope="col">Joined</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
                 </thead>
                 <tbody>
                     @forelse ($rows as $row)
@@ -475,7 +471,11 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                         @php $r = $accessRolesById[$rid] ?? null; @endphp
                                         @if ($r)<span class="badge">{{ $r->name }}</span>@endif
                                     @empty
-                                        <span class="text-xs" style="color:var(--faint)">None</span>
+                                        @if ($me->isAdmin() && $accessRoles->isEmpty())
+                                            <a href="{{ route('roles') }}" wire:navigate class="text-xs" style="color:var(--accent)">No roles defined yet →</a>
+                                        @else
+                                            <span class="text-xs" style="color:var(--faint)">None</span>
+                                        @endif
                                     @endforelse
                                     @if ($me->isAdmin() && $accessRoles->isNotEmpty())
                                         <button wire:click="toggleManage('{{ $row['id'] }}')" class="btn btn-ghost btn-sm" style="height:24px;padding:0 8px;font-size:11px">

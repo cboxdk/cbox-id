@@ -336,18 +336,14 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
 }; ?>
 
 <div>
-    <div class="cbx-page-header mb-8">
-        <div>
-            <p class="cbx-page-eyebrow">Developers</p>
-            <h1 class="cbx-page-title">Apps &amp; API keys</h1>
-            <p class="cbx-page-desc">Connect your apps to Cbox ID — for signing people in (single sign-on) or for machine-to-machine API access. First-party apps also appear in your team's launcher.</p>
-        </div>
-        <div class="flex items-center gap-2">
-            @if ($me->isAdmin())
+    <x-page-header title="Apps & API keys" :help="\App\Platform\Help\HelpTopic::Apps"
+                   subtitle="Every app that signs people in through Cbox ID, or calls its API, is registered here.">
+        @if ($me->isAdmin())
+            <x-slot:actions>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New app</button>
-            @endif
-        </div>
-    </div>
+            </x-slot:actions>
+        @endif
+    </x-page-header>
 
     @if ($newClientId)
         <div class="card p-5 mb-5" style="border-color:var(--accent-edge)">
@@ -608,11 +604,15 @@ await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, retu
                     @empty
                         <tr>
                             <td colspan="{{ $me->isAdmin() ? 6 : 5 }}">
-                                <div class="cbx-empty">
-                                    <div class="cbx-empty-icon"><x-icon name="clients" class="w-5 h-5" /></div>
-                                    <h3>No apps of your own yet</h3>
-                                    <p>Connect your first app — to sign people in with single sign-on, or to call the Cbox ID API.@if ($platformApps->isNotEmpty()) The Cbox apps below are available to everyone and managed by Cbox.@endif</p>
-                                </div>
+                                <x-empty-state icon="clients" title="No apps of your own yet"
+                                               :help="\App\Platform\Help\HelpTopic::Apps"
+                                               body="{{ 'An app registered here can sign your people in and read their roles, so you manage access in one place instead of per product.'.($platformApps->isNotEmpty() ? ' The Cbox apps below are available to everyone and managed by Cbox.' : '') }}"
+                                               :steps="[
+                                                   'Create the app below — one per app, per environment.',
+                                                   'Copy its client ID and secret into the app’s configuration; the secret is shown once.',
+                                                   'Add the exact URL Cbox ID may send people back to after they sign in.',
+                                                   'Have the app declare the roles it understands, so you can assign them here.',
+                                               ]" />
                             </td>
                         </tr>
                     @endforelse

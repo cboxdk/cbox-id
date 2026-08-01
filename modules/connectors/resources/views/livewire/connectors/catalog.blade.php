@@ -7,7 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Connectors'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Catalog'])] class extends Component
 {
     /**
      * Flattened for the card grid — a rendering boundary, so an array shape is the
@@ -47,15 +47,8 @@ new #[Layout('components.layouts.app', ['title' => 'Connectors'])] class extends
 ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header mb-6">
-        <div class="min-w-0">
-            <h1 class="cbx-page-title">Connectors catalog</h1>
-            <p class="cbx-page-desc">
-                The connector types this platform speaks. Each is backed by an existing platform module; enable and configure
-                them from their module pages, then review them together under Connections.
-            </p>
-        </div>
-    </div>
+    <x-page-header title="Catalog"
+                   subtitle="The connector types this platform speaks. Each is backed by a platform module you enable and configure on its own page; review them together under Connections." />
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         @foreach ($this->catalog as $type)
