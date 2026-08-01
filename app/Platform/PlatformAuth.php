@@ -276,7 +276,13 @@ final class PlatformAuth
         // A full session is being minted — drop any half-finished second-factor
         // handles so a completed sign-in can never leave a redeemable pending code
         // dangling in the (data-preserving) session.
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY]);
+        // Plus the sudo confirmation: it attests that the person at the keyboard is who
+        // this session says, and minting a new session is exactly the moment that stops
+        // being established. regenerate() rotates the id but preserves the data, so
+        // without this a step-up made before a transition carried straight through it —
+        // and the sudo gate is meant to be the independent second layer, not something
+        // load-bearing on whatever else happens to refuse first.
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
 
         // Pin to the caller-supplied org when given (impersonation authorizes against
         // a SPECIFIC org — the session must land there, not in the subject's oldest
@@ -304,7 +310,7 @@ final class PlatformAuth
      */
     public function adopt(Request $request, Session $session): void
     {
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
 
         $organizationId = $session->organization_id
             ?? $this->memberships->forUser($session->user_id)->value('organization_id');
@@ -382,6 +388,13 @@ final class PlatformAuth
 
     public function switchOrganization(Request $request, string $organizationId): void
     {
+        // Switching tenant changes which authority the session carries, so a step-up
+        // confirmed against the previous one does not transfer — and the id rotates here
+        // like every other privilege transition. The account switch two methods down has
+        // always done both; this one did neither.
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->regenerate();
+
         session()->put(self::ORG_KEY, $organizationId);
 
         // Keep the active account's remembered org in sync, so switching accounts

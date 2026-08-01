@@ -58,6 +58,12 @@ final class Impersonation
      */
     public function start(Request $request, string $operatorId, string $subjectId, string $orgId, string $reason): void
     {
+        // The step-up does not travel across an impersonation boundary in either
+        // direction. Entering, the confirmation belongs to the operator and not to the
+        // person whose session this becomes; leaving, it belongs to a session that no
+        // longer exists. Either way it attests to something that has stopped being true.
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+
         // Capture the operator's currently-targeted plane so exit can re-pin it —
         // it is the plane the org lives in (the operator reached the member in-plane).
         $env = $request->session()->get(OperatorAuth::ENV_KEY);
@@ -107,6 +113,12 @@ final class Impersonation
      */
     public function startAsAccountMember(Request $request, string $memberId, string $subjectId, string $orgId, string $reason): void
     {
+        // The step-up does not travel across an impersonation boundary in either
+        // direction. Entering, the confirmation belongs to the operator and not to the
+        // person whose session this becomes; leaving, it belongs to a session that no
+        // longer exists. Either way it attests to something that has stopped being true.
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+
         // The env-admin session is bound to exactly one environment; re-pin it on exit.
         $env = $request->session()->get(EnvironmentAdminAuth::ENV_KEY);
 
@@ -144,6 +156,12 @@ final class Impersonation
      */
     public function exit(Request $request): void
     {
+        // The step-up does not travel across an impersonation boundary in either
+        // direction. Entering, the confirmation belongs to the operator and not to the
+        // person whose session this becomes; leaving, it belongs to a session that no
+        // longer exists. Either way it attests to something that has stopped being true.
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+
         $marker = $this->active();
 
         if ($marker === null) {

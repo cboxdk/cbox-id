@@ -77,6 +77,18 @@ final class RequireWorkspaceSudo
 
         $path = $parts['path'] ?? '/';
 
-        return ! str_starts_with($path, '/') ? null : $path.(isset($parts['query']) ? '?'.$parts['query'] : '');
+        // A path, and unambiguously a LOCAL one.
+        //
+        // `str_starts_with($path, '/')` alone admits `//evil.tld/x` and `/\evil.tld/x`,
+        // which browsers and Laravel's own UrlGenerator::isValidUrl() read as
+        // protocol-relative absolute URLs — so a Referer of
+        // `https://<our-host>//evil.tld/x` came back out of here verbatim and the
+        // step-up redirected off-site. The comment above this method claimed the result
+        // is always same-origin; it was one slash away from not being.
+        if (! str_starts_with($path, '/') || str_starts_with($path, '//') || str_starts_with($path, '/\\')) {
+            return null;
+        }
+
+        return $path.(isset($parts['query']) ? '?'.$parts['query'] : '');
     }
 }

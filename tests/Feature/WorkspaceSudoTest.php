@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -129,3 +130,29 @@ it('requires the step-up to revoke an account key, not just to mint one', functi
     expect(AccountApiKey::query()->whereKey($keyId)->value('revoked_at'))
         ->toBeNull('a non-sudo session revoked a machine credential');
 });
+
+/**
+ * A step-up attests that the person at this keyboard is who the session says. Every
+ * transition below breaks that premise, and Laravel's `regenerate()` rotates the id while
+ * PRESERVING the data — so a confirmation made before one carried straight through it.
+ *
+ * Not exploitable today, because the impersonation call guard refuses the actions a
+ * carried-over sudo would unlock. That is the reason to fix it rather than the reason not
+ * to: sudo is meant to be the independent second layer, and right now it is load-bearing
+ * on whatever else happens to refuse first — which is precisely the single-layer
+ * arrangement that let an impersonator reach the authorize endpoint.
+ */
+it('does not carry a step-up across a session transition', function (string $transition): void {
+    signInMember();
+    app(WorkspaceSudo::class)->confirm();
+
+    expect(app(WorkspaceSudo::class)->confirmed())->toBeTrue();
+
+    match ($transition) {
+        'establish' => app(PlatformAuth::class)->establish(request(), 'subject-x', ['pwd']),
+        'organization switch' => app(PlatformAuth::class)->switchOrganization(request(), 'org-elsewhere'),
+    };
+
+    expect(app(WorkspaceSudo::class)->confirmed())
+        ->toBeFalse("the step-up survived a {$transition}");
+})->with(['establish', 'organization switch']);

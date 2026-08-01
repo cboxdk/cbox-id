@@ -13,7 +13,16 @@ namespace App\Platform;
  */
 final class Sudo
 {
-    private const SESSION_KEY = 'cbox.sudo_confirmed_at';
+    /**
+     * Public so the session-transition paths can forget it.
+     *
+     * A step-up confirms "the person at this keyboard is still who this session says",
+     * and every transition below breaks that premise: establishing a session, adopting
+     * one, switching organization, and entering or leaving an impersonation. Laravel's
+     * session regenerate() rotates the id and PRESERVES the data, so a confirmation made
+     * before any of those survived it.
+     */
+    public const SESSION_KEY = 'cbox.sudo_confirmed_at';
 
     /** How long a sudo confirmation stays valid, in seconds. */
     public const WINDOW = 900;
