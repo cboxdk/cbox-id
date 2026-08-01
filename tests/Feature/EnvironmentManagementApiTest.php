@@ -145,7 +145,9 @@ it('lets an environment manager mint a scoped key for their environment in the c
         ->call('createKey')
         ->assertHasNoErrors();
 
-    expect($component->get('freshKey'))->toStartWith('cbid_env_');
+    // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
+    // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
+    expect($component->viewData('freshKey'))->toStartWith('cbid_env_');
 
     $keys = app(EnvironmentApiKeys::class)->forEnvironment($result->environment->id);
     expect($keys)->toHaveCount(1)

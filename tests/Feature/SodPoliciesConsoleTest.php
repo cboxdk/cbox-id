@@ -44,15 +44,24 @@ it('defines a policy over two roles', function (): void {
     expect($policy->role_ids)->toEqualCanonicalizing([$a->id, $b->id]);
 });
 
+/**
+ * The rule is written down AFTER the two roles are already held, which from laravel-id
+ * 0.71.0 is the only way a violation can come into existence — the preventive gate now
+ * runs inside RoleService::assign(), so the framework refuses to create one. It is also
+ * how this happens in practice: someone writes a rule about a combination people have.
+ *
+ * That is exactly why the detective scan still has a job, and why this page still needs
+ * to render a violation.
+ */
 it('detects a violation', function (): void {
     $orgId = sodAdmin();
     $a = app(Roles::class)->define($orgId, 'create-po');
     $b = app(Roles::class)->define($orgId, 'approve-pay');
 
-    app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs pay', [$a->id, $b->id]);
-
     app(Roles::class)->assign($orgId, 'user-1', $a->id);
     app(Roles::class)->assign($orgId, 'user-1', $b->id);
+
+    app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs pay', [$a->id, $b->id]);
 
     expect(app(SegregationOfDuties::class)->scan($orgId))->toHaveCount(1);
 

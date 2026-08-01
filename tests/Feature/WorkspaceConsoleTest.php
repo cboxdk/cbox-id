@@ -180,7 +180,9 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
         ->call('createKey')
         ->assertHasNoErrors();
 
-    expect($component->get('freshKey'))->toStartWith('cbid_acc_')
+    // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
+    // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
+    expect($component->viewData('freshKey'))->toStartWith('cbid_acc_')
         ->and(app(AccountApiKeys::class)->forAccount($account->id))->toHaveCount(1);
 });
 

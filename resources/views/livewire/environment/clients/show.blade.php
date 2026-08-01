@@ -139,6 +139,20 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
             return;
         }
 
+        // A private_key_jwt client is Confidential AND has no secret — deliberately, and
+        // by construction: ClientRegistryService mints one only when no JWKS is
+        // registered, because a client authenticates EITHER by a shared secret OR by
+        // signing assertions, never both. Minting one here does not rotate anything; it
+        // ADDS a bearer credential to a client that was asymmetric-only, and
+        // ClientAuthenticator then accepts client_id + secret whenever no assertion is
+        // presented. A one-click downgrade of an authentication model, offered as routine
+        // hygiene.
+        if ($client->jwks !== null) {
+            $this->dispatch('toast', message: 'This client signs assertions with its own keys and has no secret. Rotate the key in its JWKS instead.', severity: 'error');
+
+            return;
+        }
+
         $secret = 'csec_'.bin2hex(random_bytes(32));
         $client->secret_hash = hash('sha256', $secret);
         $client->save();
@@ -291,7 +305,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Application'])] clas
     </div>
 
     {{-- Secret rotation --}}
-    @if ($client->type === ClientType::Confidential)
+    {{-- Not shown for a client that authenticates with its own keys: there is no secret
+         to rotate, and the copy below ("the current one stops working") would be false —
+         the button would CREATE a credential rather than replace one. --}}
+    @if ($client->type === ClientType::Confidential && $client->jwks === null)
         <div class="rounded-xl border p-5" style="border-color:var(--border)">
             <h2 class="cbx-section-title">Rotate secret</h2>
             <p class="mt-1 text-sm" style="color:var(--muted)">Issue a fresh client secret. The current one stops working — update the app before rotating.</p>

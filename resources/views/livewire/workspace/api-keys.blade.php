@@ -25,7 +25,17 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
     public string $newKeyRole = 'developer';
 
     /** The just-created plaintext, shown once and never persisted. */
-    public ?string $freshKey = null;
+    /**
+     * The plaintext key, held only for the single render that reveals it.
+     *
+     * PROTECTED, not public. Livewire serialises public properties into the wire snapshot
+     * embedded in the DOM and echoes them back in the body of every subsequent
+     * /livewire/update request until they are reset — so a full-authority credential sat
+     * in the page for any XSS or browser extension to read, and was re-transmitted on
+     * every round trip into request-body logs and APM traces. The rest of this codebase
+     * gets this right; these were the outliers.
+     */
+    protected ?string $freshKey = null;
 
     public function mount(AccountAuth $auth): mixed
     {
@@ -97,7 +107,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
         /** @var Collection<int, AccountApiKey> $list */
         $list = $current === null ? collect() : $keys->forAccount($current->account_id);
 
-        return ['keys' => $list, 'assignableRoles' => AccountRole::assignable()];
+        return ['keys' => $list, 'assignableRoles' => AccountRole::assignable(), 'freshKey' => $this->freshKey];
     }
 }; ?>
 

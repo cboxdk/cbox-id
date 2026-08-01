@@ -172,7 +172,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
             return;
         }
 
-        $key = 'admin-mfa|'.$this->pendingMemberId.'|'.request()->ip();
+                // Keyed to the pending member alone — NOT the source IP. With the IP in the key
+        // an attacker holding the password rotates addresses and gets a fresh bucket of
+        // five each time. TOTP rolls every 30 seconds so that is slow; recovery codes do
+        // not roll, which is the half that actually gives way. The subject plane has
+        // always keyed it this way, with a comment saying an attacker must not be able to
+        // grind it.
+        $key = 'admin-mfa|'.$this->pendingMemberId;
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $this->addError('code', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
 

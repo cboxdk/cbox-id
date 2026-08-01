@@ -47,7 +47,9 @@ it('mints an account API key once workspace sudo is confirmed', function (): voi
         ->call('createKey')
         ->assertHasNoErrors();
 
-    expect($component->get('freshKey'))->toBeString()->not->toBe('');
+    // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
+    // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
+    expect($component->viewData('freshKey'))->toBeString()->not->toBe('');
 });
 
 it('gates MFA recovery regeneration behind sudo', function (): void {

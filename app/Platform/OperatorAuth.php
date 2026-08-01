@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use Cbox\Id\Identity\Contracts\LoginAttempts;
 use Cbox\Id\Platform\Contracts\OperatorMfa;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
@@ -39,6 +40,7 @@ final class OperatorAuth
     public function __construct(
         private readonly PlatformOperators $operators,
         private readonly OperatorMfa $mfa,
+        private readonly LoginAttempts $loginAttempts,
     ) {}
 
     /**
@@ -53,9 +55,29 @@ final class OperatorAuth
     {
         $operator = $this->operators->findByEmail($email);
 
-        if ($operator === null || ! $this->operators->verifyPassword($operator->id, $password)) {
+        if ($operator === null) {
             return AttemptOutcome::Invalid;
         }
+
+        // The operator plane had NO lockout at all — only the form's per-(email, IP)
+        // cache bucket, whose own comment claimed to "throttle + lock out brute force"
+        // when it did the first half alone. So an attacker spreading guesses across
+        // addresses had no account-level bound, on the plane that stands above every
+        // tenant. Both other planes have had this from the start.
+        //
+        // Checked BEFORE the credential, for the same reason PlatformAuth does: a locked
+        // account that still distinguished a right guess from a wrong one is an oracle.
+        if ($this->loginAttempts->isLockedOut($operator->id)) {
+            return AttemptOutcome::Invalid;
+        }
+
+        if (! $this->operators->verifyPassword($operator->id, $password)) {
+            $this->loginAttempts->recordFailure($operator->id);
+
+            return AttemptOutcome::Invalid;
+        }
+
+        $this->loginAttempts->clear($operator->id);
 
         if ($this->mfa->hasConfirmedTotp($operator->id)) {
             session()->put(self::PENDING_KEY, $operator->id);
