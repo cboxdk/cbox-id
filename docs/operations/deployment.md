@@ -82,10 +82,14 @@ outbox, all of the following silently do nothing:
 | Without the scheduler | Consequence |
 |---|---|
 | `cbox-id:events:relay` | no webhook is ever delivered; no usage is metered (plan gates read zero); outbound SCIM never provisions; role changes never revoke tokens |
-| `cbox-id:webhooks:retry` | a transient endpoint outage never recovers |
+| the webhook retry sweep¹ | a transient endpoint outage never recovers |
 | `cbox-id:provisioning:drain` | the provisioning outbox never drains |
 | `cbox-id:audit-streams:pump` | SIEM streams stop mid-flight |
-| `cbox-id:keys:rotate` | signing keys never rotate or retire |
+
+¹ A scheduled closure, not an artisan command — `php artisan cbox-id:webhooks:retry`
+does not exist. It appears in `schedule:list` under that name, which is why it reads
+like one.
+| — | (`cbox-id:keys:rotate` is **not** scheduled: run it yourself, on your own cadence. It is listed here because operators reasonably assume the scheduler covers it, and it does not.) |
 
 The app reports healthy throughout. Verify with:
 

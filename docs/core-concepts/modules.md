@@ -1,7 +1,7 @@
 ---
 title: Console modules
 weight: 3
-description: The five in-tree console modules — analytics, compliance, connectors, risk-plus and whitelabel — what each does, and why they are vendored rather than installed.
+description: The six in-tree console modules — analytics, compliance, connectors, devices, risk-plus and whitelabel — what each does, and why they are vendored rather than installed.
 ---
 
 # Console modules
@@ -16,7 +16,7 @@ Five capability areas live under `modules/` rather than in `app/`:
 | `risk-plus` | Security | Adaptive-risk signals (impossible travel, new device) plugged into the risk engine, and a console to review elevated events. |
 | `whitelabel` | Settings → Branding | Per-tenant branding: palette, logo, favicon, app name, custom domain and email sender. |
 
-**All five are always present.** There is nothing to license, unlock or install.
+**All six are always present.** There is nothing to license, unlock or install.
 
 ## Why they are modules and not just `app/` code
 
@@ -27,11 +27,11 @@ they exist.
 
 That boundary is load-bearing rather than decorative: it is the proof that the
 extension points actually work. If a first-party module needed a special hook that an
-external one could not reach, the socket would be a fiction. Keeping these five on the
+external one could not reach, the socket would be a fiction. Keeping these six on the
 public seam keeps it honest.
 
 They were separate Composer packages until they were folded in. The move was about
-release overhead, not architecture — five repositories, five changelogs and five
+release overhead, not architecture — six repositories, six changelogs and six
 version bumps to ship one coherent change, protecting about eight thousand lines that
 were never the moat. The sockets survived the move intact; only the distribution
 changed.

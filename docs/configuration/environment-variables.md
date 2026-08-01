@@ -137,7 +137,7 @@ delivered and nothing errors.
 | `CBOX_ID_WEBHOOKS_SCHEDULE_RETRIES` | Let the scheduler re-drive failed deliveries. | `true` | Requires `schedule:run` from cron; keep on in production. |
 | `CBOX_ID_WEBHOOKS_QUEUE_CONNECTION` | Queue **connection** the delivery job is dispatched on, so webhook egress can be isolated from the rest of the app's work. | *(none — the app default connection)* | Set when you run a dedicated worker fleet for egress. The named connection must be one a worker is actually consuming. |
 | `CBOX_ID_WEBHOOKS_QUEUE` | Queue **name** within that connection. | *(none — the default queue)* | As above. |
-| `CBOX_ID_WEBHOOKS_RETRY_LIMIT` | How many pending/failed deliveries one `cbox-id:webhooks:retry` sweep picks up. | `50` | Raise if a large backlog drains too slowly; each sweep runs every scheduler tick. |
+| `CBOX_ID_WEBHOOKS_RETRY_LIMIT` | How many pending/failed deliveries one webhook retry sweep picks up. | `50` | Raise if a large backlog drains too slowly; each sweep runs every scheduler tick. |
 | `CBOX_ID_WEBHOOKS_STRANDED_AFTER_SECONDS` | How long a delivery may sit `Pending` before the retry sweep treats it as stranded (its worker died) and re-drives it. | `900` (15m) | Lower for faster rescue, but keep it comfortably above your longest legitimate delivery. |
 | `CBOX_ID_WEBHOOKS_CB_FAILURE_THRESHOLD` | Consecutive failures against one endpoint before its circuit breaker opens. | `5` | Raise for flaky-but-recovering endpoints. |
 | `CBOX_ID_WEBHOOKS_CB_COOLDOWN_SECONDS` | How long an open breaker stays open before a trial delivery. | `300` | Raise to back off harder from a dead endpoint. |
@@ -194,7 +194,7 @@ issuance and login.
 | `CBOX_ID_MANIFEST_FETCH_TIMEOUT` | Seconds to wait for a manifest fetch. | `10` | Raise for slow app hosts. |
 
 > **Undeclared key: `cbox-id.access_control.schedule`.** The hourly manifest re-pull
-> (`cbox-id:access-control:sync-manifests`) is registered only when this config value is
+> (`cbox-id:app-manifests:sync`) is registered only when this config value is
 > `true`, and it is read with a hard-coded `true` fallback — but it is declared in
 > **neither** config file and has no `CBOX_ID_` variable, so `.env` cannot turn it off.
 > To disable the hourly pull you must set `cbox-id.access_control.schedule` to something
@@ -275,7 +275,7 @@ setting one to `false` removes that command from the schedule with no other sign
 | `CBOX_ID_AUDIT_STREAMING_SCHEDULE` | `cbox-id:audit-streams:pump` — SIEM stream delivery. | `true` | As above. |
 | `CBOX_ID_GOVERNANCE_SCHEDULE` | The governance sweeps (access reviews and their reminders/expiries). | `true` | Off only if you do not use governance campaigns. |
 | `CBOX_ID_PRUNE_SCHEDULE` | The daily `cbox-id:prune` sweep (see [Data retention](#data-retention-pruning)). | `true` | Off only if you prune out-of-band. |
-| `CBOX_ID_WEBHOOKS_SCHEDULE_RETRIES` | `cbox-id:webhooks:retry` — see [Webhooks](#webhooks). | `true` | Keep on in production. |
+| `CBOX_ID_WEBHOOKS_SCHEDULE_RETRIES` | The webhook retry sweep — see [Webhooks](#webhooks). It is a scheduled **closure**, not an artisan command, though `schedule:list` shows it as `cbox-id:webhooks:retry`. | `true` | Keep on in production. |
 
 The hourly app-manifest re-pull is scheduled too, but has **no** environment variable —
 see the undeclared-key note under [Access control](#access-control-rbac-and-app-manifests).
