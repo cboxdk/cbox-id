@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\RiskPlus\Models;
 
+use Cbox\Id\Kernel\Tenancy\Concerns\BelongsToEnvironment;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentOwned;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -12,6 +14,7 @@ use Illuminate\Support\Carbon;
  * Only outcomes at or above `Flag` are recorded (an allow isn't worth a row), so
  * the table stays a signal, not a log of every request.
  *
+ * @property string $environment_id
  * @property string $action
  * @property string $outcome
  * @property float $score
@@ -20,8 +23,10 @@ use Illuminate\Support\Carbon;
  * @property array<int, string> $reasons
  * @property Carbon $created_at
  */
-class RiskEvent extends Model
+class RiskEvent extends Model implements EnvironmentOwned
 {
+    use BelongsToEnvironment;
+
     public const UPDATED_AT = null;
 
     protected $table = 'risk_plus_events';

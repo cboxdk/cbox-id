@@ -1,18 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Platform\CurrentUser;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
+use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-use function Livewire\Volt\{computed, layout, title};
+/**
+ * Every flagged sign-in in this environment, newest first.
+ *
+ * Class API rather than Volt's functional one so the authorization guard can live in a
+ * real boot() — the functional `boot()` helper compiles to a void method that returns,
+ * which is a fatal error. The page's siblings in the other modules are all class API.
+ */
+new #[Layout('components.layouts.app', ['title' => 'Risk events'])] class extends Component
+{
+    /**
+     * Route middleware does not gate this page: the module routes carry `platform.auth`
+     * (a session exists) and `console.feature` (the flag is on), and neither is a role
+     * check. The nav hides the area from a plain member, which is styling, not
+     * authorization — the URL is typeable, and this page lists every flagged sign-in in
+     * the environment with the address in the clear. boot(), not mount(), so it re-runs
+     * on every Livewire message rather than only the first render.
+     */
+    public function boot(): void
+    {
+        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+    }
 
-layout('components.layouts.app');
+    /** @return array<string, mixed> */
+    public function with(): array
+    {
+        return ['events' => $this->events()];
+    }
 
-// The document title matches the nav label, as every console page's must — the browser
-// tab and the entry you clicked are the same promise.
-title('Risk events');
-
-$events = computed(fn () => RiskEvent::query()->latest('created_at')->limit(50)->get());
-
-?>
+    /** @return Collection<int, RiskEvent> */
+    private function events(): Collection
+    {
+        return RiskEvent::query()->latest('created_at')->limit(50)->get();
+    }
+}; ?>
 
 <div class="space-y-6">
     <x-page-header title="Risk events"
@@ -30,7 +59,7 @@ $events = computed(fn () => RiskEvent::query()->latest('created_at')->limit(50)-
                 </tr>
             </thead>
             <tbody>
-                @forelse ($this->events as $event)
+                @forelse ($events as $event)
                     <tr>
                         <td class="whitespace-nowrap px-4 py-3 mono" style="color:var(--muted)">
                             {{ $event->created_at?->diffForHumans() }}

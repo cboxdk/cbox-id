@@ -113,6 +113,7 @@ function undocumentedByDesign(): array
 
         // OAuth 2.0 / OIDC — RFC-specified. DEBT: no machine-readable contract yet.
         'GET /oauth/authorize',
+        'POST /oauth/authorize',
         'POST /oauth/backchannel_authentication',
         'POST /oauth/decisions',
         'POST /oauth/device_authorization',

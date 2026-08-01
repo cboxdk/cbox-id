@@ -182,12 +182,36 @@ Route::post('/impersonation/exit', [ImpersonationController::class, 'exit'])->na
  * The component authenticates for itself: prompt=none answers the client, anything else
  * redirects to sign-in with the intended URL preserved.
  */
-Volt::route('/oauth/authorize', 'oauth.consent')
+$authorize = Volt::route('/oauth/authorize', 'oauth.consent')
     // `platform.auth:optional` RESOLVES the signed-in subject without requiring one.
     // Removing the middleware outright was wrong: CurrentUser is populated only there,
     // so check() was permanently false and NO authorization code could be issued.
     ->middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth:optional'])
     ->name('oauth.authorize');
+
+/*
+ * The SAME component over POST. OIDC Core §3.1.2.1: "The Authorization Server MUST
+ * support the use of the HTTP GET and POST methods." Volt::route registers GET only, so
+ * a form-POST to /authorize answered 405 — and form-POST is how a client sends a
+ * `request` object, a `claims` payload or a long `login_hint` that will not survive a
+ * URL length limit. It is also exercised by the OpenID basic-certification suite.
+ *
+ * CSRF-exempt by definition: the POST arrives cross-site from the relying party, which
+ * has no Laravel token to send. Nothing is minted on this request — the component
+ * re-validates client, redirect_uri, scope and PKCE from scratch, exactly as it does on
+ * the GET path.
+ */
+$consentAction = $authorize->getAction('uses');
+
+if (! is_string($consentAction) && ! is_callable($consentAction)) {
+    // Volt builds this action itself; if its shape ever changes, the POST binding must
+    // be rebuilt deliberately rather than silently registering something unroutable.
+    throw new RuntimeException('The Volt route action is no longer a callable — /oauth/authorize POST needs updating.');
+}
+
+Route::post('/oauth/authorize', $consentAction)
+    ->middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth:optional'])
+    ->name('oauth.authorize.post');
 
 /*
  * Admin Portal — a single-use setup link. An external IT admin opens it with

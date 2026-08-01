@@ -90,6 +90,38 @@ return Application::configure(basePath: dirname(__DIR__))
             // Same fail-closed reasoning — the XML signature is the authentication,
             // and the assertion is validated before any identity is read.
             'sso/saml/*/acs',
+
+            // Single Logout, both roles. The IdP metadata this platform PUBLISHES
+            // advertises the HTTP-POST binding for SLO (which is what Okta and ADFS
+            // prefer), so a conformant SP picks it — and every logout was answered
+            // with Laravel's 419 session-expired HTML instead of a LogoutResponse,
+            // leaving the IdP session live while the SP reported a transport failure.
+            // The controller even carries a POST branch written for a path the
+            // middleware made unreachable. Authenticated by XML signature, exactly as
+            // the two exemptions above are.
+            'sso/saml/idp/slo',
+            'sso/saml/*/slo',
+
+            // OIDC RP-Initiated Logout §5 makes POST mandatory at the end-session
+            // endpoint, and POST is the binding a client MUST use when the
+            // id_token_hint is too long for a URL. The controller reads its parameters
+            // with input() precisely so the form binding works. Nothing is minted here;
+            // the open-redirect guard is the registered post_logout_redirect_uri
+            // allow-list, compared exactly.
+            'oauth/logout',
+
+            // RFC 7591/7592 dynamic client registration is a back-channel JSON API —
+            // no conformant client sends a Laravel CSRF token. Latent today because
+            // registration is disabled by default, but the day it is switched on,
+            // discovery starts advertising an endpoint that answers 419 HTML. The
+            // credential here is the registration access token, not a session.
+            'oauth/register',
+            'oauth/register/*',
+
+            // /authorize over POST, which OIDC Core §3.1.2.1 makes mandatory. The POST
+            // comes cross-site from the relying party and carries no Laravel token; the
+            // component validates client, redirect_uri, scope and PKCE from scratch.
+            'oauth/authorize',
         ]);
 
         // The sidebar pin state is a pure UI preference written by JS

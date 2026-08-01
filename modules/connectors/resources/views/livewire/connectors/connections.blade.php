@@ -1,5 +1,6 @@
 <?php
 
+use App\Platform\CurrentUser;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Livewire\Attributes\Computed;
@@ -8,6 +9,17 @@ use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extends Component
 {
+    /**
+     * Route middleware does not gate this page: the module routes carry `platform.auth`
+     * (a session exists) and `console.feature` (the flag is on), and neither is a role
+     * check. The nav hides the area from a plain member, which is styling, not
+     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
+     * re-runs on every Livewire message, not just the first render.
+     */
+    public function boot(): void
+    {
+        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+    }
     /**
      * Flattened for the table — a rendering boundary, so an array shape is the right
      * shape here; the typed {@see ConnectionSummary} is what does the work upstream.

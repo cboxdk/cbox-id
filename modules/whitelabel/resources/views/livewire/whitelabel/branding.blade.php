@@ -1,5 +1,6 @@
 <?php
 
+use App\Platform\CurrentUser;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\CustomDomain\Exceptions\InvalidCustomDomain;
@@ -13,6 +14,17 @@ use Livewire\WithFileUploads;
 
 new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends Component
 {
+    /**
+     * Route middleware does not gate this page: the module routes carry `platform.auth`
+     * (a session exists) and `console.feature` (the flag is on), and neither is a role
+     * check. The nav hides the area from a plain member, which is styling, not
+     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
+     * re-runs on every Livewire message, not just the first render.
+     */
+    public function boot(): void
+    {
+        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+    }
     use WithFileUploads;
 
     /** @var array<string, string> */

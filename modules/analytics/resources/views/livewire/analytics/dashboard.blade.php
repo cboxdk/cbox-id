@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\CurrentUser;
 use Cbox\Id\Analytics\Contracts\ReportReader;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
@@ -9,6 +10,18 @@ use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends Component
 {
+
+    /**
+     * Route middleware does not gate this page: the module routes carry `platform.auth`
+     * (a session exists) and `console.feature` (the flag is on), and neither is a role
+     * check. The nav hides the area from a plain member, which is styling, not
+     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
+     * re-runs on every Livewire message, not just the first render.
+     */
+    public function boot(): void
+    {
+        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+    }
     /**
      * @return array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, active_orgs: int, mfa_rate: int, unavailable: bool}
      */

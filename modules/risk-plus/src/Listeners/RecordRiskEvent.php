@@ -13,6 +13,11 @@ use Throwable;
  * Persists elevated assessments (Flag or worse) as {@see RiskEvent}s for the
  * console to review. It fails open — a write error is swallowed, never propagated
  * — because risk *logging* must never be what breaks a sign-in.
+ *
+ * The environment is stamped by {@see RiskEvent}'s own tenancy trait rather than passed
+ * here: this listener runs inside the request whose risk it describes, so the ambient
+ * context is the right one by construction, and a write with no context in scope is
+ * refused rather than landing in a global pool every tenant can read.
  */
 class RecordRiskEvent
 {

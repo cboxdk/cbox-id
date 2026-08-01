@@ -10,6 +10,7 @@ use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
 /**
@@ -32,9 +33,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
 
     public string $code = '';
 
-    /** 'password' → 'mfa'. */
+    /**
+     * 'password' → 'mfa'. LOCKED, with the pending id: both are server-set state that
+     * decides whether the password step has been passed, and a plain public property is
+     * client-set — a crafted Livewire update could put this component straight into the
+     * MFA step for an arbitrary member id. Locking is the first of two layers; the
+     * second is {@see admitsAdmin()}, re-run before the session is established.
+     */
+    #[Locked]
     public string $step = 'password';
 
+    #[Locked]
     public string $pendingMemberId = '';
 
     public function mount(EnvironmentContext $environments): mixed
@@ -91,9 +100,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         // Fail identically for wrong credentials AND for a valid member with no access
         // to THIS environment — never reveal which.
         $hostEnv = $environments->current()?->environmentKey();
-        $hasAccess = $ok && $hostEnv !== null
-            && $member->role->canManageEnvironments()
-            && in_array($hostEnv, $members->accessibleEnvironmentIds($member), true);
+        $hasAccess = $ok && $hostEnv !== null && $this->admitsAdmin($members, $member, $hostEnv);
 
         if (! $ok || ! $hasAccess) {
             RateLimiter::hit($key);
@@ -139,7 +146,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         $this->establish($auth, $member, $hostEnv);
     }
 
-    public function verifyMfa(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth): void
+    /**
+     * May this member open an admin session on THIS environment?
+     *
+     * Both steps ask this, which is the point. The password step asked it and the MFA
+     * step did not, so a member who never passed the password step — and one the
+     * password step would have refused: a role without canManageEnvironments(), an
+     * environment outside their assignment, a locked-out account, an SSO mandate, an
+     * expired administrative password — could reach {@see establish()} with only a TOTP
+     * code. Asked here, once, so the two doors cannot drift apart again.
+     */
+    private function admitsAdmin(AccountMembers $members, AccountMember $member, string $hostEnv): bool
+    {
+        return $member->role->canManageEnvironments()
+            && in_array($hostEnv, $members->accessibleEnvironmentIds($member), true);
+    }
+
+    public function verifyMfa(AccountMembers $members, AccountMemberMfa $mfa, EnvironmentContext $environments, EnvironmentAdminAuth $auth, MemberCredentialGate $gate): void
     {
         $this->validate(['code' => 'required|string']);
 
@@ -179,6 +202,21 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
 
         if ($member === null) {
             $this->step = 'password';
+
+            return;
+        }
+
+        // The second layer. A correct TOTP code proves possession of a factor, not that
+        // this member may administer this environment — and the state saying they passed
+        // the password step is client-adjacent. Re-ask every question the password step
+        // asked, against the same gate, before any session exists.
+        if (! $this->admitsAdmin($members, $member, $hostEnv)
+            || $gate->isLockedOut($member)
+            || ! $gate->admits($member)
+            || $gate->owesPasswordChange($member)) {
+            $this->reset('pendingMemberId');
+            $this->step = 'password';
+            $this->addError('email', 'Those credentials do not grant admin access to this environment.');
 
             return;
         }
