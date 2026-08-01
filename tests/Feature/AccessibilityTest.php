@@ -65,6 +65,24 @@ it('has no WCAG 2.1 A/AA violations on the public auth pages', function (string 
     'reset-password' => '__reset__',
 ]);
 
+/**
+ * The hosted surface had no landmarks at all: its layout carried neither a <main> nor a
+ * skip link, while every other layout in the repo carries both. That covers sign-in,
+ * MFA, passkeys, consent and device approval — the pages a tenant's own users see, and
+ * the ones this platform is judged on.
+ */
+it('gives the hosted surface a main landmark and a skip link', function (string $path): void {
+    $html = $this->get($path)->assertOk()->getContent();
+
+    expect($html)->toContain('id="main-content"')
+        ->and($html)->toContain('href="#main-content"')
+        ->and(substr_count((string) $html, '<main'))->toBe(1);
+})->with([
+    'login' => '/login',
+    'signup' => '/signup',
+    'forgot-password' => '/forgot-password',
+]);
+
 it('has no WCAG 2.1 A/AA violations on the console pages', function (string $path): void {
     $subject = app(Subjects::class)->create('a11y@acme.test', 'A11y Admin', 'super-secret-1234');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y'));

@@ -82,17 +82,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
         <div>
             <label class="label" for="password">New password</label>
             <input wire:model="password" id="password" name="password" type="password"
-                   autocomplete="new-password" class="input input-lg" autofocus>
-            @error('password') <p class="error-text" id="password-error">{{ $message }}</p> @enderror
+                   autocomplete="new-password" class="input input-lg" autofocus @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
+            @error('password') <p class="field-error" role="alert" id="password-error">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label class="label" for="passwordConfirmation">Confirm new password</label>
             <input wire:model="passwordConfirmation" id="passwordConfirmation" name="passwordConfirmation"
-                   type="password" autocomplete="new-password" class="input input-lg">
-            @error('passwordConfirmation') <p class="error-text" id="passwordConfirmation-error">{{ $message }}</p> @enderror
+                   type="password" autocomplete="new-password" class="input input-lg" @error('passwordConfirmation') aria-invalid="true" aria-describedby="passwordConfirmation-error" @enderror>
+            @error('passwordConfirmation') <p class="field-error" role="alert" id="passwordConfirmation-error">{{ $message }}</p> @enderror
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg w-full">Update password</button>
+        <button type="submit" class="btn btn-primary btn-lg w-full" wire:loading.attr="disabled" wire:target="save">Update password</button>
     </form>
 </div>

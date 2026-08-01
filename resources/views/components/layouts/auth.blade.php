@@ -46,9 +46,15 @@
     @consoleBrandingStyle
 </head>
 <body class="h-full" style="color:var(--text)">
+    {{-- Every other layout carries these; this one had NEITHER, so sign-in, sign-up,
+         MFA, passkey, OTP step-up, sudo, the account chooser, password reset, OAuth
+         consent and device approval all rendered with no landmark at all — a screen
+         reader had no "main" to jump to, and the marketing hero sat in the same
+         undifferentiated region as the form the person came to fill in. --}}
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <x-sandbox-banner />
     <div class="min-h-full grid lg:grid-cols-[1fr_minmax(0,44%)] xl:grid-cols-[1fr_minmax(0,40%)]">
-        <div class="auth-shell flex flex-col justify-center px-6 py-12 sm:px-12">
+        <main id="main-content" class="auth-shell flex flex-col justify-center px-6 py-12 sm:px-12">
             <div class="mx-auto w-full" style="max-width:24rem">
                 @if ($brandLogo)
                     <img src="{{ $brandLogo }}" alt="{{ $brandName }}" style="max-height:2.25rem;max-width:12rem">
@@ -70,9 +76,11 @@
                     </button>
                 </div>
             </div>
-        </div>
+        </main>
 
-        <div class="auth-hero hidden lg:flex flex-col justify-between p-12 overflow-hidden">
+        {{-- Decorative and duplicative of the marketing site: an aside, so it is skipped
+             rather than read out before the form on every sign-in. --}}
+        <aside class="auth-hero hidden lg:flex flex-col justify-between p-12 overflow-hidden" aria-label="About this product">
             <x-brand compact class="opacity-95" />
             <div class="max-w-md">
                 <h2 class="font-semibold tracking-tight leading-[1.1]" style="font-size:2.15rem">{{ $brandName ? 'Sign in to '.$brandName.'.' : config('cbox-id.branding.tagline', 'One identity layer for every app you ship.') }}</h2>
@@ -94,7 +102,7 @@
                     <span>{{ $trust }}</span>
                 @endif
             </div>
-        </div>
+        </aside>
     </div>
     <x-toast />
 </body>
