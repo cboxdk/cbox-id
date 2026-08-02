@@ -9,6 +9,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Models\AuthorizationCode;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -511,4 +512,33 @@ it('returns the RFC 9207 issuer when the user denies consent', function () {
             .'&iss='.urlencode(app(IssuerResolver::class)->issuer())
             .'&state=xyz'
         );
+});
+
+/**
+ * The resource a client asks for at /authorize is what the token is minted for.
+ *
+ * Captured here and bound to the code, so the token endpoint has something to compare a
+ * redemption against. Without this capture the framework's binding is inert: every code
+ * carries null, and a client is free to name any audience at redemption again.
+ */
+it('binds the requested resource to the issued authorization code', function (): void {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        'code_challenge_method' => 'S256',
+        'resource' => 'https://mcp.acme.example',
+    ]);
+
+    expect($component->get('resource'))->toBe('https://mcp.acme.example');
+
+    $component->call('approve');
+
+    expect(AuthorizationCode::query()->latest('created_at')->first()?->resource)
+        ->toBe('https://mcp.acme.example', 'the authorization was not bound to the resource it asked for');
 });

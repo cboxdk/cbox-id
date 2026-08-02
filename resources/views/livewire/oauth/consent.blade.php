@@ -61,6 +61,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
     public string $redirectUri = '';
 
     /**
+     * The RFC 8707 resource indicator this authorization is for, as the client asked at
+     * `/authorize`. Locked: it is bound to the issued code, so a client that could edit
+     * it between render and approval would be choosing its own audience again.
+     */
+    #[Locked]
+    public ?string $resource = null;
+
+    /**
      * NOT `list<string>`, however much it looks like one. mount() assigns a list, but
      * Livewire re-hydrates public properties from the request payload on every
      * subsequent call, so the type that reaches approve() is whatever survived that
@@ -130,6 +138,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         ?string $request_uri = null,
         ?string $max_age = null,
         ?string $acr_values = null,
+        ?string $resource = null,
     ): void {
         $request = request();
 
@@ -165,6 +174,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $redirectUri = $from('redirect_uri', $redirect_uri);
         $responseType = $from('response_type', $response_type);
         $scopeParam = $from('scope', $scope);
+
+        // RFC 8707: the resource server this authorization is FOR.
+        //
+        // It used to be read only at the token endpoint, which meant nothing recorded
+        // what the user had agreed to — so a client could name one audience here and a
+        // different one at redemption, and receive a token asserting the second. Captured
+        // here and bound to the code, the two can no longer disagree.
+        $resourceParam = $from('resource', $resource);
         // Narrowed to ?string HERE rather than at each use. `state` is echoed back to the
         // client on every error branch below, and $from() returns whatever the PAR payload
         // or the query string held — a crafted `?state[]=x` makes it an array. Normalising
@@ -268,6 +285,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         // Set BEFORE the sign-in / re-auth redirects below, so resumeUrl() re-states
         // them: a step-up requirement that evaporated on the way back through the
         // login screen would be no requirement at all.
+        $this->resource = is_string($resourceParam) && trim($resourceParam) !== '' ? trim($resourceParam) : null;
         $this->maxAge = self::parseMaxAge($from('max_age', $max_age));
         $acrParam = $from('acr_values', $acr_values);
         $this->acrValues = is_string($acrParam) && trim($acrParam) !== '' ? trim($acrParam) : null;
@@ -642,6 +660,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $this->nonce,
             $session?->created_at?->getTimestamp(),
             $session !== null ? array_values($session->amr) : [],
+            $this->resource,
         );
 
         // RFC 9207: return the issuer in the authorization response so the client
