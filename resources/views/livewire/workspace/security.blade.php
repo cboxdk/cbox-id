@@ -24,14 +24,41 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 {
     public bool $enrolling = false;
 
-    public string $secret = '';
+    /**
+     * The enrolment secret, its otpauth URI, and the recovery codes.
+     *
+     * PROTECTED, not public. Livewire serialises public properties into the wire snapshot
+     * embedded in the DOM and echoes them back in the body of every subsequent
+     * /livewire/update request until they are reset — and `$recoveryCodes` is only reset
+     * on `disable()`, so after enrolment the full MFA-bypass set rode every round trip on
+     * that page, into request-body logs and APM traces. The TOTP secret is the same
+     * class of value.
+     *
+     * The API-keys page next door already documents this reasoning for exactly the same
+     * reason; this page was the outlier. Rendered through `with()` instead, which reaches
+     * the view without entering the snapshot.
+     */
+    /**
+     * The pending enrolment lives in the SESSION, not on the component.
+     *
+     * It has to survive one round trip — the page renders a QR code, the person types a
+     * code from their authenticator, and only then is the factor confirmed. Livewire's
+     * mechanism for surviving a round trip is the wire snapshot, which is embedded in the
+     * DOM and echoed back in the body of every subsequent update. A TOTP secret is not
+     * something to keep there.
+     *
+     * The session is server-side and already the trust anchor for this whole page, so it
+     * is where the pending secret belongs. Cleared the moment enrolment finishes or is
+     * abandoned.
+     */
+    private const PENDING_SECRET = 'workspace.mfa.pending_secret';
 
-    public string $provisioningUri = '';
+    private const PENDING_URI = 'workspace.mfa.pending_uri';
 
     public string $confirmCode = '';
 
     /** @var list<string> */
-    public array $recoveryCodes = [];
+    protected array $recoveryCodes = [];
 
     public string $name = '';
 
@@ -66,8 +93,8 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         $brand = config('cbox-id.branding.name', 'Cbox ID');
         $enrollment = $mfa->enrollTotp($member->id, $member->email, is_string($brand) ? $brand : 'Cbox ID');
 
-        $this->secret = $enrollment->secret;
-        $this->provisioningUri = $enrollment->provisioningUri;
+        session()->put(self::PENDING_SECRET, $enrollment->secret);
+        session()->put(self::PENDING_URI, $enrollment->provisioningUri);
         $this->enrolling = true;
         $this->recoveryCodes = [];
     }
@@ -90,7 +117,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
         // Fresh recovery codes, shown exactly once.
         $this->recoveryCodes = $mfa->generateRecoveryCodes($member->id);
-        $this->reset('enrolling', 'secret', 'provisioningUri', 'confirmCode');
+        $this->enrolling = false;
+        session()->forget([self::PENDING_SECRET, self::PENDING_URI]);
+        $this->reset('confirmCode');
         $this->dispatch('toast', message: 'Two-factor authentication is on.');
     }
 
@@ -122,7 +151,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         }
 
         $mfa->disable($member->id);
-        $this->reset('recoveryCodes');
+        $this->recoveryCodes = [];
         $this->dispatch('toast', message: 'Two-factor authentication is off.');
     }
 
@@ -143,7 +172,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
     {
         $writer = new Writer(new ImageRenderer(new RendererStyle(180, 0), new SvgImageBackEnd));
 
-        return $writer->writeString($this->provisioningUri);
+        return $writer->writeString($this->pendingUri());
     }
 
     private function requiresSudo(string $returnRoute): bool
@@ -156,6 +185,20 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
         $this->redirectRoute('workspace.sudo', navigate: false);
 
         return true;
+    }
+
+    private function pendingSecret(): string
+    {
+        $secret = session()->get(self::PENDING_SECRET);
+
+        return is_string($secret) ? $secret : '';
+    }
+
+    private function pendingUri(): string
+    {
+        $uri = session()->get(self::PENDING_URI);
+
+        return is_string($uri) ? $uri : '';
     }
 
     /** @return array<string, mixed> */
@@ -171,6 +214,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
             'enabled' => $member !== null && $mfa->hasConfirmedTotp($member->id),
             'remainingRecoveryCodes' => $member !== null ? $mfa->remainingRecoveryCodes($member->id) : 0,
             'passkeys' => $keys,
+
+            // Reach the view without entering the wire snapshot. Recovery codes and the
+            // enrolment secret are shown once, on the render that produces them.
+            'recoveryCodes' => $this->recoveryCodes,
+            'enrolling' => $this->enrolling,
+            'provisioningUri' => $this->pendingUri(),
+            'secret' => $this->pendingSecret(),
         ];
     }
 }; ?>

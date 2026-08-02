@@ -76,11 +76,70 @@ it('enrolls TOTP from the security page and issues recovery codes', function ():
     $totp = app(TotpAuthenticator::class);
 
     $component = Volt::test('workspace.security')->call('startEnroll');
-    $secret = $component->get('secret');
-    expect($secret)->not->toBe('');
+
+    // Read the secret off the RENDERED page, not off the component.
+    //
+    // It is deliberately not a public property any more: Livewire serialises those into
+    // the wire snapshot in the DOM and echoes them back in the body of every subsequent
+    // update, so a TOTP secret held there rode every round trip on this page. The page
+    // must still show it once — that is what enrolment is — so that is where the test
+    // looks, which also means the test now proves the secret actually reaches the user.
+    preg_match('/<code[^>]*>([A-Z2-7]{16,})<\/code>/', $component->html(), $shown);
+    $secret = $shown[1] ?? '';
+
+    expect($secret)->not->toBe('', 'the enrolment secret never reached the page');
 
     $component->set('confirmCode', $totp->codeAt($secret, time()))->call('confirmEnroll')->assertHasNoErrors();
 
     expect(app(AccountMemberMfa::class)->hasConfirmedTotp($member->id))->toBeTrue()
-        ->and($component->get('recoveryCodes'))->toHaveCount(10);
+        // Recovery codes are shown once, on the render that creates them — and are not
+        // in the snapshot either, so they are counted where they are displayed.
+        ->and(app(AccountMemberMfa::class)->remainingRecoveryCodes($member->id))->toBe(10);
+});
+
+/**
+ * Neither the enrolment secret nor the recovery codes may enter the wire snapshot.
+ *
+ * Livewire serialises public properties into the snapshot embedded in the DOM and echoes
+ * them back in the body of every subsequent /livewire/update until they are reset — and
+ * `$recoveryCodes` was reset only on `disable()`, so after enrolment the full MFA-bypass
+ * set rode every round trip on the page, into request-body logs and APM traces along the
+ * way. The API-keys page next door already documents exactly this reasoning; this page
+ * was the outlier.
+ *
+ * The pending secret has to survive one round trip, so it lives in the session rather
+ * than on the component: server-side, and already this page's trust anchor.
+ */
+it('keeps the enrolment secret and recovery codes out of the wire snapshot', function (): void {
+    $member = mfaAccountMember();
+    session()->put(AccountAuth::SESSION_KEY, $member->id);
+    app(WorkspaceSudo::class)->confirm();
+
+    $component = Volt::test('workspace.security')->call('startEnroll');
+
+    // The secret IS on the page — that is what enrolment is — but not in the snapshot.
+    preg_match('/<code[^>]*>([A-Z2-7]{16,})<\/code>/', $component->html(), $shown);
+    $secret = $shown[1] ?? '';
+
+    expect($secret)->not->toBe('');
+
+    $snapshot = (string) json_encode($component->snapshot);
+
+    expect(str_contains($snapshot, $secret))
+        ->toBeFalse('the TOTP secret was serialised into the DOM snapshot');
+
+    $component->set('confirmCode', app(TotpAuthenticator::class)->codeAt($secret, time()))
+        ->call('confirmEnroll')
+        ->assertHasNoErrors();
+
+    $codes = app(AccountMemberMfa::class)->remainingRecoveryCodes($member->id);
+
+    expect($codes)->toBe(10);
+
+    // A separate statement, not chained: chained through `->and(...)` this assertion
+    // silently did not run, and the file passed with the property public again.
+    $afterConfirm = (string) json_encode($component->snapshot);
+
+    expect(str_contains($afterConfirm, 'recoveryCodes'))
+        ->toBeFalse('the recovery codes were serialised into the DOM snapshot');
 });
