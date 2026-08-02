@@ -1061,3 +1061,39 @@
         border-color: color-mix(in oklch, var(--warning) 30%, transparent);
     }
 }
+
+/* ── Touch: a field must never zoom the page when it takes focus ────────────
+   Safari on iOS zooms the viewport whenever a focused control's text is under
+   16px, and then does not zoom back out. The sign-in field is `autofocus`, so
+   this fired on load, before anyone had touched anything: the page arrived
+   already magnified and shifted, with the form running off the right edge.
+
+   The fix people reach for first is `maximum-scale=1` on the viewport meta,
+   which works by taking pinch-zoom away from everyone permanently — a WCAG 2.2
+   1.4.4 failure, and a cruel one on a sign-in page, which is exactly where
+   someone needs to magnify a password field. Sizing the text at the threshold
+   removes the trigger instead, and costs nothing on a phone, where 13px form
+   text was too small to read comfortably in the first place.
+
+   Element selectors rather than `.input`, because the trigger is the CONTROL,
+   not our class: a bare `<input>` in a plugin view zooms just as hard. Deliberately
+   UNLAYERED — a Tailwind text utility on a control (`.input.mono.text-xs` on the
+   Google service-account textarea) sits in the utilities layer and would
+   otherwise win, re-arming the zoom on that one field.
+
+   `pointer: coarse` rather than a width breakpoint: the trigger is the touch
+   keyboard, not the viewport, so a large tablet needs this and a narrow desktop
+   window does not. */
+@media (pointer: coarse) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    /* 16px inside a 32px box leaves 6px of breathing room top and bottom, and
+       the taller target is worth having under a thumb regardless. */
+    .input:not(.input-lg) {
+        height: 38px;
+    }
+}

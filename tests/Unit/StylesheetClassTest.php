@@ -64,3 +64,54 @@ it('defines every design-system class the views use', function (): void {
 
     expect(array_keys($undefined))->toBe([], 'used in a view, defined in no stylesheet: '.$report);
 });
+
+/**
+ * iOS zooms the viewport when a focused control's text is under 16px, and does not zoom
+ * back out. The sign-in field carries `autofocus`, so this fired on load: the page
+ * arrived magnified and shifted, with the form running off the right edge, before anyone
+ * had touched it.
+ *
+ * The rule is easy to lose. It is one media query at the end of a 1000-line stylesheet,
+ * it changes nothing any desktop reviewer can see, and the obvious "fix" if it goes
+ * missing again is `maximum-scale=1` on the viewport meta — which works by taking
+ * pinch-zoom away from everyone (WCAG 2.2 1.4.4), on the one page where someone most
+ * needs to magnify a password field.
+ *
+ * So this asserts both halves: the sizing is there, and the meta tag has not been
+ * "fixed" the other way.
+ */
+it('sizes touch controls at the threshold that stops iOS zooming, without disabling zoom', function (): void {
+    $css = (string) file_get_contents(__DIR__.'/../../resources/css/app.css');
+
+    expect($css)->toMatch('/@media\s*\(pointer:\s*coarse\)/');
+
+    // The declarations inside that block, whatever else it grows to contain.
+    preg_match('/@media\s*\(pointer:\s*coarse\)\s*\{(.+?)\n\}/s', $css, $block);
+
+    $declarations = $block[1] ?? '';
+
+    // `toContain` is variadic — a second argument is another needle, not a message — so
+    // the reason lives on `toBeTrue` instead, where it is actually printed.
+    expect(str_contains($declarations, 'font-size: 16px'))
+        ->toBeTrue('a control under 16px still zooms the page on iOS');
+
+    expect($declarations)
+        ->toContain('textarea')
+        ->toContain('select')
+        // Element selectors, not `.input`: the trigger is the control, so a bare
+        // <input> in a plugin view has to be covered too.
+        ->toMatch('/(^|[\s,])input:not/');
+
+    foreach (Finder::create()->files()->in(__DIR__.'/../../resources/views')->name('*.blade.php') as $file) {
+        $source = (string) file_get_contents((string) $file->getRealPath());
+
+        if (! str_contains($source, 'name="viewport"')) {
+            continue;
+        }
+
+        $disablesZoom = str_contains($source, 'maximum-scale') || str_contains($source, 'user-scalable');
+
+        expect($disablesZoom)
+            ->toBeFalse($file->getFilename().' disables pinch zoom (WCAG 2.2 1.4.4)');
+    }
+});
