@@ -3,10 +3,14 @@
 declare(strict_types=1);
 
 use App\Platform\Navigation\ConsoleNavigation;
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -18,6 +22,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -117,6 +122,25 @@ function seedTenantData(string $environmentId, string $marker): array
 
             $directory = app(Directories::class)->register($org->id, "{$marker} Directory")->directory;
 
+            // The pages that rendered NOTHING before. A leak on any of them was
+            // undetectable by construction — proven by injecting a real one on the audit
+            // page and watching this sweep pass.
+            app(Roles::class)->define($org->id, "{$marker} Role");
+
+            app(SecretVault::class)->store(
+                strtolower($marker).'-secret',
+                'custom',
+                "{$marker} vault value",
+            );
+
+            // The audit page renders actions, not names — so the marker has to BE the
+            // action. This is the exact page the sweep was written after.
+            app(AuditLog::class)->record(new AuditEvent(
+                action: strtolower($marker).'.marker_event',
+                actorType: ActorType::System,
+                organizationId: $org->id,
+            ));
+
             return [$org->id, $user->id, $client->id, $webhook->id, $connection->id, $directory->id];
         },
     );
@@ -153,16 +177,54 @@ it('never shows one environment\'s data on another\'s console', function (): voi
 
         $body = $response->getContent() ?: '';
 
-        if (str_contains($body, 'Zarquon')) {
+        // Case-INSENSITIVE. The fixture lowercases the marker into URLs, emails and
+        // slugs, so a case-sensitive check could not see the very records it seeds: a
+        // real leak was injected on the webhooks page and this sweep passed.
+        if (stripos($body, 'Zarquon') !== false) {
             $leaked[] = $route;
         }
 
-        if (str_contains($body, 'Ordinary')) {
+        if (stripos($body, 'Ordinary') !== false) {
             $rendered[] = $route;
         }
     }
 
     expect($leaked)->toBe([], 'other tenant\'s data rendered on: '.implode(', ', $leaked));
+
+    /**
+     * Pages that legitimately render no tenant-identifiable data, with the reason.
+     *
+     * This list is the point. Sixteen of twenty-two pages showed nothing, so a leak on
+     * any of them was invisible — and that was discovered by INJECTING one, not by the
+     * sweep. Naming each page forces the question "could this page leak, and would we
+     * see it?" to be answered rather than left to a threshold.
+     *
+     * @var array<string, string>
+     */
+    $rendersNoTenantData = [
+        'environment.home' => 'counts and empty states only',
+        'environment.analytics' => 'aggregates over an event store the fixture does not populate',
+        'environment.approvals' => 'CIBA requests, which need a live backchannel flow',
+        'environment.permissions' => 'the platform permission catalogue, not tenant data',
+        'environment.sso-providers' => 'relying parties, seeded by the clients fixture under a different name',
+        'environment.provisioning' => 'outbound sync configs, none seeded',
+        'environment.governance' => 'access-review campaigns, none seeded',
+        'environment.sod-policies' => 'conflict rules, none seeded',
+        'environment.hooks' => 'inline hooks, none seeded',
+        'environment.audit-streams' => 'SIEM destinations, none seeded',
+        'environment.settings' => 'environment-level configuration, not tenant records',
+        'environment.appearance' => 'the theme editor, which reads one org',
+        'environment.auth-policy' => 'policy toggles',
+    ];
+
+    $blind = array_values(array_diff(
+        (new ConsoleNavigation)->environment()->routes(),
+        $rendered,
+        $refused,
+        array_keys($rendersNoTenantData),
+    ));
+
+    expect($blind)->toBe([], 'these pages render tenant data but no marker reached them, so a leak there is invisible: '.implode(', ', $blind));
 
     // The assertion that keeps the one above honest. A console where every page 500s,
     // or renders an empty table because the fixture never landed, passes a leak check
