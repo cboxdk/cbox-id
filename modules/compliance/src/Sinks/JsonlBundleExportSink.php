@@ -40,7 +40,7 @@ class JsonlBundleExportSink implements AuditExportSink
             $batch->records,
         );
 
-        $path = $this->pathFor($batch->scope);
+        $path = $this->pathFor($batch->environmentId, $batch->scope);
         $payload = implode("\n", $lines)."\n";
 
         $ok = $this->disk->append($path, rtrim($payload, "\n"));
@@ -50,11 +50,26 @@ class JsonlBundleExportSink implements AuditExportSink
         }
     }
 
-    private function pathFor(string $scope): string
+    /**
+     * One file per (environment, scope).
+     *
+     * Keyed on the scope alone, every environment's system trail appended to the same
+     * `__system__.jsonl`: two independent hash chains interleaved in one object, with
+     * colliding sequence numbers and `prev_hash` values that do not link — which
+     * destroys the single property the bundle exists for, that it can be re-verified as
+     * a standalone cold archive. Handing that to one customer as their audit evidence
+     * also hands them another customer's operator-level entries.
+     *
+     * The database side of this collision was already fixed (the export cursor is keyed
+     * per environment); the output path was not fixed with it, and until the export
+     * command started running at all, nothing had ever produced the collision.
+     */
+    private function pathFor(string $environmentId, string $scope): string
     {
-        $safe = preg_replace('/[^A-Za-z0-9_.-]/', '_', $scope) ?? 'scope';
+        $safeScope = preg_replace('/[^A-Za-z0-9_.-]/', '_', $scope) ?? 'scope';
+        $safeEnvironment = preg_replace('/[^A-Za-z0-9_.-]/', '_', $environmentId) ?? 'environment';
 
-        return trim($this->prefix, '/')."/{$safe}.jsonl";
+        return trim($this->prefix, '/')."/{$safeEnvironment}/{$safeScope}.jsonl";
     }
 
     /** A real destination. */

@@ -3,8 +3,6 @@
 use App\Platform\CurrentUser;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
-use Cbox\Id\Whitelabel\CustomDomain\Exceptions\InvalidCustomDomain;
-use Cbox\Id\Whitelabel\CustomDomain\ManageCustomDomain;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
 use Cbox\Id\Whitelabel\Support\PaletteTokens;
 use Illuminate\Http\UploadedFile;
@@ -40,20 +38,15 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
 
     public ?string $faviconUrl = null;
 
-    public string $customDomain = '';
-
-    public ?string $currentDomain = null;
-
     public ?UploadedFile $logo = null;
 
     public ?UploadedFile $favicon = null;
 
     public function mount(): void
     {
-        $this->currentDomain = app(ManageCustomDomain::class)->current();
         $this->palette = array_fill_keys(PaletteTokens::TOKENS, '');
 
-        $profile = app(BrandProfiles::class)->forEnvironment();
+        $profile = app(BrandProfiles::class)->forOrganization($this->organizationId());
 
         // No profile yet: every field stays at its blank default and the form renders
         // as "not branded", which is a different state from branded-then-cleared.
@@ -105,7 +98,23 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
 
         $profiles = app(BrandProfiles::class);
         $assets = app(BrandAssetStore::class);
-        $profile = $profiles->forEnvironment() ?? new BrandProfile;
+
+        // THIS organization's profile.
+        //
+        // It used to read and write `forEnvironment()` — the `organization_id IS NULL`
+        // row, which is the fallback every organization in the environment inherits when
+        // it has none of its own. Behind an ORG-admin check. So an admin of one tenant
+        // re-branded the console and the hosted sign-in page for every other tenant in
+        // the environment, none of whom share any trust relationship with them.
+        //
+        // The resolver already prefers an organization's own profile over the
+        // environment default, so writing at this altitude is both the safe choice and
+        // the one the data model was built for. The environment-wide default belongs to
+        // an environment administrator.
+        $organizationId = $this->organizationId();
+
+        $profile = $profiles->forOrganization($organizationId)
+            ?? new BrandProfile(['organization_id' => $organizationId]);
 
         if ($this->logo !== null) {
             $assets->forget($profile->logo_url);
@@ -118,6 +127,7 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
         }
 
         $profile->fill([
+            'organization_id' => $organizationId,
             'palette' => $clean,
             'app_name' => $this->appName !== '' ? $this->appName : null,
             'email_from_name' => $this->emailFromName !== '' ? $this->emailFromName : null,
@@ -133,21 +143,19 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
         session()->flash('status', 'Branding saved.');
     }
 
-    public function saveDomain(): void
+    /**
+     * The organization whose branding this page edits.
+     *
+     * Never a value from the request: the page is reached by an org admin, and the only
+     * organization they may brand is the one their session is currently in.
+     */
+    private function organizationId(): string
     {
-        try {
-            $this->currentDomain = app(ManageCustomDomain::class)->set($this->customDomain);
-            $this->customDomain = '';
-            session()->flash('status', 'Custom domain saved.');
-        } catch (InvalidCustomDomain $e) {
-            $this->addError('customDomain', $e->getMessage());
-        }
-    }
+        $organizationId = app(CurrentUser::class)->organization()?->id;
 
-    public function clearDomain(): void
-    {
-        app(ManageCustomDomain::class)->clear();
-        $this->currentDomain = null;
+        abort_if($organizationId === null, 403);
+
+        return $organizationId;
     }
 
     /** @return array<string, string> live preview tokens for the swatch board */
@@ -236,26 +244,10 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
         </div>
     </form>
 
-    <section class="cbx-panel">
-        <div class="cbx-panel-header"><h2 class="cbx-panel-title">Custom domain</h2></div>
-        <div class="cbx-panel-body" style="display:flex;flex-direction:column;gap:12px">
-            @if ($currentDomain)
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                    <span class="cbx-pill cbx-pill--success"><span class="dot"></span>{{ $currentDomain }}</span>
-                    <button type="button" wire:click="clearDomain" class="btn btn-danger btn-sm">Remove</button>
-                </div>
-                <p class="cbx-panel-desc">Point a CNAME for this host at the platform. Sign-in served here is themed with this brand.</p>
-            @else
-                <form wire:submit="saveDomain" style="display:flex;gap:8px;align-items:flex-start">
-                    <div style="flex:1">
-                        <input wire:model="customDomain" type="text" class="input mono" placeholder="id.acme.com"
-                               @error('customDomain') aria-invalid="true" @enderror>
-                        @error('customDomain') <p class="field-error">{{ $message }}</p> @enderror
-                    </div>
-                    <button type="submit" class="btn btn-primary">Add domain</button>
-                </form>
-                <p class="cbx-panel-desc">A fully-qualified public hostname. Private and reserved hosts are refused.</p>
-            @endif
-        </div>
-    </section>
+    {{-- The custom-domain controls that used to sit here are gone, not moved: the
+         account plane already owns them at Workspace › Environment domains, where they
+         are scoped to environments the member can actually reach and verified by a DNS
+         TXT record. This copy was neither — an org admin could take down sign-in at the
+         environment's vanity host for every other tenant in it, or point it somewhere of
+         their choosing, with nothing but an organization-level role. --}}
 </div>

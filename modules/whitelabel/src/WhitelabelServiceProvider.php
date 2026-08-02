@@ -45,8 +45,21 @@ class WhitelabelServiceProvider extends ServiceProvider
         $this->app->bind(BrandingResolver::class, TenantBrandingResolver::class);
 
         // Assets default to a local disk so the framework needs no S3 dependency.
+        //
+        // Built from config rather than taken from `Storage::disk()`, and that is not a
+        // preference. Telemetry's filesystem instrumentation — on by default — replaces
+        // the manager, so `Storage::disk()` hands back an `InstrumentedFilesystem`. That
+        // decorator implements `Filesystem` and forwards `url()` through `__call`, but it
+        // does not declare `Cloud`, which is what this store's constructor requires. The
+        // result was a TypeError every time the branding page resolved its asset store:
+        // the whole white-label surface was dead in any deployment with telemetry on,
+        // which is the default. Found by a test written for something else entirely.
+        //
+        // What that costs is three storage operations' worth of instrumentation on brand
+        // asset writes. The alternative — widening the store to `Filesystem` — would mean
+        // calling `url()` on a type that does not declare it.
         $this->app->bindIf(BrandAssetStore::class, static fn (Application $app): BrandAssetStore => new LocalBrandAssetStore(
-            Storage::disk(self::configString($app, 'whitelabel.assets.disk', 'public')),
+            Storage::build(self::diskConfig($app, self::configString($app, 'whitelabel.assets.disk', 'public'))),
             $app->make(EnvironmentContext::class),
             self::configString($app, 'whitelabel.assets.path', 'brand'),
         ));
@@ -90,6 +103,26 @@ class WhitelabelServiceProvider extends ServiceProvider
         return $this->app->make(ViewFactory::class)
             ->make('whitelabel::components.whitelabel.brand-card', ['branding' => $branding])
             ->render();
+    }
+
+    /**
+     * The raw disk configuration, so a disk can be built without going through the
+     * (possibly decorated) manager.
+     *
+     * @return array<string, mixed>
+     */
+    private static function diskConfig(Application $app, string $disk): array
+    {
+        $config = $app->make('config')->get('filesystems.disks.'.$disk);
+
+        if (! is_array($config)) {
+            return ['driver' => 'local', 'root' => storage_path('app/public')];
+        }
+
+        /** @var array<string, mixed> $typed */
+        $typed = array_filter($config, static fn (mixed $value, mixed $key): bool => is_string($key), ARRAY_FILTER_USE_BOTH);
+
+        return $typed;
     }
 
     private static function configString(Application $app, string $key, string $default): string

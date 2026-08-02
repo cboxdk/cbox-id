@@ -2,12 +2,17 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Compliance\Contracts\AuditExportSink;
 use Cbox\Id\Compliance\Models\AuditExportCursor;
 use Cbox\Id\Compliance\Models\AuditExportRun;
+use Cbox\Id\Compliance\Sinks\JsonlBundleExportSink;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -130,4 +135,56 @@ it('exports a single environment when one is named', function (): void {
 
     expect(AuditExportRun::query()->withoutGlobalScopes()->count())->toBe(1)
         ->and(AuditExportRun::query()->withoutGlobalScopes()->first()?->environment_id)->toBe($beta->id);
+});
+
+/**
+ * Two environments must not append their system trails to the same bundle file.
+ *
+ * Sequence numbers are unique per (environment, scope), and the system trail's scope is
+ * the literal `__system__` in every environment. Keyed on the scope alone, the JSONL
+ * bundle interleaved two independent hash chains in one object — colliding sequences,
+ * `prev_hash` values that do not link, and no field saying which tenant a line came
+ * from. That destroys the single property the bundle exists for, that it can be
+ * re-verified as a standalone cold archive; and handing it to one customer as their
+ * audit evidence hands them another customer's operator-level entries.
+ *
+ * The database side of this collision was fixed when the cursor was keyed per
+ * environment. The output path was not fixed with it — and until the export command
+ * started running at all, nothing had ever produced the collision.
+ */
+it('writes each environment audit bundle to its own file', function (): void {
+    Storage::fake('local');
+
+    // Bound directly: the provider reads the driver at REGISTRATION, so setting config
+    // inside the test is too late to change which sink is bound.
+    app()->bind(AuditExportSink::class, fn (): JsonlBundleExportSink => new JsonlBundleExportSink(
+        Storage::disk('local'),
+        'compliance/audit',
+    ));
+
+    $context = app(EnvironmentContext::class);
+
+    $alpha = Environment::query()->create(['id' => (string) Str::ulid(), 'slug' => 'alpha', 'name' => 'Alpha']);
+    $beta = Environment::query()->create(['id' => (string) Str::ulid(), 'slug' => 'beta', 'name' => 'Beta']);
+
+    foreach ([$alpha, $beta] as $environment) {
+        $context->runAs($environment, function (): void {
+            app(AuditLog::class)->record(AuditEvent::forSystem('tenant.trail'));
+        });
+    }
+
+    $context->set(null);
+    $this->artisan('id-compliance:export')->assertSuccessful();
+
+    $files = Storage::disk('local')->allFiles('compliance/audit');
+
+    expect($files)->toContain('compliance/audit/'.$alpha->id.'/__system__.jsonl')
+        ->and($files)->toContain('compliance/audit/'.$beta->id.'/__system__.jsonl')
+        ->and($files)->not->toContain('compliance/audit/__system__.jsonl');
+
+    // And each line says which tenant it belongs to, so a SIEM receiving both can tell
+    // them apart without relying on the path.
+    $line = json_decode((string) Storage::disk('local')->get('compliance/audit/'.$alpha->id.'/__system__.jsonl'), true);
+
+    expect($line['environment_id'] ?? null)->toBe($alpha->id);
 });

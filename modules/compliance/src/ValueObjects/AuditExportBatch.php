@@ -18,6 +18,8 @@ readonly class AuditExportBatch
      * @param  list<AuditExportRecord>  $records
      */
     public function __construct(
+        /** The environment every record in this batch belongs to. */
+        public string $environmentId,
         public string $scope,
         public ?string $organizationId,
         public array $records,

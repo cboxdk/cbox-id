@@ -23,6 +23,16 @@ readonly class AuditExportRecord
      */
     public function __construct(
         public string $id,
+
+        /**
+         * The environment this entry belongs to.
+         *
+         * Sequence numbers are unique per (environment, scope), and the system trail's
+         * scope is the literal `__system__` in every environment — so without this an
+         * exported line cannot say which tenant it came from, and two independent hash
+         * chains with colliding sequences are indistinguishable at a SIEM.
+         */
+        public string $environmentId,
         public string $scope,
         public ?string $organizationId,
         public int $sequence,
@@ -42,6 +52,11 @@ readonly class AuditExportRecord
     {
         return new self(
             id: $entry->id,
+            // An entry without an environment cannot exist through the normal write path
+            // — the model stamps it — but the column is nullable, and an export that
+            // silently labels such a row as belonging to some tenant is worse than one
+            // that says it does not know.
+            environmentId: $entry->environment_id ?? 'unknown',
             scope: $entry->scope,
             organizationId: $entry->organization_id,
             sequence: $entry->sequence,
@@ -67,6 +82,7 @@ readonly class AuditExportRecord
     {
         return [
             'id' => $this->id,
+            'environment_id' => $this->environmentId,
             'scope' => $this->scope,
             'organization_id' => $this->organizationId,
             'sequence' => $this->sequence,

@@ -124,7 +124,18 @@ class ExportAuditTrail
             $to = $records[count($records) - 1]->sequence;
 
             // May throw: the cursor is advanced only if this returns cleanly.
-            $this->sink->export(new AuditExportBatch($scope, $organizationId, $records, $from, $to));
+            // The environment comes from the records themselves, not from ambient
+            // context: they are all one environment's by construction (the read is
+            // scoped), and taking it from the data means the batch cannot disagree with
+            // what is in it.
+            $this->sink->export(new AuditExportBatch(
+                $records[0]->environmentId,
+                $scope,
+                $organizationId,
+                $records,
+                $from,
+                $to,
+            ));
 
             $cursor->last_sequence = $to;
             $cursor->save();

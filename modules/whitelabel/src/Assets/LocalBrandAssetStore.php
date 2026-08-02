@@ -6,6 +6,7 @@ namespace Cbox\Id\Whitelabel\Assets;
 
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Contracts\Filesystem\Cloud;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use RuntimeException;
 
@@ -18,7 +19,7 @@ use RuntimeException;
 class LocalBrandAssetStore implements BrandAssetStore
 {
     public function __construct(
-        private readonly Cloud $disk,
+        private readonly Filesystem $disk,
         private readonly EnvironmentContext $environment,
         private readonly string $basePath = 'brand',
     ) {}
@@ -31,7 +32,7 @@ class LocalBrandAssetStore implements BrandAssetStore
             throw new RuntimeException('Failed to store brand asset.');
         }
 
-        return $this->disk->url($path);
+        return $this->urlFor($path);
     }
 
     public function forget(?string $url): void
@@ -62,5 +63,30 @@ class LocalBrandAssetStore implements BrandAssetStore
         $slug = $slug === '' ? 'asset' : $slug;
 
         return $slug.'-'.bin2hex(random_bytes(8)).'.'.$extension;
+    }
+
+    /**
+     * The public URL for a stored asset.
+     *
+     * Typed as `Filesystem` rather than `Cloud` because that is what the container can
+     * actually hand over: telemetry's filesystem instrumentation replaces the manager and
+     * returns a decorator that implements `Filesystem` and forwards `url()` through
+     * `__call` — without declaring `Cloud`. A constructor demanding `Cloud` therefore
+     * TypeError'd on every resolution in any deployment with telemetry enabled, which is
+     * the default, and took the whole branding page with it.
+     *
+     * The requirement is still real, so it is checked here and refused with a sentence
+     * someone can act on, rather than asserted by a type that the runtime cannot satisfy.
+     */
+    private function urlFor(string $path): string
+    {
+        if (! $this->disk instanceof Cloud) {
+            throw new RuntimeException(
+                'The brand asset disk must expose public URLs (Illuminate\\Contracts\\Filesystem\\Cloud). '
+                .'Configure whitelabel.assets.disk to a disk with a url, such as the public disk.'
+            );
+        }
+
+        return $this->disk->url($path);
     }
 }
