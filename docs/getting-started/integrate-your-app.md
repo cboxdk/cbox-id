@@ -86,8 +86,14 @@ export const cbox = createCboxId({
 
 ## When it does not work
 
-The token endpoint returns an RFC-shaped `error` plus an `error_description` that says
-what actually went wrong — read the description, not just the code.
+The token endpoint returns an RFC-shaped `error`, and for most failures an
+`error_description` that says what actually went wrong — read the description, not just
+the code.
+
+Two codes are deliberately bare. `invalid_client` and `unauthorized_client` carry no
+description, because a description would tell an unauthenticated caller which half of a
+credential was wrong and turn the endpoint into a client-enumeration oracle. For those
+two, work from the table below rather than waiting for the server to explain itself.
 
 | What you see | Usually means |
 |---|---|
