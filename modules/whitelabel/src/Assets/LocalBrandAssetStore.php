@@ -39,7 +39,26 @@ class LocalBrandAssetStore implements BrandAssetStore
     {
         $path = AssetPath::fromUrl($url, $this->basePath);
 
-        if ($path !== null && $this->disk->exists($path)) {
+        if ($path === null) {
+            return;
+        }
+
+        // Only ever inside THIS environment's folder.
+        //
+        // `AssetPath` refuses traversal and anchors on the base folder — but the base is
+        // `brand/`, while writes land in `brand/{environment}/`. So a URL naming another
+        // environment's asset resolved cleanly and was deleted. Reachable because the
+        // page's `logoUrl` is a plain public property: read a victim environment's logo
+        // URL off its public sign-in page, set the property to it, save, then upload a
+        // legitimate file — the store dutifully forgets the path it was handed.
+        //
+        // The property is `#[Locked]` now as well; this is the half that holds even if a
+        // future caller passes a URL from somewhere else.
+        if (! str_starts_with($path, $this->directory().'/')) {
+            return;
+        }
+
+        if ($this->disk->exists($path)) {
             $this->disk->delete($path);
         }
     }

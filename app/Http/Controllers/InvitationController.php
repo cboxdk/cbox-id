@@ -9,6 +9,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\SodGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
+use Cbox\Id\AccessControl\Exceptions\GrantRefused;
 use Cbox\Id\AccessControl\Exceptions\UnknownRole;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -65,7 +66,7 @@ final class InvitationController extends Controller
 
             try {
                 $roles->assign($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual);
-            } catch (UnknownRole) {
+            } catch (UnknownRole|GrantRefused) {
                 // The role was retired or deleted between the invitation and the click —
                 // an app ships a manifest without it, or an admin removes it. Skipped for
                 // the same reason a conflicting grant is skipped: the person still joins.
@@ -80,6 +81,11 @@ final class InvitationController extends Controller
                 //
                 // The framework's directory reconcile learned this exact lesson one
                 // caller earlier; this is the caller nobody updated.
+                //
+                // `GrantRefused` is caught alongside it because `assign()` throws that
+                // too. It is pre-empted today by the SoD check above — but those are two
+                // different classes applying the same rule through different signatures,
+                // and if they ever drift apart the identical permanent failure returns.
                 $withheld[] = $grant->role_id;
             }
         }
@@ -92,6 +98,11 @@ final class InvitationController extends Controller
         if ($withheld !== []) {
             $audit->record(new AuditEvent(
                 action: 'role.grant_withheld',
+                // On the ORGANIZATION's chain. Recorded without it, the entry went to the
+                // system trail — where the admin who needs to know a grant was withheld
+                // cannot see it, while the sibling SoD case's own comment promises "the
+                // governance screen reports what was withheld".
+                organizationId: $invitation->organization_id,
                 actorType: ActorType::System,
                 targetType: 'user',
                 targetId: $subject->id,

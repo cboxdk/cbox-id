@@ -36,6 +36,13 @@ class ExportAuditCommand extends Command
         $environments = $this->environments();
 
         if ($environments === []) {
+            // A named environment that does not exist is a FAILURE, not a quiet success.
+            // A scheduled run carrying a stale slug otherwise exits 0 having shipped
+            // nothing, which is the one outcome a compliance export must never report.
+            if ($this->option('environment') !== null) {
+                return self::FAILURE;
+            }
+
             $this->warn('No environment to export. Nothing was written.');
 
             return self::SUCCESS;

@@ -7,6 +7,7 @@ use Cbox\Id\Whitelabel\Models\BrandProfile;
 use Cbox\Id\Whitelabel\Support\PaletteTokens;
 use Illuminate\Http\UploadedFile;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
@@ -34,8 +35,15 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
 
     public string $emailTemplate = '';
 
+    /**
+     * Server-derived, so locked: a client that can set these can name another
+     * environment's asset and have `forget()` delete it on the next upload, or point the
+     * environment's logo at a host of its choosing — a beacon on every branded page.
+     */
+    #[Locked]
     public ?string $logoUrl = null;
 
+    #[Locked]
     public ?string $faviconUrl = null;
 
     public ?UploadedFile $logo = null;

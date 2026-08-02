@@ -118,3 +118,37 @@ it('refuses the domains page to a member who cannot manage environments', functi
         ->get(route('workspace.environment-domains'))
         ->assertRedirect(route('workspace.home'));
 });
+
+/**
+ * A member must not be able to read another account's domain challenge.
+ *
+ * `selectedEnvironment` is live-bound and unlocked. Every WRITE on this page funnels
+ * through guard(), and the verified-domain read is constrained by the accessible id
+ * list — but the challenge read passed the raw property to a service that resolves it
+ * with a bare `Environment::find()`. `Environment` is the tenancy root and carries no
+ * scope of its own, so the value came back: another account's unannounced domain, and
+ * the `cbox-id-domain-verification=…` TXT record that proves ownership of it.
+ */
+it('does not leak another account domain challenge through the selected environment', function (): void {
+    $mine = provisionAccount('mine@acme.example');
+    $theirs = provisionAccount('theirs@other.example');
+
+    // Their environment has a pending domain, so a challenge exists to leak.
+    app(EnvironmentDomains::class)->request($theirs['environment']->id, 'id.other.example');
+
+    session()->put(AccountAuth::SESSION_KEY, $mine['member']->id);
+
+    $component = Volt::test('workspace.environment-domains')
+        ->set('selectedEnvironment', $theirs['environment']->id);
+
+    expect($component->viewData('challenge'))
+        ->toBeNull('a member read another account domain-verification challenge');
+
+    // Positive control: their own environment still resolves one.
+    app(EnvironmentDomains::class)->request($mine['environment']->id, 'id.acme.example');
+
+    expect(Volt::test('workspace.environment-domains')
+        ->set('selectedEnvironment', $mine['environment']->id)
+        ->viewData('challenge'))
+        ->not->toBeNull('the page stopped showing a member their own challenge');
+});

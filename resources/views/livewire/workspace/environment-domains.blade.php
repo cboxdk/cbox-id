@@ -131,7 +131,17 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
         return [
             'environments' => Environment::query()->whereIn('id', $ids)->orderBy('created_at')->get(),
             'verifiedDomain' => $environment?->domain,
-            'challenge' => $this->selectedEnvironment !== '' ? $domains->challenge($this->selectedEnvironment) : null,
+
+            // Read through the SAME resolution as everything else on this page.
+            //
+            // `selectedEnvironment` is a live-bound, unlocked property, and every write
+            // path funnels through guard() — but this read did not: it passed the raw
+            // value to a service that resolves it with a bare `Environment::find()`, and
+            // `Environment` is the tenancy root with no scope of its own. So a member
+            // could name an environment belonging to a different account and read back
+            // its unannounced domain and the `cbox-id-domain-verification=…` TXT proof.
+            // A bogus id 500'd rather than 404'd, which is its own tell.
+            'challenge' => $environment !== null ? $domains->challenge($environment->id) : null,
         ];
     }
 }; ?>

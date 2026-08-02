@@ -82,7 +82,10 @@ final class SecurityHeaders
             // framework) — and this loop defers to it. Only CSP is deferred: everything
             // else in the list is unconditional, so a response cannot quietly drop
             // frame-ancestors or nosniff by setting one header.
-            if ($name === 'Content-Security-Policy' && $response->headers->has($name)) {
+            // `has()` is true for an EMPTY header too, which would mean a response could
+            // opt out of the policy entirely by setting nothing. Nothing does that today;
+            // the check costs one comparison.
+            if ($name === 'Content-Security-Policy' && ($response->headers->get($name) ?? '') !== '') {
                 continue;
             }
 
