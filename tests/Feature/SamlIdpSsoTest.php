@@ -118,3 +118,41 @@ it('accepts a tokenless cross-site POST (HTTP-POST binding) and hands off to log
         'RelayState' => 'post-binding-state',
     ])->assertRedirect(route('login'));
 });
+
+/**
+ * A refusal the SP can be told about must go back to its ACS in SAML, not die as a bare
+ * 400 on our domain.
+ *
+ * This app OVERRIDES the package's SSO controller, and the override caught
+ * InvalidAuthnRequest without reading its samlError() — so the package's entire error
+ * path was dead in production, and the package test proving it works passes against a
+ * controller nothing serves.
+ *
+ * The cost is not cosmetic. A Destination mismatch after a custom-domain migration is the
+ * highest-volume real refusal there is: the user sat on our domain reading an unbranded
+ * sentence, and the SP's admin had nothing in their logs to correlate it with.
+ */
+it('returns a signed SAML error Response to the ACS for a refusal the SP can act on', function () {
+    $sp = $this->registerSamlServiceProvider(acsUrl: 'https://sp.example.test/acs');
+    $sessionId = samlSubjectSession();
+
+    $response = $this->withSession([PlatformAuth::SESSION_KEY => $sessionId])
+        ->get('/sso/saml/idp/sso?'.http_build_query([
+            // Addresses somewhere that is not this SingleSignOnService endpoint.
+            'SAMLRequest' => $this->makeRedirectAuthnRequest($sp->entity_id, destination: 'https://elsewhere.example/sso'),
+        ]));
+
+    $response->assertOk();
+    $html = $response->getContent() ?: '';
+
+    // An auto-POST form aimed at the SP's OWN ACS, carrying a SAMLResponse.
+    expect($html)->toContain('https://sp.example.test/acs')
+        ->and($html)->toContain('SAMLResponse')
+        ->and($html)->not->toContain('SAML AuthnRequest rejected');
+
+    preg_match('/name="SAMLResponse" value="([^"]+)"/', $html, $m);
+    $xml = base64_decode(html_entity_decode($m[1] ?? ''), true) ?: '';
+
+    expect($xml)->toContain('samlp:Response')
+        ->and($xml)->toContain('urn:oasis:names:tc:SAML:2.0:status:Requester');
+});

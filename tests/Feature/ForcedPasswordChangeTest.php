@@ -14,9 +14,12 @@ use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
@@ -32,6 +35,14 @@ uses(RefreshDatabase::class);
  * place — to render a line of prose on the admin's own console page — so a temporary
  * password with no expiry was simply a permanent one the administrator also knew.
  */
+/** The organization the held subject belongs to, for a test that registers a client in it. */
+function subjectOwingAChangeOrg(): string
+{
+    subjectOwingAChange();
+
+    return Organization::query()->where('slug', 'acme-forced')->value('id') ?? '';
+}
+
 function subjectOwingAChange(bool $temporary = true): string
 {
     $subject = app(Subjects::class)->create('dana@acme.test', 'Dana', 'the-handed-over-passphrase');
@@ -258,11 +269,41 @@ it('locks an account out of the password door at the policy threshold', function
  * docblock saying the exemption exists because "the authorize endpoint makes that call".
  * That carve-out could never be reached from a route running in optional mode.
  */
-it('holds an authorization request from a subject who owes a password change', function (): void {
-    subjectOwingAChange();
+/**
+ * A REGISTERED client, deliberately.
+ *
+ * The first version of these tests used `client_id=whatever`, so the component refused
+ * the unknown client and returned before ever reaching the hold — they passed without
+ * testing anything, which is why the suite stayed green while the enforcement moved.
+ */
+function authorizeUrlForHeldSubject(string $orgId, array $extra = []): string
+{
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        'Held App',
+        redirectUris: ['https://app.test/cb'],
+        organizationId: $orgId,
+    ))->client;
 
-    $this->get('/oauth/authorize?client_id=whatever&response_type=code&redirect_uri=https://app.test/cb')
-        ->assertRedirect(route('password.change'));
+    return '/oauth/authorize?'.http_build_query(array_merge([
+        'client_id' => $client->client_id,
+        'response_type' => 'code',
+        'redirect_uri' => 'https://app.test/cb',
+        'scope' => 'openid',
+        'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        'code_challenge_method' => 'S256',
+    ], $extra));
+}
+
+/**
+ * The console is not the thing worth protecting — it is the door to the thing. An
+ * organization's own sign-in rules must hold on the endpoint that mints tokens, or a
+ * member held on the account page for not enrolling a second factor opens any connected
+ * app and walks away with an access and refresh token.
+ */
+it('holds an authorization request from a subject who owes a password change', function (): void {
+    $orgId = subjectOwingAChangeOrg();
+
+    $this->get(authorizeUrlForHeldSubject($orgId))->assertRedirect(route('password.change'));
 });
 
 it('holds an authorization request from a subject who has not enrolled a second factor', function (): void {
@@ -274,6 +315,23 @@ it('holds an authorization request from a subject who has not enrolled a second 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    $this->get('/oauth/authorize?client_id=whatever&response_type=code&redirect_uri=https://app.test/cb')
-        ->assertRedirect(route('account'));
+    $this->get(authorizeUrlForHeldSubject($org->id))->assertRedirect(route('account'));
+});
+
+/**
+ * And prompt=none must be answered to the CLIENT, whichever binding carried it. The
+ * middleware could only see the query string, so a silent-renew iframe using PAR or the
+ * POST binding got the password-change page and its promise never resolved — the SDK then
+ * signs the user out on every token refresh. Under `require_par`, PAR is the only legal
+ * way to send prompt=none at all.
+ */
+it('answers a held prompt=none to the client rather than redirecting the browser', function (): void {
+    $orgId = subjectOwingAChangeOrg();
+
+    $location = (string) $this->get(authorizeUrlForHeldSubject($orgId, ['prompt' => 'none']))
+        ->headers->get('Location');
+
+    expect($location)->toStartWith('https://app.test/cb')
+        ->and($location)->toContain('error=interaction_required')
+        ->and($location)->not->toContain('password/change');
 });

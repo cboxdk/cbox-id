@@ -162,8 +162,15 @@ final class Authenticate
      */
     private function exemptFromHolds(Request $request): bool
     {
-        return $request->routeIs('password.change', 'logout')
-            || $request->query('prompt') === 'none';
+        // The authorize endpoint enforces these itself, in the consent component.
+        //
+        // It has to: `prompt` arrives by query string, by PAR payload or in a POST body,
+        // and only the component resolves all three. Reading `$request->query('prompt')`
+        // here meant a silent-renew iframe using PAR or POST was redirected to the
+        // password-change page instead of being answered with an OIDC error — and under
+        // `require_par`, PAR is the ONLY legal way to send prompt=none, so the carve-out
+        // was dead there entirely.
+        return $request->routeIs('password.change', 'logout', 'oauth.authorize', 'oauth.authorize.post');
     }
 
     /**

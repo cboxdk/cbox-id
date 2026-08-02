@@ -57,15 +57,43 @@ final class SamlIdpSsoController
                 $context->signature,
                 $context->sigAlg,
                 $context->fromRedirect,
+                // The sixth argument this override used to omit — see the docblock on
+                // SamlRequestContext::$rawQueryString for what that cost.
+                $context->rawQueryString,
             );
         } catch (UnknownServiceProvider) {
             $this->handoff->clear();
 
             return new Response('Unknown or inactive SAML service provider.', 403);
-        } catch (InvalidAuthnRequest) {
+        } catch (InvalidAuthnRequest $exception) {
             $this->handoff->clear();
 
-            return new Response('SAML AuthnRequest rejected.', 400);
+            // A refusal the SP can be TOLD about goes back to its ACS as a signed
+            // Response with a failure StatusCode — the SP logs it and renders its own
+            // branded error, instead of the user sitting on our domain looking at a bare
+            // 400 the SP never hears about.
+            //
+            // This override dropped that, which made the package's entire error path dead
+            // in production: reject(), issueErrorResponse(), buildStatus(), SamlError and
+            // the InvalidNameIdPolicy/RequestDenied codes. The highest-volume real refusal
+            // is a Destination mismatch after a custom-domain migration — exactly the one
+            // an SP admin needs to find in their own logs.
+            $error = $exception->samlError();
+
+            if ($error === null) {
+                return new Response('SAML AuthnRequest rejected.', 400);
+            }
+
+            try {
+                return new Response(
+                    $this->idp->issueErrorResponse($error)->toPostForm(),
+                    200,
+                    ['Content-Type' => 'text/html; charset=UTF-8'],
+                );
+            } catch (UnknownServiceProvider) {
+                // Disabled between parsing and answering — no trusted ACS to deliver to.
+                return new Response('Unknown or inactive SAML service provider.', 403);
+            }
         }
 
         // The host owns "who is logged in". No subject → stash the (already

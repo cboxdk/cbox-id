@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use Cbox\Id\Identity\Contracts\PasswordExpiry;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
 use App\Platform\Impersonation;
 use App\Platform\OrganizationAccess;
 use Cbox\Id\Identity\Models\Session;
@@ -303,6 +306,35 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             return;
         }
 
+        // THE ORGANIZATION'S OWN SIGN-IN RULES. A forced password change and an MFA
+        // mandate hold every console page; they must hold this one too, or the endpoint
+        // that mints tokens becomes the way around the policy the console enforces.
+        //
+        // Enforced here rather than in the auth middleware, which is where it was first
+        // put: the middleware can only read `prompt` from the query string, while this
+        // component resolves it from the PAR payload first. A silent-renew iframe using
+        // PAR or the POST binding therefore got the password-change page instead of the
+        // OIDC error — and under `require_par` that is the only legal way to send
+        // prompt=none at all. Everything from here sees the same resolved $prompts,
+        // whichever binding delivered it.
+        $hold = $this->unsatisfiedAuthPolicy(app(CurrentUser::class)->subject()?->id);
+
+        if ($hold !== null) {
+            if (in_array('none', $prompts, true)) {
+                $this->redirectError($redirectUri, 'interaction_required', $stateParam, $hold['reason']);
+
+                return;
+            }
+
+            // An interactive request HAS a user agent, so send them to satisfy it — and
+            // stash the resume, or they land on the console and the relying party's
+            // callback never fires.
+            session()->put('url.intended', $this->resumeUrl());
+            $this->redirect(route($hold['route']), navigate: false);
+
+            return;
+        }
+
         if (! $isReauthed && in_array('select_account', $prompts, true)) {
             session()->put('url.intended', $this->resumeUrl());
             $this->redirect(route('accounts'));
@@ -433,6 +465,39 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         $raw = trim($value);
 
         return $raw !== '' && ctype_digit($raw) ? (int) $raw : null;
+    }
+
+    /**
+     * The organization's sign-in rule this subject has not satisfied, or null.
+     *
+     * The holds live in the auth middleware for every other page and cannot live there
+     * for this one: the middleware reads `prompt` from the query string, and this
+     * component resolves it from the PAR payload first.
+     *
+     * @return array{route: string, reason: string}|null
+     */
+    private function unsatisfiedAuthPolicy(?string $subjectId): ?array
+    {
+        if ($subjectId === null) {
+            return null;
+        }
+
+        if (app(AdminPasswords::class)->requiresChange($subjectId)
+            || app(PasswordExpiry::class)->hasExpired($subjectId)) {
+            return [
+                'route' => 'password.change',
+                'reason' => 'The user must change their password before authorizing.',
+            ];
+        }
+
+        if (app(MfaMandate::class)->requiresEnrolment($subjectId)) {
+            return [
+                'route' => 'account',
+                'reason' => 'The user must enrol a second factor before authorizing.',
+            ];
+        }
+
+        return null;
     }
 
     /**

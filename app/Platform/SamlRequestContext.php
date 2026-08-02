@@ -25,6 +25,21 @@ final readonly class SamlRequestContext
         public ?string $signature,
         public ?string $sigAlg,
         public bool $fromRedirect,
+
+        /**
+         * The query string EXACTLY as transmitted, for the redirect binding.
+         *
+         * A redirect-binding signature covers the raw octets, and SPs disagree on how to
+         * encode them — Entra and Ping follow RFC 3986 where PHP's urlencode() does not,
+         * so a RelayState carrying a space or a `~` re-encodes differently.
+         *
+         * On the first leg the request still HAS its query string, so falling back to
+         * re-encoding works by accident. On the RESUME leg there is no query string at
+         * all, so the fallback is all there is: the request verifies on the way in and
+         * 400s on the way back, after a successful password and MFA. It looks like our
+         * fault to the user and like nothing at all to the service provider.
+         */
+        public ?string $rawQueryString = null,
     ) {}
 
     /**
@@ -46,6 +61,7 @@ final readonly class SamlRequestContext
             // Redirect binding is a GET (base64+DEFLATE, detached signature); the
             // POST binding is a POST (base64 only, embedded XML-DSig).
             fromRedirect: $request->isMethod('get'),
+            rawQueryString: $request->getQueryString(),
         );
     }
 
@@ -84,6 +100,7 @@ final readonly class SamlRequestContext
             'signature' => $this->signature,
             'sigAlg' => $this->sigAlg,
             'fromRedirect' => $this->fromRedirect,
+            'rawQueryString' => $this->rawQueryString,
         ];
     }
 
