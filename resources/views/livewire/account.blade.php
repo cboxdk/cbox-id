@@ -29,6 +29,10 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends Component
 {
+    // --- Profile ---
+    #[Validate('required|string|min:1|max:120')]
+    public string $displayName = '';
+
     // --- Password ---
     public string $currentPassword = '';
 
@@ -48,6 +52,45 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
 
     /** @var list<string> Shown exactly once, right after generation. */
     public array $recoveryCodes = [];
+
+    /**
+     * Rename yourself.
+     *
+     * The panel was read-only, which meant the name a person is addressed by across
+     * every screen — and the name stamped on their passkeys — could only be changed by
+     * an administrator, or not at all if they had none. That is the most ordinary
+     * self-service edit there is.
+     *
+     * No step-up: a display name is not a credential and changing it grants nothing.
+     * The email deliberately stays read-only here — it is the sign-in identifier, and
+     * letting it be changed without re-proving control of the new address is how
+     * account takeover works.
+     */
+    public function saveProfile(Subjects $subjects): void
+    {
+        $this->validateOnly('displayName');
+
+        $me = app(CurrentUser::class);
+        $subjectId = $me->subject()?->id;
+
+        if ($subjectId === null) {
+            return;
+        }
+
+        $updated = $subjects->update($subjectId, name: trim($this->displayName));
+
+        // Push it back so every surface bound to CurrentUser — the avatar initial, the
+        // greeting, the passkey label — reflects the new name in THIS render, not the
+        // next request.
+        $me->refreshSubject($updated);
+
+        $this->dispatch('toast', message: 'Name updated.', severity: 'success');
+    }
+
+    public function mount(): void
+    {
+        $this->displayName = app(CurrentUser::class)->name();
+    }
 
     public function changePassword(Subjects $subjects): void
     {
@@ -335,16 +378,34 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
             </div>
         </div>
         <div class="cbx-panel-body">
-            <div class="flex items-center gap-4">
-                <span class="cbx-avatar" style="width:3rem;height:3rem;font-size:1.1rem">{{ mb_strtoupper(mb_substr($me->name(), 0, 1)) }}</span>
-                <dl class="flex-1">
-                    <div class="cbx-kv"><dt>Name</dt><dd class="prose">{{ $me->name() }}</dd></div>
-                    <div class="cbx-kv"><dt>Email</dt><dd>{{ $me->email() ?? '—' }}</dd></div>
-                    @if ($org)
-                        <div class="cbx-kv"><dt>Organization</dt><dd class="prose">{{ $org->name }} <span class="badge">{{ $me->role()?->label() ?? 'Member' }}</span></dd></div>
-                    @endif
-                </dl>
-            </div>
+            <form wire:submit="saveProfile" class="flex items-start gap-4">
+                <span class="cbx-avatar shrink-0" style="width:3rem;height:3rem;font-size:1.1rem">{{ mb_strtoupper(mb_substr($me->name(), 0, 1)) }}</span>
+
+                <div class="min-w-0 flex-1 space-y-4">
+                    <div>
+                        <label class="label" for="display-name">Name</label>
+                        <input wire:model="displayName" id="display-name" type="text"
+                               class="input" maxlength="120" autocomplete="name"
+                               @error('displayName') aria-invalid="true" aria-describedby="display-name-error" @enderror>
+                        @error('displayName')
+                            <p class="field-error" id="display-name-error" role="alert">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <dl>
+                        {{-- Read-only on purpose. The email is the sign-in identifier, and
+                             changing it without re-proving control of the new address is
+                             how an account gets taken over — so it moves through a
+                             verification flow, not a text field on this page. --}}
+                        <div class="cbx-kv"><dt>Email</dt><dd>{{ $me->email() ?? '—' }}</dd></div>
+                        @if ($org)
+                            <div class="cbx-kv"><dt>Organization</dt><dd class="prose">{{ $org->name }} <span class="badge">{{ $me->role()?->label() ?? 'Member' }}</span></dd></div>
+                        @endif
+                    </dl>
+
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Save name</button>
+                </div>
+            </form>
         </div>
     </section>
 

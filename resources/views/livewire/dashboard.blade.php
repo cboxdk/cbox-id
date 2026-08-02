@@ -222,7 +222,10 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
         <div class="grid gap-4 sm:grid-cols-2">
             <div class="card p-5">
                 <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="shield" class="w-4 h-4" /> Your role</div>
-                <p class="mt-2 text-lg font-semibold">{{ $me->role()?->label() ?? 'Member' }}<span style="color:var(--muted);font-weight:400"> · {{ $me->organization()?->name }}</span></p>
+                {{-- The separator belongs to the org name, not to the role: printed unconditionally
+                     it left a bare "Member ·" trailing into nothing whenever the member has no
+                     organization resolved. --}}
+                <p class="mt-2 text-lg font-semibold">{{ $me->role()?->label() ?? 'Member' }}@if ($me->organization()?->name)<span style="color:var(--muted);font-weight:400"> · {{ $me->organization()->name }}</span>@endif</p>
             </div>
             <div class="card p-5 flex flex-col">
                 <div class="flex items-center gap-2 text-sm" style="color:var(--muted)"><x-icon name="key" class="w-4 h-4" /> Your security</div>

@@ -32,6 +32,19 @@ final class CurrentUser
         $this->role = $role;
     }
 
+    /**
+     * Replace just the subject, when this request is the one that changed it.
+     *
+     * The middleware repopulates this on every request, so the stale copy would only
+     * live until the next one — but "until the next one" includes the render that
+     * happens immediately after a save, which is exactly when someone is looking for
+     * their change to have taken effect.
+     */
+    public function refreshSubject(Subject $subject): void
+    {
+        $this->subject = $subject;
+    }
+
     public function role(): ?MembershipRole
     {
         return $this->role;

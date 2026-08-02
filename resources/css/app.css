@@ -1097,3 +1097,30 @@
         height: 38px;
     }
 }
+
+/* ── Narrow screens: stop laying two things side by side that do not fit ────
+   `.cbx-panel-header` is a flex row — title block on the left, action on the right —
+   which is right on a desktop and wrong the moment the viewport is 375px. Neither
+   child wraps: the action is `shrink-0`, so the title and its description absorb the
+   entire shortfall and collapse to a column two or three words wide. The Passkeys
+   panel rendered "Sign in with Face ID, Touch" / "ID, Windows Hello, or a" / "security
+   key — no" / "password." beside a button that kept its full width.
+
+   Stacking is the fix, not shrinking: the action belongs under the text it acts on,
+   full width, where a thumb can reach it. This is one rule and it corrects every
+   panel header in the console at once — the pattern is used on around forty pages.
+
+   A width breakpoint rather than `pointer: coarse` here, unlike the zoom rule: this
+   is a question of how much room the text has, and a narrow desktop window has the
+   same problem a phone does. */
+@media (max-width: 640px) {
+    .cbx-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cbx-panel-header > .btn,
+    .cbx-panel-header > form > .btn {
+        justify-content: center;
+    }
+}

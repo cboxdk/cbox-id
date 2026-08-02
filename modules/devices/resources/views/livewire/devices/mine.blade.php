@@ -162,12 +162,18 @@ new #[Layout('components.layouts.app')] class extends Component
 
     @if ($this->enrolmentUri() !== null)
         <div class="card p-6">
-            <div class="flex flex-wrap items-start gap-6">
-                <div class="shrink-0" style="color:var(--foreground)">
+            {{-- Grid, not flex-wrap. `flex-1` is `flex-basis: 0`, so the text column
+                 never reports that it does not fit — it just shrinks, and `flex-wrap`
+                 has nothing to react to. On a phone that squeezed the instructions into
+                 a column about ten characters wide, one word per line, beside a QR code
+                 that kept its full size. The grid stacks below `sm` and only pairs them
+                 when there is room for both. --}}
+            <div class="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] items-start">
+                <div class="shrink-0 max-w-full" style="color:var(--foreground)">
                     {!! $this->enrolmentQr() !!}
                 </div>
 
-                <div class="min-w-0 flex-1 space-y-2">
+                <div class="min-w-0 space-y-2">
                     <h2 class="text-base font-medium" style="color:var(--foreground)">Add a phone</h2>
                     <p class="text-sm" style="color:var(--muted)">
                         Install <strong>Cbox ID</strong> from the App Store, open it, and scan this

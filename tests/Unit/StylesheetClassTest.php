@@ -143,3 +143,37 @@ it('keeps the confirm-to-delete field typable on a mobile keyboard', function ()
     // A disabled button that explains nothing is the other half of the bug.
     expect($markup)->toContain('aria-describedby');
 });
+
+/**
+ * A panel header must stack before it squeezes.
+ *
+ * `.cbx-panel-header` puts the title block and the action side by side, and neither
+ * child wraps — the action is `shrink-0`, so at 375px the title and its description
+ * absorb the whole shortfall. The Passkeys panel rendered its description four words
+ * wide beside a button at full width; measured, the description had 184px of a 343px
+ * card and the button had the rest.
+ *
+ * The pattern is on roughly forty console pages, so this one rule is the difference
+ * between the console being usable on a phone and not. Guarded because it is a single
+ * media query at the end of a long stylesheet that no desktop review will ever notice
+ * is missing.
+ */
+it('stacks the panel header instead of squeezing it on a narrow screen', function (): void {
+    $css = (string) file_get_contents(__DIR__.'/../../resources/css/app.css');
+
+    // There is more than one 640px block in this file, and only one of them is this
+    // rule — so match on the block that actually names the selector rather than on the
+    // first one that happens to share the breakpoint.
+    preg_match_all('/@media\s*\(max-width:\s*640px\)\s*\{(.+?)\n\}/s', $css, $blocks);
+
+    $declarations = implode("\n", array_filter(
+        $blocks[1] ?? [],
+        static fn (string $block): bool => str_contains($block, '.cbx-panel-header'),
+    ));
+
+    expect(str_contains($declarations, '.cbx-panel-header'))
+        ->toBeTrue('the panel header has no narrow-screen rule, so its description collapses');
+
+    expect(str_contains($declarations, 'flex-direction: column'))
+        ->toBeTrue('stacking is the fix — shrinking the text is the bug');
+});
