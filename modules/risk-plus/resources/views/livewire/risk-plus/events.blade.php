@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use Cbox\Id\Identity\Models\User;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
@@ -39,7 +41,31 @@ new #[Layout('components.layouts.app', ['title' => 'Risk events'])] class extend
     /** @return Collection<int, RiskEvent> */
     private function events(): Collection
     {
-        return RiskEvent::query()->latest('created_at')->limit(50)->get();
+        // Confined to addresses belonging to this organization's members.
+        //
+        // `RiskEvent` carries no organization — only an email — so an unqualified read on
+        // an ORGANIZATION-gated page showed an admin of one tenant every flagged sign-in
+        // in the environment, with the address in the clear. That is a live feed of when
+        // another tenant is under credential stuffing, and of who their users are.
+        //
+        // Matching on the email is the narrowest thing available without a schema change.
+        // It means an event for an address that belongs to nobody here is not shown at
+        // all, which is the correct direction: an org admin has no standing to see a
+        // stranger's failed sign-in.
+        $organizationId = app(CurrentUser::class)->organization()?->id;
+
+        abort_if($organizationId === null, 403);
+
+        $memberEmails = User::query()
+            ->select('email')
+            ->whereIn('id', Membership::query()->select('user_id')->where('organization_id', $organizationId));
+
+        return RiskEvent::query()
+            ->whereNotNull('email')
+            ->whereIn('email', $memberEmails)
+            ->latest('created_at')
+            ->limit(50)
+            ->get();
     }
 }; ?>
 

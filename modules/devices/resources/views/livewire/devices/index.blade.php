@@ -6,6 +6,8 @@ use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Models\PushNotification;
 
 use App\Platform\CurrentUser;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Models\Membership;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -44,7 +46,44 @@ new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class ex
     #[Computed]
     public function devices(): Collection
     {
-        return Device::query()->orderByDesc('last_seen_at')->limit(100)->get();
+        // Confined to the acting organization's members.
+        //
+        // `Device` is keyed by subject, and the page is gated on an ORGANIZATION-level
+        // role — so an unqualified read handed an admin of one tenant every other
+        // tenant's handset names, models, OS versions and health. The page's own docblock
+        // calls that "precisely the reconnaissance an attacker wants", which was true of
+        // the page itself.
+        return Device::query()
+            ->whereIn('subject_id', $this->memberIds())
+            ->orderByDesc('last_seen_at')
+            ->limit(100)
+            ->get();
+    }
+
+    /**
+     * Subject ids of this organization's members — the only devices this page may show.
+     *
+     * Through the contract with an explicit organization id, NOT a subquery on the model.
+     * `Membership` carries a tenant scope that denies by default when no tenant context
+     * is set, so a subquery silently returns nothing and the page shows an empty
+     * inventory — a filter that fails to a blank screen rather than to a refusal, and one
+     * that depends on ambient state a security decision should not rest on. Measured:
+     * under the console's own test harness the scoped query returned zero rows while the
+     * devices existed.
+     *
+     * @return array<int, string>
+     */
+    private function memberIds(): array
+    {
+        $organizationId = app(CurrentUser::class)->organization()?->id;
+
+        abort_if($organizationId === null, 403);
+
+        return app(Memberships::class)
+            ->forOrganization($organizationId)
+            ->map(static fn (Membership $membership): string => $membership->user_id)
+            ->values()
+            ->all();
     }
 
     /**
@@ -53,7 +92,13 @@ new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class ex
     #[Computed]
     public function recent(): Collection
     {
-        return PushNotification::query()->latest('created_at')->limit(25)->get();
+        // Same confinement: a push record carries the device it went to and the error
+        // text if it failed.
+        return PushNotification::query()
+            ->whereIn('device_id', Device::query()->select('id')->whereIn('subject_id', $this->memberIds()))
+            ->latest('created_at')
+            ->limit(25)
+            ->get();
     }
 }; ?>
 

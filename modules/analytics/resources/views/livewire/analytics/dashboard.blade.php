@@ -23,7 +23,7 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
         abort_unless(app(CurrentUser::class)->isAdmin(), 403);
     }
     /**
-     * @return array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, active_orgs: int, mfa_rate: int, unavailable: bool}
+     * @return array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, mfa_rate: int, unavailable: bool}
      */
     private function overview(): array
     {
@@ -47,9 +47,22 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
         try {
             $reader = app(ReportReader::class);
 
+            // THIS organization, never null.
+            //
+            // `null` means environment-wide in every one of these calls, and this page is
+            // gated on an ORGANIZATION-level role — so an admin of one tenant was reading
+            // every other tenant's sign-ins, tokens issued, new users and MFA enrolments.
+            // The environment-wide view of the same data already exists, one plane up, at
+            // Environment › Analytics behind EnvironmentAdminAuth.
+            $organizationId = app(CurrentUser::class)->organization()?->id;
+
+            if ($organizationId === null) {
+                abort(403);
+            }
+
             $tiles = [];
             foreach ($definitions as $definition) {
-                $series = $reader->series($definition['key'], null, $since, $until);
+                $series = $reader->series($definition['key'], $organizationId, $since, $until);
 
                 $bars = [];
                 for ($i = 0; $i < $window; $i++) {
@@ -68,15 +81,12 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
                 ];
             }
 
-            $snapshot = $reader->snapshot(null, $since, $until);
+            $snapshot = $reader->snapshot($organizationId, $since, $until);
             $logins = $snapshot['auth.login'] ?? 0;
             $mfa = $snapshot['auth.mfa_enrolled'] ?? 0;
-            $activeOrgs = count($reader->topOrganizations('auth.login', $since, $until, 1000));
-
             return [
                 'window' => $window,
                 'tiles' => $tiles,
-                'active_orgs' => $activeOrgs,
                 'mfa_rate' => $logins > 0 ? (int) round(($mfa / $logins) * 100) : 0,
                 'unavailable' => false,
             ];
@@ -86,7 +96,6 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
             return [
                 'window' => $window,
                 'tiles' => [],
-                'active_orgs' => 0,
                 'mfa_rate' => 0,
                 'unavailable' => true,
             ];
@@ -94,7 +103,7 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
         }
 
     /**
-     * @return array{overview: array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, active_orgs: int, mfa_rate: int, unavailable: bool}}
+     * @return array{overview: array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, mfa_rate: int, unavailable: bool}}
      */
     public function with(): array
     {
@@ -138,11 +147,11 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
         @endforeach
     </div>
 
-    <div class="grid grid-cols-2 gap-4 sm:max-w-md">
-        <div class="card p-4">
-            <p class="text-xs font-medium uppercase tracking-wide" style="color:var(--muted)">Active organizations</p>
-            <p class="mt-1 text-2xl font-semibold tabular-nums mono" style="color:var(--foreground)">{{ number_format($overview['active_orgs']) }}</p>
-        </div>
+    {{-- "Active organizations" is gone: a count of the OTHER tenants sharing this
+         environment has no organization-scoped meaning, and reporting it to one of them
+         is a disclosure rather than a metric. It belongs on the environment plane, which
+         already has its own analytics page. --}}
+    <div class="grid grid-cols-1 gap-4 sm:max-w-md">
         <div class="card p-4">
             <p class="text-xs font-medium uppercase tracking-wide" style="color:var(--muted)">MFA rate</p>
             <p class="mt-1 text-2xl font-semibold tabular-nums mono" style="color:var(--foreground)">{{ $overview['mfa_rate'] }}%</p>
