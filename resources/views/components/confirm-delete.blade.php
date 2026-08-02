@@ -117,6 +117,18 @@
                 <label for="{{ $id }}-input" class="label mt-4 block">
                     Type <code>{{ $name }}</code> to confirm
                 </label>
+                {{-- `autocapitalize` and `autocorrect` are not optional here.
+
+                     iOS defaults a text field to sentence capitalisation with autocorrect
+                     on, so a phone types `Grace@acme.test` for `grace@acme.test` and the
+                     comparison below — deliberately exact — can never be satisfied. The
+                     only feedback was `aria-invalid`, which is silent: the button simply
+                     stayed dead with nothing on screen saying why. That made every
+                     destructive action in the console, on all ~25 call sites, impossible
+                     to complete from a phone.
+
+                     The sign-in field two directories away has carried `autocapitalize`
+                     since it was written; this control just never got it. --}}
                 <input
                     id="{{ $id }}-input"
                     x-ref="field"
@@ -124,9 +136,25 @@
                     type="text"
                     class="input mt-1"
                     autocomplete="off"
+                    autocapitalize="none"
+                    autocorrect="off"
                     spellcheck="false"
+                    aria-describedby="{{ $id }}-mismatch"
                     :aria-invalid="typed !== '' && typed !== expected"
                 />
+
+                {{-- And say so out loud, rather than leaving a dead button to explain
+                     itself. Announced politely: it appears while the person is still
+                     typing, so it must not interrupt them mid-word. --}}
+                <p
+                    id="{{ $id }}-mismatch"
+                    class="field-error mt-1"
+                    role="status"
+                    x-cloak
+                    x-show="typed !== '' && typed !== expected"
+                >
+                    That does not match yet — it has to be exactly <code x-text="expected"></code>, including capitals.
+                </p>
 
                 <div class="mt-5 flex justify-end gap-2">
                     <button type="button" class="btn btn-ghost" @click="open = false; onClose()">Cancel</button>

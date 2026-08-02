@@ -156,3 +156,21 @@ it('does not carry a step-up across a session transition', function (string $tra
     expect(app(WorkspaceSudo::class)->confirmed())
         ->toBeFalse("the step-up survived a {$transition}");
 })->with(['establish', 'organization switch']);
+/**
+ * And the same for the account plane, which is where it bites hardest: `establish()` is
+ * reached by `adoptSubject()`, i.e. by magic-link redemption and federated landing —
+ * sign-ins where no password is presented at all.
+ */
+it('ends the workspace step-up window when a member session is established', function (): void {
+    $memberId = signInMember();
+
+    app(WorkspaceSudo::class)->confirm();
+    expect(app(WorkspaceSudo::class)->confirmed())->toBeTrue();
+
+    // Re-establishing is what `adoptSubject()` does on a magic-link or federated
+    // landing: a member session appears with no password ever presented.
+    app(AccountAuth::class)->establish($memberId);
+
+    expect(app(WorkspaceSudo::class)->confirmed())
+        ->toBeFalse('a passwordless account sign-in inherited an open elevation');
+});

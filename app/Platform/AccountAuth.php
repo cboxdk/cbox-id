@@ -161,7 +161,13 @@ final class AccountAuth
 
         $member = $this->members->find($memberId);
 
-        session()->forget(self::PENDING_KEY);
+        // A new member session cannot inherit the previous one's elevation. This is the
+        // sharpest of the three transitions that used to: `adoptSubject()` reaches here
+        // from a redeemed magic link and from federated landing, neither of which asks
+        // for a password — so a WorkspaceSudo window confirmed earlier in the same
+        // browser, by someone else, was still open, and the account plane mints account
+        // and environment API keys behind it.
+        session()->forget([self::PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
         session()->put(self::SESSION_KEY, $memberId);
         session()->put(self::SESSION_VERSION_KEY, $member !== null ? $member->session_version : 0);
         session()->regenerate();

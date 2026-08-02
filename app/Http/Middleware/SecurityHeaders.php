@@ -67,6 +67,25 @@ final class SecurityHeaders
         }
 
         foreach ($headers as $name => $value) {
+            // A response that already declared its own policy keeps it.
+            //
+            // This middleware is appended globally, which is what makes it trustworthy —
+            // no route can be forgotten. But it also means it stamped the console's
+            // policy onto the SAML POST binding, where `form-action 'self'` refuses the
+            // cross-origin post to the service provider's ACS and a script-src without
+            // 'unsafe-inline' refuses the submit. Federation died on a blank page, with
+            // no PHP-level symptom at all.
+            //
+            // The tempting fix is to widen this policy for everyone. Instead the SAML
+            // response carries a policy of its own — STRICTER than this one everywhere
+            // except the single ACS origin it names (see SamlPostBinding in the
+            // framework) — and this loop defers to it. Only CSP is deferred: everything
+            // else in the list is unconditional, so a response cannot quietly drop
+            // frame-ancestors or nosniff by setting one header.
+            if ($name === 'Content-Security-Policy' && $response->headers->has($name)) {
+                continue;
+            }
+
             $response->headers->set($name, $value);
         }
 

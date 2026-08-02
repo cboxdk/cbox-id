@@ -115,3 +115,31 @@ it('sizes touch controls at the threshold that stops iOS zooming, without disabl
             ->toBeFalse($file->getFilename().' disables pinch zoom (WCAG 2.2 1.4.4)');
     }
 });
+
+/**
+ * The type-to-confirm field has to be completable on a phone.
+ *
+ * iOS capitalises the first letter of a text field and autocorrects it unless told not
+ * to, so a required token like `grace@acme.test` is typed as `Grace@acme.test` and an
+ * exact comparison can never succeed. The confirm dialog gates roughly twenty-five
+ * destructive actions across the console; without these attributes none of them can be
+ * completed from a phone, and the only signal was a button that stayed disabled.
+ *
+ * Asserted on the source rather than in a browser because the failure is a mobile
+ * keyboard behaviour no headless engine reproduces — the attribute is the whole fix, so
+ * the attribute is what gets guarded.
+ */
+it('keeps the confirm-to-delete field typable on a mobile keyboard', function (): void {
+    $markup = (string) file_get_contents(
+        __DIR__.'/../../resources/views/components/confirm-delete.blade.php'
+    );
+
+    expect(str_contains($markup, 'autocapitalize="none"'))
+        ->toBeTrue('iOS capitalises the first letter, so the exact match can never succeed');
+
+    expect(str_contains($markup, 'autocorrect="off"'))
+        ->toBeTrue('autocorrect rewrites the token as the person types it');
+
+    // A disabled button that explains nothing is the other half of the bug.
+    expect($markup)->toContain('aria-describedby');
+});

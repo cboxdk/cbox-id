@@ -571,6 +571,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             abort(403, 'Authorization cannot be granted while impersonating a user.');
         }
 
+        // And never past a hold that landed after this page was drawn. The holds moved
+        // out of the middleware and into mount() because only the component can read
+        // `prompt` from a PAR payload — but mount() runs once, on the initial render,
+        // and this method is a Livewire `call`. So a consent page opened before an
+        // administrator mandated MFA, or before a password expired, still minted a code
+        // afterwards: the user keeps a tab open, the policy changes, they click Allow.
+        //
+        // The same argument as the impersonation block directly above, for the same
+        // reason: an invariant asserted only at render is one open tab away from wrong.
+        $hold = $this->unsatisfiedAuthPolicy(app(CurrentUser::class)->subject()?->id);
+
+        if ($hold !== null) {
+            $this->error = 'Your account needs attention before you can continue. Please sign in again.';
+
+            return;
+        }
+
         // Defense in depth: re-assert the critical invariants at issue time rather
         // than trusting that mount() still holds. Even with #[Locked], never mint a
         // code unless the redirect_uri is still registered to the client and PKCE

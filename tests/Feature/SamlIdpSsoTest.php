@@ -156,3 +156,37 @@ it('returns a signed SAML error Response to the ACS for a refusal the SP can act
     expect($xml)->toContain('samlp:Response')
         ->and($xml)->toContain('urn:oasis:names:tc:SAML:2.0:status:Requester');
 });
+
+/**
+ * The stash has to carry the raw query string across the sign-in detour.
+ *
+ * A redirect-binding signature is computed over the URL-encoded query as the SP built
+ * it, not over the decoded parameters (SAML bindings §3.4.4.1) — and encoders disagree
+ * about which characters need escaping. Entra and Ping follow RFC 3986, where a space
+ * is `%20` and `~` is literal; PHP's `urlencode()` produces `+` and `%7E`. Re-encoding
+ * a parsed RelayState therefore yields bytes the SP never signed.
+ *
+ * The first leg survives without the stash because the live request still has its own
+ * query string to fall back on. The resume leg has nothing — it is a fresh GET, with
+ * only the session to go on. So a stash that writes the value and reads it back as
+ * null fails on exactly one of the two legs, and it is the leg the property was added
+ * for. This asserts the round trip, which is where the two halves have to agree.
+ */
+it('carries the raw query string across the stash, not just into it', function (): void {
+    $raw = 'SAMLRequest=abc%20def&RelayState=state%20with~tilde&SigAlg=x&Signature=y';
+
+    $context = new SamlRequestContext(
+        samlRequest: 'abc def',
+        relayState: 'state with~tilde',
+        signature: 'y',
+        sigAlg: 'x',
+        fromRedirect: true,
+        rawQueryString: $raw,
+    );
+
+    $restored = SamlRequestContext::fromSession($context->toSession());
+
+    expect($restored)->not->toBeNull()
+        ->and($restored->rawQueryString)
+        ->toBe($raw, 'the resume leg lost the bytes the SP actually signed');
+});

@@ -386,13 +386,38 @@ final class PlatformAuth
         }
     }
 
+    /**
+     * End any step-up window. Call before every `regenerate()` in this class.
+     *
+     * `Sudo` and `WorkspaceSudo` store a bare timestamp under one global session key —
+     * no subject, no member, no session id — and `regenerate()` rotates the id while
+     * KEEPING the data. So a window confirmed as one identity is, mechanically, a window
+     * that belongs to whoever the session is carrying afterwards.
+     *
+     * Three transitions did not clear it: `switchTo()`, `logout()`'s multi-account
+     * branch, and `AccountAuth::establish()`. Each hands the session to a different
+     * person, and every sudo-gated route then accepts it: passkey enrolment, provider
+     * linking, vault reveal, and on the account plane the minting of account and
+     * environment API keys. That converts a session obtained through a door that never
+     * asks for a password — a redeemed magic link, an SSO assertion — into durable
+     * credentials that outlive the victim revoking the vector and resetting their
+     * password, which is the exact persistence the step-up exists to prevent.
+     *
+     * A comment two methods down used to assert the account switch "has always done
+     * both". It had not. Hence one helper rather than four call sites: a fifth
+     * transition added later cannot forget what it never had to remember.
+     */
+    private function dropStepUp(): void
+    {
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+    }
+
     public function switchOrganization(Request $request, string $organizationId): void
     {
         // Switching tenant changes which authority the session carries, so a step-up
         // confirmed against the previous one does not transfer — and the id rotates here
-        // like every other privilege transition. The account switch two methods down has
-        // always done both; this one did neither.
-        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        // like every other privilege transition.
+        $this->dropStepUp();
         session()->regenerate();
 
         session()->put(self::ORG_KEY, $organizationId);
@@ -474,7 +499,10 @@ final class PlatformAuth
 
         $this->makeActive($subjectId, $held->sessionId, $held->organizationId);
 
-        // Rotate the id on privilege change (the active identity just changed).
+        // Rotate the id on privilege change (the active identity just changed) — and
+        // end the step-up with it, because the identity it was confirmed against is not
+        // the one the session now carries.
+        $this->dropStepUp();
         session()->regenerate();
 
         return true;
@@ -502,6 +530,7 @@ final class PlatformAuth
         }
 
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, self::PENDING_LINK_KEY]);
+        $this->dropStepUp();
 
         if ($accounts !== []) {
             $next = array_key_first($accounts);

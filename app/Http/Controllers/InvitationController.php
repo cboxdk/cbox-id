@@ -9,7 +9,11 @@ use App\Platform\PlatformAuth;
 use App\Platform\SodGuard;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
+use Cbox\Id\AccessControl\Exceptions\UnknownRole;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +27,7 @@ use Illuminate\Http\Request;
  */
 final class InvitationController extends Controller
 {
-    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, Roles $roles, SodGuard $sod): RedirectResponse
+    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, Roles $roles, SodGuard $sod, AuditLog $audit): RedirectResponse
     {
         $invitation = $invitations->byToken($token);
 
@@ -46,6 +50,9 @@ final class InvitationController extends Controller
             ->where('email', $invitation->email)
             ->get();
 
+        /** @var list<string> $withheld */
+        $withheld = [];
+
         // The SoD gate applies to a deferred grant exactly as it does to a live one. The
         // invite form refuses a toxic SET up front, but policies can be defined between
         // the invite and its acceptance, and the invitee may already hold roles here from
@@ -56,13 +63,41 @@ final class InvitationController extends Controller
                 continue;
             }
 
-            $roles->assign($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual);
+            try {
+                $roles->assign($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual);
+            } catch (UnknownRole) {
+                // The role was retired or deleted between the invitation and the click —
+                // an app ships a manifest without it, or an admin removes it. Skipped for
+                // the same reason a conflicting grant is skipped: the person still joins.
+                //
+                // Uncaught, this was not a 500 but a permanent one. The acceptance above
+                // commits in its own transaction, so the invitation is already spent when
+                // the throw happens: the invitee is a member holding an arbitrary prefix
+                // of their roles, is never signed in, and every retry answers "That
+                // invitation is invalid or has expired". The parked grant row survives
+                // too, so the next invitation to the same address burns identically. The
+                // only exits were database surgery or un-retiring the role.
+                //
+                // The framework's directory reconcile learned this exact lesson one
+                // caller earlier; this is the caller nobody updated.
+                $withheld[] = $grant->role_id;
+            }
         }
 
         InvitationRoleGrant::query()
             ->where('organization_id', $invitation->organization_id)
             ->where('email', $invitation->email)
             ->delete();
+
+        if ($withheld !== []) {
+            $audit->record(new AuditEvent(
+                action: 'role.grant_withheld',
+                actorType: ActorType::System,
+                targetType: 'user',
+                targetId: $subject->id,
+                context: ['organization_id' => $invitation->organization_id, 'role_ids' => $withheld, 'reason' => 'role retired before the invitation was accepted'],
+            ));
+        }
 
         $auth->establish($request, $subject->id, ['invitation']);
         $auth->switchOrganization($request, $invitation->organization_id);

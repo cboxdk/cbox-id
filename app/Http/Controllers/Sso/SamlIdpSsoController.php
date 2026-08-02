@@ -85,11 +85,7 @@ final class SamlIdpSsoController
             }
 
             try {
-                return new Response(
-                    $this->idp->issueErrorResponse($error)->toPostForm(),
-                    200,
-                    ['Content-Type' => 'text/html; charset=UTF-8'],
-                );
+                return $this->idp->issueErrorResponse($error)->toPostBinding()->toResponse();
             } catch (UnknownServiceProvider) {
                 // Disabled between parsing and answering — no trusted ACS to deliver to.
                 return new Response('Unknown or inactive SAML service provider.', 403);
@@ -111,7 +107,10 @@ final class SamlIdpSsoController
 
         $response = $this->idp->issueResponse($authnRequest, $subjectId, $this->attributesFor($subjectId));
 
-        return new Response($response->toPostForm(), 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        // The binding brings its own content policy. This app's SecurityHeaders is
+        // appended globally and would otherwise stamp `form-action 'self'` on a form
+        // whose whole purpose is to post to the service provider's ACS.
+        return $response->toPostBinding()->toResponse();
     }
 
     /**

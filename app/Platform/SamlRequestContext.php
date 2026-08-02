@@ -86,11 +86,16 @@ final readonly class SamlRequestContext
             signature: self::str($stash['signature'] ?? null),
             sigAlg: self::str($stash['sigAlg'] ?? null),
             fromRedirect: ($stash['fromRedirect'] ?? true) === true,
+            // Read back, not defaulted. Omitting this here is what the whole property
+            // exists to prevent: the first leg still has a live query string and works
+            // without it, so a stash that drops the value fails only on the resume — the
+            // one leg the property was added for, and the one no test covered.
+            rawQueryString: self::str($stash['rawQueryString'] ?? null),
         );
     }
 
     /**
-     * @return array{samlRequest: string, relayState: ?string, signature: ?string, sigAlg: ?string, fromRedirect: bool}
+     * @return array{samlRequest: string, relayState: ?string, signature: ?string, sigAlg: ?string, fromRedirect: bool, rawQueryString: ?string}
      */
     public function toSession(): array
     {

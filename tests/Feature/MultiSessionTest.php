@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -97,4 +98,54 @@ it('logs out of every account with logoutAll', function (): void {
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
         ->and(platformAuth()->accounts())->toBe([]);
+});
+
+/**
+ * A step-up window belongs to the identity that cleared it, and to no other.
+ *
+ * `Sudo` and `WorkspaceSudo` store a bare timestamp under one global session key — no
+ * subject, no member, no session id — and `regenerate()` rotates the session id while
+ * KEEPING the data. So any transition that hands the session to a different person and
+ * only regenerates has, mechanically, handed over the elevation too.
+ *
+ * That is not theoretical. The attacker supplies the password of an account THEY own,
+ * clears sudo with it, then moves the session to a victim whose session arrived through
+ * a door that never asks for a password — a redeemed magic link, an SSO assertion. Every
+ * sudo-gated route then accepts them: passkey enrolment, provider linking, vault reveal,
+ * and on the account plane the minting of account and environment API keys. A transient,
+ * revocable session becomes durable credentials that outlive the victim revoking the
+ * original vector and resetting their password — the exact persistence the step-up
+ * exists to prevent.
+ */
+it('ends the step-up window when the active account changes', function (): void {
+    [$a] = makeAccount('sudo-switch-a@test.dev');
+    [$b] = makeAccount('sudo-switch-b@test.dev');
+
+    platformAuth()->establish(request(), $a, ['pwd']);
+    platformAuth()->establish(request(), $b, ['pwd']);
+
+    // Cleared as B, with B's own password.
+    app(Sudo::class)->confirm();
+    expect(app(Sudo::class)->confirmed())->toBeTrue();
+
+    platformAuth()->switchTo(request(), $a);
+
+    expect(app(Sudo::class)->confirmed())
+        ->toBeFalse('an elevation confirmed as one account survived into another');
+});
+
+it('ends the step-up window when signing out promotes the next account', function (): void {
+    [$a] = makeAccount('sudo-logout-a@test.dev');
+    [$b] = makeAccount('sudo-logout-b@test.dev');
+
+    platformAuth()->establish(request(), $a, ['pwd']);
+    platformAuth()->establish(request(), $b, ['pwd']);
+
+    app(Sudo::class)->confirm();
+
+    // Signing out of B promotes A — a different person, same browser session.
+    platformAuth()->logout(request());
+
+    expect(app(Sudo::class)->confirmed())
+        ->toBeFalse('signing out of one account left the next one elevated');
 });
