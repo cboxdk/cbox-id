@@ -12,7 +12,7 @@ use Illuminate\Http\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** Build the middleware with a fixed current + default environment (multi-tenant SaaS). */
-function planeGate(?string $current, ?string $default): EnforcePlane
+function planeGate(?string $current, ?string $default, ?string $hostResolves = null): EnforcePlane
 {
     // Multi-tenant shape: base_domains set → the bulkheads engage.
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
@@ -24,6 +24,10 @@ function planeGate(?string $current, ?string $default): EnforcePlane
 
     $resolver = Mockery::mock(EnvironmentResolver::class);
     $resolver->shouldReceive('defaultEnvironment')->andReturn($default !== null ? GenericEnvironment::of($default) : null);
+    // The operator gate asks the HOST, not the context. An unmapped host resolves to
+    // null and falls through to the default, exactly as SetEnvironment does.
+    $resolver->shouldReceive('resolveForHost')
+        ->andReturn($hostResolves !== null ? GenericEnvironment::of($hostResolves) : null);
 
     return new EnforcePlane(new PlaneResolver($ctx, $resolver));
 }
@@ -76,16 +80,36 @@ it('rejects an unknown plane name', function (): void {
  * This test previously asserted the opposite: that 'operator' was an UNKNOWN plane. It
  * encoded the gap rather than catching it.
  */
-it('serves the operator plane on the platform root only', function (): void {
-    $root = planeGate('env_root', 'env_root');
-    $tenant = planeGate('env_tenant', 'env_root');
+it('serves the operator plane on the platform-root host only', function (): void {
+    $root = planeGate('env_root', 'env_root', hostResolves: 'env_root');
+    $tenant = planeGate('env_tenant', 'env_root', hostResolves: 'env_tenant');
 
     expect(passesPlane($root, 'operator'))->toBeTrue()
         ->and(passesPlane($tenant, 'operator'))->toBeFalse();
 });
 
-it('denies the operator plane when no environment resolves', function (): void {
-    expect(passesPlane(planeGate(null, 'env_root'), 'operator'))->toBeFalse();
+/**
+ * And it keeps serving it after the operator picks a different environment.
+ *
+ * `SetEnvironment` hands an authenticated operator their PINNED environment rather than
+ * the host-resolved one, deliberately, so the console does not jump planes under them.
+ * The gate used to read that same context — so the moment a staff member used the
+ * environment switcher in the operator layout, present on every page, the context was no
+ * longer the platform root and every `/operator/*` route 404'd. Including
+ * `POST /operator/logout` and `GET /operator/login`: the console locked itself and the
+ * only way out was clearing the session cookie by hand. Creating an environment and
+ * jumping to an organization both pin as well, so those flows were broken end to end.
+ */
+it('keeps serving the operator plane after the operator switches environment', function (): void {
+    // Pinned to a tenant environment, still on the platform-root host.
+    $gate = planeGate('env_tenant', 'env_root', hostResolves: 'env_root');
+
+    expect(passesPlane($gate, 'operator'))
+        ->toBeTrue('switching environment locked the operator out of the staff console');
+});
+
+it('denies the operator plane when no environment resolves at all', function (): void {
+    expect(passesPlane(planeGate(null, null), 'operator'))->toBeFalse();
 });
 
 it('does NOT split planes in a single-tenant / self-hosted deployment (no base_domains)', function (): void {

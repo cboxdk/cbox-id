@@ -144,7 +144,12 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
     <div class="grid gap-4 lg:grid-cols-3 mt-4">
         {{-- Widens to the full row once the checklist beside it is gone, rather than
              leaving a third of the grid empty for the rest of the org's life. --}}
-        <div class="card {{ $progress !== null ? 'lg:col-span-2' : 'lg:col-span-3' }}">
+        {{-- `min-w-0`, because a grid item's default `min-width: auto` floors it at its
+             own min-content width. Without it these two cards forced the row 36px wider
+             than a 375px viewport — and because the scroll container is <main>, not the
+             document, every "the page does not scroll sideways" check passed while the
+             console panned under the user's thumb. --}}
+        <div class="card min-w-0 {{ $progress !== null ? 'lg:col-span-2' : 'lg:col-span-3' }}">
             <div class="px-5 py-4 border-b flex items-center justify-between" style="border-color:var(--border)">
                 <h3 class="font-semibold">Recent activity</h3>
                 <a href="{{ route('audit') }}" class="text-sm" style="color:var(--accent-strong)">View activity log</a>
@@ -178,7 +183,7 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
              that is actually true of this organization. It disappears for good once
              the last step is done, or when this admin puts it away. --}}
         @if ($progress !== null)
-            <div class="card p-5">
+            <div class="card min-w-0 p-5">
                 <div class="flex items-start justify-between gap-2">
                     <h3 class="font-semibold">Finish setting up</h3>
                     <button type="button" wire:click="dismissChecklist" class="cbx-help-link" style="color:var(--muted-foreground)">Hide</button>

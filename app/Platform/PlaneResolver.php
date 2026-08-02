@@ -62,6 +62,39 @@ final class PlaneResolver
         return $this->environments->current() !== null && ! $this->onPlatformRootHost();
     }
 
+    /**
+     * Whether the staff console may be served here — a question about the HOST, not
+     * about whatever environment the operator is currently looking at.
+     *
+     * The distinction is the whole bug. `SetEnvironment` gives an authenticated operator
+     * their PINNED environment rather than the host-resolved one, deliberately, so the
+     * console does not jump planes under them. The operator gate then asked
+     * `onAccountPlane()`, which compares the current context to the platform root — so
+     * the moment a staff member used the environment switcher that sits in the operator
+     * layout on every page, the context stopped being the root and every `/operator/*`
+     * route 404'd. Including `POST /operator/logout` and `GET /operator/login`: the
+     * console locked itself, and the only exit was clearing the session cookie by hand.
+     * `jumpToOrganization` and creating an environment both pin as well, so those flows
+     * were broken end to end.
+     *
+     * Resolving the host directly is what makes this immune to the operator's own
+     * selection. It cannot be spoofed either: an unmapped Host resolves to null, which
+     * fails closed.
+     */
+    public function onOperatorPlane(string $host): bool
+    {
+        if (! $this->isMultiTenant()) {
+            return true;
+        }
+
+        $resolved = $this->resolver->resolveForHost($host)?->environmentKey()
+            ?? $this->resolver->defaultEnvironment()?->environmentKey();
+
+        $root = $this->platformRootKey();
+
+        return $resolved !== null && $root !== null && $resolved === $root;
+    }
+
     private function onPlatformRootHost(): bool
     {
         $current = $this->environments->current()?->environmentKey();

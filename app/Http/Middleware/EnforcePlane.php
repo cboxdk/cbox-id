@@ -57,7 +57,10 @@ final class EnforcePlane
             // — but a staff login form on a customer's own domain is a phishing surface
             // and an unnecessary disclosure. It belongs on the platform root, with the
             // account plane.
-            'operator' => $this->planes->onAccountPlane(),
+            // A HOST question, not a context question — see PlaneResolver::onOperatorPlane().
+            // Asking onAccountPlane() here meant an operator who used the environment
+            // switcher 404'd out of the entire staff console, logout included.
+            'operator' => $this->planes->onOperatorPlane($request->getHost()),
             default => false,
         };
 

@@ -173,7 +173,12 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
         </form>
     @endif
 
-    <div class="grid gap-5" style="grid-template-columns:minmax(0,20rem) minmax(0,1fr)">
+    {{-- One column until there is room for two. Declared with no breakpoint, the detail
+         pane — the half you actually certify from — computed to 0px wide on a phone and
+         its contents spilled past the viewport, so an access review could not be run
+         from a mobile at all. The list's own copy says "pick a review on the left",
+         which is also only true once there IS a left. --}}
+    <div class="grid gap-5 lg:[grid-template-columns:minmax(0,20rem)_minmax(0,1fr)]">
         {{-- Campaign list --}}
         <div class="card overflow-hidden" style="align-self:start">
             @forelse ($campaigns as $c)

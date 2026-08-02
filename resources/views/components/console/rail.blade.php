@@ -13,8 +13,14 @@
      pinned. Active = filled --accent-soft; left-edge borders are forbidden.
 
      Requires the shell's x-data to provide: pinned, hover, togglePin(). --}}
+{{-- `focusin`/`focusout` alongside the mouse handlers. Without them the rail expanded
+     for a pointer and never for a keyboard: tabbing through the primary navigation moved
+     focus between unlabelled icons whose only text was a `title` attribute, which never
+     appears for a keyboard or a touch user. The toast component already pairs mouse with
+     focus for the same reason. --}}
 <aside class="cbx-rail hidden lg:flex" :class="{ 'open': pinned || hover }"
-       @mouseenter="hover = true" @mouseleave="hover = false" aria-label="Areas">
+       @mouseenter="hover = true" @mouseleave="hover = false"
+       @focusin="hover = true" @focusout="hover = false" aria-label="Areas">
     <div class="cbx-rail-hd">
         <a href="{{ $brandHref }}" class="cbx-rail-brand"
            aria-label="{{ $brandLabel ?? config('cbox-id.branding.name', 'Cbox ID') }}"

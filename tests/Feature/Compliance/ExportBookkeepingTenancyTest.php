@@ -6,7 +6,9 @@ use Cbox\Id\Compliance\Models\AuditExportCursor;
 use Cbox\Id\Compliance\Models\AuditExportRun;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -78,4 +80,54 @@ it('denies rather than returning everything when no environment is in context', 
     app(EnvironmentContext::class)->set(null);
 
     expect(AuditExportCursor::query()->count())->toBe(0);
+});
+
+/**
+ * The scheduled export has to work from the command line, where nothing sets a context.
+ *
+ * Every environment setter in this application is HTTP middleware, so `artisan` runs
+ * with no environment at all. `AuditExportRun` is environment-owned: the write went out
+ * with a null `environment_id` and died on the NOT NULL constraint before the command
+ * reached its own error handling — every run, since the column was added. And had it
+ * survived, the cursor read is scoped too, so it would have resumed from sequence zero
+ * and re-shipped the whole trail on every pass.
+ *
+ * The suite could not see either half, because it pins an environment for every test and
+ * the console page that calls the same service runs inside a request that has one. So
+ * this test clears the context first, which is the actual production condition.
+ */
+it('exports every environment when run from the command line with no context', function (): void {
+    $context = app(EnvironmentContext::class);
+
+    $alpha = Environment::query()->create(['id' => (string) Str::ulid(), 'slug' => 'alpha', 'name' => 'Alpha']);
+    $beta = Environment::query()->create(['id' => (string) Str::ulid(), 'slug' => 'beta', 'name' => 'Beta']);
+
+    // What `artisan` actually has: nothing.
+    $context->set(null);
+
+    $this->artisan('id-compliance:export')
+        ->assertSuccessful()
+        ->expectsOutputToContain('[alpha]')
+        ->expectsOutputToContain('[beta]');
+
+    foreach ([$alpha, $beta] as $environment) {
+        expect(AuditExportRun::query()->withoutGlobalScopes()->where('environment_id', $environment->id)->exists())
+            ->toBeTrue($environment->slug.' was never exported');
+    }
+});
+
+it('exports a single environment when one is named', function (): void {
+    $context = app(EnvironmentContext::class);
+
+    Environment::query()->create(['id' => (string) Str::ulid(), 'slug' => 'alpha', 'name' => 'Alpha']);
+    $beta = Environment::query()->create(['id' => (string) Str::ulid(), 'slug' => 'beta', 'name' => 'Beta']);
+
+    $context->set(null);
+
+    $this->artisan('id-compliance:export', ['--environment' => 'beta'])
+        ->assertSuccessful()
+        ->expectsOutputToContain('[beta]');
+
+    expect(AuditExportRun::query()->withoutGlobalScopes()->count())->toBe(1)
+        ->and(AuditExportRun::query()->withoutGlobalScopes()->first()?->environment_id)->toBe($beta->id);
 });
