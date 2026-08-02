@@ -30,7 +30,11 @@ use Livewire\Volt\Component;
 new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends Component
 {
     // --- Profile ---
-    #[Validate('required|string|min:1|max:120')]
+    /**
+     * Validated on the TRIMMED value, because that is what gets stored. Validating the
+     * raw one let "   " through `required|min:1` and then wrote an empty name — blanking
+     * the avatar initial and the label stamped on the person's passkeys.
+     */
     public string $displayName = '';
 
     // --- Password ---
@@ -68,7 +72,9 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
      */
     public function saveProfile(Subjects $subjects): void
     {
-        $this->validateOnly('displayName');
+        $this->displayName = trim($this->displayName);
+
+        $this->validate(['displayName' => ['required', 'string', 'min:1', 'max:120']]);
 
         $me = app(CurrentUser::class);
         $subjectId = $me->subject()?->id;
@@ -77,7 +83,7 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
             return;
         }
 
-        $updated = $subjects->update($subjectId, name: trim($this->displayName));
+        $updated = $subjects->update($subjectId, name: $this->displayName);
 
         // Push it back so every surface bound to CurrentUser — the avatar initial, the
         // greeting, the passkey label — reflects the new name in THIS render, not the

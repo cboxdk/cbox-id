@@ -335,3 +335,38 @@ it('answers a held prompt=none to the client rather than redirecting the browser
         ->and($location)->toContain('error=interaction_required')
         ->and($location)->not->toContain('password/change');
 });
+
+/**
+ * The forced-change page must not be a password-SET endpoint for anyone who happens to
+ * hold a session.
+ *
+ * The middleware only EXEMPTS this route from its own redirect, so the redirect does not
+ * loop. An exemption is not a restriction: without a guard in the action, anyone with a
+ * live session — a stolen cookie, or one obtained through a door that never asks for a
+ * password — could choose a new password, and then use the password they had just chosen
+ * to satisfy every step-up gate on the account.
+ *
+ * Both halves matter. Guarding only the administrative hold would lock out everyone held
+ * by password rotation instead: the middleware sends them here and the page refuses to
+ * let them leave.
+ */
+it('refuses a password change from someone who is not being held', function (): void {
+    $subject = app(Subjects::class)->create('free@acme.test', 'Free', 'a-perfectly-long-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-free'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
+
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    // Nothing is holding this subject: no administrative password, no expired max age.
+    $this->get('/dashboard')->assertOk();
+
+    Volt::test('auth.change-password')
+        ->set('password', 'a-password-the-attacker-picked')
+        ->set('passwordConfirmation', 'a-password-the-attacker-picked')
+        ->call('save')
+        ->assertForbidden();
+
+    expect(app(Subjects::class)->verifyPassword($subject->id, 'a-perfectly-long-passphrase'))
+        ->toBeTrue('a session-only caller replaced the password of an account that owed no change');
+});

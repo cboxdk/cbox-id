@@ -18,6 +18,16 @@ use Livewire\Volt\Component;
  * directly, so the member row's fallback credential and security stamp move with it —
  * a change that left the stamp behind would keep every session minted under the
  * administrator's password alive.
+ *
+ * The route comment said this page was "reachable only by a member who owes one". It was
+ * not: the middleware merely EXEMPTS this route from its own redirect so the redirect
+ * does not loop, and an exemption is not a restriction. So the page was an authenticated
+ * password-SET endpoint asking for nothing — no current password, no step-up, no check
+ * that a change was owed. A session-only attacker set a password, which bumped the
+ * security stamp (ending the real member's sessions) while regenerating their own, and
+ * then used the password they had just chosen to clear `/workspace/sudo` — unlocking MFA
+ * disable, recovery codes, passkey enrolment and API-key minting. The whole step-up
+ * design on this plane rested on a guard nobody had written.
  */
 new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] class extends Component
 {
@@ -44,6 +54,15 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 
         $subjectId = $member->subject_id;
 
+        // The page's own promise, enforced.
+        // A member row without a subject cannot owe a subject-level change, so it is
+        // refused rather than waved through — the null case is the one an attacker would
+        // look for.
+        abort_unless(
+            is_string($subjectId) && $root->run(fn (): bool => $admin->requiresChange($subjectId)) === true,
+            403,
+        );
+
         $this->validate([
             'password' => ['required', 'string', 'max:200', $root->run(fn () => PasswordMeetsPolicy::for($subjectId))],
         ]);
@@ -56,9 +75,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 
         $members->resetPassword($member->id, $this->password);
 
-        if (is_string($subjectId)) {
-            $root->run(fn () => $admin->clear($subjectId));
-        }
+        // Narrowed by the guard above, which refuses a member with no subject outright.
+        $root->run(fn () => $admin->clear($subjectId));
 
         // resetPassword bumps the security stamp, which invalidates the session that
         // reached this page — sign them back in on the new credential rather than

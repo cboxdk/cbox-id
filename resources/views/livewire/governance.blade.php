@@ -180,7 +180,12 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
          which is also only true once there IS a left. --}}
     <div class="grid gap-5 lg:[grid-template-columns:minmax(0,20rem)_minmax(0,1fr)]">
         {{-- Campaign list --}}
-        <div class="card overflow-hidden" style="align-self:start">
+        {{-- `min-w-0` on both children, not just the breakpoint. Below `lg` the implicit
+             single track is `auto`, so its base size is the item's MIN-CONTENT — and the
+             detail pane's min-content is the certification table, 515px. Adding the
+             breakpoint alone changed which failure you got: 164px of horizontal pan
+             instead of a 0px pane. Measured. --}}
+        <div class="card overflow-hidden min-w-0" style="align-self:start">
             @forelse ($campaigns as $c)
                 <button wire:key="campaign-{{ $c->id }}" wire:click="select('{{ $c->id }}')" class="cbx-row w-full text-left"
                         style="{{ $selected === $c->id ? 'background:var(--accent-soft)' : '' }}">
@@ -207,7 +212,7 @@ new #[Layout('components.layouts.app', ['title' => 'Access reviews'])] class ext
         </div>
 
         {{-- Selected campaign detail --}}
-        <div>
+        <div class="min-w-0">
             @if ($campaign)
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="font-semibold">{{ $campaign->name }}</h2>

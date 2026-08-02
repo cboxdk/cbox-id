@@ -108,7 +108,26 @@ it('keeps serving the operator plane after the operator switches environment', f
         ->toBeTrue('switching environment locked the operator out of the staff console');
 });
 
-it('denies the operator plane when no environment resolves at all', function (): void {
+/**
+ * An unmapped Host must not reach the staff console.
+ *
+ * This case existed, and I rewrote it away while making the gate a host question:
+ * `planeGate(null, 'env_root')` became `planeGate(null, null)`, which only denies when
+ * there is no default environment at all — a state a provisioned deployment never
+ * reaches. Meanwhile the gate fell back to `defaultEnvironment()`, which is the same
+ * value `platformRootKey()` resolves through, so it compared a value to its own source
+ * and returned true for EVERY unmapped host. The docblock said it failed closed.
+ *
+ * `curl -H 'Host: anything.invalid'` served the Cbox staff sign-in form, on any name
+ * pointed at the deployment and on every wildcard subdomain that is not a tenant — which
+ * is the phishing surface the operator bulkhead was added to remove.
+ */
+it('denies the operator plane when the host resolves to nothing', function (): void {
+    // A provisioned deployment: a default environment exists, and the host maps to
+    // nothing. That combination is what used to pass.
+    expect(passesPlane(planeGate(null, 'env_root'), 'operator'))->toBeFalse();
+
+    // And with no default environment either.
     expect(passesPlane(planeGate(null, null), 'operator'))->toBeFalse();
 });
 

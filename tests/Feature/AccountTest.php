@@ -71,3 +71,21 @@ it('keeps the email read-only on the account page', function (): void {
     expect(preg_match('/wire:model="[^"]*[Ee]mail"/', $markup))
         ->toBe(0, 'the sign-in identifier became editable without a verification step');
 });
+
+/**
+ * A name made only of spaces is not a name.
+ *
+ * The rule ran on the raw value and the write trimmed it, so `"   "` satisfied
+ * `required|min:1` and stored an empty string — blanking the avatar initial and the
+ * label stamped on the person's passkeys. Validate what actually gets written.
+ */
+it('refuses a name that is only whitespace', function (): void {
+    $id = signInToAccount();
+
+    Volt::test('account')
+        ->set('displayName', '     ')
+        ->call('saveProfile')
+        ->assertHasErrors('displayName');
+
+    expect(app(Subjects::class)->find($id)?->name)->toBe('Original Name');
+});

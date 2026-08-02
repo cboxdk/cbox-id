@@ -87,12 +87,48 @@ final class PlaneResolver
             return true;
         }
 
-        $resolved = $this->resolver->resolveForHost($host)?->environmentKey()
-            ?? $this->resolver->defaultEnvironment()?->environmentKey();
-
+        // NO fallback to the default environment. `platformRootKey()` resolves through
+        // `defaultEnvironment()` itself, so falling back to it here would compare a value
+        // to its own source and return true for every host that maps to nothing —
+        // including `Host: anything.invalid`, and every wildcard name under the base
+        // domain that is not a tenant slug. The first version of this method did exactly
+        // that while its docblock claimed it failed closed, which is worse than the bug:
+        // the staff sign-in form would be served on any name pointed at us, which is the
+        // phishing surface this bulkhead exists to remove.
+        $resolved = $this->resolver->resolveForHost($host)?->environmentKey();
         $root = $this->platformRootKey();
 
-        return $resolved !== null && $root !== null && $resolved === $root;
+        if ($resolved !== null) {
+            return $root !== null && $resolved === $root;
+        }
+
+        // A root environment provisioned without its own `domain` row does not resolve
+        // by host at all, so the apex has to be named explicitly rather than inferred.
+        // An unlisted host reaches neither branch and is refused.
+        return in_array($host, $this->platformRootHosts(), true);
+    }
+
+    /**
+     * Hosts that ARE the platform root, named rather than inferred.
+     *
+     * Configured explicitly so an unmapped Host cannot become the account plane by
+     * default. Empty means "only a host that resolves to the root environment counts",
+     * which is the safe reading.
+     *
+     * @return list<string>
+     */
+    private function platformRootHosts(): array
+    {
+        $configured = config('cbox-id.environments.platform_root_hosts', []);
+
+        if (! is_array($configured)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (mixed $host): string => is_string($host) ? mb_strtolower(trim($host)) : '',
+            $configured,
+        ), static fn (string $host): bool => $host !== ''));
     }
 
     private function onPlatformRootHost(): bool

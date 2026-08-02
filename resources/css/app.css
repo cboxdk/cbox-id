@@ -833,7 +833,10 @@
     .cbx-help { position: relative; display: inline-flex; vertical-align: middle; }
     .cbx-help-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 9999px; color: var(--muted-foreground); background: transparent; border: 0; cursor: pointer; transition: color var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease); }
     .cbx-help-btn:hover, .cbx-help-btn[aria-expanded="true"] { color: var(--foreground); background: var(--secondary); }
-    .cbx-help-link { border: 0; background: transparent; padding: 0; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+    /* 24px minimum target (WCAG 2.2 SC 2.5.8). It is a button, so the inline-text
+       exception does not apply, and at 27x18 it was under the floor on every page that
+       carries a page header. */
+    .cbx-help-link { border: 0; background: transparent; padding: 3px 0; min-height: 24px; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
     .cbx-help-panel { position: absolute; top: calc(100% + 8px); z-index: 70; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px; box-shadow: var(--shadow-popover); text-align: left; white-space: normal; }
     .cbx-help-panel { left: 0; }
     .cbx-help-panel.is-end { left: auto; right: 0; }
@@ -1085,15 +1088,24 @@
    keyboard, not the viewport, so a large tablet needs this and a narrow desktop
    window does not. */
 @media (pointer: coarse) {
+    /* `!important` because an inline `style="font-size:…"` is the one thing an unlayered
+       rule cannot outrank, and eighteen controls carry one — the SAML certificate, signing
+       key, metadata and redirect-URI fields, which are exactly the fields someone is most
+       likely to be pasting into from a phone. Sizing the text at the threshold is the whole
+       fix; a control that opts out of it re-arms the zoom for the whole page. */
     input:not([type='checkbox']):not([type='radio']):not([type='range']),
     select,
     textarea {
-        font-size: 16px;
+        font-size: 16px !important;
     }
 
     /* 16px inside a 32px box leaves 6px of breathing room top and bottom, and
        the taller target is worth having under a thumb regardless. */
-    .input:not(.input-lg) {
+    /* `.select` too: it is the same control class, and there are four times as many of
+       them as there are `select.input`. Leaving it out gave the majority of the console's
+       dropdowns 16px text in a 32px box — tighter than before the font bump, not looser. */
+    .input:not(.input-lg),
+    .select {
         height: 38px;
     }
 }
@@ -1117,6 +1129,13 @@
     .cbx-panel-header {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    /* A 140px label column out of 375 leaves the value 57px wide once the panel has any
+       padding — an email address rendered four characters to the line. Stack instead. */
+    .cbx-kv {
+        grid-template-columns: 1fr;
+        column-gap: 0;
     }
 
     .cbx-panel-header > .btn,

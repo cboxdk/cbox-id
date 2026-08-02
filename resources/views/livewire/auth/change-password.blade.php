@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Livewire\Attributes\Layout;
@@ -22,6 +23,14 @@ use Livewire\Volt\Component;
  * The current password is deliberately NOT asked for. The person just proved it to
  * reach an authenticated session, and asking again would only tempt someone who was
  * handed a password by their administrator into writing it down.
+ *
+ * That reasoning holds ONLY while this page is genuinely reachable just by someone who
+ * owes a change — which is what the guard in `save()` now enforces. The middleware
+ * exempts this route so the redirect does not loop; an exemption is not a restriction,
+ * and without the guard the page was an authenticated password-SET endpoint that asked
+ * for nothing. Anyone holding a live session — a stolen cookie, or a session obtained
+ * through a door that never asks for a password — could set a password of their own
+ * choosing and then use it to satisfy every step-up gate on the account.
  */
 new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] class extends Component
 {
@@ -29,7 +38,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 
     public string $passwordConfirmation = '';
 
-    public function save(Subjects $subjects, AdminPasswords $admin): void
+    public function save(Subjects $subjects, AdminPasswords $admin, PasswordExpiry $expiry): void
     {
         $me = app(CurrentUser::class);
 
@@ -42,6 +51,25 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
 
             return;
         }
+
+        // Only someone the middleware is actually HOLDING here may set a password here.
+        //
+        // Both of its reasons count — an administrator imposed the change, or the
+        // tenant's max age ran out. Guarding on the administrative one alone locks out
+        // everyone held by rotation: the middleware sends them to this page and the page
+        // refuses to let them leave it. Two conditions, one hold, and the guard has to
+        // mirror the hold exactly.
+        //
+        // Checked against the SAME id the write below uses, immediately before it, so the
+        // two cannot disagree about who this is. Measured, `CurrentUser` is not yet
+        // populated at the top of this method under Livewire's harness, so a guard placed
+        // there reads an empty subject id and refuses everyone — a check that looks like
+        // protection and is only breakage. Nothing has been written at this point, so
+        // refusing here is as early as refusing at the top.
+        abort_unless(
+            $admin->requiresChange($me->id()) || $expiry->hasExpired($me->id()),
+            403,
+        );
 
         $subjects->setPassword($me->id(), $this->password);
 
