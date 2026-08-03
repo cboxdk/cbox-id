@@ -135,6 +135,32 @@ class ConsoleScope
     }
 
     /**
+     * WHO is acting — the id that goes in the audit trail.
+     *
+     * The subject on both planes, because the subject is the credential of record: an
+     * account member is not a credential store, it points AT a subject. The two consoles
+     * disagreed about this. The organization plane recorded the subject id; the
+     * environment plane recorded the AccountMember row id, which lives in a different
+     * table entirely.
+     *
+     * So an access-review certification was attributed to one id space or the other
+     * depending which console the reviewer happened to use — in the one feature whose
+     * entire output is a trail somebody later has to read. Half those ids resolve against
+     * `users` and half against `account_members`, and nothing recorded which.
+     *
+     * Returns '' when nobody is acting, which callers must treat as "do not attribute"
+     * rather than as an id.
+     */
+    public function actorId(): string
+    {
+        if ($this->plane() === ConsolePlane::Environment) {
+            return $this->environmentAdmin->subjectId() ?? '';
+        }
+
+        return $this->subject->id();
+    }
+
+    /**
      * Whether this administrator may change things, as opposed to look at them.
      *
      * An environment administrator holds the environment; there is no lesser role on that

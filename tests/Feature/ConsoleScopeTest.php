@@ -8,6 +8,7 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -16,6 +17,8 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -191,4 +194,39 @@ it('offers only the member own organization on the organization plane', function
     anOrganization('not-theirs', 'Not Theirs');
 
     expect(array_keys(scope()->availableOrganizations()))->toBe([$org->id]);
+})->group('security');
+
+it('attributes to the subject on both planes, not to two id spaces', function (): void {
+    // The two consoles disagreed. The organization plane recorded the subject id; the
+    // environment plane recorded the AccountMember row id — a different table. So an
+    // access-review certification was attributed to one id space or the other depending
+    // which console the reviewer used, in the one feature whose entire output is a trail
+    // somebody later has to read.
+    [$subjectId] = actingAsRole(MembershipRole::Owner);
+
+    expect(scope()->actorId())->toBe($subjectId);
+})->group('security');
+
+it('attributes an environment admin to their subject too', function (): void {
+    actAsRealEnvironmentAdmin();
+
+    $actor = scope()->actorId();
+
+    // Specifically NOT the AccountMember row id, which is what this plane used to record
+    // and which lives in a different table from every id the other plane wrote.
+    expect($actor)->not->toBe('')
+        ->and(AccountMember::query()->whereKey($actor)->exists())->toBeFalse();
+
+    // It IS a real subject — of the PLATFORM ROOT, where account members live, not of the
+    // environment being administered. Worth stating: an environment administrator is not
+    // a member of the tenant they are acting on, so a tenant reading its own trail sees a
+    // principal from outside it either way. The fix is that there is now ONE id space,
+    // not that the id became local.
+    $root = app(PlatformRoot::class)->environment();
+    $exists = app(EnvironmentContext::class)->runAs(
+        $root,
+        static fn (): bool => User::query()->whereKey($actor)->exists(),
+    );
+
+    expect($exists)->toBeTrue();
 })->group('security');
