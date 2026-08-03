@@ -299,7 +299,11 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // organization's trail is never another's.
     Volt::route('/audit', 'console.audit')->name('audit');
     Volt::route('/settings', 'settings')->name('settings');
-    Volt::route('/appearance', 'appearance')->name('appearance');
+    // Appearance: the SAME component the environment plane serves. What is being
+    // themed — an organization's own sign-in, or the environment default every
+    // organization inherits — is an explicit choice on the page, offered on the
+    // environment plane alone.
+    Volt::route('/appearance', 'console.appearance')->name('appearance');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     // The SAME components the environment plane serves. The routable index/new/show
@@ -481,7 +485,9 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');
         Volt::route('/settings', 'environment.settings')->name('environment.settings');
         Volt::route('/sign-in-rules', 'environment.auth-policy')->name('environment.auth-policy');
-        Volt::route('/appearance', 'environment.appearance')->name('environment.appearance');
+        // Appearance — the merged component. The route NAME is preserved on both
+        // planes; only the component behind it is now shared.
+        Volt::route('/appearance', 'console.appearance')->name('environment.appearance');
 
         // Step into a subject's session for support (env-admin actor). Authorized in
         // the controller by env-scoped membership; owners/admins refused; reason required.

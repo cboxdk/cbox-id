@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Appearance\Appearance;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -21,6 +22,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
@@ -673,4 +675,132 @@ it('offers both planes both of the filters they used to have one each of', funct
 
     expect(auditActions(Volt::test('console.audit')->set('search', 'directory')))
         ->toBe(['member.added']);
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Appearance
+|--------------------------------------------------------------------------
+| The nearest to true parity of the four, and still not the same thing underneath: the
+| organization page themed an ORGANIZATION, the environment page themed the ENVIRONMENT
+| default that every organization inherits. That difference is a capability, so it is an
+| explicit choice on the merged page rather than an implication of the door you came
+| through — and it stays on the environment plane alone. The organization page's contrast
+| gate, which the environment page never had, now guards both.
+*/
+
+it('serves appearance from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-appearance');
+
+    $this->get(route('environment.appearance'))->assertOk()->assertSee('Live preview');
+})->group('security');
+
+it('serves appearance from the same component on the organization plane', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.appearance')->assertOk()->assertSee('Live preview');
+})->group('security');
+
+it('still themes the environment default when the environment console saves', function (): void {
+    // The landing state on this plane, unchanged by the merge. Retargeting it at whichever
+    // organization happened to be picked would have an operator re-theming one tenant
+    // while believing they were setting the default for all of them.
+    $orgId = anEnvironmentAdminActingOn('tenant-appearance-env');
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    $theme = Appearance::fromPreset('midnight')->toArray();
+    $theme['light']['primary'] = '#00aa88';
+
+    Volt::test('console.appearance')->call('save', $theme);
+
+    expect(Environment::query()->find($environmentId)?->settings['appearance']['light']['primary'])->toBe('#00aa88')
+        ->and(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('lets the environment console theme the organization it is acting on instead', function (): void {
+    // The other half of the choice — and the capability the organization plane always had,
+    // now reachable from this one without switching consoles.
+    $orgId = anEnvironmentAdminActingOn('tenant-appearance-org');
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    $theme = Appearance::fromPreset('warm')->toArray();
+    $theme['light']['primary'] = '#123456';
+
+    Volt::test('console.appearance')
+        ->set('environmentDefault', false)
+        ->call('save', $theme);
+
+    expect(app(Organizations::class)->find($orgId)?->settings['appearance']['light']['primary'])->toBe('#123456')
+        ->and(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('refuses to theme an organization before one is chosen', function (): void {
+    // The editor is not even drawn in this state, so this is the forged half: with no
+    // organization resolved the write would otherwise land wherever a downstream default
+    // pointed, which on this plane is somebody's tenant.
+    $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.appearance')
+        ->set('environmentDefault', false)
+        ->call('save', Appearance::fromPreset('warm')->toArray())
+        ->assertForbidden();
+
+    expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('refuses an organization admin the environment default theme', function (): void {
+    // Forged, not clicked: the radio is not rendered on this plane, so the refusal has to
+    // live in save(). An organization admin who reached it would be re-theming the sign-in
+    // page of every other tenant in the environment.
+    actingAsRole(MembershipRole::Owner);
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    $theme = Appearance::fromPreset('midnight')->toArray();
+    $theme['light']['primary'] = '#00aa88';
+
+    Volt::test('console.appearance')
+        ->set('environmentDefault', true)
+        ->call('save', $theme)
+        ->assertForbidden();
+
+    expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('refuses an unreadable environment default, which only the organization plane refused before', function (): void {
+    // The gate the environment page never had. An operator could set an environment
+    // default no tenant's users could read, and the people who cannot read the sign-in
+    // page are never the admin who chose the colours.
+    anEnvironmentAdminActingOn('tenant-appearance-contrast');
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    Volt::test('console.appearance')->call('save', [
+        'radius' => '0.5rem',
+        'font' => 'system',
+        'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
+        'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
+    ]);
+
+    expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)
+        ->toBeNull('an unreadable environment default was saved');
+})->group('security');
+
+it('does not offer the environment default to an organization admin', function (): void {
+    // The view half. A merge that rewires only the PHP leaves the control on screen for
+    // someone the server will refuse.
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.appearance')->assertDontSee('Environment default');
+})->group('security');
+
+it('does offer it to the administrator who holds the environment', function (): void {
+    // The other half of the same trap, and the one that renders a read-only shell: a
+    // capability enforced correctly but never drawn is a capability nobody has.
+    //
+    // A separate test rather than the second half of the one above: the two planes are
+    // told apart by which session exists, and a subject session from the organization
+    // half would still be standing when the environment half ran.
+    anEnvironmentAdminActingOn('tenant-appearance-view');
+
+    Volt::test('console.appearance')->assertSee('Environment default');
 })->group('security');

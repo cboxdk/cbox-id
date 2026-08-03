@@ -145,7 +145,7 @@ it('persists a saved theme to org settings and keeps brand_color in sync', funct
     $theme['light']['primary'] = '#123456';
     $theme['logo'] = 'https://acme.com/logo.svg';
 
-    Volt::test('appearance')->call('save', $theme);
+    Volt::test('console.appearance')->call('save', $theme);
 
     $settings = app(Organizations::class)->find($org->id)->settings;
     expect($settings['appearance']['preset'])->toBe('warm')
@@ -159,7 +159,7 @@ it('rejects a non-https logo on save', function (): void {
 
     $theme = Appearance::fromPreset('cbox')->toArray();
     $theme['logo'] = 'http://insecure.example/logo.png';
-    Volt::test('appearance')->call('save', $theme);
+    Volt::test('console.appearance')->call('save', $theme);
 
     expect(app(Organizations::class)->find($org->id)->settings['brand_logo_url'])->toBeNull();
 });
@@ -213,7 +213,7 @@ it('saves an environment-level theme and applies it to the hosted sign-in', func
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    Volt::test('environment.appearance')->call('save', $theme);
+    Volt::test('console.appearance')->call('save', $theme);
 
     // Persisted onto the environment…
     expect(Environment::find($envId)->settings['appearance']['light']['primary'])->toBe('#00aa88');
@@ -329,7 +329,7 @@ it('refuses to save a theme whose text cannot be read on its background', functi
         'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
     ];
 
-    Volt::test('appearance')->call('save', $unreadable);
+    Volt::test('console.appearance')->call('save', $unreadable);
 
     $settings = app(Organizations::class)->find(app(CurrentUser::class)->organizationId() ?? '')?->settings ?? [];
 
@@ -339,7 +339,7 @@ it('refuses to save a theme whose text cannot be read on its background', functi
 it('saves a legible one', function (): void {
     gateAdmin('contrast-ok');
 
-    Volt::test('appearance')->call('save', [
+    Volt::test('console.appearance')->call('save', [
         'radius' => '0.5rem',
         'font' => 'system',
         'light' => ['primary' => '#1e40af', 'background' => '#ffffff', 'foreground' => '#111111', 'muted' => '#5a5a5a'],

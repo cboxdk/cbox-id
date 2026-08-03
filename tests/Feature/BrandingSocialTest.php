@@ -21,7 +21,7 @@ it('lets an admin theme the branded login page via the appearance editor', funct
     $theme = Appearance::fromPreset('cbox')->toArray();
     $theme['light']['primary'] = '#0ea5e9';
 
-    Volt::test('appearance')->call('save', $theme)->assertHasNoErrors();
+    Volt::test('console.appearance')->call('save', $theme)->assertHasNoErrors();
 
     expect(app(Organizations::class)->find($org->id)?->settings)->toMatchArray([
         'brand_color' => '#0ea5e9',
