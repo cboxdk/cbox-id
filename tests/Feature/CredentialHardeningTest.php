@@ -42,7 +42,7 @@ it('refuses to mint a secret for a client that signs its own assertions', functi
 
     expect($client->secret_hash)->toBeNull();
 
-    Volt::test('environment.clients.show', ['client' => $client->id])->call('rotateSecret');
+    Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
 
     expect($client->fresh()?->secret_hash)->toBeNull('rotation gave an asymmetric-only client a bearer secret');
 });

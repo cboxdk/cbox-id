@@ -43,7 +43,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Overview'])] class e
                 ['label' => 'Organizations', 'count' => Organization::query()->where('status', '!=', OrganizationStatus::Deleted->value)->count(), 'route' => 'environment.organizations'],
                 ['label' => 'Users', 'count' => User::query()->where('status', UserStatus::Active->value)->count(), 'route' => 'environment.users'],
                 ['label' => 'SSO connections', 'count' => Connection::query()->count(), 'route' => 'environment.connections'],
-                ['label' => 'Applications', 'count' => Client::query()->count(), 'route' => 'environment.clients'],
+                // "Apps & API keys" on both planes now — a tile that says "Applications"
+                // and lands on a page titled otherwise is the wayfinding bug this
+                // console keeps having.
+                ['label' => 'Apps & API keys', 'count' => Client::query()->count(), 'route' => 'environment.clients'],
                 ['label' => 'Directories', 'count' => Directory::query()->count(), 'route' => 'environment.directories'],
             ],
         ];
@@ -54,7 +57,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Overview'])] class e
     <x-page-header title="Overview" subtitle="Everything in this environment — organizations, users, and sign-in." />
 
     @php
-        $statIcons = ['Organizations' => 'layers', 'Users' => 'members', 'SSO connections' => 'connections', 'Applications' => 'clients', 'Directories' => 'directory'];
+        $statIcons = ['Organizations' => 'layers', 'Users' => 'members', 'SSO connections' => 'connections', 'Apps & API keys' => 'clients', 'Directories' => 'directory'];
     @endphp
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($stats as $stat)
@@ -74,7 +77,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Overview'])] class e
             <a href="{{ route('environment.organizations.create') }}" class="btn btn-ghost btn-sm"><x-icon name="plus" class="w-4 h-4" /> New organization</a>
             <a href="{{ route('environment.users.create') }}" class="btn btn-ghost btn-sm"><x-icon name="plus" class="w-4 h-4" /> New user</a>
             <a href="{{ route('environment.connections.create') }}" class="btn btn-ghost btn-sm"><x-icon name="plus" class="w-4 h-4" /> New SSO connection</a>
-            <a href="{{ route('environment.clients.create') }}" class="btn btn-ghost btn-sm"><x-icon name="plus" class="w-4 h-4" /> New application</a>
+            <a href="{{ route('environment.clients.create') }}" class="btn btn-ghost btn-sm"><x-icon name="plus" class="w-4 h-4" /> New app</a>
         </div>
     </div>
 </div>

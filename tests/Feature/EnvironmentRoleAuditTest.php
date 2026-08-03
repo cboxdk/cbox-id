@@ -57,7 +57,7 @@ it('audits and announces a role deletion, and unassigns every holder on the reco
     app(Roles::class)->assign('org_a', 'user_1', $role->id);
     app(Roles::class)->assign('org_a', 'user_2', $role->id);
 
-    Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole');
+    Volt::test('environment.roles.show', ['role' => $role->id])->call('deleteRole');
 
     expect(Role::query()->whereKey($role->id)->exists())->toBeFalse()
         ->and(RoleAssignment::query()->where('role_id', $role->id)->count())->toBe(0)
@@ -78,14 +78,14 @@ it('audits a permission being granted and revoked on a role', function (): void 
     $role = app(Roles::class)->define(null, 'Support');
     $permission = Permission::query()->create(['name' => 'reports:view']);
 
-    Volt::test('console.roles.show', ['role' => $role->id])
+    Volt::test('environment.roles.show', ['role' => $role->id])
         ->call('togglePermission', $permission->id)
         ->assertHasNoErrors();
 
     expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1)
         ->and(AuditEntry::query()->where('action', 'role.permission_granted')->count())->toBe(1);
 
-    Volt::test('console.roles.show', ['role' => $role->id])
+    Volt::test('environment.roles.show', ['role' => $role->id])
         ->call('togglePermission', $permission->id)
         ->assertHasNoErrors();
 
@@ -96,7 +96,7 @@ it('audits a permission being granted and revoked on a role', function (): void 
 it('audits a rename with the values on both sides of it', function (): void {
     $role = app(Roles::class)->define(null, 'Support');
 
-    Volt::test('console.roles.show', ['role' => $role->id])
+    Volt::test('environment.roles.show', ['role' => $role->id])
         ->set('editName', 'Support Renamed')
         ->set('editDescription', 'Support staff')
         ->call('saveDetails')
@@ -114,8 +114,8 @@ it('still refuses every mutation on an app-declared role', function (): void {
     $role->source = RoleSource::Manifest;
     $role->save();
 
-    Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole')->assertStatus(403);
-    Volt::test('console.roles.show', ['role' => $role->id])->call('togglePermission', 'x')->assertStatus(403);
+    Volt::test('environment.roles.show', ['role' => $role->id])->call('deleteRole')->assertStatus(403);
+    Volt::test('environment.roles.show', ['role' => $role->id])->call('togglePermission', 'x')->assertStatus(403);
 
     expect(Role::query()->whereKey($role->id)->exists())->toBeTrue()
         ->and(AuditEntry::query()->where('action', 'role.deleted')->count())->toBe(0);

@@ -306,14 +306,15 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/directories', 'console.directories.index')->name('directories');
     Volt::route('/directories/new', 'console.directories.create')->name('directories.create');
     Volt::route('/directories/{directory}', 'console.directories.show')->name('directories.show');
-    // Roles: the SAME components the environment plane serves. The routable index/new/show
-    // shape wins over the organization plane's single page — a role URL is something you
-    // send to whoever owns the access — and this plane gains rename, delete and permission
-    // editing with it, none of which a tenant admin could do to their own roles before.
-    Volt::route('/roles', 'console.roles.index')->name('roles');
-    Volt::route('/roles/new', 'console.roles.create')->name('roles.create');
-    Volt::route('/roles/{role}', 'console.roles.show')->name('roles.show');
-    Volt::route('/clients', 'clients')->name('clients');
+    Volt::route('/roles', 'roles')->name('roles');
+    // Apps & API keys (OAuth clients): the SAME components the environment plane serves.
+    // The routable index/new/show shape wins over the organization plane's single page —
+    // an app has a lifecycle worth linking to, and the reveal-once client secret needs
+    // somewhere to land that is not the form you just submitted. This plane gains editing
+    // an app's details and rotating its secret with it; the other gains the roles manifest.
+    Volt::route('/clients', 'console.clients.index')->name('clients');
+    Volt::route('/clients/new', 'console.clients.create')->name('clients.create');
+    Volt::route('/clients/{client}', 'console.clients.show')->name('clients.show');
     // Webhooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page with its inline
     // form, and this plane gains resume, secret rotation, subscription editing and delete
@@ -467,12 +468,10 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/outbound-sync/new', 'console.provisioning.create')->name('environment.provisioning.create');
         Volt::route('/outbound-sync/{sync}', 'console.provisioning.show')->name('environment.provisioning.show');
 
-        // Roles — routable list → create → detail (permission editor), on the merged
-        // component. The route names are what the two planes disagree on, and both are
-        // preserved.
-        Volt::route('/roles', 'console.roles.index')->name('environment.roles');
-        Volt::route('/roles/new', 'console.roles.create')->name('environment.roles.create');
-        Volt::route('/roles/{role}', 'console.roles.show')->name('environment.roles.show');
+        // Roles — routable list → create → detail (permission editor).
+        Volt::route('/roles', 'environment.roles.index')->name('environment.roles');
+        Volt::route('/roles/new', 'environment.roles.create')->name('environment.roles.create');
+        Volt::route('/roles/{role}', 'environment.roles.show')->name('environment.roles.show');
 
         // Permissions — the catalog roles draw from. App-declared permissions arrive
         // via an app's manifest (SDK/API); manual ones are authored here for orgs that
@@ -489,10 +488,13 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/conflict-rules/new', 'console.sod-policies.create')->name('environment.sod-policies.create');
         Volt::route('/conflict-rules/{policy}', 'console.sod-policies.show')->name('environment.sod-policies.show');
 
-        // Applications (OAuth clients) — routable list → create → detail (secret rotation).
-        Volt::route('/applications', 'environment.clients.index')->name('environment.clients');
-        Volt::route('/applications/new', 'environment.clients.create')->name('environment.clients.create');
-        Volt::route('/applications/{client}', 'environment.clients.show')->name('environment.clients.show');
+        // Apps & API keys (OAuth clients) — routable list → create → detail, on the
+        // merged component. The URLs keep their old spelling so existing links and
+        // bookmarks still resolve; the route names are what the two planes disagree on,
+        // and both are preserved.
+        Volt::route('/applications', 'console.clients.index')->name('environment.clients');
+        Volt::route('/applications/new', 'console.clients.create')->name('environment.clients.create');
+        Volt::route('/applications/{client}', 'console.clients.show')->name('environment.clients.show');
 
         // Webhooks — routable list → create → detail, on the merged component. The URLs
         // are unchanged so existing links and bookmarks still resolve; the route names

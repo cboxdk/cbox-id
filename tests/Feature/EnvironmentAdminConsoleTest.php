@@ -103,7 +103,9 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/organizations/new' => 'New organization',
         '/admin/users' => 'Users',
         '/admin/users/new' => 'New user',
-        '/admin/applications' => 'Applications',
+        // "Apps &amp; API keys" once the two consoles merged onto one component with one
+        // title; matched on the half that carries no escapable character.
+        '/admin/applications' => 'API keys',
         '/admin/single-sign-on' => 'Single sign-on',
         '/admin/single-sign-on/new' => 'connection',
         '/admin/login-methods' => 'Login methods',

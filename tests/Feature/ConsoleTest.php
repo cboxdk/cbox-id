@@ -63,8 +63,9 @@ it('registers an OAuth client for the organization', function () {
     $orgId = owner();
 
     // A machine-to-machine app (client-credentials), so no redirect URI is needed;
-    // its scopes come from the advanced/custom field.
-    Volt::test('clients')
+    // its scopes come from the advanced/custom field. Registration moved to its own
+    // routable page when the two consoles merged; the capability is unchanged.
+    Volt::test('console.clients.create')
         ->set('name', 'CI Pipeline')
         ->set('grantAuthorizationCode', false)
         ->set('grantClientCredentials', true)
@@ -85,7 +86,7 @@ it('registers an OAuth client for the organization', function () {
 it('registers an OAuth client with post-logout redirect URIs', function () {
     $orgId = owner();
 
-    Volt::test('clients')
+    Volt::test('console.clients.create')
         ->set('name', 'Support Portal')
         ->set('grantAuthorizationCode', true)
         ->set('redirectUris', 'https://portal.acme.test/auth/callback')

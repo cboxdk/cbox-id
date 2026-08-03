@@ -394,8 +394,12 @@ it('renders the access-review, stored-token and log-stream detail pages', functi
 it('registers and edits an application\'s post-logout redirect URIs', function (): void {
     crudSetup();
 
-    Volt::test('environment.clients.create')
+    // Environment-wide: crudSetup() picks no organization, and the merged create page
+    // takes its organization from the console scope rather than from a field. An app the
+    // ENVIRONMENT owns is what this plane always registered — now it says so.
+    Volt::test('console.clients.create')
         ->set('name', 'Logout App')
+        ->set('environmentWide', true)
         ->set('redirectUris', 'https://a.example/cb')
         ->set('postLogoutRedirectUris', "https://a.example/signed-out\nhttps://a.example/bye")
         ->call('create')
@@ -408,7 +412,7 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
     ]);
 
     // …and the detail page round-trips the stored list back into the form and saves it.
-    Volt::test('environment.clients.show', ['client' => $client->id])
+    Volt::test('console.clients.show', ['client' => $client->id])
         ->assertSet('editPostLogoutRedirectUris', "https://a.example/signed-out\nhttps://a.example/bye")
         ->set('editPostLogoutRedirectUris', 'https://a.example/farewell')
         ->call('saveDetails')
@@ -420,8 +424,9 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
 it('refuses a cleartext post-logout redirect URI on a public host', function (): void {
     crudSetup();
 
-    Volt::test('environment.clients.create')
+    Volt::test('console.clients.create')
         ->set('name', 'Insecure Logout App')
+        ->set('environmentWide', true)
         ->set('redirectUris', 'https://a.example/cb')
         ->set('postLogoutRedirectUris', 'http://a.example/signed-out')
         ->call('create')
@@ -441,10 +446,12 @@ it('rotates and deletes an application', function (): void {
     ))->client;
     $before = Client::query()->whereKey($client->id)->value('secret_hash');
 
-    Volt::test('environment.clients.show', ['client' => $client->id])->call('rotateSecret');
+    Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))->not->toBe($before);
 
-    Volt::test('environment.clients.show', ['client' => $client->id])->call('deleteClient');
+    // `deleteClient` and the organization plane's `delete` were one capability under two
+    // names; the merged component has one.
+    Volt::test('console.clients.show', ['client' => $client->id])->call('delete');
     expect(Client::query()->whereKey($client->id)->exists())->toBeFalse();
 });
 

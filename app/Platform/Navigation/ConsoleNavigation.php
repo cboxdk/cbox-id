@@ -95,7 +95,11 @@ class ConsoleNavigation
                 new NavPage('environment.sod-policies', 'Role conflicts'),
             ),
             new NavArea('Developers', 'clients',
-                new NavPage('environment.clients', 'Applications'),
+                // One component serves both planes now, so it has one title — and the
+                // organization plane's "Apps & API keys" is the name the help topic and
+                // the published guide already use. It also names the half "Applications"
+                // hides: the machine credentials that never sign anyone in.
+                new NavPage('environment.clients', 'Apps & API keys'),
                 new NavPage('environment.webhooks', 'Webhooks'),
                 // "Inline hooks" on both planes now. Called "Event hooks" here, it sat
                 // one line under Webhooks — a different capability that runs after the

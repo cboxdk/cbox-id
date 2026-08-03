@@ -57,7 +57,7 @@ function impersonatingSubject(MembershipRole $role = MembershipRole::Owner): arr
  * every one must 403.
  */
 dataset('durable_access_sinks', [
-    'clients.create (C1)' => ['clients', 'create', []],
+    'clients.create (C1)' => ['console.clients.create', 'create', []],
     'device.approve (C2)' => ['device', 'approve', []],
     'oauth consent.approve (C3)' => ['oauth.consent', 'approve', []],
     // Single sign-on is three components since the console merge, so the sinks are
@@ -79,8 +79,8 @@ dataset('durable_access_sinks', [
     'members.invite (C7)' => ['members', 'invite', []],
     'members.setRole (C7)' => ['members', 'setRole', ['some-user', 'admin']],
     'members.remove (C7)' => ['members', 'remove', ['some-user']],
-    'roles.create (C7)' => ['console.roles.create', 'create', []],
-    'roles.grant (C7)' => ['console.roles.index', 'grant', ['some-role']],
+    'roles.create (C7)' => ['roles', 'create', []],
+    'roles.grant (C7)' => ['roles', 'grant', ['some-role']],
     'settings.saveBranding (L1)' => ['settings', 'saveBranding', []],
 ]);
 

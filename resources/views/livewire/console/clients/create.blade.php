@@ -2,27 +2,37 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\ScopeCatalog;
+use App\Platform\VerifiedEmailGate;
 use App\Rules\SecureRedirectUri;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
-use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Environment control plane › Applications › New. A dedicated, deep-linkable create
- * page for registering an OAuth client in this environment. The registry stamps the
- * environment scope, so the client is env-owned from birth.
+ * Console › Apps & API keys › New. A dedicated, deep-linkable create page for
+ * registering an OAuth client — an app that signs people in, a machine credential that
+ * calls the API, or both.
  *
- * A confidential client is issued a secret exactly once. We flash the plaintext into
- * the session and route to the detail page, which reveals it a single time in a
- * warning-tinted callout — only the SHA-256 hash is stored, so it is never retrievable
- * again (rotate mints a fresh one, shown once).
+ * A confidential client is issued a secret exactly once. The plaintext is flashed into
+ * the session and the page routes to the app's detail page, which reveals it a single
+ * time beside the values needed to wire the app up — only the SHA-256 hash is stored, so
+ * it is never retrievable again (rotate mints a fresh one, shown once).
+ *
+ * One component, both planes. The organization plane registered from an inline form on
+ * the list with the organization implied; the environment plane from this page, with the
+ * organization implied the other way — it always registered an app the ENVIRONMENT owns.
+ * That was the picker's hidden capability, invisible because there was no picker: an
+ * organization-less client belongs to the platform rather than to a tenant, and a
+ * first-party one appears in every organization's launcher. So it survives as its own
+ * explicit choice, offered and honoured on the environment plane only.
  */
-new #[Layout('components.layouts.environment', ['title' => 'New application'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'New app'])] class extends Component
 {
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
@@ -33,7 +43,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     public string $name = '';
@@ -50,7 +60,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
     /** Where sign-out may send people back to. Validated exactly like redirect URIs. */
     public string $postLogoutRedirectUris = '';
 
-    /** @var list<string> Scopes ticked from the catalog. */
+    /** @var array<int, string> Scopes ticked from the catalog. */
     public array $selectedScopes = ['openid', 'profile', 'email'];
 
     /** Advanced: any extra custom scope keys, comma-separated. */
@@ -59,10 +69,29 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
     /** First-party clients skip the consent screen and surface in the app launcher. */
     public bool $firstParty = false;
 
+    /** Where this app publishes its role/permission manifest for Cbox ID to pull. */
     public string $manifestUrl = '';
+
+    /**
+     * Register an app the ENVIRONMENT owns rather than one organization's.
+     * Offered on the environment plane only — and refused there and then if it arrives
+     * from anywhere else, because a Livewire property is client-settable and a control
+     * that is merely unrendered is not a control that is enforced.
+     */
+    public bool $environmentWide = false;
 
     public function create(ClientRegistry $clients, ScopeCatalog $catalog): mixed
     {
+        // Held on the organization plane only, because that is the plane the gate is
+        // about: a social sign-in creates a subject immediately with an address only the
+        // provider vouched for, and an app is a durable object other people will trust.
+        // An environment administrator authenticates as an account member, where there is
+        // no subject to read — the gate would answer "unverified" for every one of them
+        // and lock the plane out of registering apps at all.
+        if (app(ConsoleScope::class)->plane() === ConsolePlane::Organization) {
+            app(VerifiedEmailGate::class)->require('create an application');
+        }
+
         $this->validate([
             'name' => ['required', 'string', 'max:190'],
             'type' => ['required', 'in:confidential,public'],
@@ -110,6 +139,17 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             }
         }
 
+        try {
+            $organizationId = $this->targetOrganizationId();
+        } catch (AuthorizationException $e) {
+            // Reported on the name field rather than thrown: on the environment plane
+            // "you have not picked an organization yet" is an ordinary state of the
+            // console, not a failure, and the form must survive to be resubmitted.
+            $this->addError('name', $e->getMessage());
+
+            return null;
+        }
+
         // Only catalog scopes from the picker, plus any advanced custom keys.
         $scopes = array_values(array_unique(array_merge(
             array_values(array_intersect($this->selectedScopes, $catalog->keys())),
@@ -123,6 +163,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             grantTypes: $grantTypes,
             scopes: $scopes,
             firstParty: $this->firstParty,
+            organizationId: $organizationId,
             postLogoutRedirectUris: $postLogoutRedirects,
         ));
 
@@ -138,9 +179,37 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             session()->flash('revealed_secret', $registered->secret);
         }
 
-        $this->dispatch('toast', message: 'Application "'.$registered->client->name.'" created.');
+        $this->dispatch('toast', message: 'App "'.$registered->client->name.'" created.');
 
-        return $this->redirectRoute('environment.clients.show', ['client' => $registered->client->id], navigate: true);
+        return $this->redirectRoute(
+            app(ConsoleScope::class)->routeName('clients.show'),
+            ['client' => $registered->client->id],
+            navigate: true,
+        );
+    }
+
+    /**
+     * The organization this app is registered for, or null for an environment-owned one.
+     *
+     * @throws AuthorizationException when no organization is resolved
+     */
+    private function targetOrganizationId(): ?string
+    {
+        $scope = app(ConsoleScope::class);
+
+        if (! $this->environmentWide) {
+            // The organization comes from the scope, not from a field on this form.
+            return $scope->requireOrganizationId();
+        }
+
+        // An app with no organization is the platform's own: marked first-party it skips
+        // the consent screen for EVERY organization in the environment and appears in
+        // each of their launchers. A tenant administrator may never mint one, and "the
+        // checkbox is not rendered for them" is not the guard — the property is
+        // client-settable.
+        abort_unless($scope->plane() === ConsolePlane::Environment, 403);
+
+        return null;
     }
 
     /** @return list<string> */
@@ -181,19 +250,26 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
      */
     public function with(ScopeCatalog $catalog): array
     {
-        return ['scopeGroups' => $catalog->grouped()];
+        return [
+            // Route names differ per plane; one component, so it asks rather than assumes.
+            'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
+            'scopeGroups' => $catalog->grouped(),
+            // The one branch a page is allowed to make on the plane: whether the
+            // administrator acts on several organizations or implicitly on their own.
+            'mayScopeEnvironmentWide' => app(ConsoleScope::class)->plane()->choosesOrganization(),
+        ];
     }
 }; ?>
 
 <div>
-    <a href="{{ route('environment.clients') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Applications</a>
-    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New application</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">Connect an app to this environment — for signing people in (single sign-on) or for machine-to-machine API access.</p>
+    <a href="{{ route($scopeRoute('clients')) }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Apps & API keys</a>
+    <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New app</h1>
+    <p class="mt-1 text-sm" style="color:var(--muted)">Connect an application — for signing people in (single sign-on) or for machine-to-machine API access. The client secret is shown once, right after you create it.</p>
 
     <form wire:submit="create" class="mt-6 max-w-2xl rounded-xl border p-5 space-y-5" style="border-color:var(--border)">
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
-                <label class="label" for="name">Application name</label>
+                <label class="label" for="name">App name</label>
                 <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus>
                 @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
@@ -207,9 +283,22 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             </div>
         </div>
 
+        @if ($mayScopeEnvironmentWide)
+            <div>
+                <label class="flex items-start gap-2" for="environmentWide">
+                    <input wire:model="environmentWide" id="environmentWide" type="checkbox" class="mt-1">
+                    <span>
+                        <span class="label">Environment-wide</span>
+                        <span class="block text-xs" style="color:var(--faint)">The platform owns this app rather than the organization selected in the bar above. A first-party environment-wide app skips the consent screen and appears in every organization's launcher.</span>
+                    </span>
+                </label>
+            </div>
+        @endif
+
+        {{-- How the app connects — with a visual of the handshake. --}}
         <div>
             <span class="label">How does this app connect?</span>
-            <div class="mt-1 flex flex-wrap gap-x-6 gap-y-2">
+            <div class="mt-1 flex flex-wrap gap-x-6 gap-y-2 mb-3">
                 <label class="flex items-center gap-2 text-sm">
                     <input wire:model.live="grantAuthorizationCode" type="checkbox" class="rounded"> Sign people in <span style="color:var(--muted)">(single sign-on)</span>
                 </label>
@@ -218,6 +307,27 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
                 </label>
             </div>
             @error('grantAuthorizationCode') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+
+            @if ($grantAuthorizationCode)
+                <div class="cbx-flow" role="img" aria-label="Sign-in handshake: person, your app, Cbox ID, back to your app">
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--info-soft);color:var(--info)">1</span><span>Person clicks <b>Sign in</b> in your app</span></div>
+                    <span class="cbx-flow-arrow">→</span>
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">2</span><span>Redirected to <b>Cbox ID</b> to authenticate</span></div>
+                    <span class="cbx-flow-arrow">→</span>
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">3</span><span>Redirected <b>back to your app</b> with a code</span></div>
+                    <span class="cbx-flow-arrow">→</span>
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--success-soft);color:var(--success-strong)">4</span><span>Your app swaps the code for tokens</span></div>
+                </div>
+            @endif
+            @if ($grantClientCredentials)
+                <div class="cbx-flow" role="img" aria-label="Machine-to-machine: your app requests a token, then calls the API">
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">1</span><span>Your app sends its <b>ID + secret</b> to Cbox ID</span></div>
+                    <span class="cbx-flow-arrow">→</span>
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">2</span><span>Cbox ID returns an <b>access token</b></span></div>
+                    <span class="cbx-flow-arrow">→</span>
+                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--success-soft);color:var(--success-strong)">3</span><span>Your app calls the <b>API</b> with the token</span></div>
+                </div>
+            @endif
         </div>
 
         @if ($grantAuthorizationCode)
@@ -235,6 +345,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
             </div>
         @endif
 
+        {{-- Permissions / scopes — a described picker, not a blank box. --}}
         <div>
             <span class="label">Permissions this app requests</span>
             <p class="mt-1 text-xs" style="color:var(--muted)">Scopes decide what the app is allowed to see and do. People see the sign-in ones on the consent screen (first-party apps skip it).</p>
@@ -269,7 +380,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
         <label class="flex items-start gap-2.5 text-sm">
             <input wire:model="firstParty" type="checkbox" class="mt-0.5 rounded">
             <span>
-                First-party application
+                First-party app
                 <span class="block text-xs" style="color:var(--muted)">A trusted app you own — skips the consent screen and appears in the app launcher (needs a redirect URI).</span>
             </span>
         </label>
@@ -282,8 +393,8 @@ new #[Layout('components.layouts.environment', ['title' => 'New application'])] 
         </div>
 
         <div class="flex items-center gap-2 pt-1">
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">Create application</button>
-            <a href="{{ route('environment.clients') }}" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">Create app</button>
+            <a href="{{ route($scopeRoute('clients')) }}" class="btn btn-ghost">Cancel</a>
         </div>
     </form>
 </div>
