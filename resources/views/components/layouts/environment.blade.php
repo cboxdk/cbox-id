@@ -35,6 +35,13 @@
         $accessibleIds = app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->accessibleEnvironmentIds($member);
         $switchableEnvs = Environment::query()->whereKey($accessibleIds)->orderBy('name')->get(['id', 'name', 'slug']);
     }
+    // The organization this console is acting on. The ONE thing that differs between
+    // the two planes — the organization plane has exactly one and never chooses — so it
+    // sits beside the environment switcher rather than inside each page.
+    $consoleScope = app(\App\Platform\Console\ConsoleScope::class);
+    $actingOrgId = $consoleScope->organizationId();
+    $actingOrgs = $consoleScope->availableOrganizations();
+
     $openUrl = fn (string $id): string => 'https://'.$accountHost.route('workspace.environment.open', $id, false);
 
     // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
@@ -132,6 +139,38 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- Acting organization. Every page below is scoped to it, so it belongs
+                     in the breadcrumb next to the environment rather than repeated as a
+                     field on each page — which is how the two consoles came to disagree
+                     about which organization a form was writing to. --}}
+                @if ($actingOrgs !== [])
+                    <span style="color:var(--faint)" aria-hidden="true">/</span>
+                    <div class="relative min-w-0" x-data="{ org: false }">
+                        <button type="button" class="cbx-switcher-item flex items-center gap-1.5 rounded-lg px-1.5 py-1"
+                                style="transition:background-color var(--dur-hover) var(--ease)"
+                                @click="org=!org" :aria-expanded="org" aria-haspopup="true">
+                            <span class="truncate {{ $actingOrgId === null ? 'italic' : 'font-semibold' }}"
+                                  style="{{ $actingOrgId === null ? 'color:var(--muted-foreground)' : '' }}">
+                                {{ $actingOrgId === null ? 'Choose organization' : ($actingOrgs[$actingOrgId] ?? 'Unknown') }}
+                            </span>
+                            <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />
+                        </button>
+                        <div x-show="org" x-transition.opacity.duration.150ms @click.outside="org=false" x-cloak
+                             class="cbx-panel" style="position:absolute;top:calc(100% + 6px);left:0;min-width:240px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
+                            <p class="cbx-nav-group" style="padding:6px 10px 4px">Act on behalf of</p>
+                            @foreach ($actingOrgs as $orgId => $orgName)
+                                <form method="POST" action="{{ route('environment.organization.choose', [], false) }}">@csrf
+                                    <input type="hidden" name="organization" value="{{ $orgId }}">
+                                    <button type="submit" class="cbx-row w-full text-start" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $orgId === $actingOrgId ? 'background:var(--secondary)' : '' }}">
+                                        <span class="min-w-0 flex-1 truncate">{{ $orgName }}</span>
+                                        @if ($orgId === $actingOrgId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />@endif
+                                    </button>
+                                </form>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </nav>
             <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>
         </header>

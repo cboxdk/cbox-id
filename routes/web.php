@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
+use App\Http\Controllers\ConsoleOrganizationController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\ImpersonationController;
@@ -368,6 +369,11 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
     // (organizations, users, connections…). Gated by an env-admin session; a subject
     // session grants nothing here.
     Route::middleware('env.admin')->group(function (): void {
+        // Which organization the environment console is acting on. The one difference
+        // between the planes, modelled as a picker beside the environment switcher.
+        Route::post('/acting-organization', ConsoleOrganizationController::class)
+            ->name('environment.organization.choose');
+
         Volt::route('/', 'environment.home')->name('environment.home');
 
         // Organizations — routable list → create → detail (deep-linkable).
