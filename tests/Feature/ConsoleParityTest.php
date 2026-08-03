@@ -9,6 +9,8 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Contracts\ManifestFetcher;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Models\Role;
+use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Manifest\DeclaredRole;
 use Cbox\Id\AccessControl\Manifest\Manifest;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
@@ -57,6 +59,7 @@ use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -2019,4 +2022,223 @@ it('never dehydrates a revealed client secret into the wire snapshot', function 
 
     // The snapshot is the JSON blob Livewire round-trips; the plaintext must not be in it.
     expect(json_encode($component->snapshot))->not->toContain('csec_');
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Roles
+|--------------------------------------------------------------------------
+| The organization plane had one page: define a role and compose it from the declared
+| permission catalog, and nothing else — no rename, no delete, no way to take a
+| permission back. The environment plane had list → create → detail with rename,
+| permission editing and delete, and no catalog grant at all. The merge is the union of
+| all of it.
+*/
+
+it('serves roles from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-roles');
+
+    $this->get(route('environment.roles'))->assertOk()->assertSee('Roles');
+    $this->get(route('environment.roles.create'))->assertOk();
+})->group('security');
+
+it('serves roles from the same component on the organization plane', function (): void {
+    // The organization plane gained the routable shape rather than the environment plane
+    // losing it: a role URL is something you send to whoever owns the access.
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.roles.index')->assertOk()->assertSee('Roles');
+    Volt::test('console.roles.create')->assertOk();
+
+    expect(Route::has('roles.show'))->toBeTrue()
+        ->and(Route::has('roles.create'))->toBeTrue();
+})->group('security');
+
+it('defines a role against the organization from the scope', function (): void {
+    $orgId = anEnvironmentAdminActingOn('tenant-roles-scoped');
+
+    Volt::test('console.roles.create')
+        ->set('name', 'Manager')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(Role::query()->where('organization_id', $orgId)->where('name', 'Manager')->exists())->toBeTrue();
+})->group('security');
+
+it('refuses to define a role before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-roles-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.roles.create')
+        ->set('name', 'Manager')
+        ->call('create')
+        ->assertHasErrors('name');
+
+    expect(Role::query()->where('name', 'Manager')->exists())->toBeFalse();
+})->group('security');
+
+it('keeps environment-wide role definition on the environment plane', function (): void {
+    // The environment console only ever wrote environment-wide roles — an organization
+    // was never a field on that form, so removing the picker would have taken the
+    // capability with it. A role with no organization is assignable inside every tenant
+    // in the environment, so it survives as its own explicit choice on this plane alone.
+    anEnvironmentAdminActingOn('tenant-roles-wide');
+
+    Volt::test('console.roles.create')
+        ->set('name', 'Everywhere')
+        ->set('environmentWide', true)
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(Role::query()->whereNull('organization_id')->where('name', 'Everywhere')->exists())->toBeTrue();
+})->group('security');
+
+it('refuses an organization admin a role that binds every organization', function (): void {
+    // Forged, not clicked: the checkbox is not rendered on this plane, so the refusal has
+    // to live in create() — an environment-wide role can be assigned inside organizations
+    // that are not this administrator's.
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.roles.create')
+        ->set('name', 'Everywhere')
+        ->set('environmentWide', true)
+        ->call('create')
+        ->assertHasErrors('environmentWide');
+
+    expect(Role::query()->where('name', 'Everywhere')->exists())->toBeFalse();
+})->group('security');
+
+it('gives the organization plane the rename, re-permission and delete it never had', function (): void {
+    // All three existed only on the environment plane. A tenant admin could define a role
+    // and then never rename it, never take a permission back and never remove it.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $role = app(Roles::class)->define($org->id, 'Support');
+    $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
+
+    Volt::test('console.roles.show', ['role' => $role->id])
+        ->set('editName', 'Support Renamed')
+        ->call('saveDetails')
+        ->call('togglePermission', $permission->id)
+        ->assertHasNoErrors();
+
+    expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed')
+        ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
+
+    Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole');
+
+    expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
+})->group('security');
+
+it('gives the environment plane the catalog grant it never had', function (): void {
+    // The other direction. Composing a role out of the keys the apps declared existed
+    // only on the organization plane, so an administrator holding the ENTIRE environment
+    // could not add a permission to one of its organizations' roles at all.
+    $orgId = anEnvironmentAdminActingOn('tenant-roles-grant');
+    $role = app(Roles::class)->define($orgId, 'Support');
+    Permission::query()->create(['name' => 'reports:view']);
+
+    Volt::test('console.roles.index')->call('grant', $role->id, 'reports:view');
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
+})->group('security');
+
+it('renders the editor on the environment plane rather than a read-only shell', function (): void {
+    // The half of a merge that a PHP-only rewiring silently drops: the markup asked
+    // CurrentUser whether to draw the controls, and CurrentUser holds nothing on this
+    // plane — so every action would have worked and none of them would have been
+    // reachable.
+    anEnvironmentAdminActingOn('tenant-roles-editor');
+    $role = app(Roles::class)->define(null, 'Support');
+
+    $this->get(route('environment.roles'))->assertOk()->assertSee('New role');
+    $this->get(route('environment.roles.show', $role->id))
+        ->assertOk()
+        ->assertSee('Save changes')
+        ->assertSee('Delete role');
+})->group('security');
+
+it('refuses an organization admin another organization\'s role', function (): void {
+    // The environment plane resolved a role on its primary key alone, which is right for
+    // an administrator who holds the environment. Serving the same component to a tenant
+    // would have handed them every other tenant's roles by id — readable, renameable and
+    // deletable, with every holder of the role losing its access.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-roles'));
+    $foreign = app(Roles::class)->define($other->id, 'Not yours');
+    $own = app(Roles::class)->define($org->id, 'Mine');
+
+    expect(fn () => Volt::test('console.roles.show', ['role' => $foreign->id]))
+        ->toThrow(ModelNotFoundException::class);
+
+    Volt::test('console.roles.index')->assertDontSee('Not yours');
+
+    // And forged past the URL: roleId is a public property the browser re-sends, so the
+    // page has to re-resolve it inside the gate on EVERY request rather than trust the id
+    // it was mounted with. (The write gate itself is proven below, on the environment-wide
+    // role an organization can legitimately mount and still may not change.)
+    expect(fn () => Volt::test('console.roles.show', ['role' => $own->id])
+        ->set('roleId', $foreign->id)
+        ->call('deleteRole'))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect(Role::query()->whereKey($foreign->id)->exists())->toBeTrue();
+
+    // The catalog grant is scoped the same way — the picker is not rendered for a role
+    // that is not this organization's, and the action refuses one anyway.
+    Volt::test('console.roles.index')->call('grant', $foreign->id, 'reports:view');
+    expect(DB::table('role_permission')->where('role_id', $foreign->id)->count())->toBe(0);
+})->group('security');
+
+it('shows an organization the environment-wide role it cannot change', function (): void {
+    // The organization must SEE it: an environment-wide role can be assigned to its
+    // people and carries permissions into its apps. The detail page is new to this plane,
+    // so it gets the read-only treatment rather than a delete button for a role every
+    // other organization in the environment also holds.
+    actingAsRole(MembershipRole::Owner);
+    $role = app(Roles::class)->define(null, 'Env-wide support');
+
+    Volt::test('console.roles.show', ['role' => $role->id])
+        ->assertSee('Env-wide support')
+        ->assertSee('Managed for the environment')
+        ->assertDontSee('Delete role');
+
+    expect(fn () => Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole'))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect(Role::query()->whereKey($role->id)->exists())->toBeTrue();
+})->group('security');
+
+it('never lets a tenant tick a permission its apps kept internal', function (): void {
+    // tenant_assignable is how an app publishes a key WITHOUT offering it to the tenants
+    // that use it. The organization plane honoured that in its catalog picker; the
+    // environment plane's permission editor — which this plane now has — never had to,
+    // because its administrator holds the environment. Enforced in the action, because a
+    // checkbox that is not drawn is not a gate.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $role = app(Roles::class)->define($org->id, 'Support');
+    $internal = Permission::query()->create(['name' => 'billing:refund', 'tenant_assignable' => false]);
+
+    Volt::test('console.roles.show', ['role' => $role->id])
+        ->assertDontSee('billing:refund')
+        ->call('togglePermission', $internal->id);
+
+    Volt::test('console.roles.index')->call('grant', $role->id, 'billing:refund');
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
+})->group('security');
+
+it('refuses an organization admin with no organization at all a roles page', function (): void {
+    // The nullable reader answers null both for "an environment administrator has not
+    // chosen an organization yet" and for "this member has none", and the first means
+    // "show the whole environment". Told apart here, because conflating them turns an
+    // organization page into every role in the environment.
+    $subject = app(Subjects::class)->create('orphan-roles@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-roles'));
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+
+    Volt::test('console.roles.index')->assertForbidden();
 })->group('security');

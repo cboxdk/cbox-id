@@ -79,8 +79,8 @@ dataset('durable_access_sinks', [
     'members.invite (C7)' => ['members', 'invite', []],
     'members.setRole (C7)' => ['members', 'setRole', ['some-user', 'admin']],
     'members.remove (C7)' => ['members', 'remove', ['some-user']],
-    'roles.create (C7)' => ['roles', 'create', []],
-    'roles.grant (C7)' => ['roles', 'grant', ['some-role']],
+    'roles.create (C7)' => ['console.roles.create', 'create', []],
+    'roles.grant (C7)' => ['console.roles.index', 'grant', ['some-role']],
     'settings.saveBranding (L1)' => ['settings', 'saveBranding', []],
 ]);
 
