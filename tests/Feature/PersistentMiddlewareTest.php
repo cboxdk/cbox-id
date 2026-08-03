@@ -149,7 +149,7 @@ it('refuses an environment console action even with no route middleware at all',
 
     // Livewire converts the abort into a RESPONSE rather than letting it propagate, so
     // assert the status — expecting a thrown HttpException here silently passes.
-    Volt::test('environment.audit')->assertForbidden();
+    Volt::test('console.audit')->assertForbidden();
 });
 
 it('guards every environment console component, so a new one cannot skip it', function (): void {

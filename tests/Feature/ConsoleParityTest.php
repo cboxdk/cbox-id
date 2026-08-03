@@ -14,6 +14,9 @@ use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Governance\Models\SodPolicy;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -525,4 +528,149 @@ it('refuses an organization admin another organization\'s rule', function (): vo
 
     expect(fn () => Volt::test('console.sod-policies.index')->call('toggle', $policy->id))
         ->toThrow(ModelNotFoundException::class);
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Activity log
+|--------------------------------------------------------------------------
+| The organization plane filtered rows to the reader's own organization and offered an
+| action filter. The environment plane filtered rows to nothing at all — the whole
+| environment — and offered a broader search. Both controls survive; the row scoping is
+| the half that had to be decided rather than merged, because the unscoped query served
+| to an organization admin is every other tenant's audit trail.
+*/
+
+/** Append an entry to one organization's trail (or the environment's, with null). */
+function anAuditEntry(string $action, ?string $organizationId = null): void
+{
+    app(AuditLog::class)->record(new AuditEvent(
+        action: $action,
+        actorType: ActorType::System,
+        organizationId: $organizationId,
+    ));
+}
+
+/**
+ * The actions the page actually resolved, read from the view data rather than the
+ * markup: a filter term is echoed back into its own input, so an HTML assertion matches
+ * the query string rather than a leaked row.
+ *
+ * @return list<string>
+ */
+function auditActions(mixed $component): array
+{
+    return collect($component->viewData('entries')->items())->pluck('action')->all();
+}
+
+it('serves the activity log from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-audit');
+
+    $this->get(route('environment.audit'))->assertOk()->assertSee('Activity log');
+})->group('security');
+
+it('serves the activity log from the same component on the organization plane', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.audit')->assertOk()->assertSee('Activity log');
+})->group('security');
+
+it('scopes the trail to the organization the environment console is acting on', function (): void {
+    // The picker is not decoration: an environment administrator reading one tenant's
+    // trail must be reading THAT tenant's, not a merged feed of every tenant's.
+    $orgId = anEnvironmentAdminActingOn('tenant-audit-scoped');
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-audit'))->id;
+
+    anAuditEntry('mine.recorded', $orgId);
+    anAuditEntry('theirs.recorded', $other);
+
+    expect(auditActions(Volt::test('console.audit')))
+        ->toContain('mine.recorded')
+        ->not->toContain('theirs.recorded');
+})->group('security');
+
+it('never shows an organization admin another organization\'s trail', function (): void {
+    // THE escalation this merge had to close. The environment component read
+    // `AuditEntry::query()` with no organization filter, which was safe only because an
+    // environment administrator was its sole caller. On the organization plane the same
+    // query is every tenant's security trail, handed to one tenant's admin.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-audit-org'))->id;
+
+    anAuditEntry('mine.recorded', $org->id);
+    anAuditEntry('theirs.recorded', $other);
+    anAuditEntry('environment.recorded');
+
+    // Not the other organization's, and not the control plane's own either.
+    expect(auditActions(Volt::test('console.audit')))
+        ->toContain('mine.recorded')
+        ->not->toContain('theirs.recorded')
+        ->not->toContain('environment.recorded');
+
+    // And the search box is not an enumeration oracle around the scope.
+    expect(auditActions(Volt::test('console.audit')->set('search', 'theirs.recorded')))->toBe([]);
+})->group('security');
+
+it('keeps the whole-environment trail on the environment plane', function (): void {
+    // What "no organization chosen" means on this plane, and the capability the removed
+    // picker also carried: the environment's own overview, across every tenant in it.
+    $orgId = anEnvironmentAdminActingOn('tenant-audit-wide');
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-audit-wide'))->id;
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    anAuditEntry('mine.recorded', $orgId);
+    anAuditEntry('theirs.recorded', $other);
+    anAuditEntry('environment.recorded');
+
+    expect(auditActions(Volt::test('console.audit')))
+        ->toContain('mine.recorded')
+        ->toContain('theirs.recorded')
+        ->toContain('environment.recorded');
+})->group('security');
+
+it('refuses the activity log to an organization admin with no organization at all', function (): void {
+    // The nullable reader answers null both for "an environment administrator has not
+    // chosen one yet" and for "this member has none", and the first means "show the whole
+    // environment". Told apart here, because conflating them turns one tenant's audit page
+    // into every tenant's.
+    $subject = app(Subjects::class)->create('orphan-audit@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-audit'));
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+
+    anAuditEntry('environment.recorded');
+
+    Volt::test('console.audit')->assertForbidden();
+})->group('security');
+
+it('offers both planes both of the filters they used to have one each of', function (): void {
+    // The union. The organization plane had an action filter and no search; the
+    // environment plane had a search over action-or-target and no action filter.
+    $orgId = anEnvironmentAdminActingOn('tenant-audit-filters');
+
+    app(AuditLog::class)->record(new AuditEvent(
+        action: 'member.added',
+        actorType: ActorType::System,
+        organizationId: $orgId,
+        targetType: 'directory',
+    ));
+    anAuditEntry('client.rotated', $orgId);
+
+    // The organization plane's action filter, now on the environment plane.
+    expect(auditActions(Volt::test('console.audit')->set('actionFilter', 'client')))
+        ->toBe(['client.rotated']);
+
+    // The environment plane's search — which matches the TARGET type too, the half an
+    // action filter cannot answer — now on the organization plane.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    app(AuditLog::class)->record(new AuditEvent(
+        action: 'member.added',
+        actorType: ActorType::System,
+        organizationId: $org->id,
+        targetType: 'directory',
+    ));
+    anAuditEntry('client.rotated', $org->id);
+
+    expect(auditActions(Volt::test('console.audit')->set('search', 'directory')))
+        ->toBe(['member.added']);
 })->group('security');

@@ -59,11 +59,11 @@ it('shows an environment admin only their own environment\'s audit trail', funct
         ->pluck('action')
         ->all();
 
-    expect($actions(Volt::test('environment.audit')))->not->toContain('victim.secret_action');
+    expect($actions(Volt::test('console.audit')))->not->toContain('victim.secret_action');
 
     // …and the search box is not an enumeration oracle either. Asserted on the DATA, not
     // the rendered HTML: the search term is echoed back into the input's value, so a
     // markup assertion would match the query string rather than a leaked row.
-    expect($actions(Volt::test('environment.audit')->set('search', 'victim.secret_action')))
+    expect($actions(Volt::test('console.audit')->set('search', 'victim.secret_action')))
         ->toBe([]);
 });

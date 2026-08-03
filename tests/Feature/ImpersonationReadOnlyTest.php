@@ -86,7 +86,7 @@ it('still allows read-only navigation while impersonating', function (): void {
     impersonatingSubject();
 
     // Paginating a read-only list (the audit trail) is allowlisted.
-    Volt::test('audit')->call('nextPage')->assertStatus(200);
+    Volt::test('console.audit')->call('nextPage')->assertStatus(200);
 
     // A magic property set (filtering, tab toggles) is allowlisted — it only mutates
     // in-memory component state, never durable tenant data.

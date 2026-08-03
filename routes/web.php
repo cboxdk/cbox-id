@@ -294,7 +294,10 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/roles', 'roles')->name('roles');
     Volt::route('/clients', 'clients')->name('clients');
     Volt::route('/webhooks', 'webhooks')->name('webhooks');
-    Volt::route('/audit', 'audit')->name('audit');
+    // Activity log: the SAME component the environment plane serves. The row scoping is
+    // what differs per plane and the component asks ConsoleScope for it — an
+    // organization's trail is never another's.
+    Volt::route('/audit', 'console.audit')->name('audit');
     Volt::route('/settings', 'settings')->name('settings');
     Volt::route('/appearance', 'appearance')->name('appearance');
 
@@ -466,7 +469,9 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/stored-tokens/new', 'environment.vault.create')->name('environment.vault.create');
         Volt::route('/stored-tokens/{secret}', 'environment.vault.show')->name('environment.vault.show');
 
-        Volt::route('/audit', 'environment.audit')->name('environment.audit');
+        // Activity log — the merged component. The route NAME is preserved on both
+        // planes; only the component behind it is now shared.
+        Volt::route('/audit', 'console.audit')->name('environment.audit');
 
         // Log streaming (SIEM) — routable list → create → detail.
         Volt::route('/log-streaming', 'environment.audit-streams.index')->name('environment.audit-streams');

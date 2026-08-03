@@ -144,7 +144,7 @@ it('forbids a non-admin member from reading admin console pages', function (stri
     // Not just the write buttons — the whole page (org-wide config, secrets,
     // audit) must be unreadable to a plain member.
     Volt::test($page)->assertForbidden();
-})->with(['audit', 'clients', 'connections', 'directories', 'roles', 'webhooks']);
+})->with(['console.audit', 'clients', 'connections', 'directories', 'roles', 'webhooks']);
 
 it('re-authorizes org-admin console pages on every request via boot(), not just mount()', function () {
     // A member who is an admin at mount, then demoted mid-session. The read gate must

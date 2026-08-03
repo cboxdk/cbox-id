@@ -65,7 +65,7 @@ it('renders the audit feed without counting the whole table', function (): void 
         $audit->record(new AuditEvent(action: 'seed.event.'.$i, actorType: ActorType::System));
     }
 
-    $sql = sqlDuring(fn () => Volt::test('environment.audit')->assertOk()->assertSee('seed.event.60'));
+    $sql = sqlDuring(fn () => Volt::test('console.audit')->assertOk()->assertSee('seed.event.60'));
 
     // `paginate()` runs a COUNT(*) over the filtered set to render page numbers. On a
     // table with no retention — it only ever grows — that is a full index scan of the
@@ -105,7 +105,7 @@ it('still pages through the audit feed', function (): void {
     }
 
     // Newest first, so page 1 holds the tail and page 2 reaches back.
-    Volt::test('environment.audit')
+    Volt::test('console.audit')
         ->assertSee('paged.event.40')
         ->assertDontSee('paged.event.10')
         ->call('setPage', 2)
