@@ -37,7 +37,7 @@ it('points org settings at the appearance editor', function () {
     actingAsRole(MembershipRole::Owner);
 
     // The old inline brand-colour form is gone; settings now links to the editor.
-    Volt::test('settings')->assertSee(route('appearance'));
+    Volt::test('console.settings')->assertSee(route('appearance'));
 });
 
 it('redirects a member away from org settings to their own account', function () {
@@ -59,7 +59,7 @@ it('redirects a member away from org settings to their own account', function ()
 it('lets an admin rename their organization', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);
 
-    Volt::test('settings')
+    Volt::test('console.settings')
         ->set('orgName', 'Acme Rocketry')
         ->call('rename')
         ->assertHasNoErrors();
@@ -70,7 +70,7 @@ it('lets an admin rename their organization', function () {
 it('rejects an empty organization name', function () {
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('settings')->set('orgName', '')->call('rename')->assertHasErrors('orgName');
+    Volt::test('console.settings')->set('orgName', '')->call('rename')->assertHasErrors('orgName');
 });
 
 it('hides social buttons and 404s providers when none are configured', function () {

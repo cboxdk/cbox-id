@@ -305,7 +305,10 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
     Volt::route('/audit', 'console.audit')->name('audit');
-    Volt::route('/settings', 'settings')->name('settings');
+    // Settings: the SAME component the environment plane serves. The organization's own
+    // record is on both planes, bounded by whichever organization the scope resolves; the
+    // environment's identity is on the environment plane alone.
+    Volt::route('/settings', 'console.settings')->name('settings');
     // Appearance: the SAME component the environment plane serves. What is being
     // themed — an organization's own sign-in, or the environment default every
     // organization inherits — is an explicit choice on the page, offered on the
@@ -492,7 +495,9 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/log-streaming/{stream}', 'environment.audit-streams.show')->name('environment.audit-streams.show');
         Volt::route('/analytics', 'environment.analytics')->name('environment.analytics');
         Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');
-        Volt::route('/settings', 'environment.settings')->name('environment.settings');
+        // Settings — the merged component. The route NAME is preserved on both planes;
+        // only the component behind it is now shared.
+        Volt::route('/settings', 'console.settings')->name('environment.settings');
         Volt::route('/sign-in-rules', 'environment.auth-policy')->name('environment.auth-policy');
         // Appearance — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.

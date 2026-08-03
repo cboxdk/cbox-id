@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Appearance\Appearance;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
@@ -22,6 +23,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -1015,4 +1017,115 @@ it('refuses single sign-on to an organization admin with no organization at all'
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
 
     Volt::test('console.connections.index')->assertForbidden();
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Settings
+|--------------------------------------------------------------------------
+| The pair that looked least like one: the organization page was the ORGANIZATION's
+| record — rename, slug, type, id — and the environment page was the ENVIRONMENT's
+| identity plus the OIDC issuer and discovery URL. Neither offered what the other did.
+|
+| They are one capability under the console's own rule — the environment administrator
+| sees what a tenant admin sees, plus what the environment holds in addition. So the
+| organization's record is on both planes, the environment's identity on the environment
+| plane alone, and the integration details on both.
+*/
+
+it('serves settings from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-settings');
+
+    $this->get(route('environment.settings'))
+        ->assertOk()
+        ->assertSee('Integration')
+        ->assertSee('Environment ID');
+})->group('security');
+
+it('serves settings from the same component on the organization plane', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.settings')->assertOk()->assertSee('Organization');
+})->group('security');
+
+it('gives the environment plane the rename it never had', function (): void {
+    // An administrator who holds every organization in the environment could not correct
+    // a typo in one's name without signing into that organization's own console.
+    $orgId = anEnvironmentAdminActingOn('tenant-settings-rename');
+
+    Volt::test('console.settings')
+        ->set('orgName', 'Renamed Co')
+        ->call('rename')
+        ->assertHasNoErrors();
+
+    expect(app(Organizations::class)->find($orgId)?->name)->toBe('Renamed Co');
+})->group('security');
+
+it('attributes the rename to the subject who made it, on either plane', function (): void {
+    // The two consoles recorded ids from different tables for the same act — the
+    // organization plane the subject id, the environment plane the AccountMember row's.
+    // Half the trail resolved against `users` and half against `account_members`, with
+    // nothing recording which.
+    $orgId = anEnvironmentAdminActingOn('tenant-settings-actor');
+    $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
+
+    Volt::test('console.settings')->set('orgName', 'Attributed Co')->call('rename');
+
+    expect(AuditEntry::query()->where('action', 'organization.renamed')->value('actor_id'))
+        ->toBe($subjectId)
+        ->and(AuditEntry::query()->where('action', 'organization.renamed')->value('organization_id'))
+        ->toBe($orgId);
+})->group('security');
+
+it('refuses a rename before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-settings-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.settings')
+        ->set('orgName', 'Nobody In Particular')
+        ->call('rename')
+        ->assertForbidden();
+
+    expect(AuditEntry::query()->where('action', 'organization.renamed')->exists())->toBeFalse();
+})->group('security');
+
+it('renames the organization the console is acting on and no other', function (): void {
+    // The rename takes no id from the wire — it resolves the target through the scope —
+    // so the other organization in the environment is untouchable from this page.
+    $orgId = anEnvironmentAdminActingOn('tenant-settings-scoped');
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-settings'));
+
+    Volt::test('console.settings')->set('orgName', 'Only Mine')->call('rename');
+
+    expect(app(Organizations::class)->find($orgId)?->name)->toBe('Only Mine')
+        ->and(app(Organizations::class)->find($other->id)?->name)->toBe('Other Co');
+})->group('security');
+
+it('gives the organization plane the integration details it never had', function (): void {
+    // The environment page's half. An organization admin wiring an OIDC client needed
+    // exactly these two URLs and had nowhere in their own console to find them; both are
+    // already served unauthenticated, so this publishes nothing new.
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.settings')
+        ->assertSee('Integration')
+        ->assertSee('/.well-known/openid-configuration');
+})->group('security');
+
+it('keeps the environment\'s own identity off the organization plane', function (): void {
+    // The other direction of the same merge. The environment record is the control
+    // plane's; a tenant admin has no business reading it and no way to act on it.
+    //
+    // The environment is made REAL and current first. The suite's default context names
+    // an environment key with no row behind it, so a page that resolved the record
+    // unconditionally would still render nothing here — and this assertion would pass
+    // while guarding nothing.
+    $environment = platformRootEnvironment();
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
+
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.settings')
+        ->assertDontSee('Environment ID')
+        ->assertDontSee($environment->name);
 })->group('security');
