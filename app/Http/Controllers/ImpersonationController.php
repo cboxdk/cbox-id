@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
-use App\Platform\OperatorAuth;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,9 +36,11 @@ final class ImpersonationController extends Controller
      *  - A justification is mandatory (PAM): start is rejected (422) without a
      *    reason, which is stored in the marker and recorded on the audit trail.
      */
-    public function start(Request $request, string $user, OperatorAuth $auth, Memberships $memberships, Impersonation $impersonation): RedirectResponse
+    public function start(Request $request, string $user, ConsoleScope $scope, Memberships $memberships, Impersonation $impersonation): RedirectResponse
     {
-        $operatorId = $auth->id();
+        // Re-asked of the session that is actually here, not of a separate operator key:
+        // one sign-in, one place that answers whether this person runs the deployment.
+        $operatorId = $scope->operator()?->id;
         abort_if($operatorId === null, 403);
 
         $orgId = $request->string('organization')->toString();

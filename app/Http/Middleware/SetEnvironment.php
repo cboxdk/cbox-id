@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Platform\OperatorAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\Environment as EnvironmentContract;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Organization\Models\Environment;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,23 +15,26 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Pins the current environment for every web request.
  *
- * For an END USER the request HOST decides the plane — an exact custom-domain
- * match, or a base-domain subdomain slug (via the package's
- * {@see EnvironmentResolver}). This is what stops a user on env B's domain from
- * being authenticated against env A just because A was created first.
+ * The request HOST decides the plane — an exact custom-domain match, or a
+ * base-domain subdomain slug (via the package's {@see EnvironmentResolver}). This is
+ * what stops a user on env B's domain from being authenticated against env A just
+ * because A was created first. When no environment exists yet (fresh install) a
+ * bootstrap default keeps the console — including the create-environment screen —
+ * renderable.
  *
- * For an authenticated OPERATOR the console honours their explicitly selected
- * plane (held under {@see OperatorAuth::ENV_KEY}, distinct from any end-user key)
- * ahead of the host, so targeting a plane never depends on which domain the
- * console is served from. When none exist yet (fresh install) a bootstrap default
- * keeps the console — including the create-environment screen — renderable.
+ * The HOST, and nothing else. This used to consult the operator's selected plane
+ * first, which was safe only while an operator was a separate credential store. An
+ * operator is a subject now, `auth_sessions` is environment-owned and hard-scoped,
+ * and their subject lives in the platform root — so a tenant plane pinned HERE, ahead
+ * of {@see Authenticate}, hides the operator's own session from the query that
+ * resolves it. The selection is applied after authentication instead, by
+ * {@see TargetEnvironment} on the operator console's own routes.
  */
 final class SetEnvironment
 {
     public function __construct(
         private readonly EnvironmentContext $context,
         private readonly EnvironmentResolver $resolver,
-        private readonly OperatorAuth $operators,
     ) {}
 
     /**
@@ -58,20 +59,9 @@ final class SetEnvironment
 
     private function resolve(Request $request): ?EnvironmentContract
     {
-        // Operators explicitly target a plane; their dedicated selection wins over
-        // anything host-derived so the console never jumps planes under them.
-        if ($this->operators->check()) {
-            $slug = $request->session()->get(OperatorAuth::ENV_KEY);
-            $selected = is_string($slug) && $slug !== ''
-                ? Environment::query()->where('slug', $slug)->first()
-                : null;
-
-            return $selected ?? $this->resolver->defaultEnvironment();
-        }
-
-        // End users: the request host maps to the plane (custom domain or
-        // base-domain subdomain). A spoofed Host that maps to nothing resolves to
-        // null, never an attacker-chosen plane.
+        // The request host maps to the plane (custom domain or base-domain
+        // subdomain). A spoofed Host that maps to nothing resolves to null, never an
+        // attacker-chosen plane.
         $byHost = $this->resolver->resolveForHost($request->getHost());
 
         if ($byHost !== null) {

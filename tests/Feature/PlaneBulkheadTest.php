@@ -14,7 +14,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** Build the middleware with a fixed current + default environment (multi-tenant SaaS). */
 function planeGate(?string $current, ?string $default, ?string $hostResolves = null): EnforcePlane
 {
-    // Multi-tenant shape: base_domains set → the bulkheads engage.
+    // Multi-tenant shape, STATED. It used to be implied by setting `base_domains`, which
+    // worked only because nothing else stated the mode; once the flag existed, the
+    // ambient value from `.env` decided these tests instead of the line below them.
+    config(['cbox-id.tenancy.multi_tenant' => true]);
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
     // The platform-root env is resolved via the config default first (like SetEnvironment).
     config(['cbox-id.environments.default' => $default ?? '']);
@@ -131,9 +134,42 @@ it('denies the operator plane when the host resolves to nothing', function (): v
     expect(passesPlane(planeGate(null, null), 'operator'))->toBeFalse();
 });
 
+/**
+ * The other half of that bulkhead, and the half that shipped broken to production.
+ *
+ * A root environment provisioned without its own `domain` row resolves by host to
+ * nothing, so it reaches the fallback — which asked `platformRootHosts()`, a config key
+ * with no env binding that no deployment sets. `accountHost()`, meanwhile, resolves
+ * through a three-step chain that lands in every real shape. The two disagreed, and the
+ * operator console is the SAME origin as the account console by design, so:
+ *
+ *     GET https://cboxid.com/workspace/login   200
+ *     GET https://cboxid.com/operator/login    404
+ *
+ * The staff console had no door at all on the live deployment. It went unnoticed because
+ * a 404 from a plane bulkhead is indistinguishable from a route that was never there.
+ */
+it('serves the operator plane on the account host when the root has no domain row', function (): void {
+    // base_domains derives accountHost() = cboxid.com; the host resolves to nothing.
+    $gate = planeGate(null, 'env_root');
+
+    $request = Request::create('https://cboxid.com/operator/login');
+
+    $served = true;
+
+    try {
+        $gate->handle($request, fn () => new Response('ok'), 'operator');
+    } catch (NotFoundHttpException) {
+        $served = false;
+    }
+
+    expect($served)->toBeTrue('the staff console has no door on the account host');
+});
+
 it('does NOT split planes in a single-tenant / self-hosted deployment (no base_domains)', function (): void {
     // Single-tenant: one host serves the whole IdP — every plane is allowed, so the
     // subject console is never 404'd just because the lone env is also the default.
+    config(['cbox-id.tenancy.multi_tenant' => false]);
     config(['cbox-id.environments.base_domains' => []]);
 
     $ctx = Mockery::mock(EnvironmentContext::class);

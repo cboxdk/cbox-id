@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Platform\Contracts\OperatorMfa;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Illuminate\Support\Facades\RateLimiter;
@@ -15,7 +15,7 @@ use Livewire\Volt\Component;
  * keyed on the operator identity (a separate plane from tenant subjects). Auth is
  * re-checked in boot() on every request, like the other operator components.
  */
-new #[Layout('components.layouts.operator', ['title' => 'Security'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Security', 'width' => '72rem'])] class extends Component
 {
     public ?string $secret = null;
 
@@ -32,15 +32,15 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
 
     public string $disablePassword = '';
 
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
-    public function enable(OperatorAuth $auth, OperatorMfa $mfa): void
+    public function enable(ConsoleScope $scope, OperatorMfa $mfa): void
     {
-        $operator = $auth->current();
+        $operator = $scope->operator();
         if ($operator === null) {
             abort(403);
         }
@@ -55,9 +55,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         $this->resetErrorBag();
     }
 
-    public function confirm(OperatorAuth $auth, OperatorMfa $mfa): void
+    public function confirm(ConsoleScope $scope, OperatorMfa $mfa): void
     {
-        $operator = $auth->current();
+        $operator = $scope->operator();
         if ($operator === null) {
             abort(403);
         }
@@ -90,9 +90,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         $this->dispatch('toast', message: 'Two-factor authentication is now enabled. Save your recovery codes below.');
     }
 
-    public function regenerateRecoveryCodes(OperatorAuth $auth, OperatorMfa $mfa): void
+    public function regenerateRecoveryCodes(ConsoleScope $scope, OperatorMfa $mfa): void
     {
-        $operator = $auth->current();
+        $operator = $scope->operator();
 
         if ($operator === null || ! $mfa->hasConfirmedTotp($operator->id)) {
             return;
@@ -102,9 +102,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
         $this->dispatch('toast', message: 'New recovery codes generated. Your previous codes no longer work.');
     }
 
-    public function disable(OperatorAuth $auth, OperatorMfa $mfa, PlatformOperators $operators): void
+    public function disable(ConsoleScope $scope, OperatorMfa $mfa, PlatformOperators $operators): void
     {
-        $operator = $auth->current();
+        $operator = $scope->operator();
         if ($operator === null) {
             abort(403);
         }
@@ -131,9 +131,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Security'])] class exte
     }
 
     /** @return array<string, mixed> */
-    public function with(OperatorAuth $auth, OperatorMfa $mfa): array
+    public function with(ConsoleScope $scope, OperatorMfa $mfa): array
     {
-        $operator = $auth->current();
+        $operator = $scope->operator();
 
         return [
             'operator' => $operator,

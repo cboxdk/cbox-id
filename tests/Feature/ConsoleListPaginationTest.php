@@ -123,7 +123,7 @@ it('labels a directory row with its organization without loading every organizat
         app(Organizations::class)->create(new NewOrganization('Other '.$i, 'other-'.$i));
     }
 
-    $sql = sqlDuring(fn () => Volt::test('environment.directories.index')->assertOk()->assertSee('Acme Corp'));
+    $sql = sqlDuring(fn () => Volt::test('console.directories.index')->assertOk()->assertSee('Acme Corp'));
 
     // The label lookup must be constrained to the ids this page actually names. An
     // unbounded `Organization::pluck()` grows with the tenant count and is re-run on

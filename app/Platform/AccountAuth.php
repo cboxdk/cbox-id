@@ -14,8 +14,8 @@ use Throwable;
 /**
  * Session bridge for account members — the customer's buyer/admin plane, the
  * "workspace console". A distinct SESSION from both {@see PlatformAuth} (a tenant's
- * end-users, who authenticate INTO their own environment) and {@see OperatorAuth} (Cbox
- * staff, above every account), but no longer a distinct CREDENTIAL: an account member is
+ * end-users, who authenticate INTO their own environment) and the platform operator
+ * (Cbox staff, above every account), but no longer a distinct CREDENTIAL: an account member is
  * an ordinary subject in the platform-root environment, and this class authenticates
  * against that subject.
  *

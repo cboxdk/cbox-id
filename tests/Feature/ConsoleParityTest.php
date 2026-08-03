@@ -74,6 +74,19 @@ use Livewire\Volt\Volt;
  */
 function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
 {
+    // Parity is asserted across two doors, and only ONE of them exists in both deployment
+    // shapes. The organization plane is `plane:subject` — it is the console a self-hosted
+    // install serves, so its half of every pair below stays on the suite's single-tenant
+    // baseline and thereby says the capability survives there. The ENVIRONMENT plane is
+    // `/admin`, which 404s unless the deployment is multi-tenant, so this helper — whose
+    // whole job is "be an environment administrator" — states that shape.
+    //
+    // Which answers the question the merge raises: parity is a multi-tenant-only property,
+    // because a single-tenant install has one door, not two. What single-tenant keeps is
+    // the capability, on the organization plane, and that is what the halves driven through
+    // actingAsRole() go on proving.
+    multiTenantDeployment();
+
     platformRootEnvironment();
 
     $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(

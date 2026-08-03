@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Carbon\CarbonInterface;
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -34,14 +34,14 @@ use Livewire\Volt\Component;
  * through the Organizations contract exactly like the tenant list, so it is
  * attributed to the acting operator and recorded on the tenant's audit trail.
  */
-new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width' => '72rem'])] class extends Component
 {
     public string $orgId = '';
 
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     public function mount(string $organization, Organizations $orgs): void
@@ -54,7 +54,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
         $this->orgId = $org->id;
     }
 
-    public function toggleStatus(Organizations $orgs, OperatorAuth $auth): void
+    public function toggleStatus(Organizations $orgs, ConsoleScope $scope): void
     {
         $org = $orgs->find($this->orgId);
         if ($org === null) {
@@ -64,7 +64,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organization'])] class 
         // Route the status change through the Organizations contract so it is
         // attributed to the acting operator and recorded on the tenant's audit
         // trail — a direct ->update() would bypass both.
-        $actorId = $auth->id();
+        $actorId = $scope->operator()?->id;
         if ($actorId === null) {
             abort(403);
         }

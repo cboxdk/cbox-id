@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Models\Session;
@@ -34,12 +34,12 @@ use Livewire\Volt\Component;
  * row's "View" hands off to the existing jump route, which re-points the console
  * at that tenant's OWN plane before opening its (plane-scoped) detail page.
  */
-new #[Layout('components.layouts.operator', ['title' => 'Usage'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Usage', 'width' => '72rem'])] class extends Component
 {
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     /** @return array<string, mixed> */

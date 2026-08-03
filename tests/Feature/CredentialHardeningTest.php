@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -81,13 +82,24 @@ it('meters MFA attempts per member, not per member and address', function (): vo
  * form's per-(email, address) cache bucket, whose own comment claimed to "throttle + lock
  * out brute force" while doing the first half alone. Both other planes have had a real
  * lockout from the start.
+ *
+ * It has one now by CONSTRUCTION rather than by a second implementation: the operator
+ * door is the subject door, so the lockout protecting an operator's password is the one
+ * protecting everyone's. This asserts that from the operator's side — that the credential
+ * an operator actually signs in with is behind it — because "we deleted the weak door" is
+ * only good news if the person who used it landed behind the strong one.
  */
 it('locks an operator out of the password door at the policy threshold', function (): void {
+    platformRootDeployment();
+
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(lockoutThreshold: 3, requireBreachCheck: false));
 
-    $operator = app(PlatformOperators::class)->create('locked@platform.test', 'the-real-operator-pass', 'Op');
-    $auth = app(OperatorAuth::class);
-    $attempt = fn (string $password) => $auth->attempt(request(), 'locked@platform.test', $password);
+    app(PlatformOperators::class)->create('locked@platform.test', 'the-real-operator-pass', 'Op');
+
+    $auth = app(PlatformAuth::class);
+    $attempt = fn (string $password) => app(PlatformRoot::class)->run(
+        fn () => $auth->attemptPassword(request(), 'locked@platform.test', $password),
+    );
 
     foreach (range(1, 3) as $ignored) {
         $attempt('wrong-guess-entirely');

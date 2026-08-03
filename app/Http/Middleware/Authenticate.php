@@ -83,7 +83,8 @@ final class Authenticate
 
         // find() still returns a deactivated/suspended subject, so a live cookie
         // would otherwise outlive the account being disabled. Re-check per request
-        // (as OperatorAuth::current() does) and refuse an inactive subject.
+        // (as ConsoleScope::operator() does for operator authority) and refuse an
+        // inactive subject.
         if ($subject === null || ! $this->subjects->isActive($subject->id)) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
 

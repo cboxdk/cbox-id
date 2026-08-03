@@ -7,6 +7,8 @@ namespace Cbox\Id\Devices\Http\Controllers;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Support\EnrolmentCodeRejected;
+use Cbox\Id\Devices\Support\EnrolmentToken;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -29,6 +31,7 @@ final class DeviceController
     public function __construct(
         private readonly SecretBox $secretBox,
         private readonly AuditLog $audit,
+        private readonly EnrolmentToken $enrolmentCodes,
     ) {}
 
     /**
@@ -53,6 +56,7 @@ final class DeviceController
             'app_version' => ['nullable', 'string', 'max:32'],
             'os_version' => ['nullable', 'string', 'max:32'],
             'model' => ['nullable', 'string', 'max:64'],
+            'enrolment_token' => ['nullable', 'string', 'max:4096'],
         ]);
 
         $installId = $request->string('install_id')->toString();
@@ -60,6 +64,38 @@ final class DeviceController
         $existing = Device::query()
             ->where('install_id', $installId)
             ->first();
+
+        // A FIRST enrolment must present the short-lived code from the console. A
+        // re-enrolment — which is how the app rotates its push token — must not, because
+        // that happens in the background with no screen to scan from. That distinction is
+        // why this is not simply a required field.
+        if ($existing === null) {
+            try {
+                $this->enrolmentCodes->consume(
+                    $request->string('enrolment_token')->toString(),
+                    $subjectId,
+                    $installId,
+                );
+            } catch (EnrolmentCodeRejected $e) {
+                $this->audit->record(new AuditEvent(
+                    action: 'device.enrolment_refused',
+                    actorType: ActorType::User,
+                    actorId: $subjectId,
+                    targetType: 'device',
+                    targetId: $installId,
+                    context: ['reason' => $e->getMessage()],
+                    ip: $request->ip(),
+                ));
+
+                // One message for every reason. Distinguishing "already used" from
+                // "belongs to someone else" would let a caller probe for which codes
+                // exist and whose they are. The specific reason goes to the audit log.
+                return new JsonResponse([
+                    'error' => 'enrolment_code_invalid',
+                    'message' => 'That enrolment code is not valid. Open Trusted devices for a fresh one.',
+                ], 422);
+            }
+        }
 
         // An install already claimed by somebody else. Refuse rather than reassign:
         // silently moving it would let one user capture another's push stream by

@@ -32,6 +32,12 @@ use Cbox\Id\Platform\PlatformRoot;
 /** Stand up the multi-tenant SaaS shape: a platform root plus one tenant environment. */
 function saasShape(): array
 {
+    // STATED, not merely implied by the domain list. `PlaneResolver::isMultiTenant()` reads
+    // the flag first and only falls back to deriving from `base_domains` when no deployment
+    // has stated one — and the suite's baseline states single-tenant, where every bulkhead
+    // below is off by design and the root host really does serve the whole IdP.
+    multiTenantDeployment();
+
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
 
     $tenant = Environment::query()->create(['name' => 'Acme', 'slug' => 'acme', 'status' => 'active', 'is_default' => false]);

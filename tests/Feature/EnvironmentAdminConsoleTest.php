@@ -21,6 +21,13 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an account (owner + first environment) and return them. */
 function envAdminSetup(): array
 {
+    // Every door in this file is under the `/admin` prefix, which carries `multi.tenant`
+    // and 404s on a single-tenant deployment — the console is gated on an account member
+    // administering one of their ACCOUNT's environments, and a single-tenant install has
+    // one environment which is the platform root and belongs to no account.
+    // {@see \App\Http\Middleware\RequireMultiTenant}, tests/Feature/SingleTenantAdminConsoleTest.php.
+    multiTenantDeployment();
+
     platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
@@ -110,7 +117,7 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/single-sign-on/new' => 'connection',
         '/admin/login-methods' => 'Login methods',
         '/admin/login-methods/new' => 'method',
-        '/admin/directories' => 'Directories',
+        '/admin/directories' => 'Sync users in',
         '/admin/directories/new' => 'directory',
         '/admin/outbound-sync' => 'Outbound sync',
         '/admin/outbound-sync/new' => 'connection',
@@ -169,16 +176,28 @@ it('also bounces the local admin login FORM to the root on a multi-tenant deploy
         ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
 });
 
-it('uses the local admin door on a single-host deployment (no base domains)', function (): void {
+it('has no admin door at all on a single-host deployment', function (): void {
+    // This asserted the OPPOSITE until the console became multi-tenant-only: that a
+    // self-hosted single-host install served the LOCAL "sign in as admin" form, on the
+    // reasoning that the account console and this admin console share an origin there so
+    // the form was safe. The form was safe and it was also useless — the console is gated
+    // on an account member administering one of their ACCOUNT's environments, and the lone
+    // environment on a single-host install is the platform root, which belongs to no
+    // account. It took correct credentials and refused them, blaming the credentials.
+    //
+    // Asserted here rather than only in SingleTenantAdminConsoleTest because this one
+    // starts from a real account, a real environment and a host that resolves to it: the
+    // 404 is the deployment shape, not an empty database.
     ['env' => $env] = envAdminSetup();
     serveOnTestHost($env);
-    config(['cbox-id.environments.base_domains' => []]);
 
-    // Self-hosted single tenant: the account console and this admin console share an
-    // origin, so the local form is fine and stays put.
-    $this->get('/admin/organizations')->assertRedirect(route('admin.login'));
-    $this->get('/admin/login')->assertOk();
-});
+    config()->set('cbox-id.tenancy.multi_tenant', false);
+    config()->set('cbox-id.tenancy.account_host', null);
+    config()->set('cbox-id.environments.base_domains', []);
+
+    $this->get('/admin/organizations')->assertNotFound();
+    $this->get('/admin/login')->assertNotFound();
+})->group('security');
 
 /*
 |--------------------------------------------------------------------------

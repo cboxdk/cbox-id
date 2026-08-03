@@ -47,16 +47,20 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
     $orgId = owner();
     entitle($orgId, 'cbox-id-scim');
 
-    $component = Volt::test('directories')
+    // Registration lives on the merged create page now, and the reveal-once token lands
+    // on the directory's own detail page — flashed across the single redirect, because a
+    // token that is shown once needs somewhere to be shown that is not the row you just
+    // submitted.
+    Volt::test('console.directories.create')
         ->set('name', 'Okta')
         ->call('register')
         ->assertHasNoErrors();
 
+    $directory = Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->firstOrFail();
+
     // The token is protected (never dehydrated into the wire snapshot), so assert the
     // one-time reveal on the rendered output rather than reaching into component state.
-    $component->assertSee('scim_');
-
-    expect(Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->exists())->toBeTrue();
+    Volt::test('console.directories.show', ['directory' => $directory->id])->assertSee('scim_');
 });
 
 it('registers an OAuth client for the organization', function () {
@@ -125,7 +129,7 @@ it('forbids a non-admin from registering a directory', function () {
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
     // The read gate now blocks a member at mount — they never reach register().
-    Volt::test('directories')->assertForbidden();
+    Volt::test('console.directories.create')->assertForbidden();
 });
 
 function member(): string

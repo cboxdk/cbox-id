@@ -16,6 +16,13 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
  */
 final readonly class ImpersonationMarker
 {
+    /**
+     * @param  SuspendedIdentity  $suspended  What the browser was signed in as before this
+     *                                        started, put aside for the duration. See
+     *                                        {@see Impersonation::start()} — restore hints,
+     *                                        never authorizations: each is re-bound to the
+     *                                        freshly-resolved principal on the way back.
+     */
     public function __construct(
         public ActorType $actorType,
         public string $operator,
@@ -24,6 +31,7 @@ final readonly class ImpersonationMarker
         public ?string $environmentKey,
         public ?string $reason,
         public int $startedAt,
+        public SuspendedIdentity $suspended = new SuspendedIdentity,
     ) {}
 
     /**
@@ -40,7 +48,7 @@ final readonly class ImpersonationMarker
      * directions here keeps {@see Impersonation::start()} from hand-writing a literal
      * that must stay in sync with the reader.
      *
-     * @return array{actor_type: string, operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int}
+     * @return array{actor_type: string, operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int, suspended: array{subject_session: string|null, account_member: string|null, account_member_version: int|null}}
      */
     public function toSession(): array
     {
@@ -52,6 +60,7 @@ final readonly class ImpersonationMarker
             'env' => $this->environmentKey,
             'reason' => $this->reason,
             'started_at' => $this->startedAt,
+            'suspended' => $this->suspended->toSession(),
         ];
     }
 }

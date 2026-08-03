@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\OperatorEnvironment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -14,105 +14,113 @@ use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
+/**
+ * The platform pages used to sit behind a door of their own: `/operator/login`, a form
+ * that verified an email and a bcrypt hash held in `platform_operators` and wrote
+ * `cbox.operator` into the session. Every test in this file that drove that form is gone
+ * with it, because the door is gone — an operator is a subject, there is one sign-in, and
+ * the question these routes ask is no longer "do you have an operator password?" but "does
+ * the person already signed in run this deployment?".
+ *
+ * What replaced those tests is the set below: the two refusals, and the fact that the
+ * answer is re-asked of the live session rather than settled at sign-in.
+ */
 function makeOperator(string $email = 'op@platform.test'): PlatformOperator
 {
+    platformRootDeployment();
+
     return app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Operator');
 }
 
-function actingAsOperator(string $email = 'op@platform.test'): PlatformOperator
-{
-    $op = makeOperator($email);
-    session([OperatorAuth::SESSION_KEY => $op->id]);
-
-    return $op;
-}
-
-it('bootstraps the first operator on a fresh install and signs in', function (): void {
-    Volt::test('operator.login')
-        ->set('name', 'Root')
-        ->set('email', 'root@platform.test')
-        ->set('password', 'a-strong-operator-pass')
-        ->call('createFirst')
-        ->assertRedirect(route('operator.environments'));
-
-    expect(app(PlatformOperators::class)->findByEmail('root@platform.test'))->not->toBeNull()
-        ->and(session(OperatorAuth::SESSION_KEY))->not->toBeNull();
-});
-
-it('closes the bootstrap once any operator exists', function (): void {
+it('sends a signed-out visitor to the one sign-in, not to a door of its own', function (): void {
+    // An operator EXISTS — this deployment is installed. Without one the first-run
+    // bulkhead points every page at the setup screen and the assertion below would be
+    // about that instead.
     makeOperator();
 
-    Volt::test('operator.login')
-        ->set('name', 'Second')
-        ->set('email', 'second@platform.test')
-        ->set('password', 'another-strong-pass')
-        ->call('createFirst')
-        ->assertForbidden();
-
-    expect(app(PlatformOperators::class)->findByEmail('second@platform.test'))->toBeNull();
+    // `login`, not `workspace.login`. The suite's baseline is a single-host install, and
+    // `workspace.login` carries `plane:account` — false when there is no host split, by
+    // design — so pointing a self-hosted operator there points them at a 404. The gate
+    // asks the deployment shape; see AuthenticateOperator::signInRoute().
+    $this->get('/operator')->assertRedirect(route('login'));
+    $this->get(route('operator.organizations'))->assertRedirect(route('login'));
 });
 
-it('signs an operator in with the right password and rejects the wrong one', function (): void {
-    makeOperator('login@platform.test');
+it('keeps the old operator login URLs working, pointed at the one sign-in', function (): void {
+    makeOperator();
 
-    Volt::test('operator.login')
-        ->set('email', 'login@platform.test')
-        ->set('password', 'wrong')
-        ->call('login')
-        ->assertHasErrors('email');
-
-    Volt::test('operator.login')
-        ->set('email', 'login@platform.test')
-        ->set('password', 'a-strong-operator-pass')
-        ->call('login')
-        ->assertRedirect(route('operator.environments'));
+    $this->get('/operator/login')->assertRedirect('/workspace/login');
+    $this->get('/operator/login/mfa')->assertRedirect('/workspace/login');
 });
 
-it('rate-limits operator login after repeated failures', function (): void {
-    makeOperator('brute@platform.test');
+it('lets a signed-in operator in', function (): void {
+    actAsOperator();
 
-    // Five wrong attempts consume the window (5/min, keyed on email + IP).
-    foreach (range(1, 5) as $ignored) {
-        Volt::test('operator.login')
-            ->set('email', 'brute@platform.test')
-            ->set('password', 'wrong')
-            ->call('login')
-            ->assertHasErrors('email');
-    }
-
-    // Locked out — even the CORRECT password is refused, and no session starts.
-    Volt::test('operator.login')
-        ->set('email', 'brute@platform.test')
-        ->set('password', 'a-strong-operator-pass')
-        ->call('login')
-        ->assertHasErrors('email')
-        ->assertRenderedNotRedirected();
-
-    expect(session(OperatorAuth::SESSION_KEY))->toBeNull();
+    $this->get('/operator')->assertOk();
+    $this->get(route('operator.organizations'))->assertOk();
 });
 
-it('guards the operator console behind an operator session', function (): void {
-    $this->get('/operator')->assertRedirect(route('operator.login'));
+/*
+ * 404, not 403, and not a redirect loop.
+ *
+ * A 403 confirms that the page exists and that this deployment has a staff console at
+ * that address — which anyone holding any account on the platform could then enumerate.
+ * A redirect to sign-in would be worse still: the visitor IS signed in, so they would
+ * bounce between the console and a sign-in page that has nothing left to ask them.
+ */
+it('404s a signed-in subject who does not run this deployment', function (): void {
+    platformRootDeployment();
 
-    $op = makeOperator();
-    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])->get('/operator')->assertOk();
+    $subject = app(Subjects::class)->create('ordinary@acme.test', 'Ordinary', 'supersecret123');
+    signInAsSubject($subject->id);
+
+    $this->get('/operator')->assertNotFound();
+    $this->get(route('operator.organizations'))->assertNotFound();
+
+    // A route with no component behind it, so this is the ROUTE gate answering and not a
+    // page's own boot() re-check. Both exist deliberately — Livewire actions all POST to
+    // one endpoint, so the page has to re-ask — but a test that only ever hits a Volt page
+    // cannot tell which of the two is holding, and passes with either one deleted.
+    $this->get(route('operator.search.jump', 'org_whatever'))->assertNotFound();
+    $this->post(route('operator.environment.switch'), ['environment' => 'x'])->assertNotFound();
+});
+
+/*
+ * The reason authority is asked of the session that already exists, rather than written
+ * into it at sign-in: suspending an operator does not revoke their subject sessions, so a
+ * check that only ran at the door would take away tomorrow's access and leave today's.
+ */
+it('takes the platform pages away from a suspended operator in a session they already hold', function (): void {
+    $op = actAsOperator('rogue@platform.test');
+
+    $this->get(route('operator.organizations'))->assertOk();
+
+    // Suspended out of band by another operator. The cookie, the session row and the CSRF
+    // token all stay perfectly valid — the operator does not.
+    $op->forceFill(['status' => 'suspended'])->save();
+    nextRequest();
+
+    $this->get(route('operator.organizations'))->assertNotFound();
+
+    // The route gate too, on an endpoint with no component to re-check behind it.
+    $this->post(route('operator.environment.switch'), ['environment' => 'x'])->assertNotFound();
 });
 
 it('creates and freely targets environments — no identity guard', function (): void {
-    actingAsOperator();
+    actAsOperator();
 
     Volt::test('operator.environments')->set('name', 'Staging')->call('create')->assertHasNoErrors();
     $staging = Environment::query()->where('slug', 'staging')->first();
     expect($staging)->not->toBeNull();
 
-    // Operators stand above every plane — switching just repoints the target,
-    // under the operator-only env key (never the end-user environment key).
+    // Operators stand above every plane — switching just repoints the target, under the
+    // operator-only environment key (never the end-user environment resolution).
     Volt::test('operator.environments')->call('switchTo', $staging->id);
-    expect(session(OperatorAuth::ENV_KEY))->toBe('staging');
+    expect(session(OperatorEnvironment::SESSION_KEY))->toBe('staging');
 });
 
 it('bootstraps a plane with its first organization and admin', function (): void {
-    actingAsOperator();
+    actAsOperator();
     $env = Environment::query()->create(['name' => 'Prod', 'slug' => 'prod', 'status' => 'active']);
 
     Volt::test('operator.environments')
@@ -133,28 +141,8 @@ it('bootstraps a plane with its first organization and admin', function (): void
     expect($orgExists)->toBeTrue()->and($adminExists)->toBeTrue();
 });
 
-it('treats a suspended operator as unauthenticated — the basis of the per-action boot re-check', function (): void {
-    $op = actingAsOperator('rogue@platform.test');
-    expect(app(OperatorAuth::class)->check())->toBeTrue();
-
-    // Suspended out-of-band by another operator; the session/CSRF stay valid, but
-    // every operator component's boot() calls check() on each request, so the
-    // suspended operator is refused on the next action (403), not just the next GET.
-    $op->update(['status' => 'suspended']);
-
-    expect(app(OperatorAuth::class)->check())->toBeFalse()
-        ->and(app(OperatorAuth::class)->current())->toBeNull();
-});
-
-it('redirects a suspended operator to sign-in on the next page load', function (): void {
-    $op = actingAsOperator('rogue2@platform.test');
-    $op->update(['status' => 'suspended']);
-
-    $this->get(route('operator.environments'))->assertRedirect(route('operator.login'));
-});
-
 it('creates operators and toggles their status, but never the current one', function (): void {
-    $me = actingAsOperator('me@platform.test');
+    $me = actAsOperator('me@platform.test');
 
     Volt::test('operator.operators')
         ->set('name', 'Grace')

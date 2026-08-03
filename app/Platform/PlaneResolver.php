@@ -117,9 +117,24 @@ final class PlaneResolver
         }
 
         // A root environment provisioned without its own `domain` row does not resolve
-        // by host at all, so the apex has to be named explicitly rather than inferred.
-        // An unlisted host reaches neither branch and is refused.
-        return in_array($host, $this->platformRootHosts(), true);
+        // by host at all, so the apex has to be named rather than inferred.
+        //
+        // Named by `accountHost()`, not by `platformRootHosts()` alone. The operator
+        // console and the account console are the SAME origin by design — both are the
+        // platform root's apex — so a host that can serve one must serve the other. They
+        // did not agree: `accountHost()` resolves through a three-step chain that lands
+        // in every real shape, while `platformRootHosts()` reads a config key with no env
+        // binding that no deployment sets. So `cboxid.com` served `/workspace/login` and
+        // 404'd `/operator/login`, and the staff console had no door at all in
+        // production — silently, because a 404 on a plane bulkhead looks exactly like a
+        // route that was never meant to be there.
+        //
+        // Still an exact match against ONE host, so the wildcard surface the branch above
+        // exists to close stays closed: `anything.invalid` matches neither.
+        $account = $this->accountHost();
+
+        return ($account !== null && $host === $account)
+            || in_array($host, $this->platformRootHosts(), true);
     }
 
     /**

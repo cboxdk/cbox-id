@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -18,7 +17,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Livewire\Volt\Volt;
 
@@ -27,10 +25,7 @@ uses(InteractsWithFederation::class, InteractsWithTenancy::class);
 /** Sign in a fresh operator, whose reads are pinned to the default test plane. */
 function detailOperatorSignIn(string $email = 'detail-op@platform.test'): PlatformOperator
 {
-    $op = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Op');
-    session([OperatorAuth::SESSION_KEY => $op->id]);
-
-    return $op;
+    return actAsOperator($email);
 }
 
 it('shows a tenant\'s name, members, verified domain and entitlement in the current plane', function (): void {
@@ -50,11 +45,11 @@ it('shows a tenant\'s name, members, verified domain and entitlement in the curr
         ->assertSee('sso');
 });
 
-it('refuses a non-operator request with a 403', function (): void {
+it('refuses a non-operator request with a 404', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
-    // No operator session — boot()'s per-request auth re-check aborts before mount.
-    Volt::test('operator.organization', ['organization' => $org->id])->assertForbidden();
+    // Nobody with operator authority — boot()'s per-request re-check aborts before mount.
+    Volt::test('operator.organization', ['organization' => $org->id])->assertStatus(404);
 });
 
 it('returns 404 for an org that lives in another environment', function (): void {

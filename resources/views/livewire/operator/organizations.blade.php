@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\OrganizationHierarchy;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
@@ -22,7 +22,7 @@ use Livewire\Volt\Component;
  * sub-unit, arbitrary depth). Queries are naturally scoped to the pinned
  * environment, so this is the whole plane and never another's.
  */
-new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Organizations', 'width' => '72rem'])] class extends Component
 {
     public bool $creating = false;
 
@@ -32,10 +32,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
 
     public ?string $parentId = null;
 
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     public function create(Organizations $orgs): void
@@ -57,7 +57,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         $this->dispatch('toast', message: 'Organization created.');
     }
 
-    public function toggleStatus(string $id, Organizations $orgs, OperatorAuth $auth): void
+    public function toggleStatus(string $id, Organizations $orgs, ConsoleScope $scope): void
     {
         $org = Organization::query()->find($id);
         if ($org === null) {
@@ -67,7 +67,7 @@ new #[Layout('components.layouts.operator', ['title' => 'Organizations'])] class
         // Route the status change through the Organizations contract so it is
         // attributed to the acting operator and recorded on the tenant's audit
         // trail — a direct ->update() would bypass both.
-        $actorId = $auth->id();
+        $actorId = $scope->operator()?->id;
         if ($actorId === null) {
             abort(403);
         }

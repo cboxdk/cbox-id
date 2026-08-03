@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Rules\NotBreached;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
@@ -14,7 +14,7 @@ use Livewire\Volt\Component;
  * Manage platform operators — the identities above every environment. Operators
  * are never environment-owned, so this list is global (no scope to suspend).
  */
-new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Operators', 'width' => '72rem'])] class extends Component
 {
     public bool $creating = false;
 
@@ -24,10 +24,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
 
     public string $password = '';
 
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     public function create(PlatformOperators $operators): void
@@ -53,9 +53,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
         $this->dispatch('toast', message: 'Operator created.');
     }
 
-    public function toggleStatus(string $id, PlatformOperators $operators, OperatorAuth $auth): void
+    public function toggleStatus(string $id, PlatformOperators $operators, ConsoleScope $scope): void
     {
-        $actorId = $auth->id();
+        $actorId = $scope->operator()?->id;
         if ($actorId === null) {
             abort(403);
         }
@@ -92,10 +92,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Operators'])] class ext
     }
 
     /** @return array<string, mixed> */
-    public function with(OperatorAuth $auth): array
+    public function with(ConsoleScope $scope): array
     {
         return [
-            'currentId' => $auth->id(),
+            'currentId' => $scope->operator()?->id,
             'operators' => PlatformOperator::query()->orderBy('created_at')->get()
                 ->map(fn (PlatformOperator $o): array => [
                     'id' => $o->id,

@@ -10,6 +10,7 @@ use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Support\AuthenticatorClient;
 use Cbox\Id\Devices\Support\AuthenticatorProvisioner;
+use Cbox\Id\Devices\Support\EnrolmentToken;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -74,19 +75,57 @@ new #[Layout('components.layouts.app')] class extends Component
     /**
      * The enrolment code the authenticator app scans.
      *
-     * Carries only the HOST — no token, no identity, nothing time-limited. The app uses
-     * it to find which Cbox ID to talk to, then runs a normal authorization-code
-     * sign-in against it, so the code is safe on a screen, in a screenshot, or on a
-     * wiki. Null only when provisioning failed in mount() — nothing to connect to, so
-     * a code would be a dead end.
+     * Carries the host AND a short-lived signed code bound to the signed-in subject.
+     *
+     * The host alone used to be the whole payload, described as safe on a screen, in a
+     * screenshot, or on a wiki. Safe in the sense that it granted nothing — but it also
+     * never expired and named nobody, so a photograph of it stayed a working enrolment
+     * pointer indefinitely. The code fixes that: two minutes of life, and the subject
+     * travels to POST /devices where it is checked against whoever actually signs in.
+     *
+     * It is NOT an anti-phishing control. The app fetches the verifying key from the
+     * host the code names, so a code forged for a hostile host verifies there too.
+     * Freshness and binding are the properties on offer; nothing more should be claimed.
+     *
+     * Null when provisioning failed in mount(), or when there is somehow no subject —
+     * a code bound to nobody could never be spent, so rendering one would be a dead end.
      */
+    private ?string $memoisedUri = null;
+
     public function enrolmentUri(): ?string
     {
+        // Memoised for the render, and not as an optimisation. One render asks for this
+        // three times — the @if, the QR writer, and the line of text below it — and
+        // minting on each would print one code beneath a QR encoding a different one.
+        if ($this->memoisedUri !== null) {
+            return $this->memoisedUri;
+        }
+
         if (! AuthenticatorClient::find() instanceof Client) {
             return null;
         }
 
-        return AuthenticatorClient::SCHEME.'://connect?host='.urlencode(request()->getHost());
+        $subject = app(CurrentUser::class)->id();
+
+        if ($subject === '') {
+            return null;
+        }
+
+        return $this->memoisedUri = AuthenticatorClient::SCHEME.'://connect'
+            .'?host='.urlencode(request()->getHost())
+            .'&t='.urlencode(app(EnrolmentToken::class)->mint($subject));
+    }
+
+    /**
+     * Seconds between re-renders of the code.
+     *
+     * Comfortably inside the code's own life, so nobody scans something that lapsed
+     * while they were unlocking their phone. Derived from the TTL rather than written as
+     * a number, so the two cannot drift apart.
+     */
+    public function refreshInterval(): int
+    {
+        return (int) floor(EnrolmentToken::TTL * 0.75);
     }
 
     /**
@@ -161,7 +200,10 @@ new #[Layout('components.layouts.app')] class extends Component
                    :help="App\Platform\Help\HelpTopic::TrustedDevices" />
 
     @if ($this->enrolmentUri() !== null)
-        <div class="card p-6">
+        {{-- Re-rendered inside the code's own lifetime, so nobody ever scans one that
+             lapsed while they were unlocking their phone. `wire:poll` re-runs the
+             component, which mints a fresh code and redraws the QR. --}}
+        <div class="card p-6" wire:poll.{{ $this->refreshInterval() }}s>
             {{-- Grid, not flex-wrap. `flex-1` is `flex-basis: 0`, so the text column
                  never reports that it does not fit — it just shrinks, and `flex-wrap`
                  has nothing to react to. On a phone that squeezed the instructions into
@@ -179,10 +221,13 @@ new #[Layout('components.layouts.app')] class extends Component
                         Install <strong>Cbox ID</strong> from the App Store, open it, and scan this
                         code. You'll then sign in with your normal account in the browser.
                     </p>
-                    {{-- Said plainly, because a code on a screen invites the question. --}}
+                    {{-- Said plainly, because a code on a screen invites the question —
+                         and because the previous wording ("safe to share") stopped being
+                         true the moment the code started carrying an identity. --}}
                     <p class="text-sm" style="color:var(--muted)">
-                        The code only says which Cbox ID to connect to — it grants nothing on its
-                        own, so it's safe to share or leave on screen.
+                        This code expires after two minutes and only works once, for your account.
+                        It refreshes on its own while this page is open — don't share a screenshot
+                        of it.
                     </p>
                     <p class="mono text-xs" style="color:var(--faint)">{{ $this->enrolmentUri() }}</p>
                 </div>

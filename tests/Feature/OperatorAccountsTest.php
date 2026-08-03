@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\AccountActivity;
-use App\Platform\OperatorAuth;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -22,8 +21,7 @@ uses(RefreshDatabase::class);
  * off from anywhere. This screen is that caller.
  */
 beforeEach(function (): void {
-    $operator = app(PlatformOperators::class)->create('accounts-op@platform.test', 'a-strong-operator-pass', 'Op');
-    session([OperatorAuth::SESSION_KEY => $operator->id]);
+    $operator = actAsOperator('accounts-op@platform.test');
     $this->operatorId = $operator->id;
 
     platformRootEnvironment();
@@ -101,15 +99,19 @@ it('records both directions on the system chain, as the operator', function (): 
         ->whereIn('action', ['account.suspended', 'account.reactivated'])->count())->toBe(0);
 });
 
-it('refuses the screen, and the toggle, without an operator session', function (): void {
+it('refuses the screen, and the toggle, without operator authority', function (): void {
     $account = suspendableAccount();
-    session()->forget(OperatorAuth::SESSION_KEY);
+    forgetSubjectSession();
 
-    $this->get(route('operator.accounts'))->assertRedirect(route('operator.login'));
+    // `login`, not `workspace.login`. The suite's baseline is a single-host install, and
+    // `workspace.login` carries `plane:account` — false when there is no host split, by
+    // design — so pointing a self-hosted operator there points them at a 404. The gate
+    // asks the deployment shape; see AuthenticateOperator::signInRoute().
+    $this->get(route('operator.accounts'))->assertRedirect(route('login'));
 
     // boot() — not mount() — carries the check, so it re-runs on every Livewire action
     // too and a crafted wire request cannot reach the toggle.
-    Volt::test('operator.accounts')->assertForbidden();
+    Volt::test('operator.accounts')->assertStatus(404);
 
     expect(Account::query()->whereKey($account->id)->value('status'))->toBe(AccountStatus::Active);
 });

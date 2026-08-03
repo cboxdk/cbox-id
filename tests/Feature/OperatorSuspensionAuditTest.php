@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -24,8 +23,7 @@ function fakeAuditAndSignIn(string $email = 'auditor@platform.test'): array
     $audit = new FakeAuditLog;
     app()->instance(AuditLog::class, $audit);
 
-    $op = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Auditor');
-    session([OperatorAuth::SESSION_KEY => $op->id]);
+    $op = actAsOperator($email);
 
     return [$audit, $op];
 }
@@ -60,15 +58,20 @@ it('records an audit event when an operator is suspended via the console', funct
 });
 
 it('surfaces the last-operator guard as a friendly message, not a 500', function (): void {
-    $me = app(PlatformOperators::class)->create('solo@platform.test', 'a-strong-operator-pass', 'Solo');
+    actAsOperator('solo@platform.test');
     $target = app(PlatformOperators::class)->create('victim@platform.test', 'a-strong-operator-pass', 'Victim');
-    session([OperatorAuth::SESSION_KEY => $me->id]);
 
     // The console's own guards make this path unreachable with a real repo, but the
     // component must still degrade gracefully if the contract ever refuses. Stub the
     // interface: lookups pass through to the real records, suspend() refuses.
     $mock = Mockery::mock(PlatformOperators::class);
     $mock->shouldReceive('find')->andReturnUsing(fn (string $id) => PlatformOperator::query()->find($id));
+    // The console asks this on every request now — it is how the acting operator is
+    // resolved from the signed-in subject, so a stub that omits it fails before the
+    // screen this test is about even mounts.
+    $mock->shouldReceive('findBySubject')->andReturnUsing(
+        fn (string $id) => PlatformOperator::query()->where('subject_id', $id)->where('status', 'active')->first(),
+    );
     $mock->shouldReceive('suspend')->andThrow(CannotSuspendLastOperator::make($target->id));
     app()->instance(PlatformOperators::class, $mock);
 

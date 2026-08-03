@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Platform\AccountAuth;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -36,10 +39,16 @@ class ConsoleScope
     /** The environment plane's chosen organization, held so a picker survives navigation. */
     public const SELECTION_KEY = 'cbox.console.organization';
 
+    private bool $operatorResolved = false;
+
+    private ?PlatformOperator $operatorRecord = null;
+
     public function __construct(
         private readonly CurrentUser $subject,
         private readonly EnvironmentAdminAuth $environmentAdmin,
         private readonly Entitlements $entitlements,
+        private readonly PlatformOperators $operators,
+        private readonly AccountAuth $accountMembers,
     ) {}
 
     /**
@@ -223,6 +232,125 @@ class ConsoleScope
         }
 
         return $this->subject->id();
+    }
+
+    /**
+     * Whether the person acting also runs this deployment.
+     *
+     * Asked of the SESSION THAT ALREADY EXISTS, which is the point. The platform pages —
+     * environments, accounts, operators, platform security — used to sit behind their own
+     * host prefix, their own layout and their own credential prompt, and that separation
+     * was never a security boundary: it was a consequence of `platform_operators` being a
+     * second credential store. It no longer is, so the pages become areas in the one
+     * console that appear for whoever may see them, like every other area already does.
+     *
+     * Suspension is handled inside the framework lookup rather than here. Authority now
+     * rides an existing session, and suspending an operator does not revoke their subject
+     * sessions — so a check that only ran at sign-in would take away tomorrow's access
+     * while leaving today's untouched.
+     *
+     * False for an environment administrator. An environment admin holds ONE environment
+     * on behalf of an account; an operator holds the deployment above every account. That
+     * an environment admin cannot become an operator by switching consoles is the one
+     * separation worth keeping, and it is a fact about the subject, not about the door.
+     */
+    public function isPlatformOperator(): bool
+    {
+        return $this->operator() !== null;
+    }
+
+    /**
+     * The operator record behind this session, or null.
+     *
+     * Memoised per request: the rail asks on every page render, and so does every guard
+     * on a platform page. Memoising a NEGATIVE answer is deliberate too — the alternative
+     * re-queries for every non-operator on every request, which is almost every request.
+     */
+    public function operator(): ?PlatformOperator
+    {
+        if ($this->operatorResolved) {
+            return $this->operatorRecord;
+        }
+
+        $this->operatorResolved = true;
+
+        $subjectId = $this->actingSubjectId();
+
+        if ($subjectId === null) {
+            return $this->operatorRecord = null;
+        }
+
+        // Read in the PLATFORM ROOT's scope. Operators are not environment-owned, but the
+        // subject they point at is, and the lookup crosses to it — under a tenant's
+        // ambient scope the platform's own staff are simply not there.
+        return $this->operatorRecord = app(PlatformRoot::class)->run(
+            fn (): ?PlatformOperator => $this->operators->findBySubject($subjectId),
+        );
+    }
+
+    /**
+     * The subject behind this request, whichever door it came through.
+     *
+     * There are THREE session shapes, not two, and this is the one place that has to know
+     * all of them. `plane()` above answers a different question — which console's rules
+     * apply — and it only distinguishes the organization and environment consoles. The
+     * account console is a third context it was never built for.
+     *
+     * That matters here because an account member's session key holds the MEMBER id, not
+     * the subject id, even though the credential it was established with is the subject's
+     * ({@see AccountAuth} — a member is an ordinary subject in the platform root, and the
+     * member row points at it). Reading the subject session alone answers "nobody" on the
+     * entire account console — which is exactly where an operator signs in, so operator
+     * authority would have been unreachable in the one place it is used most.
+     *
+     * An environment administrator is refused OUTRIGHT rather than looked up. Their
+     * session is the environment-admin one and it belongs to a different altitude; if
+     * that same person also happens to hold an operator record, they get it through their
+     * own sign-in, not by being an admin of an environment.
+     */
+    /**
+     * Whether ANYONE is signed in here, by any of the three doors.
+     *
+     * Separate from {@see isPlatformOperator()} because the two answers lead to different
+     * refusals: somebody who is not signed in gets the sign-in page, which is a step they
+     * can take, while somebody who IS signed in and lacks the authority gets a 404 — a 403
+     * would confirm to any account holder that this deployment has a staff console at that
+     * address.
+     *
+     * A gate that asked only about the subject session got this wrong in a way that was
+     * worse than either refusal: it sent operators to a sign-in that establishes a MEMBER
+     * session, then refused that session and sent them back, forever.
+     */
+    public function signedIn(): bool
+    {
+        return $this->subject->check()
+            || $this->environmentAdmin->check()
+            || $this->accountMembers->check();
+    }
+
+    private function actingSubjectId(): ?string
+    {
+        if ($this->environmentAdmin->check()) {
+            return null;
+        }
+
+        $subjectId = $this->subject->check() ? $this->subject->id() : '';
+
+        if ($subjectId !== '') {
+            return $subjectId;
+        }
+
+        $memberSubjectId = $this->accountMembers->current()?->subject_id;
+
+        return $memberSubjectId === null || $memberSubjectId === '' ? null : $memberSubjectId;
+    }
+
+    /** @throws AuthorizationException */
+    public function assertPlatformOperator(): void
+    {
+        if (! $this->isPlatformOperator()) {
+            throw new AuthorizationException('You do not run this deployment.');
+        }
     }
 
     /**

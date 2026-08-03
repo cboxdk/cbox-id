@@ -19,6 +19,10 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an env + pin an env-admin session. Returns the environment id. */
 function permSetup(string $accountName = 'Acme', string $ownerEmail = 'owner@acme.example'): string
 {
+    // The permissions page lives under `/admin`, which exists only on a multi-tenant
+    // deployment. {@see \App\Http\Middleware\RequireMultiTenant}.
+    multiTenantDeployment();
+
     platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: $accountName,

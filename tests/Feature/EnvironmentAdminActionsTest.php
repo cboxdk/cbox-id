@@ -99,7 +99,7 @@ it('exercises the directory detail mutating actions (regenerateToken, toggleStat
     $orgId = makeOrg('dir-org');
     $directory = app(Directories::class)->register($orgId, 'HR')->directory;
 
-    Volt::test('environment.directories.show', ['directory' => $directory->id])
+    Volt::test('console.directories.show', ['directory' => $directory->id])
         ->call('regenerateToken')
         ->call('toggleStatus')
         ->set('editName', 'HR Renamed')
@@ -108,7 +108,7 @@ it('exercises the directory detail mutating actions (regenerateToken, toggleStat
 
     expect(Directory::query()->whereKey($directory->id)->value('name'))->toBe('HR Renamed');
 
-    Volt::test('environment.directories.show', ['directory' => $directory->id])
+    Volt::test('console.directories.show', ['directory' => $directory->id])
         ->call('deleteDirectory');
     expect(Directory::query()->whereKey($directory->id)->exists())->toBeFalse();
 });
@@ -120,7 +120,7 @@ it('exercises the role detail mutating actions (saveDetails, togglePermission, d
     // so a directly-created Permission is picked up by togglePermission.
     $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
 
-    Volt::test('environment.roles.show', ['role' => $role->id])
+    Volt::test('console.roles.show', ['role' => $role->id])
         ->set('editName', 'Support Renamed')
         ->set('editDescription', 'Support staff')
         ->call('saveDetails')
@@ -129,7 +129,7 @@ it('exercises the role detail mutating actions (saveDetails, togglePermission, d
 
     expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed');
 
-    Volt::test('environment.roles.show', ['role' => $role->id])
+    Volt::test('console.roles.show', ['role' => $role->id])
         ->call('deleteRole');
     expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Support\EnrolmentToken;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -39,13 +40,19 @@ function deviceAuth(string $token): array
     return ['Authorization' => "Bearer {$token}"];
 }
 
-function enrolPayload(array $overrides = []): array
+/**
+ * A first enrolment must present a short-lived code minted for the SAME subject the
+ * access token names. Pass `$subject` when enrolling as anyone but Alice; put
+ * `enrolment_token` in the overrides to exercise a bad one.
+ */
+function enrolPayload(array $overrides = [], string $subject = 'user_alice'): array
 {
     return array_merge([
         'install_id' => (string) Str::ulid(),
         'platform' => 'ios',
         'push_token' => 'fcm-token-abc',
         'name' => 'Alice iPhone',
+        'enrolment_token' => app(EnrolmentToken::class)->mint($subject),
     ], $overrides);
 }
 

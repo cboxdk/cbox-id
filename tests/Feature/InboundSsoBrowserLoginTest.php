@@ -52,6 +52,12 @@ function ssoConnection(): object
  */
 function ssoRootEnvironment(): Environment
 {
+    // The account plane only EXISTS on a multi-tenant deployment: `FederatedLanding` forks
+    // on `onAccountPlane()`, which is false on a single-host install however the domain list
+    // reads, so without this the callbacks below land on the subject door and the fork under
+    // test is never taken.
+    multiTenantDeployment();
+
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
 
     $root = Environment::query()->create([

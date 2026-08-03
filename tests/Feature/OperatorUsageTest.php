@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\MfaFactor;
@@ -15,7 +14,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Support\Carbon;
 use Livewire\Volt\Volt;
@@ -25,10 +23,7 @@ uses(InteractsWithTenancy::class);
 /** Sign a fresh operator into the session — reads are pinned to the default plane. */
 function usageOperatorSignIn(string $email = 'usage-op@platform.test'): PlatformOperator
 {
-    $op = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Op');
-    session([OperatorAuth::SESSION_KEY => $op->id]);
-
-    return $op;
+    return actAsOperator($email);
 }
 
 /** A real environment row so a plane can be resolved to a human label. */
@@ -87,11 +82,16 @@ it('sums headline totals and breaks them down per environment across every plane
     usageOperatorSignIn();
 
     Volt::test('operator.usage')
-        // Totals sum across BOTH planes (proving EnvironmentContext::withoutScope).
-        ->assertViewHas('totals', fn (array $t): bool => $t['environments'] === 2
+        // Totals sum across EVERY plane (proving EnvironmentContext::withoutScope) —
+        // including the PLATFORM ROOT, which is a plane like any other and now holds the
+        // operator themselves: a subject with a live session, because an operator is a
+        // person who signed in rather than a row in a second credential table. Three
+        // environments, four users, three active sessions; the two tenant planes below
+        // are unchanged.
+        ->assertViewHas('totals', fn (array $t): bool => $t['environments'] === 3
             && $t['organizations'] === 3
-            && $t['users'] === 3
-            && $t['sessions'] === 2)
+            && $t['users'] === 4
+            && $t['sessions'] === 3)
         // Per-environment breakdown shows each plane's own counts.
         ->assertViewHas('breakdown', function (array $rows): bool {
             $byName = collect($rows)->keyBy('name');
@@ -145,9 +145,9 @@ it('ranks top organizations by member count across planes, each linking to its p
         ->assertSee(route('operator.search.jump', $orgA1Id), escape: false);
 });
 
-it('refuses a non-operator request with a 403', function (): void {
-    // No operator session — boot()'s per-request auth re-check aborts every request.
-    Volt::test('operator.usage')->assertForbidden();
+it('refuses a non-operator request with a 404', function (): void {
+    // Nobody with operator authority — boot()'s per-request re-check aborts every request.
+    Volt::test('operator.usage')->assertStatus(404);
 });
 
 /*
@@ -216,8 +216,8 @@ it('shows the per-tenant usage panel with member, MFA, domain and sign-in metric
         ->assertSee('Sign-ins (30d)');
 });
 
-it('refuses the per-tenant panel for a non-operator request with a 403', function (): void {
+it('refuses the per-tenant panel for a non-operator request with a 404', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
-    Volt::test('operator.organization', ['organization' => $org->id])->assertForbidden();
+    Volt::test('operator.organization', ['organization' => $org->id])->assertStatus(404);
 });

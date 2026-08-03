@@ -12,6 +12,7 @@ use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PortalSession;
+use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
@@ -79,6 +80,11 @@ it('re-runs every console auth guard on a Livewire action', function (): void {
         ->toContain(AuthenticateEnvironmentAdmin::class)
         ->toContain(AuthenticateAccountMember::class)
         ->toContain(EnforcePlane::class)
+        // The sixth, found the same way BlockDuringImpersonation was — by the invariant
+        // test below rather than by inspection. `multi.tenant` decides whether the whole
+        // environment console exists on this deployment; unregistered, that decision held
+        // on the page load and stopped holding on every action the page then performed.
+        ->toContain(RequireMultiTenant::class)
         ->toContain(RequireSudo::class)
         ->toContain(BlockDuringImpersonation::class)
         // …and the ones already registered stay registered.

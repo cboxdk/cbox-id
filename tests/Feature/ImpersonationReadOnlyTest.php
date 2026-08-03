@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
-use App\Platform\OperatorAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -79,9 +78,9 @@ dataset('durable_access_sinks', [
     'members.invite (C7)' => ['members', 'invite', []],
     'members.setRole (C7)' => ['members', 'setRole', ['some-user', 'admin']],
     'members.remove (C7)' => ['members', 'remove', ['some-user']],
-    'roles.create (C7)' => ['roles', 'create', []],
-    'roles.grant (C7)' => ['roles', 'grant', ['some-role']],
-    'settings.saveBranding (L1)' => ['settings', 'saveBranding', []],
+    'roles.create (C7)' => ['console.roles.create', 'create', []],
+    'roles.grant (C7)' => ['console.roles.index', 'grant', ['some-role']],
+    'settings.rename (L1)' => ['console.settings', 'rename', []],
 ]);
 
 it('refuses every durable-access console action while impersonating (403)', function (string $component, string $method, array $args): void {
@@ -125,8 +124,7 @@ it('still lets a full page load render while impersonating', function (): void {
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
-        ->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     $this->get('/dashboard')->assertOk();
 });
@@ -135,8 +133,7 @@ it('still lets the operator exit impersonation', function (): void {
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
-        ->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     // Exit is a plain controller POST, not a Livewire action, so the read-only hook
     // never touches it — the escape hatch always works.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
@@ -28,7 +28,7 @@ use Livewire\Volt\Component;
  * "View" hands off to a small controller jump that re-points the console at the
  * result's OWN plane first, so the plane-scoped detail page then resolves.
  */
-new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Search', 'width' => '72rem'])] class extends Component
 {
     /** The query string, bound to the URL so a search is shareable/bookmarkable. */
     #[Url]
@@ -40,10 +40,10 @@ new #[Layout('components.layouts.operator', ['title' => 'Search'])] class extend
     /** Per-kind result cap — a broad term can't blow up the page or the query. */
     private const RESULT_CAP = 25;
 
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     /** @return array<string, mixed> */

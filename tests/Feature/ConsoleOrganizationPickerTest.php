@@ -6,6 +6,7 @@ use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
@@ -17,6 +18,10 @@ use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
  */
 function anEnvironmentAdmin(): void
 {
+    // `/admin` exists only on a multi-tenant deployment, so an environment administrator
+    // is a multi-tenant fact. {@see \App\Http\Middleware\RequireMultiTenant}.
+    multiTenantDeployment();
+
     platformRootEnvironment();
 
     $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
@@ -54,8 +59,22 @@ it('refuses an organization outside this environment rather than ignoring it', f
 })->group('security');
 
 it('is not reachable without an environment-admin session', function (): void {
+    $env = platformRootEnvironment();
+    multiTenantDeployment();
+
+    // A tenant environment, so the request is on the subject plane rather than falling back
+    // to the platform root (where `/admin` is refused by the plane bulkhead and the refusal
+    // would say nothing about the session gate under test).
+    $tenant = Environment::query()->create([
+        'name' => 'Tenant', 'slug' => 'picker-tenant', 'status' => 'active', 'is_default' => false,
+    ]);
+    serveOnTestHost($tenant);
+    expect($env->is_default)->toBeTrue();
+
+    // Refused by being sent AWAY — to the account host's open-environment door, not to a
+    // local credential form. Account credentials are never solicited on a tenant host.
     $this->post(route('environment.organization.choose'), ['organization' => 'anything'])
-        ->assertRedirect(route('admin.login'));
+        ->assertRedirect('https://cboxid.com/workspace/open/'.$tenant->id);
 })->group('security');
 
 it('shows the picker in the console chrome', function (): void {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\OperatorEnvironment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Testing\InteractsWithTenancy;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -10,7 +10,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Livewire\Volt\Volt;
 
@@ -19,10 +18,7 @@ uses(InteractsWithTenancy::class);
 /** Sign a fresh operator into the session — reads are pinned to the default plane. */
 function searchOperatorSignIn(string $email = 'search-op@platform.test'): PlatformOperator
 {
-    $op = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Op');
-    session([OperatorAuth::SESSION_KEY => $op->id]);
-
-    return $op;
+    return actAsOperator($email);
 }
 
 /** A real environment row so the plane can be resolved to a human label. */
@@ -71,9 +67,11 @@ it('shows a hint instead of querying for a short term', function (): void {
         ->assertViewHas('ready', true);
 });
 
-it('refuses a non-operator request with a 403', function (): void {
-    // No operator session — boot()'s per-request auth re-check aborts every request.
-    Volt::test('operator.search')->assertForbidden();
+it('refuses a non-operator request with a 404', function (): void {
+    // Nobody with operator authority — boot()'s per-request re-check aborts every request,
+    // and it answers 404 exactly as the route gate does: a 403 from a page that only staff
+    // may see is itself the disclosure.
+    Volt::test('operator.search')->assertStatus(404);
 });
 
 it('treats a literal underscore as text, not a LIKE wildcard', function (): void {
@@ -96,17 +94,16 @@ it('treats a literal underscore as text, not a LIKE wildcard', function (): void
 });
 
 it('jumps to a result in another plane by first re-pointing the console at its environment', function (): void {
-    $op = searchOperatorSignIn();
+    searchOperatorSignIn();
     $planeB = makePlane('Plane B', 'plane-b');
 
     $orgId = $this->runAsEnvironment($planeB, fn (): string => app(Organizations::class)
         ->create(new NewOrganization('Beta Org', 'beta-org'))->id);
 
     // The jump switches the operator's target plane, then redirects to the detail.
-    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
-        ->get(route('operator.search.jump', $orgId))
+    $this->get(route('operator.search.jump', $orgId))
         ->assertRedirect(route('operator.organization', $orgId))
-        ->assertSessionHas(OperatorAuth::ENV_KEY, 'plane-b');
+        ->assertSessionHas(OperatorEnvironment::SESSION_KEY, 'plane-b');
 
     // With the console now pinned to plane B, the plane-scoped detail page resolves
     // (it would have 404'd from the previous plane) and shows the tenant.
@@ -116,7 +113,7 @@ it('jumps to a result in another plane by first re-pointing the console at its e
 });
 
 it('jumps from a user result to that user\'s organization in its plane', function (): void {
-    $op = searchOperatorSignIn();
+    searchOperatorSignIn();
     $planeB = makePlane('Plane B', 'plane-b');
 
     $orgId = $this->runAsEnvironment($planeB, function (): string {
@@ -133,16 +130,14 @@ it('jumps from a user result to that user\'s organization in its plane', functio
         ->assertSee('gamma@acme.test')
         ->assertSee('Gamma Org');
 
-    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
-        ->get(route('operator.search.jump', $orgId))
+    $this->get(route('operator.search.jump', $orgId))
         ->assertRedirect(route('operator.organization', $orgId))
-        ->assertSessionHas(OperatorAuth::ENV_KEY, 'plane-b');
+        ->assertSessionHas(OperatorEnvironment::SESSION_KEY, 'plane-b');
 });
 
 it('404s a jump to an organization that does not exist in any plane', function (): void {
-    $op = searchOperatorSignIn();
+    searchOperatorSignIn();
 
-    $this->withSession([OperatorAuth::SESSION_KEY => $op->id])
-        ->get(route('operator.search.jump', 'org_does_not_exist'))
+    $this->get(route('operator.search.jump', 'org_does_not_exist'))
         ->assertNotFound();
 });

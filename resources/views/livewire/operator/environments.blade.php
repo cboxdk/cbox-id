@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\OperatorEnvironment;
 use Cbox\Id\Identity\Contracts\PasswordPolicyGuard;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\PolicyViolation;
@@ -27,7 +28,7 @@ use Livewire\Volt\Component;
  * above every environment, so switching has no identity guard — provisioning and
  * listing simply span every plane (the Environment model is not environment-owned).
  */
-new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width' => '72rem'])] class extends Component
 {
     public bool $creating = false;
 
@@ -51,9 +52,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
      * signed-out operator is refused even on a wire:click, not just the initial
      * GET (Livewire only re-runs persistent middleware on update requests).
      */
-    public function boot(OperatorAuth $auth): void
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     public function create(EnvironmentContext $context, KeyManager $keys): void
@@ -96,12 +97,12 @@ new #[Layout('components.layouts.operator', ['title' => 'Environments'])] class 
             : 'Environment "'.$environment->name.'" created. Add '.$domain.' from the environment\'s domain settings to verify it by DNS — an unverified domain cannot be its issuer.');
     }
 
-    public function switchTo(string $id): void
+    public function switchTo(string $id, OperatorEnvironment $target): void
     {
         $environment = Environment::query()->find($id);
 
         if ($environment !== null) {
-            session()->put(OperatorAuth::ENV_KEY, $environment->slug);
+            $target->pointAt($environment->slug);
             $this->redirect(route('operator.environments'), navigate: false);
         }
     }

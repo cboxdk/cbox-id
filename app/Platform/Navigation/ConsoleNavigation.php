@@ -7,6 +7,7 @@ namespace App\Platform\Navigation;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleLocation;
 use App\Platform\Health\ConsoleParityHealthCheck;
 use Cbox\Id\Platform\Enums\AccountRole;
@@ -35,6 +36,7 @@ class ConsoleNavigation
     public function workspace(?AccountRole $role): ConsoleNav
     {
         $areas = [
+            ...$this->platformAreas(),
             new NavArea('Overview', 'dashboard',
                 new NavPage('workspace.home', 'Projects'),
             ),
@@ -214,10 +216,49 @@ class ConsoleNavigation
         return $this->pages ??= app(ConsolePages::class);
     }
 
-    /** The operator plane — whoever runs this deployment, above every account. */
+    /**
+     * The operator plane — whoever runs this deployment, above every account.
+     *
+     * Kept as its own method for the route-to-area lookup in {@see all()}, which needs to
+     * know where a page lives regardless of who may see it. The RAIL no longer comes from
+     * here: {@see platformAreas()} folds these into the one console.
+     */
     public function operator(): ConsoleNav
     {
-        return new ConsoleNav(
+        return new ConsoleNav(...$this->platformAreaList());
+    }
+
+    /**
+     * The platform areas, shown only to whoever runs the deployment.
+     *
+     * These were a separate console — separate prefix, separate layout, separate sign-in —
+     * and the separation was never a security boundary. It was a consequence of
+     * `platform_operators` being a second credential store: with no way to ask "is this
+     * session staff", the only way to gate the pages was to put a different door in front
+     * of them. The operator is a subject now, so the question has an answer, and the pages
+     * become areas that appear for whoever may see them — which is how every other area in
+     * this rail has always worked.
+     *
+     * Placed FIRST rather than last. An operator's reason for opening the console is
+     * usually the platform, not their own account's projects; burying the platform under
+     * the personal areas would make the merged rail worse for the only people who see it.
+     *
+     * Asked of {@see ConsoleScope}, not of a flag threaded in by the caller: three layouts
+     * and a middleware would each have had to be handed the same answer, and an
+     * authorization invariant kept by hand across four call sites is the shape of every
+     * divergence this console has already been through.
+     *
+     * @return list<NavArea>
+     */
+    private function platformAreas(): array
+    {
+        return app(ConsoleScope::class)->isPlatformOperator() ? $this->platformAreaList() : [];
+    }
+
+    /** @return list<NavArea> */
+    private function platformAreaList(): array
+    {
+        return [
             new NavArea('Platform', 'layers',
                 new NavPage('operator.environments', 'Environments'),
                 new NavPage('operator.accounts', 'Accounts'),
@@ -231,7 +272,7 @@ class ConsoleNavigation
                 new NavPage('operator.operators', 'Operators'),
                 new NavPage('operator.security', 'Security'),
             ),
-        );
+        ];
     }
 
     /**

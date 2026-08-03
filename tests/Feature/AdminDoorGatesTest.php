@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\EnvironmentAdminController;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -11,6 +12,7 @@ use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Cbox\Id\Platform\Enums\AccountStatus;
@@ -18,6 +20,8 @@ use Cbox\Id\Platform\Models\Account;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -51,6 +55,24 @@ function adminDoorSetup(): object
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
 
     return $result;
+}
+
+/**
+ * The SaaS shape the HANDOFF route lives in, on top of {@see adminDoorSetup()}.
+ *
+ * The handoff is the account console's way into a tenant's admin console, and the whole
+ * `/admin` prefix carries `multi.tenant` — on a single-tenant deployment it 404s, because
+ * the lone environment is the platform root and belongs to no account, so nobody could
+ * ever be handed off into it. The local-password tests above deliberately do NOT get this:
+ * they drive the component directly and are about {@see MemberCredentialGate}, not routing.
+ */
+function handoffShape(Environment $environment): void
+{
+    multiTenantDeployment();
+
+    // …and the request must land on a host that resolves to a NON-root environment, or
+    // `plane:subject` refuses it with a 404 indistinguishable from the tenancy gate's.
+    serveOnTestHost($environment);
 }
 
 it('lets a valid account member through the local admin door', function (): void {
@@ -179,7 +201,7 @@ it('locks the local admin door out at the policy threshold', function (): void {
  */
 it('refuses a handoff for a member whose account has been suspended', function (): void {
     $result = adminDoorSetup();
-    serveOnTestHost($result->environment);
+    handoffShape($result->environment);
 
     $subjectId = (string) $result->member->refresh()->subject_id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
@@ -187,14 +209,33 @@ it('refuses a handoff for a member whose account has been suspended', function (
     // Suspended between the mint and the redemption — the tab that sat open.
     Account::query()->whereKey($result->account->id)->update(['status' => AccountStatus::Suspended]);
 
-    $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
+    // The OUTER wall, which the SaaS shape put in front of this door and which the
+    // single-tenant baseline hid: `DatabaseEnvironmentResolver::servable()` refuses to
+    // resolve an environment whose account is not active, so the tenant host stops
+    // resolving at all, falls back to the platform root, and `plane:subject` 404s the
+    // whole console. The redemption never reaches a controller.
+    $this->get("/admin/handoff?token={$token}")->assertNotFound();
 
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    // The INNER check, driven at the controller because the wall above is now the reason
+    // an HTTP request cannot reach it. Not redundant with the wall: host resolution is
+    // cached ({@see \Cbox\Id\Organization\CachedEnvironmentResolver}), so a suspension that
+    // lands between the mint and the redemption can still meet a warm, servable
+    // environment — and this is the check that refuses the token then.
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+
+    $response = app()->call(
+        [app(EnvironmentAdminController::class), 'handoff'],
+        ['request' => Request::create('/admin/handoff', 'GET', ['token' => $token])],
+    );
+
+    expect($response)->toBeInstanceOf(RedirectResponse::class)
+        ->and($response->getTargetUrl())->toBe(route('admin.login'))
+        ->and(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
 });
 
 it('refuses a handoff when the policy mandates SSO', function (): void {
     $result = adminDoorSetup();
-    serveOnTestHost($result->environment);
+    handoffShape($result->environment);
 
     $subjectId = (string) $result->member->refresh()->subject_id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);

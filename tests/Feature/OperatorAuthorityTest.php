@@ -1,0 +1,237 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Navigation\ConsoleNavigation;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+
+uses(RefreshDatabase::class);
+
+/**
+ * Operator authority is a PERMISSION on the session that already exists.
+ *
+ * The platform pages — environments, accounts, operators, platform security — used to be
+ * a second console: their own URL prefix, their own layout, their own sign-in form. None
+ * of that was a security boundary. It was a consequence of `platform_operators` being a
+ * second credential store, with an email and a bcrypt hash and none of the protections
+ * that guard every other sign-in here — password policy, breach refusal, lockout, TOTP,
+ * passkeys, step-up, session revocation. The widest reach in the product sat behind the
+ * weakest door, and it was weakest BECAUSE it was separate.
+ *
+ * The operator is a subject now, so the separation has nothing left to justify it: the
+ * pages become areas in the one console that appear for whoever may see them, exactly
+ * like Billing already appears only for a member who may read it.
+ *
+ * These cover the rail. The middleware half — 404 for a signed-in non-operator, sign-in
+ * for a visitor — lives with the middleware.
+ */
+function anAccountOwner(string $email = 'owner@acme.example'): object
+{
+    // The root FIRST, and that ordering is the whole fixture. An account provisioned with
+    // no platform root is in the first-install bootstrap window: its member has no subject
+    // yet, and neither does an operator created alongside it — so every assertion below
+    // would be about an unlinked row rather than about authority. Getting this backwards
+    // is what made the first run of these tests fail, and it failed for a real reason.
+    platformRootEnvironment();
+
+    return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        accountName: 'Acme',
+        ownerEmail: $email,
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ))->member;
+}
+
+/**
+ * Route names of every page in the rail, flattened.
+ *
+ * Read through `groups()` — the same projection the layout consumes — rather than off the
+ * value objects. A rail that is correct in the model and wrong in the projection is still
+ * a rail nobody can use, and the projection is where the layout gets its answer.
+ *
+ * @return list<string>
+ */
+function railRoutes(): array
+{
+    $member = app(AccountAuth::class)->current();
+    $routes = [];
+
+    foreach (app(ConsoleNavigation::class)->workspace($member?->role)->groups() as $area) {
+        foreach ($area['pages'] as $page) {
+            $routes[] = $page['route'];
+        }
+    }
+
+    return $routes;
+}
+
+it('keeps the platform pages out of an ordinary member\'s rail', function (): void {
+    $member = anAccountOwner();
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id]);
+
+    expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
+        ->and(railRoutes())->not->toContain('operator.environments')
+        ->and(railRoutes())->not->toContain('operator.operators');
+})->group('security');
+
+/**
+ * The other half. A gate that is never open is not a gate — it is a page nobody can
+ * reach, which is the bug this whole change replaces rather than the fix for it.
+ *
+ * Note the member session, NOT a subject session. That distinction is the one that broke
+ * the first implementation: an account member's session key holds the MEMBER id, and the
+ * credential behind it is the subject's only because the member row points at one. A
+ * check that read the subject session alone answered "nobody" across the entire account
+ * console — which is precisely where an operator signs in.
+ */
+it('gives the platform pages to an operator, in the same rail', function (): void {
+    $member = anAccountOwner('staff@cbox.test');
+
+    // The same person, holding an operator record. `create()` reuses the existing subject
+    // for that address rather than minting a second one.
+    app(PlatformOperators::class)->create('staff@cbox.test', 'a-strong-unbreached-passphrase', 'Staff');
+
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id]);
+
+    expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue()
+        ->and(railRoutes())->toContain('operator.environments')
+        ->and(railRoutes())->toContain('operator.operators');
+})->group('security');
+
+/**
+ * Administering an environment is not running the deployment.
+ *
+ * The two sessions coexist, which is why this needs saying in code. An environment admin
+ * arrives through the account console — `/workspace/open/{env}` hands off — and the
+ * handoff establishes `cbox.env_admin_subject` without clearing `cbox.account_member`;
+ * `session()->regenerate()` rotates the id and keeps the data. So a browser sitting on
+ * the environment console is holding a member session too, and a resolver that simply
+ * took the first subject it could find would hand that admin the platform's own pages
+ * while they are standing at a tenant's altitude.
+ *
+ * The refusal is deliberate rather than incidental: if this person really does run the
+ * deployment, they get the platform pages through their own sign-in, at the altitude
+ * those pages belong to — not as a side effect of which console they last opened.
+ */
+it('does not make an environment administrator an operator', function (): void {
+    $member = anAccountOwner('staff@cbox.test');
+
+    app(PlatformOperators::class)->create('staff@cbox.test', 'a-strong-unbreached-passphrase', 'Staff');
+
+    // The FULL handoff state, not half of it. `EnvironmentAdminAuth::check()` resolves the
+    // member and compares the session's bound environment to the host's — a session key
+    // alone is not an environment admin, and asserting against half a session would have
+    // been asserting against a state no browser is ever in.
+    $environment = serveOnTestHost($member->account->environments()->firstOrFail());
+
+    $this->withSession([
+        AccountAuth::SESSION_KEY => $member->id,
+        EnvironmentAdminAuth::SESSION_KEY => $member->subject_id,
+        EnvironmentAdminAuth::ENV_KEY => $environment->id,
+    ]);
+
+    app(EnvironmentContext::class)
+        ->set(GenericEnvironment::of($environment->id));
+
+    expect(app(ConsoleScope::class)->isPlatformOperator())
+        ->toBeFalse('an environment admin was handed the platform pages by their leftover member session');
+})->group('security');
+
+/**
+ * Suspension has to reach the RAIL, not only the next sign-in.
+ *
+ * Authority rides a session that already exists, and suspending an operator has never
+ * revoked their subject sessions. A check that ran only at sign-in would take away
+ * tomorrow's access while leaving today's untouched — which is not what suspending
+ * someone means.
+ */
+it('takes the platform pages away from a suspended operator mid-session', function (): void {
+    $member = anAccountOwner('staff@cbox.test');
+
+    $operators = app(PlatformOperators::class);
+    $operator = $operators->create('staff@cbox.test', 'a-strong-unbreached-passphrase', 'Staff');
+    // Two, because the platform refuses to suspend its last remaining operator.
+    $other = $operators->create('other@cbox.test', 'a-strong-unbreached-passphrase', 'Other');
+
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id]);
+    expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue();
+
+    $operators->suspend($operator->id, $other->id);
+
+    // A fresh scope, because the answer is memoised per request and this is a new one.
+    app()->forgetScopedInstances();
+
+    expect(app(ConsoleScope::class)->isPlatformOperator())
+        ->toBeFalse('a suspended operator kept the platform pages in the session they already held');
+})->group('security');
+
+/**
+ * The loop this gate shipped with, in one test.
+ *
+ * `AuthenticateOperator` sends an unauthenticated visitor to the account sign-in. That
+ * door writes an account-MEMBER session and nothing else. The gate's first version then
+ * asked the SUBJECT session — so an operator who did exactly what they were told landed
+ * back on the sign-in they had just completed, indefinitely, with correct credentials and
+ * no message explaining anything.
+ *
+ * Asserting "the gate lets an operator through" is not enough on its own: it passes if
+ * the test fabricates a session shape no door produces. This signs in through the real
+ * door first, and only then knocks.
+ */
+it('lets an operator through the door it sent them to', function (): void {
+    $member = anAccountOwner('staff@cbox.test');
+    app(PlatformOperators::class)->create('staff@cbox.test', 'a-strong-unbreached-passphrase', 'Staff');
+
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
+
+    // Refused while signed out, and pointed at the account door.
+    $this->get('https://cboxid.com/operator')->assertRedirect(route('workspace.login'));
+
+    // Sign in the way that door actually does it.
+    $outcome = app(AccountAuth::class)->attempt(
+        Request::create('/workspace/login', 'POST'),
+        'staff@cbox.test',
+        'a-strong-unbreached-passphrase',
+    );
+
+    expect($outcome->name)->toBe('Ok', 'the account door refused an operator its own gate points at');
+
+    $this->withSession([AccountAuth::SESSION_KEY => $member->id])
+        ->get('https://cboxid.com/operator')
+        ->assertSuccessful();
+})->group('security');
+
+/**
+ * The sign-in a refused visitor is pointed at depends on the deployment SHAPE.
+ *
+ * Both routes are always registered, so `Route::has()` cannot tell them apart — which one
+ * answers is a question about the plane. `workspace.login` carries `plane:account`, false
+ * on a single-host install because there is no separate account plane when there is no
+ * host split. Pointing a self-hosted operator there points them at a 404, and a gate whose
+ * refusal is itself a dead end is worse than no gate.
+ */
+it('points a refused visitor at the sign-in this deployment actually serves', function (): void {
+    // An INSTALLED deployment, stated. An empty one answers every human page with its
+    // first-run screen instead, which is right — and which would have made this test pass
+    // or fail on a fact it is not about.
+    installedDeployment();
+
+    // Single-host: the ordinary door.
+    $this->get('/operator')->assertRedirect(route('login'));
+
+    // SaaS: the account door, on the account host.
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
+
+    $this->get('https://cboxid.com/operator')->assertRedirect(route('workspace.login'));
+})->group('security');

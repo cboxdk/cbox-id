@@ -31,6 +31,10 @@ if (! function_exists('erasureConsoleSetup')) {
     /** Provision an account + environment and pin an env-admin session on it. */
     function erasureConsoleSetup(): void
     {
+        // The user detail page lives under `/admin`, which exists only on a multi-tenant
+        // deployment. {@see \App\Http\Middleware\RequireMultiTenant}.
+        multiTenantDeployment();
+
         platformRootEnvironment();
 
         $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\OperatorAuth;
+use App\Platform\Console\ConsoleScope;
 use Carbon\CarbonInterface;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -32,12 +32,12 @@ use Livewire\Volt\Component;
  * Suspension is reversible on this same screen; nothing here deletes or purges, which
  * is a separate, later stage.
  */
-new #[Layout('components.layouts.operator', ['title' => 'Accounts'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => '72rem'])] class extends Component
 {
-    /** Re-check operator auth on every request, including Livewire actions. */
-    public function boot(OperatorAuth $auth): void
+    /** Re-check operator AUTHORITY on every request, including Livewire actions. */
+    public function boot(ConsoleScope $scope): void
     {
-        abort_unless($auth->check(), 403);
+        abort_unless($scope->isPlatformOperator(), 404);
     }
 
     /**
@@ -52,9 +52,9 @@ new #[Layout('components.layouts.operator', ['title' => 'Accounts'])] class exte
      * beyond tidiness — an audit written at the call site is one a second caller can
      * silently forget, and this screen was the only caller there had ever been.
      */
-    public function toggleStatus(string $id, Accounts $accounts, OperatorAuth $auth): void
+    public function toggleStatus(string $id, Accounts $accounts, ConsoleScope $scope): void
     {
-        $actorId = $auth->id();
+        $actorId = $scope->operator()?->id;
         if ($actorId === null) {
             abort(403);
         }
