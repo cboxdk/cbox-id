@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\VerifiedEmailGate;
 use App\Platform\AdminPortal;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalScope;
@@ -22,7 +23,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class extends Component
 {
     public bool $creating = false;
 
@@ -269,7 +270,18 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
     {
         return [
             'me' => app(CurrentUser::class),
-            'entitled' => app(Entitlements::class)->entitled($this->orgId(), 'sso'),
+            // The view's own authorization question, asked through the scope so it gets
+            // the same answer on both planes. It used to read CurrentUser::isAdmin()
+            // directly in ten places — a question only the organization plane can answer,
+            // so on the environment plane every admin control silently disappeared and
+            // the page rendered as an empty read-only shell.
+            'mayAdminister' => app(ConsoleScope::class)->mayAdminister(),
+            // "No organization chosen" is a real state on the environment plane and must
+            // not be reported as "not entitled" — entitled() answers false either way,
+            // and telling an administrator to contact their account team when they simply
+            // have not picked an organization sends them somewhere useless.
+            'needsOrganization' => app(ConsoleScope::class)->organizationId() === null,
+            'entitled' => app(ConsoleScope::class)->entitled('sso'),
             'connections' => Connection::query()
                 ->where('organization_id', $this->orgId())
                 ->orderByDesc('created_at')
@@ -278,9 +290,18 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
         ];
     }
 
+    /**
+     * The organization this page is acting on, or '' when the environment plane has not
+     * chosen one.
+     *
+     * Empty rather than a refusal because this is the READ path: the page must render so
+     * an administrator can use the picker. Writes cannot slip through on an empty id —
+     * guardEntitled() below refuses when no organization is resolved, and it runs before
+     * every mutating action.
+     */
     private function orgId(): string
     {
-        return app(CurrentUser::class)->organizationId() ?? '';
+        return app(ConsoleScope::class)->organizationId() ?? '';
     }
 
     public function boot(): void
@@ -292,9 +313,17 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
         $this->authorizeAdmin();
     }
 
+    /**
+     * Through ConsoleScope, so this page is the SAME page on both planes.
+     *
+     * It used to read CurrentUser::isAdmin() directly, which is a question only the
+     * organization plane can answer — and is why an environment-plane copy of this page
+     * had to exist at all. The copy then drifted: it never grew domain verification, the
+     * Admin Portal, or an entitlement check.
+     */
     private function authorizeAdmin(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     /**
@@ -304,14 +333,16 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
      */
     private function guardEntitled(): void
     {
-        abort_unless(app(Entitlements::class)->entitled($this->orgId(), 'sso'), 403);
+        // Also the guard that stops a write with no organization chosen: entitled()
+        // answers false when nothing is resolved rather than defaulting open.
+        app(ConsoleScope::class)->assertEntitled('sso');
     }
 }; ?>
 
 <div>
     <x-page-header title="Single sign-on" :help="\App\Platform\Help\HelpTopic::SingleSignOn"
                    subtitle="Let people sign in with the company account they already have, instead of a separate password here.">
-        @if ($me->isAdmin() && $entitled)
+        @if ($mayAdminister && $entitled)
             <x-slot:actions>
                 <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Invite your IT admin</button>
                 <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
@@ -321,7 +352,12 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
 
     <div class="mt-8 space-y-6">
 
-    @if (! $entitled)
+    @if ($needsOrganization)
+        <div class="card">
+            <x-empty-state icon="layers" title="Choose an organization"
+                           body="This console administers every organization in the environment, so pick the one you want to configure single sign-on for — the selector sits in the bar at the top of the page." />
+        </div>
+    @elseif (! $entitled)
         <div class="card">
             <x-empty-state icon="connections" title="Single sign-on is an Enterprise feature"
                            :help="\App\Platform\Help\HelpTopic::SingleSignOn"
@@ -329,7 +365,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
         </div>
     @else
 
-    @if ($portalUrl && $me->isAdmin())
+    @if ($portalUrl && $mayAdminister)
         <div class="card p-5" style="border-color:color-mix(in oklch, var(--accent) 40%, transparent)">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -342,7 +378,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
         </div>
     @endif
 
-    @if ($creating && $me->isAdmin())
+    @if ($creating && $mayAdminister)
         <form wire:submit="create" class="card p-5 space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -447,7 +483,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
                         </div>
                         <p class="mt-1 text-xs mono truncate" style="color:var(--muted-foreground)">{{ $c->id }}</p>
                     </div>
-                    @if ($me->isAdmin() && ! $c->isActive())
+                    @if ($mayAdminister && ! $c->isActive())
                         <button wire:click="activate('{{ $c->id }}')" class="btn btn-primary btn-sm"><x-icon name="check" class="w-4 h-4" /> Activate</button>
                     @endif
                 </div>
@@ -470,7 +506,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
                                    'Verify the email domains you own, so your people are routed to your provider automatically.',
                                    'Activate the connection once a test sign-in works.',
                                ]">
-                    @if ($me->isAdmin())
+                    @if ($mayAdminister)
                         <x-slot:actions>
                             <button wire:click="$toggle('creating')" class="btn btn-primary"><x-icon name="plus" class="w-4 h-4" /> New connection</button>
                             <button wire:click="invite" class="btn btn-ghost"><x-icon name="members" class="w-4 h-4" /> Hand it to your IT admin</button>
@@ -488,7 +524,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
             <p class="mt-1 text-sm" style="color:var(--muted-foreground)">Prove ownership of an email domain to route your team to SSO automatically.</p>
         </div>
 
-        @if ($me->isAdmin())
+        @if ($mayAdminister)
             <form wire:submit="addDomain" class="card p-5 flex flex-wrap items-end gap-3">
                 <div class="flex-1 min-w-[14rem]">
                     <label class="label" for="domain">Domain</label>
@@ -499,7 +535,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
             </form>
         @endif
 
-        @if ($dnsHost && $dnsToken && $me->isAdmin())
+        @if ($dnsHost && $dnsToken && $mayAdminister)
             <div class="card p-5" style="border-color:color-mix(in oklch, var(--accent) 40%, transparent)">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
@@ -529,7 +565,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
                                 @endif
                             </div>
                         </div>
-                        @if ($me->isAdmin())
+                        @if ($mayAdminister)
                             <div class="flex items-center gap-2">
                                 @unless ($d->verified_at)
                                     <button wire:click="verifyDomain('{{ $d->id }}')" class="btn btn-primary btn-sm"><x-icon name="check" class="w-4 h-4" /> Verify</button>
@@ -543,7 +579,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
                         @endif
                     </div>
 
-                    @if ($d->verified_at && $me->isAdmin())
+                    @if ($d->verified_at && $mayAdminister)
                         <div class="mt-4 flex items-start justify-between gap-3 rounded-lg px-3 py-3" style="background:var(--secondary)">
                             <div class="min-w-0">
                                 <p class="text-sm font-medium">Capture</p>
