@@ -2,23 +2,19 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\EnforceImpersonationWindow;
-use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
+use App\Platform\Console\ConsoleRoutes;
 
-// Gated on the feature, so the route doesn't exist on a host without risk-plus.
-// `platform.auth` is the host console's auth guard (cbox-id); adjust per host.
-Route::middleware([
-    'web',
-    // The same stack every host console route carries. `plane:subject` confines these
-    // pages to a tenant host rather than answering on the account root, and the
-    // impersonation window is ENFORCED rather than inherited — without it, an
-    // impersonation that outlived its 30-minute box keeps reading these pages, because
-    // reads sit on the call guard's allowlist and nothing else stops them.
-    'plane:subject',
-    EnforceImpersonationWindow::class,
-    'platform.auth',
-    'console.feature:risk-plus',
-])->group(function (): void {
-    Volt::route('/security/risk-events', 'risk-plus.events')->name('risk-plus.events');
-});
+/*
+ * Both planes, one component — the middleware stacks live in ConsoleRoutes.
+ *
+ * Risk events are recorded per ENVIRONMENT (they carry an email and no organization), so
+ * the environment plane is the one where the feed is complete. It was the plane that
+ * could not open it: the module is always on, and an environment under credential
+ * stuffing was visible only to whichever tenant's members happened to be targeted.
+ */
+ConsoleRoutes::page(
+    feature: 'risk-plus',
+    uri: '/security/risk-events',
+    component: 'risk-plus.events',
+    name: 'risk-plus.events',
+);

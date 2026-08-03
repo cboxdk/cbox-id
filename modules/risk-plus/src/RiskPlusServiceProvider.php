@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\RiskPlus;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\RiskPlus\Contracts\GeoLocator;
 use Cbox\Id\RiskPlus\Geo\NullGeoLocator;
@@ -90,8 +92,17 @@ class RiskPlusServiceProvider extends ServiceProvider
         // events are a feed of what happened, which is what that area holds — and the
         // rail already had a "Security" entry (My account › Security) meaning something
         // entirely different, which is the worst kind of label collision.
-        Console::nav()->area('audit')
-            ->page('risk-plus.events', 'Risk events', feature: 'risk-plus', order: 40);
+        // Through ConsolePages, which serves BOTH planes by default. The old call went to
+        // the organization rail's registry and nowhere else — so a feed of every flagged
+        // sign-in in the ENVIRONMENT was readable only from a plane that has to narrow it
+        // to one organization's members to be safe.
+        $this->app->make(ConsolePages::class)->add(
+            area: ConsoleArea::Logs,
+            route: 'risk-plus.events',
+            label: 'Risk events',
+            feature: 'risk-plus',
+            order: 40,
+        );
 
         Console::dashboardCard(fn (): string => $this->riskCard(), 6);
     }
