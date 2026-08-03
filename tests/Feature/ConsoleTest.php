@@ -32,6 +32,11 @@ function owner(): string
     $subject = app(Subjects::class)->create('owner@acme.test', 'Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-console'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    // An established owner has confirmed their address — see actingAsRole() in Pest.php.
+    app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
+    $subject = app(Subjects::class)->find($subject->id) ?? $subject;
+
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 

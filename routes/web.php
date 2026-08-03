@@ -262,6 +262,11 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // one route, so it is reachable only by someone who is signed in and owes a change.
     Volt::route('/password/change', 'auth.change-password')->name('password.change');
 
+    // The social link confirmation. Same shape as the password hold above and for the
+    // same reason: reachable only by someone signed in who has an identity waiting on
+    // their answer, and exempt from the hold so the redirect cannot loop.
+    Volt::route('/link/confirm', 'auth.link-confirm')->name('link.confirm');
+
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
     Volt::route('/account', 'account')->name('account');

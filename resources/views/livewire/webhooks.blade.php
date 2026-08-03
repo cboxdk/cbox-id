@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\CurrentUser;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
@@ -43,6 +44,7 @@ new #[Layout('components.layouts.app', ['title' => 'Webhooks'])] class extends C
     public function create(WebhookRegistry $webhooks): void
     {
         $this->authorizeAdmin();
+        app(VerifiedEmailGate::class)->require('create a webhook');
         $this->validate();
 
         $registered = $webhooks->register($this->orgId(), $this->url, array_values($this->eventTypes));

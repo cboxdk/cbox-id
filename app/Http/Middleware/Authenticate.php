@@ -34,6 +34,7 @@ final class Authenticate
         private readonly AdminPasswords $adminPasswords,
         private readonly PasswordExpiry $passwordExpiry,
         private readonly MfaMandate $mfaMandate,
+        private readonly PlatformAuth $auth,
     ) {}
 
     /**
@@ -137,6 +138,15 @@ final class Authenticate
             return redirect()->route('password.change');
         }
 
+        // A federated identity is waiting to be attached to THIS account and nobody has
+        // said yes yet. Held here rather than resolved at sign-in so it cannot be dodged
+        // by arriving through a path that skips the password form — magic link, MFA,
+        // invitation — and so the answer is always given by someone who is already
+        // authenticated. Both buttons on that screen end the hold; it never repeats.
+        if ($this->auth->pendingLink($subject->id) !== null) {
+            return redirect()->route('link.confirm');
+        }
+
         // A tenant that requires a second factor cannot enforce it by turning people
         // away — that locks out precisely the people who still need to enrol. Hold them
         // on the security page instead, which is where enrolment lives.
@@ -170,7 +180,7 @@ final class Authenticate
         // password-change page instead of being answered with an OIDC error — and under
         // `require_par`, PAR is the ONLY legal way to send prompt=none, so the carve-out
         // was dead there entirely.
-        return $request->routeIs('password.change', 'logout', 'oauth.authorize', 'oauth.authorize.post');
+        return $request->routeIs('password.change', 'link.confirm', 'logout', 'oauth.authorize', 'oauth.authorize.post');
     }
 
     /**

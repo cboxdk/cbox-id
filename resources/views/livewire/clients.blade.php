@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\CurrentUser;
 use App\Platform\ScopeCatalog;
 use App\Rules\SecureRedirectUri;
@@ -60,6 +61,7 @@ new #[Layout('components.layouts.app', ['title' => 'Apps & API keys'])] class ex
     public function create(ClientRegistry $clients, ScopeCatalog $catalog): void
     {
         $this->authorizeAdmin();
+        app(VerifiedEmailGate::class)->require('create an application');
 
         $this->validate([
             'name' => ['required', 'string', 'max:190'],

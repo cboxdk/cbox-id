@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\AdminPortal;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
@@ -71,6 +72,7 @@ new #[Layout('components.layouts.app', ['title' => 'Single sign-on'])] class ext
     {
         $this->guardEntitled();
         $this->authorizeAdmin();
+        app(VerifiedEmailGate::class)->require('create an identity connection');
 
         $type = ConnectionType::from($this->type);
 

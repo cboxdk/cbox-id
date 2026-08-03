@@ -45,7 +45,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
      */
     public function mount(?string $slug = null): void
     {
-        $this->pendingLink = app(PlatformAuth::class)->pendingLinkLabel();
+        $this->pendingLink = app(PlatformAuth::class)->pendingLink()?->label();
 
         if ($slug === null) {
             return;
@@ -231,7 +231,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
     @if ($pendingLink)
         <div class="mt-5 rounded-lg px-3.5 py-3 text-sm" style="background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
-            <b>Connect your {{ $pendingLink }} account.</b> Sign in below with your existing method and we'll link it to your account.
+            <b>Someone signed in with {{ $pendingLink }} using this email.</b> That email already has an account here. Sign in below and we'll ask whether you want to connect {{ $pendingLink }} to it.
         </div>
     @endif
 

@@ -45,6 +45,24 @@ final class CurrentUser
         $this->subject = $subject;
     }
 
+    /**
+     * Whether THIS platform has verified the signed-in person's address.
+     *
+     * Never whether a federated provider said it had. A social sign-in creates an
+     * account exactly as a signup does — usable immediately, with the address confirmed
+     * out of band — so this is false for a person who arrived through Google five
+     * minutes ago and has not yet clicked our link.
+     *
+     * Read from the subject the middleware already loaded, so a gate costs nothing. That
+     * matters more than it looks: the two places that check verification today each
+     * re-query for it, and a check with a price attached is a check that gets applied
+     * unevenly.
+     */
+    public function emailVerified(): bool
+    {
+        return $this->subject?->emailVerified === true;
+    }
+
     public function role(): ?MembershipRole
     {
         return $this->role;

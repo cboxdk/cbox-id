@@ -328,62 +328,91 @@ final class PlatformAuth
      */
     public function startPendingLink(FederatedPrincipal $principal): void
     {
-        session()->put(self::PENDING_LINK_KEY, [
-            'provider' => $principal->provider,
-            'subject' => $principal->subject,
-            'email' => $principal->email,
-            'name' => $principal->name,
-            'raw' => $principal->raw,
-        ]);
+        session()->put(self::PENDING_LINK_KEY, PendingLink::hold($principal, now()->getTimestamp())->toArray());
     }
 
     /**
-     * The human label of a provider awaiting linking (e.g. "Google"), or null.
+     * The held identity, or null when there is none, it has expired, or it is not the
+     * one this subject was asked about.
+     *
+     * Expiry is enforced on READ rather than by a scheduled sweep, because the session
+     * is the only place it lives — nothing else would ever come along to clear it.
      */
-    public function pendingLinkLabel(): ?string
+    public function pendingLink(?string $subjectId = null): ?PendingLink
     {
-        $pending = session()->get(self::PENDING_LINK_KEY);
-        $provider = is_array($pending) && is_string($pending['provider'] ?? null) ? $pending['provider'] : null;
+        $pending = PendingLink::fromArray(session()->get(self::PENDING_LINK_KEY));
 
-        return $provider === null ? null : SocialProviders::label(str_replace('social:', '', $provider));
+        if ($pending === null || $pending->expired(now()->getTimestamp())) {
+            session()->forget(self::PENDING_LINK_KEY);
+
+            return null;
+        }
+
+        if ($subjectId !== null && $pending->awaitingSubjectId !== $subjectId) {
+            return null;
+        }
+
+        return $pending;
     }
 
-    private function applyPendingLink(string $subjectId): void
+    /** Discard a held identity — the "No, that wasn't me" answer. */
+    public function discardPendingLink(): void
     {
-        $pending = session()->pull(self::PENDING_LINK_KEY);
+        session()->forget(self::PENDING_LINK_KEY);
+    }
 
-        if (! is_array($pending) || ! is_string($pending['provider'] ?? null) || ! is_string($pending['subject'] ?? null)) {
-            return;
+    /**
+     * Attach the held identity to the account that was asked about, and only that one.
+     *
+     * This replaced an automatic link gated on the held identity's email matching the
+     * account's. That test was wrong in both directions. Too strict: people have several
+     * addresses at one provider — a GitHub account may carry five — so the legitimate
+     * owner's link was silently discarded and the flow simply appeared not to work. Too
+     * weak: it leant on the provider having verified the address, which is the one thing
+     * we had already decided we cannot assume. Discord will carry whatever someone typed.
+     *
+     * Asking outright is both safer and kinder. Confirming proves three things at once:
+     * control of the provider account (they completed its sign-in), control of this
+     * account (they authenticated here), and intent (they said so). No address equality
+     * is required, and none is implied.
+     */
+    public function confirmPendingLink(string $subjectId): bool
+    {
+        $pending = $this->pendingLink($subjectId);
+
+        if ($pending === null) {
+            return false;
         }
 
-        // Only auto-complete the link when the held identity's verified email
-        // matches the account that just authenticated. Otherwise the pending
-        // identity belongs to someone else, and stapling it onto whoever signs in
-        // next would let an attacker attach their provider account to a victim who
-        // happens to log in afterwards. On a mismatch we discard it (already
-        // pulled) rather than link.
-        $pendingEmail = is_string($pending['email'] ?? null) ? $pending['email'] : null;
-        $subjectEmail = $this->subjects->find($subjectId)?->email;
-
-        if ($pendingEmail === null
-            || $subjectEmail === null
-            || ! hash_equals(mb_strtolower($subjectEmail), mb_strtolower($pendingEmail))) {
-            return;
-        }
-
-        $raw = $pending['raw'] ?? null;
+        session()->forget(self::PENDING_LINK_KEY);
 
         try {
-            $this->subjects->link($subjectId, new FederatedPrincipal(
-                provider: $pending['provider'],
-                subject: $pending['subject'],
-                email: $pendingEmail,
-                name: is_string($pending['name'] ?? null) ? $pending['name'] : null,
-                raw: is_array($raw) ? array_filter($raw, 'is_string', ARRAY_FILTER_USE_KEY) : [],
-            ));
+            $this->subjects->link($subjectId, $pending->principal());
         } catch (IdentityAlreadyLinked) {
-            // The identity is already attached elsewhere — nothing to do.
+            // Attached elsewhere in the meantime. Nothing to do, and nothing to tell the
+            // user that would not also tell them where that identity lives.
+            return false;
         }
+
+        return true;
+    }
+
+    /**
+     * Bind a held identity to the account that just authenticated — WITHOUT linking it.
+     *
+     * Called from every path that establishes a session, so the interstitial cannot be
+     * dodged by arriving via magic link, MFA or an invitation instead of the password
+     * form. The link itself only ever happens in confirmPendingLink().
+     */
+    private function applyPendingLink(string $subjectId): void
+    {
+        $pending = $this->pendingLink();
+
+        if ($pending === null) {
+            return;
+        }
+
+        session()->put(self::PENDING_LINK_KEY, $pending->awaiting($subjectId)->toArray());
     }
 
     /**

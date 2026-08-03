@@ -172,11 +172,22 @@ const IMPERSONATION_REASON = 'Investigating support ticket #4271';
  *
  * @return array{0: string, 1: Organization}
  */
-function actingAsRole(MembershipRole $role): array
+function actingAsRole(MembershipRole $role, bool $emailVerified = true): array
 {
     $subject = app(Subjects::class)->create($role->value.'@acme.test', $role->label(), 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role->value));
     app(Memberships::class)->add($org->id, $subject->id, $role);
+
+    // Verified by default, because that is what an established member of an established
+    // organization IS. The alternative — every fixture unverified — meant the moment a
+    // rule was written about unverified accounts, dozens of unrelated tests started
+    // exercising it by accident, and the fixture rather than the rule would have been
+    // blamed. Pass false to test the rule deliberately.
+    if ($emailVerified) {
+        app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
+        $subject = app(Subjects::class)->find($subject->id) ?? $subject;
+    }
+
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
@@ -192,6 +203,12 @@ function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = Membership
     $subject = app(Subjects::class)->create("admin@{$slug}.test", 'Admin', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
     app(Memberships::class)->add($org->id, $subject->id, $role);
+
+    // See actingAsRole(): an established admin has confirmed their address, and the
+    // thing under test here is entitlements, not verification.
+    app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
+    $subject = app(Subjects::class)->find($subject->id) ?? $subject;
+
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
@@ -35,6 +36,7 @@ new #[Layout('components.layouts.app', ['title' => 'Roles'])] class extends Comp
     public function create(Roles $roles): void
     {
         $this->authorizeAdmin();
+        app(VerifiedEmailGate::class)->require('create a role');
         $this->validate();
 
         // Only allow scoping to an app this org may actually use — never trust the
