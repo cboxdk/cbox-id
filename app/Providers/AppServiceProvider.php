@@ -9,7 +9,10 @@ use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\Health\ConsoleParityHealthCheck;
+use App\Platform\Health\TenancyHealthCheck;
 use Cbox\Dns\Dns;
+use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
@@ -60,6 +63,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Contributed to `cbox-id:doctor` rather than shipped as a second health command.
+        // Both findings these catch failed silently — a deployment claiming a shape it
+        // cannot serve, and two console planes grown apart — so the only thing that makes
+        // them visible is a command someone actually runs.
+        $checks = $this->app->make(HealthChecks::class);
+        $checks->add($this->app->make(TenancyHealthCheck::class));
+        $checks->add($this->app->make(ConsoleParityHealthCheck::class));
+
         // Real email never leaves a sandbox environment.
         Event::listen(MessageSending::class, SuppressSandboxMail::class);
 

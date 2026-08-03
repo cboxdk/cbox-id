@@ -34,8 +34,10 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
     $role = app(Roles::class)->define($orgId, 'engineer');
     app(Roles::class)->assign($orgId, 'engineer-1', $role->id);
 
-    // Open a review from the console.
-    $component = Volt::test('governance')->set('name', 'Q3 review')->call('open')->assertHasNoErrors();
+    // Open a review from the console. One component now serves both planes, and the
+    // routable index/new/show shape won over the single page — a campaign URL is
+    // something you send to a reviewer.
+    Volt::test('console.governance.create')->set('name', 'Q3 review')->call('open')->assertHasNoErrors();
 
     $campaign = CertificationCampaign::query()->where('organization_id', $orgId)->firstOrFail();
     $items = app(AccessReviews::class)->itemsFor($campaign->id);
@@ -45,7 +47,10 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
     $roleItem = collect($items)->firstWhere(fn ($i) => $i->access_type === AccessKind::Role);
 
     // Revoke the role item, then close — the underlying role assignment is removed.
-    $component->call('revoke', $roleItem->id)->call('close', $campaign->id)->assertHasNoErrors();
+    Volt::test('console.governance.show', ['campaign' => $campaign->id])
+        ->call('revoke', $roleItem->id)
+        ->call('close', $campaign->id)
+        ->assertHasNoErrors();
 
     expect(app(Roles::class)->assignmentsForSubject($orgId, 'engineer-1'))->toBe([]);
 });
@@ -53,5 +58,5 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
 it('forbids a non-admin member', function (): void {
     govAdmin(MembershipRole::Member);
 
-    Volt::test('governance')->assertForbidden();
+    Volt::test('console.governance.index')->assertForbidden();
 });

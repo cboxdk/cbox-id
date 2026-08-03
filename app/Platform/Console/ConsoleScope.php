@@ -135,6 +135,19 @@ class ConsoleScope
     }
 
     /**
+     * The route name for this capability on the plane we are actually on.
+     *
+     * The two planes name the same page differently — `governance.show` and
+     * `environment.governance.show` — so a shared component cannot hard-code either. It
+     * is a prefix and nothing more, but hard-coding one of them is how a merged page
+     * redirects an environment administrator onto a route that 404s for them.
+     */
+    public function routeName(string $name): string
+    {
+        return $this->plane() === ConsolePlane::Environment ? 'environment.'.$name : $name;
+    }
+
+    /**
      * WHO is acting — the id that goes in the audit trail.
      *
      * The subject on both planes, because the subject is the credential of record: an

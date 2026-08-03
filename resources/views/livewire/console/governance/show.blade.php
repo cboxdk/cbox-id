@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Enums\AccessKind;
@@ -22,7 +22,7 @@ use Livewire\Volt\Component;
  * id from another plane never matches (deny-by-default), so a foreign close can never
  * apply. The acting reviewer is the env-admin account member, resolved from session.
  */
-new #[Layout('components.layouts.environment', ['title' => 'Access review'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Access review'])] class extends Component
 {
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
@@ -33,7 +33,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     public string $campaignId = '';
@@ -89,6 +89,8 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
         $items = $reviews->itemsFor($campaign->id);
 
         return [
+            // Route names differ per plane; one component, so it asks rather than assumes.
+            'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'campaign' => $campaign,
             'items' => $items,
             // A reviewer certifying access needs to see *who* they're deciding on and
@@ -156,15 +158,16 @@ new #[Layout('components.layouts.environment', ['title' => 'Access review'])] cl
     }
 
     /** The acting reviewer: the env-admin account member for this environment. */
+    /** @see ConsoleScope::actorId() — the subject, on either plane, so the trail reads. */
     private function reviewerId(): string
     {
-        return app(EnvironmentAdminAuth::class)->current()->id ?? '';
+        return app(ConsoleScope::class)->actorId();
     }
 }; ?>
 
 <div class="space-y-6">
     <div>
-        <a href="{{ route('environment.governance') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Access reviews</a>
+        <a href="{{ route($scopeRoute('governance')) }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Access reviews</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $campaign->name }}</h1>
             @if ($campaign->status === \Cbox\Id\Governance\Enums\CampaignStatus::Open)
