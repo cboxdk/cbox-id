@@ -303,7 +303,13 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/sod-policies', 'sod-policies')->name('sod-policies');
 
     // Outbound SCIM provisioning connections (push users OUT to downstream apps).
-    Volt::route('/provisioning', 'provisioning')->name('provisioning');
+    // The SAME components the environment plane serves. The routable index/new/show
+    // shape wins over the organization plane's single page with its inline form, and
+    // this plane gains resume and delete with it — a tenant admin who paused a
+    // connection previously had no way to start it again from their own console.
+    Volt::route('/provisioning', 'console.provisioning.index')->name('provisioning');
+    Volt::route('/provisioning/new', 'console.provisioning.create')->name('provisioning.create');
+    Volt::route('/provisioning/{sync}', 'console.provisioning.show')->name('provisioning.show');
 
     // AI token vault + inline-hook (external action) endpoints. Storing/revealing a
     // secret is sensitive, so the vault is behind the sudo step-up gate.
@@ -402,9 +408,9 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/directories/{directory}', 'environment.directories.show')->name('environment.directories.show');
 
         // Outbound sync (provisioning connections) — routable list → create → detail.
-        Volt::route('/outbound-sync', 'environment.provisioning.index')->name('environment.provisioning');
-        Volt::route('/outbound-sync/new', 'environment.provisioning.create')->name('environment.provisioning.create');
-        Volt::route('/outbound-sync/{sync}', 'environment.provisioning.show')->name('environment.provisioning.show');
+        Volt::route('/outbound-sync', 'console.provisioning.index')->name('environment.provisioning');
+        Volt::route('/outbound-sync/new', 'console.provisioning.create')->name('environment.provisioning.create');
+        Volt::route('/outbound-sync/{sync}', 'console.provisioning.show')->name('environment.provisioning.show');
 
         // Roles — routable list → create → detail (permission editor).
         Volt::route('/roles', 'environment.roles.index')->name('environment.roles');

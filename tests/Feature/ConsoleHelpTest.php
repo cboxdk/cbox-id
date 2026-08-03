@@ -82,6 +82,14 @@ it('keeps every nav label identical to its page title', function (): void {
         'audit' => 'Activity log',
     ];
 
+    // A capability that serves BOTH console planes lives at
+    // `livewire/console/<name>/index` instead of a single `livewire/<route>` page. The
+    // promise the nav label makes is the same either way, so the sweep follows the
+    // component rather than losing the page the moment it is merged.
+    $mergedViews = [
+        'provisioning' => 'console/provisioning/index',
+    ];
+
     $labels = [];
 
     foreach (Console::nav()->areas() as $area) {
@@ -93,7 +101,7 @@ it('keeps every nav label identical to its page title', function (): void {
     foreach ($expected as $route => $label) {
         expect($labels[$route] ?? null)->toBe($label);
 
-        $view = file_get_contents(resource_path("views/livewire/{$route}.blade.php"));
+        $view = file_get_contents(resource_path('views/livewire/'.($mergedViews[$route] ?? $route).'.blade.php'));
 
         expect($view)->toContain("['title' => '{$label}']")
             ->and($view)->toContain("<x-page-header title=\"{$label}\"");

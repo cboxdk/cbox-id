@@ -219,12 +219,12 @@ it('exercises the provisioning detail mutating actions (pause, resume, delete)',
         'secret',
     )->connection;
 
-    Volt::test('environment.provisioning.show', ['sync' => $connection->id])
+    Volt::test('console.provisioning.show', ['sync' => $connection->id])
         ->call('pause')
         ->call('resume')
         ->assertHasNoErrors();
 
-    Volt::test('environment.provisioning.show', ['sync' => $connection->id])
+    Volt::test('console.provisioning.show', ['sync' => $connection->id])
         ->call('deleteConnection');
     expect(ProvisioningConnection::query()->whereKey($connection->id)->exists())->toBeFalse();
 });
