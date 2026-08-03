@@ -16,8 +16,11 @@ use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\RedirectResponse;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Livewire;
 use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends Component
@@ -680,7 +683,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $params['state'] = $this->state;
         }
 
-        $this->redirect($this->buildRedirect($params));
+        $this->sendRedirect($this->buildRedirect($params));
     }
 
     public function deny(): void
@@ -702,7 +705,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $params['state'] = $this->state;
         }
 
-        $this->redirect($this->buildRedirect($params));
+        $this->sendRedirect($this->buildRedirect($params));
     }
 
     /**
@@ -769,7 +772,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
 
         $this->redirectUri = $redirectUri;
 
-        $this->redirect($this->buildRedirect($params), navigate: false);
+        $this->sendRedirect($this->buildRedirect($params), navigate: false);
     }
 
     /**
@@ -777,25 +780,86 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
      */
     private function buildRedirect(array $params): string
     {
-        $parts = parse_url($this->redirectUri);
+        // The registered URI is kept BYTE-FOR-BYTE up to the query, and only the query is
+        // rebuilt. Nothing is re-serialized from parse_url() any more.
+        //
+        // The old version assembled `scheme.'://'.host`, which assumes every redirect URI
+        // has an authority. A native app's does not: RFC 8252 §7.1 registers
+        // `com.example.app:/oauth/callback` — scheme and path, no authority at all. So
+        // parse_url returned no host, the hardcoded `//` was emitted anyway, and the
+        // result was `com.example.app:///oauth/callback` with three slashes. Not what the
+        // client registered, and not what its URL handler is listening for.
+        //
+        // Reconstructing was never worth it. We already matched this exact string against
+        // the registered set, so the only correct transformation is to append to it —
+        // any rewrite is a chance to produce something that was never registered.
+        $uri = $this->redirectUri;
 
-        parse_str($parts['query'] ?? '', $existing);
-        $query = http_build_query(array_merge($existing, $params));
+        // A fragment is forbidden on a redirect URI (RFC 6749 §3.1.2) and we do not
+        // accept one, but splitting it off first means a stray one can never end up in
+        // the middle of the query we build.
+        $fragment = null;
 
-        $url = ($parts['scheme'] ?? 'https').'://'.($parts['host'] ?? '');
-
-        if (isset($parts['port'])) {
-            $url .= ':'.$parts['port'];
+        if (($hash = mb_strpos($uri, '#')) !== false) {
+            $fragment = mb_substr($uri, $hash + 1);
+            $uri = mb_substr($uri, 0, $hash);
         }
 
-        $url .= $parts['path'] ?? '';
-        $url .= '?'.$query;
+        $existing = [];
+        $base = $uri;
 
-        if (isset($parts['fragment'])) {
-            $url .= '#'.$parts['fragment'];
+        if (($mark = mb_strpos($uri, '?')) !== false) {
+            $base = mb_substr($uri, 0, $mark);
+            parse_str(mb_substr($uri, $mark + 1), $existing);
         }
 
-        return $url;
+        $url = $base.'?'.http_build_query(array_merge($existing, $params));
+
+        return $fragment === null ? $url : $url.'#'.$fragment;
+    }
+
+    /**
+     * Send the browser to the client's redirect URI, whatever scheme it uses.
+     *
+     * `$this->redirect()` cannot carry a private-use scheme on its own, and the reason is
+     * not obvious: Livewire stores the string untouched, but on a NON-Livewire request it
+     * dehydrates through `abort(redirect($to))`, and Laravel's `UrlGenerator::to()` runs
+     * `filter_var($path, FILTER_VALIDATE_URL)` to decide whether a string is already a
+     * URL. That call rejects `com.example.app:/oauth/callback`, so the URI is treated as
+     * a relative path and the app root is prepended:
+     *
+     *     https://cbox.cboxid.com/com.example.app:/oauth/callback?code=…
+     *
+     * — which matches no route here and 404s, with the authorization code stranded in a
+     * URL the client never sees.
+     *
+     * The non-Livewire path is not an edge case: it is the one a native app actually
+     * takes. A first-party client skips the consent screen, so the redirect happens while
+     * the component is mounting, on the initial GET. Approving on-screen is a Livewire
+     * XHR and was always fine.
+     *
+     * `redirect()->away()` is NOT the escape hatch it is everywhere else in this codebase.
+     * Livewire rebinds the `redirect` container binding to its own Redirector while a
+     * component is booted, and that Redirector overrides `away()` to delegate straight
+     * to `to()` — so inside a component it runs the very generator we are avoiding, and
+     * returns itself rather than a response. The response is therefore constructed
+     * directly: `RedirectResponse` sets the `Location` header verbatim and consults no
+     * generator at all.
+     *
+     * The branch cannot be collapsed either. On the XHR path Livewire's `fetch` would
+     * receive a 302 to a scheme the browser cannot follow, and the Approve button would
+     * simply stop working. Both sides are covered by tests, because each one hides the
+     * other's failure.
+     */
+    private function sendRedirect(string $url, bool $navigate = true): void
+    {
+        if (Livewire::isLivewireRequest()) {
+            $this->redirect($url, navigate: $navigate);
+
+            return;
+        }
+
+        throw new HttpResponseException(new RedirectResponse($url));
     }
 
     /**

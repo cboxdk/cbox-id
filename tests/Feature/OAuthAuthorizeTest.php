@@ -542,3 +542,151 @@ it('binds the requested resource to the issued authorization code', function ():
     expect(AuthorizationCode::query()->latest('created_at')->first()?->resource)
         ->toBe('https://mcp.acme.example', 'the authorization was not bound to the resource it asked for');
 });
+
+/*
+ * Private-use scheme redirect URIs (RFC 8252 §7.1) — the whole native-app category.
+ *
+ * `com.example.app:/oauth/callback` has NO authority. Two independent defects stacked on
+ * it, and each hid the other: buildRedirect() assumed an authority and emitted three
+ * slashes, and on a non-Livewire request Laravel's UrlGenerator::to() rejected the result
+ * as "not a URL" and prepended the app root. The authorization code ended up in a URL on
+ * our own host that matched no route, so the client saw a 404 and never got its code.
+ */
+it('preserves a private-use scheme redirect exactly as registered', function (): void {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id, ['com.cboxid.authenticator:/oauth/callback']);
+
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'com.cboxid.authenticator:/oauth/callback',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'xyz',
+        'code_challenge' => str_repeat('a', 43),
+        'code_challenge_method' => 'S256',
+    ])->call('approve');
+
+    $target = $component->effects['redirect'] ?? '';
+
+    // One slash, as registered. Three means an authority we invented — and the client's
+    // URL handler is listening for what it registered, not for what we rebuilt.
+    expect($target)->toStartWith('com.cboxid.authenticator:/oauth/callback?')
+        ->and($target)->not->toContain(':///')
+        // And it must not have been rewritten onto our own host.
+        ->and($target)->not->toContain('cbox-id.test')
+        ->and($target)->toContain('code=')
+        ->and($target)->toContain('state=xyz');
+})->group('security');
+
+it('still builds an ordinary https redirect correctly', function (): void {
+    // The other form has to keep working — the fix touches the one code path both use.
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id, ['https://app.test/cb']);
+
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'xyz',
+        'code_challenge' => str_repeat('a', 43),
+        'code_challenge_method' => 'S256',
+    ])->call('approve');
+
+    expect($component->effects['redirect'] ?? '')->toStartWith('https://app.test/cb?');
+});
+
+it('keeps a query the client registered rather than dropping it', function (): void {
+    // A registered URI may legitimately carry its own parameters. Rebuilding from
+    // parse_url() preserved them by luck; appending preserves them by construction.
+    [, $org] = actingAsConsentUser();
+    $uri = 'https://app.test/cb?tenant=acme';
+    $clientId = registerConsentClient($org->id, [$uri]);
+
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => $uri,
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'code_challenge' => str_repeat('a', 43),
+        'code_challenge_method' => 'S256',
+    ])->call('approve');
+
+    expect($component->effects['redirect'] ?? '')->toContain('tenant=acme')
+        ->and($component->effects['redirect'] ?? '')->toContain('code=');
+});
+
+it('carries a private-use scheme through a denial too', function (): void {
+    // Deny goes through the same builder. A native app that gets a mangled error
+    // redirect hangs on its callback listener exactly as it would on a mangled success.
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id, ['com.cboxid.authenticator:/oauth/callback']);
+
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'com.cboxid.authenticator:/oauth/callback',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'xyz',
+        'code_challenge' => str_repeat('a', 43),
+        'code_challenge_method' => 'S256',
+    ])->call('deny');
+
+    expect($component->effects['redirect'] ?? '')
+        ->toStartWith('com.cboxid.authenticator:/oauth/callback?')
+        ->and($component->effects['redirect'] ?? '')->toContain('error=access_denied');
+})->group('security');
+
+it('does not rewrite a private-use redirect onto our own host on the non-Livewire path', function (): void {
+    /*
+     * THE path that produced the 404, and the one none of the tests above reach.
+     *
+     * Volt::test() is a Livewire request, where the redirect is handed to the browser as
+     * a raw effect. A native app never takes that route: its client is first-party, so
+     * consent is skipped and approve() runs during MOUNT — on the initial GET, which is
+     * not a Livewire request. Livewire dehydrates that through `abort(redirect($to))`,
+     * and Laravel's UrlGenerator::to() treats a private-use scheme as a relative path
+     * and prepends the app root:
+     *
+     *     https://cbox.cboxid.com/com.cboxid.authenticator:/oauth/callback?code=…
+     *
+     * No route matches, so the client gets a 404 and the authorization code is stranded.
+     */
+    $subject = app(Subjects::class)->create('native@acme.test', 'Native', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-native'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'Cbox Authenticator',
+        type: ClientType::Public,
+        redirectUris: ['com.cboxid.authenticator:/oauth/callback'],
+        grantTypes: ['authorization_code'],
+        firstParty: true,
+        organizationId: $org->id,
+    ));
+
+    // A real session, so the middleware populates CurrentUser on the GET below.
+    Volt::test('auth.login')
+        ->set('email', 'native@acme.test')
+        ->set('password', 'supersecret123')
+        ->call('login');
+
+    $response = $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'com.cboxid.authenticator:/oauth/callback',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'xyz',
+        'code_challenge' => str_repeat('a', 43),
+        'code_challenge_method' => 'S256',
+    ]));
+
+    $location = (string) $response->headers->get('Location');
+
+    expect($location)->toStartWith('com.cboxid.authenticator:/oauth/callback?')
+        ->and($location)->not->toContain(':///')
+        // The failure mode, named: the app root must not appear anywhere in it.
+        ->and($location)->not->toContain(url('/'))
+        ->and($location)->toContain('code=')
+        ->and($location)->toContain('state=xyz');
+})->group('security');
