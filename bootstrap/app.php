@@ -6,8 +6,10 @@ use App\Http\Middleware\AuthenticateAccountApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\EnforcePlane;
+use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
@@ -140,6 +142,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
 
+        // An UNINSTALLED deployment has exactly one surface: the first-run screen. In
+        // the web group rather than on individual routes because the property is about
+        // the deployment, not about any one page — a fresh box must never answer with a
+        // sign-in form no credential can satisfy, and the screen that provisions the
+        // platform root must stop existing the moment it has. See the middleware.
+        $middleware->appendToGroup('web', PointAtFirstRun::class);
+
         $middleware->alias([
             'platform.auth' => Authenticate::class,
             'platform.guest' => RedirectIfAuthenticated::class,
@@ -151,6 +160,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // Host-plane bulkheads + the environment-admin (account-layer) console gate.
             'plane' => EnforcePlane::class,
             'env.admin' => AuthenticateEnvironmentAdmin::class,
+            // A surface that only exists in the multi-tenant shape (see the class).
+            'multi.tenant' => RequireMultiTenant::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

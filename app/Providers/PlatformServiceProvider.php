@@ -11,10 +11,13 @@ use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
+use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\RequireWorkspaceSudo;
+use App\Http\Middleware\TargetEnvironment;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\BreachedPasswords;
 use App\Platform\CurrentEnvironment;
@@ -22,17 +25,24 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\ImpersonationCallGuard;
+use App\Platform\Install\Contracts\PlatformInstaller;
+use App\Platform\Install\Contracts\SetupTokens;
+use App\Platform\Install\DatabasePlatformInstaller;
+use App\Platform\Install\EnvFile;
+use App\Platform\Install\FileSetupTokens;
 use App\Platform\OpenEntitlements;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
+use Psr\Log\LoggerInterface;
 
 final class PlatformServiceProvider extends ServiceProvider
 {
@@ -77,6 +87,28 @@ final class PlatformServiceProvider extends ServiceProvider
             $app->make(CachedEntitlements::class),
             $app->make('config'),
         ));
+
+        // Bootstrapping an empty deployment. Scoped rather than singleton: emptiness is
+        // a fact about the database, and the middleware, the first-run screen and the
+        // install command must all see the same answer WITHIN a request — but a
+        // long-lived worker must not carry "this platform is empty" across the request
+        // that stopped it being true.
+        $this->app->scoped(PlatformInstaller::class, DatabasePlatformInstaller::class);
+
+        // The setup token lives on the LOCAL disk explicitly, not on the default one: a
+        // deployment that points `FILESYSTEM_DISK` at S3 would otherwise publish its
+        // first-run secret to object storage, where "only console access can read it"
+        // stops being true.
+        $this->app->singleton(SetupTokens::class, fn (Application $app): SetupTokens => new FileSetupTokens(
+            $app->make(FilesystemFactory::class)->disk('local'),
+            $app->make(LoggerInterface::class),
+        ));
+
+        // The env file this deployment actually booted from (`.env.production`, a
+        // per-environment file, …) rather than a hard-coded `.env` — the installer
+        // records the tenancy shape there, and writing it to a file nothing reads
+        // would leave the deployment provisioned one way and configured another.
+        $this->app->singleton(EnvFile::class, fn (): EnvFile => new EnvFile(app()->environmentFilePath()));
     }
 
     public function boot(): void
@@ -104,6 +136,14 @@ final class PlatformServiceProvider extends ServiceProvider
             EnforceImpersonationWindow::class,
             Authenticate::class,
             AuthenticateOperator::class,
+            // …and, once the authority holds, the plane the operator aimed the console
+            // at. A Livewire action on an operator page reads the same tenant data the
+            // page did, so it has to run in the same environment — without this the
+            // action runs in the HOST's environment and answers about a different plane
+            // than the one on screen. Listed AFTER the gate for the reason the route
+            // group orders them that way: the selection must not be ambient while the
+            // operator's own platform-root session is being resolved.
+            TargetEnvironment::class,
             RedirectIfAuthenticated::class,
             // The guest Admin Portal setup screen is Livewire too — keep its
             // scoped-session guard on every /livewire/update, not just first load.
@@ -117,11 +157,23 @@ final class PlatformServiceProvider extends ServiceProvider
             // Plane bulkheads and the step-up gate must hold per action too, or a retained
             // snapshot bypasses sudo permanently once confirmed.
             EnforcePlane::class,
+            // "Does this surface exist on this deployment?" is the same kind of question as
+            // "is this the right plane?", and it has to be re-asked per action for the same
+            // reason: the snapshot checksum is keyed on APP_KEY, so a snapshot of an
+            // environment-console component captured on a multi-tenant install can be POSTed
+            // to /livewire/update on a single-tenant one, where the page it came from 404s.
+            // The env-admin session gate refuses that too — this keeps the two independent.
+            RequireMultiTenant::class,
             RequireSudo::class,
             RequireWorkspaceSudo::class,
             // Keeps the "an impersonator cannot plant persistence" property true for
             // component actions, not just full page loads.
             BlockDuringImpersonation::class,
+            // The first-run bulkhead. It runs in the global `web` group, so it already
+            // covers /livewire/update — but it is the gate that decides whether the
+            // screen which provisions the platform root exists at all, and this list is
+            // where that kind of decision is stated rather than inferred from grouping.
+            PointAtFirstRun::class,
         ]);
 
         // Make impersonation effectively READ-ONLY across the whole console. Route

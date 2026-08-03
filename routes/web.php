@@ -25,12 +25,26 @@ use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\RequireWorkspaceSudo;
+use App\Http\Middleware\TargetEnvironment;
 use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
+
+/*
+ * FIRST RUN — the only surface an unclaimed deployment serves, and one it stops serving
+ * for good the moment it is claimed ({@see \App\Http\Middleware\PointAtFirstRun}, which
+ * also points every other web route here while the platform is empty).
+ *
+ * DELIBERATELY NOT plane-gated, unlike everything below it. The plane bulkheads compare
+ * the request host against the platform root — an environment that does not exist yet —
+ * so gating this would 404 the one screen that can create it, and the operator would
+ * have no door at all. The gate here is possession of the setup token, which does not
+ * depend on any of the state being bootstrapped.
+ */
+Volt::route('/first-run', 'first-run')->name('first-run');
 
 /*
  * The root is plane-aware, but ONLY in the multi-tenant SaaS shape. When
@@ -425,7 +439,7 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
 | the console re-gate onto `env.admin` follows once the console components are
 | moved off the subject session.
 */
-Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
+Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(function (): void {
     Volt::route('/login', 'admin.login')->name('admin.login');
     Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
@@ -558,21 +572,41 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
 | Operator console — platform operators, the identity above every environment.
 |--------------------------------------------------------------------------
 |
-| A separate world from the org-user console: operators provision and switch
-| between environments and manage other operators. An org-user session grants
-| nothing here, and vice versa.
+| NOT a separate world any more. Operators provision environments, move between
+| them and manage other operators — but they do it inside the one console, from
+| the one sign-in, with these areas appearing in the rail for whoever holds the
+| authority. The separate prefix survives because the URLs are honest about what
+| the pages are and people have them bookmarked; the separate LOGIN does not,
+| because the second credential store it authenticated against is gone.
 */
 Route::middleware('plane:operator')->prefix('operator')->group(function (): void {
-    Volt::route('/login', 'operator.login')->name('operator.login');
+    // Bookmarks and old links. Kept as redirects rather than deleted: an operator who
+    // has had /operator/login in their bar for a year should land on the sign-in that
+    // works, not on a 404 that reads as "the console moved and nobody said where".
+    Route::redirect('/login', '/workspace/login')->name('operator.login');
+    Route::redirect('/login/mfa', '/workspace/login')->name('operator.login.mfa');
 
-    // The TOTP challenge sits between password and a full operator session, so it
-    // is neither guest nor authenticated — the component itself redirects away
-    // unless a pending marker is present.
-    Volt::route('/login/mfa', 'operator.login-mfa')->name('operator.login.mfa');
+    // There is no `/operator/logout`. It ended a session of its own and reported
+    // "Signed out of the operator console." — a second door, and a message about a
+    // world that no longer exists. Signing out of the platform pages is signing out;
+    // the one console's logout does it. Nothing is left aliased because a POST route
+    // is not something a browser remembers.
 
-    Route::post('/logout', [OperatorController::class, 'logout'])->name('operator.logout');
-
-    Route::middleware(AuthenticateOperator::class)->group(function (): void {
+    // `platform.auth:optional` RESOLVES the one session without requiring one, then
+    // AuthenticateOperator asks whether the person it resolved runs this deployment.
+    // Both are needed and in this order — the authority question is asked of CurrentUser,
+    // which only the first populates.
+    //
+    // Optional, not required, because the two refusals are different and only the gate
+    // knows which is which: no session at all is a step the visitor can take (the sign-in
+    // page), while a session that simply is not an operator's must 404 rather than
+    // confirm that this deployment has a staff console at that address. A required
+    // `platform.auth` would answer the first case itself, with the subject plane's
+    // redirect, and the gate's own reasoning would never run.
+    //
+    // TargetEnvironment comes last: the console's chosen plane must not be ambient while
+    // the operator's own (platform-root) session is being looked up.
+    Route::middleware(['platform.auth:optional', AuthenticateOperator::class, TargetEnvironment::class])->group(function (): void {
         Volt::route('/', 'operator.environments')->name('operator.environments');
         Volt::route('/usage', 'operator.usage')->name('operator.usage');
         Volt::route('/search', 'operator.search')->name('operator.search');

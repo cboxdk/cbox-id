@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [Unreleased]
+
+### Added
+
+- **`php artisan cbox-id:install` now installs the platform, not just the schema.** A
+  fresh deployment held nothing — no platform operator, no account, no environment — and
+  there was no supported way to change that, so the product could not be installed by
+  anyone who was not us. The command (which replaces the framework package's command of
+  the same name) mints the crypto key, migrates, asks for or accepts the deployment
+  shape, creates the platform-root environment, the first operator and — in the
+  multi-tenant shape — the first account and its environment, records the shape and
+  issuer in `.env`, and finishes by running `cbox-id:doctor` against what it built.
+  Fully non-interactive via options, and it fails loudly rather than guessing when a
+  required one is missing.
+
+  It **refuses a platform that is not empty**, naming what it found, and there is no
+  `--force`: the second run's job would be to mint a second platform root and hand out a
+  credential on a live deployment.
+
+- **A first-run screen at `/first-run`**, for a deployment nobody can open a shell on.
+  It exists only while the platform is empty, and it requires a **setup token** that the
+  deployment publishes to `storage/app/private/cbox-id-first-run.token` and to the
+  application log — never to the page, never to a URL. Plain lazy-create would hand a
+  public identity provider to whoever reached it first, which on the open internet is a
+  port scanner. Completing it provisions the platform, spends the token, and the route
+  404s for good.
+
+  While the platform is empty, every other human-facing page redirects here, so a fresh
+  box no longer answers with a sign-in form that no credential can satisfy. Protocol
+  front channels (`/oauth/*`, `/sso/*`, `/api/*`, `/.well-known/*`, `/up`) are left
+  alone: a 302 to a setup page is not an answer any of those callers can read.
+
 ## [0.35.1] - 2026-08-03
 
 ### Fixed

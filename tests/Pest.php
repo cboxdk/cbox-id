@@ -2,8 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\PointAtFirstRun;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\OperatorEnvironment;
+use App\Platform\PlaneResolver;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -32,6 +37,7 @@ use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\Models\PlatformOperator;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -107,6 +113,30 @@ function platformRootEnvironment(): Environment
 }
 
 /**
+ * State that this deployment has been INSTALLED — the precondition every page in the
+ * product has always had, and that nothing had to say out loud until there was an
+ * installer.
+ *
+ * An unclaimed deployment now answers every human-facing page with a redirect to its
+ * first-run screen ({@see PointAtFirstRun}), because a fresh box
+ * serving a sign-in form no credential can satisfy reads as a broken product rather than
+ * an unfinished install. So a test that renders a page has to stand on a platform
+ * somebody installed.
+ *
+ * A TENANT ORGANIZATION is what it writes, and nothing else. Any occupant would do, and
+ * the two obvious alternatives both change the test's world: an operator drags the
+ * console's authority resolution in behind it, and a platform-root environment changes
+ * which environment an unmapped host resolves to (see {@see serveOnTestHost()}) — so the
+ * cheapest true statement is the right one. Idempotent.
+ */
+function installedDeployment(): void
+{
+    if (Organization::query()->doesntExist()) {
+        app(Organizations::class)->create(new NewOrganization('Installed', 'installed-deployment'));
+    }
+}
+
+/**
  * Make an environment the one this test's HTTP host resolves to, by stamping the app
  * URL's host on it as a verified custom domain.
  *
@@ -165,6 +195,152 @@ function actAsEnvironmentAdmin(AccountMember $member, string $environmentId): vo
 
 /** A valid PAM justification for the impersonation start POST. */
 const IMPERSONATION_REASON = 'Investigating support ticket #4271';
+
+/**
+ * Make the platform root the environment this test lives in — the shape a single-tenant
+ * install has, and the one every operator test needs.
+ *
+ * An operator is a SUBJECT now, and subjects and `auth_sessions` are environment-owned:
+ * the operator's is written inside the platform root ({@see PlatformRoot}), because that
+ * is where the platform's own people live. An unmapped test host resolves to the root
+ * too. So without stating this, an operator fixture writes its subject into one
+ * environment while the test's organizations and members are created in another, and the
+ * scope — deny-by-default — makes the mismatch look like "no such record" rather than
+ * like a fixture that never lined up.
+ */
+function platformRootDeployment(): Environment
+{
+    $root = platformRootEnvironment();
+
+    app(EnvironmentContext::class)->set($root);
+
+    return $root;
+}
+
+/**
+ * A platform operator, signed in the way the console now requires: as a subject.
+ *
+ * There is no operator session key to write any more. Authority is asked of the ONE
+ * session — {@see ConsoleScope::operator()} resolves the operator
+ * from the signed-in subject — so a test that wants an operator has to establish the
+ * same session a sign-in would, which is what this does.
+ */
+function actAsOperator(string $email = 'op@platform.test'): PlatformOperator
+{
+    platformRootDeployment();
+
+    $operator = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Operator');
+
+    signInAsSubject((string) $operator->refresh()->subject_id);
+
+    return $operator;
+}
+
+/**
+ * Establish the browser session for a PLATFORM-ROOT subject, through the same
+ * {@see PlatformAuth::establish()} every real sign-in goes through — so the held-account
+ * set, the active pointer and the framework session row all have the shape production
+ * has, and a test cannot accidentally prove something about a session shape that only
+ * exists in tests.
+ */
+function signInAsSubject(string $subjectId): void
+{
+    app(PlatformRoot::class)->run(function () use ($subjectId): void {
+        app(PlatformAuth::class)->establish(request(), $subjectId, ['pwd']);
+
+        // …and populate CurrentUser as the Authenticate middleware would, so a test that
+        // drives a console component DIRECTLY (Volt::test, no middleware) asks the same
+        // question a real request does. ConsoleScope reads the acting subject from here.
+        $sessionId = session(PlatformAuth::SESSION_KEY);
+        $subject = app(Subjects::class)->find($subjectId);
+        $session = is_string($sessionId) ? app(SessionManager::class)->active($sessionId) : null;
+
+        if ($subject !== null && $session !== null) {
+            app(CurrentUser::class)->set($subject, $session, null);
+        }
+    });
+}
+
+/**
+ * Sign the browser out — every trace of the one session, held accounts included.
+ *
+ * `session()->forget(SESSION_KEY)` is not enough and never was: PlatformAuth keeps a set
+ * of concurrently signed-in accounts, and leaving it behind leaves a way back in.
+ */
+function forgetSubjectSession(): void
+{
+    session()->forget([
+        PlatformAuth::SESSION_KEY,
+        PlatformAuth::ORG_KEY,
+        PlatformAuth::ACCOUNTS_KEY,
+        PlatformAuth::ACTIVE_KEY,
+    ]);
+
+    app()->forgetInstance(CurrentUser::class);
+}
+
+/**
+ * End the current request, so the next `$this->get()` really is a NEW one.
+ *
+ * `ConsoleScope` is bound `scoped` and memoises the answer to "does this person run the
+ * deployment?" — deliberately, because the rail and every platform-page guard ask it on
+ * every render. A real deployment drops scoped instances between requests; Laravel's HTTP
+ * test helpers do not, so two `$this->get()` calls in one test share the memo and the
+ * SECOND one answers with the FIRST one's authority.
+ *
+ * That matters exactly where it is most dangerous to be wrong: a test asserting that
+ * authority CHANGED between requests — a suspension landing, an impersonation starting —
+ * passes trivially without this, because the second request never re-asked.
+ *
+ * FOLLOW IT WITH A REQUEST, not with a direct call. It ends the request wholesale, and
+ * that includes the ambient EnvironmentContext — so an Eloquent read made after it and
+ * before the next `$this->get()` runs with NO environment, which the tenancy scope answers
+ * (correctly, and silently) with zero rows. A refusal asserted in that gap is the scope
+ * talking, not the thing under test; that exact mistake made an impersonation-escape test
+ * pass against an implementation with the defence deleted.
+ */
+function nextRequest(): void
+{
+    app()->forgetScopedInstances();
+}
+
+/** Point an operator's console at a plane, as the environment switcher does. */
+function targetEnvironment(string $slug): void
+{
+    app(OperatorEnvironment::class)->pointAt($slug);
+}
+
+/**
+ * State the MULTI-TENANT (SaaS) deployment shape for this test.
+ *
+ * The suite baseline is single-tenant — pinned in {@see TestCase::setUp()} because that is
+ * the shape a fresh install has, and because inheriting tenancy from a developer's `.env`
+ * decided 122 tests by luck. A test that needs the SaaS shape says so, here.
+ *
+ * TWO facts, and stating only the first is the trap:
+ *
+ *  1. `multi_tenant` — what {@see PlaneResolver::isMultiTenant()} reads before it derives
+ *     anything. It turns the host bulkheads ON.
+ *  2. `account_host` — where the account console lives. Without it a multi-tenant
+ *     deployment is {@see PlaneResolver::misconfigured()}: the environment console's
+ *     sign-in handoff has nowhere to hand off TO, so it falls back to a local credential
+ *     form that no coherent deployment serves.
+ *
+ * And a third that is not config: `plane:subject` is every host EXCEPT the platform root,
+ * so the request must reach a host that resolves to a NON-root environment. An unmapped
+ * test host falls back to the root, lands on the account plane, and is refused by the
+ * plane bulkhead — a 404 identical to the one the multi-tenant statement just removed.
+ * {@see serveOnTestHost()} is how a test gets there on the default host; naming a tenant
+ * host on the request (`https://tenant.cboxid.com/...`) is the other way.
+ *
+ * The account host defaults to a domain that is deliberately NOT the app URL's host, so
+ * a cross-plane bounce is visible as a different origin rather than as a same-host path.
+ */
+function multiTenantDeployment(string $accountHost = 'cboxid.com'): void
+{
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', $accountHost);
+}
 
 /**
  * Populate CurrentUser as the Authenticate middleware would, then drive the
@@ -246,6 +422,13 @@ function accountWithOrg(string $email): array
  */
 function crudSetup(): array
 {
+    // The environment-admin console is a multi-tenant surface — it is gated on an account
+    // member administering one of their ACCOUNT's environments, and a single-tenant install
+    // has one environment which is the platform root and belongs to no account. So the whole
+    // `/admin` prefix 404s on that shape ({@see \App\Http\Middleware\RequireMultiTenant}),
+    // and every test that drives it is stating the SaaS shape whether it says so or not.
+    multiTenantDeployment();
+
     platformRootEnvironment();
     $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
@@ -291,10 +474,10 @@ function cibaSubjectWithDevice(): array
     return [$subject->id, $client];
 }
 
-/** An operator whose console reads are pinned to the default test plane. */
+/** An operator, signed in, with the test living in the platform root. */
 function impersonationOperator(string $email = 'imp-op@platform.test'): PlatformOperator
 {
-    return app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Op');
+    return actAsOperator($email);
 }
 
 /**

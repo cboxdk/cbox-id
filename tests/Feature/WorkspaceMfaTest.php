@@ -11,6 +11,11 @@ use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Livewire\Volt\Volt;
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 if (! function_exists('mfaAccountMember')) {
     function mfaAccountMember(): AccountMember
     {

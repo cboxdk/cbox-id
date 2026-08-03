@@ -13,6 +13,13 @@ use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // These drive the operator sign-in surface, which — like every page — exists only on
+    // a deployment somebody installed. Unclaimed, the first-run bulkhead points at the
+    // setup screen and the assertions below would be about that instead.
+    installedDeployment();
+});
+
 /**
  * Operator-level social sign-in, after it stopped running on a third-party driver and
  * started running on the platform's own federation clients.

@@ -18,6 +18,11 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Livewire\Volt\Volt;
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 // This file is ABOUT the entitlement gate, so it declares the mode it exercises.
 // The default is now `open` — an unset entitlement means granted, which is what a
 // self-hosted deployment runs and what most of the suite therefore sees. Gating

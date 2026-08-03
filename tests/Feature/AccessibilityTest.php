@@ -12,6 +12,11 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 /**
  * Accessibility regression guard: renders each key page and runs axe-core
  * (WCAG 2.1 A/AA) over the HTML in jsdom via a tiny Node bridge. A new unlabelled

@@ -16,6 +16,11 @@ use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Livewire\Volt\Volt;
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 /** Invite + activate a member with a role, returning them signed-in-ready. */
 if (! function_exists('memberWithRole')) {
     function memberWithRole(string $accountId, AccountRole $role, string $email): AccountMember

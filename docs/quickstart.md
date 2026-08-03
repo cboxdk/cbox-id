@@ -16,27 +16,36 @@ the full first-run walkthrough see [Installation](getting-started/installation.m
 git clone … && cd cbox-id
 composer setup          # installs deps, copies .env, creates the sqlite db,
                         # then runs `cbox-id:install` (guided: mints the crypto
-                        # master key, sets issuer/WebAuthn, runs migrations)
+                        # master key, migrates, and creates the first operator,
+                        # environment and — in the SaaS shape — account)
 composer run dev        # serve + queue + vite + logs
 ```
 
-`composer setup` runs `cbox-id:install`, which mints the `CBOX_ID_CRYPTO_KEY`,
-asks for the issuer URL and passkey domain/origin, writes them to `.env`, migrates,
-and mints the first signing key. **Back up `CBOX_ID_CRYPTO_KEY`** — losing it makes
-sealed secrets unrecoverable ([Operations](operations/_index.md)).
+`composer setup` runs `cbox-id:install`. It asks for the first operator, the
+deployment shape and the issuer URL, writes what it learns to `.env`, provisions the
+platform, and finishes by running `cbox-id:doctor` against what it built. **Back up
+`CBOX_ID_CRYPTO_KEY`** — losing it makes sealed secrets unrecoverable
+([Operations](operations/_index.md)).
 
-## 2. Create the first platform operator
+Fully non-interactive, for CI and images:
 
-The **platform operator** is the identity above every environment — it administers
-environments, tenant organizations, and other operators. On a fresh install, visit
-**`/operator/login`**: with no operator yet it shows a one-time "create the first
-operator" form (serialized behind a lock so only one can win the bootstrap), then
-that path closes permanently. Enroll a strong credential immediately — this is the
-most sensitive account on the system.
+```bash
+php artisan cbox-id:install --no-interaction --email=root@acme.example
+```
 
-> On an internet-exposed deploy, whoever reaches `/operator/login` first claims
-> root. Complete this step before exposing the host, or bootstrap the operator on a
-> private network first.
+## 2. …or claim it from the browser
+
+Did not install from a shell — a container someone else started, say? An empty
+deployment serves exactly one page, at **`/first-run`**, and points every other page
+at it. It requires the **setup token** that the deployment publishes to
+`storage/app/private/cbox-id-first-run.token` and to the application log
+(`docker logs`), so reaching the URL is not enough to claim the platform. Completing
+it does what the install command does, then the route 404s for good.
+
+The **platform operator** it creates is the identity above every environment — it
+administers environments, tenant organizations, and other operators. Enroll a
+passkey or TOTP factor immediately; this is the most sensitive account on the
+system.
 
 ## 3. Create an environment and its first org
 

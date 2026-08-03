@@ -29,17 +29,27 @@ composer install --no-dev --optimize-autoloader
 ## 2. Bootstrap
 
 The guided installer generates the crypto master key, asks the few questions that
-matter (issuer URL, passkey domain/origin), writes them to `.env`, runs migrations,
-and mints the first signing key:
+matter (the first operator, the deployment shape, the issuer URL), writes them to
+`.env`, runs migrations, provisions the platform root — and the first account, in the
+multi-tenant shape — mints the first signing key, and then runs `cbox-id:doctor`
+against what it built:
 
 ```bash
 php artisan cbox-id:install
 ```
 
-Prefer a non-interactive deploy? Set the environment variables yourself (see
-[Configuration](../configuration/environment-variables.md)) and run
-`php artisan migrate --force` instead — `cbox-id:install` is the convenience path,
-not a requirement.
+Non-interactive deploys pass the same answers as options, and the command fails
+rather than guessing when a required one is missing:
+
+```bash
+php artisan cbox-id:install --no-interaction \
+    --email=root@acme.example --password="$OPERATOR_PASSWORD" \
+    --issuer=https://id.acme.com
+```
+
+It refuses to run on a deployment that already holds anything, so it is safe to leave
+in a provisioning script — but it is not idempotent and there is no `--force`. See
+[Installation](../getting-started/installation.md) for every option.
 
 ## 3. Optimize for production
 
@@ -53,18 +63,22 @@ Re-run these on every deploy after the code and `.env` are in place.
 
 ## 4. Create the first platform operator
 
-A **platform operator** is the identity above every environment — it administers
-environments, tenant organizations, and other operators. On a fresh install visit
-**`/operator/login`**: with no operator yet it shows a one-time "create the first
-operator" form (serialized behind a lock so only one can win the bootstrap), then
-that path closes permanently. Immediately enroll a strong credential — this is the
-most sensitive account on the system.
+Step 2 already did this: `cbox-id:install` creates the **platform operator** — the
+identity above every environment, which administers environments, tenant
+organizations and other operators — along with the platform-root environment and, in
+the multi-tenant shape, the first account. Immediately enroll a passkey or TOTP
+factor; this is the most sensitive account on the system.
 
-From the operator console, create your environment(s) and use **Provision admin**
-on each to seed its first organization and owner-admin. Those org admins then sign
-in at `/login`. (Because whoever reaches `/operator/login` first on a fresh,
-internet-exposed deploy claims root, complete this step before exposing the host,
-or bootstrap the operator on a private network first.)
+If the deployment was stood up without a shell (an image started by someone else),
+claim it in the browser at `/first-run` instead. That page exists only while the
+platform is empty and requires the setup token the deployment writes to
+`storage/app/private/cbox-id-first-run.token` and to the application log — so an
+internet-exposed box cannot be claimed by whoever finds it first. See
+[Installation](../getting-started/installation.md).
+
+From the operator console, create your remaining environment(s) and use **Provision
+admin** on each to seed its first organization and owner-admin. Those org admins then
+sign in at `/login`.
 
 ## 5. Run the workers
 

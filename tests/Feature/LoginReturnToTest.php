@@ -16,6 +16,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 it('bounces an unauthenticated request to login and remembers where it was headed', function (): void {
     // A user sent to a protected route (e.g. mid /oauth/authorize) is returned to
     // login, but the intended URL is stashed so login can resume it afterwards.

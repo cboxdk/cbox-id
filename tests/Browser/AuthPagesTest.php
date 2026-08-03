@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 /**
  * Real-browser smoke tests: these boot Chromium against the running app and assert
  * the public auth surfaces render and drive correctly, with no JavaScript errors —

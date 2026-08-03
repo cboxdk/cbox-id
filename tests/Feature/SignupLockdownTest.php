@@ -10,6 +10,11 @@ use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 it('serves the signup page when signup is open', function (): void {
     config(['cbox-id.signup.mode' => 'open']);
 

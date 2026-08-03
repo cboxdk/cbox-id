@@ -48,7 +48,7 @@ package installed, the same files live under `vendor/cboxdk/laravel-id/docs/`.
 
 ```bash
 composer install --no-dev --optimize-autoloader
-php artisan cbox-id:install     # generates keys, asks the few questions, migrates
+php artisan cbox-id:install     # keys, migrations, the first operator + environment
 php artisan cbox-id:doctor      # confirms everything is healthy, in plain language
 ```
 

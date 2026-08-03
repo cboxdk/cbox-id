@@ -13,6 +13,11 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Livewire\Volt\Volt;
 
+beforeEach(function (): void {
+    // These render product pages, which presuppose an installed deployment.
+    installedDeployment();
+});
+
 it('lets an admin theme the branded login page via the appearance editor', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);
 
