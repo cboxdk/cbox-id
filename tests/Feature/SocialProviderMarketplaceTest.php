@@ -177,3 +177,27 @@ it('will not enable a provider whose required parameters are blank', function ()
 
     expect(app(Connections::class)->catalogueProvidersFor($org->id))->toBe([]);
 });
+
+it('shows the real redirect URI once a provider is enabled', function (): void {
+    // Setting one of these up is unavoidably two visits to the provider: the URI contains
+    // the connection id, which does not exist until the credentials are saved. So the
+    // setup panel can only show a {connection} placeholder — and without this row the one
+    // value the provider must be given is available nowhere after saving.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $id = enableProvider($org->id, 'github');
+
+    Volt::test('social-providers')
+        ->assertSee('Redirect URI')
+        ->assertSee('/sso/oauth2/'.$id.'/callback')
+        // The placeholder must not be what an enabled connection shows.
+        ->assertDontSee('/sso/oauth2/{connection}/callback');
+});
+
+it('uses the OIDC callback path for an OIDC provider', function (): void {
+    // The two protocols have different callback routes, and handing Google the OAuth 2.0
+    // one produces a redirect_uri_mismatch that names the client id, not the URI.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $id = enableProvider($org->id, 'google', ConnectionType::Oidc);
+
+    Volt::test('social-providers')->assertSee('/sso/oidc/'.$id.'/callback');
+});

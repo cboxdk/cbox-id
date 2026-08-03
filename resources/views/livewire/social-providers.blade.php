@@ -7,6 +7,7 @@ use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
+use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\OidcDiscovery;
 use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Federation\ValueObjects\ProviderTemplate;
@@ -228,6 +229,23 @@ new #[Layout('components.layouts.app', ['title' => 'Social sign-in'])] class ext
             : url('/sso/oauth2/{connection}/callback');
     }
 
+    /**
+     * The same URI for a connection that now EXISTS, with its real id in place.
+     *
+     * Setting one of these up is unavoidably two visits to the provider: the URI contains
+     * the connection id, and the connection cannot be created before its credentials are
+     * saved. The setup panel can therefore only show a `{connection}` placeholder — so
+     * this is where an administrator gets the value they actually have to register, and
+     * it has to stay visible, because the provider's error for a mismatch names its own
+     * client id rather than the URI and reads as a credential problem.
+     */
+    public function callbackUriFor(Connection $connection): string
+    {
+        return $connection->type === ConnectionType::OAuth2
+            ? url('/sso/oauth2/'.$connection->id.'/callback')
+            : url('/sso/oidc/'.$connection->id.'/callback');
+    }
+
     private function orgId(): string
     {
         return app(CurrentUser::class)->organizationId() ?? '';
@@ -272,6 +290,15 @@ new #[Layout('components.layouts.app', ['title' => 'Social sign-in'])] class ext
                             <p class="font-medium text-sm truncate" style="color:var(--foreground)">{{ $connection->name }}</p>
                             <p class="text-xs truncate" style="color:var(--muted)">
                                 {{ $connection->type->value === 'oauth2' ? 'OAuth 2.0' : 'OpenID Connect' }}
+                            </p>
+                            {{-- The REAL redirect URI, which only exists once the connection does.
+                                 The setup panel can only show a {connection} placeholder, so
+                                 without this the one value the provider must be given is not
+                                 available anywhere after saving — and the sign-in fails with an
+                                 error naming the client id rather than the URI. --}}
+                            <p class="mt-1.5 mono text-xs break-all" style="color:var(--muted)">
+                                <span style="color:var(--foreground)">Redirect URI:</span>
+                                {{ $this->callbackUriFor($connection) }}
                             </p>
                         </div>
                         <button
