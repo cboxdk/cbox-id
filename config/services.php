@@ -47,28 +47,49 @@ return [
     ],
 
     /*
-     * Social login providers. The self-host operator configures their own OAuth
-     * apps; a provider only appears on the login screen once its credentials are
-     * set. Account linking is EXPLICIT: a social identity only reaches an existing
-     * account when a signed-in user deliberately linked it (see SocialController).
-     * Accounts are never auto-merged by email.
+     * Social login providers offered by the OPERATOR of this deployment.
+     *
+     * Only the credentials live here. Everything else about each provider — issuer,
+     * endpoints, scopes, and where the identity sits in the response — comes from the
+     * shared provider catalogue (Cbox\Id\Federation\ProviderCatalog), the same entries a
+     * tenant picks from when connecting its own Google or GitHub. Sign-in runs on the
+     * platform's own OIDC and OAuth 2.0 clients, so these providers get the same SSRF
+     * pinning and the same RS256 allow-list as every tenant connection.
+     *
+     * A provider appears on the login screen only once it is COMPLETELY configured, so
+     * the screen never shows a button whose flow cannot finish. Account linking is
+     * EXPLICIT: a social identity only reaches an existing account when a signed-in user
+     * deliberately linked it (see SocialController). Accounts are never auto-merged by
+     * email.
      */
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => '/auth/google/callback',
     ],
 
     'github' => [
         'client_id' => env('GITHUB_CLIENT_ID'),
         'client_secret' => env('GITHUB_CLIENT_SECRET'),
-        'redirect' => '/auth/github/callback',
     ],
 
     'microsoft' => [
         'client_id' => env('MICROSOFT_CLIENT_ID'),
         'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
-        'redirect' => '/auth/microsoft/callback',
+
+        /*
+         * The directory (tenant) GUID — REQUIRED, and the one setting that is new.
+         *
+         * The directory is part of Entra's issuer, and an id_token's `iss` names the
+         * directory that actually issued it. Signing in against the shared `common`
+         * endpoint therefore cannot be verified: its discovery document advertises the
+         * literal `https://login.microsoftonline.com/{tenantid}/v2.0`, so there is no
+         * issuer to pin and no way to tell which directory a token came from. Pinning to
+         * one directory is what makes the assertion checkable — and it means this button
+         * admits your organization's accounts, not every Microsoft account in the world.
+         *
+         * Without it, Microsoft is simply not offered rather than offered unverifiably.
+         */
+        'directory' => env('MICROSOFT_DIRECTORY'),
     ],
 
 ];

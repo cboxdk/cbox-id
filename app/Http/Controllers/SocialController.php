@@ -7,7 +7,9 @@ namespace App\Http\Controllers;
 use App\Mail\EmailVerificationMail;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
-use App\Platform\SocialProviders;
+use App\Platform\Social\OperatorProvider;
+use App\Platform\Social\OperatorProviders;
+use App\Platform\Social\OperatorSocialFlow;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
@@ -15,39 +17,48 @@ use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Laravel\Socialite\Facades\Socialite;
-use Laravel\Socialite\Two\AbstractProvider;
-use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirect;
 use Throwable;
 
 /**
- * Social sign-in and account linking (Google, GitHub, Microsoft) over OAuth.
+ * Social sign-in and account linking for the OPERATOR's own providers.
  *
- * The platform NEVER auto-merges accounts by email. A social sign-in only reaches
- * an existing account if that provider identity was explicitly linked earlier by
- * an authenticated user. Otherwise a first-seen identity gets its own account, or
- * — if the email is already taken — the sign-in is refused with guidance to link
- * from Settings. Linking proves control of both sides: the user is signed in AND
- * completes the provider's auth.
+ * These run on the same federation clients as every tenant connection — the OIDC
+ * relying party and assertion validator for Google and Entra, the OAuth 2.0 client for
+ * GitHub — so the SSRF pinning, the RS256 allow-list and the refusal to treat a
+ * provider's word about an address as proof are the platform's, in one place, rather
+ * than a third-party driver's absence of an opinion. See {@see OperatorSocialFlow}.
+ *
+ * The platform NEVER auto-merges accounts by email. A social sign-in only reaches an
+ * existing account if that provider identity was explicitly linked earlier by an
+ * authenticated user. Otherwise a first-seen identity gets its own account, or — if the
+ * email is already taken — the sign-in is refused with guidance to link from Settings.
+ * Linking proves control of both sides: the user is signed in AND completes the
+ * provider's auth.
  */
 final class SocialController extends Controller
 {
-    public function redirect(string $provider): SymfonyRedirect
-    {
-        abort_unless(SocialProviders::isConfigured($provider), 404);
+    public function __construct(
+        private readonly OperatorProviders $providers,
+        private readonly OperatorSocialFlow $flow,
+    ) {}
 
-        return Socialite::driver($provider)->redirect();
+    public function redirect(string $provider, Request $request): RedirectResponse
+    {
+        return $this->start($request, $provider, route('social.callback', $provider));
     }
 
     public function callback(string $provider, Request $request, Subjects $subjects, PlatformAuth $auth): RedirectResponse
     {
-        abort_unless(SocialProviders::isConfigured($provider), 404);
+        $operator = $this->providers->find($provider);
 
-        $principal = $this->resolve($provider);
+        abort_if($operator === null, 404);
+
+        $principal = $this->resolve($request, $operator, route('social.callback', $provider));
 
         if ($principal === null) {
-            return redirect()->route('login')->with('error', 'Sign-in with '.SocialProviders::label($provider).' was cancelled or failed.');
+            return redirect()->route('login')->with('error', 'Sign-in with '.$operator->label().' was cancelled or failed.');
         }
 
         try {
@@ -88,7 +99,7 @@ final class SocialController extends Controller
                 'Welcome. Two things worth doing now: confirm your email — we have sent a link'
                 .($principal->email === null ? '' : ' to '.$principal->email)
                 .' — and set a password, so you can still get in if '
-                .SocialProviders::label($provider).' is ever unavailable.',
+                .$operator->label().' is ever unavailable.',
             );
         }
 
@@ -98,60 +109,113 @@ final class SocialController extends Controller
     /**
      * Begin linking a provider to the SIGNED-IN account (authenticated route).
      */
-    public function connect(string $provider): SymfonyRedirect
+    public function connect(string $provider, Request $request): RedirectResponse
     {
-        abort_unless(SocialProviders::isConfigured($provider), 404);
-
-        $driver = Socialite::driver($provider);
-
-        if ($driver instanceof AbstractProvider) {
-            $driver->redirectUrl(route('social.connect.callback', $provider));
-        }
-
-        return $driver->redirect();
+        return $this->start($request, $provider, route('social.connect.callback', $provider));
     }
 
-    public function connectCallback(string $provider, Subjects $subjects, CurrentUser $me): RedirectResponse
+    public function connectCallback(string $provider, Request $request, Subjects $subjects, CurrentUser $me): RedirectResponse
     {
-        abort_unless(SocialProviders::isConfigured($provider), 404);
+        $operator = $this->providers->find($provider);
 
-        $principal = $this->resolve($provider, route('social.connect.callback', $provider));
+        abort_if($operator === null, 404);
+
+        $principal = $this->resolve($request, $operator, route('social.connect.callback', $provider));
 
         if ($principal === null) {
-            return redirect()->route('settings')->with('error', 'Connecting '.SocialProviders::label($provider).' was cancelled or failed.');
+            return redirect()->route('settings')->with('error', 'Connecting '.$operator->label().' was cancelled or failed.');
         }
 
         try {
             $subjects->link($me->id(), $principal);
         } catch (IdentityAlreadyLinked) {
-            return redirect()->route('settings')->with('error', 'That '.SocialProviders::label($provider).' account is already linked to another user.');
+            return redirect()->route('settings')->with('error', 'That '.$operator->label().' account is already linked to another user.');
         }
 
-        return redirect()->route('settings')->with('status', SocialProviders::label($provider).' connected.');
+        return redirect()->route('settings')->with('status', $operator->label().' connected.');
     }
 
-    private function resolve(string $provider, ?string $redirectUrl = null): ?FederatedPrincipal
+    /**
+     * Issue the state and nonce, stash them, and send the browser on.
+     *
+     * Both are generated here and checked on return. The third-party driver this
+     * replaced kept its own state in the session and validated it out of sight; nothing
+     * does that for us now, so it is explicit — and it has to be, because without it the
+     * callback below is an unauthenticated URL that signs somebody in.
+     */
+    private function start(Request $request, string $provider, string $redirectUri): RedirectResponse
     {
+        $operator = $this->providers->find($provider);
+
+        abort_if($operator === null, 404);
+
+        $state = bin2hex(random_bytes(16));
+        $nonce = bin2hex(random_bytes(16));
+
+        // Keyed by redirect URI: sign-in and connect are separate flows that a person can
+        // have open at once, and a single key would let the second overwrite the first.
+        $request->session()->put($this->stashKey($operator, $redirectUri), [
+            'state' => $state,
+            'nonce' => $nonce,
+        ]);
+
         try {
-            $driver = Socialite::driver($provider);
+            $url = $this->flow->authorizeUrl($operator, $redirectUri, $state, $nonce);
+        } catch (Throwable $e) {
+            // Reached when the provider's discovery is unreachable or incomplete. Nothing
+            // the person clicking can do about it, so say so plainly rather than sending
+            // them to a provider that cannot complete.
+            Log::warning('cbox-id: operator social redirect failed.', [
+                'provider' => $operator->key(),
+                'reason' => $e->getMessage(),
+            ]);
 
-            if ($redirectUrl !== null && $driver instanceof AbstractProvider) {
-                $driver->redirectUrl($redirectUrl);
-            }
+            return redirect()->route('login')->with('error', 'Sign-in with '.$operator->label().' is unavailable right now.');
+        }
 
-            $social = $driver->user();
-        } catch (Throwable) {
+        return redirect()->away($url);
+    }
+
+    /**
+     * Complete the flow, or null when anything about it fails.
+     *
+     * Null rather than an exception because every caller here does the same thing with
+     * it: send the person somewhere they can try again. The reason is logged rather than
+     * shown — a federation failure's detail is for whoever runs the deployment.
+     */
+    private function resolve(Request $request, OperatorProvider $operator, string $redirectUri): ?FederatedPrincipal
+    {
+        // Pulled, not read: a replayed callback finds nothing stashed and fails closed.
+        $stashed = $request->session()->pull($this->stashKey($operator, $redirectUri));
+
+        $expectedState = is_array($stashed) && is_string($stashed['state'] ?? null) ? $stashed['state'] : null;
+        $expectedNonce = is_array($stashed) && is_string($stashed['nonce'] ?? null) ? $stashed['nonce'] : null;
+
+        $state = $request->string('state')->toString();
+        $code = $request->string('code')->toString();
+
+        if ($expectedState === null || $expectedNonce === null || $code === '' || ! hash_equals($expectedState, $state)) {
             return null;
         }
 
-        $email = $social->getEmail();
+        try {
+            return $this->flow->principal($operator, $code, $redirectUri, $expectedNonce);
+        } catch (Throwable $e) {
+            Log::warning('cbox-id: operator social sign-in rejected.', [
+                'provider' => $operator->key(),
+                'reason' => $e->getMessage(),
+            ]);
 
-        return new FederatedPrincipal(
-            provider: 'social:'.$provider,
-            subject: (string) $social->getId(),
-            email: is_string($email) && $email !== '' ? $email : null,
-            name: $social->getName() ?? $social->getNickname(),
-            raw: ['provider' => $provider],
-        );
+            return null;
+        }
+    }
+
+    /**
+     * Colons, not dots: a dotted session key is NESTED by Laravel, which would put every
+     * provider's stash under one `social` parent that a single forget() could clear.
+     */
+    private function stashKey(OperatorProvider $operator, string $redirectUri): string
+    {
+        return 'social:'.$operator->key().':'.hash('sha256', $redirectUri);
     }
 }

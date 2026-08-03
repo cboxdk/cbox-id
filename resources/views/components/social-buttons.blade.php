@@ -30,9 +30,12 @@
 
     $providers = $tenant;
 
-    foreach (\App\Platform\SocialProviders::configured() as $key => $label) {
-        if (! array_key_exists($key, $providers)) {
-            $providers[$key] = ['label' => $label, 'url' => route('social.redirect', $key)];
+    foreach (app(\App\Platform\Social\OperatorProviders::class)->all() as $operator) {
+        if (! array_key_exists($operator->key(), $providers)) {
+            $providers[$operator->key()] = [
+                'label' => $operator->label(),
+                'url' => route('social.redirect', $operator->key()),
+            ];
         }
     }
 @endphp

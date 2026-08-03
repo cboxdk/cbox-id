@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
-use App\Platform\SocialProviders;
+use App\Platform\Social\OperatorProviders;
 use App\Platform\Sudo;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -359,7 +359,7 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
             'passkeys' => $me->id() !== ''
                 ? WebAuthnCredential::query()->where('user_id', $me->id())->orderByDesc('created_at')->get()
                 : collect(),
-            'socialProviders' => SocialProviders::configured(),
+            'socialProviders' => app(OperatorProviders::class)->all(),
             'linkedProviders' => collect(app(Subjects::class)->linkedIdentities($me->id()))->pluck('provider')->all(),
         ];
     }
@@ -567,8 +567,12 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
             </div>
             <div class="cbx-panel-body">
                 <ul class="divide-y" style="border-color:var(--border)">
-                    @foreach ($socialProviders as $key => $label)
-                        @php $isLinked = in_array('social:'.$key, $linkedProviders, true); @endphp
+                    @foreach ($socialProviders as $provider)
+                        @php
+                            $key = $provider->key();
+                            $label = $provider->label();
+                            $isLinked = in_array($provider->identityProvider(), $linkedProviders, true);
+                        @endphp
                         <li wire:key="social-{{ $key }}" class="flex items-center justify-between gap-4 py-3">
                             <div class="flex items-center gap-3">
                                 <span class="font-medium">{{ $label }}</span>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 
 /**
@@ -77,10 +78,20 @@ readonly class PendingLink
         return $now - $this->heldAt >= self::TTL_SECONDS;
     }
 
-    /** The provider's human name — "GitHub", not "social:github". */
+    /**
+     * The provider's human name — "GitHub", not "social:github".
+     *
+     * Read from the catalogue rather than from what the operator has configured: an
+     * identity can still be held when the deployment has since dropped that provider's
+     * credentials, and "Connect Github?" with the wrong capitalisation is how a person
+     * learns not to trust the screen asking them a security question.
+     */
     public function label(): string
     {
-        return SocialProviders::label(str_replace('social:', '', $this->provider));
+        $key = str_replace('social:', '', $this->provider);
+        $template = ProviderCatalog::find($key);
+
+        return $template !== null ? $template->name : ucfirst($key);
     }
 
     public function principal(): FederatedPrincipal

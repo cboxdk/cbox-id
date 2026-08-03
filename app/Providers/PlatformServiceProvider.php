@@ -33,8 +33,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
-use SocialiteProviders\Manager\SocialiteWasCalled;
-use SocialiteProviders\Microsoft\MicrosoftExtendSocialite;
 
 final class PlatformServiceProvider extends ServiceProvider
 {
@@ -85,9 +83,6 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // Every view can read `$me` without each component wiring it up.
         View::share('me', $this->app->make(CurrentUser::class));
-
-        // Register the Microsoft Socialite driver (Google/GitHub are built in).
-        Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
 
         // RBAC freshness: revoke a user's refresh tokens when their roles change, so a
         // grant/downgrade takes effect on next refresh rather than riding a stale token.
