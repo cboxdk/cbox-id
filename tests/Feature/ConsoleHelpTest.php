@@ -88,6 +88,9 @@ it('keeps every nav label identical to its page title', function (): void {
     // component rather than losing the page the moment it is merged.
     $mergedViews = [
         'hooks' => 'console/hooks/index',
+        'clients' => 'console/clients/index',
+        'connections' => 'console/connections/index',
+        'directories' => 'console/directories/index',
         'provisioning' => 'console/provisioning/index',
         'sod-policies' => 'console/sod-policies/index',
     ];

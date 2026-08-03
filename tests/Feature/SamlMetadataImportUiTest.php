@@ -64,8 +64,7 @@ function metadataXmlForUi(): string
 it('prefills the SAML fields from pasted IdP metadata', function (): void {
     ssoConsoleAdmin('meta-ok');
 
-    $component = Volt::test('connections')
-        ->set('creating', true)
+    $component = Volt::test('console.connections.create')
         ->set('type', 'saml')
         ->set('metadataInput', metadataXmlForUi())
         ->call('importMetadata')
@@ -81,8 +80,7 @@ it('prefills the SAML fields from pasted IdP metadata', function (): void {
 it('surfaces a validation error for unparseable metadata', function (): void {
     ssoConsoleAdmin('meta-bad');
 
-    Volt::test('connections')
-        ->set('creating', true)
+    Volt::test('console.connections.create')
         ->set('metadataInput', '<garbage>')
         ->call('importMetadata')
         ->assertHasErrors('metadataInput');
@@ -91,8 +89,7 @@ it('surfaces a validation error for unparseable metadata', function (): void {
 it('refuses metadata import for a non-entitled org', function (): void {
     ssoConsoleAdmin('meta-forbidden', entitled: false);
 
-    Volt::test('connections')
-        ->set('creating', true)
+    Volt::test('console.connections.create')
         ->set('metadataInput', metadataXmlForUi())
         ->call('importMetadata')
         ->assertForbidden();

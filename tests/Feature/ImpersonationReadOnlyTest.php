@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\OperatorAuth;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Subject;
@@ -58,16 +60,22 @@ dataset('durable_access_sinks', [
     'clients.create (C1)' => ['clients', 'create', []],
     'device.approve (C2)' => ['device', 'approve', []],
     'oauth consent.approve (C3)' => ['oauth.consent', 'approve', []],
-    'connections.create (C4)' => ['connections', 'create', []],
-    'connections.activate (C4)' => ['connections', 'activate', ['dom-id']],
-    'connections.invite (C4)' => ['connections', 'invite', []],
-    'connections.addDomain (C4)' => ['connections', 'addDomain', []],
-    'connections.verifyDomain (C4)' => ['connections', 'verifyDomain', ['dom-id']],
-    'connections.toggleCapture (C4)' => ['connections', 'toggleCapture', ['dom-id']],
-    'connections.removeDomain (C4)' => ['connections', 'removeDomain', ['dom-id']],
-    'directories.register (C5)' => ['directories', 'register', []],
-    'directories.invite (C5)' => ['directories', 'invite', []],
-    'webhooks.create (C6)' => ['webhooks', 'create', []],
+    // Single sign-on is three components since the console merge, so the sinks are
+    // named where they now live. The connection's own page takes a mount argument and
+    // is covered by its own case below rather than from this dataset.
+    'connections.create (C4)' => ['console.connections.create', 'create', []],
+    'connections.invite (C4)' => ['console.connections.index', 'invite', []],
+    'connections.addDomain (C4)' => ['console.connections.index', 'addDomain', []],
+    'connections.verifyDomain (C4)' => ['console.connections.index', 'verifyDomain', ['dom-id']],
+    'connections.toggleCapture (C4)' => ['console.connections.index', 'toggleCapture', ['dom-id']],
+    'connections.removeDomain (C4)' => ['console.connections.index', 'removeDomain', ['dom-id']],
+    'directories.register (C5)' => ['console.directories.create', 'register', []],
+    // The pull providers are reachable from both planes since the console merge, and
+    // connecting one plants a sealed provider credential and starts a sync — the same
+    // durable, victim-attributed state a SCIM token is.
+    'directories.connectPull (C5)' => ['console.directories.create', 'connectPull', []],
+    'directories.invite (C5)' => ['console.directories.index', 'invite', []],
+    'webhooks.create (C6)' => ['console.webhooks.create', 'create', []],
     'members.invite (C7)' => ['members', 'invite', []],
     'members.setRole (C7)' => ['members', 'setRole', ['some-user', 'admin']],
     'members.remove (C7)' => ['members', 'remove', ['some-user']],
@@ -81,6 +89,26 @@ it('refuses every durable-access console action while impersonating (403)', func
 
     Volt::test($component)->call($method, ...$args)->assertStatus(403);
 })->with('durable_access_sinks');
+
+it('refuses every SSO connection lifecycle action while impersonating (403)', function (string $method): void {
+    [, $org] = impersonatingSubject();
+
+    // A real connection, because the detail page resolves its model at mount and would
+    // otherwise 404 before the guard could refuse — which would pass this test while
+    // proving nothing. Its lifecycle actions are the sinks the console merge gave this
+    // plane: an impersonating operator who could rewrite the IdP config would be
+    // redirecting where the victim's whole company authenticates.
+    $connection = app(Connections::class)->create(
+        $org->id,
+        ConnectionType::Saml,
+        'Corporate SAML',
+        ['idp_entity_id' => 'https://idp.corp/metadata'],
+    );
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])
+        ->call($method)
+        ->assertStatus(403);
+})->with(['saveConfig', 'activate', 'disable', 'deleteConnection']);
 
 it('still allows read-only navigation while impersonating', function (): void {
     impersonatingSubject();

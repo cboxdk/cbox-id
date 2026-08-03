@@ -10,6 +10,11 @@ use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Contracts\DomainVerification;
+use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Governance\Models\SodPolicy;
@@ -803,4 +808,211 @@ it('does offer it to the administrator who holds the environment', function (): 
     anEnvironmentAdminActingOn('tenant-appearance-view');
 
     Volt::test('console.appearance')->assertSee('Environment default');
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Single sign-on (federated connections)
+|--------------------------------------------------------------------------
+| The organization plane had one page: an inline create form, row-level activate,
+| domain verification with the capture gate, SAML metadata import, and the Admin Portal
+| invite that hands SSO setup to an external IT admin. It could not edit, disable or
+| delete a connection at all. The environment plane had list → create → detail which
+| could do all three — and had no domains, no portal invite and no entitlement check.
+| The merge is the union of all of it.
+*/
+
+/** A SAML connection with a complete, sealed config, so the detail page can round-trip it. */
+function aSamlConnection(string $organizationId, string $name = 'Corporate SAML'): Connection
+{
+    return app(Connections::class)->create($organizationId, ConnectionType::Saml, $name, [
+        'idp_entity_id' => 'https://idp.corp/metadata',
+        'idp_sso_url' => 'https://idp.corp/sso',
+        'idp_x509cert' => '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----',
+        'sp_entity_id' => 'https://sp.acme/metadata',
+        'sp_acs_url' => 'https://sp.acme/acs',
+    ]);
+}
+
+it('serves single sign-on from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-sso');
+
+    $this->get(route('environment.connections'))->assertOk()->assertSee('Single sign-on');
+    $this->get(route('environment.connections.create'))->assertOk();
+})->group('security');
+
+it('serves single sign-on from the same component on the organization plane', function (): void {
+    // The organization plane gained the routable shape rather than the environment plane
+    // losing it: a connection URL is something you send to whoever runs the identity
+    // provider.
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.connections.index')->assertOk()->assertSee('Single sign-on');
+    Volt::test('console.connections.create')->assertOk();
+
+    expect(Route::has('connections.show'))->toBeTrue()
+        ->and(Route::has('connections.create'))->toBeTrue();
+})->group('security');
+
+it('creates a connection against the organization from the scope', function (): void {
+    // The create form used to carry its own organization picker on the environment plane
+    // and none on the organization plane — the second place the answer lived, validated
+    // differently in each.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-scoped');
+
+    Volt::test('console.connections.create')
+        ->set('type', 'saml')
+        ->set('name', 'Acme Okta')
+        ->set('idp_entity_id', 'https://idp.corp/metadata')
+        ->set('idp_sso_url', 'https://idp.corp/sso')
+        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
+        ->set('sp_entity_id', 'https://sp.acme/metadata')
+        ->set('sp_acs_url', 'https://sp.acme/acs')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(Connection::query()->where('organization_id', $orgId)->where('name', 'Acme Okta')->exists())->toBeTrue();
+})->group('security');
+
+it('refuses to create a connection before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-sso-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.connections.create')
+        ->set('type', 'saml')
+        ->set('name', 'Acme Okta')
+        ->set('idp_entity_id', 'https://idp.corp/metadata')
+        ->set('idp_sso_url', 'https://idp.corp/sso')
+        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
+        ->set('sp_entity_id', 'https://sp.acme/metadata')
+        ->set('sp_acs_url', 'https://sp.acme/acs')
+        ->call('create')
+        ->assertHasErrors('name');
+
+    expect(Connection::query()->exists())->toBeFalse();
+})->group('security');
+
+it('gives the organization plane the edit, disable and delete it never had', function (): void {
+    // The reason an earlier attempt at this merge was reverted: it routed both planes at
+    // the organization component, which had none of these three. Losing them means a
+    // tenant admin cannot correct a rotated certificate, cannot switch a misconfigured
+    // IdP off, and cannot remove one at all.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $connection = aSamlConnection($org->id);
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])
+        ->set('editName', 'Corporate SAML (renamed)')
+        ->call('saveConfig')
+        ->assertHasNoErrors();
+    expect(Connection::query()->whereKey($connection->id)->value('name'))->toBe('Corporate SAML (renamed)');
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('activate')->assertHasNoErrors();
+    expect($connection->fresh()?->isActive())->toBeTrue();
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('disable')->assertHasNoErrors();
+    expect($connection->fresh()?->status)->toBe(Cbox\Id\Federation\Enums\ConnectionStatus::Inactive);
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('deleteConnection');
+    expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
+})->group('security');
+
+it('gives the environment plane domain verification and the Admin Portal invite', function (): void {
+    // The other half of the union. Neither existed on the environment console, so an
+    // operator configuring SSO for a tenant could not prove the tenant's email domain —
+    // which is the thing that routes their people to the IdP at all.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
+
+    Volt::test('console.connections.index')
+        ->set('domain', 'ACME.com') // upper-case → normalized to lowercase
+        ->call('addDomain')
+        ->assertHasNoErrors();
+
+    expect(VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->exists())->toBeTrue();
+
+    $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
+    expect($component->get('portalUrl'))->toContain('/setup/');
+})->group('security');
+
+it('attributes an Admin Portal link to the environment administrator who minted it', function (): void {
+    // actorId(), not CurrentUser::id(): the environment plane has no subject session, so
+    // the organization page's reader would have recorded '' as the creator of a link
+    // that hands SSO configuration to an outsider.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
+    $actor = app(ConsoleScope::class)->actorId();
+
+    Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
+
+    expect($actor)->not->toBe('')
+        ->and(AdminPortalLink::query()->where('organization_id', $orgId)->value('created_by'))->toBe($actor);
+})->group('security');
+
+it('refuses an organization admin another organization\'s connection', function (): void {
+    // The escalation this merge had to close. The environment component resolved a
+    // connection on its primary key alone, which was safe only while an environment
+    // administrator was its sole caller. Serving it to a tenant admin unscoped would hand
+    // them saveConfig on every connection in the environment — rewriting where another
+    // company's people authenticate, over a sealed config holding that company's client
+    // secret and signing certificate.
+    actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso'));
+    $theirs = aSamlConnection($other->id, 'Not yours');
+
+    // The refusal is at mount, which is why there is no forged-action case below it: the
+    // page never yields a snapshot, so saveConfig cannot be reached to be refused. Every
+    // later read re-resolves through the same scoped query rather than trusting the id
+    // the mount accepted.
+    Volt::test('console.connections.show', ['connection' => $theirs->id])->assertStatus(404);
+    Volt::test('console.connections.index')->assertDontSee('Not yours');
+
+    expect(Connection::query()->whereKey($theirs->id)->value('name'))->toBe('Not yours');
+})->group('security');
+
+it('refuses another organization\'s domain to an organization admin', function (): void {
+    // The same escalation on the domain half: capture on a domain you do not own would
+    // force that company's people through YOUR identity provider.
+    actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso-domains'));
+    $foreign = app(DomainVerification::class)->add($other->id, 'foreign.example');
+
+    Volt::test('console.connections.index')->call('verifyDomain', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('toggleCapture', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('removeDomain', $foreign->id)->assertForbidden();
+
+    expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();
+})->group('security');
+
+it('keeps the whole-environment connection overview on the environment plane', function (): void {
+    // With no organization chosen the list is every connection in the environment. That
+    // is the environment administrator's overview, and it is only reachable on this
+    // plane — an organization member's organization is implicit, so they can never land
+    // in this branch.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-overview');
+    $other = app(Organizations::class)->create(new NewOrganization('Second Co', 'second-sso'));
+    aSamlConnection($orgId, 'First IdP');
+    aSamlConnection($other->id, 'Second IdP');
+
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.connections.index')
+        ->assertSee('First IdP')
+        ->assertSee('Second IdP')
+        // Domain verification and the portal invite belong to ONE organization, so they
+        // wait for a choice rather than acting on whichever the page happened to load.
+        ->assertSee('Choose an organization');
+})->group('security');
+
+it('refuses single sign-on to an organization admin with no organization at all', function (): void {
+    // The nullable reader answers null both for "an environment administrator has not
+    // chosen an organization yet" and for "this member has none", and the first means
+    // "show the whole environment". Told apart here, because conflating them turns an
+    // organization page into a list of every connection in the environment.
+    $subject = app(Subjects::class)->create('orphan-sso@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-sso'));
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+
+    Volt::test('console.connections.index')->assertForbidden();
 })->group('security');

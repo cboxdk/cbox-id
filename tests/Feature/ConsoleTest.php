@@ -102,7 +102,7 @@ it('creates and activates a SAML connection', function () {
     $orgId = owner();
     entitle($orgId, 'cbox-id-sso');
 
-    Volt::test('connections')
+    Volt::test('console.connections.create')
         ->set('type', 'saml')
         ->set('name', 'Corporate SAML')
         ->set('idp_entity_id', 'https://idp.corp/metadata')
@@ -144,7 +144,7 @@ it('forbids a non-admin member from reading admin console pages', function (stri
     // Not just the write buttons — the whole page (org-wide config, secrets,
     // audit) must be unreadable to a plain member.
     Volt::test($page)->assertForbidden();
-})->with(['console.audit', 'clients', 'connections', 'directories', 'roles', 'webhooks']);
+})->with(['console.audit', 'console.clients.index', 'console.connections.index', 'console.directories.index', 'console.roles.index', 'console.webhooks.index']);
 
 it('re-authorizes org-admin console pages on every request via boot(), not just mount()', function () {
     // A member who is an admin at mount, then demoted mid-session. The read gate must
@@ -161,7 +161,7 @@ it('re-authorizes org-admin console pages on every request via boot(), not just 
     entitle($org->id, 'cbox-id-sso');
     entitle($org->id, 'cbox-id-scim');
 
-    foreach (['connections', 'directories', 'roles', 'webhooks'] as $page) {
+    foreach (['console.connections.index', 'console.directories.index', 'console.roles.index', 'console.webhooks.index'] as $page) {
         $component = Volt::test($page)->assertOk();          // mounts fine as admin
 
         $cu->set($subject, $session, $org, MembershipRole::Member); // demoted

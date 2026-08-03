@@ -16,12 +16,21 @@ use Livewire\Volt\Volt;
  * people will trust is held until we have confirmed the address ourselves.
  */
 
-/** The subject-plane pages where an unverified account could otherwise create something. */
+/**
+ * The subject-plane pages where an unverified account could otherwise create something.
+ * A capability merged onto one component for both planes lives under `livewire/console`
+ * and still serves this plane, so the sweep follows the component rather than losing the
+ * page the moment it is unified.
+ */
 const GATED_CREATE_PAGES = [
-    'resources/views/livewire/clients.blade.php',
-    'resources/views/livewire/connections.blade.php',
-    'resources/views/livewire/roles.blade.php',
-    'resources/views/livewire/webhooks.blade.php',
+    'resources/views/livewire/console/clients/create.blade.php',
+    'resources/views/livewire/console/connections/create.blade.php',
+    'resources/views/livewire/console/roles/create.blade.php',
+    // Webhooks serves BOTH console planes from one component, so its create() lives
+    // under console/ rather than at livewire/<route>. The gate itself is unchanged —
+    // it is asked on the organization plane, where a subject session exists to ask
+    // about — and the sweep follows the page rather than losing it to the merge.
+    'resources/views/livewire/console/webhooks/create.blade.php',
 ];
 
 it('gates every subject-plane create action', function (): void {
@@ -63,7 +72,7 @@ it('refuses a create from an account whose address we have not confirmed', funct
     $me = app(CurrentUser::class);
     expect($me->emailVerified())->toBeFalse();
 
-    Volt::test('webhooks')
+    Volt::test('console.webhooks.create')
         ->set('url', 'https://example.test/hook')
         ->set('eventTypes', ['user.created'])
         ->call('create')
@@ -83,7 +92,7 @@ it('allows the same create once the address is confirmed', function (): void {
     app(Subjects::class)->markEmailVerified($me->id(), (string) $subject?->email);
     $me->refreshSubject(app(Subjects::class)->find($me->id()));
 
-    Volt::test('webhooks')
+    Volt::test('console.webhooks.create')
         ->set('url', 'https://example.test/hook')
         ->set('eventTypes', ['user.created'])
         ->call('create')

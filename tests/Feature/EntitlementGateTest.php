@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Cbox\Id\Directory\Models\Directory;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Livewire\Volt\Volt;
 
@@ -16,20 +18,38 @@ beforeEach(function (): void {
 });
 
 it('shows the SSO upsell and refuses every SSO action for a non-entitled org', function () {
-    gateAdmin('gate-sso-deny');
+    $orgId = gateAdmin('gate-sso-deny');
 
-    Volt::test('connections')->assertSee('Enterprise');
+    Volt::test('console.connections.index')->assertSee('Enterprise');
+    Volt::test('console.connections.create')->assertSee('Enterprise');
 
-    Volt::test('connections')->call('create')->assertForbidden();
-    Volt::test('connections')->call('activate', 'con_x')->assertForbidden();
-    Volt::test('connections')->call('invite')->assertForbidden();
+    Volt::test('console.connections.create')->call('create')->assertForbidden();
+    Volt::test('console.connections.index')->call('invite')->assertForbidden();
+
+    // The lifecycle actions moved to the connection's own page in the console merge, so
+    // the gate has to be proven where they now live — on a real connection this org
+    // owns, because an unscoped id would 404 before ever reaching the entitlement check
+    // and the test would pass for the wrong reason.
+    $connection = app(Connections::class)->create(
+        $orgId,
+        ConnectionType::Saml,
+        'Corporate SAML',
+        ['idp_entity_id' => 'https://idp.corp/metadata'],
+    );
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('activate')->assertForbidden();
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('disable')->assertForbidden();
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('saveConfig')->assertForbidden();
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('deleteConnection')->assertForbidden();
+
+    expect(Connection::query()->whereKey($connection->id)->exists())->toBeTrue();
 });
 
 it('allows SSO connection creation once the org is entitled', function () {
     $orgId = gateAdmin('gate-sso-allow');
     grantFeature($orgId, 'cbox-id-sso');
 
-    Volt::test('connections')
+    Volt::test('console.connections.create')
         ->set('type', 'saml')
         ->set('name', 'Corporate SAML')
         ->set('idp_entity_id', 'https://idp.corp/metadata')
@@ -46,26 +66,30 @@ it('allows SSO connection creation once the org is entitled', function () {
 it('shows the SCIM upsell and refuses every SCIM action for a non-entitled org', function () {
     gateAdmin('gate-scim-deny');
 
-    Volt::test('directories')->assertSee('Enterprise');
+    Volt::test('console.directories.index')->assertSee('Enterprise');
 
-    Volt::test('directories')->call('register')->assertForbidden();
-    Volt::test('directories')->call('invite')->assertForbidden();
+    // Both shapes of "connect a directory" are refused, not just SCIM: the merged page
+    // offers the two pull providers on this plane as well, and an entitlement gate that
+    // only covers the form it was written against is not a gate.
+    Volt::test('console.directories.create')->call('register')->assertForbidden();
+    Volt::test('console.directories.create')->call('connectPull')->assertForbidden();
+    Volt::test('console.directories.index')->call('invite')->assertForbidden();
 });
 
 it('allows SCIM directory registration once the org is entitled', function () {
     $orgId = gateAdmin('gate-scim-allow');
     grantFeature($orgId, 'cbox-id-scim');
 
-    $component = Volt::test('directories')
+    Volt::test('console.directories.create')
         ->set('name', 'Okta')
         ->call('register')
         ->assertHasNoErrors();
 
+    $directory = Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->firstOrFail();
+
     // The token is protected (never dehydrated into the wire snapshot), so assert the
     // one-time reveal on the rendered output rather than reaching into component state.
-    $component->assertSee('scim_');
-
-    expect(Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->exists())->toBeTrue();
+    Volt::test('console.directories.show', ['directory' => $directory->id])->assertSee('scim_');
 });
 
 it('gates SSO and SCIM independently', function () {
@@ -73,6 +97,6 @@ it('gates SSO and SCIM independently', function () {
     // Entitle SSO only; SCIM must stay locked.
     grantFeature($orgId, 'cbox-id-sso');
 
-    Volt::test('connections')->call('invite')->assertOk();
-    Volt::test('directories')->call('invite')->assertForbidden();
+    Volt::test('console.connections.index')->call('invite')->assertOk();
+    Volt::test('console.directories.index')->call('invite')->assertForbidden();
 });

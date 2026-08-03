@@ -36,7 +36,7 @@ it('lets an entitled admin generate a setup link, recorded in the audit trail', 
     $fake = new FakeAuditLog;
     app()->instance(AuditLog::class, $fake);
 
-    $component = Volt::test('connections')->call('invite')->assertHasNoErrors();
+    $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
 
     expect($component->get('portalUrl'))->toContain('/setup/');
     expect(AdminPortalLink::query()->where('organization_id', $orgId)->count())->toBe(1);
@@ -48,7 +48,7 @@ it('a non-admin cannot reach the invite action even on an entitled org', functio
     grantFeature($orgId, 'cbox-id-sso');
 
     // The admin read-gate blocks a member at mount — they never reach invite().
-    Volt::test('connections')->assertForbidden();
+    Volt::test('console.connections.index')->assertForbidden();
 });
 
 it('opens the portal for a valid token', function () {

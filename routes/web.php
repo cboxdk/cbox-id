@@ -283,7 +283,14 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
 
     Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
-    Volt::route('/connections', 'connections')->name('connections');
+    // Single sign-on: the SAME components the environment plane serves. The routable
+    // index/new/show shape wins over the organization plane's single page — a connection
+    // URL is something you send to whoever runs the identity provider — and this plane
+    // gains the edit, disable and delete it never had, while domain verification and the
+    // Admin Portal invite come with it onto the environment plane.
+    Volt::route('/connections', 'console.connections.index')->name('connections');
+    Volt::route('/connections/new', 'console.connections.create')->name('connections.create');
+    Volt::route('/connections/{connection}', 'console.connections.show')->name('connections.show');
 
     // The provider catalogue — Google, GitHub, Apple and the rest, per tenant. A sibling
     // of Single sign-on rather than a section inside it: connecting the company's own
@@ -412,10 +419,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/users/new', 'environment.users.create')->name('environment.users.create');
         Volt::route('/users/{user}', 'environment.users.show')->name('environment.users.show');
 
-        // SSO connections — routable list → create → detail.
-        Volt::route('/single-sign-on', 'environment.connections.index')->name('environment.connections');
-        Volt::route('/single-sign-on/new', 'environment.connections.create')->name('environment.connections.create');
-        Volt::route('/single-sign-on/{connection}', 'environment.connections.show')->name('environment.connections.show');
+        // SSO connections — routable list → create → detail, on the merged component. The
+        // URL keeps its old spelling so existing links and bookmarks still resolve; the
+        // route names are what the two planes disagree on, and both are preserved.
+        Volt::route('/single-sign-on', 'console.connections.index')->name('environment.connections');
+        Volt::route('/single-sign-on/new', 'console.connections.create')->name('environment.connections.create');
+        Volt::route('/single-sign-on/{connection}', 'console.connections.show')->name('environment.connections.show');
 
         // Login methods (SAML service providers) — routable list → create → detail.
         Volt::route('/login-methods', 'environment.sso-providers.index')->name('environment.sso-providers');

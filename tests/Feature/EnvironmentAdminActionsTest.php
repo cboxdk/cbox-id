@@ -77,7 +77,7 @@ it('exercises the connection detail mutating actions (saveConfig, activate, disa
 
     // The OIDC edit form binds issuer/client_id + a signing_key that is never prefilled,
     // so a save must re-supply it or the page short-circuits with a field error.
-    Volt::test('environment.connections.show', ['connection' => $connection->id])
+    Volt::test('console.connections.show', ['connection' => $connection->id])
         ->set('editName', 'Okta Renamed')
         ->set('issuer', 'https://okta.example/issuer')
         ->set('client_id', 'client-abc')
@@ -89,7 +89,7 @@ it('exercises the connection detail mutating actions (saveConfig, activate, disa
 
     expect(Connection::query()->whereKey($connection->id)->value('name'))->toBe('Okta Renamed');
 
-    Volt::test('environment.connections.show', ['connection' => $connection->id])
+    Volt::test('console.connections.show', ['connection' => $connection->id])
         ->call('deleteConnection');
     expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
 });

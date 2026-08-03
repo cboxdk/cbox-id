@@ -54,7 +54,7 @@ function ssoAdmin(string $slug, bool $entitled = true): string
 it('lets an entitled admin add a domain and reveals its DNS challenge', function () {
     $orgId = ssoAdmin('dom-add');
 
-    $component = Volt::test('connections')
+    $component = Volt::test('console.connections.index')
         ->set('domain', 'ACME.com') // upper-case → normalized to lowercase
         ->call('addDomain')
         ->assertHasNoErrors();
@@ -70,7 +70,7 @@ it('lets an entitled admin add a domain and reveals its DNS challenge', function
 it('rejects a malformed domain', function () {
     $orgId = ssoAdmin('dom-bad');
 
-    Volt::test('connections')
+    Volt::test('console.connections.index')
         ->set('domain', 'not a domain')
         ->call('addDomain')
         ->assertHasErrors('domain');
@@ -82,7 +82,7 @@ it('surfaces a friendly error when the domain is already claimed by another org'
 
     ssoAdmin('dom-claim-b'); // now acting as a different org's admin
 
-    Volt::test('connections')
+    Volt::test('console.connections.index')
         ->set('domain', 'acme.com')
         ->call('addDomain')
         ->assertHasErrors('domain');
@@ -91,10 +91,10 @@ it('surfaces a friendly error when the domain is already claimed by another org'
 it('refuses every domain action for a non-entitled org', function () {
     ssoAdmin('dom-deny', entitled: false);
 
-    Volt::test('connections')->set('domain', 'acme.com')->call('addDomain')->assertForbidden();
-    Volt::test('connections')->call('verifyDomain', 'vd_x')->assertForbidden();
-    Volt::test('connections')->call('toggleCapture', 'vd_x')->assertForbidden();
-    Volt::test('connections')->call('removeDomain', 'vd_x')->assertForbidden();
+    Volt::test('console.connections.index')->set('domain', 'acme.com')->call('addDomain')->assertForbidden();
+    Volt::test('console.connections.index')->call('verifyDomain', 'vd_x')->assertForbidden();
+    Volt::test('console.connections.index')->call('toggleCapture', 'vd_x')->assertForbidden();
+    Volt::test('console.connections.index')->call('removeDomain', 'vd_x')->assertForbidden();
 });
 
 it('verifies a domain when the TXT record is present', function () {
@@ -106,7 +106,7 @@ it('verifies a domain when the TXT record is present', function () {
     $record = $domains->add($orgId, 'acme.com');
     $dns->publish($domains->challengeHost('acme.com'), $record->verification_token);
 
-    Volt::test('connections')
+    Volt::test('console.connections.index')
         ->call('verifyDomain', $record->id)
         ->assertHasNoErrors()
         // The confirmation is dispatched to the layout's toast now, not rendered into
@@ -124,7 +124,7 @@ it('flashes a not-found message when the TXT record is missing', function () {
     $this->fakeDns();
     $record = app(DomainVerification::class)->add($orgId, 'acme.com');
 
-    Volt::test('connections')
+    Volt::test('console.connections.index')
         ->call('verifyDomain', $record->id)
         ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
             (string) ($params['message'] ?? ''),
@@ -141,11 +141,11 @@ it('toggles capture only on a verified domain', function () {
     $pending = app(DomainVerification::class)->add($orgId, 'pending.com');
 
     // Verified → capture flips on.
-    Volt::test('connections')->call('toggleCapture', $verified->id)->assertHasNoErrors();
+    Volt::test('console.connections.index')->call('toggleCapture', $verified->id)->assertHasNoErrors();
     expect($verified->refresh()->capture)->toBeTrue();
 
     // Pending → refused (deny-by-default: capture requires proven ownership).
-    Volt::test('connections')->call('toggleCapture', $pending->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('toggleCapture', $pending->id)->assertForbidden();
     expect($pending->refresh()->capture)->toBeFalse();
 });
 
@@ -156,9 +156,9 @@ it('refuses acting on another org\'s domain id (cross-org tampering)', function 
     $orgB = app(Organizations::class)->create(new NewOrganization('B', 'dom-b'));
     $foreign = app(DomainVerification::class)->add($orgB->id, 'foreign.com');
 
-    Volt::test('connections')->call('verifyDomain', $foreign->id)->assertForbidden();
-    Volt::test('connections')->call('toggleCapture', $foreign->id)->assertForbidden();
-    Volt::test('connections')->call('removeDomain', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('verifyDomain', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('toggleCapture', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('removeDomain', $foreign->id)->assertForbidden();
 
     // Untouched.
     expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();

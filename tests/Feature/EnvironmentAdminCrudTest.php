@@ -260,12 +260,12 @@ it('resets a user\'s two-factor factors', function (): void {
 it('requires and stores client_secret for an OIDC connection created via the form', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'OIDC Co', slug: 'oidc-co'));
+    app(ConsoleScope::class)->chooseOrganization($org->id);
     $key = "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----";
 
     // The federation OIDC token exchange requires client_secret — the form must too.
-    Volt::test('environment.connections.create')
+    Volt::test('console.connections.create')
         ->set('type', 'oidc')
-        ->set('organization_id', $org->id)
         ->set('name', 'Okta OIDC')
         ->set('issuer', 'https://okta.example')
         ->set('client_id', 'abc')
@@ -283,9 +283,8 @@ it('requires and stores client_secret for an OIDC connection created via the for
         'jwks_uri' => 'https://okta.example/oauth2/keys',
     ], 200)]);
 
-    Volt::test('environment.connections.create')
+    Volt::test('console.connections.create')
         ->set('type', 'oidc')
-        ->set('organization_id', $org->id)
         ->set('name', 'Okta OIDC')
         ->set('issuer', 'https://okta.example')
         ->set('client_id', 'abc')
@@ -304,12 +303,12 @@ it('requires and stores client_secret for an OIDC connection created via the for
 it('refuses an OIDC connection whose issuer has no reachable discovery document', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Bad OIDC', slug: 'bad-oidc'));
+    app(ConsoleScope::class)->chooseOrganization($org->id);
     config(['cbox-id.federation.verify_url' => false]);
     Http::fake(['badidp.example/.well-known/openid-configuration' => Http::response('nope', 404)]);
 
-    Volt::test('environment.connections.create')
+    Volt::test('console.connections.create')
         ->set('type', 'oidc')
-        ->set('organization_id', $org->id)
         ->set('name', 'Bad OIDC')
         ->set('issuer', 'https://badidp.example')
         ->set('client_id', 'abc')
