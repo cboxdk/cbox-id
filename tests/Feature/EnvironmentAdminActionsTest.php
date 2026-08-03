@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
@@ -198,13 +199,17 @@ it('exercises the sod-policy detail mutating actions (scan, toggle, remove)', fu
     $policy = app(SegregationOfDuties::class)
         ->definePolicy(null, 'MC', [$roleA->id, $roleB->id]);
 
-    Volt::test('environment.sod-policies.show', ['policy' => $policy->id])
-        ->set('scanOrgId', $scanOrgId)
+    // One component on both planes now, and the organization an environment-wide rule is
+    // evaluated against comes from the console chrome rather than from a picker the page
+    // carried — so it is chosen here, the way an administrator chooses it.
+    app(ConsoleScope::class)->chooseOrganization($scanOrgId);
+
+    Volt::test('console.sod-policies.show', ['policy' => $policy->id])
         ->call('scan')
         ->call('toggle')
         ->assertHasNoErrors();
 
-    Volt::test('environment.sod-policies.show', ['policy' => $policy->id])
+    Volt::test('console.sod-policies.show', ['policy' => $policy->id])
         ->call('remove');
     expect(SodPolicy::query()->whereKey($policy->id)->exists())->toBeFalse();
 });

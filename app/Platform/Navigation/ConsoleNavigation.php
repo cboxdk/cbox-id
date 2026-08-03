@@ -85,7 +85,10 @@ class ConsoleNavigation
             ),
             new NavArea('Access control', 'shield-check',
                 new NavPage('environment.governance', 'Access reviews'),
-                new NavPage('environment.sod-policies', 'Conflict rules'),
+                // One component serves both planes now, so it has one title — and the
+                // organization plane's "Role conflicts" is the name the help topic and
+                // the published guide already use.
+                new NavPage('environment.sod-policies', 'Role conflicts'),
             ),
             new NavArea('Developers', 'clients',
                 new NavPage('environment.clients', 'Applications'),

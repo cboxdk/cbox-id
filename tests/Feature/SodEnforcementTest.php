@@ -185,7 +185,7 @@ it('does not let an org admin deactivate an environment-wide policy', function (
 
     // A forged Livewire call, not just a hidden button: the id resolves to nothing
     // within the org's own scope, so it 404s (deny-by-default) instead of toggling.
-    expect(fn () => Volt::test('sod-policies')->call('toggle', $envWide->id))
+    expect(fn () => Volt::test('console.sod-policies.index')->call('toggle', $envWide->id))
         ->toThrow(ModelNotFoundException::class);
 
     expect(SodPolicy::query()->whereKey($envWide->id)->value('active'))->toBeTrue();
@@ -198,7 +198,7 @@ it('shows an environment-wide policy as read-only rather than hiding it', functi
     app(SegregationOfDuties::class)->definePolicy(null, 'Env-wide PO vs payment', [$createPo->id, $approvePay->id]);
 
     // The org must SEE what constrains it; it just cannot change it.
-    Volt::test('sod-policies')
+    Volt::test('console.sod-policies.index')
         ->assertSee('Env-wide PO vs payment')
         ->assertSee('Environment-wide')
         ->assertSee('Managed for the environment')
@@ -211,7 +211,7 @@ it('still lets an org admin toggle its own policy', function (): void {
 
     $own = app(SegregationOfDuties::class)->definePolicy($orgId, 'Our PO vs payment', [$createPo->id, $approvePay->id]);
 
-    Volt::test('sod-policies')->call('toggle', $own->id);
+    Volt::test('console.sod-policies.index')->call('toggle', $own->id);
 
     expect(SodPolicy::query()->whereKey($own->id)->value('active'))->toBeFalse();
 });

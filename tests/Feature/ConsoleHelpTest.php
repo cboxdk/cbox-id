@@ -88,6 +88,7 @@ it('keeps every nav label identical to its page title', function (): void {
     // component rather than losing the page the moment it is merged.
     $mergedViews = [
         'provisioning' => 'console/provisioning/index',
+        'sod-policies' => 'console/sod-policies/index',
     ];
 
     $labels = [];

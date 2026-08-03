@@ -300,7 +300,9 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     Volt::route('/governance', 'governance')->name('governance');
-    Volt::route('/sod-policies', 'sod-policies')->name('sod-policies');
+    Volt::route('/sod-policies', 'console.sod-policies.index')->name('sod-policies');
+    Volt::route('/sod-policies/new', 'console.sod-policies.create')->name('sod-policies.create');
+    Volt::route('/sod-policies/{policy}', 'console.sod-policies.show')->name('sod-policies.show');
 
     // Outbound SCIM provisioning connections (push users OUT to downstream apps).
     // The SAME components the environment plane serves. The routable index/new/show
@@ -428,9 +430,9 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/access-reviews/{campaign}', 'environment.governance.show')->name('environment.governance.show');
 
         // Conflict rules (segregation-of-duties) — routable list → create → detail.
-        Volt::route('/conflict-rules', 'environment.sod-policies.index')->name('environment.sod-policies');
-        Volt::route('/conflict-rules/new', 'environment.sod-policies.create')->name('environment.sod-policies.create');
-        Volt::route('/conflict-rules/{policy}', 'environment.sod-policies.show')->name('environment.sod-policies.show');
+        Volt::route('/conflict-rules', 'console.sod-policies.index')->name('environment.sod-policies');
+        Volt::route('/conflict-rules/new', 'console.sod-policies.create')->name('environment.sod-policies.create');
+        Volt::route('/conflict-rules/{policy}', 'console.sod-policies.show')->name('environment.sod-policies.show');
 
         // Applications (OAuth clients) — routable list → create → detail (secret rotation).
         Volt::route('/applications', 'environment.clients.index')->name('environment.clients');

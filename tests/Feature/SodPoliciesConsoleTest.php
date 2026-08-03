@@ -33,7 +33,9 @@ it('defines a policy over two roles', function (): void {
     $a = app(Roles::class)->define($orgId, 'create-po');
     $b = app(Roles::class)->define($orgId, 'approve-pay');
 
-    Volt::test('sod-policies')
+    // One component on both planes now, and the routable list → new → detail shape won
+    // over this plane's single page — so defining happens on the create page.
+    Volt::test('console.sod-policies.create')
         ->set('name', 'PO vs pay')
         ->set('roleIds', [$a->id, $b->id])
         ->call('define')
@@ -65,11 +67,11 @@ it('detects a violation', function (): void {
 
     expect(app(SegregationOfDuties::class)->scan($orgId))->toHaveCount(1);
 
-    Volt::test('sod-policies')->assertSee('user-1');
+    Volt::test('console.sod-policies.index')->assertSee('user-1');
 });
 
 it('forbids a non-admin member', function (): void {
     sodAdmin(MembershipRole::Member);
 
-    Volt::test('sod-policies')->assertForbidden();
+    Volt::test('console.sod-policies.index')->assertForbidden();
 });
