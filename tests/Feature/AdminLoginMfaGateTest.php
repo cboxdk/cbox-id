@@ -89,7 +89,7 @@ it('refuses the MFA step to a member whose role cannot manage environments', fun
     // code. Even if the pending id could be planted, the gate must refuse.
     $component->set('code', '000000')->call('verifyMfa');
 
-    expect(session()->has(EnvironmentAdminAuth::SESSION_KEY))->toBeFalse();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
 it('establishes no session when the MFA step is called with no password step behind it', function (): void {
@@ -99,7 +99,7 @@ it('establishes no session when the MFA step is called with no password step beh
         ->set('code', '123456')
         ->call('verifyMfa');
 
-    expect(session()->has(EnvironmentAdminAuth::SESSION_KEY))->toBeFalse()
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse()
         ->and(session()->has(EnvironmentAdminAuth::ENV_KEY))->toBeFalse();
 });
 
@@ -124,6 +124,9 @@ it('still admits an owner who passes both steps', function (): void {
     // inside the still-valid skew window, which is correct and is why this is +30s.
     $component->set('code', $totp->codeAt($enrollment->secret, time() + 30))->call('verifyMfa');
 
-    expect(session()->get(EnvironmentAdminAuth::SESSION_KEY))->toBe($owner->refresh()->subject_id)
+    // Signed in, as that member, on that environment — asked through the resolver,
+    // because an admin session is a live subject session plus the anchor and asserting
+    // on either half alone would pass against a session the console refuses.
+    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($owner->refresh()->subject_id)
         ->and(session()->get(EnvironmentAdminAuth::ENV_KEY))->toBe($environmentId);
 });

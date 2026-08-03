@@ -217,7 +217,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Search', 'width' => '7
                         </span>
                     </div>
                     <div class="sm:justify-self-end">
-                        <a href="{{ route('operator.search.jump', $org['id']) }}" class="btn btn-ghost btn-sm">View</a>
+                        <a href="{{ route('platform.search.jump', $org['id']) }}" class="btn btn-ghost btn-sm">View</a>
                     </div>
                 </div>
             @empty
@@ -250,7 +250,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Search', 'width' => '7
                     </div>
                     <div class="sm:justify-self-end">
                         @if (count($user['organizations']) > 0)
-                            <a href="{{ route('operator.search.jump', $user['organizations'][0]['id']) }}" class="btn btn-ghost btn-sm">View</a>
+                            <a href="{{ route('platform.search.jump', $user['organizations'][0]['id']) }}" class="btn btn-ghost btn-sm">View</a>
                         @else
                             <span class="text-xs" style="color:var(--faint)">No organization</span>
                         @endif

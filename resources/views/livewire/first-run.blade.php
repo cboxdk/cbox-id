@@ -158,7 +158,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
         // deployment whose operators are not subjects yet — goes to the sign-in door
         // rather than to a console that would bounce them back to it anyway.
         return redirect()->to($signedIn
-            ? route('operator.environments')
+            ? route('platform.environments')
             : $this->signIn($installed, $planes));
     }
 

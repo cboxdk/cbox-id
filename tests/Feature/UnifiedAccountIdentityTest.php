@@ -114,7 +114,7 @@ it('signs a member in from a workspace magic link, and nobody else', function ()
 
     $this->get(route('workspace.magic.redeem', $strangerToken))
         ->assertRedirect(route('workspace.login'));
-    expect(session(AccountAuth::SESSION_KEY))->toBeNull()
+    expect(app(AccountAuth::class)->check())->toBeFalse()
         ->and($stranger->id)->not->toBeNull();
 
     // The member's own link does sign them in.
@@ -122,7 +122,7 @@ it('signs a member in from a workspace magic link, and nobody else', function ()
 
     $this->get(route('workspace.magic.redeem', $token))
         ->assertRedirect(route('workspace.home'));
-    expect(session(AccountAuth::SESSION_KEY))->toBe($member->id);
+    expect(app(AccountAuth::class)->current()?->id)->toBe($member->id);
 });
 
 it('kills the env-admin session when the underlying subject is deactivated', function (): void {
@@ -153,7 +153,9 @@ it('grants nothing on a session keyed on a subject with no account membership', 
         fn () => app(Subjects::class)->create('outsider@example.test', 'Outsider', 'a-strong-unbreached-passphrase'),
     );
 
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $subject->id);
+    // A real session for that subject, and the anchor — everything an admin session is
+    // made of EXCEPT the account membership, which is the one thing being withheld.
+    signInAsSubject($subject->id);
     session()->put(EnvironmentAdminAuth::ENV_KEY, $env->id);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($env->id));
 

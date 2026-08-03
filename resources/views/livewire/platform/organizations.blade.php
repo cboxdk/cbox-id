@@ -233,7 +233,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organizations', 'width
                 </div>
 
                 <div class="flex items-center gap-1 sm:justify-self-end">
-                    <a href="{{ route('operator.organization', $row['id']) }}" wire:navigate class="btn btn-ghost btn-sm">
+                    <a href="{{ route('platform.organization', $row['id']) }}" wire:navigate class="btn btn-ghost btn-sm">
                         View
                     </a>
                     <button wire:click="toggleStatus('{{ $row['id'] }}')" class="btn btn-ghost btn-sm">

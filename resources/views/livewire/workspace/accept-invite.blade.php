@@ -59,7 +59,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
             return;
         }
 
-        $auth->establish($this->member);
+        $auth->establish($this->member, ['invitation']);
         $this->redirect(route('workspace.home'), navigate: false);
     }
 }; ?>

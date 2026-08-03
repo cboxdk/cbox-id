@@ -57,7 +57,7 @@ final class MagicLinkController extends Controller
             return redirect()->route('workspace.login')->with('error', 'That sign-in link is invalid or has expired.');
         }
 
-        return match ($auth->adoptSubject($session->user_id)) {
+        return match ($auth->adoptSubject($session)) {
             AttemptOutcome::Ok => redirect()->intended(route('workspace.home')),
             AttemptOutcome::Mfa => redirect()->route('workspace.login.mfa'),
             default => redirect()->route('workspace.login')->with('error', 'That sign-in link is invalid or has expired.'),

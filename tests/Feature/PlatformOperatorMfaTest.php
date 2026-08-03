@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
 it('enrolls, confirms and can disable operator TOTP', function (): void {
     $op = actAsOperator('enroll@platform.test');
 
-    $component = Volt::test('operator.security')->call('enable');
+    $component = Volt::test('platform.security')->call('enable');
     $secret = $component->get('secret');
     expect($secret)->toBeString()->not->toBeEmpty();
 
@@ -56,5 +56,5 @@ it('refuses the operator security screen to someone who is not an operator', fun
     platformRootDeployment();
     app(PlatformOperators::class)->create('someone@platform.test', 'a-strong-operator-pass', 'Op');
 
-    Volt::test('operator.security')->assertStatus(404);
+    Volt::test('platform.security')->assertStatus(404);
 });

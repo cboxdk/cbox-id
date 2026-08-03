@@ -9,6 +9,7 @@ use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountPasskeys;
 use Cbox\Id\Platform\DatabaseAccountPasskeys;
+use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 
 /** Swap in a controllable verifier so the ceremony endpoints are testable server-side. */
@@ -20,33 +21,41 @@ function workspaceFakePasskeys(string $credentialId = 'cred_X', int $assertionSi
     return $repo;
 }
 
-function workspaceCeremonyMember(): string
+function workspaceCeremonyMember(): AccountMember
 {
+    // The platform root FIRST: a member provisioned without one has no subject, and a
+    // member with no subject has nothing to sign in.
+    platformRootEnvironment();
+
     return app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->member->id;
+    ))->member;
 }
 
 it('issues registration options for a signed-in member', function (): void {
-    $memberId = workspaceCeremonyMember();
+    $member = workspaceCeremonyMember();
+    $memberId = $member->id;
     workspaceFakePasskeys();
 
-    $this->withSession([AccountAuth::SESSION_KEY => $memberId, WorkspaceSudo::SESSION_KEY => time()])
-        ->postJson(route('workspace.passkeys.register.options'))
+    signInAsMember($member);
+    app(WorkspaceSudo::class)->confirm();
+    $this->postJson(route('workspace.passkeys.register.options'))
         ->assertOk()
         ->assertJsonStructure(['challenge', 'rp' => ['id', 'name'], 'user' => ['id', 'name']]);
 });
 
 it('completes register (options → create) and passwordless login in one session', function (): void {
-    $memberId = workspaceCeremonyMember();
+    $member = workspaceCeremonyMember();
+    $memberId = $member->id;
     $repo = workspaceFakePasskeys('cred_flow', assertionSignCount: 7);
 
     // Enrol: options then register, sharing the session so the challenge survives.
-    $session = ['_token' => 'x', AccountAuth::SESSION_KEY => $memberId, WorkspaceSudo::SESSION_KEY => time()];
-    $this->withSession($session)->postJson(route('workspace.passkeys.register.options'))->assertOk();
+    signInAsMember($member);
+    app(WorkspaceSudo::class)->confirm();
+    $this->postJson(route('workspace.passkeys.register.options'))->assertOk();
     // Seed a credential directly (the Fake ignores the assertion body anyway).
     $repo->register($memberId, 'chal', '{}', 'MacBook');
     expect($repo->forMember($memberId))->toHaveCount(1);
@@ -57,7 +66,7 @@ it('completes register (options → create) and passwordless login in one sessio
         ->assertOk()
         ->assertJsonPath('redirect', route('workspace.home'));
 
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBe($memberId);
+    expect(app(AccountAuth::class)->current()?->id)->toBe($memberId);
 });
 
 it('rejects a passkey login for an unregistered credential', function (): void {
@@ -67,5 +76,5 @@ it('rejects a passkey login for an unregistered credential', function (): void {
     $this->postJson(route('workspace.passkeys.login'), ['id' => 'never-registered'])
         ->assertStatus(422);
 
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBeNull();
+    expect(app(AccountAuth::class)->check())->toBeFalse();
 });

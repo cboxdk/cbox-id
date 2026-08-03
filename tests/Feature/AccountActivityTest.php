@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\AccountActivity;
-use App\Platform\AccountAuth;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -23,6 +22,13 @@ if (! function_exists('provisionAccount')) {
      */
     function provisionAccount(string $email = 'owner@acme.example'): array
     {
+        // The platform root FIRST, and STOOD IN. An account provisioned without one is
+        // in the first-install bootstrap window, where its members have no subject and a
+        // member with no subject has nothing to sign in — and the account chain itself is
+        // environment-owned, so a test that records entries from outside the root files
+        // them where the account host will not read them.
+        platformRootDeployment();
+
         $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
             accountName: 'Acme',
             ownerEmail: $email,
@@ -50,7 +56,7 @@ it('records an account-scoped, hash-chained entry when a member is invited', fun
 
     // The page action funnels through AccountActivity; drive it through the real
     // Livewire component (deps are auto-injected) with the owner as the actor.
-    $this->withSession([AccountAuth::SESSION_KEY => $owner->id]);
+    signInAsMember($owner);
 
     Volt::test('workspace.members')
         ->set('inviteEmail', 'newbie@acme.example')
@@ -102,8 +108,8 @@ it('renders the activity page for an admin and lists recorded actions', function
     app(AccountActivity::class)->record($account->id, 'account.environment_created', $owner->id,
         targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
 
-    $this->withSession([AccountAuth::SESSION_KEY => $owner->id])
-        ->get(route('workspace.activity'))
+    signInAsMember($owner);
+    $this->get(route('workspace.activity'))
         ->assertOk()
         ->assertSee('Activity')
         ->assertSee('environment created')
@@ -114,7 +120,7 @@ it('refuses the activity page to a member who cannot read members (403)', functi
     ['account' => $account] = provisionAccount();
     $viewer = memberWithRole($account->id, AccountRole::Billing, 'billing@acme.example');
 
-    $this->withSession([AccountAuth::SESSION_KEY => $viewer->id])
-        ->get(route('workspace.activity'))
+    signInAsMember($viewer);
+    $this->get(route('workspace.activity'))
         ->assertForbidden();
 });

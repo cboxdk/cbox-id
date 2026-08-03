@@ -33,6 +33,24 @@ final class CurrentUser
     }
 
     /**
+     * Say that nobody is signed in — the other half of {@see set()}.
+     *
+     * The middleware only ever populated this, never emptied it, which was safe only
+     * because a real deployment drops scoped instances between requests. That made
+     * "nobody is signed in" a fact this object could not state, only fail to have been
+     * told; and once the console started reading the acting person from here, a stale
+     * subject left over from earlier in the same process answered for a request whose
+     * session had been revoked. Refusing has to be something the middleware can DO.
+     */
+    public function clear(): void
+    {
+        $this->subject = null;
+        $this->session = null;
+        $this->organization = null;
+        $this->role = null;
+    }
+
+    /**
      * Replace just the subject, when this request is the one that changed it.
      *
      * The middleware repopulates this on every request, so the stale copy would only

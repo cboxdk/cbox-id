@@ -42,13 +42,18 @@ it('sends a signed-out visitor to the one sign-in, not to a door of its own', fu
     // `workspace.login` carries `plane:account` — false when there is no host split, by
     // design — so pointing a self-hosted operator there points them at a 404. The gate
     // asks the deployment shape; see AuthenticateOperator::signInRoute().
-    $this->get('/operator')->assertRedirect(route('login'));
-    $this->get(route('operator.organizations'))->assertRedirect(route('login'));
+    $this->get('/platform')->assertRedirect(route('login'));
+    $this->get(route('platform.organizations'))->assertRedirect(route('login'));
 });
 
-it('keeps the old operator login URLs working, pointed at the one sign-in', function (): void {
+it('keeps the old operator URLs working, pointed at where those pages went', function (): void {
     makeOperator();
 
+    // `/operator/login` was a door of its own before the sign-in was unified, and
+    // `/operator` was this section's address before it stopped being a console. Both are
+    // in somebody's bookmark bar, and a 404 there reads as "it moved and nobody said
+    // where" rather than as a page that was retired.
+    $this->get('/operator')->assertRedirect('/platform');
     $this->get('/operator/login')->assertRedirect('/workspace/login');
     $this->get('/operator/login/mfa')->assertRedirect('/workspace/login');
 });
@@ -56,8 +61,8 @@ it('keeps the old operator login URLs working, pointed at the one sign-in', func
 it('lets a signed-in operator in', function (): void {
     actAsOperator();
 
-    $this->get('/operator')->assertOk();
-    $this->get(route('operator.organizations'))->assertOk();
+    $this->get('/platform')->assertOk();
+    $this->get(route('platform.organizations'))->assertOk();
 });
 
 /*
@@ -74,15 +79,15 @@ it('404s a signed-in subject who does not run this deployment', function (): voi
     $subject = app(Subjects::class)->create('ordinary@acme.test', 'Ordinary', 'supersecret123');
     signInAsSubject($subject->id);
 
-    $this->get('/operator')->assertNotFound();
-    $this->get(route('operator.organizations'))->assertNotFound();
+    $this->get('/platform')->assertNotFound();
+    $this->get(route('platform.organizations'))->assertNotFound();
 
     // A route with no component behind it, so this is the ROUTE gate answering and not a
     // page's own boot() re-check. Both exist deliberately — Livewire actions all POST to
     // one endpoint, so the page has to re-ask — but a test that only ever hits a Volt page
     // cannot tell which of the two is holding, and passes with either one deleted.
-    $this->get(route('operator.search.jump', 'org_whatever'))->assertNotFound();
-    $this->post(route('operator.environment.switch'), ['environment' => 'x'])->assertNotFound();
+    $this->get(route('platform.search.jump', 'org_whatever'))->assertNotFound();
+    $this->post(route('platform.environment.switch'), ['environment' => 'x'])->assertNotFound();
 });
 
 /*
@@ -93,29 +98,29 @@ it('404s a signed-in subject who does not run this deployment', function (): voi
 it('takes the platform pages away from a suspended operator in a session they already hold', function (): void {
     $op = actAsOperator('rogue@platform.test');
 
-    $this->get(route('operator.organizations'))->assertOk();
+    $this->get(route('platform.organizations'))->assertOk();
 
     // Suspended out of band by another operator. The cookie, the session row and the CSRF
     // token all stay perfectly valid — the operator does not.
     $op->forceFill(['status' => 'suspended'])->save();
     nextRequest();
 
-    $this->get(route('operator.organizations'))->assertNotFound();
+    $this->get(route('platform.organizations'))->assertNotFound();
 
     // The route gate too, on an endpoint with no component to re-check behind it.
-    $this->post(route('operator.environment.switch'), ['environment' => 'x'])->assertNotFound();
+    $this->post(route('platform.environment.switch'), ['environment' => 'x'])->assertNotFound();
 });
 
 it('creates and freely targets environments — no identity guard', function (): void {
     actAsOperator();
 
-    Volt::test('operator.environments')->set('name', 'Staging')->call('create')->assertHasNoErrors();
+    Volt::test('platform.environments')->set('name', 'Staging')->call('create')->assertHasNoErrors();
     $staging = Environment::query()->where('slug', 'staging')->first();
     expect($staging)->not->toBeNull();
 
     // Operators stand above every plane — switching just repoints the target, under the
     // operator-only environment key (never the end-user environment resolution).
-    Volt::test('operator.environments')->call('switchTo', $staging->id);
+    Volt::test('platform.environments')->call('switchTo', $staging->id);
     expect(session(OperatorEnvironment::SESSION_KEY))->toBe('staging');
 });
 
@@ -123,7 +128,7 @@ it('bootstraps a plane with its first organization and admin', function (): void
     actAsOperator();
     $env = Environment::query()->create(['name' => 'Prod', 'slug' => 'prod', 'status' => 'active']);
 
-    Volt::test('operator.environments')
+    Volt::test('platform.environments')
         ->set('provisioningEnvId', $env->id)
         ->set('orgName', 'Acme Inc')
         ->set('adminName', 'Ada Lovelace')
@@ -144,7 +149,7 @@ it('bootstraps a plane with its first organization and admin', function (): void
 it('creates operators and toggles their status, but never the current one', function (): void {
     $me = actAsOperator('me@platform.test');
 
-    Volt::test('operator.operators')
+    Volt::test('platform.operators')
         ->set('name', 'Grace')
         ->set('email', 'grace@platform.test')
         ->set('password', 'a-strong-operator-pass')
@@ -154,11 +159,11 @@ it('creates operators and toggles their status, but never the current one', func
     $grace = app(PlatformOperators::class)->findByEmail('grace@platform.test');
     expect($grace)->not->toBeNull();
 
-    Volt::test('operator.operators')->call('toggleStatus', $grace->id);
+    Volt::test('platform.operators')->call('toggleStatus', $grace->id);
     expect(PlatformOperator::query()->whereKey($grace->id)->value('status')?->value)->toBe('suspended');
 
     // Cannot suspend yourself mid-session — refused with a friendly message, and
     // the account stays active (no self-lockout).
-    Volt::test('operator.operators')->call('toggleStatus', $me->id)->assertHasNoErrors();
+    Volt::test('platform.operators')->call('toggleStatus', $me->id)->assertHasNoErrors();
     expect(PlatformOperator::query()->whereKey($me->id)->value('status')?->value)->toBe('active');
 });

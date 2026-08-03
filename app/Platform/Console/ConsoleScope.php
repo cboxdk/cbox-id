@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
-use App\Platform\AccountAuth;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
@@ -48,16 +47,15 @@ class ConsoleScope
         private readonly EnvironmentAdminAuth $environmentAdmin,
         private readonly Entitlements $entitlements,
         private readonly PlatformOperators $operators,
-        private readonly AccountAuth $accountMembers,
     ) {}
 
     /**
      * Which door this request came through, resolved from the session that exists.
      *
-     * The subject session is checked FIRST and deliberately. The two stores are
-     * independent and a browser can hold both — an account member who also has a subject
-     * account in the same environment. If the environment plane won that tie, an ordinary
-     * organization member holding a stale account session would silently be given the
+     * The subject session is checked FIRST and deliberately. A browser can hold both an
+     * ordinary subject session and an environment-admin binding — the same person, two
+     * altitudes. If the environment plane won that tie, an ordinary organization member
+     * standing on a host they happen to have an admin binding for would be given the
      * ability to act on every organization in the environment.
      */
     public function plane(): ConsolePlane
@@ -224,14 +222,14 @@ class ConsoleScope
      *
      * Returns '' when nobody is acting, which callers must treat as "do not attribute"
      * rather than as an id.
+     *
+     * One answer for both planes now, rather than one per plane that happened to agree.
+     * The environment console used to read its own session key; there is one session, so
+     * there is one place to read.
      */
     public function actorId(): string
     {
-        if ($this->plane() === ConsolePlane::Environment) {
-            return $this->environmentAdmin->subjectId() ?? '';
-        }
-
-        return $this->subject->id();
+        return $this->environmentAdmin->subjectId() ?? $this->subject->id();
     }
 
     /**
@@ -289,27 +287,7 @@ class ConsoleScope
     }
 
     /**
-     * The subject behind this request, whichever door it came through.
-     *
-     * There are THREE session shapes, not two, and this is the one place that has to know
-     * all of them. `plane()` above answers a different question — which console's rules
-     * apply — and it only distinguishes the organization and environment consoles. The
-     * account console is a third context it was never built for.
-     *
-     * That matters here because an account member's session key holds the MEMBER id, not
-     * the subject id, even though the credential it was established with is the subject's
-     * ({@see AccountAuth} — a member is an ordinary subject in the platform root, and the
-     * member row points at it). Reading the subject session alone answers "nobody" on the
-     * entire account console — which is exactly where an operator signs in, so operator
-     * authority would have been unreachable in the one place it is used most.
-     *
-     * An environment administrator is refused OUTRIGHT rather than looked up. Their
-     * session is the environment-admin one and it belongs to a different altitude; if
-     * that same person also happens to hold an operator record, they get it through their
-     * own sign-in, not by being an admin of an environment.
-     */
-    /**
-     * Whether ANYONE is signed in here, by any of the three doors.
+     * Whether ANYONE is signed in here.
      *
      * Separate from {@see isPlatformOperator()} because the two answers lead to different
      * refusals: somebody who is not signed in gets the sign-in page, which is a step they
@@ -317,17 +295,28 @@ class ConsoleScope
      * would confirm to any account holder that this deployment has a staff console at that
      * address.
      *
-     * A gate that asked only about the subject session got this wrong in a way that was
-     * worse than either refusal: it sent operators to a sign-in that establishes a MEMBER
-     * session, then refused that session and sent them back, forever.
+     * This used to ask three stores in turn, because there were three: a subject session,
+     * an account-member session and an environment-admin one, for what is one person. That
+     * arrangement produced the worst refusal of the three — an operator was sent to a
+     * sign-in that wrote a MEMBER session, and a gate reading the SUBJECT session then
+     * refused it and sent them back, forever. There is one session now. The environment
+     * admin is still asked separately because its answer depends on the HOST as well as on
+     * the session, and on a tenant host the subject session is not resolvable at all
+     * ({@see EnvironmentAdminAuth}).
      */
     public function signedIn(): bool
     {
-        return $this->subject->check()
-            || $this->environmentAdmin->check()
-            || $this->accountMembers->check();
+        return $this->subject->check() || $this->environmentAdmin->check();
     }
 
+    /**
+     * The subject acting on this request, or null when nobody is.
+     *
+     * An environment administrator is refused OUTRIGHT rather than looked up. They are
+     * standing at a tenant's altitude on a tenant's host; if that same person really does
+     * run the deployment they get the platform pages through their own sign-in, not as a
+     * side effect of which console they last opened.
+     */
     private function actingSubjectId(): ?string
     {
         if ($this->environmentAdmin->check()) {
@@ -336,13 +325,7 @@ class ConsoleScope
 
         $subjectId = $this->subject->check() ? $this->subject->id() : '';
 
-        if ($subjectId !== '') {
-            return $subjectId;
-        }
-
-        $memberSubjectId = $this->accountMembers->current()?->subject_id;
-
-        return $memberSubjectId === null || $memberSubjectId === '' ? null : $memberSubjectId;
+        return $subjectId === '' ? null : $subjectId;
     }
 
     /** @throws AuthorizationException */

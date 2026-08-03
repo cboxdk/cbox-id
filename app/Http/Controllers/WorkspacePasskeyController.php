@@ -131,7 +131,7 @@ final class WorkspacePasskeyController extends Controller
 
         // A passkey is phishing-resistant strong auth — it establishes the session
         // directly, no second factor needed.
-        $auth->establish($memberId);
+        $auth->establish($memberId, ['passkey']);
 
         return new JsonResponse(['redirect' => route('workspace.home')]);
     }

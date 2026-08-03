@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -45,9 +46,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
 
     public ?string $magicUrl = null;
 
-    public function mount(AccountAuth $auth): mixed
+    /**
+     * Already signed in? Go where this session belongs.
+     *
+     * `$auth->check()` alone was the wrong question: it asks for a MEMBER session, and an
+     * operator with no account holds a subject one. So a signed-in operator was shown the
+     * sign-in form as though they were a stranger, and signing in again put them back
+     * here. {@see ConsoleScope::signedIn()} answers for every shape of session, and the
+     * console root admits an operator with no account, so there is one place to land.
+     */
+    public function mount(ConsoleScope $scope): mixed
     {
-        if ($auth->check()) {
+        if ($scope->signedIn()) {
             return redirect()->intended(route('workspace.home'));
         }
 

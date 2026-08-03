@@ -232,7 +232,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
 
 <div>
     <div class="mb-5">
-        <a href="{{ route('operator.organizations') }}" wire:navigate
+        <a href="{{ route('platform.organizations') }}" wire:navigate
            class="inline-flex items-center gap-1 text-sm" style="color:var(--muted)">
             <span aria-hidden="true">&larr;</span> Back to organizations
         </a>
@@ -258,7 +258,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
             @if (count($ancestors) > 0)
                 <nav aria-label="Breadcrumb" class="mb-3 text-xs flex flex-wrap items-center gap-1" style="color:var(--faint)">
                     @foreach ($ancestors as $ancestor)
-                        <a href="{{ route('operator.organization', $ancestor['id']) }}" wire:navigate class="hover:underline">{{ $ancestor['name'] }}</a>
+                        <a href="{{ route('platform.organization', $ancestor['id']) }}" wire:navigate class="hover:underline">{{ $ancestor['name'] }}</a>
                         <span aria-hidden="true">/</span>
                     @endforeach
                     <span style="color:var(--muted)">{{ $org['name'] }}</span>
@@ -349,7 +349,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
                 @if (in_array($member['role'], ['owner', 'admin'], true))
                     <span class="sm:text-right text-xs" style="color:var(--faint)">Not impersonable</span>
                 @else
-                    <form method="POST" action="{{ route('operator.impersonate', $member['user_id']) }}"
+                    <form method="POST" action="{{ route('platform.impersonate', $member['user_id']) }}"
                           class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
                           x-on:submit="if (! window.confirm(@js('Impersonate '.($member['email'] ?? $member['user_id']).'? Everything you do will be logged.'))) $event.preventDefault()">
                         @csrf

@@ -239,7 +239,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Usage', 'width' => '72
                 </div>
                 <div class="text-sm sm:text-right tabular-nums"><span class="sm:hidden" style="color:var(--faint)">Members: </span>{{ number_format($org['members']) }}</div>
                 <div class="sm:justify-self-end">
-                    <a href="{{ route('operator.search.jump', $org['id']) }}" class="btn btn-ghost btn-sm">View</a>
+                    <a href="{{ route('platform.search.jump', $org['id']) }}" class="btn btn-ghost btn-sm">View</a>
                 </div>
             </div>
         @empty

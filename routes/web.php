@@ -26,7 +26,6 @@ use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Http\Middleware\TargetEnvironment;
-use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
@@ -67,8 +66,11 @@ Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver 
         : $resolver->defaultEnvironment()?->environmentKey();
 
     if ($multiTenant && $current !== null && $current === $default) {
+        // One session, so one question. This used to ask for an account-MEMBER session,
+        // which an operator with no account never has — so the person who runs the
+        // deployment was sent to a sign-in they had already completed.
         return redirect()->route(
-            session()->has(AccountAuth::SESSION_KEY) ? 'workspace.home' : 'workspace.login'
+            session()->has(PlatformAuth::SESSION_KEY) ? 'workspace.home' : 'workspace.login'
         );
     }
 
@@ -569,29 +571,35 @@ Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(fun
 
 /*
 |--------------------------------------------------------------------------
-| Operator console — platform operators, the identity above every environment.
+| Platform section — the pages that need authority over the deployment.
 |--------------------------------------------------------------------------
 |
-| NOT a separate world any more. Operators provision environments, move between
-| them and manage other operators — but they do it inside the one console, from
-| the one sign-in, with these areas appearing in the rail for whoever holds the
-| authority. The separate prefix survives because the URLs are honest about what
-| the pages are and people have them bookmarked; the separate LOGIN does not,
-| because the second credential store it authenticated against is gone.
+| Not a console. A SECTION of the one console, and the distinction is the whole
+| point: these pages sign in through the same door, render in the same shell and
+| appear in the same rail as every other page — they are simply the ones that
+| need authority over the deployment, the way Billing needs authority over an
+| account.
+|
+| No plane gate. Every other group here asks which host it is on, because the
+| host decides whether a surface exists. This one asks who you are, which is a
+| question with the same answer everywhere, so the section is reachable from
+| whichever console a person is standing in.
 */
-Route::middleware('plane:operator')->prefix('operator')->group(function (): void {
-    // Bookmarks and old links. Kept as redirects rather than deleted: an operator who
-    // has had /operator/login in their bar for a year should land on the sign-in that
-    // works, not on a 404 that reads as "the console moved and nobody said where".
-    Route::redirect('/login', '/workspace/login')->name('operator.login');
-    Route::redirect('/login/mfa', '/workspace/login')->name('operator.login.mfa');
+/*
+ * Bookmarks. `/operator` was this section's address until the pages stopped being a
+ * console of their own, and `/operator/login` was a door of its own before that. Kept as
+ * redirects rather than deleted, for the reason the login redirect was kept when the door
+ * went: somebody who has had one of these in their bar for a year should land on the page
+ * that works, not on a 404 that reads as "it moved and nobody said where".
+ *
+ * No plane gate, matching the section they point at — and they disclose nothing a
+ * `Location` header to a public sign-in does not.
+ */
+Route::redirect('/operator', '/platform');
+Route::redirect('/operator/login', '/workspace/login');
+Route::redirect('/operator/login/mfa', '/workspace/login');
 
-    // There is no `/operator/logout`. It ended a session of its own and reported
-    // "Signed out of the operator console." — a second door, and a message about a
-    // world that no longer exists. Signing out of the platform pages is signing out;
-    // the one console's logout does it. Nothing is left aliased because a POST route
-    // is not something a browser remembers.
-
+Route::prefix('platform')->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then
     // AuthenticateOperator asks whether the person it resolved runs this deployment.
     // Both are needed and in this order — the authority question is asked of CurrentUser,
@@ -607,24 +615,24 @@ Route::middleware('plane:operator')->prefix('operator')->group(function (): void
     // TargetEnvironment comes last: the console's chosen plane must not be ambient while
     // the operator's own (platform-root) session is being looked up.
     Route::middleware(['platform.auth:optional', AuthenticateOperator::class, TargetEnvironment::class])->group(function (): void {
-        Volt::route('/', 'operator.environments')->name('operator.environments');
-        Volt::route('/usage', 'operator.usage')->name('operator.usage');
-        Volt::route('/search', 'operator.search')->name('operator.search');
-        Volt::route('/accounts', 'operator.accounts')->name('operator.accounts');
-        Volt::route('/organizations', 'operator.organizations')->name('operator.organizations');
-        Volt::route('/organizations/{organization}', 'operator.organization')->name('operator.organization');
-        Volt::route('/operators', 'operator.operators')->name('operator.operators');
-        Volt::route('/security', 'operator.security')->name('operator.security');
-        Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('operator.environment.switch');
+        Volt::route('/', 'platform.environments')->name('platform.environments');
+        Volt::route('/usage', 'platform.usage')->name('platform.usage');
+        Volt::route('/search', 'platform.search')->name('platform.search');
+        Volt::route('/accounts', 'platform.accounts')->name('platform.accounts');
+        Volt::route('/organizations', 'platform.organizations')->name('platform.organizations');
+        Volt::route('/organizations/{organization}', 'platform.organization')->name('platform.organization');
+        Volt::route('/operators', 'platform.operators')->name('platform.operators');
+        Volt::route('/security', 'platform.security')->name('platform.security');
+        Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
 
         // Support impersonation — step into a tenant member's session. Authorized by
         // membership in the operator's currently-pinned plane (see the controller).
-        Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('operator.impersonate');
+        Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('platform.impersonate');
 
         // Cross-plane jump: a search result lives in some plane B; the tenant detail
         // page is plane-scoped, so we first re-point the console at the result's
         // environment, then hand off to the (now in-plane) org detail page.
-        Route::get('/search/jump/{organization}', [OperatorController::class, 'jumpToOrganization'])->name('operator.search.jump');
+        Route::get('/search/jump/{organization}', [OperatorController::class, 'jumpToOrganization'])->name('platform.search.jump');
     });
 });
 
@@ -672,7 +680,17 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
 
     Route::post('/logout', [WorkspaceController::class, 'logout'])->name('workspace.logout');
 
-    Route::middleware(AuthenticateAccountMember::class)->group(function (): void {
+    // `platform.auth:optional` RESOLVES the one session without requiring one, then the
+    // gate asks whether anybody was resolved. Both are needed and in this order, exactly
+    // as the platform section below does it: the console reads the acting person off
+    // CurrentUser, and only the first of these populates it. Without it every workspace
+    // page ran with an empty CurrentUser and had to ask a second session store instead —
+    // which is the store this change removes.
+    //
+    // Optional, not required, because the refusal is the gate's to make: it stashes the
+    // intended URL first, so an admin bounced here from a tenant's console signs in once
+    // and lands back on the handoff rather than on the account home.
+    Route::middleware(['platform.auth:optional', AuthenticateAccountMember::class])->group(function (): void {
         // The account's Projects (IdP products) — the launchpad. Each project holds
         // its own environments + plan; a project opens to its environments detail.
         Volt::route('/', 'workspace.home')->name('workspace.home');

@@ -21,7 +21,7 @@ The platform authenticated people two different ways.
 | | Tenant plane | Account plane (before) |
 |---|---|---|
 | Identity | `Identity\Models\User` (subject) | `Platform\Models\AccountMember` |
-| Session bridge | `PlatformAuth` | `AccountAuth` — a full parallel implementation |
+| Session bridge | `PlatformAuth` | `AccountAuth` — a full parallel implementation (later: no session of its own) |
 | Sign-in | identifier-first, home-realm discovery | flat email + password |
 | SSO | `Federation\Models\Connection` | none |
 | Passkeys, MFA, magic links | yes | none |
@@ -94,11 +94,14 @@ Two things make that acceptable rather than merely tolerable:
    required, SSO required — and the policy engine's tighten-only semantics mean no
    organization override can weaken it.
 
-What must **not** regress: the handoff's watertight anti-bleed binding. A session is
-bound to exactly one environment id and re-checked against the request's host-resolved
-environment on every resolve, so a session minted for one environment authenticates
-nowhere else. That property is independent of where the identity comes from, and its
-tests must keep passing through the rework.
+What must **not** regress: the handoff's watertight anti-bleed anchor. A session names
+exactly one environment id and it is re-checked against the request's host-resolved
+environment on every resolve, so a session minted for one environment administers nowhere
+else — not even another environment the same person is entitled to administer, because
+each one is authorized by its own one-time handoff. That property is independent of where
+the identity comes from, and it survived the collapse of the admin session into the
+subject session precisely because it is not an identity: it is a *selection*, of the same
+kind as the console's organization picker and an operator's target environment.
 
 ## Decisions taken
 
@@ -114,13 +117,26 @@ tests must keep passing through the rework.
 
 ## Consequences
 
-- `AccountAuth` stops being a credential store and becomes a session bridge only. The
-  password is verified against the member's subject; the SSO mandate is
-  `PlatformAuth::passwordLoginAllowedFor()`, the same method the tenant door calls; an
-  administratively-issued temporary password expires on both doors alike. The account
-  *session* stays distinct from the subject session — the account host must not mint a
-  credential for a plane it does not serve — but nothing about *how you prove who you
-  are* is implemented twice any more.
+- `AccountAuth` stops being a credential store and, in a second pass, stops being a
+  session at all. The password is verified against the member's subject; the SSO mandate
+  is `PlatformAuth::passwordLoginAllowedFor()`, the same method the tenant door calls; an
+  administratively-issued temporary password expires on both doors alike.
+
+  The account session was kept distinct at first, on the reasoning that the account host
+  must not mint a credential for a plane it does not serve. That reasoning was about the
+  HOST, and the host bulkheads (`plane:account` / `plane:subject`) are what enforce it —
+  so the distinct session bought nothing and cost every seam between the two stores: an
+  operator with no membership could not sign in at all, a gate that asked the wrong store
+  looped silently, and three separate places had to be asked "who is this?". There is one
+  session. `AccountAuth` is now the account plane's *view* of it, and membership is a
+  lookup: `account_members.subject_id` is unique, so which account a session belongs to
+  has exactly one answer and the browser cannot carry a different one.
+
+- The same collapse reaches `EnvironmentAdminAuth`. It held the administering subject's
+  id under a key of its own, which was the same duplication; an admin session is now the
+  ordinary subject session plus the environment anchor above. A consequence worth having:
+  revoking a person's sessions — which a password reset now does — ends their admin
+  console too, which a session assembled out of a raw id never could.
 - The `plane:account` / `plane:subject` split stops being about *which credential store*
   and becomes purely about *which host resolves to which environment*. `PlaneResolver`
   answers that question once, for both the route gate and the post-authentication

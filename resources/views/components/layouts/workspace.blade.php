@@ -114,7 +114,7 @@
                                  class="cbx-panel" style="position:absolute;top:calc(100% + 6px);left:0;min-width:260px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
                                 <p class="cbx-nav-group" style="padding:6px 10px 4px">Switch target</p>
                                 @foreach ($environments as $environment)
-                                    <form method="POST" action="{{ route('operator.environment.switch') }}">@csrf
+                                    <form method="POST" action="{{ route('platform.environment.switch') }}">@csrf
                                         <input type="hidden" name="environment" value="{{ $environment->id }}">
                                         <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $environment->id === $activeEnvId ? 'background:var(--secondary)' : '' }}">
                                             <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" />

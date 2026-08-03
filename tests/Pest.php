@@ -164,16 +164,46 @@ function serveOnTestHost(Environment $environment): Environment
 }
 
 /**
- * Seed an environment-admin session for an account member on an environment.
+ * Sign an account member in as the ADMINISTRATOR of an environment.
  *
- * The session is keyed on the member's PLATFORM-ROOT SUBJECT — the credential of record
- * — not on the membership row, so tests go through this rather than writing the raw key
- * and encoding the wrong shape in a dozen places.
+ * Through the real {@see EnvironmentAdminAuth::establish()}, because an admin session is
+ * the member's ordinary PLATFORM-ROOT SUBJECT session plus an anchor naming the
+ * environment — not a raw key a test could fabricate. A test that wrote the keys by hand
+ * would be asserting against a session shape no door produces.
+ *
+ * The member must HAVE a subject, which means a platform root existed before the account
+ * was provisioned ({@see platformRootEnvironment()}).
  */
 function actAsEnvironmentAdmin(AccountMember $member, string $environmentId): void
 {
-    session()->put(EnvironmentAdminAuth::SESSION_KEY, $member->refresh()->subject_id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $environmentId);
+    app(EnvironmentAdminAuth::class)->establish(
+        (string) $member->refresh()->subject_id,
+        $environmentId,
+    );
+}
+
+/**
+ * Sign the browser in AS AN ACCOUNT MEMBER.
+ *
+ * There is no member session any more — a member is a subject that holds a membership, so
+ * this establishes the ONE session and the membership is looked up from it. Tests used to
+ * write `AccountAuth::SESSION_KEY` directly, which is exactly why the shape was easy to
+ * get wrong: half of them had to remember to write a security stamp beside it, and the
+ * half that forgot were asserting against a session the plane would have refused.
+ *
+ * Same precondition as above: the member needs a subject, so stand up the platform root
+ * BEFORE provisioning the account.
+ */
+function signInAsMember(AccountMember $member): void
+{
+    $subjectId = (string) $member->refresh()->subject_id;
+
+    expect($subjectId)->not->toBe(
+        '',
+        'fixture: this member has no subject — provision the account AFTER platformRootEnvironment()',
+    );
+
+    signInAsSubject($subjectId);
 }
 
 /*

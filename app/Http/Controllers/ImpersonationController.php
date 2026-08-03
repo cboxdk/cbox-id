@@ -111,6 +111,6 @@ final class ImpersonationController extends Controller
 
         $impersonation->exit($request);
 
-        return redirect()->route($wasAccountMember ? 'environment.home' : 'operator.organizations');
+        return redirect()->route($wasAccountMember ? 'environment.home' : 'platform.organizations');
     }
 }

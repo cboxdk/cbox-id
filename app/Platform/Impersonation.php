@@ -26,11 +26,12 @@ use Illuminate\Http\Request;
  *    whole feature rests on, and what enforces it changed with the operator: it used
  *    to be enough to forget a separate `cbox.operator` key, because that key WAS the
  *    operator's authority. Authority now rides an ORDINARY session — an operator is a
- *    subject, and {@see ConsoleScope::operator()} resolves them from a subject session
- *    OR from an account-member one — so both of those, and every other account the
- *    browser was holding, are what have to be put aside. Leave any of it in place and
- *    the impersonator keeps the platform pages inside the impersonated session, which
- *    is the worst outcome this feature has.
+ *    subject, and {@see ConsoleScope::operator()} resolves them from it — so that
+ *    session, and every other account the browser was holding, is what has to be put
+ *    aside. Leave any of it in place and the impersonator keeps the platform pages
+ *    inside the impersonated session, which is the worst outcome this feature has.
+ *    The environment ANCHOR goes with it: it is not an identity, but an admin console
+ *    is a session plus an anchor, and half of one is still half a way in.
  *  - The subject session carries an `impersonation` amr, so it is never mistaken
  *    for a real login by anything that inspects how the session authenticated.
  *  - Both the start and the end are recorded on the tenant's audit trail, attributed
@@ -106,7 +107,7 @@ final class Impersonation
         $this->platformAuth->establish($request, $subjectId, ['impersonation'], $orgId);
 
         $this->audit->record(new AuditEvent(
-            action: 'operator.impersonation_started',
+            action: 'platform.impersonation_started',
             actorType: ActorType::Operator,
             actorId: $operatorId,
             organizationId: $orgId,
@@ -123,10 +124,10 @@ final class Impersonation
      *
      * Same strict model as {@see start()}: the caller has already authorized this
      * (the subject is a real member of $orgId within the env-admin's environment)
-     * and captured a justification. Here the env-admin session keys are the ones
-     * forgotten — so the /admin control plane is unreachable while impersonating —
-     * and the acting principal is recorded as an {@see ActorType::AccountMember}.
-     * The env to re-pin on exit is the env-admin's bound environment.
+     * and captured a justification. Here the environment BINDING is what is put aside —
+     * so the /admin control plane is unreachable while impersonating — and the acting
+     * principal is recorded as an {@see ActorType::AccountMember}. That binding is what
+     * gets restored on exit.
      */
     public function startAsAccountMember(Request $request, string $memberId, string $subjectId, string $orgId, string $reason): void
     {
@@ -136,17 +137,16 @@ final class Impersonation
         // longer exists. Either way it attests to something that has stopped being true.
         session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
 
-        // The env-admin session is bound to exactly one environment; re-pin it on exit.
+        // An env-admin session is anchored to exactly one environment; capture the anchor
+        // so exit can restore it, and drop it so /admin is unreachable until then.
+        // Dropping the identity is not enough on its own: the anchor is half of what makes
+        // an admin session worth anything, and an admin who came back UNBOUND would keep
+        // the console with the anti-bleed check silently satisfied by nothing.
         $env = $request->session()->get(EnvironmentAdminAuth::ENV_KEY);
 
-        // Become PURELY the subject: drop the env-admin keys so /admin is unreachable
-        // until exit. Only the member id in the marker survives, restored on exit.
-        $request->session()->forget([EnvironmentAdminAuth::SESSION_KEY, EnvironmentAdminAuth::ENV_KEY]);
-
-        // …and put aside every OTHER identity the browser was holding — the subject
-        // session and the account-member one — for the same reason the operator branch
-        // does: an env admin separately signed in at either door would otherwise still be
-        // that person inside the impersonated session, one switch away.
+        // …and put aside the identity itself, for the same reason the operator branch
+        // does: an env admin is an ordinary signed-in subject, and left in place they
+        // would still be that person inside the impersonated session, one switch away.
         $suspended = $this->suspendPrincipal($request);
 
         $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
@@ -195,7 +195,7 @@ final class Impersonation
         $isAccountMember = $marker->isAccountMember();
 
         $this->audit->record(new AuditEvent(
-            action: $isAccountMember ? 'account.impersonation_ended' : 'operator.impersonation_ended',
+            action: $isAccountMember ? 'account.impersonation_ended' : 'platform.impersonation_ended',
             actorType: $marker->actorType,
             actorId: $marker->operator,
             organizationId: $marker->organizationId,
@@ -221,25 +221,21 @@ final class Impersonation
         $this->forgetSubjectSession($request);
 
         // Restore ONLY the acting principal captured (and validated) at start, and
-        // re-pin the plane it was working in — the env-admin session for an account
-        // member, the operator's own subject session otherwise.
+        // re-pin the selection it was working under — the environment an admin session is
+        // anchored to, the plane an operator had the console aimed at.
         if ($isAccountMember) {
-            // The env-admin session is keyed on the account member's platform-root
-            // SUBJECT, so restore that — resolved fresh from the member id captured at
-            // start, never carried in the marker. A member removed (or unlinked) while
-            // the impersonation was running restores nothing: they come back to the
-            // sign-in door, not to a live control-plane session.
+            // The acting person is resolved FRESH from the member id captured at start,
+            // never carried in the marker. A member removed (or unlinked) while the
+            // impersonation was running restores nothing: they come back to the sign-in
+            // door, not to a live control-plane session.
             $subjectId = $this->members->find($marker->operator)?->subject_id;
 
-            if ($subjectId !== null) {
-                $request->session()->put(EnvironmentAdminAuth::SESSION_KEY, $subjectId);
-
-                if ($marker->environmentKey !== null) {
-                    $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
-                }
+            // The anchor goes back only if the identity did. An anchor without a session
+            // authenticates nobody, but leaving one behind for whoever holds the browser
+            // next is exactly the sort of half-restored state this method exists to avoid.
+            if ($this->resumePrincipal($request, $marker, $subjectId) && $marker->environmentKey !== null) {
+                $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
             }
-
-            $this->resumePrincipal($request, $marker, $subjectId);
         } else {
             $this->restoreOperator($request, $marker);
         }
@@ -255,20 +251,19 @@ final class Impersonation
      * Put the acting principal's OWN browser identity aside, returning what to resume on
      * exit.
      *
-     * BOTH doors, because operator authority comes through either:
+     * The subject session, and EVERYTHING of it: the active key, the pinned org, the
+     * held-account SET and the active pointer. The set is the one an "operator key" model
+     * never had. {@see PlatformAuth} keeps several signed-in accounts and can switch
+     * between them without re-authenticating, so an operator left in it is an operator the
+     * impersonated session can become again. The Livewire call guard refuses the switch
+     * action today; a deny-list that has to stay complete is not what this property should
+     * rest on.
      *
-     *  - The subject session — and everything of it: the active key, the pinned org, the
-     *    held-account SET and the active pointer. The set is the one an "operator key"
-     *    model never had. {@see PlatformAuth} keeps several signed-in accounts and can
-     *    switch between them without re-authenticating, so an operator left in it is an
-     *    operator the impersonated session can become again. The Livewire call guard
-     *    refuses the switch action today; a deny-list that has to stay complete is not
-     *    what this property should rest on.
-     *  - The ACCOUNT-MEMBER session, which is where staff actually sign in, and which
-     *    {@see ConsoleScope} resolves operator authority from as well. Leaving it looks
-     *    safe — the resolver prefers the subject session, and during an impersonation that
-     *    is the victim's — but the operator's identity would still be sitting in the
-     *    session, one expiry or one resolver change away from answering again.
+     * It used to have to put aside a second store as well — the account-member session,
+     * which is where staff actually sign in and which {@see ConsoleScope} also resolved
+     * operator authority from. Leaving that one behind LOOKED safe, because the resolver
+     * preferred the subject session and during an impersonation that is the victim's. It
+     * is one store now, so there is no second place authority can be left sitting.
      *
      * The framework session ROW is deliberately not revoked — it is suspended, and
      * resumed as itself on exit, so the operator comes back with the authentication facts
@@ -281,21 +276,21 @@ final class Impersonation
     private function suspendPrincipal(Request $request): SuspendedIdentity
     {
         $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
-        $memberId = $request->session()->get(AccountAuth::SESSION_KEY);
-        $memberVersion = $request->session()->get(AccountAuth::SESSION_VERSION_KEY);
 
         $this->forgetSubjectSession($request);
         $request->session()->forget([
-            AccountAuth::SESSION_KEY,
-            AccountAuth::SESSION_VERSION_KEY,
             AccountAuth::PENDING_KEY,
+            // The environment ANCHOR, on both doors. The account-member branch captures
+            // it first so exit can put it back; the operator branch simply drops it,
+            // because an impersonated session must not inherit a binding either — the
+            // identity behind it is gone, and a selection left over from someone who is
+            // not here is not a selection.
+            EnvironmentAdminAuth::ENV_KEY,
         ]);
         $this->target->release();
 
         return new SuspendedIdentity(
             subjectSessionId: is_string($sessionId) && $sessionId !== '' ? $sessionId : null,
-            accountMemberId: is_string($memberId) && $memberId !== '' ? $memberId : null,
-            accountMemberVersion: is_numeric($memberVersion) ? (int) $memberVersion : null,
         );
     }
 
@@ -334,56 +329,41 @@ final class Impersonation
     }
 
     /**
-     * Put back what was suspended — each part only if it still belongs to the acting
+     * Put the suspended session back — and only if it still belongs to the acting
      * principal, freshly resolved from the id captured at start.
      *
-     * That binding is the whole safety argument. The marker names a session id and a
-     * member id; neither is trusted to be the principal's, so a marker that somehow named
-     * someone else's session or someone else's membership restores nothing at all rather
-     * than handing the browser an identity it never had.
+     * That re-binding is the whole safety argument. The marker names a session id; it is
+     * not trusted to be the principal's, so a marker that somehow named someone else's
+     * session restores nothing at all rather than handing the browser an identity it never
+     * had.
      *
-     * Returns whether ANY identity came back — false means the acting person returns to
+     * Returns whether the identity came back — false means the acting person returns to
      * the sign-in door, which is what a revoked session, a deleted operator or a member
      * unlinked during the window has to look like.
      */
     private function resumePrincipal(Request $request, ImpersonationMarker $marker, ?string $subjectId): bool
     {
-        if ($subjectId === null) {
+        $sessionId = $marker->suspended->subjectSessionId;
+
+        if ($subjectId === null || $sessionId === null) {
             return false;
         }
 
-        $resumed = false;
-        $suspended = $marker->suspended;
+        // Read in the PLATFORM ROOT's scope: `auth_sessions` is environment-owned, the
+        // control plane's people are subjects of the root, and the ambient environment
+        // right now is the TENANT's (we are still inside the impersonated request).
+        // Unscoped it would find nothing and silently drop the operator at the door.
+        $session = $this->platformRoot->run(
+            fn (): ?Session => $this->sessions->active($sessionId),
+        );
 
-        $sessionId = $suspended->subjectSessionId;
-
-        if ($sessionId !== null) {
-            // Read in the PLATFORM ROOT's scope: `auth_sessions` is environment-owned, the
-            // control plane's people are subjects of the root, and the ambient environment
-            // right now is the TENANT's (we are still inside the impersonated request).
-            // Unscoped it would find nothing and silently drop the operator at the door.
-            $session = $this->platformRoot->run(
-                fn (): ?Session => $this->sessions->active($sessionId),
-            );
-
-            if ($session !== null && $session->user_id === $subjectId) {
-                $this->platformAuth->adopt($request, $session);
-                $resumed = true;
-            }
+        if ($session === null || $session->user_id !== $subjectId) {
+            return false;
         }
 
-        $memberId = $suspended->accountMemberId;
+        $this->platformAuth->adopt($request, $session);
 
-        if ($memberId !== null && $this->members->find($memberId)?->subject_id === $subjectId) {
-            $request->session()->put(AccountAuth::SESSION_KEY, $memberId);
-            // The stamp as CAPTURED, never re-read: a password reset during the window
-            // bumps the member's version precisely so every session carrying the old value
-            // is dead, and re-reading it live would resurrect the one it killed.
-            $request->session()->put(AccountAuth::SESSION_VERSION_KEY, $suspended->accountMemberVersion ?? 0);
-            $resumed = true;
-        }
-
-        return $resumed;
+        return true;
     }
 
     /**

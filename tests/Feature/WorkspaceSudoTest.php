@@ -17,13 +17,18 @@ uses(RefreshDatabase::class);
 /** Provision an account and sign its owner into the workspace plane. */
 function signInMember(): string
 {
+    // The platform root FIRST. An account provisioned without one is in the
+    // first-install bootstrap window: its members have no subject, and a member
+    // with no subject has nothing to sign in.
+    platformRootEnvironment();
+
     $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
-    session()->put(AccountAuth::SESSION_KEY, $result->member->id);
+    signInAsMember($result->member);
 
     return $result->member->id;
 }
@@ -79,10 +84,9 @@ it('confirms workspace sudo with the correct password and rejects a wrong one', 
 });
 
 it('gates workspace passkey enrolment behind sudo at the HTTP layer', function (): void {
-    $id = signInMember();
+    signInMember();
 
-    $this->withSession([AccountAuth::SESSION_KEY => $id])
-        ->postJson(route('workspace.passkeys.register.options'))
+    $this->postJson(route('workspace.passkeys.register.options'))
         ->assertStatus(403)
         ->assertJsonPath('sudo', route('workspace.sudo'));
 });

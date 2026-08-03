@@ -103,7 +103,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
 
         if ($environment !== null) {
             $target->pointAt($environment->slug);
-            $this->redirect(route('operator.environments'), navigate: false);
+            $this->redirect(route('platform.environments'), navigate: false);
         }
     }
 

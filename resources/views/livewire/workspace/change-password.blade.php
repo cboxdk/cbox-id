@@ -78,9 +78,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose a new password'])] c
         // Narrowed by the guard above, which refuses a member with no subject outright.
         $root->run(fn () => $admin->clear($subjectId));
 
-        // resetPassword bumps the security stamp, which invalidates the session that
-        // reached this page — sign them back in on the new credential rather than
-        // bouncing them to a login form they just satisfied.
+        // resetPassword revokes every session this member had, including the one that
+        // reached this page — that is the point of it. Sign them back in on the new
+        // credential rather than bouncing them to a login form they just satisfied.
         $auth->establish($member->id);
 
         session()->flash('status', 'Your password has been updated.');

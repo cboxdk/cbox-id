@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Platform\AccountAuth;
+use App\Platform\PlatformAuth;
 use App\Platform\SignupProvisioner;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Exceptions\InvalidEmailVerification;
@@ -34,7 +34,12 @@ final class EmailVerificationController extends Controller
         if ($member !== null) {
             $provisioner->releaseEnvironment($member);
 
-            return session()->has(AccountAuth::SESSION_KEY)
+            // The ONE session, asked at the cookie rather than through CurrentUser: this
+            // route is deliberately outside the auth middleware (the token is the proof,
+            // clickable signed in or out), so nothing has resolved an identity here. It
+            // decides where to land, not whether to admit — a wrong guess costs a
+            // redundant sign-in page, never access.
+            return session()->has(PlatformAuth::SESSION_KEY)
                 ? redirect()->route('workspace.home')->with('status', 'Email verified — your environment is ready.')
                 : redirect()->route('workspace.login')->with('status', 'Email verified — sign in to open your environment.');
         }

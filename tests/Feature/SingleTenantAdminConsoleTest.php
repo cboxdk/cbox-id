@@ -58,12 +58,12 @@ it('serves the admin console when the deployment is multi-tenant', function (): 
 
 it('leaves organization creation reachable on a single-tenant deployment', function (): void {
     // The capability that made this decision costly: creating an organization lived only
-    // on the environment plane. It is on the operator console too, so removing the admin
+    // on the environment plane. It is in the platform section too, so removing the admin
     // console on this shape takes nothing with it — verified rather than assumed, because
-    // "the operator console probably covers it" is how a capability goes missing.
+    // "the platform pages probably cover it" is how a capability goes missing.
     config()->set('cbox-id.tenancy.multi_tenant', false);
 
-    expect(Route::has('operator.organizations'))->toBeTrue()
-        ->and((string) file_get_contents(resource_path('views/livewire/operator/organizations.blade.php')))
+    expect(Route::has('platform.organizations'))->toBeTrue()
+        ->and((string) file_get_contents(resource_path('views/livewire/platform/organizations.blade.php')))
         ->toContain('public function create(');
 })->group('security');

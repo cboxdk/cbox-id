@@ -38,6 +38,69 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   front channels (`/oauth/*`, `/sso/*`, `/api/*`, `/.well-known/*`, `/up`) are left
   alone: a 302 to a setup page is not an answer any of those callers can read.
 
+### Changed
+
+- **One person, one session.** There were three session stores for what is one human: a
+  subject session, an account-member session, and an environment-admin one. Only the first
+  was ever an identity. The other two held a SELECTION — which account, which environment —
+  dressed up as a credential, and the credential behind all three was already the
+  subject's: account members and platform operators are ordinary subjects in the
+  platform-root environment.
+
+  Every bug closed in this area was a seam between those stores. An operator signed in and
+  was bounced back to the sign-in forever, silently, because the login wrote a member
+  session and the gate asked for a subject one. `AccountAuth::attempt()` grew an
+  `attemptOperator()` branch so somebody with no membership could get in at all. The
+  console gate grew an operator clause so it would admit them. `ConsoleScope` asked all
+  three stores in turn. None of those were separate problems.
+
+  `cbox.account_member` and `cbox.account_member_v` are gone, and so is
+  `cbox.env_admin_subject`. Membership is a lookup — `account_members.subject_id` is
+  unique, so "which account" has exactly one answer and the session cannot carry a
+  different one — and authority is a permission, re-asked of the live record on every
+  request. The door authenticates a PERSON; whether they hold a membership, operator
+  authority, both or neither is not the door's business.
+
+  What survives is the environment ANCHOR (`cbox.env_admin_env`), because it is not an
+  identity. The session cookie is shared across `*.cboxid.com`, so an admin session minted
+  for one environment must be worth nothing on another's host, and that check is what says
+  so. It is defence in depth — membership access is re-verified per request too — and the
+  falsification that found this file's blind spot is in the suite: the original anti-bleed
+  test used an environment the admin had no access to, so deleting the anchor comparison
+  left it green.
+
+- **A suspended operator can now sign in, and gets a console with no platform pages in
+  it.** The door used to refuse them outright, which was an artefact rather than a
+  decision: a successful sign-in meant a member session, and a suspended operator has no
+  member row — so "holds no authority" and "has no way in" were the same answer. They are
+  different questions. Refusing the credential revoked nothing (the same password still
+  worked on any tenant plane they belonged to) and put "is this person staff?" back inside
+  the door.
+
+- **A member's password reset now ends their sessions everywhere** — see the framework
+  changelog. The stamp on `account_members` that used to do this could not reach an
+  ordinary subject session; it keeps its other job, which is making a reset link
+  single-use.
+
+- **The workspace console runs behind `platform.auth:optional`,** like the platform
+  section already did, so `CurrentUser` is populated there and the standing holds — a
+  temporary password, an expired one, an MFA mandate — are enforced once, in
+  `Authenticate`, rather than in a second copy that could disagree. Those holds now send
+  people to the console they are STANDING IN: the workspace change page rather than the
+  tenant one.
+
+### Fixed
+
+- **`Authenticate` populated `CurrentUser` but could never empty it.** "Nobody is signed
+  in" was a fact the object could not state, only fail to have been told — safe only
+  because a real deployment drops scoped instances between requests. Once the console
+  started reading the acting person from there, a subject left over from earlier in the
+  same process answered for a request whose session had been revoked.
+
+- **`/operator`, `/operator/login` and `/operator/login/mfa` redirect again.** The move of
+  the platform pages to `/platform` dropped the bookmark redirects that were deliberately
+  kept when the separate operator login was retired.
+
 ## [0.35.1] - 2026-08-03
 
 ### Fixed

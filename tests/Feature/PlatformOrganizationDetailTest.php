@@ -37,7 +37,7 @@ it('shows a tenant\'s name, members, verified domain and entitlement in the curr
     $this->makeVerifiedDomain($org->id, 'acme.test');
     app(EntitlementWriter::class)->set($org->id, new EntitlementInput('sso', ['enabled' => true]), EntitlementSource::Manual);
 
-    Volt::test('operator.organization', ['organization' => $org->id])
+    Volt::test('platform.organization', ['organization' => $org->id])
         ->assertSee('Acme Inc')
         ->assertSee('member@acme.test')
         ->assertSee('owner')
@@ -49,7 +49,7 @@ it('refuses a non-operator request with a 404', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
     // Nobody with operator authority — boot()'s per-request re-check aborts before mount.
-    Volt::test('operator.organization', ['organization' => $org->id])->assertStatus(404);
+    Volt::test('platform.organization', ['organization' => $org->id])->assertStatus(404);
 });
 
 it('returns 404 for an org that lives in another environment', function (): void {
@@ -61,7 +61,7 @@ it('returns 404 for an org that lives in another environment', function (): void
     $foreignId = $this->runAsEnvironment('other-env', fn (): string => app(Organizations::class)
         ->create(new NewOrganization('Foreign', 'foreign'))->id);
 
-    Volt::test('operator.organization', ['organization' => $foreignId])->assertNotFound();
+    Volt::test('platform.organization', ['organization' => $foreignId])->assertNotFound();
 });
 
 it('suspends and reactivates the tenant from the detail page, recording audit', function (): void {
@@ -71,11 +71,11 @@ it('suspends and reactivates the tenant from the detail page, recording audit', 
 
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-audit'));
 
-    Volt::test('operator.organization', ['organization' => $org->id])->call('toggleStatus');
+    Volt::test('platform.organization', ['organization' => $org->id])->call('toggleStatus');
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Suspended);
     $audit->assertRecorded('organization.suspended', fn (AuditEvent $e): bool => $e->actorId === $op->id && $e->targetId === $org->id);
 
-    Volt::test('operator.organization', ['organization' => $org->id])->call('toggleStatus');
+    Volt::test('platform.organization', ['organization' => $org->id])->call('toggleStatus');
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Active);
     $audit->assertRecorded('organization.reactivated');
 });

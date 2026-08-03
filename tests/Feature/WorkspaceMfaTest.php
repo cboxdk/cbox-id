@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\PlatformAuth;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -19,6 +20,11 @@ beforeEach(function (): void {
 if (! function_exists('mfaAccountMember')) {
     function mfaAccountMember(): AccountMember
     {
+        // The platform root FIRST. An account provisioned without one is in the
+        // first-install bootstrap window: its members have no subject, and a member
+        // with no subject has nothing to sign in.
+        platformRootEnvironment();
+
         return app(AccountProvisioner::class)->provision(new AccountBlueprint(
             accountName: 'Acme',
             ownerEmail: 'owner@acme.example',
@@ -37,7 +43,9 @@ it('signs a member without 2FA straight into the workspace', function (): void {
         ->call('login')
         ->assertRedirect(route('workspace.home'));
 
-    expect(session()->get(AccountAuth::SESSION_KEY))->not->toBeNull();
+    // A session exists — asked through the resolver, because the session is the
+    // subject's now and the member is what it resolves TO.
+    expect(app(AccountAuth::class)->check())->toBeTrue();
 });
 
 it('challenges a member with 2FA and only completes on a valid code', function (): void {
@@ -54,12 +62,12 @@ it('challenges a member with 2FA and only completes on a valid code', function (
         ->call('login')
         ->assertRedirect(route('workspace.login.mfa'));
 
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBeNull()
+    expect(session()->get(PlatformAuth::SESSION_KEY))->toBeNull()
         ->and(session()->get(AccountAuth::PENDING_KEY))->toBe($member->id);
 
     // A wrong code does not establish a session…
     Volt::test('workspace.login-mfa')->set('code', '000000')->call('verify')->assertHasErrors('code');
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBeNull();
+    expect(session()->get(PlatformAuth::SESSION_KEY))->toBeNull();
 
     // …a valid code (a later step than the one consumed on confirm) does.
     Volt::test('workspace.login-mfa')
@@ -67,7 +75,10 @@ it('challenges a member with 2FA and only completes on a valid code', function (
         ->call('verify')
         ->assertRedirect(route('workspace.home'));
 
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBe($member->id);
+    // The session that resulted really is this member's — and it is a SUBJECT session,
+    // which is the whole point: there is nothing else left for it to be.
+    expect(session()->get(PlatformAuth::SESSION_KEY))->not->toBeNull()
+        ->and(app(AccountAuth::class)->current()?->id)->toBe($member->id);
 });
 
 it('redirects the challenge page to login when no 2FA is pending', function (): void {
@@ -76,7 +87,7 @@ it('redirects the challenge page to login when no 2FA is pending', function (): 
 
 it('enrolls TOTP from the security page and issues recovery codes', function (): void {
     $member = mfaAccountMember();
-    session()->put(AccountAuth::SESSION_KEY, $member->id);
+    signInAsMember($member);
     app(WorkspaceSudo::class)->confirm();
     $totp = app(TotpAuthenticator::class);
 
@@ -117,7 +128,7 @@ it('enrolls TOTP from the security page and issues recovery codes', function ():
  */
 it('keeps the enrolment secret and recovery codes out of the wire snapshot', function (): void {
     $member = mfaAccountMember();
-    session()->put(AccountAuth::SESSION_KEY, $member->id);
+    signInAsMember($member);
     app(WorkspaceSudo::class)->confirm();
 
     $component = Volt::test('workspace.security')->call('startEnroll');

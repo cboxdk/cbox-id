@@ -45,7 +45,7 @@ it('finds organizations and users across every environment, each labelled with i
 
     // A single search reaches BOTH planes (proving cross-environment reach via the
     // EnvironmentContext::withoutScope escape inside the component's with()).
-    Volt::test('operator.search')
+    Volt::test('platform.search')
         ->set('term', 'acme')
         ->assertSee('Acme Alpha')
         ->assertSee('Acme Beta')
@@ -59,7 +59,7 @@ it('finds organizations and users across every environment, each labelled with i
 it('shows a hint instead of querying for a short term', function (): void {
     searchOperatorSignIn();
 
-    Volt::test('operator.search')
+    Volt::test('platform.search')
         ->assertViewHas('ready', false)
         ->set('term', 'a')
         ->assertViewHas('ready', false)
@@ -71,7 +71,7 @@ it('refuses a non-operator request with a 404', function (): void {
     // Nobody with operator authority — boot()'s per-request re-check aborts every request,
     // and it answers 404 exactly as the route gate does: a 403 from a page that only staff
     // may see is itself the disclosure.
-    Volt::test('operator.search')->assertStatus(404);
+    Volt::test('platform.search')->assertStatus(404);
 });
 
 it('treats a literal underscore as text, not a LIKE wildcard', function (): void {
@@ -87,7 +87,7 @@ it('treats a literal underscore as text, not a LIKE wildcard', function (): void
 
     searchOperatorSignIn();
 
-    Volt::test('operator.search')
+    Volt::test('platform.search')
         ->set('term', 'ab_cd')
         ->assertSee('Underscore Target')
         ->assertDontSee('Wildcard Trap');
@@ -101,13 +101,13 @@ it('jumps to a result in another plane by first re-pointing the console at its e
         ->create(new NewOrganization('Beta Org', 'beta-org'))->id);
 
     // The jump switches the operator's target plane, then redirects to the detail.
-    $this->get(route('operator.search.jump', $orgId))
-        ->assertRedirect(route('operator.organization', $orgId))
+    $this->get(route('platform.search.jump', $orgId))
+        ->assertRedirect(route('platform.organization', $orgId))
         ->assertSessionHas(OperatorEnvironment::SESSION_KEY, 'plane-b');
 
     // With the console now pinned to plane B, the plane-scoped detail page resolves
     // (it would have 404'd from the previous plane) and shows the tenant.
-    $this->get(route('operator.organization', $orgId))
+    $this->get(route('platform.organization', $orgId))
         ->assertOk()
         ->assertSee('Beta Org');
 });
@@ -125,19 +125,19 @@ it('jumps from a user result to that user\'s organization in its plane', functio
     });
 
     // The user's result exposes its org, and the org's plane is resolved for the jump.
-    Volt::test('operator.search')
+    Volt::test('platform.search')
         ->set('term', 'gamma@acme.test')
         ->assertSee('gamma@acme.test')
         ->assertSee('Gamma Org');
 
-    $this->get(route('operator.search.jump', $orgId))
-        ->assertRedirect(route('operator.organization', $orgId))
+    $this->get(route('platform.search.jump', $orgId))
+        ->assertRedirect(route('platform.organization', $orgId))
         ->assertSessionHas(OperatorEnvironment::SESSION_KEY, 'plane-b');
 });
 
 it('404s a jump to an organization that does not exist in any plane', function (): void {
     searchOperatorSignIn();
 
-    $this->get(route('operator.search.jump', 'org_does_not_exist'))
+    $this->get(route('platform.search.jump', 'org_does_not_exist'))
         ->assertNotFound();
 });

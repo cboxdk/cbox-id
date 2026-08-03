@@ -37,6 +37,11 @@ if (! function_exists('provisionAuditableAccount')) {
      */
     function provisionAuditableAccount(string $email = 'owner@audit.example'): array
     {
+        // The platform root FIRST. An account provisioned without one is in the
+        // first-install bootstrap window: its members have no subject, and a member
+        // with no subject has nothing to sign in.
+        platformRootEnvironment();
+
         $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
             accountName: 'Audit Co',
             ownerEmail: $email,
@@ -113,7 +118,7 @@ it('never lets a sign-in failure break the sign-in', function (): void {
     $this->mock(AuditLog::class)
         ->shouldReceive('record')->andThrow(new RuntimeException('audit down'));
 
-    app(AccountAuth::class)->establish($member->id);
-
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBe($member->id);
+    // Establishing still SUCCEEDS — the audit append is what failed.
+    expect(app(AccountAuth::class)->establish($member->id))->toBeTrue()
+        ->and(app(AccountAuth::class)->current()?->id)->toBe($member->id);
 });

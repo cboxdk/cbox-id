@@ -84,7 +84,7 @@ it('lets a valid account member through the local admin door', function (): void
         ->call('authenticate')
         ->assertHasNoErrors();
 
-    expect(session()->get(EnvironmentAdminAuth::SESSION_KEY))
+    expect(app(EnvironmentAdminAuth::class)->subjectId())
         ->toBe($result->member->refresh()->subject_id);
 });
 
@@ -105,7 +105,7 @@ it('refuses the local admin door when the policy mandates SSO', function (): voi
         ->call('authenticate')
         ->assertHasErrors('email');
 
-    expect(session()->get(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
 it('refuses the local admin door once an administrative password has expired', function (): void {
@@ -136,7 +136,7 @@ it('refuses the local admin door once an administrative password has expired', f
         ->call('authenticate')
         ->assertHasErrors('email');
 
-    expect(session()->get(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
 /**
@@ -161,7 +161,7 @@ it('refuses a temporary password at the admin door and says why', function (): v
         ->call('authenticate')
         ->assertHasErrors('email');
 
-    expect(session()->get(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 
     // Not the uniform "wrong credentials" — they ARE authenticated, so there is nothing
     // left to disclose, and that message would send them in circles.
@@ -190,7 +190,7 @@ it('locks the local admin door out at the policy threshold', function (): void {
         ->call('authenticate')
         ->assertHasErrors('email');
 
-    expect(session()->get(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
 /**
@@ -230,7 +230,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
 
     expect($response)->toBeInstanceOf(RedirectResponse::class)
         ->and($response->getTargetUrl())->toBe(route('admin.login'))
-        ->and(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+        ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
 it('refuses a handoff when the policy mandates SSO', function (): void {
@@ -246,5 +246,5 @@ it('refuses a handoff when the policy mandates SSO', function (): void {
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
 
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });

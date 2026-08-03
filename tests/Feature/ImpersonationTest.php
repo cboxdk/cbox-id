@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\Impersonation;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\OperatorEnvironment;
@@ -31,7 +30,7 @@ it('lets an operator step into a member and become purely the subject, audited',
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
 
     // The browser is now the subject: the impersonation marker is present, and the ONE
@@ -53,7 +52,7 @@ it('lets an operator step into a member and become purely the subject, audited',
     // The platform pages are unreachable while impersonating — and they 404 rather than
     // 403, because the session IS a real signed-in session and a 403 would tell the
     // person holding it that a staff console exists at that address.
-    $this->get(route('operator.organizations'))->assertNotFound();
+    $this->get(route('platform.organizations'))->assertNotFound();
 
     // The dashboard loads as the subject and shows the impersonation banner.
     $this->get('/dashboard')
@@ -62,7 +61,7 @@ it('lets an operator step into a member and become purely the subject, audited',
         ->assertSee('impersonating', false);
 
     $audit->assertRecorded(
-        'operator.impersonation_started',
+        'platform.impersonation_started',
         fn (AuditEvent $e): bool => $e->actorType === ActorType::Operator
             && $e->actorId === $op->id
             && $e->targetType === 'user'
@@ -77,7 +76,7 @@ it('refuses to impersonate a user who is not a member of a viewable org (403)', 
     $stranger = app(Subjects::class)->create('stranger@nowhere.test', 'Stranger', 'supersecret123');
 
     // Real org, real user, but no membership between them → 403.
-    $this->post(route('operator.impersonate', $stranger->id), ['organization' => $org->id])
+    $this->post(route('platform.impersonate', $stranger->id), ['organization' => $org->id])
         ->assertForbidden();
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
@@ -102,7 +101,7 @@ it('refuses to impersonate a member of an org in another plane (403)', function 
         return [$org->id, $subject->id];
     });
 
-    $this->post(route('operator.impersonate', $foreignUserId), ['organization' => $foreignOrgId])
+    $this->post(route('platform.impersonate', $foreignUserId), ['organization' => $foreignOrgId])
         ->assertForbidden();
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
@@ -113,7 +112,7 @@ it('refuses a non-operator hitting the start route', function (): void {
 
     // Nobody is signed in at all, so the gate offers the step a visitor can take: the
     // one sign-in. (Signed in but not an operator is the OTHER refusal — a 404.)
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id])
         ->assertRedirect(route('login'));
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
@@ -127,12 +126,12 @@ it('exits impersonation, restoring the operator and ending the subject session, 
     [$org, $member] = impersonationMember();
 
     // Start (real flow), then exit from the impersonated session.
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     $subjectSessionId = session(PlatformAuth::SESSION_KEY);
 
     $this->post(route('impersonation.exit'))
-        ->assertRedirect(route('operator.organizations'));
+        ->assertRedirect(route('platform.organizations'));
 
     // Marker cleared; the impersonated subject is gone from the browser; the OPERATOR's
     // own subject session — the same one, resumed, not a fresh one minted on their
@@ -147,10 +146,10 @@ it('exits impersonation, restoring the operator and ending the subject session, 
     // Operator routes work again — asked fresh, so this is the restored session
     // answering and not a memo from before the impersonation.
     nextRequest();
-    $this->get(route('operator.organizations'))->assertOk();
+    $this->get(route('platform.organizations'))->assertOk();
 
     $audit->assertRecorded(
-        'operator.impersonation_ended',
+        'platform.impersonation_ended',
         fn (AuditEvent $e): bool => $e->actorType === ActorType::Operator
             && $e->actorId === $op->id
             && $e->targetId === $member->id
@@ -182,7 +181,7 @@ it('leaves an impersonated session no way back into operator authority', functio
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
 
     // Not signed in as the operator, and not holding them aside either. Attempted with
@@ -194,27 +193,26 @@ it('leaves an impersonated session no way back into operator authority', functio
 
     // …so the platform pages stay gone after the attempt, asked fresh.
     nextRequest();
-    $this->get(route('operator.organizations'))->assertNotFound();
-    $this->get(route('operator.environments'))->assertNotFound();
+    $this->get(route('platform.organizations'))->assertNotFound();
+    $this->get(route('platform.environments'))->assertNotFound();
 });
 
 /*
- * The OTHER door, and the one staff actually use.
+ * The door staff actually use.
  *
- * Operator authority is resolved from an account-member session as well as from a subject
- * one — the account console is where staff sign in, and its session key holds the MEMBER
- * id rather than the subject's. So an impersonation that suspends only the subject session
- * leaves the operator's identity sitting in the browser. It LOOKS safe, because the
- * resolver prefers the subject session and during an impersonation that is the victim's;
- * it stops looking safe the moment the victim's session ends inside the window, or the
- * order in that resolver changes for an unrelated reason.
+ * Operator authority is resolved from the ONE session, and the account console is where
+ * staff sign in — so the session an impersonation has to put aside is the very session
+ * that was holding the operator's authority. This used to be two stores, and suspending
+ * only one LOOKED safe because the resolver preferred the subject session, which during
+ * an impersonation is the victim's. It is one store now, which is why this test can be
+ * written as "the operator comes back usable" rather than as "and the other key too".
  */
-it('suspends the account-member session an operator signed in with, and puts it back', function (): void {
+it('suspends the session an operator signed in with, and puts it back', function (): void {
     $op = impersonationOperator('staff@platform.test');
     [$org, $member] = impersonationMember();
 
-    // The same person, also holding an account-member session — the shape a browser is
-    // really in when staff have opened the account console.
+    // The same person, also an account member — the shape a browser is really in when
+    // staff have opened the account console and signed in there.
     $account = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Cbox',
         ownerEmail: 'staff@platform.test',
@@ -224,27 +222,26 @@ it('suspends the account-member session an operator signed in with, and puts it 
 
     expect($account->subject_id)->toBe($op->subject_id, 'fixture: the operator and the member must be one person');
 
-    session([
-        AccountAuth::SESSION_KEY => $account->id,
-        AccountAuth::SESSION_VERSION_KEY => $account->session_version,
-    ]);
+    // Signed in the way the account door does it.
+    signInAsMember($account);
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
 
-    // Gone from the browser, not merely outranked by the victim's session.
-    expect(session(AccountAuth::SESSION_KEY))->toBeNull();
+    // The staff member is gone from the browser, not merely outranked by the victim.
+    expect(session(PlatformAuth::ACTIVE_KEY))->toBe($member->id)
+        ->and(array_keys((array) session(PlatformAuth::ACCOUNTS_KEY)))->toBe([$member->id]);
 
     nextRequest();
-    $this->get(route('operator.organizations'))->assertNotFound();
+    $this->get(route('platform.organizations'))->assertNotFound();
 
-    $this->post(route('impersonation.exit'))->assertRedirect(route('operator.organizations'));
+    $this->post(route('impersonation.exit'))->assertRedirect(route('platform.organizations'));
 
-    // Back, and USABLE — asserted through the resolver rather than on the raw keys, because
-    // the account session is a member id plus a security stamp and a restore that puts back
-    // only the first is a session the plane refuses.
-    expect(session(AccountAuth::SESSION_KEY))->toBe($account->id)
-        ->and(app(AccountAuth::class)->check())->toBeTrue();
+    // Back, and USABLE — asserted through the resolver rather than on a raw key, because
+    // a restore that puts back an id without a live session row is a session the plane
+    // refuses, and asserting the key alone would not notice.
+    nextRequest();
+    $this->get(route('workspace.home'))->assertOk();
 });
 
 /*
@@ -261,25 +258,25 @@ it('restores the operator and the plane they had targeted, on exit', function ()
 
     targetEnvironment($root->slug);
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
 
     expect(session(OperatorEnvironment::SESSION_KEY))->toBeNull();
 
-    $this->post(route('impersonation.exit'))->assertRedirect(route('operator.organizations'));
+    $this->post(route('impersonation.exit'))->assertRedirect(route('platform.organizations'));
 
     expect(session(OperatorEnvironment::SESSION_KEY))->toBe($root->slug)
         ->and(session(PlatformAuth::ACTIVE_KEY))->toBe($op->subject_id);
 
     nextRequest();
-    $this->get(route('operator.organizations'))->assertOk();
+    $this->get(route('platform.organizations'))->assertOk();
 });
 
 it('auto-exits once the 30-minute window has lapsed', function (): void {
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     // Backdate the start beyond the window.
     $marker = session(Impersonation::SESSION_KEY);
@@ -289,7 +286,7 @@ it('auto-exits once the 30-minute window has lapsed', function (): void {
 
     // The next authenticated request self-terminates and bounces to the console.
     $this->get('/dashboard')
-        ->assertRedirect(route('operator.organizations'))
+        ->assertRedirect(route('platform.organizations'))
         ->assertSessionHas('status', 'Impersonation session expired.');
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull()
@@ -300,7 +297,7 @@ it('blocks credential and factor changes while impersonating (403)', function ()
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     // The sudo step-up itself is closed.
     $this->get(route('sudo'))->assertForbidden();
@@ -323,7 +320,7 @@ it('refuses to impersonate an owner (403)', function (): void {
     $op = impersonationOperator();
     [$org, $owner] = impersonationMember('owner@acme.test', MembershipRole::Owner);
 
-    $this->post(route('operator.impersonate', $owner->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $owner->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertForbidden();
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
@@ -333,7 +330,7 @@ it('refuses to impersonate an admin (403)', function (): void {
     $op = impersonationOperator();
     [$org, $admin] = impersonationMember('admin@acme.test', MembershipRole::Admin);
 
-    $this->post(route('operator.impersonate', $admin->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $admin->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertForbidden();
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
@@ -347,7 +344,7 @@ it('refuses to start impersonation without a reason', function (): void {
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id])
         ->assertSessionHasErrors('reason');
 
     // No marker was established, and no subject session was minted — the whole action is
@@ -363,13 +360,13 @@ it('records the access reason on the start audit event and the marker', function
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
 
     expect(session(Impersonation::SESSION_KEY)['reason'])->toBe(IMPERSONATION_REASON);
 
     $audit->assertRecorded(
-        'operator.impersonation_started',
+        'platform.impersonation_started',
         fn (AuditEvent $e): bool => ($e->context['reason'] ?? null) === IMPERSONATION_REASON,
     );
 });
@@ -386,7 +383,7 @@ it('blocks switching organizations while impersonating (403)', function (): void
     $other = app(Organizations::class)->create(new NewOrganization('Beta', 'beta-org'));
     app(Memberships::class)->add($other->id, $member->id, MembershipRole::Member);
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     $this->post(route('organization.switch'), ['organization' => $other->id])->assertForbidden();
 });
@@ -461,7 +458,7 @@ it('refuses to issue an authorization code while impersonating', function (): vo
         firstParty: true,
     ))->client;
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));
 
     $response = $this->get('/oauth/authorize?'.http_build_query([

@@ -124,7 +124,7 @@ it('still lets a full page load render while impersonating', function (): void {
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     $this->get('/dashboard')->assertOk();
 });
@@ -133,11 +133,11 @@ it('still lets the operator exit impersonation', function (): void {
     $op = impersonationOperator();
     [$org, $member] = impersonationMember();
 
-    $this->post(route('operator.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
+    $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
     // Exit is a plain controller POST, not a Livewire action, so the read-only hook
     // never touches it — the escape hatch always works.
-    $this->post(route('impersonation.exit'))->assertRedirect(route('operator.organizations'));
+    $this->post(route('impersonation.exit'))->assertRedirect(route('platform.organizations'));
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
 });

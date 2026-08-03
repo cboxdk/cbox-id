@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -143,7 +142,7 @@ it('does not tell one account whether an email belongs to another', function ():
         ownerPassword: 'another-strong-passphrase',
     ));
 
-    session()->put(AccountAuth::SESSION_KEY, $mine->member->id);
+    signInAsMember($mine->member);
 
     $probeOther = Volt::test('workspace.members')
         ->set('inviteEmail', 'owner@rival.example')

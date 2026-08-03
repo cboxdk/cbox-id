@@ -66,7 +66,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor authentication']
         }
 
         RateLimiter::clear($key);
-        $auth->establish($memberId);
+        // 'mfa' on the amr, because that is what happened: the session records the
+        // factors it was actually established with, on this plane like every other.
+        $auth->establish($memberId, ['pwd', 'mfa']);
         // Honor where they were headed before the challenge (e.g. the /open/{env}
         // handoff mint), else the workspace home.
         $this->redirect(session()->pull('url.intended', route('workspace.home')), navigate: false);

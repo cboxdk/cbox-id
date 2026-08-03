@@ -151,7 +151,7 @@ it('registers EVERY app middleware guarding a web route as persistent', function
  */
 it('refuses an environment console action even with no route middleware at all', function (): void {
     // No env-admin session established.
-    expect(session()->has(EnvironmentAdminAuth::SESSION_KEY))->toBeFalse();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 
     // Livewire converts the abort into a RESPONSE rather than letting it propagate, so
     // assert the status — expecting a thrown HttpException here silently passes.

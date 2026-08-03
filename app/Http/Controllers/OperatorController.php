@@ -42,7 +42,7 @@ final class OperatorController extends Controller
             $this->target->pointAt($environment->slug);
         }
 
-        return redirect()->route('operator.environments');
+        return redirect()->route('platform.environments');
     }
 
     /**
@@ -72,6 +72,6 @@ final class OperatorController extends Controller
 
         $this->target->pointAt($environment->slug);
 
-        return redirect()->route('operator.organization', $org->id);
+        return redirect()->route('platform.organization', $org->id);
     }
 }

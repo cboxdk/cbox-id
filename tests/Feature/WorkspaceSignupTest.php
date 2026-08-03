@@ -58,8 +58,9 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
     // therefore costs a routable environment nothing.
     expect(Environment::query()->where('account_id', $account->id)->get())->toHaveCount(0);
 
-    // The member is signed into the workspace plane immediately.
-    expect(session()->get(AccountAuth::SESSION_KEY))->toBe($member->id);
+    // The member is signed into the workspace plane immediately — on the ONE session,
+    // resolved back to the member the way every page does it.
+    expect(app(AccountAuth::class)->current()?->id)->toBe($member->id);
 });
 
 it('refuses a second workspace for an email that already has one', function (): void {

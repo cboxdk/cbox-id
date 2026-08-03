@@ -260,17 +260,17 @@ class ConsoleNavigation
     {
         return [
             new NavArea('Platform', 'layers',
-                new NavPage('operator.environments', 'Environments'),
-                new NavPage('operator.accounts', 'Accounts'),
-                new NavPage('operator.organizations', 'Organizations'),
+                new NavPage('platform.environments', 'Environments'),
+                new NavPage('platform.accounts', 'Accounts'),
+                new NavPage('platform.organizations', 'Organizations'),
             ),
             new NavArea('Insights', 'dashboard',
-                new NavPage('operator.usage', 'Usage'),
-                new NavPage('operator.search', 'Search'),
+                new NavPage('platform.usage', 'Usage'),
+                new NavPage('platform.search', 'Search'),
             ),
             new NavArea('Administration', 'shield',
-                new NavPage('operator.operators', 'Operators'),
-                new NavPage('operator.security', 'Security'),
+                new NavPage('platform.operators', 'Operators'),
+                new NavPage('platform.security', 'Security'),
             ),
         ];
     }

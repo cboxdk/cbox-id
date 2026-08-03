@@ -23,14 +23,14 @@ it('creates organizations with a type and parent, laid out as a hierarchy', func
         new NewOrganization('Reseller Co', 'reseller-co', OrganizationType::Reseller),
     );
 
-    Volt::test('operator.organizations')
+    Volt::test('platform.organizations')
         ->set('name', 'Customer Co')
         ->set('type', 'customer')
         ->set('parentId', $reseller->id)
         ->call('create')
         ->assertHasNoErrors();
 
-    $rows = collect(Volt::test('operator.organizations')->viewData('rows'))->keyBy('name');
+    $rows = collect(Volt::test('platform.organizations')->viewData('rows'))->keyBy('name');
 
     expect($rows['Reseller Co']['depth'])->toBe(0)
         ->and($rows['Reseller Co']['type'])->toBe('reseller')
@@ -41,10 +41,10 @@ it('creates organizations with a type and parent, laid out as a hierarchy', func
 it('suspends and reactivates an organization', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
-    Volt::test('operator.organizations')->call('toggleStatus', $org->id);
+    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Suspended);
 
-    Volt::test('operator.organizations')->call('toggleStatus', $org->id);
+    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Active);
 });
 
@@ -53,7 +53,7 @@ it('reparents an organization within the tree', function (): void {
     $a = $orgs->create(new NewOrganization('A', 'a'));
     $b = $orgs->create(new NewOrganization('B', 'b'));
 
-    Volt::test('operator.organizations')->call('reparent', $b->id, $a->id);
+    Volt::test('platform.organizations')->call('reparent', $b->id, $a->id);
 
     expect(Organization::query()->find($b->id)->parent_id)->toBe($a->id);
 });
@@ -64,7 +64,7 @@ it('refuses a reparent that would create a cycle', function (): void {
     $child = $orgs->create(new NewOrganization('Child', 'child', parentId: $parent->id));
 
     // Making the parent a child of its own descendant would loop the tree.
-    Volt::test('operator.organizations')->call('reparent', $parent->id, $child->id);
+    Volt::test('platform.organizations')->call('reparent', $parent->id, $child->id);
 
     expect(Organization::query()->find($parent->id)->parent_id)->toBeNull();
 });

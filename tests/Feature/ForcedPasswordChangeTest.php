@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\AuthenticateAccountMember;
-use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -162,7 +161,7 @@ it('holds the workspace console until an account member replaces a temporary pas
         revoke: PasswordRevocationScope::Nothing,
     )));
 
-    session()->put(AccountAuth::SESSION_KEY, $result->member->id);
+    signInAsMember($result->member);
 
     $this->get(route('workspace.home'))->assertRedirect(route('workspace.password.change'));
     $this->get(route('workspace.password.change'))->assertOk();

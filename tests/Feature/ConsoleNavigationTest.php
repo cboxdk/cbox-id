@@ -104,8 +104,8 @@ it('knows where every page in every plane sits', function (): void {
         ->and($location->areaLabel('workspace.security'))->toBe('Personal')
         ->and($location->areaLabel('environment.connections'))->toBe('Sign-in')
         ->and($location->areaLabel('environment.users.show'))->toBe('People')
-        ->and($location->areaLabel('operator.usage'))->toBe('Insights')
-        ->and($location->areaLabel('operator.operators'))->toBe('Administration');
+        ->and($location->areaLabel('platform.usage'))->toBe('Insights')
+        ->and($location->areaLabel('platform.operators'))->toBe('Administration');
 
     // A route belonging to no plane's navigation still answers null rather than
     // guessing — the eyebrow is omitted, not wrong.

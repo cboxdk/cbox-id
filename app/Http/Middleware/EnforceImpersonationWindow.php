@@ -37,7 +37,7 @@ final class EnforceImpersonationWindow
             $isAccountMember = $marker->isAccountMember();
             $this->impersonation->exit($request);
 
-            return redirect()->route($isAccountMember ? 'environment.home' : 'operator.organizations')
+            return redirect()->route($isAccountMember ? 'environment.home' : 'platform.organizations')
                 ->with('status', 'Impersonation session expired.');
         }
 

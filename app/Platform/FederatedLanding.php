@@ -44,7 +44,7 @@ final class FederatedLanding
             return redirect()->intended(route('dashboard'));
         }
 
-        return match ($this->accounts->adoptSubject($session->user_id)) {
+        return match ($this->accounts->adoptSubject($session)) {
             AttemptOutcome::Ok => redirect()->intended(route('workspace.home')),
             // A second factor enrolled on the account plane still stands: federating in
             // must not be a way around a factor the member deliberately added.

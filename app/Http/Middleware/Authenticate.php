@@ -69,6 +69,7 @@ final class Authenticate
 
         if ($session === null) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
+            $this->current->clear();
 
             if ($optional) {
                 return $next($request);
@@ -87,6 +88,7 @@ final class Authenticate
         // inactive subject.
         if ($subject === null || ! $this->subjects->isActive($subject->id)) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
+            $this->current->clear();
 
             if ($optional) {
                 return $next($request);
@@ -136,7 +138,7 @@ final class Authenticate
         }
 
         if ($this->mustChangePassword($request, $subject->id)) {
-            return redirect()->route('password.change');
+            return redirect()->route($this->holdRoute($request, 'password.change'));
         }
 
         // A federated identity is waiting to be attached to THIS account and nobody has
@@ -151,8 +153,10 @@ final class Authenticate
         // A tenant that requires a second factor cannot enforce it by turning people
         // away — that locks out precisely the people who still need to enrol. Hold them
         // on the security page instead, which is where enrolment lives.
-        if (! $request->routeIs('account', 'sudo') && $this->mfaMandate->requiresEnrolment($subject->id)) {
-            return redirect()->route('account')
+        if (! $request->routeIs('account', 'sudo', 'workspace.security', 'workspace.sudo')
+            && $this->mfaMandate->requiresEnrolment($subject->id)
+        ) {
+            return redirect()->route($this->holdRoute($request, 'account'))
                 ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
         }
 
@@ -181,7 +185,43 @@ final class Authenticate
         // password-change page instead of being answered with an OIDC error — and under
         // `require_par`, PAR is the ONLY legal way to send prompt=none, so the carve-out
         // was dead there entirely.
-        return $request->routeIs('password.change', 'link.confirm', 'logout', 'oauth.authorize', 'oauth.authorize.post');
+        return $request->routeIs(
+            'password.change', 'link.confirm', 'logout',
+            // The account plane's own equivalents. This middleware runs ahead of the
+            // workspace gate now — the console reads the acting person off CurrentUser,
+            // which nothing else populates — so its holds apply there, and a hold whose
+            // destination is itself held is a lock-in with no way forward and no way out.
+            'workspace.password.change', 'workspace.logout',
+            'oauth.authorize', 'oauth.authorize.post',
+        );
+    }
+
+    /**
+     * Where a hold sends someone: the console they are STANDING IN.
+     *
+     * Every default below is `plane:subject`. On the account host in the SaaS shape that
+     * is a 404, so a member held for a temporary password was sent to a page that does
+     * not exist — a dead end reached by satisfying nothing, which is the one thing a hold
+     * must never be. The account plane has its own change page and its own security page,
+     * and they satisfy the same requirement against the same subject.
+     *
+     * Keyed on the REQUEST rather than on the deployment shape, which is the distinction
+     * that matters on a single-host install: both routes are served there, so asking
+     * "which plane is this host?" answers "subject" and bounces a member out of the
+     * workspace and into the tenant console — a plane jump mid-hold, from a page they
+     * were legitimately on.
+     */
+    private function holdRoute(Request $request, string $subjectRoute): string
+    {
+        if (! $request->routeIs('workspace.*')) {
+            return $subjectRoute;
+        }
+
+        return match ($subjectRoute) {
+            'password.change' => 'workspace.password.change',
+            'account' => 'workspace.security',
+            default => $subjectRoute,
+        };
     }
 
     /**

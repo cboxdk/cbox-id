@@ -17,9 +17,9 @@ use Livewire\Volt\Component;
  * "Sign in as admin" — the tenant subdomain's ADMIN door. It authenticates a
  * CONTROL-PLANE identity: an account member, whose credential is their subject in the
  * PLATFORM-ROOT environment — never a subject inside the environment being administered.
- * On success it establishes an environment-admin session, keyed on that subject and
- * bound to THIS host's environment. The end-user sign-in (for the tenant's own apps) is
- * a separate door — no layer confusion.
+ * On success it signs that subject in — the ordinary session, there being only one — and
+ * anchors it to THIS host's environment. The end-user sign-in (for the tenant's own apps)
+ * is a separate door — no layer confusion.
  *
  * Two steps in one component (server-held pending id, no session marker): password,
  * then TOTP/recovery when the member has a confirmed second factor — never weaker
@@ -140,7 +140,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
             return;
         }
 
-        $this->establish($auth, $member, $hostEnv);
+        $this->establish($auth, $member, $hostEnv, ['pwd']);
     }
 
     /**
@@ -224,16 +224,17 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
             return;
         }
 
-        $this->establish($auth, $member, $hostEnv);
+        $this->establish($auth, $member, $hostEnv, ['pwd', 'mfa']);
     }
 
     /**
-     * The admin session is keyed on the member's PLATFORM-ROOT SUBJECT, because that is
-     * the credential of record. A member without one has no control-plane identity to
-     * bind (the first-install bootstrap window only) and is refused rather than being
-     * given a session keyed on something the guard cannot resolve.
+     * The admin session IS the member's PLATFORM-ROOT SUBJECT session, because that is
+     * the credential of record. A member without a subject has no control-plane identity
+     * to sign in (the first-install bootstrap window only) and is refused rather than
+     * being given a session anchored to something the guard cannot resolve.
      */
-    private function establish(EnvironmentAdminAuth $auth, AccountMember $member, string $environmentId): void
+    /** @param  list<string>  $amr  the factors this door actually verified */
+    private function establish(EnvironmentAdminAuth $auth, AccountMember $member, string $environmentId, array $amr): void
     {
         $subjectId = $member->subject_id;
 
@@ -244,7 +245,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
             return;
         }
 
-        $auth->establish($subjectId, $environmentId);
+        // The factors this door verified, rather than the handoff default: an admin
+        // session records how it was established like every other session does.
+        $auth->establish($subjectId, $environmentId, $amr);
         $this->redirect(session()->pull('url.intended', route('environment.home')), navigate: false);
     }
 }; ?>

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
@@ -130,13 +129,18 @@ it('paginates by cursor over the ULID id', function (): void {
 // ── Console: minting environment keys ───────────────────────────────────────
 
 it('lets an environment manager mint a scoped key for their environment in the console', function (): void {
+    // The platform root FIRST. An account provisioned without one is in the
+    // first-install bootstrap window: its members have no subject, and a member
+    // with no subject has nothing to sign in.
+    platformRootEnvironment();
+
     $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
-    session()->put(AccountAuth::SESSION_KEY, $result->member->id);
+    signInAsMember($result->member);
     app(WorkspaceSudo::class)->confirm();
 
     $component = Volt::test('workspace.environment-api-keys')
@@ -155,6 +159,11 @@ it('lets an environment manager mint a scoped key for their environment in the c
 });
 
 it('redirects a non-manager away from the environment-keys console', function (): void {
+    // The platform root FIRST. An account provisioned without one is in the
+    // first-install bootstrap window: its members have no subject, and a member
+    // with no subject has nothing to sign in.
+    platformRootEnvironment();
+
     $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner2@acme.example',
@@ -166,7 +175,7 @@ it('redirects a non-manager away from the environment-keys console', function ()
     $viewer = $members->invite($result->account->id, 'viewer@acme.example', AccountRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
-    $this->withSession([AccountAuth::SESSION_KEY => $viewer->id])
-        ->get(route('workspace.environment-keys'))
+    signInAsMember($viewer);
+    $this->get(route('workspace.environment-keys'))
         ->assertRedirect(route('workspace.home'));
 });

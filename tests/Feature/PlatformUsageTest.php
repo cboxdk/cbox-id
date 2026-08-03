@@ -81,7 +81,7 @@ it('sums headline totals and breaks them down per environment across every plane
 
     usageOperatorSignIn();
 
-    Volt::test('operator.usage')
+    Volt::test('platform.usage')
         // Totals sum across EVERY plane (proving EnvironmentContext::withoutScope) —
         // including the PLATFORM ROOT, which is a plane like any other and now holds the
         // operator themselves: a subject with a live session, because an operator is a
@@ -129,7 +129,7 @@ it('ranks top organizations by member count across planes, each linking to its p
 
     usageOperatorSignIn();
 
-    Volt::test('operator.usage')
+    Volt::test('platform.usage')
         ->assertViewHas('topOrganizations', function (array $rows) use ($orgA1Id, $orgB1Id): bool {
             $byId = collect($rows)->keyBy('id');
             $a = $byId->get($orgA1Id);
@@ -142,12 +142,12 @@ it('ranks top organizations by member count across planes, each linking to its p
                 && $rows[0]['id'] === $orgA1Id;
         })
         // Each row links to the cross-plane jump route (opens in the right plane).
-        ->assertSee(route('operator.search.jump', $orgA1Id), escape: false);
+        ->assertSee(route('platform.search.jump', $orgA1Id), escape: false);
 });
 
 it('refuses a non-operator request with a 404', function (): void {
     // Nobody with operator authority — boot()'s per-request re-check aborts every request.
-    Volt::test('operator.usage')->assertStatus(404);
+    Volt::test('platform.usage')->assertStatus(404);
 });
 
 /*
@@ -202,7 +202,7 @@ it('shows the per-tenant usage panel with member, MFA, domain and sign-in metric
     $audit->record(AuditEvent::forUser('user.login', $userIds[0], $org->id));
     $audit->record(AuditEvent::forUser('user.login', $userIds[1], $org->id));
 
-    Volt::test('operator.organization', ['organization' => $org->id])
+    Volt::test('platform.organization', ['organization' => $org->id])
         ->assertViewHas('usage', function (array $u): bool {
             return $u['members'] === 4
                 && $u['mfaUsers'] === 2
@@ -219,5 +219,5 @@ it('shows the per-tenant usage panel with member, MFA, domain and sign-in metric
 it('refuses the per-tenant panel for a non-operator request with a 404', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
-    Volt::test('operator.organization', ['organization' => $org->id])->assertStatus(404);
+    Volt::test('platform.organization', ['organization' => $org->id])->assertStatus(404);
 });

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -24,6 +23,11 @@ if (! function_exists('provisionAccount')) {
      */
     function provisionAccount(string $email = 'owner@acme.example'): array
     {
+        // The platform root FIRST. An account provisioned without one is in the
+        // first-install bootstrap window: its members have no subject, and a member
+        // with no subject has nothing to sign in.
+        platformRootEnvironment();
+
         $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
             accountName: 'Acme',
             ownerEmail: $email,
@@ -58,7 +62,7 @@ beforeEach(function (): void {
 
 it('walks an admin from requesting a custom domain to a verified issuer', function (): void {
     ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
-    $this->withSession([AccountAuth::SESSION_KEY => $owner->id]);
+    signInAsMember($owner);
 
     $page = Volt::test('workspace.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -87,7 +91,7 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
 
 it('surfaces a validation error for a platform-reserved domain', function (): void {
     ['member' => $owner, 'environment' => $env] = provisionAccount();
-    $this->withSession([AccountAuth::SESSION_KEY => $owner->id]);
+    signInAsMember($owner);
 
     Volt::test('workspace.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -101,7 +105,7 @@ it('surfaces a validation error for a platform-reserved domain', function (): vo
 it('removes a verified domain, falling back to the default issuer', function (): void {
     ['member' => $owner, 'environment' => $env] = provisionAccount();
     $env->update(['domain' => 'id.acme.com']);
-    $this->withSession([AccountAuth::SESSION_KEY => $owner->id]);
+    signInAsMember($owner);
 
     Volt::test('workspace.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -114,8 +118,8 @@ it('refuses the domains page to a member who cannot manage environments', functi
     ['account' => $account] = provisionAccount();
     $viewer = memberWithRole($account->id, AccountRole::Billing, 'billing2@acme.example');
 
-    $this->withSession([AccountAuth::SESSION_KEY => $viewer->id])
-        ->get(route('workspace.environment-domains'))
+    signInAsMember($viewer);
+    $this->get(route('workspace.environment-domains'))
         ->assertRedirect(route('workspace.home'));
 });
 
@@ -136,7 +140,7 @@ it('does not leak another account domain challenge through the selected environm
     // Their environment has a pending domain, so a challenge exists to leak.
     app(EnvironmentDomains::class)->request($theirs['environment']->id, 'id.other.example');
 
-    session()->put(AccountAuth::SESSION_KEY, $mine['member']->id);
+    signInAsMember($mine['member']);
 
     $component = Volt::test('workspace.environment-domains')
         ->set('selectedEnvironment', $theirs['environment']->id);

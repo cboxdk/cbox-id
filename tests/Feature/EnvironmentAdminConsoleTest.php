@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -49,16 +48,17 @@ function envAdminSetup(): array
 it('authenticates an account member as admin ONLY on their environment\'s host (anti-bleed)', function (): void {
     ['member' => $member, 'envId' => $envId] = envAdminSetup();
 
-    // The session is keyed on the member's PLATFORM-ROOT SUBJECT — the credential of
-    // record — and bound to exactly one environment. The binding is what this test is
-    // about; who the identity is does not change it.
+    // The session is the member's ordinary PLATFORM-ROOT SUBJECT session — the
+    // credential of record — ANCHORED to exactly one environment. The anchor is what
+    // this test is about; who the identity is does not change it.
     actAsEnvironmentAdmin($member, $envId);
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBe($member->refresh()->subject_id);
+    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
 
     $auth = app(EnvironmentAdminAuth::class);
 
-    // On the bound environment's host → authenticated.
+    // On the anchored environment's host → authenticated.
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
+    expect($auth->subjectId())->toBe($member->refresh()->subject_id);
     expect($auth->current()?->id)->toBe($member->id);
 
     // On a DIFFERENT environment's host → nothing, even though the session cookie is
@@ -95,7 +95,7 @@ it('redeems a signed handoff into an env-admin session', function (): void {
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('environment.home'));
 
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBe($subjectId)
+    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($subjectId)
         ->and(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
 });
 
@@ -153,7 +153,7 @@ it('refuses a handoff minted for a different environment than the host', functio
     $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->refresh()->subject_id, 'a_different_env');
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 });
 
 it('bounces an unauthenticated tenant admin to the ROOT open-environment handoff (multi-tenant pull flow)', function (): void {
@@ -256,14 +256,53 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     // Viewer reaches the env but is refused the mint — 403, no handoff token issued.
-    $this->withSession([AccountAuth::SESSION_KEY => $viewer->id])
-        ->get(route('workspace.environment.open', $envId))
+    signInAsMember($viewer);
+    $this->get(route('workspace.environment.open', $envId))
         ->assertForbidden();
 
     // A developer is bounced to the environment host to redeem — a redirect, not a 403.
     $dev = $members->invite($account->id, 'dev-mint@acme.example', AccountRole::Developer);
     $members->activate($dev->id, 'a-strong-unbreached-passphrase');
-    $this->withSession([AccountAuth::SESSION_KEY => $dev->id])
-        ->get(route('workspace.environment.open', $envId))
+    signInAsMember($dev);
+    $this->get(route('workspace.environment.open', $envId))
         ->assertRedirect();
 });
+
+/**
+ * The anchor, isolated from the access check that was standing in front of it.
+ *
+ * The original anti-bleed test used an environment the member had no access to, so
+ * DELETING the anchor comparison left it green: the per-request access check refused
+ * the session anyway. Two guards, one test, and only one of them was actually being
+ * exercised.
+ *
+ * This is the case where they disagree — an owner with `all_environments`, so they may
+ * administer BOTH, holding a session anchored to the first while standing on the second's
+ * host. Access says yes; the anchor says no, and the anchor is right. An admin session is
+ * minted by a one-time, audited handoff for ONE environment, and the session cookie is
+ * shared across `*.cboxid.com` — without the anchor, redeeming a handoff for staging
+ * would silently open production too.
+ */
+it('refuses a session anchored to one environment on another the same admin may also administer', function (): void {
+    ['member' => $member, 'account' => $account, 'envId' => $envId] = envAdminSetup();
+
+    $second = app(AccountProvisioner::class)->addEnvironment(
+        $account->projects()->firstOrFail(),
+        'Staging',
+    );
+
+    // Access is NOT what refuses here — state it, or this is the old test again.
+    expect(in_array($second->id, app(AccountMembers::class)->accessibleEnvironmentIds($member), true))
+        ->toBeTrue('fixture: the admin must be entitled to BOTH, or the anchor is not what holds');
+
+    actAsEnvironmentAdmin($member, $envId);
+
+    $auth = app(EnvironmentAdminAuth::class);
+
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
+    expect($auth->current()?->id)->toBe($member->id);
+
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($second->id));
+    expect($auth->current())
+        ->toBeNull('a session anchored to one environment administered another on the same cookie');
+})->group('security');
