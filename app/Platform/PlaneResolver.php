@@ -34,6 +34,20 @@ final class PlaneResolver
      */
     public function isMultiTenant(): bool
     {
+        // Stated, when the deployment states it. This decides whether the host bulkheads
+        // exist at all — `onSubjectPlane()` and `onOperatorPlane()` both return true
+        // unconditionally in the single-tenant shape — and a security control that
+        // load-bearing must not be inferred from a domain list.
+        $stated = config('cbox-id.tenancy.multi_tenant');
+
+        if (is_bool($stated)) {
+            return $stated;
+        }
+
+        // Compatibility fallback for a deployment that has not stated it yet. Kept
+        // deliberately, because the alternative — defaulting to single-tenant — would
+        // turn the bulkheads OFF on every existing multi-tenant install at upgrade,
+        // silently, which is the exact failure this change exists to prevent.
         $bases = config('cbox-id.environments.base_domains', []);
 
         return is_array($bases) && $bases !== [];

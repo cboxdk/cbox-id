@@ -166,6 +166,34 @@ return [
         'retention_days' => env('CBOX_ID_RISK_TRAIL_RETENTION_DAYS', 90),
     ],
 
+    /*
+     * Whether this deployment is MULTI-TENANT, stated rather than inferred.
+     *
+     * The default shape of this product is a single-tenant identity provider: one
+     * install, one IdP, one host. Multi-tenancy — an account plane that provisions
+     * workspaces and IdPs, tenant subdomains, billing — is a mode you switch ON.
+     *
+     * It used to be derived from whether `environments.base_domains` happened to be
+     * non-empty, and that is a dangerous thing to infer, because the mode decides
+     * whether the host bulkheads exist at all: in single-tenant, `onSubjectPlane()` and
+     * `onOperatorPlane()` return true UNCONDITIONALLY. A deployment that had not yet
+     * listed its base domains was therefore serving the staff console on every host it
+     * answered to, and nothing said so — the config that turned the bulkheads off was a
+     * domain list nobody thought of as a security control.
+     *
+     * A NEW top-level key on purpose. Laravel merges published package config only at
+     * the top level, so adding `multi_tenant` under the package's existing
+     * `environments` array here would replace that whole array — taking `base_domains`,
+     * the resolution cache and the rest with it.
+     *
+     * Unset (null) keeps the old derivation, so an existing deployment does not change
+     * shape on upgrade. Set it explicitly and it wins. Once every deployment states it,
+     * the fallback goes and the default becomes single-tenant.
+     */
+    'tenancy' => [
+        'multi_tenant' => env('CBOX_ID_MULTI_TENANT'),
+    ],
+
     'crypto' => [
 
         /*
