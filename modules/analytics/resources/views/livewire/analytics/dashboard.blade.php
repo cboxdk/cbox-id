@@ -2,26 +2,38 @@
 
 declare(strict_types=1);
 
-use App\Platform\CurrentUser;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Analytics\Contracts\ReportReader;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends Component
+/**
+ * Console › Sign-in activity — one component, both planes.
+ *
+ * Sign-ins, tokens issued, new users and MFA enrolments over a rolling window, for the
+ * organization the scope resolves. On the environment plane with no organization chosen
+ * that is the environment's own total, which is the reader's documented meaning for a
+ * null organization and the view the person who holds the environment is entitled to.
+ *
+ * Not to be confused with the environment console's own Analytics page, which aggregates
+ * usage counters by metric. That one answers "how much is this environment doing"; this
+ * one answers "who is signing in, and how" — for one tenant at a time when one is chosen.
+ */
+new #[Layout('components.layouts.console', ['title' => 'Sign-in activity'])] class extends Component
 {
-
     /**
-     * Route middleware does not gate this page: the module routes carry `platform.auth`
-     * (a session exists) and `console.feature` (the flag is on), and neither is a role
-     * check. The nav hides the area from a plain member, which is styling, not
-     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
-     * re-runs on every Livewire message, not just the first render.
+     * Route middleware does not gate this page by ROLE: the routes carry a session gate
+     * (`platform.auth` on one plane, `env.admin` on the other) and `console.feature`, and
+     * neither is a role check. The nav hides the area from a plain member, which is
+     * styling, not authorization — the URL is typeable. boot() rather than mount(), so it
+     * re-runs on every Livewire message and not just the first render.
      */
     public function boot(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
+
     /**
      * @return array{window: int, tiles: list<array{label: string, total: int, bars: list<array{day: string, count: int}>, max: int}>, mfa_rate: int, unavailable: bool}
      */
@@ -47,18 +59,17 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
         try {
             $reader = app(ReportReader::class);
 
-            // THIS organization, never null.
+            // The acting organization, or null — and null means exactly one thing.
             //
-            // `null` means environment-wide in every one of these calls, and this page is
-            // gated on an ORGANIZATION-level role — so an admin of one tenant was reading
+            // `null` is environment-wide in every one of these reader calls. Read off the
+            // signed-in user it also meant "this member has no organization", and those
+            // two readings collapsing into one answer is how an admin of one tenant read
             // every other tenant's sign-ins, tokens issued, new users and MFA enrolments.
-            // The environment-wide view of the same data already exists, one plane up, at
-            // Environment › Analytics behind EnvironmentAdminAuth.
-            $organizationId = app(CurrentUser::class)->organization()?->id;
-
-            if ($organizationId === null) {
-                abort(403);
-            }
+            //
+            // ConsoleScope refuses rather than returning null on the organization plane,
+            // so the environment-wide branch below is reachable only by an administrator
+            // who holds the environment and has not narrowed to one of its organizations.
+            $organizationId = app(ConsoleScope::class)->organizationId();
 
             $tiles = [];
             foreach ($definitions as $definition) {
@@ -112,7 +123,7 @@ new #[Layout('components.layouts.app', ['title' => 'Analytics'])] class extends 
 }; ?>
 
 <div class="space-y-6">
-    <x-page-header title="Analytics"
+    <x-page-header title="Sign-in activity"
                    subtitle="Authentication activity over the last {{ $overview['window'] }} days, from the platform's event stream." />
 
     @if ($overview['unavailable'])

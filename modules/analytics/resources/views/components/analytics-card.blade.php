@@ -13,7 +13,10 @@
             </p>
         </div>
     </div>
-    <a href="{{ route('analytics.overview') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent-strong)">
-        View analytics &rarr;
+    {{-- Through the scope, so the card links to the page on whichever plane is rendering
+         it. Today only the organization dashboard renders these cards, which is exactly
+         why the hard-coded name went unnoticed for as long as the page itself did. --}}
+    <a href="{{ route(app(\App\Platform\Console\ConsoleScope::class)->routeName('sign-in-activity')) }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent-strong)">
+        View sign-in activity &rarr;
     </a>
 </div>

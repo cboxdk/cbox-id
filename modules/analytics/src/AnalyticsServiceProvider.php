@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Analytics;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Analytics\ClickHouse\ClickHouseConnection;
 use Cbox\Id\Analytics\Console\AnalyticsInstallCommand;
@@ -87,8 +89,23 @@ class AnalyticsServiceProvider extends ServiceProvider
         // covers gave the console two answers to "where do I see what is happening?" —
         // and the page label read "Overview" in a second place in the rail. The label
         // matches the page's own <h1>, as every nav entry must.
-        Console::nav()->area('overview')
-            ->page('analytics.overview', 'Analytics', feature: 'analytics', order: 15);
+        //
+        // "Sign-in activity" rather than "Analytics": the environment console already has
+        // an Analytics page (the environment's usage counters), and two entries under one
+        // label in one rail is a page nobody can find on purpose. This one charts
+        // sign-ins, tokens, new users and MFA enrolments for an organization, and now
+        // says so on both planes.
+        //
+        // Registered through ConsolePages, which serves BOTH planes by default. The old
+        // call went to the organization rail's registry and nowhere else, which is how
+        // this page — and every other module page — shipped on one plane.
+        $this->app->make(ConsolePages::class)->add(
+            area: ConsoleArea::Overview,
+            route: 'sign-in-activity',
+            label: 'Sign-in activity',
+            feature: 'analytics',
+            order: 15,
+        );
 
         Console::dashboardCard(fn (): string => $this->loginsCard(), 4);
 

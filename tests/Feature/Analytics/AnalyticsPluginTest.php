@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\ConsoleManager;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Analytics\Contracts\ReportSink;
@@ -33,15 +34,33 @@ it('adds its page to the host Overview area, labelled the way the page is titled
     expect(collect(Console::nav()->areas())->firstWhere('key', 'analytics'))->toBeNull();
 
     $area = collect(Console::nav()->areas())->firstWhere('key', 'overview');
-    $page = collect($area->pages())->firstWhere('route', 'analytics.overview');
+    $page = collect($area->pages())->firstWhere('route', 'sign-in-activity');
 
     expect($page)->not->toBeNull()
         ->and($page->feature)->toBe('analytics')
-        ->and($page->label)->toBe('Analytics');
+        ->and($page->label)->toBe('Sign-in activity');
 });
 
-it('registers the Volt overview route', function (): void {
-    expect(Route::has('analytics.overview'))->toBeTrue();
+/**
+ * The route name is `sign-in-activity`, not `analytics.overview`, and the name is the
+ * point rather than an incidental rename.
+ *
+ * The environment console already serves `environment.analytics` — the environment's
+ * usage counters — and a nav entry claims its own sub-routes by prefix. Named
+ * `analytics.overview`, this page's environment-plane route would have been
+ * `environment.analytics.overview`, which that entry owns: two highlighted items in one
+ * sub-nav, which is the bug ConsoleNavigationTest pins for `environment.audit` and
+ * `environment.audit-streams`. Pinned here so a later tidy-up that "restores" the
+ * module-namespaced name has to argue with this first.
+ */
+it('names its route outside the environment console\'s analytics namespace', function (): void {
+    expect(Route::has('sign-in-activity'))->toBeTrue()
+        ->and(Route::has('environment.sign-in-activity'))->toBeTrue()
+        // The page it must not hide under, so this test fails if that one is renamed
+        // into the way rather than only if this one is renamed under it.
+        ->and(Route::has('environment.analytics'))->toBeTrue()
+        ->and(app(ConsoleScope::class)->routeName('sign-in-activity'))
+        ->not->toStartWith('environment.analytics.');
 });
 
 it('renders a dashboard analytics card', function (): void {
