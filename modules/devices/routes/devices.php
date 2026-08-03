@@ -2,36 +2,47 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Platform\Console\ConsoleRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Devices\Http\Controllers\ApprovalController;
 use Cbox\Id\Devices\Http\Controllers\BootstrapController;
 use Cbox\Id\Devices\Http\Controllers\DeviceController;
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 
 /*
- * The console surface. The feature gate is repeated here as well as on the nav item so
- * the URL 404s when the module is off, rather than merely being unlinked — an unlinked
- * page is still a reachable page.
+ * The administrative half: the estate's enrolled handsets and what the platform pushed
+ * to them. Both planes, one component — the middleware stacks live in ConsoleRoutes, and
+ * the feature gate is repeated there as well as on the nav item so the URL 404s when the
+ * module is off rather than merely being unlinked.
  */
-Route::middleware([
-    'web',
-    // The same stack every host console route carries. `plane:subject` confines the page
-    // to a tenant host, and the impersonation window is enforced rather than inherited —
-    // an operator impersonating a user must not read a device inventory outside it.
-    'plane:subject',
-    EnforceImpersonationWindow::class,
-    'platform.auth',
-    'console.feature:devices',
-])->group(function (): void {
-    Volt::route('/sign-in/devices', 'devices.index')->name('devices.index');
+ConsoleRoutes::page(
+    feature: 'devices',
+    uri: '/sign-in/devices',
+    component: 'devices.index',
+    name: 'devices.index',
+    environmentUri: '/trusted-devices',
+);
 
-    // The personal half: my enrolment code, my handsets. Same stack, but no admin
-    // gate — the page scopes every read and write to the signed-in subject, the same
-    // way the account page's passkeys do.
-    Volt::route('/account/devices', 'devices.mine')->name('devices.mine');
-});
+/*
+ * The personal half: my enrolment code, my handsets. ORGANIZATION PLANE ONLY, and
+ * deliberately — this is the one module page that is not administration.
+ *
+ * Every read and write on it is keyed to the signed-in SUBJECT, which is why it carries
+ * no admin gate. An environment administrator is a control-plane identity holding an
+ * account membership: a subject of the platform root, never a subject inside the
+ * environment they administer. They therefore have no handsets here to list and no
+ * enrolment to start, so serving it on that plane would render a permanently empty page
+ * — the "empty read-only shell" the merge is meant to stop shipping, not create.
+ *
+ * Their own devices belong to their own identity, and live in the workspace console
+ * where the rest of it does.
+ */
+ConsoleRoutes::organizationPage(
+    feature: 'devices',
+    uri: '/account/devices',
+    component: 'devices.mine',
+    name: 'devices.mine',
+);
 
 /*
  * The authenticator app's API.

@@ -5,10 +5,12 @@ use Cbox\Id\Devices\Enums\NotificationStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Models\PushNotification;
 
-use App\Platform\CurrentUser;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Membership;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -22,7 +24,7 @@ use Livewire\Volt\Component;
  * because this page needs a boot() hook and Volt's functional boot() compiles to a
  * `void` method containing a `return`.
  */
-new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Trusted devices'])] class extends Component
 {
     /**
      * Read gate re-checked on EVERY request, not just first mount — boot() runs on each
@@ -31,13 +33,13 @@ new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class ex
      *
      * This page shows every user's handsets and the errors their pushes produced, which
      * is precisely the reconnaissance an attacker wants: who is enrolled, on what, and
-     * which devices are currently failing. Route middleware does not gate it —
-     * `platform.auth` only proves a session exists and `console.feature` only checks a
+     * which devices are currently failing. Route middleware does not gate it by role —
+     * the session gate only proves a session exists and `console.feature` only checks a
      * flag — so without this any ordinary member could read the lot by typing the URL.
      */
     public function boot(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     /**
@@ -48,42 +50,51 @@ new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class ex
     {
         // Confined to the acting organization's members.
         //
-        // `Device` is keyed by subject, and the page is gated on an ORGANIZATION-level
-        // role — so an unqualified read handed an admin of one tenant every other
-        // tenant's handset names, models, OS versions and health. The page's own docblock
-        // calls that "precisely the reconnaissance an attacker wants", which was true of
-        // the page itself.
-        return Device::query()
-            ->whereIn('subject_id', $this->memberIds())
+        // `Device` is keyed by subject, so an unqualified read on an ORGANIZATION-gated
+        // page handed an admin of one tenant every other tenant's handset names, models,
+        // OS versions and health. The page's own docblock calls that "precisely the
+        // reconnaissance an attacker wants", which was true of the page itself.
+        return $this->scoped(Device::query())
             ->orderByDesc('last_seen_at')
             ->limit(100)
             ->get();
     }
 
     /**
-     * Subject ids of this organization's members — the only devices this page may show.
+     * Narrow a device query to the acting organization's members.
      *
-     * Through the contract with an explicit organization id, NOT a subquery on the model.
-     * `Membership` carries a tenant scope that denies by default when no tenant context
-     * is set, so a subquery silently returns nothing and the page shows an empty
-     * inventory — a filter that fails to a blank screen rather than to a refusal, and one
-     * that depends on ambient state a security decision should not rest on. Measured:
-     * under the console's own test harness the scoped query returned zero rows while the
-     * devices existed.
+     * Membership ids are fetched through the contract with an explicit organization id,
+     * NOT as a subquery on the model. `Membership` carries a tenant scope that denies by
+     * default when no tenant context is set, so a subquery silently returns nothing and
+     * the page shows an empty inventory — a filter that fails to a blank screen rather
+     * than to a refusal, and one that depends on ambient state a security decision should
+     * not rest on. Measured: under the console's own test harness the scoped query
+     * returned zero rows while the devices existed.
      *
-     * @return array<int, string>
+     * With no organization resolved — only reachable by an administrator who holds the
+     * environment — the estate is the environment's own, which `Device`'s environment
+     * scope still bounds. That is the inventory the person who owns the environment is
+     * entitled to, and it is not reachable from the organization plane: the scope refuses
+     * rather than answering null there.
+     *
+     * @param  Builder<Device>  $query
+     * @return Builder<Device>
      */
-    private function memberIds(): array
+    private function scoped(Builder $query): Builder
     {
-        $organizationId = app(CurrentUser::class)->organization()?->id;
+        $organizationId = app(ConsoleScope::class)->organizationId();
 
-        abort_if($organizationId === null, 403);
+        if ($organizationId === null) {
+            return $query;
+        }
 
-        return app(Memberships::class)
+        $memberIds = app(Memberships::class)
             ->forOrganization($organizationId)
             ->map(static fn (Membership $membership): string => $membership->user_id)
             ->values()
             ->all();
+
+        return $query->whereIn('subject_id', $memberIds);
     }
 
     /**
@@ -95,23 +106,48 @@ new #[Layout('components.layouts.app', ['title' => 'Trusted devices'])] class ex
         // Same confinement: a push record carries the device it went to and the error
         // text if it failed.
         return PushNotification::query()
-            ->whereIn('device_id', Device::query()->select('id')->whereIn('subject_id', $this->memberIds()))
+            ->whereIn('device_id', $this->scoped(Device::query())->select('id'))
             ->latest('created_at')
             ->limit(25)
             ->get();
+    }
+
+    /**
+     * The view half. `devices.mine` is the ORGANIZATION plane's page — a subject's own
+     * handsets — and does not exist on the other one, so linking to it unconditionally
+     * would throw a RouteNotFoundException and 500 the page for the very administrator
+     * this merge is for.
+     *
+     * @return array{personalPage: string|null, wholeEnvironment: bool}
+     */
+    public function with(): array
+    {
+        $scope = app(ConsoleScope::class);
+
+        return [
+            'personalPage' => Route::has($scope->routeName('devices.mine'))
+                ? route($scope->routeName('devices.mine'))
+                : null,
+            'wholeEnvironment' => $scope->organizationId() === null,
+        ];
     }
 }; ?>
 
 <div class="space-y-6">
     <x-page-header title="Trusted devices"
-                   subtitle="Handsets enrolled in the authenticator app. These receive approval prompts and sign-in alerts. Push tokens are never shown."
+                   subtitle="Handsets enrolled in the authenticator app{{ $wholeEnvironment ? ' across this environment' : ' by this organization\'s members' }}. These receive approval prompts and sign-in alerts. Push tokens are never shown."
                    :help="App\Platform\Help\HelpTopic::TrustedDevices" />
 
-    {{-- Enrolment is personal, so it lives where every user can reach it. --}}
-    <p class="text-sm" style="color:var(--muted)">
-        Anyone can enrol their own phone from
-        <a href="{{ route('devices.mine') }}" wire:navigate class="underline">My account → Trusted devices</a>.
-    </p>
+    {{-- Enrolment is personal, so it lives where every user can reach it — on the plane
+         where "every user" means something. An environment administrator is not a subject
+         of this environment and has no page here to be sent to, so the link is absent
+         rather than broken. --}}
+    @if ($personalPage !== null)
+        <p class="text-sm" style="color:var(--muted)">
+            Anyone can enrol their own phone from
+            <a href="{{ $personalPage }}" wire:navigate class="underline">My account → Trusted devices</a>.
+        </p>
+    @endif
 
     <div class="card" style="overflow-x:auto">
         <table class="table">

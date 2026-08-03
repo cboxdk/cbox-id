@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsolePlane;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Devices\Console\CreateAuthenticatorClientCommand;
 use Cbox\Id\Devices\Contracts\PushDispatcher;
@@ -157,10 +160,33 @@ class DevicesServiceProvider extends ServiceProvider
         // errors) is org administration and sits beside SSO; enrolment and one's own
         // devices are account security and sit beside passkeys, reachable by every
         // signed-in user — a member cannot even see the Sign-in area.
-        Console::nav()->area('authentication')
-            ->page('devices.index', 'Trusted devices', feature: 'devices', order: 50);
-        Console::nav()->area('account')
-            ->page('devices.mine', 'Trusted devices', feature: 'devices', order: 20);
+        $pages = $this->app->make(ConsolePages::class);
+
+        // Administration, so both planes — through ConsolePages, which is the default.
+        // It reached one plane before, and the estate it inventories belongs to the
+        // environment.
+        $pages->add(
+            area: ConsoleArea::Authentication,
+            route: 'devices.index',
+            label: 'Trusted devices',
+            feature: 'devices',
+            order: 50,
+        );
+
+        // The ONE module page that is genuinely one plane, said out loud rather than by
+        // omission. It lists the caller's own handsets, keyed to the signed-in subject.
+        // An environment administrator is a subject of the platform root and never of the
+        // environment they administer, so on that plane this page could only ever render
+        // empty — and the environment console has no "My account" area to put it in,
+        // which ConsolePages::add() would refuse anyway if this said nothing.
+        $pages->add(
+            area: ConsoleArea::Account,
+            route: 'devices.mine',
+            label: 'Trusted devices',
+            feature: 'devices',
+            order: 20,
+            only: ConsolePlane::Organization,
+        );
 
         if ($this->app->runningInConsole()) {
             $this->commands([CreateAuthenticatorClientCommand::class]);
