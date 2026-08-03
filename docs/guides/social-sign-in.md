@@ -20,19 +20,24 @@ knowing that its issuer is `https://accounts.google.com`.
 
 ## Providers in the catalogue
 
-| Provider | Protocol | Notes |
+| Provider | Protocol | What you supply beyond the client ID and secret |
 | --- | --- | --- |
-| Google | OpenID Connect | |
-| Microsoft Entra ID | OpenID Connect | You supply the directory (tenant) id |
-| Okta | OpenID Connect | You supply your Okta domain |
-| Auth0 | OpenID Connect | You supply your Auth0 domain |
-| Keycloak | OpenID Connect | You supply the base URL and realm |
-| GitLab | OpenID Connect | |
-| Slack | OpenID Connect | |
-| GitHub | OAuth 2.0 | No OpenID Connect; see below |
-| Discord | OAuth 2.0 | |
-| Facebook | OAuth 2.0 | |
-| Apple | OpenID Connect | The client secret is a signing key, not a password |
+| Google | OpenID Connect | Nothing |
+| Slack | OpenID Connect | Nothing |
+| GitHub | OAuth 2.0 | Nothing — see below |
+| Discord | OAuth 2.0 | Nothing |
+| Facebook | OAuth 2.0 | Nothing |
+| Microsoft Entra ID | OpenID Connect | Your directory (tenant) ID |
+| Okta | OpenID Connect | Your Okta domain |
+| Auth0 | OpenID Connect | Your Auth0 domain |
+| GitLab | OpenID Connect | Your GitLab host (`gitlab.com`, or your own) |
+| Keycloak | OpenID Connect | Your Keycloak host and realm |
+| Apple | OpenID Connect | Team ID, Key ID and the `.p8` signing key — see below |
+
+Entra deserves one note. You supply your **own** directory ID, not `common`. The
+multi-tenant `common` endpoint publishes an issuer with a placeholder in it rather than
+a real one, and we refuse that on purpose: accepting it would mean accepting tokens
+issued by any Entra tenant in the world, not just yours.
 
 Two of these behave differently enough to call out.
 
