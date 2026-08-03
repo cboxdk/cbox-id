@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e2b14f94bbb93b62c3b125a89339d255",
+    "content-hash": "25e6c1b8d1ed46dbc882e538772f7416",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -994,16 +994,16 @@
         },
         {
             "name": "cboxdk/laravel-ssrf",
-            "version": "v1.1.0",
+            "version": "v1.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-ssrf.git",
-                "reference": "9595ef91ca4a995611019dd8bd4f1104938ac4cc"
+                "reference": "b19dd454cc0fa07cce46d8fbf98a77626af015b2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-ssrf/zipball/9595ef91ca4a995611019dd8bd4f1104938ac4cc",
-                "reference": "9595ef91ca4a995611019dd8bd4f1104938ac4cc",
+                "url": "https://api.github.com/repos/cboxdk/laravel-ssrf/zipball/b19dd454cc0fa07cce46d8fbf98a77626af015b2",
+                "reference": "b19dd454cc0fa07cce46d8fbf98a77626af015b2",
                 "shasum": ""
             },
             "require": {
@@ -1062,7 +1062,7 @@
                 "security": "https://github.com/cboxdk/laravel-ssrf/security/policy",
                 "source": "https://github.com/cboxdk/laravel-ssrf"
             },
-            "time": "2026-07-15T23:19:12+00:00"
+            "time": "2026-08-03T12:04:35+00:00"
         },
         {
             "name": "cboxdk/laravel-telemetry",

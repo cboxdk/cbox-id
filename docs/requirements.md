@@ -39,7 +39,7 @@ Pulled in automatically by `composer install`:
 |---|---|---|
 | `cboxdk/laravel-id` | `>=0.77.1 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
-| `cboxdk/laravel-ssrf` | `^1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
+| `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
 | `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |

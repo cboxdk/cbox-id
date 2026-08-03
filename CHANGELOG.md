@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Confirmed security issues and their fixes are cross-referenced under **Security** below.
 
+## [0.35.1] - 2026-08-03
+
+### Fixed
+
+- **`cboxdk/laravel-ssrf` raised to `^1.1.1`, repairing DNS pinning for dual-stack
+  hosts.** Up to and including v1.1.0 the guard emitted one `CURLOPT_RESOLVE` entry per
+  validated address; curl treats a second entry for the same `host:port` as a
+  replacement rather than an addition, so only whichever address sorted last survived.
+  Any dual-stack host whose AAAA sorted last — `accounts.google.com` is one — was pinned
+  to IPv6 alone, with no fallback to the IPv4 address validated moments earlier.
+
+  This was **latent in production, not breaking it**: Laravel Cloud `eu-central-1` has
+  working IPv6 and was resolving discovery over it, verified by running the real Google
+  OIDC discovery on the deployed v1.1.0 instance, which returned the correct
+  authorization endpoint. The same call on a machine without an IPv6 route failed with
+  `OidcDiscoveryFailed … cURL error 7`. So every OIDC discovery, token exchange and JWKS
+  fetch had been running single-family with no failover — fine until the region, the
+  host or Google's IPv6 endpoint changed.
+
+  `docs/requirements.md` is updated to match, as `RequirementsAccuracyTest` enforces.
+
 ## [0.35.0] - 2026-08-01
 
 The console assumed you already knew what an IdP does. This is the pass that stops it

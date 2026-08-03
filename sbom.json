@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:1620d7ac-23b4-4e95-ae7a-324a92bc959b",
+    "serialNumber": "urn:uuid:cd9cd033-de55-440c-b0cb-921ab77cc133",
     "version": 1,
     "metadata": {
         "tools": [
@@ -133,11 +133,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.81.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.83.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.81.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.81.0",
+            "version": "v0.83.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.83.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -229,11 +229,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-ssrf@v1.1.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-ssrf@v1.1.1",
             "group": "cboxdk",
             "name": "laravel-ssrf",
-            "version": "v1.1.0",
-            "purl": "pkg:composer/cboxdk/laravel-ssrf@v1.1.0",
+            "version": "v1.1.1",
+            "purl": "pkg:composer/cboxdk/laravel-ssrf@v1.1.1",
             "description": "Cbox SSRF \u2014 a hardened, config-driven guard against server-side request forgery for outbound URLs in Laravel. Blocks private/reserved/cloud-metadata targets, pins DNS, and refuses redirects.",
             "licenses": [
                 {
