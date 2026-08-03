@@ -47,7 +47,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Overview'])] class e
                 // and lands on a page titled otherwise is the wayfinding bug this
                 // console keeps having.
                 ['label' => 'Apps & API keys', 'count' => Client::query()->count(), 'route' => 'environment.clients'],
-                ['label' => 'Directories', 'count' => Directory::query()->count(), 'route' => 'environment.directories'],
+                // "Sync users in" on both planes now, for the same reason as the tile
+                // above it: a tile that lands on a page titled otherwise is the
+                // wayfinding bug this console keeps having.
+                ['label' => 'Sync users in', 'count' => Directory::query()->count(), 'route' => 'environment.directories'],
             ],
         ];
     }
@@ -57,7 +60,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Overview'])] class e
     <x-page-header title="Overview" subtitle="Everything in this environment — organizations, users, and sign-in." />
 
     @php
-        $statIcons = ['Organizations' => 'layers', 'Users' => 'members', 'SSO connections' => 'connections', 'Apps & API keys' => 'clients', 'Directories' => 'directory'];
+        $statIcons = ['Organizations' => 'layers', 'Users' => 'members', 'SSO connections' => 'connections', 'Apps & API keys' => 'clients', 'Sync users in' => 'directory'];
     @endphp
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($stats as $stat)
