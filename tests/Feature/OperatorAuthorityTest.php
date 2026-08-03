@@ -235,3 +235,78 @@ it('points a refused visitor at the sign-in this deployment actually serves', fu
 
     $this->get('https://cboxid.com/operator')->assertRedirect(route('workspace.login'));
 })->group('security');
+
+/**
+ * An operator who is not a customer.
+ *
+ * This is the ordinary case and it was the one that did not work. An operator runs the
+ * deployment; they do not buy it, so they have no account and no member row. The account
+ * host serves exactly one sign-in, and `plane:subject` withholds the tenant door there —
+ * so a door that could only match member rows left the person who runs the platform with
+ * no way in at all. The console told them to sign in, and the sign-in had nothing to match
+ * them against.
+ *
+ * They get a SUBJECT session, and therefore a rail with the platform areas and nothing
+ * else — which is the right console for someone with no account.
+ */
+it('signs in an operator who has no account at all', function (): void {
+    $root = platformRootEnvironment();
+    installedDeployment();
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
+
+    // The ambient environment is the platform root, which is what the account HOST
+    // resolves to. It matters: an operator's subject and its session row both live there,
+    // and `CurrentUser` resolves the session under whatever scope is current — so a test
+    // standing in some other environment would report a signed-in operator as nobody, and
+    // blame the sign-in for it.
+    app(EnvironmentContext::class)
+        ->set(GenericEnvironment::of($root->id));
+
+    app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
+
+    $outcome = app(AccountAuth::class)->attempt(
+        Request::create('/workspace/login', 'POST'),
+        'lonely@cbox.test',
+        'a-strong-unbreached-passphrase',
+    );
+
+    expect($outcome->name)->toBe('Ok', 'the person who runs the deployment cannot sign in to it');
+
+    // And the session that produced actually carries the authority. Asserted through a
+    // REQUEST, not in this tick: `CurrentUser` is populated by middleware at the start of
+    // a request, so asking it here would report nobody no matter what the door did — and
+    // would have blamed the door for it.
+    $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
+    signInAsSubject($subjectId);
+
+    $this->get('https://cboxid.com/operator')->assertSuccessful();
+})->group('security');
+
+/** A wrong password for a real operator is still refused. */
+it('refuses an operator with the wrong password', function (): void {
+    platformRootEnvironment();
+    app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
+
+    expect(app(AccountAuth::class)->attempt(
+        Request::create('/workspace/login', 'POST'),
+        'lonely@cbox.test',
+        'not-the-passphrase',
+    )->name)->toBe('Invalid');
+})->group('security');
+
+/** And a suspended one is refused as an ordinary unknown, revealing nothing. */
+it('refuses a suspended operator at the account door', function (): void {
+    platformRootEnvironment();
+
+    $operators = app(PlatformOperators::class);
+    $operator = $operators->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
+    $other = $operators->create('other@cbox.test', 'a-strong-unbreached-passphrase', 'Other');
+    $operators->suspend($operator->id, $other->id);
+
+    expect(app(AccountAuth::class)->attempt(
+        Request::create('/workspace/login', 'POST'),
+        'lonely@cbox.test',
+        'a-strong-unbreached-passphrase',
+    )->name)->toBe('Invalid', 'a suspended operator signed in through the account door');
+})->group('security');

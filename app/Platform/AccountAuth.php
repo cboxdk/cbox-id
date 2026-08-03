@@ -7,7 +7,9 @@ namespace App\Platform;
 use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 use Throwable;
 
@@ -51,6 +53,9 @@ final class AccountAuth
     public const SESSION_VERSION_KEY = 'cbox.account_member_v';
 
     public function __construct(
+        private readonly PlatformOperators $operators,
+        private readonly PlatformRoot $platformRoot,
+        private readonly PlatformAuth $platformAuth,
         private readonly AccountMembers $members,
         private readonly AccountMemberMfa $mfa,
         private readonly MemberCredentialGate $gate,
@@ -84,6 +89,26 @@ final class AccountAuth
             $this->members->verifyPassword('', $password);
         }
 
+        // Not every person who belongs here is a customer.
+        //
+        // A platform operator is a subject in the platform root with no account
+        // membership — they run the deployment, they do not buy it. This host serves
+        // exactly one sign-in and `plane:subject` withholds the tenant door here, so
+        // without this branch an operator has no way in at all: the console tells them to
+        // sign in, and the sign-in has no row to match them against.
+        //
+        // Tried only after the member lookup misses, and it establishes a SUBJECT session
+        // rather than a member one, because that is what they are. {@see ConsoleScope}
+        // resolves authority from either, so the rail they get is the platform areas and
+        // nothing else — which is the correct console for someone with no account.
+        if ($member === null) {
+            $operatorOutcome = $this->attemptOperator($request, $email, $password);
+
+            if ($operatorOutcome !== null) {
+                return $operatorOutcome;
+            }
+        }
+
         if (! $verified) {
             $this->gate->recordFailure($member);
 
@@ -108,6 +133,36 @@ final class AccountAuth
         $this->establish($member->id);
 
         return AttemptOutcome::Ok;
+    }
+
+    /**
+     * Sign in a platform operator who holds no account membership.
+     *
+     * Null means "not an operator, carry on with the ordinary refusal" — deliberately not
+     * an outcome, so a caller cannot accidentally treat "no operator by that name" as a
+     * distinguishable answer. The unknown-email path above has already paid its dummy
+     * verify, so both misses cost the same.
+     *
+     * Delegates the credential to {@see PlatformAuth::attemptPassword()}, which is the
+     * same method the tenant door uses: policy, lockout, TOTP, step-up and the session it
+     * mints are that one implementation, not a second copy of it living here. Run inside
+     * the platform root because an operator's subject lives there and this host's ambient
+     * scope is that environment only by coincidence of configuration.
+     *
+     * The status gate is the operator record's, checked BEFORE the credential is spent —
+     * a suspended operator is refused as an ordinary unknown, revealing nothing.
+     */
+    private function attemptOperator(Request $request, string $email, string $password): ?AttemptOutcome
+    {
+        $operator = $this->operators->findByEmail($email);
+
+        if ($operator === null || ! $operator->isActive() || $operator->subject_id === null) {
+            return null;
+        }
+
+        return $this->platformRoot->run(
+            fn (): AttemptOutcome => $this->platformAuth->attemptPassword($request, $email, $password),
+        );
     }
 
     /**
