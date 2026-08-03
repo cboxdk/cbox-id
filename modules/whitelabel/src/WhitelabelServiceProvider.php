@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Whitelabel;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
 use Cbox\Console\Kit\Contracts\BrandingResolver;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -82,8 +84,22 @@ class WhitelabelServiceProvider extends ServiceProvider
         // a separate paid package; vendored in-tree there is nothing to unlock.
         Console::features()->register('whitelabel', static fn (): bool => true);
 
-        Console::nav()->area('settings', 'Settings', 'palette', 80)
-            ->page('whitelabel.branding', 'Branding', feature: 'whitelabel', order: 10);
+        // Through ConsolePages, which serves BOTH planes by default. The old call went to
+        // the organization rail's registry and nowhere else, so the environment default
+        // every organization inherits — the row this module's schema is built around —
+        // had no editor anywhere in the console.
+        //
+        // The area's icon is no longer passed from here either. This call used to hand
+        // 'palette' to the host's Settings area, and the registry applies a passed icon
+        // as an override: installing the branding module restyled the console's Settings
+        // rail entry for every page under it.
+        $this->app->make(ConsolePages::class)->add(
+            area: ConsoleArea::Settings,
+            route: 'whitelabel.branding',
+            label: 'Branding',
+            feature: 'whitelabel',
+            order: 10,
+        );
 
         Console::dashboardCard(fn (): string => $this->brandCard(), 8);
     }

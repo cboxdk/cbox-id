@@ -1,6 +1,6 @@
 <?php
 
-use App\Platform\CurrentUser;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
@@ -11,19 +11,36 @@ use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
-new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends Component
+/**
+ * Console › Branding — one component, both planes, at TWO ALTITUDES.
+ *
+ * The brand-profile table has always had both: a row per organization, and one row with
+ * `organization_id IS NULL` that every organization in the environment inherits when it
+ * has none of its own. The page could only ever be opened by an organization admin, so
+ * the environment default — the altitude the schema was built around — had no editor
+ * anywhere in the console, and an earlier fix could only close the hole by pinning this
+ * page to the organization altitude and leaving the other unreachable.
+ *
+ * Which altitude is edited is the scope's answer and nothing else. On the organization
+ * plane the scope refuses to resolve null, so that plane can only ever reach its own row
+ * — one tenant re-branding the sign-in page of every other tenant in the environment
+ * remains impossible. On the environment plane, no organization chosen means the
+ * environment default, which is precisely what that administrator owns.
+ */
+new #[Layout('components.layouts.console', ['title' => 'Branding'])] class extends Component
 {
     /**
-     * Route middleware does not gate this page: the module routes carry `platform.auth`
-     * (a session exists) and `console.feature` (the flag is on), and neither is a role
-     * check. The nav hides the area from a plain member, which is styling, not
-     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
-     * re-runs on every Livewire message, not just the first render.
+     * Route middleware does not gate this page by ROLE: the routes carry a session gate
+     * (`platform.auth` on one plane, `env.admin` on the other) and `console.feature`, and
+     * neither is a role check. The nav hides the area from a plain member, which is
+     * styling, not authorization — the URL is typeable. boot() rather than mount(), so it
+     * re-runs on every Livewire message and not just the first render.
      */
     public function boot(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
+
     use WithFileUploads;
 
     /** @var array<string, string> */
@@ -54,7 +71,7 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
     {
         $this->palette = array_fill_keys(PaletteTokens::TOKENS, '');
 
-        $profile = app(BrandProfiles::class)->forOrganization($this->organizationId());
+        $profile = $this->profile();
 
         // No profile yet: every field stays at its blank default and the form renders
         // as "not branded", which is a different state from branded-then-cleared.
@@ -107,21 +124,21 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
         $profiles = app(BrandProfiles::class);
         $assets = app(BrandAssetStore::class);
 
-        // THIS organization's profile.
+        // The altitude the scope resolves, and no other.
         //
-        // It used to read and write `forEnvironment()` — the `organization_id IS NULL`
-        // row, which is the fallback every organization in the environment inherits when
-        // it has none of its own. Behind an ORG-admin check. So an admin of one tenant
-        // re-branded the console and the hosted sign-in page for every other tenant in
-        // the environment, none of whom share any trust relationship with them.
+        // This used to read and write `forEnvironment()` unconditionally — the
+        // `organization_id IS NULL` row every organization inherits — behind an ORG-admin
+        // check, so an admin of one tenant re-branded the console and the hosted sign-in
+        // page for every other tenant in the environment. It was then pinned to the
+        // organization, which closed that and left the environment default with no editor.
         //
-        // The resolver already prefers an organization's own profile over the
-        // environment default, so writing at this altitude is both the safe choice and
-        // the one the data model was built for. The environment-wide default belongs to
-        // an environment administrator.
+        // Now it is the scope's answer: an organization id on the organization plane
+        // (where the scope REFUSES to answer null, so that plane cannot reach the shared
+        // row however it is driven), and on the environment plane whichever altitude the
+        // administrator picked.
         $organizationId = $this->organizationId();
 
-        $profile = $profiles->forOrganization($organizationId)
+        $profile = $this->profile()
             ?? new BrandProfile(['organization_id' => $organizationId]);
 
         if ($this->logo !== null) {
@@ -152,24 +169,45 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
     }
 
     /**
-     * The organization whose branding this page edits.
+     * The organization whose branding this page edits, or null for the environment
+     * default every organization inherits.
      *
-     * Never a value from the request: the page is reached by an org admin, and the only
-     * organization they may brand is the one their session is currently in.
+     * Never a value from the request. On the organization plane the scope answers the
+     * session's own organization or refuses outright — it cannot answer null — so that
+     * plane can only ever reach its own row. Null therefore means exactly one thing here:
+     * an environment administrator editing the environment's default.
      */
-    private function organizationId(): string
+    private function organizationId(): ?string
     {
-        $organizationId = app(CurrentUser::class)->organization()?->id;
+        return app(ConsoleScope::class)->organizationId();
+    }
 
-        abort_if($organizationId === null, 403);
+    /** The profile at the altitude currently being edited, or null when there is none yet. */
+    private function profile(): ?BrandProfile
+    {
+        $organizationId = $this->organizationId();
 
-        return $organizationId;
+        return $organizationId === null
+            ? app(BrandProfiles::class)->forEnvironment()
+            : app(BrandProfiles::class)->forOrganization($organizationId);
     }
 
     /** @return array<string, string> live preview tokens for the swatch board */
     public function previewTokens(): array
     {
         return PaletteTokens::normalize($this->palette);
+    }
+
+    /**
+     * The view half of the altitude above. A page that edits one organization's brand
+     * while telling the reader it themes "this whole environment" is how a tenant admin
+     * comes to believe they changed something they did not.
+     *
+     * @return array{environmentDefault: bool}
+     */
+    public function with(): array
+    {
+        return ['environmentDefault' => $this->organizationId() === null];
     }
 }; ?>
 
@@ -178,7 +216,9 @@ new #[Layout('components.layouts.app', ['title' => 'Branding'])] class extends C
          "Settings" — the area this page actually lives in. Hand-written, it said
          "White-label", which is the module's name and not a place in the console. --}}
     <x-page-header title="Branding"
-                   subtitle="Theme the console and hosted sign-in for this whole environment — palette, logo, app name, custom domain and email sender. An organization can override the sign-in theme under Appearance." />
+                   :subtitle="$environmentDefault
+                       ? 'Theme the console and hosted sign-in for this whole environment — palette, logo, app name and email sender. Every organization inherits this unless it sets its own; choose an organization above to brand just that one.'
+                       : 'Theme the console and hosted sign-in for this organization — palette, logo, app name and email sender. This overrides the environment default.'" />
 
     @if (session('status'))
         <div role="status" aria-live="polite" class="badge badge-success" style="align-self:flex-start">{{ session('status') }}</div>

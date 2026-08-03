@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\EnforceImpersonationWindow;
-use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
+use App\Platform\Console\ConsoleRoutes;
 
-// Gated on the feature, so the route doesn't exist on a host without whitelabel.
-// `platform.auth` is the host console's auth guard (cbox-id); adjust per host.
-Route::middleware([
-    'web',
-    // The same stack every host console route carries. `plane:subject` confines these
-    // pages to a tenant host rather than answering on the account root, and the
-    // impersonation window is ENFORCED rather than inherited — without it, an
-    // impersonation that outlived its 30-minute box keeps reading these pages, because
-    // reads sit on the call guard's allowlist and nothing else stops them.
-    'plane:subject',
-    EnforceImpersonationWindow::class,
-    'platform.auth',
-    'console.feature:whitelabel',
-])->group(function (): void {
-    Volt::route('/settings/branding', 'whitelabel.branding')->name('whitelabel.branding');
-});
+/*
+ * Both planes, one component — the middleware stacks live in ConsoleRoutes.
+ *
+ * The brand-profile table has always had two altitudes: a row per organization, and one
+ * row with `organization_id IS NULL` that every organization inherits. The page could
+ * only ever be opened by an organization admin, so the environment default — the thing
+ * the data model was shaped around, and the only altitude an environment administrator
+ * owns — had no editor at all. A previous fix pinned the page to the organization
+ * altitude to stop one tenant re-branding the whole environment; this gives the missing
+ * altitude to the plane it belongs to instead of leaving it unreachable.
+ */
+ConsoleRoutes::page(
+    feature: 'whitelabel',
+    uri: '/settings/branding',
+    component: 'whitelabel.branding',
+    name: 'whitelabel.branding',
+    environmentUri: '/branding',
+);
