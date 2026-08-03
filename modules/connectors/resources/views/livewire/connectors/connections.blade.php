@@ -1,25 +1,25 @@
 <?php
 
-use App\Platform\CurrentUser;
-use Cbox\Console\Kit\Facades\Console;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Connections'])] class extends Component
 {
     /**
-     * Route middleware does not gate this page: the module routes carry `platform.auth`
-     * (a session exists) and `console.feature` (the flag is on), and neither is a role
-     * check. The nav hides the area from a plain member, which is styling, not
-     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
-     * re-runs on every Livewire message, not just the first render.
+     * Route middleware does not gate this page by ROLE: the routes carry a session gate
+     * (`platform.auth` on one plane, `env.admin` on the other) and `console.feature`, and
+     * neither is a role check. The nav hides the area from a plain member, which is
+     * styling, not authorization — the URL is typeable. boot() rather than mount(), so it
+     * re-runs on every Livewire message and not just the first render.
      */
     public function boot(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
+
     /**
      * Flattened for the table — a rendering boundary, so an array shape is the right
      * shape here; the typed {@see ConnectionSummary} is what does the work upstream.
@@ -29,7 +29,12 @@ new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extend
     #[Computed]
     public function connections(): array
     {
-        $organizationId = Console::context()->organizationId();
+        // From the scope, not from console-kit's CurrentContext. That helper answers
+        // null whenever no SUBJECT is signed in — which on the environment plane is
+        // always — so an environment administrator would silently have been handed the
+        // environment-wide branch even after choosing an organization to act on. Here
+        // null means one thing: an environment administrator has not chosen yet.
+        $organizationId = app(ConsoleScope::class)->organizationId();
 
         $rows = [];
         foreach (app(ConnectionsOverview::class)->forOrganization($organizationId) as $summary) {
@@ -44,17 +49,29 @@ new #[Layout('components.layouts.app', ['title' => 'Connections'])] class extend
 
         return $rows;
     }
+
+    /**
+     * The view half of the scoping above. Without it the page keeps saying "for this
+     * organization" while listing the whole environment — copy that is merely wrong on
+     * one plane is how a reader learns to distrust the scoping they cannot see.
+     *
+     * @return array{wholeEnvironment: bool}
+     */
+    public function with(): array
+    {
+        return ['wholeEnvironment' => app(ConsoleScope::class)->organizationId() === null];
+    }
 };
 
 ?>
 
 <div class="space-y-6">
     <x-page-header title="Connections"
-                   subtitle="Every live connector for this organization, across outbound SCIM, webhooks and SSO federation." />
+                   subtitle="Every live connector {{ $wholeEnvironment ? 'in this environment' : 'for this organization' }}, across outbound SCIM, webhooks and SSO federation." />
 
     @if ($this->connections === [])
         <div class="cbx-empty">
-            <p class="text-sm" style="color:var(--muted)">No connectors are configured for this organization yet.</p>
+            <p class="text-sm" style="color:var(--muted)">No connectors are configured {{ $wholeEnvironment ? 'in this environment' : 'for this organization' }} yet.</p>
         </div>
     @else
         <div class="overflow-x-auto">

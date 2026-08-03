@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Connectors;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Connectors\Analytics\NullConnectorAnalytics;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
@@ -62,12 +64,31 @@ class ConnectorsServiceProvider extends ServiceProvider
         // Console — present whenever the plugin is installed and not switched off.
         Console::features()->register('connectors', fn (): bool => $this->connectorsEnabled());
 
-        // 60 is this module's reserved slot in the host's area ordering (see
-        // App\Providers\ConsoleServiceProvider): unique orders, so the rail cannot
-        // reshuffle itself depending on which modules happen to be enabled.
-        Console::nav()->area('connectors', 'Connectors', 'connections', 60)
-            ->page('connectors.catalog', 'Catalog', feature: 'connectors', order: 10)
-            ->page('connectors.connections', 'Connections', feature: 'connectors', order: 20);
+        // The area's label, icon and its reserved slot in the rail's ordering are held on
+        // ConsoleArea rather than passed from here, so the two rails place it identically
+        // and no module can restyle an area it merely contributes to.
+        //
+        // Through ConsolePages, which serves BOTH planes by default. Connectors is the
+        // one module that introduces an area of its own, and it existed on the
+        // organization rail alone — the environment console had no Connectors entry at
+        // all, for the plane that can see every organization's connectors at once.
+        $pages = $this->app->make(ConsolePages::class);
+
+        $pages->add(
+            area: ConsoleArea::Connectors,
+            route: 'connectors.catalog',
+            label: 'Catalog',
+            feature: 'connectors',
+            order: 10,
+        );
+
+        $pages->add(
+            area: ConsoleArea::Connectors,
+            route: 'connectors.connections',
+            label: 'Connections',
+            feature: 'connectors',
+            order: 20,
+        );
 
         Console::dashboardCard(fn (): string => $this->connectorsCard(), 8);
     }

@@ -2,24 +2,26 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\EnforceImpersonationWindow;
-use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
+use App\Platform\Console\ConsoleRoutes;
 
-// Gated on the feature, so these routes don't exist on a host without connectors.
-// `platform.auth` is the host console's auth guard (cbox-id); adjust per host.
-Route::middleware([
-    'web',
-    // The same stack every host console route carries. `plane:subject` confines these
-    // pages to a tenant host rather than answering on the account root, and the
-    // impersonation window is ENFORCED rather than inherited — without it, an
-    // impersonation that outlived its 30-minute box keeps reading these pages, because
-    // reads sit on the call guard's allowlist and nothing else stops them.
-    'plane:subject',
-    EnforceImpersonationWindow::class,
-    'platform.auth',
-    'console.feature:connectors',
-])->group(function (): void {
-    Volt::route('/connectors', 'connectors.catalog')->name('connectors.catalog');
-    Volt::route('/connectors/connections', 'connectors.connections')->name('connectors.connections');
-});
+/*
+ * Both planes, one component each — the middleware stacks live in ConsoleRoutes.
+ *
+ * The catalogue is the same on either plane; the connections list is the one that
+ * changes, because what it lists is whatever organization the scope resolves — and on
+ * the environment plane with none chosen, every connector in the environment, which is
+ * the overview the person who owns the environment is entitled to.
+ */
+ConsoleRoutes::page(
+    feature: 'connectors',
+    uri: '/connectors',
+    component: 'connectors.catalog',
+    name: 'connectors.catalog',
+);
+
+ConsoleRoutes::page(
+    feature: 'connectors',
+    uri: '/connectors/connections',
+    component: 'connectors.connections',
+    name: 'connectors.connections',
+);

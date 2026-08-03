@@ -1,26 +1,26 @@
 <?php
 
-use App\Platform\CurrentUser;
-use Cbox\Console\Kit\Facades\Console;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Catalog'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Catalog'])] class extends Component
 {
     /**
-     * Route middleware does not gate this page: the module routes carry `platform.auth`
-     * (a session exists) and `console.feature` (the flag is on), and neither is a role
-     * check. The nav hides the area from a plain member, which is styling, not
-     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
-     * re-runs on every Livewire message, not just the first render.
+     * Route middleware does not gate this page by ROLE: the routes carry a session gate
+     * (`platform.auth` on one plane, `env.admin` on the other) and `console.feature`, and
+     * neither is a role check. The nav hides the area from a plain member, which is
+     * styling, not authorization — the URL is typeable. boot() rather than mount(), so it
+     * re-runs on every Livewire message and not just the first render.
      */
     public function boot(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
+
     /**
      * Flattened for the card grid — a rendering boundary, so an array shape is the
      * right shape here; the typed {@see ConnectorDescriptor} is what does the work
@@ -31,7 +31,12 @@ new #[Layout('components.layouts.app', ['title' => 'Catalog'])] class extends Co
     #[Computed]
     public function catalog(): array
     {
-        $organizationId = Console::context()->organizationId();
+        // From the scope, not from console-kit's CurrentContext. That helper answers
+        // null whenever no SUBJECT is signed in — which on the environment plane is
+        // always — so an environment administrator would silently have been handed the
+        // environment-wide branch even after choosing an organization to act on. Here
+        // null means one thing: an environment administrator has not chosen yet.
+        $organizationId = app(ConsoleScope::class)->organizationId();
 
         $active = [];
         foreach (app(ConnectionsOverview::class)->forOrganization($organizationId) as $summary) {
