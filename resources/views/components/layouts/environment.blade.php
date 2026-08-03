@@ -14,8 +14,11 @@
 
     // The account member's own profile/MFA/passkeys live on the ACCOUNT plane (where
     // the WebAuthn origin is valid) — link out to it from here.
-    $bases = config('cbox-id.environments.base_domains', []);
-    $accountHost = is_array($bases) && isset($bases[0]) && is_string($bases[0]) ? $bases[0] : request()->getHost();
+    // One definition (PlaneResolver::accountHost), because the content security policy
+    // names this same host — a copy that drifted would render links the policy refuses.
+    // Falls back to the current host on a single-host deployment, where this plane and
+    // the account plane share an origin and the link is simply local.
+    $accountHost = app(\App\Platform\PlaneResolver::class)->accountHost() ?? request()->getHost();
     $securityUrl = 'https://'.$accountHost.'/workspace/security';
     $workspaceUrl = 'https://'.$accountHost.'/workspace';
 

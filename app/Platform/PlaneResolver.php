@@ -109,6 +109,47 @@ final class PlaneResolver
     }
 
     /**
+     * The account/workspace console's host on a multi-tenant deployment, or null when the
+     * deployment is single-host and there is no second origin to name.
+     *
+     * Signing in is unified there, so this is the host an environment console hands the
+     * browser to and the one it comes back from. Three places computed it independently —
+     * the admin gate, the environment layout's "open" links, and the admin login page —
+     * each with a comment asserting it matched the others. That is an invariant kept by
+     * hand, and the security policy now depends on it too: a `form-action` naming a
+     * different host than the redirect actually targets fails as a blocked form, which is
+     * exactly the bug this replaced.
+     */
+    public function accountHost(): ?string
+    {
+        $bases = config('cbox-id.environments.base_domains', []);
+
+        if (! is_array($bases) || ! isset($bases[0]) || ! is_string($bases[0])) {
+            return null;
+        }
+
+        $host = mb_strtolower(trim($bases[0]));
+
+        return $host === '' ? null : $host;
+    }
+
+    /**
+     * Every host that may legitimately terminate a form submission started on another
+     * plane — the account host plus any explicitly-named root, deduplicated.
+     *
+     * @return list<string>
+     */
+    public function formActionHosts(): array
+    {
+        $account = $this->accountHost();
+
+        return array_values(array_unique([
+            ...($account === null ? [] : [$account]),
+            ...$this->platformRootHosts(),
+        ]));
+    }
+
+    /**
      * Hosts that ARE the platform root, named rather than inferred.
      *
      * Configured explicitly so an unmapped Host cannot become the account plane by
@@ -117,7 +158,7 @@ final class PlaneResolver
      *
      * @return list<string>
      */
-    private function platformRootHosts(): array
+    public function platformRootHosts(): array
     {
         $configured = config('cbox-id.environments.platform_root_hosts', []);
 

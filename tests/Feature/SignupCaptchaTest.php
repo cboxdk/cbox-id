@@ -145,12 +145,22 @@ it('is inert when no Turnstile keys are configured', function (): void {
 it('opens the CSP to Cloudflare only when Turnstile is configured', function (): void {
     $csp = fn (): string => (string) $this->get('/login')->headers->get('Content-Security-Policy');
 
-    expect($csp())->toContain("script-src 'self' 'unsafe-eval' https://challenges.cloudflare.com")
+    // Asserted per-directive rather than as one contiguous string. The original spelled
+    // out `script-src 'self' 'unsafe-eval' https://challenges.cloudflare.com` verbatim,
+    // so adding an unrelated source to the SAME directive — the CSP nonce Cloudflare's
+    // JavaScript Detections needs — failed a test about Turnstile. What matters here is
+    // which sources the directive names, not what order they sit in.
+    $scriptSrc = fn (): string => collect(explode(';', $csp()))
+        ->map(fn (string $part): string => trim($part))
+        ->first(fn (string $part): bool => str_starts_with($part, 'script-src ')) ?? '';
+
+    expect($scriptSrc())->toContain('https://challenges.cloudflare.com')
         ->and($csp())->toContain("frame-src 'self' https://challenges.cloudflare.com");
 
     config(['services.turnstile.site_key' => null, 'services.turnstile.secret_key' => null]);
 
-    expect($csp())->toContain("script-src 'self' 'unsafe-eval';")
+    expect($scriptSrc())->toContain("'self'")
+        ->and($scriptSrc())->toContain("'unsafe-eval'")
         ->and($csp())->not->toContain('cloudflare')
         ->and($csp())->not->toContain('frame-src');
 });

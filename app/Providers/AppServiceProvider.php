@@ -6,6 +6,7 @@ use App\Http\ApiRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Platform\AccountApiContext;
 use App\Platform\AuthoritativeDnsResolver;
+use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Federation\Contracts\DnsResolver;
@@ -39,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
         $this->app->scoped(EnvironmentApiContext::class);
+
+        // One CSP nonce per request. `scoped` and not `singleton`: on a long-lived worker
+        // a singleton would hand the same value to every request the process ever serves,
+        // which is a nonce in name only — anyone who saw one page could predict the value
+        // guarding the next.
+        $this->app->scoped(CspNonce::class);
     }
 
     /**

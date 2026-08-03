@@ -53,10 +53,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Admin sign in'])] class ext
         // {@see \App\Http\Middleware\AuthenticateEnvironmentAdmin}). If someone reaches
         // this local form directly, bounce them to the root's "open environment"
         // handoff for THIS environment so they authenticate once, at the root.
-        $bases = config('cbox-id.environments.base_domains', []);
-        $root = is_array($bases) && isset($bases[0]) && is_string($bases[0]) && $bases[0] !== ''
-            ? $bases[0]
-            : null;
+        $root = app(\App\Platform\PlaneResolver::class)->accountHost();
         $environment = $environments->current();
 
         if ($root !== null && $environment !== null) {

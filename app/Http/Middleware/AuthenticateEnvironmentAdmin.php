@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ final class AuthenticateEnvironmentAdmin
     public function __construct(
         private readonly EnvironmentAdminAuth $auth,
         private readonly EnvironmentContext $environments,
+        private readonly PlaneResolver $planes,
     ) {}
 
     /**
@@ -62,16 +64,11 @@ final class AuthenticateEnvironmentAdmin
     }
 
     /**
-     * The account/workspace console host on a multi-tenant deployment, or null when the
-     * deployment is single-host (no base domains). Matches the host the environment
-     * console's own "back to account" links resolve to.
+     * @see PlaneResolver::accountHost() — one definition, because the content security
+     * policy now has to name this same host and a second copy would drift from it.
      */
     private function rootHost(): ?string
     {
-        $bases = config('cbox-id.environments.base_domains', []);
-
-        return is_array($bases) && isset($bases[0]) && is_string($bases[0]) && $bases[0] !== ''
-            ? $bases[0]
-            : null;
+        return $this->planes->accountHost();
     }
 }

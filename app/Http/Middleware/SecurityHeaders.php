@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\CspNonce;
+use App\Platform\PlaneResolver;
 use App\Platform\Turnstile;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,7 +18,11 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class SecurityHeaders
 {
-    public function __construct(private readonly Turnstile $turnstile) {}
+    public function __construct(
+        private readonly Turnstile $turnstile,
+        private readonly PlaneResolver $planes,
+        private readonly CspNonce $nonce,
+    ) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -43,7 +49,19 @@ final class SecurityHeaders
                 // 'unsafe-eval' is required by Livewire's bundled Alpine; scripts
                 // are still same-origin only (no inline, no remote). Tightening to
                 // Alpine's CSP build is a follow-up.
-                "script-src 'self' 'unsafe-eval'".($turnstile ? ' '.Turnstile::ORIGIN : ''),
+                // The nonce is not for our own markup — this app emits no inline script.
+                // It is here because a CDN in front of us does: Cloudflare's JavaScript
+                // Detections injects `/cdn-cgi/challenge-platform/scripts/jsd/main` as an
+                // INLINE script after the response has left PHP, and a policy of
+                // `'self' 'unsafe-eval'` refuses it on every page the console serves.
+                //
+                // Cloudflare parses this header and copies the nonce onto the script it
+                // injects, which is why the value has to be in the HEADER — a nonce set
+                // via a `<meta>` tag is documented as unsupported and would silently keep
+                // failing. The alternative is `'unsafe-inline'`, which would permit every
+                // inline script on every page in order to permit one, and pinning the
+                // hash instead breaks the day Cloudflare ships a new build of it.
+                "script-src 'self' 'unsafe-eval' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : ''),
                 "style-src 'self' 'unsafe-inline'",
                 // https: allows customer-hosted org logos on the branded login.
                 "img-src 'self' data: https:",
@@ -54,7 +72,24 @@ final class SecurityHeaders
                 $turnstile ? "frame-src 'self' ".Turnstile::ORIGIN : null,
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
-                "form-action 'self'",
+                // `'self'` alone is wrong for this app, and logout is where it showed.
+                //
+                // Signing in is unified on the platform root, so a session that ends on an
+                // environment host finishes on another one: POST /admin/logout redirects to
+                // /admin/login, which redirects to the root's /workspace/login. The browser
+                // checks `form-action` against EVERY hop of a submission's redirect chain,
+                // not just the address on the form — so the post was refused, and Chrome
+                // reported the original same-origin URL, which made it read as impossible.
+                //
+                // Named from the same config that decides which hosts ARE the platform
+                // root, so the policy cannot drift from the topology it describes. Hosts,
+                // not origins: a bare host-source inherits the document's scheme, which
+                // keeps http in local development without permitting it in production.
+                //
+                // Environment and white-label hosts are deliberately NOT here. They are
+                // tenant-controlled and open-ended, and a `form-action` that names them
+                // would permit posting credentials to any domain a tenant can point at us.
+                'form-action '.implode(' ', ["'self'", ...$this->planes->formActionHosts()]),
                 'object-src \'none\'',
             ]))),
         ];
