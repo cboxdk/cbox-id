@@ -192,6 +192,26 @@ return [
      */
     'tenancy' => [
         'multi_tenant' => env('CBOX_ID_MULTI_TENANT'),
+
+        /*
+         * The host the ACCOUNT console lives on — where an account member signs in to
+         * manage their workspaces, IdPs and billing.
+         *
+         * Its own setting because it is its own fact. It used to be read as
+         * `environments.base_domains[0]`, which conflated two unrelated questions: "under
+         * which domains do we resolve a subdomain to an environment" and "where is the
+         * account console". Those coincide in the subdomain shape and not otherwise.
+         *
+         * Multi-tenancy without subdomains is a real deployment: every tenant gets its own
+         * domain (id.customer.example) resolved by an exact match, and `base_domains` is
+         * empty. Deriving the account host from an empty list produced null there — which
+         * silently sent the environment console's sign-in handoff to a local door instead
+         * of the account plane, and dropped the account host out of the CSP `form-action`
+         * list so cross-plane logout was refused by the browser.
+         *
+         * Unset falls back to the first base domain, so the subdomain shape needs nothing.
+         */
+        'account_host' => env('CBOX_ID_ACCOUNT_HOST'),
     ],
 
     'crypto' => [

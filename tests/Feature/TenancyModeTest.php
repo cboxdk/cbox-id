@@ -69,3 +69,56 @@ it('keeps the host bulkheads on when multi-tenancy is on', function (): void {
     config()->set('cbox-id.tenancy.multi_tenant', false);
     expect(planes()->onSubjectPlane())->toBeTrue();
 })->group('security');
+
+it('serves multi-tenancy without subdomains, on per-tenant custom domains', function (): void {
+    // A real shape: every tenant on its own domain (id.customer.example), resolved by an
+    // exact match, and `base_domains` empty because no subdomain resolution is wanted.
+    //
+    // This state was unreachable while the mode was derived from the domain list —
+    // "multi-tenant" implied a base domain existed. Stating the mode made it reachable,
+    // and it broke silently: the account host resolved to null, which sent the
+    // environment console's sign-in handoff to a local door instead of the account plane,
+    // and dropped the account host out of the CSP form-action list so the browser refused
+    // cross-plane logout.
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', 'accounts.example');
+    config()->set('cbox-id.environments.base_domains', []);
+    config()->set('cbox-id.environments.platform_root_hosts', []);
+
+    expect(planes()->isMultiTenant())->toBeTrue()
+        ->and(planes()->accountHost())->toBe('accounts.example')
+        // The consequence that actually broke: cross-plane form posts stay permitted.
+        ->and(planes()->formActionHosts())->toContain('accounts.example')
+        ->and(planes()->misconfigured())->toBeFalse();
+})->group('security');
+
+it('names a multi-tenant deployment with nowhere for the account console to live', function (): void {
+    // Not a supported state, and it must not be a quiet one. Two behaviours degrade
+    // without an error: the handoff and the content security policy.
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', null);
+    config()->set('cbox-id.environments.base_domains', []);
+    config()->set('cbox-id.environments.platform_root_hosts', []);
+
+    expect(planes()->accountHost())->toBeNull()
+        ->and(planes()->misconfigured())->toBeTrue();
+})->group('security');
+
+it('is never misconfigured as a single-tenant install', function (): void {
+    // Single-tenant has no second plane, so no account host is needed and its absence is
+    // the correct answer rather than a fault.
+    config()->set('cbox-id.tenancy.multi_tenant', false);
+    config()->set('cbox-id.tenancy.account_host', null);
+    config()->set('cbox-id.environments.base_domains', []);
+
+    expect(planes()->misconfigured())->toBeFalse();
+});
+
+it('still derives the account host from the first base domain when nothing states it', function (): void {
+    config()->set('cbox-id.tenancy.multi_tenant', true);
+    config()->set('cbox-id.tenancy.account_host', null);
+    config()->set('cbox-id.environments.platform_root_hosts', []);
+    config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
+
+    expect(planes()->accountHost())->toBe('cboxid.com');
+});

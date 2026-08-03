@@ -136,6 +136,31 @@ final class PlaneResolver
      */
     public function accountHost(): ?string
     {
+        // Stated first. It used to be read only as `base_domains[0]`, which conflated
+        // two unrelated questions — "under which domains do we resolve a subdomain to an
+        // environment" and "where is the account console". Those coincide in the
+        // subdomain shape and nowhere else.
+        //
+        // Multi-tenancy WITHOUT subdomains is a real deployment: every tenant on its own
+        // domain, resolved by exact match, `base_domains` empty. The derivation returned
+        // null there — which sent the environment console's sign-in handoff to a local
+        // door instead of the account plane, and dropped the account host out of the CSP
+        // `form-action` list so the browser refused cross-plane logout. Both silent.
+        $stated = config('cbox-id.tenancy.account_host');
+
+        if (is_string($stated) && trim($stated) !== '') {
+            return mb_strtolower(trim($stated));
+        }
+
+        // Then a host explicitly named as the platform root, which is the same fact under
+        // a different name and is already configured on some deployments.
+        $named = $this->platformRootHosts();
+
+        if ($named !== []) {
+            return $named[0];
+        }
+
+        // Then the original derivation, so the subdomain shape needs no new configuration.
         $bases = config('cbox-id.environments.base_domains', []);
 
         if (! is_array($bases) || ! isset($bases[0]) || ! is_string($bases[0])) {
@@ -145,6 +170,21 @@ final class PlaneResolver
         $host = mb_strtolower(trim($bases[0]));
 
         return $host === '' ? null : $host;
+    }
+
+    /**
+     * Whether this deployment is configured coherently enough to serve the shape it
+     * claims.
+     *
+     * Multi-tenancy needs somewhere for the account console to live. Before the mode was
+     * stated it could not be incoherent — it was DERIVED from the domain list, so
+     * "multi-tenant" implied a domain existed. Making the mode explicit made the
+     * incoherent state reachable, and it fails as two silent behaviour changes rather
+     * than as an error, so something has to name it.
+     */
+    public function misconfigured(): bool
+    {
+        return $this->isMultiTenant() && $this->accountHost() === null;
     }
 
     /**
