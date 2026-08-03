@@ -5,6 +5,10 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\ExternalActions\Contracts\ExternalActions;
+use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
+use Cbox\Id\ExternalActions\Enums\HookPoint;
+use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Governance\Models\SodPolicy;
@@ -207,6 +211,154 @@ it('runs the whole outbound lifecycle on the environment plane', function (): vo
 
     Volt::test('console.provisioning.show', ['sync' => $connection->id])->call('deleteConnection');
     expect(ProvisioningConnection::query()->whereKey($connection->id)->exists())->toBeFalse();
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Inline hooks (external actions)
+|--------------------------------------------------------------------------
+| The organization plane had one page: an inline register form, row-level pause,
+| activate and remove, and a Dismiss for the reveal-once signing secret — but exactly
+| ONE of the six hook points. The environment plane had list → create → detail with
+| pause, activate and remove, all six hook points and an "All organizations" option on
+| its form, and no way to clear the secret from the screen. The merge is the union of
+| all of it.
+*/
+
+it('serves inline hooks from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-hooks');
+
+    $this->get(route('environment.hooks'))->assertOk()->assertSee('Inline hooks');
+    $this->get(route('environment.hooks.create'))->assertOk();
+})->group('security');
+
+it('serves inline hooks from the same component on the organization plane', function (): void {
+    // The organization plane gained the routable shape rather than the environment plane
+    // losing it: the reveal-once signing secret needs somewhere to land that is not the
+    // row you just submitted.
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.hooks.index')->assertOk()->assertSee('Inline hooks');
+    Volt::test('console.hooks.create')->assertOk();
+
+    expect(Route::has('hooks.show'))->toBeTrue()
+        ->and(Route::has('hooks.create'))->toBeTrue();
+})->group('security');
+
+it('offers every hook point on both planes', function (): void {
+    // The drift that mattered most here. The organization console hard-coded a single
+    // <option>, so a tenant could enrich a token and could NOT refuse a sign-in, a
+    // sign-up or a password change — four of the six points the enum publishes, missing
+    // from one console and present in the other, with nothing saying so.
+    $expected = array_map(fn (HookPoint $point): string => $point->label(), HookPoint::cases());
+
+    anEnvironmentAdminActingOn('tenant-hookpoints');
+    $environment = Volt::test('console.hooks.create');
+
+    actingAsRole(MembershipRole::Owner);
+    $organization = Volt::test('console.hooks.create');
+
+    foreach ($expected as $label) {
+        $environment->assertSee($label);
+        $organization->assertSee($label);
+    }
+})->group('security');
+
+it('registers a hook against the organization from the scope', function (): void {
+    config(['cbox-id.external_actions.verify_url' => false]);
+    $orgId = anEnvironmentAdminActingOn('tenant-hooks-scoped');
+
+    Volt::test('console.hooks.create')
+        ->set('url', 'https://hooks.example.test/token')
+        ->call('register')
+        ->assertHasNoErrors();
+
+    expect(ExternalActionEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
+})->group('security');
+
+it('refuses to register a hook before an organization is chosen', function (): void {
+    config(['cbox-id.external_actions.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-hooks-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.hooks.create')
+        ->set('url', 'https://hooks.example.test/token')
+        ->call('register')
+        ->assertHasErrors('url');
+
+    expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
+})->group('security');
+
+it('keeps environment-wide hook registration on the environment plane', function (): void {
+    // What the removed organization picker also carried: its "All organizations" option
+    // was never an organization, it was an endpoint the environment itself owns.
+    config(['cbox-id.external_actions.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-hooks-wide');
+
+    Volt::test('console.hooks.create')
+        ->set('url', 'https://hooks.example.test/everyone')
+        ->set('environmentWide', true)
+        ->call('register')
+        ->assertHasNoErrors();
+
+    expect(ExternalActionEndpoint::query()->whereNull('organization_id')->exists())->toBeTrue();
+})->group('security');
+
+it('refuses environment-wide registration from the organization plane', function (): void {
+    // At most of these points a hook can REFUSE the operation, so an environment-wide
+    // endpoint minted by a tenant could stop every other tenant signing in. The checkbox
+    // is not rendered for them; the property is still client-settable, so the refusal is
+    // in the action.
+    config(['cbox-id.external_actions.verify_url' => false]);
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.hooks.create')
+        ->set('url', 'https://hooks.example.test/everyone')
+        ->set('environmentWide', true)
+        ->call('register')
+        ->assertForbidden();
+
+    expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
+})->group('security');
+
+it('runs the whole hook lifecycle on the environment plane', function (): void {
+    config(['cbox-id.external_actions.verify_url' => false]);
+    $orgId = anEnvironmentAdminActingOn('tenant-hooks-lifecycle');
+
+    $endpoint = app(ExternalActions::class)
+        ->register(HookPoint::TokenMinting, 'https://hooks.example.test/token', $orgId)->endpoint;
+
+    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('pause')->assertHasNoErrors();
+    expect($endpoint->fresh()?->status)->toBe(ActionEndpointStatus::Paused);
+
+    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('activate')->assertHasNoErrors();
+    expect($endpoint->fresh()?->status)->toBe(ActionEndpointStatus::Active);
+
+    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('remove')->assertHasNoErrors();
+    expect(ExternalActionEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
+})->group('security');
+
+it('offers dismissing the revealed secret on the environment plane too', function (): void {
+    // Only the organization console had this. Dropping it in the merge would have left a
+    // live credential on screen with no way to clear it — on the plane whose
+    // administrator holds every organization in the environment.
+    config(['cbox-id.external_actions.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-hooks-secret');
+
+    Volt::test('console.hooks.create')
+        ->set('url', 'https://hooks.example.test/token')
+        ->call('register')
+        ->assertHasNoErrors();
+
+    $endpoint = ExternalActionEndpoint::query()->firstOrFail();
+
+    Volt::test('console.hooks.show', ['hook' => $endpoint->id])
+        ->assertSee('Copy this signing secret now')
+        ->call('dismissSecret')
+        ->assertDontSee('Copy this signing secret now');
 })->group('security');
 
 /*

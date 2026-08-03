@@ -181,12 +181,12 @@ it('exercises the event-hook detail mutating actions (pause, activate, remove)',
     $hook = app(ExternalActions::class)
         ->register(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
 
-    Volt::test('environment.hooks.show', ['hook' => $hook->id])
+    Volt::test('console.hooks.show', ['hook' => $hook->id])
         ->call('pause')
         ->call('activate')
         ->assertHasNoErrors();
 
-    Volt::test('environment.hooks.show', ['hook' => $hook->id])
+    Volt::test('console.hooks.show', ['hook' => $hook->id])
         ->call('remove');
     expect(ExternalActionEndpoint::query()->whereKey($hook->id)->exists())->toBeFalse();
 });
@@ -242,7 +242,7 @@ it('exercises the governance detail mutating action (close)', function (): void 
     // note: certify() and revoke() require a seeded campaign item (a snapshotted role
     // assignment / membership for a subject in the org). A freshly opened campaign over
     // an empty org has no items, so only close() is exercised here.
-    Volt::test('environment.governance.show', ['campaign' => $campaign->id])
+    Volt::test('console.governance.show', ['campaign' => $campaign->id])
         ->call('close')
         ->assertHasNoErrors();
 

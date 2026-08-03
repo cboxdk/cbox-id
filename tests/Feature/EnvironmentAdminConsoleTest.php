@@ -124,7 +124,7 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/access-reviews' => 'Access reviews',
         '/admin/conflict-rules' => 'Role conflicts',
         '/admin/webhooks' => 'Webhooks',
-        '/admin/event-hooks' => 'Event hooks',
+        '/admin/event-hooks' => 'Inline hooks',
         '/admin/stored-tokens' => 'Stored tokens',
         '/admin/audit' => 'Audit log',
         '/admin/log-streaming' => 'Log streaming',

@@ -321,7 +321,13 @@ it('labels every search filter and announces its result count', function (): voi
     $missingLabel = [];
     $missingStatus = [];
 
-    foreach (bladeViews('livewire/environment') as $path => $src) {
+    // Both directories: a merged capability lives under `livewire/console` and serves
+    // BOTH planes, so a sweep that only looked at `livewire/environment` would stop
+    // covering a page the moment it was unified — silently losing coverage exactly where
+    // the unification could have broken something.
+    $searchViews = bladeViews('livewire/environment') + bladeViews('livewire/console');
+
+    foreach ($searchViews as $path => $src) {
         if (! str_contains($src, 'wire:model.live.debounce.300ms="search"')) {
             continue;
         }
@@ -341,7 +347,7 @@ it('labels every search filter and announces its result count', function (): voi
     expect($missingStatus)->toBe([]);
     // Guard the sweep itself: if the search idiom is renamed, this must not silently pass.
     expect(count(array_filter(
-        bladeViews('livewire/environment'),
+        $searchViews,
         static fn (string $s): bool => str_contains($s, 'wire:model.live.debounce.300ms="search"')
     )))->toBe(15);
 });
@@ -417,7 +423,11 @@ it('gives every environment detail page a real h2 outline', function (): void {
     // 24 pages skipped h1 -> h3 because section headers were weighted <p>.
     $flat = [];
 
-    foreach (bladeViews('livewire/environment') as $path => $src) {
+    // Both directories, for the same reason the search sweep above takes both: a merged
+    // capability lives under `livewire/console` and still serves this plane, so looking
+    // only at `livewire/environment` would drop a detail page out of coverage exactly
+    // when its markup was being rewritten.
+    foreach (bladeViews('livewire/environment') + bladeViews('livewire/console') as $path => $src) {
         if (! str_contains($src, '<h1')) {
             continue;
         }

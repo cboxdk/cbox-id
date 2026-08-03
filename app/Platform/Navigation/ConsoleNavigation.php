@@ -93,7 +93,10 @@ class ConsoleNavigation
             new NavArea('Developers', 'clients',
                 new NavPage('environment.clients', 'Applications'),
                 new NavPage('environment.webhooks', 'Webhooks'),
-                new NavPage('environment.hooks', 'Event hooks'),
+                // "Inline hooks" on both planes now. Called "Event hooks" here, it sat
+                // one line under Webhooks — a different capability that runs after the
+                // fact — and named the synchronous one after the asynchronous one.
+                new NavPage('environment.hooks', 'Inline hooks'),
                 new NavPage('environment.vault', 'Stored tokens'),
             ),
             new NavArea('Logs', 'audit',

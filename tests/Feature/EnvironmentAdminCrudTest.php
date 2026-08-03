@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
+use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
@@ -41,6 +43,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\Destination;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -345,14 +348,26 @@ it('keeps the last owner when a demotion is attempted (no uncaught 500)', functi
     expect(app(Memberships::class)->of($org->id, $user->id)?->role?->value)->toBe('owner');
 });
 
-it('rejects an event-hook create with an out-of-environment organization', function (): void {
+it('rejects an out-of-environment organization for an inline-hook registration', function (): void {
     crudSetup();
-    Volt::test('environment.hooks.create')
+
+    // The create form no longer carries its own organization picker — that field was the
+    // second place the answer lived, and the two planes validated it differently. The
+    // console chrome owns the choice now, so a crafted id has to go through the scope,
+    // which refuses one that is not in this environment.
+    expect(fn () => app(ConsoleScope::class)->chooseOrganization('not-a-real-org-id'))
+        ->toThrow(AuthorizationException::class);
+
+    // …and with the refused choice never taken there is no organization to register
+    // against, so the endpoint is not created at all rather than landing on whichever
+    // organization a downstream default would have picked.
+    Volt::test('console.hooks.create')
         ->set('hook', HookPoint::TokenMinting->value)
         ->set('url', 'https://example.com/hook')
-        ->set('organization_id', 'not-a-real-org-id')
-        ->call('create')
-        ->assertHasErrors('organization_id');
+        ->call('register')
+        ->assertHasErrors('url');
+
+    expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 });
 
 it('renders the access-review, stored-token and log-stream detail pages', function (): void {

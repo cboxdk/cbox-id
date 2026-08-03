@@ -158,6 +158,11 @@ it('guards every environment console component, so a new one cannot skip it', fu
     $components = array_merge(
         glob(resource_path('views/livewire/environment/*.blade.php')) ?: [],
         glob(resource_path('views/livewire/environment/*/*.blade.php')) ?: [],
+        // A merged capability serves the environment plane from `livewire/console` and
+        // is reached through exactly the same routes, so a sweep that only looked at
+        // `livewire/environment` would stop asking this of a page the moment it was
+        // unified — dropping the guard check precisely where the guard was rewritten.
+        glob(resource_path('views/livewire/console/*/*.blade.php')) ?: [],
     );
 
     $unguarded = [];
@@ -165,9 +170,13 @@ it('guards every environment console component, so a new one cannot skip it', fu
     foreach ($components as $file) {
         $source = file_get_contents($file) ?: '';
 
+        // Either guard is the same answer: ConsoleScope::assertMayAdminister() resolves
+        // the env-admin session through EnvironmentAdminAuth on this plane, and asks the
+        // membership role on the other. What is being checked is that boot() — the only
+        // hook that re-runs per action — refuses before anything else happens.
         if (! str_contains($source, 'public function boot(')
-            || ! str_contains($source, 'EnvironmentAdminAuth')) {
-            $unguarded[] = str_replace(resource_path('views/livewire/environment/'), '', $file);
+            || (! str_contains($source, 'EnvironmentAdminAuth') && ! str_contains($source, 'assertMayAdminister'))) {
+            $unguarded[] = str_replace(resource_path('views/livewire/'), '', $file);
         }
     }
 

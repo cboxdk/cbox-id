@@ -299,7 +299,12 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/appearance', 'appearance')->name('appearance');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
-    Volt::route('/governance', 'governance')->name('governance');
+    // The SAME components the environment plane serves. The routable index/new/show
+    // shape wins over the organization plane's single page: a campaign URL is something
+    // you send to a reviewer, and losing it would be a real regression.
+    Volt::route('/governance', 'console.governance.index')->name('governance');
+    Volt::route('/governance/new', 'console.governance.create')->name('governance.create');
+    Volt::route('/governance/{campaign}', 'console.governance.show')->name('governance.show');
     Volt::route('/sod-policies', 'console.sod-policies.index')->name('sod-policies');
     Volt::route('/sod-policies/new', 'console.sod-policies.create')->name('sod-policies.create');
     Volt::route('/sod-policies/{policy}', 'console.sod-policies.show')->name('sod-policies.show');
@@ -316,7 +321,13 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // AI token vault + inline-hook (external action) endpoints. Storing/revealing a
     // secret is sensitive, so the vault is behind the sudo step-up gate.
     Volt::route('/vault', 'vault')->middleware('sudo')->name('vault');
-    Volt::route('/hooks', 'hooks')->name('hooks');
+    // Inline hooks: the SAME components the environment plane serves. The routable
+    // index/new/show shape wins over the organization plane's single page — an endpoint
+    // has a lifecycle worth linking to, and the one-time signing secret needs somewhere
+    // to land that is not the row you just submitted.
+    Volt::route('/hooks', 'console.hooks.index')->name('hooks');
+    Volt::route('/hooks/new', 'console.hooks.create')->name('hooks.create');
+    Volt::route('/hooks/{hook}', 'console.hooks.show')->name('hooks.show');
 
     // SIEM audit-stream export.
 
@@ -425,9 +436,9 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/permissions', 'environment.permissions.index')->name('environment.permissions');
 
         // Access reviews (certification campaigns) — routable list → create → detail.
-        Volt::route('/access-reviews', 'environment.governance.index')->name('environment.governance');
-        Volt::route('/access-reviews/new', 'environment.governance.create')->name('environment.governance.create');
-        Volt::route('/access-reviews/{campaign}', 'environment.governance.show')->name('environment.governance.show');
+        Volt::route('/access-reviews', 'console.governance.index')->name('environment.governance');
+        Volt::route('/access-reviews/new', 'console.governance.create')->name('environment.governance.create');
+        Volt::route('/access-reviews/{campaign}', 'console.governance.show')->name('environment.governance.show');
 
         // Conflict rules (segregation-of-duties) — routable list → create → detail.
         Volt::route('/conflict-rules', 'console.sod-policies.index')->name('environment.sod-policies');
@@ -443,10 +454,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/webhooks', 'environment.webhooks.index')->name('environment.webhooks');
         Volt::route('/webhooks/new', 'environment.webhooks.create')->name('environment.webhooks.create');
         Volt::route('/webhooks/{webhook}', 'environment.webhooks.show')->name('environment.webhooks.show');
-        // Event hooks — routable list → create → detail.
-        Volt::route('/event-hooks', 'environment.hooks.index')->name('environment.hooks');
-        Volt::route('/event-hooks/new', 'environment.hooks.create')->name('environment.hooks.create');
-        Volt::route('/event-hooks/{hook}', 'environment.hooks.show')->name('environment.hooks.show');
+        // Inline hooks — routable list → create → detail, on the merged component. The
+        // URL keeps its old spelling so existing links and bookmarks still resolve; the
+        // route names are what the two planes disagree on, and both are preserved.
+        Volt::route('/event-hooks', 'console.hooks.index')->name('environment.hooks');
+        Volt::route('/event-hooks/new', 'console.hooks.create')->name('environment.hooks.create');
+        Volt::route('/event-hooks/{hook}', 'console.hooks.show')->name('environment.hooks.show');
 
         // Stored tokens (secret vault) — routable list → create → detail.
         Volt::route('/stored-tokens', 'environment.vault.index')->name('environment.vault');
