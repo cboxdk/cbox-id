@@ -80,7 +80,11 @@ class ConsoleNavigation
             new NavArea('Sign-in', 'connections',
                 new NavPage('environment.connections', 'Single sign-on'),
                 new NavPage('environment.sso-providers', 'Login methods'),
-                new NavPage('environment.directories', 'Directories'),
+                // One component serves both planes now, so it has one title — and the
+                // organization plane's "Sync users in" is the name the help topic and the
+                // published guide already use. "Directories" also said nothing about
+                // which direction people move, one line above Outbound sync.
+                new NavPage('environment.directories', 'Sync users in'),
                 new NavPage('environment.provisioning', 'Outbound sync'),
             ),
             new NavArea('Access control', 'shield-check',

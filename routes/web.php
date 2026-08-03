@@ -297,7 +297,15 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // identity provider and offering consumer accounts as buttons are different jobs,
     // done by different people, at different times.
     Volt::route('/social-providers', 'social-providers')->name('social-providers');
-    Volt::route('/directories', 'directories')->name('directories');
+    // Sync users in (inbound directories): the SAME components the environment plane
+    // serves. The routable index/new/show shape wins over the organization plane's single
+    // page — a directory URL is something you send to whoever runs the identity provider,
+    // and the reveal-once bearer token needs somewhere to land that is not the row you
+    // just submitted. This plane gains rename, pause, rotate and delete with it; the
+    // environment plane gains the two pull providers it never had.
+    Volt::route('/directories', 'console.directories.index')->name('directories');
+    Volt::route('/directories/new', 'console.directories.create')->name('directories.create');
+    Volt::route('/directories/{directory}', 'console.directories.show')->name('directories.show');
     Volt::route('/roles', 'roles')->name('roles');
     Volt::route('/clients', 'clients')->name('clients');
     // Webhooks: the SAME components the environment plane serves. The routable
@@ -441,10 +449,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/login-methods/new', 'environment.sso-providers.create')->name('environment.sso-providers.create');
         Volt::route('/login-methods/{provider}', 'environment.sso-providers.show')->name('environment.sso-providers.show');
 
-        // Directories (SCIM) — routable list → create → detail.
-        Volt::route('/directories', 'environment.directories.index')->name('environment.directories');
-        Volt::route('/directories/new', 'environment.directories.create')->name('environment.directories.create');
-        Volt::route('/directories/{directory}', 'environment.directories.show')->name('environment.directories.show');
+        // Sync users in — routable list → create → detail, on the merged component. The
+        // URL keeps its old spelling so existing links and bookmarks still resolve; the
+        // route names are what the two planes disagree on, and both are preserved.
+        Volt::route('/directories', 'console.directories.index')->name('environment.directories');
+        Volt::route('/directories/new', 'console.directories.create')->name('environment.directories.create');
+        Volt::route('/directories/{directory}', 'console.directories.show')->name('environment.directories.show');
 
         // Outbound sync (provisioning connections) — routable list → create → detail.
         Volt::route('/outbound-sync', 'console.provisioning.index')->name('environment.provisioning');

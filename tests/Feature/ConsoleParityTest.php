@@ -8,6 +8,14 @@ use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Models\GroupRoleMapping;
+use Cbox\Id\Directory\Contracts\Directories;
+use Cbox\Id\Directory\DirectoryConnectors;
+use Cbox\Id\Directory\Enums\DirectoryProvider;
+use Cbox\Id\Directory\Enums\DirectoryStatus;
+use Cbox\Id\Directory\Models\Directory;
+use Cbox\Id\Directory\Models\DirectoryGroup;
+use Cbox\Id\Directory\Testing\FakeDirectoryConnector;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
@@ -1436,4 +1444,257 @@ it('keeps the revealed signing secret out of the wire snapshot on both planes', 
     $page->call('dismissSecret')
         ->assertDontSee('Copy this signing secret now')
         ->assertDontSee($secret);
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Sync users in (inbound directories)
+|--------------------------------------------------------------------------
+| The worst-drifted pair in the console. The organization plane had one page that could
+| register a SCIM directory, connect Google Workspace or Microsoft Entra as PULL
+| directories, mint an Admin Portal setup link, and map groups onto roles. The
+| environment plane had list → create → detail with rename, token rotation, pause and
+| delete — and SCIM only, so an administrator who holds every organization in the
+| environment could not connect either of the two providers the product ships connectors
+| for. The merge is the union of all of it.
+*/
+
+it('serves sync users in from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-directories');
+
+    $this->get(route('environment.directories'))
+        ->assertOk()
+        ->assertSee('Sync users in')
+        // The view half. Rewiring only the PHP leaves an environment administrator a
+        // read-only shell: the buttons were gated on CurrentUser::isAdmin(), a question
+        // only the organization plane can answer, so on this plane they simply vanish.
+        ->assertSee('New directory')
+        ->assertSee('Invite your IT admin');
+
+    $this->get(route('environment.directories.create'))->assertOk();
+})->group('security');
+
+it('serves sync users in from the same component on the organization plane', function (): void {
+    // The organization plane gained the routable shape rather than the environment plane
+    // losing it: the reveal-once bearer token needs somewhere to land that is not the row
+    // you just submitted, and a directory URL is something you send to whoever runs the
+    // identity provider.
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.directories.index')->assertOk()->assertSee('Sync users in');
+    Volt::test('console.directories.create')->assertOk();
+
+    expect(Route::has('directories.show'))->toBeTrue()
+        ->and(Route::has('directories.create'))->toBeTrue();
+})->group('security');
+
+it('offers SCIM and both pull providers on both planes', function (): void {
+    // THE finding that started the console merge. The organization console offered
+    // Google Workspace and Microsoft Entra; the environment console offered SCIM alone,
+    // so an environment administrator could not connect either of the two directories
+    // this product ships connectors for — and Google has no SCIM support at all, which
+    // made pull the ONLY path to it. Both planes now offer what the enum publishes,
+    // because the enum is the public contract.
+    $expected = array_map(
+        fn (DirectoryProvider $provider): string => $provider->label(),
+        DirectoryProvider::cases(),
+    );
+
+    anEnvironmentAdminActingOn('tenant-dir-providers');
+    $environment = Volt::test('console.directories.create');
+
+    actingAsRole(MembershipRole::Owner);
+    $organization = Volt::test('console.directories.create');
+
+    foreach ($expected as $label) {
+        $environment->assertSee($label);
+        $organization->assertSee($label);
+    }
+})->group('security');
+
+it('registers a directory against the organization from the scope', function (): void {
+    // The create form used to carry its own organization picker on the environment plane
+    // and none on the organization plane — the second place the answer lived, validated
+    // differently in each.
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-scoped');
+
+    Volt::test('console.directories.create')
+        ->set('name', 'Acme Okta SCIM')
+        ->call('register')
+        ->assertHasNoErrors();
+
+    expect(Directory::query()->where('organization_id', $orgId)->exists())->toBeTrue();
+})->group('security');
+
+it('refuses to register a directory before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-dir-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.directories.create')
+        ->set('name', 'Acme Okta SCIM')
+        ->call('register')
+        ->assertHasErrors('name');
+
+    expect(Directory::query()->exists())->toBeFalse();
+})->group('security');
+
+it('tells an unchosen environment administrator to pick an organization, not to call their account team', function (): void {
+    // `entitled()` answers false for "no organization chosen" as well as for "this
+    // organization has no plan", and the two need different words. Sending an
+    // administrator who holds the whole environment to their account team over a picker
+    // they have simply not touched is a dead end dressed as an answer.
+    config(['cbox-id.entitlements.mode' => 'metered']);
+    anEnvironmentAdminActingOn('tenant-dir-unentitled');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.directories.index')
+        ->assertOk()
+        ->assertSee('Choose an organization in the bar above')
+        ->assertDontSee('Enterprise feature');
+})->group('security');
+
+it('connects a pull directory on the environment plane', function (): void {
+    // The capability the environment plane never had. Verified against the connector
+    // before anything is stored, so a wrong key fails here rather than at 3am.
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-pull');
+
+    app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
+        new FakeDirectoryConnector(DirectoryProvider::GoogleWorkspace),
+        new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra),
+    ]));
+
+    Volt::test('console.directories.create')
+        ->set('provider', DirectoryProvider::GoogleWorkspace->value)
+        ->set('googleServiceAccountJson', (string) json_encode([
+            'client_email' => 'sync@acme.iam.gserviceaccount.com',
+            'private_key' => '-----BEGIN PRIVATE KEY-----key-----END PRIVATE KEY-----',
+        ]))
+        ->set('googleAdminEmail', 'admin@acme.test')
+        ->call('connectPull')
+        ->assertHasNoErrors();
+
+    $directory = Directory::query()->where('organization_id', $orgId)->firstOrFail();
+
+    expect($directory->provider)->toBe(DirectoryProvider::GoogleWorkspace)
+        // Sealed at rest, bound to the directory id — never the plaintext map.
+        ->and($directory->credentials)->not->toBeNull()
+        ->and($directory->credentials)->not->toContain('BEGIN PRIVATE KEY');
+})->group('security');
+
+it('refuses a pull directory whose credentials the provider rejects', function (): void {
+    anEnvironmentAdminActingOn('tenant-dir-pull-bad');
+
+    app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
+        new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra, verifies: false),
+    ]));
+
+    Volt::test('console.directories.create')
+        ->set('provider', DirectoryProvider::MicrosoftEntra->value)
+        ->set('entraTenantId', 'tenant')
+        ->set('entraClientId', 'client')
+        ->set('entraClientSecret', 'shh')
+        ->call('connectPull')
+        ->assertSee('Could not connect to');
+
+    expect(Directory::query()->exists())->toBeFalse();
+})->group('security');
+
+it('gives the organization plane the lifecycle it never had', function (): void {
+    // Rename, rotate, pause and delete existed only on the environment plane. A tenant
+    // admin whose SCIM token leaked had no way to rotate it from their own console.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $directory = app(Directories::class)->register($org->id, 'HR')->directory;
+    $originalHash = $directory->bearer_token_hash;
+
+    Volt::test('console.directories.show', ['directory' => $directory->id])
+        ->set('editName', 'HR Renamed')
+        ->call('saveName')
+        ->call('regenerateToken')
+        ->call('toggleStatus')
+        ->assertHasNoErrors();
+
+    $directory->refresh();
+    expect($directory->name)->toBe('HR Renamed')
+        ->and($directory->bearer_token_hash)->not->toBe($originalHash)
+        ->and($directory->status)->toBe(DirectoryStatus::Paused);
+
+    Volt::test('console.directories.show', ['directory' => $directory->id])->call('deleteDirectory');
+    expect(Directory::query()->whereKey($directory->id)->exists())->toBeFalse();
+})->group('security');
+
+it('offers dismissing the revealed bearer token on both planes', function (): void {
+    // Only the organization console had a Dismiss. The banner holds a live credential in
+    // plaintext, and the environment plane — whose administrator holds every
+    // organization in the environment — had no way to take it off the screen.
+    anEnvironmentAdminActingOn('tenant-dir-token');
+
+    Volt::test('console.directories.create')
+        ->set('name', 'Acme Okta SCIM')
+        ->call('register')
+        ->assertHasNoErrors();
+
+    $directory = Directory::query()->firstOrFail();
+
+    Volt::test('console.directories.show', ['directory' => $directory->id])
+        ->assertSee('Copy this now')
+        ->call('dismissToken')
+        ->assertDontSee('Copy this now');
+})->group('security');
+
+it('refuses an organization admin another organization\'s directory', function (): void {
+    // The escalation this merge could have shipped. The environment plane resolved a
+    // directory on its primary key alone, which was safe only while an environment
+    // administrator was its sole caller. Served to a tenant admin that lookup hands over
+    // every other tenant's directory by id — and here that is not a disclosure but a
+    // takeover: regenerateToken would mint a live SCIM bearer token for a directory that
+    // provisions somebody else's users.
+    actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-directories'));
+    $directory = app(Directories::class)->register($other->id, 'Not yours')->directory;
+    $originalHash = $directory->bearer_token_hash;
+
+    Volt::test('console.directories.show', ['directory' => $directory->id])->assertNotFound();
+
+    Volt::test('console.directories.index')->assertDontSee('Not yours');
+
+    expect($directory->fresh()?->bearer_token_hash)->toBe($originalHash);
+})->group('security');
+
+it('refuses a group mapping that belongs to another directory', function (): void {
+    // Both mapping actions take a group id straight off the page. The organization
+    // console scoped neither by directory and the environment console scoped only the
+    // map half, so an id belonging to another directory could be unmapped through a
+    // directory the caller does hold.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $mine = app(Directories::class)->register($org->id, 'Mine')->directory;
+    $theirs = app(Directories::class)->register($org->id, 'Theirs')->directory;
+
+    $foreign = DirectoryGroup::query()->create([
+        'directory_id' => $theirs->id,
+        'external_id' => 'grp-1',
+        'display_name' => 'Engineering',
+    ]);
+    $role = app(Roles::class)->define($org->id, 'Engineer');
+
+    Volt::test('console.directories.show', ['directory' => $mine->id])
+        ->call('mapGroup', $foreign->id, $role->id)
+        ->assertNotFound();
+
+    expect(GroupRoleMapping::query()->exists())->toBeFalse();
+})->group('security');
+
+it('refuses an organization admin with no organization at all a directories page', function (): void {
+    // The nullable reader answers null both for "an environment administrator has not
+    // chosen an organization yet" and for "this member has none", and the first means
+    // "show the whole environment". Conflating them turns an organization page into every
+    // directory in the environment.
+    $subject = app(Subjects::class)->create('orphan-dir@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-dir'));
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+
+    Volt::test('console.directories.index')->assertForbidden();
 })->group('security');
