@@ -27,7 +27,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
-    <link rel="icon" href="/brand/favicon.ico" sizes="any">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <title>{{ ($title ? $title.' · ' : '').'Workspace · '.config('cbox-id.branding.name', 'Cbox ID') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @consoleBrandingStyle

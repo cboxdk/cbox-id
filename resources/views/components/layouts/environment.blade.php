@@ -61,6 +61,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ? $title.' · ' : '' }}{{ $envName }} · Cbox ID</title>
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>

@@ -32,9 +32,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- Root paths, not /brand/*. Icon harvesters — password managers, link
+         unfurlers, browsers restoring a tab before the HTML parses — probe
+         /favicon.ico and /apple-touch-icon.png directly and never read these tags.
+         Laravel's skeleton ships an EMPTY favicon.ico, so that probe returned a
+         perfectly valid 200 with zero bytes for the life of the project. --}}
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
-    <link rel="icon" href="/brand/favicon.ico" sizes="any">
-    <link rel="apple-touch-icon" href="/brand/cbox-icon-128.png">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
     <title>{{ ($brandName ?? config('cbox-id.branding.name', 'Cbox ID')) === null ? '' : (($title ? $title.' · ' : '').($brandName ?? config('cbox-id.branding.name', 'Cbox ID'))) }}</title>
