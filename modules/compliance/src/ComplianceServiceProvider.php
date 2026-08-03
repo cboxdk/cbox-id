@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Compliance;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\Compliance\Console\ExportAuditCommand;
@@ -78,9 +80,26 @@ class ComplianceServiceProvider extends ServiceProvider
         // with chain verification and export; two areas meant an admin looking for
         // "the log" had to guess which of them held the one they wanted. The Exports
         // label carries the page's full title, as every nav entry must.
-        Console::nav()->area('audit')
-            ->page('compliance.audit', 'Audit trail', feature: 'compliance', order: 20)
-            ->page('compliance.exports', 'Exports & retention', feature: 'compliance', order: 30);
+        // Through ConsolePages, which serves BOTH planes by default. The old call went to
+        // the organization rail's registry and nowhere else, so the environment
+        // administrator — the person a regulator actually asks — had neither page.
+        $pages = $this->app->make(ConsolePages::class);
+
+        $pages->add(
+            area: ConsoleArea::Logs,
+            route: 'compliance.audit',
+            label: 'Audit trail',
+            feature: 'compliance',
+            order: 20,
+        );
+
+        $pages->add(
+            area: ConsoleArea::Logs,
+            route: 'compliance.exports',
+            label: 'Exports & retention',
+            feature: 'compliance',
+            order: 30,
+        );
 
         Console::dashboardCard(fn (): string => $this->exportCard(), 8);
 

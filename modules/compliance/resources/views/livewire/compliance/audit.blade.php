@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\CurrentUser;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -11,19 +11,22 @@ use Cbox\Id\Kernel\Audit\ValueObjects\ChainVerification;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Audit trail'])] class extends Component
+/**
+ * Console › Audit trail — one component, both planes. The same append-only, hash-chained
+ * record the activity log shows, with the chain verified end to end.
+ */
+new #[Layout('components.layouts.console', ['title' => 'Audit trail'])] class extends Component
 {
-
     /**
-     * Route middleware does not gate this page: the module routes carry `platform.auth`
-     * (a session exists) and `console.feature` (the flag is on), and neither is a role
-     * check. The nav hides the area from a plain member, which is styling, not
-     * authorization — the URL is typeable. Guarded in boot() rather than mount() so it
-     * re-runs on every Livewire message, not just the first render.
+     * Route middleware does not gate this page by ROLE: the routes carry a session gate
+     * (`platform.auth` on one plane, `env.admin` on the other) and `console.feature`, and
+     * neither is a role check. The nav hides the area from a plain member, which is
+     * styling, not authorization — the URL is typeable. boot() rather than mount(), so it
+     * re-runs on every Livewire message and not just the first render.
      */
     public function boot(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     public string $action = '';
@@ -31,18 +34,24 @@ new #[Layout('components.layouts.app', ['title' => 'Audit trail'])] class extend
     public string $actorId = '';
 
     /**
-     * The acting admin's OWN organization, and nothing else.
+     * The chain this page reads: the acting organization's, and nothing else.
      *
      * This used to be a text input bound to a public property and passed straight to the
      * reader. The only guard on the page is "is an admin" — of THEIR org — so any org
      * admin could type a peer organization's id and read that tenant's entire trail:
-     * sign-ins, actor ids, IPs, member changes, role grants, SSO configuration. An empty
-     * string selected the system trail. The console's own audit page one directory over
-     * has always bound this to CurrentUser; this one took it from the user.
+     * sign-ins, actor ids, IPs, member changes, role grants, SSO configuration. It now
+     * comes from the scope, which no request can influence on the organization plane.
+     *
+     * Null means the SYSTEM trail here, not "every organization": the reader answers a
+     * null organization with `whereNull('organization_id')`, and the audit log keeps one
+     * chain per scope. So an environment administrator who has chosen no organization
+     * sees the environment's own entries — the actions with no tenant — rather than a
+     * merged view of every tenant's chain, which is not a chain and could not be
+     * verified as one. Narrowing to a tenant is the organization picker.
      */
     private function scope(): ?string
     {
-        return app(CurrentUser::class)->organizationId();
+        return app(ConsoleScope::class)->organizationId();
     }
 
     /** @return list<AuditEntry> */
@@ -73,8 +82,10 @@ new #[Layout('components.layouts.app', ['title' => 'Audit trail'])] class extend
 }; ?>
 
 <div class="space-y-6">
+    {{-- The subtitle no longer promises searching "across organizations": it never did
+         that safely, and the field that appeared to offer it was the leak. --}}
     <x-page-header title="Audit trail" :help="\App\Platform\Help\HelpTopic::ActivityLog"
-                   subtitle="The same append-only, hash-chained trail as the activity log, searchable across organizations and verified end to end. Leave the organization blank for the system trail." />
+                   subtitle="The same append-only, hash-chained trail as the activity log, with the chain verified end to end." />
 
     <div class="flex items-center gap-3 rounded-xl border p-4 text-sm"
         style="{{ $verification->valid ? 'border-color:color-mix(in oklch, var(--success) 20%, transparent);background:var(--success-soft);color:var(--success)' : 'border-color:color-mix(in oklch, var(--destructive) 20%, transparent);background:var(--destructive-soft);color:var(--destructive)' }}">
