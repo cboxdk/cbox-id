@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Appearance\Appearance;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\CurrentUser;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -37,6 +38,9 @@ use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\Provisioning\Enums\ConnectionStatus;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
+use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
+use Cbox\Id\Webhooks\Enums\EndpointStatus;
+use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -1128,4 +1132,308 @@ it('keeps the environment\'s own identity off the organization plane', function 
     Volt::test('console.settings')
         ->assertDontSee('Environment ID')
         ->assertDontSee($environment->name);
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Webhooks
+|--------------------------------------------------------------------------
+| The organization plane had one page: an inline create form, a row-level pause, a
+| Dismiss for the reveal-once signing secret — and seven event types. The environment
+| plane had list → create → detail with pause, resume, secret rotation, subscription
+| editing, a delivery log and delete, twenty-four event types, and every endpoint it
+| created was platform-wide because it had no notion of acting on one tenant. The merge
+| is the union of all of it.
+|
+| So a tenant administrator could create an endpoint and pause it, and could then not
+| start it again, re-key it after a leak, change what it listened for, or take it away.
+*/
+
+it('serves webhooks from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-webhooks');
+
+    $this->get(route('environment.webhooks'))->assertOk()->assertSee('Webhooks');
+    $this->get(route('environment.webhooks.create'))->assertOk();
+})->group('security');
+
+it('serves webhooks from the same component on the organization plane', function (): void {
+    // The organization plane gained the routable shape rather than the environment plane
+    // losing it: an endpoint URL is something you send to whoever runs the receiving
+    // system, and the reveal-once signing secret needs somewhere to land that is not the
+    // row you just submitted.
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.webhooks.index')->assertOk()->assertSee('Webhooks');
+    Volt::test('console.webhooks.create')->assertOk();
+
+    expect(Route::has('webhooks.show'))->toBeTrue()
+        ->and(Route::has('webhooks.create'))->toBeTrue();
+})->group('security');
+
+it('offers the same event catalogue on both planes', function (): void {
+    // The drift that decided what a subscriber ever finds out about. The organization
+    // console listed seven types; the environment console listed twenty-four. A tenant
+    // could not subscribe to a password reset, an MFA enrolment, a passkey registration,
+    // a role change or an invitation being accepted — in the console whose whole job is
+    // telling their systems what happened — and nothing on the page said so.
+    anEnvironmentAdminActingOn('tenant-webhook-events');
+    $environment = Volt::test('console.webhooks.create');
+
+    actingAsRole(MembershipRole::Owner);
+    $organization = Volt::test('console.webhooks.create');
+
+    foreach (WebhookEventCatalogue::EVENTS as $event) {
+        $environment->assertSee($event);
+        $organization->assertSee($event);
+    }
+
+    // The seven the organization console had are a subset of what it offers now, so the
+    // assertion above cannot pass by having quietly shrunk the environment plane's list.
+    expect(WebhookEventCatalogue::EVENTS)->toContain('user.password_reset', 'user.mfa_enrolled', 'role.unassigned');
+})->group('security');
+
+it('registers an endpoint against the organization from the scope', function (): void {
+    config(['cbox-id.webhooks.verify_url' => false]);
+    $orgId = anEnvironmentAdminActingOn('tenant-webhooks-scoped');
+
+    Volt::test('console.webhooks.create')
+        ->set('url', 'https://hooks.example.test/events')
+        ->set('eventTypes', ['user.created'])
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(WebhookEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
+})->group('security');
+
+it('refuses to register an endpoint before an organization is chosen', function (): void {
+    config(['cbox-id.webhooks.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-webhooks-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.webhooks.create')
+        ->set('url', 'https://hooks.example.test/events')
+        ->set('eventTypes', ['user.created'])
+        ->call('create')
+        ->assertHasErrors('url');
+
+    expect(WebhookEndpoint::query()->exists())->toBeFalse();
+})->group('security');
+
+it('keeps environment-wide webhook registration on the environment plane', function (): void {
+    // The capability the environment console carried implicitly: it passed a null
+    // organization on every create, so every endpoint it made received EVERY
+    // organization's events. Taking the organization from the console chrome would have
+    // dropped that silently, so it survives as its own explicit choice on this plane.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-webhooks-wide');
+
+    Volt::test('console.webhooks.create')
+        ->set('url', 'https://hooks.example.test/everyone')
+        ->set('eventTypes', ['user.created'])
+        ->set('environmentWide', true)
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(WebhookEndpoint::query()->whereNull('organization_id')->exists())->toBeTrue();
+})->group('security');
+
+it('refuses environment-wide webhook registration from the organization plane', function (): void {
+    // A platform-wide endpoint receives every tenant's events in this environment —
+    // members joining, sign-ins failing, roles changing — so one minted by a tenant is a
+    // subscription to the other tenants. The checkbox is not rendered for them; the
+    // property is still client-settable, so the refusal is in the action.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.webhooks.create')
+        ->set('url', 'https://hooks.example.test/everyone')
+        ->set('eventTypes', ['user.created'])
+        ->set('environmentWide', true)
+        ->call('create')
+        ->assertForbidden();
+
+    expect(WebhookEndpoint::query()->exists())->toBeFalse();
+})->group('security');
+
+it('runs the whole webhook lifecycle on the environment plane', function (): void {
+    config(['cbox-id.webhooks.verify_url' => false]);
+    $orgId = anEnvironmentAdminActingOn('tenant-webhooks-lifecycle');
+
+    $endpoint = app(WebhookRegistry::class)
+        ->register($orgId, 'https://hooks.example.test/events', ['user.created'])->endpoint;
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
+        ->set('editUrl', 'https://hooks.example.test/events-v2')
+        ->set('editEvents', ['user.created', 'user.updated'])
+        ->call('saveSubscription')
+        ->call('pause')
+        ->call('resume')
+        ->call('rotateSecret')
+        ->assertHasNoErrors();
+
+    expect($endpoint->fresh()?->url)->toBe('https://hooks.example.test/events-v2')
+        ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Active);
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->call('deleteEndpoint');
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
+})->group('security');
+
+it('gives the organization plane the resume, rotate, edit and delete it never had', function (): void {
+    // The whole point of the merge. Every one of these was environment-plane only, so a
+    // tenant administrator who paused an endpoint had no way to start it again, and no
+    // way at all to re-key one whose signing secret had leaked.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
+    $endpoint = app(WebhookRegistry::class)
+        ->register($org->id, 'https://hooks.example.test/mine', ['user.created'])->endpoint;
+    $sealed = $endpoint->secret_encrypted;
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
+        ->set('editUrl', 'https://hooks.example.test/mine-v2')
+        ->set('editEvents', ['user.created', 'role.assigned'])
+        ->call('saveSubscription')
+        ->call('pause')
+        ->assertHasNoErrors();
+
+    expect($endpoint->fresh()?->url)->toBe('https://hooks.example.test/mine-v2')
+        ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Paused);
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
+        ->call('resume')
+        ->call('rotateSecret')
+        ->assertHasNoErrors();
+
+    // The rotation has to have re-keyed the endpoint, not merely returned without error:
+    // a rotate that silently did nothing leaves a leaked secret verifying deliveries.
+    expect($endpoint->fresh()?->status)->toBe(EndpointStatus::Active)
+        ->and($endpoint->fresh()?->secret_encrypted)->not->toBe($sealed);
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->call('deleteEndpoint');
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
+})->group('security');
+
+it('refuses an organization admin another organization\'s endpoint', function (): void {
+    // The environment plane resolved an endpoint anywhere in the environment on its
+    // primary key alone, which is right for an administrator who holds the environment.
+    // Serving the same component on the organization plane with that lookup would hand a
+    // tenant administrator every other tenant's endpoint by id — and rotateSecret with
+    // it, which mints a live signing secret for somebody else's receiver.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-webhooks'));
+    $theirs = app(WebhookRegistry::class)
+        ->register($other->id, 'https://hooks.example.test/not-yours', ['user.created'])->endpoint;
+    $sealed = $theirs->secret_encrypted;
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page. mount() resolves through the
+    // same scoped lookup, so the deep link is refused before any action is reachable.
+    Volt::test('console.webhooks.show', ['webhook' => $theirs->id])->assertNotFound();
+
+    Volt::test('console.webhooks.index')->assertDontSee('not-yours');
+
+    // And forged, not merely refused at the door. `endpointId` is a public property, so
+    // it is client-settable: mount a page this administrator IS allowed and then point it
+    // at the other organization's endpoint. Every read and every mutation re-resolves
+    // through the same scoped lookup, so the round trip that carries the forged id is
+    // refused before any of them reaches the row — which is also why the actions cannot
+    // be driven from here afterwards: there is no snapshot left to call against.
+    $mine = app(WebhookRegistry::class)
+        ->register($org->id, 'https://hooks.example.test/mine', ['user.created'])->endpoint;
+
+    Volt::test('console.webhooks.show', ['webhook' => $mine->id])
+        ->set('endpointId', $theirs->id)
+        ->assertNotFound();
+
+    // The refusal has to be the endpoint's survival, not just an unhappy response.
+    expect($theirs->fresh()?->secret_encrypted)->toBe($sealed)
+        ->and($theirs->fresh()?->url)->toBe('https://hooks.example.test/not-yours')
+        ->and($theirs->fresh()?->status)->toBe(EndpointStatus::Active);
+})->group('security');
+
+it('shows an organization the environment-wide endpoint it cannot change', function (): void {
+    // The organization must SEE what receives its events. The detail page is new to this
+    // plane, so it renders the environment's own endpoint read-only rather than offering
+    // a tenant administrator a Rotate button for the control plane's credential — and
+    // withholds the delivery log, which for a platform-wide endpoint is a record of what
+    // happened in every OTHER organization here.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    actingAsRole(MembershipRole::Owner);
+
+    $endpoint = app(WebhookRegistry::class)
+        ->register(null, 'https://hooks.example.test/everyone', ['user.created'])->endpoint;
+    $sealed = $endpoint->secret_encrypted;
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
+        ->assertSee('hooks.example.test/everyone')
+        ->assertSee('Your operator manages it')
+        ->assertDontSee('Rotate secret')
+        ->assertDontSee('Delete endpoint')
+        ->assertDontSee('Recent deliveries');
+
+    // And forged, not merely unrendered.
+    foreach (['rotateSecret', 'deleteEndpoint', 'pause'] as $action) {
+        Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->call($action)->assertForbidden();
+    }
+
+    expect($endpoint->fresh()?->secret_encrypted)->toBe($sealed)
+        ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Active);
+})->group('security');
+
+it('refuses a webhook page to an organization admin with no organization at all', function (): void {
+    // The nullable reader answers null both for "an environment administrator has not
+    // chosen an organization yet" and for "this member has none", and the first means
+    // "show the whole environment". Told apart here, because conflating them turns one
+    // organization's page into every endpoint in the environment.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    $subject = app(Subjects::class)->create('orphan-wh@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-wh'));
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+
+    Volt::test('console.webhooks.index')->assertForbidden();
+
+    // The detail page too, and it is the one that matters: an unscoped lookup there hands
+    // a member with no organization every endpoint in the environment by id — and
+    // rotateSecret over each of them.
+    $endpoint = app(WebhookRegistry::class)
+        ->register($org->id, 'https://hooks.example.test/theirs', ['user.created'])->endpoint;
+
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->assertForbidden();
+})->group('security');
+
+it('keeps the revealed signing secret out of the wire snapshot on both planes', function (): void {
+    // The secret is shown once and Dismiss is what clears it — the organization console
+    // had that and the environment console did not, so a live credential stayed on screen
+    // until the next navigation. And it is held in a PROTECTED property: a public one is
+    // dehydrated into the wire:snapshot embedded in the DOM, where it outlives the
+    // dismissal it is supposed to obey.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    anEnvironmentAdminActingOn('tenant-webhooks-secret');
+
+    Volt::test('console.webhooks.create')
+        ->set('url', 'https://hooks.example.test/events')
+        ->set('eventTypes', ['user.created'])
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $endpoint = WebhookEndpoint::query()->firstOrFail();
+    $secret = (string) session('newSecret');
+    expect($secret)->not->toBe('');
+
+    $page = Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
+        ->assertSee('Copy this signing secret now')
+        ->assertSee($secret);
+
+    expect($page->snapshot['data'] ?? [])->not->toContain($secret);
+
+    $page->call('dismissSecret')
+        ->assertDontSee('Copy this signing secret now')
+        ->assertDontSee($secret);
 })->group('security');

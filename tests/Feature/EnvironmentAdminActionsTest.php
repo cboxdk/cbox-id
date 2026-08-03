@@ -139,7 +139,7 @@ it('exercises the webhook detail mutating actions (saveSubscription, pause, resu
     $endpoint = app(WebhookRegistry::class)
         ->register(null, 'https://example.com/wh', ['user.created'])->endpoint;
 
-    Volt::test('environment.webhooks.show', ['webhook' => $endpoint->id])
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
         ->set('editUrl', 'https://example.com/wh-updated')
         ->set('editEvents', ['user.created', 'user.updated'])
         ->call('saveSubscription')
@@ -150,7 +150,7 @@ it('exercises the webhook detail mutating actions (saveSubscription, pause, resu
 
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('url'))->toBe('https://example.com/wh-updated');
 
-    Volt::test('environment.webhooks.show', ['webhook' => $endpoint->id])
+    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
         ->call('deleteEndpoint');
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 });

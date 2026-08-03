@@ -300,7 +300,14 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/directories', 'directories')->name('directories');
     Volt::route('/roles', 'roles')->name('roles');
     Volt::route('/clients', 'clients')->name('clients');
-    Volt::route('/webhooks', 'webhooks')->name('webhooks');
+    // Webhooks: the SAME components the environment plane serves. The routable
+    // index/new/show shape wins over the organization plane's single page with its inline
+    // form, and this plane gains resume, secret rotation, subscription editing and delete
+    // with it — a tenant admin who paused an endpoint previously had no way to start it
+    // again, and none at all to re-key one whose secret had leaked.
+    Volt::route('/webhooks', 'console.webhooks.index')->name('webhooks');
+    Volt::route('/webhooks/new', 'console.webhooks.create')->name('webhooks.create');
+    Volt::route('/webhooks/{webhook}', 'console.webhooks.show')->name('webhooks.show');
     // Activity log: the SAME component the environment plane serves. The row scoping is
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
@@ -469,10 +476,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/applications/new', 'environment.clients.create')->name('environment.clients.create');
         Volt::route('/applications/{client}', 'environment.clients.show')->name('environment.clients.show');
 
-        // Webhooks — routable list → create → detail.
-        Volt::route('/webhooks', 'environment.webhooks.index')->name('environment.webhooks');
-        Volt::route('/webhooks/new', 'environment.webhooks.create')->name('environment.webhooks.create');
-        Volt::route('/webhooks/{webhook}', 'environment.webhooks.show')->name('environment.webhooks.show');
+        // Webhooks — routable list → create → detail, on the merged component. The URLs
+        // are unchanged so existing links and bookmarks still resolve; the route names
+        // are what the two planes disagree on, and both are preserved.
+        Volt::route('/webhooks', 'console.webhooks.index')->name('environment.webhooks');
+        Volt::route('/webhooks/new', 'console.webhooks.create')->name('environment.webhooks.create');
+        Volt::route('/webhooks/{webhook}', 'console.webhooks.show')->name('environment.webhooks.show');
         // Inline hooks — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
