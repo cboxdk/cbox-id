@@ -6,6 +6,7 @@ use App\Http\ApiRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Platform\AccountApiContext;
 use App\Platform\AuthoritativeDnsResolver;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
 use Cbox\Dns\Dns;
@@ -46,6 +47,12 @@ class AppServiceProvider extends ServiceProvider
         // which is a nonce in name only — anyone who saw one page could predict the value
         // guarding the next.
         $this->app->scoped(CspNonce::class);
+
+        // The console's one answer to "who is acting, on which organization, and what
+        // may they do". Scoped, not singleton: the environment plane picks an
+        // organization per request, and a singleton would carry one administrator's
+        // choice into the next request on a long-lived worker.
+        $this->app->scoped(ConsoleScope::class);
     }
 
     /**
