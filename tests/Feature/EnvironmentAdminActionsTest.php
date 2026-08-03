@@ -120,7 +120,7 @@ it('exercises the role detail mutating actions (saveDetails, togglePermission, d
     // so a directly-created Permission is picked up by togglePermission.
     $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
 
-    Volt::test('environment.roles.show', ['role' => $role->id])
+    Volt::test('console.roles.show', ['role' => $role->id])
         ->set('editName', 'Support Renamed')
         ->set('editDescription', 'Support staff')
         ->call('saveDetails')
@@ -129,7 +129,7 @@ it('exercises the role detail mutating actions (saveDetails, togglePermission, d
 
     expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed');
 
-    Volt::test('environment.roles.show', ['role' => $role->id])
+    Volt::test('console.roles.show', ['role' => $role->id])
         ->call('deleteRole');
     expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
 });

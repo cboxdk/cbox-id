@@ -306,7 +306,13 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/directories', 'console.directories.index')->name('directories');
     Volt::route('/directories/new', 'console.directories.create')->name('directories.create');
     Volt::route('/directories/{directory}', 'console.directories.show')->name('directories.show');
-    Volt::route('/roles', 'roles')->name('roles');
+    // Roles: the SAME components the environment plane serves. The routable index/new/show
+    // shape wins over the organization plane's single page — a role URL is something you
+    // send to whoever owns the access — and this plane gains rename, delete and permission
+    // editing with it, none of which a tenant admin could do to their own roles before.
+    Volt::route('/roles', 'console.roles.index')->name('roles');
+    Volt::route('/roles/new', 'console.roles.create')->name('roles.create');
+    Volt::route('/roles/{role}', 'console.roles.show')->name('roles.show');
     Volt::route('/clients', 'clients')->name('clients');
     // Webhooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page with its inline
@@ -461,10 +467,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         Volt::route('/outbound-sync/new', 'console.provisioning.create')->name('environment.provisioning.create');
         Volt::route('/outbound-sync/{sync}', 'console.provisioning.show')->name('environment.provisioning.show');
 
-        // Roles — routable list → create → detail (permission editor).
-        Volt::route('/roles', 'environment.roles.index')->name('environment.roles');
-        Volt::route('/roles/new', 'environment.roles.create')->name('environment.roles.create');
-        Volt::route('/roles/{role}', 'environment.roles.show')->name('environment.roles.show');
+        // Roles — routable list → create → detail (permission editor), on the merged
+        // component. The route names are what the two planes disagree on, and both are
+        // preserved.
+        Volt::route('/roles', 'console.roles.index')->name('environment.roles');
+        Volt::route('/roles/new', 'console.roles.create')->name('environment.roles.create');
+        Volt::route('/roles/{role}', 'console.roles.show')->name('environment.roles.show');
 
         // Permissions — the catalog roles draw from. App-declared permissions arrive
         // via an app's manifest (SDK/API); manual ones are authored here for orgs that
