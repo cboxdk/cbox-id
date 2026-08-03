@@ -11,6 +11,7 @@ use Cbox\Id\Directory\Enums\DirectoryProvider;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Directory\Models\DirectoryGroup;
+use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
@@ -272,6 +273,13 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'directory' => $directory,
+            // The provider's own directory guide, for the one place a person needs it
+            // after setup: a sync that has started failing. "Graph users request failed
+            // (403)" is a permission that was never granted or a secret that expired, and
+            // the steps that say which are the same ones the create page shows. Null for
+            // SCIM, which has no catalogue entry — there is no vendor to link to when the
+            // far end is whatever the customer runs.
+            'setup' => ProviderCatalog::forDirectory($directory->provider)?->directory,
             'orgName' => Organization::query()->whereKey($organizationId)->value('name') ?? $organizationId,
             'scimBaseUrl' => url('/scim/v2'),
             'groups' => $groups,
@@ -345,6 +353,17 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
                     <dd class="mt-1 text-sm" style="color:var(--muted)">{{ $directory->last_sync_error ?? 'None' }}</dd>
                 </div>
             </dl>
+            @if ($directory->last_sync_error && $setup)
+                {{-- A pull that has started failing is almost always a permission nobody
+                     granted or a secret that has expired, and the provider's error says
+                     neither. The guide that says which is the same one the setup page
+                     shows — reached from the catalogue rather than repeated here. --}}
+                <p class="mt-4 text-xs" style="color:var(--faint)">
+                    A refusal here is usually admin consent or an expired secret —
+                    <a href="{{ $setup->documentationUrl }}" target="_blank" rel="noopener noreferrer"
+                       class="underline underline-offset-2" style="color:var(--accent-strong)">check the provider's own setup guide ↗</a>
+                </p>
+            @endif
         </div>
     @endif
 

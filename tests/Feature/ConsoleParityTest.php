@@ -31,6 +31,7 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
+use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Governance\Models\SodPolicy;
@@ -1611,6 +1612,42 @@ it('offers SCIM and both pull providers on both planes', function (): void {
     foreach ($expected as $label) {
         $environment->assertSee($label);
         $organization->assertSee($label);
+    }
+})->group('security');
+
+it('shows each pull provider its own directory guide, on both planes', function (): void {
+    // The gap the unified catalogue closes. The steps for connecting Google as a
+    // DIRECTORY existed in the framework — beside the steps for connecting Google for
+    // SIGN-IN — and the two registries naming the same provider shared nothing, so this
+    // page could reach neither. An administrator who had just finished the sign-in half
+    // got an empty credential box and no hint that a directory wants a service account
+    // rather than the OAuth client they had in front of them.
+    anEnvironmentAdminActingOn('tenant-dir-guide');
+    $planes = [Volt::test('console.directories.create')];
+
+    actingAsRole(MembershipRole::Owner);
+    $planes[] = Volt::test('console.directories.create');
+
+    foreach ([DirectoryProvider::GoogleWorkspace, DirectoryProvider::MicrosoftEntra] as $provider) {
+        $template = ProviderCatalog::forDirectory($provider);
+        $setup = $template?->directory;
+
+        expect($setup)->not->toBeNull($provider->value.' has no catalogue entry to show');
+
+        foreach ($planes as $component) {
+            $rendered = $component->set('provider', $provider->value);
+
+            $rendered->assertSee($setup->documentationUrl, false);
+
+            foreach ($setup->setupSteps as $step) {
+                $rendered->assertSee($step);
+            }
+
+            // And it is the DIRECTORY guide, not the sign-in one. Both exist for this
+            // provider and they describe unrelated jobs; showing the wrong one is worse
+            // than showing none, because it is followed to the end before it fails.
+            $rendered->assertDontSee($template->setupSteps[0]);
+        }
     }
 })->group('security');
 

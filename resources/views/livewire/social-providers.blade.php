@@ -7,6 +7,7 @@ use App\Platform\CurrentUser;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Enums\ProviderCapability;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\OidcDiscovery;
@@ -60,7 +61,7 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
     {
         $this->authorizeAdmin();
 
-        if (ProviderCatalog::find($key) === null) {
+        if ($this->loginTemplate($key) === null) {
             return;
         }
 
@@ -69,6 +70,22 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
         $this->clientSecret = '';
         $this->parameters = [];
         $this->resetErrorBag();
+    }
+
+    /**
+     * A catalogue entry that can actually be used to sign somebody in, or null.
+     *
+     * The key arrives from the browser and everything downstream is looked up by it, so
+     * it was already validated against the catalogue. Being IN the catalogue is no longer
+     * the same question as being usable here: an entry can carry a directory and no
+     * sign-in half, and this page would build a connection out of endpoints it does not
+     * have. Deny-by-default, in the one place the key crosses in.
+     */
+    private function loginTemplate(string $key): ?ProviderTemplate
+    {
+        $template = ProviderCatalog::find($key);
+
+        return $template?->supports(ProviderCapability::Login) === true ? $template : null;
     }
 
     public function cancel(): void
@@ -85,7 +102,7 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
         $this->authorizeAdmin();
         app(VerifiedEmailGate::class)->require('add a sign-in provider');
 
-        $template = ProviderCatalog::find((string) $this->selected);
+        $template = $this->loginTemplate((string) $this->selected);
 
         if ($template === null) {
             return;
@@ -207,8 +224,13 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
 
         return [
             'enabled' => $enabled,
+            // The providers that can be used for SIGN-IN, asked for by name rather than
+            // taken as the whole catalogue. Today those are the same set, and the day
+            // they stop being — a catalogue entry that is only ever a directory — this
+            // page would otherwise offer a sign-in button pointing nowhere. The question
+            // this screen is actually asking is the one it should be putting.
             'available' => array_values(array_filter(
-                ProviderCatalog::all(),
+                ProviderCatalog::withCapability(ProviderCapability::Login),
                 static fn (ProviderTemplate $t): bool => ! in_array($t->key, $enabledKeys, true),
             )),
             'template' => $this->selected === null ? null : ProviderCatalog::find($this->selected),

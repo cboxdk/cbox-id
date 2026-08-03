@@ -8,6 +8,9 @@ use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\DirectoryConnectors;
 use Cbox\Id\Directory\DirectoryPullSync;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
+use Cbox\Id\Federation\ProviderCatalog;
+use Cbox\Id\Federation\ValueObjects\ProviderParameter;
+use Cbox\Id\Federation\ValueObjects\ProviderTemplate;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -194,13 +197,37 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
         $scope = app(ConsoleScope::class);
         $organizationId = $this->actingOrganizationId();
         $connectors = app(DirectoryConnectors::class);
+        $selected = DirectoryProvider::tryFrom($this->provider);
+
+        // The catalogue entry behind the provider being connected, if there is one.
+        //
+        // This page used to have nothing to say. The steps for connecting Google as a
+        // directory existed — in the framework, beside the steps for connecting Google
+        // for sign-in — and the two registries naming the same provider shared nothing,
+        // so the screen could not reach them. An administrator who had just done the
+        // sign-in half got an empty credential box and no hint that a directory wants a
+        // service account rather than the OAuth client they had in front of them.
+        //
+        // Null for SCIM, which has no catalogue entry by design (it is a protocol the
+        // customer's provider speaks to US — the fields on that form are ours, not
+        // theirs). Null is an enrichment that did not arrive, never a reason to withhold
+        // the form: a provider we can reach must stay connectable even if nobody has
+        // written its guide yet.
+        $template = $selected === null ? null : ProviderCatalog::forDirectory($selected);
 
         return [
+            'template' => $template,
+            // The credential fields the connector actually reads, so the labels and the
+            // help on this form come from the same declaration the connector is checked
+            // against rather than from a second copy that ages here.
+            'credential' => fn (string $key): ?ProviderParameter => $this->credential($template, $key),
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             // The enum is the public contract, so both planes offer what it publishes —
             // minus any provider with no registered connector, which could not actually
-            // be reached if it were chosen.
+            // be reached if it were chosen. Still the enum and not the catalogue: this is
+            // the list of things that can be STORED on a directory row, and SCIM is one
+            // of them without being a catalogue provider at all.
             'providers' => array_values(array_filter(
                 DirectoryProvider::cases(),
                 fn (DirectoryProvider $option): bool => ! $option->isPull() || $connectors->has($option),
@@ -250,6 +277,32 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
         abort_unless(app(ConsoleScope::class)->entitled('scim'), 403);
 
         return $organizationId;
+    }
+
+    /**
+     * One declared credential field of a catalogue entry's directory setup.
+     *
+     * The form keeps its own typed properties — these are values an administrator types
+     * and they must stay bound to named fields — but what they are CALLED and where to
+     * find them comes from the catalogue, which is the same declaration the framework
+     * checks the connector against. Two copies of "what does Entra call this" is how one
+     * of them ends up describing a permission the connector stopped needing.
+     */
+    private function credential(?ProviderTemplate $template, string $key): ?ProviderParameter
+    {
+        $setup = $template?->directory;
+
+        if ($setup === null) {
+            return null;
+        }
+
+        foreach ($setup->credentials as $credential) {
+            if ($credential->key === $key) {
+                return $credential;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -342,36 +395,75 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
                 </div>
             </form>
         @else
+            {{-- The provider's own guide, from the catalogue — the same place the sign-in
+                 page gets Google's. It is a DIFFERENT guide from that one, and that is the
+                 whole point: connecting Google for sign-in is an OAuth client and two
+                 pasted strings, connecting it as a directory is a service account and a
+                 domain-wide delegation grant made in a console the administrator may
+                 never have opened. Before the catalogue carried both, this screen could
+                 say neither. --}}
+            @if ($template?->directory)
+                <div class="mt-4 max-w-xl rounded-xl border" style="border-color:var(--border)">
+                    <div class="p-4 border-b flex items-center gap-2.5" style="border-color:var(--border)">
+                        <x-provider-mark :provider="$template->key" :size="22" />
+                        <div class="min-w-0">
+                            <h2 class="font-semibold text-sm" style="color:var(--foreground)">Set up {{ $template->directory->provider->label() }}</h2>
+                            <p class="text-sm mt-0.5" style="color:var(--muted)">
+                                <a href="{{ $template->directory->documentationUrl }}" target="_blank" rel="noopener noreferrer"
+                                   class="underline underline-offset-2" style="color:var(--accent-strong)">{{ $template->name }}&rsquo;s own guide ↗</a>
+                            </p>
+                        </div>
+                    </div>
+                    <ol class="p-4 space-y-1.5 text-sm list-decimal ps-9" style="color:var(--muted)">
+                        @foreach ($template->directory->setupSteps as $step)
+                            <li wire:key="dir-step-{{ $template->key }}-{{ $loop->index }}">{{ $step }}</li>
+                        @endforeach
+                    </ol>
+                </div>
+            @endif
+
             {{-- The pull providers. Google Workspace has no SCIM support at all, so this
                  is the only path to it; Entra supports both and many customers prefer
                  pull. Neither was reachable from the environment plane before the merge. --}}
             <form wire:submit="connectPull" class="mt-4 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
                 @if ($provider === \Cbox\Id\Directory\Enums\DirectoryProvider::GoogleWorkspace->value)
+                    {{-- One textarea for two declared credentials: `client_email` and
+                         `private_key` arrive together in the file Google hands over, and
+                         asking somebody to pick two fields out of a JSON blob is how one
+                         of them arrives with a newline eaten. Decomposed in
+                         pullCredentials() into exactly the keys the connector reads. --}}
                     <div>
                         <label class="label" for="googleServiceAccountJson">Service-account JSON key</label>
                         <textarea wire:model="googleServiceAccountJson" id="googleServiceAccountJson" rows="4" class="input mono text-xs" placeholder='{ "client_email": "...@...iam.gserviceaccount.com", "private_key": "-----BEGIN PRIVATE KEY-----\n..." }'></textarea>
-                        <p class="mt-1 text-xs" style="color:var(--faint)">A service account with domain-wide delegation for the read-only Admin Directory scope.</p>
+                        <p class="mt-1 text-xs" style="color:var(--faint)">The whole file you downloaded — the service account email and its private key are read out of it.</p>
                     </div>
                     <div>
-                        <label class="label" for="googleAdminEmail">Admin email to impersonate</label>
-                        <input wire:model="googleAdminEmail" id="googleAdminEmail" type="email" class="input" placeholder="admin@acme.com">
+                        <label class="label" for="googleAdminEmail">{{ $credential('admin_email')?->label ?? 'Admin email to impersonate' }}</label>
+                        <input wire:model="googleAdminEmail" id="googleAdminEmail" type="email" class="input" placeholder="{{ $credential('admin_email')?->example ?? 'admin@acme.com' }}">
+                        @if ($help = $credential('admin_email')?->help)
+                            <p class="mt-1 text-xs" style="color:var(--faint)">{{ $help }}</p>
+                        @endif
                     </div>
                 @else
                     <div class="grid sm:grid-cols-3 gap-3">
                         <div>
-                            <label class="label" for="entraTenantId">Tenant ID</label>
-                            <input wire:model="entraTenantId" id="entraTenantId" type="text" class="input">
+                            <label class="label" for="entraTenantId">{{ $credential('tenant_id')?->label ?? 'Tenant ID' }}</label>
+                            <input wire:model="entraTenantId" id="entraTenantId" type="text" class="input" placeholder="{{ $credential('tenant_id')?->example }}">
                         </div>
                         <div>
-                            <label class="label" for="entraClientId">Client ID</label>
-                            <input wire:model="entraClientId" id="entraClientId" type="text" class="input">
+                            <label class="label" for="entraClientId">{{ $credential('client_id')?->label ?? 'Client ID' }}</label>
+                            <input wire:model="entraClientId" id="entraClientId" type="text" class="input" placeholder="{{ $credential('client_id')?->example }}">
                         </div>
                         <div>
-                            <label class="label" for="entraClientSecret">Client secret</label>
+                            {{-- Typed, never rendered back: the secret rides the wire only
+                                 while the form is open and is reset the moment it seals. --}}
+                            <label class="label" for="entraClientSecret">{{ $credential('client_secret')?->label ?? 'Client secret' }}</label>
                             <input wire:model="entraClientSecret" id="entraClientSecret" type="password" class="input">
                         </div>
                     </div>
-                    <p class="text-xs" style="color:var(--faint)">An app registration with the <span class="mono">User.Read.All</span> application permission (admin-consented).</p>
+                    @if ($help = $credential('client_secret')?->help)
+                        <p class="text-xs" style="color:var(--faint)">{{ $help }}</p>
+                    @endif
                 @endif
 
                 @if ($connectError)<p class="field-error" role="alert">{{ $connectError }}</p>@endif
