@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Health;
 
+use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsolePlane;
 use Cbox\Id\Console\Contracts\HealthCheck;
 use Cbox\Id\Console\ValueObjects\HealthResult;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +26,16 @@ use Illuminate\Support\Facades\Route;
  *
  * Grepping found all of that. Nothing was watching for it, so it accumulated for months.
  * This is the thing that watches.
+ *
+ * It watches two lists, because the console has two kinds of page. The thirteen core
+ * capabilities are PAIRED BY HAND below — they were built twice under different names, so
+ * inferring the pairing from the names would excuse the very case worth catching. Module
+ * pages are read from {@see ConsolePages}, where a module states which planes it serves;
+ * there the pairing is not in doubt and what needs measuring is whether the declaration
+ * and the routes agree. All six modules declared a page and routed one plane, and this
+ * check did not cover them — which is why the doctor said "13 capabilities reachable on
+ * both planes" while an environment administrator had no analytics, compliance,
+ * connectors, devices, risk or branding at all.
  */
 class ConsoleParityHealthCheck implements HealthCheck
 {
@@ -52,6 +64,8 @@ class ConsoleParityHealthCheck implements HealthCheck
         'Settings' => ['settings', 'environment.settings'],
         'Appearance' => ['appearance', 'environment.appearance'],
     ];
+
+    public function __construct(private readonly ConsolePages $pages) {}
 
     public function run(): array
     {
@@ -98,10 +112,48 @@ class ConsoleParityHealthCheck implements HealthCheck
             }
         }
 
+        $both = 0;
+        $singlePlane = 0;
+
+        foreach ($this->pages->all() as $page) {
+            $onOrganization = Route::has($page->routeOn(ConsolePlane::Organization));
+            $onEnvironment = Route::has($page->routeOn(ConsolePlane::Environment));
+
+            foreach (ConsolePlane::cases() as $plane) {
+                $reachable = $plane === ConsolePlane::Environment ? $onEnvironment : $onOrganization;
+
+                // Declared for a plane and not routed there is the failure this whole
+                // check exists for, and the modules are where it lived: all six declared
+                // a page and routed the organization plane alone. The rail drops such a
+                // page rather than rendering a link that 500s the console — which is the
+                // right call there and precisely why it has to be loud HERE, or a module
+                // is simply absent on a plane with nothing anywhere saying so.
+                if ($page->serves($plane) && ! $reachable) {
+                    $missing[] = $page->label.' — declared for the '.$plane->value
+                        .' plane, but no route is registered there';
+                }
+
+                // The other direction: a page routed on a plane it never declared is not
+                // in that rail, so it is reachable by URL and by nothing else — the
+                // unlinked page the module route files already warn about.
+                if (! $page->serves($plane) && $reachable) {
+                    $missing[] = $page->label.' — routed on the '.$plane->value
+                        .' plane but not declared there, so nothing links to it';
+                }
+            }
+
+            $page->only === null ? $both++ : $singlePlane++;
+        }
+
         if ($missing === []) {
             return [HealthResult::ok(
                 'Console parity',
-                count(self::PAIRS).' capabilities reachable on both planes',
+                sprintf(
+                    '%d capabilities and %d module pages reachable on both planes (%d declared single-plane)',
+                    count(self::PAIRS),
+                    $both,
+                    $singlePlane,
+                ),
             )];
         }
 

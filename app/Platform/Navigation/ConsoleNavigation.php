@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Platform\Navigation;
 
+use App\Platform\Console\ConsoleArea;
+use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\ConsoleLocation;
+use App\Platform\Health\ConsoleParityHealthCheck;
 use Cbox\Id\Platform\Enums\AccountRole;
+use Illuminate\Support\Facades\Route;
 
 /**
  * The navigation of every plane except the organization console, which is assembled at
@@ -16,6 +21,8 @@ use Cbox\Id\Platform\Enums\AccountRole;
  */
 class ConsoleNavigation
 {
+    private ?ConsolePages $pages = null;
+
     /**
      * The workspace (account) console — what an account member sees before choosing an
      * environment.
@@ -60,10 +67,16 @@ class ConsoleNavigation
     /**
      * The environment control plane — an account-member admin's view of ONE
      * environment. Every resource here is environment-scoped.
+     *
+     * The written list below is the console's OWN pages. Module pages are merged in from
+     * {@see ConsolePages} rather than written here, because a module is installed rather
+     * than edited in — and because the organization rail already assembles itself from a
+     * registry, so a module that had to be added to a hand-written list on one plane and
+     * a registry on the other would go on being added to one of them.
      */
     public function environment(): ConsoleNav
     {
-        return new ConsoleNav(
+        return new ConsoleNav(...$this->withModulePages([
             new NavArea('Overview', 'dashboard',
                 new NavPage('environment.home', 'Overview'),
                 new NavPage('environment.analytics', 'Analytics'),
@@ -117,7 +130,88 @@ class ConsoleNavigation
                 new NavPage('environment.auth-policy', 'Sign-in rules'),
                 new NavPage('environment.appearance', 'Appearance'),
             ),
-        );
+        ]));
+    }
+
+    /**
+     * Merge the module-declared environment-plane pages into the written rail.
+     *
+     * A page lands in the area its {@see ConsoleArea} names on this plane; an area no
+     * module page reaches is returned untouched, and an area the environment console does
+     * not have yet (Connectors) is inserted where {@see ConsoleArea::environmentAfter()}
+     * says, so the two rails read in the same order.
+     *
+     * Pages whose route is missing are dropped rather than rendered. That is the one
+     * place this file is deliberately quiet: the rail renders on EVERY page of the plane,
+     * so a module that declared both planes and routed one would take the whole
+     * environment console down with a RouteNotFoundException. The
+     * {@see ConsoleParityHealthCheck} reports exactly that case, which
+     * is where a missing route should be loud — in the doctor, not in a 500 on every page.
+     *
+     * @param  list<NavArea>  $areas
+     * @return list<NavArea>
+     */
+    private function withModulePages(array $areas): array
+    {
+        /** @var array<string, list<NavPage>> $additions */
+        $additions = [];
+        /** @var array<string, ConsoleArea> $introduced */
+        $introduced = [];
+
+        foreach ($this->pages()->forPlane(ConsolePlane::Environment) as $page) {
+            $label = $page->area->environmentLabel();
+            $route = $page->routeOn(ConsolePlane::Environment);
+
+            if ($label === null || ! Route::has($route)) {
+                continue;
+            }
+
+            $additions[$label][] = new NavPage($route, $page->label);
+            $introduced[$label] = $page->area;
+        }
+
+        if ($additions === []) {
+            return $areas;
+        }
+
+        $merged = [];
+
+        foreach ($areas as $area) {
+            $pages = $additions[$area->label] ?? [];
+            unset($additions[$area->label]);
+
+            $merged[] = $pages === []
+                ? $area
+                : new NavArea($area->label, $area->icon, ...$area->pages, ...$pages);
+
+            // A module-introduced area sits immediately after the one it names, so
+            // Connectors lands between Developers and Logs on both rails.
+            foreach ($additions as $label => $pages) {
+                if ($introduced[$label]->environmentAfter() === $area->label) {
+                    $merged[] = new NavArea($label, $introduced[$label]->environmentIcon(), ...$pages);
+                    unset($additions[$label]);
+                }
+            }
+        }
+
+        // Anything left names no neighbour (or names one this plane does not have): it
+        // goes at the end rather than being dropped, so a page is never silently absent.
+        foreach ($additions as $label => $pages) {
+            $merged[] = new NavArea($label, $introduced[$label]->environmentIcon(), ...$pages);
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Resolved lazily rather than injected, because this class is constructed directly —
+     * `new ConsoleNavigation` — by the tests that assert the rail's invariants, and a
+     * constructor dependency would make the nav's own description unreadable without a
+     * container.
+     */
+    private function pages(): ConsolePages
+    {
+        return $this->pages ??= app(ConsolePages::class);
     }
 
     /** The operator plane — whoever runs this deployment, above every account. */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Platform\Console\ConsolePages;
 use App\Platform\ConsoleCurrentContext;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Facades\Console;
@@ -31,6 +32,11 @@ final class ConsoleServiceProvider extends ServiceProvider
     {
         // Let plugins resolve the current org/user through console-kit's CurrentContext.
         $this->app->bind(CurrentContext::class, ConsoleCurrentContext::class);
+
+        // Where a MODULE declares a console page — for both planes at once. A singleton
+        // because it is filled during provider boot and read by both rails and the
+        // parity health check for the rest of the process's life.
+        $this->app->singleton(ConsolePages::class);
     }
 
     public function boot(): void
