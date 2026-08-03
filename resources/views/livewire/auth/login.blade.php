@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
@@ -35,6 +36,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     public ?string $magicUrl = null;
 
     public ?string $pendingLink = null;
+
+    /**
+     * The organization whose branded sign-in page this is, when there is one.
+     *
+     * Locked: it decides which tenant's provider credentials the social buttons use, so
+     * a value the browser could edit would let anyone render another tenant's buttons —
+     * and start a flow that lands an account in the wrong organization.
+     */
+    #[Locked]
+    public ?string $brandedOrgId = null;
 
     /** Home-realm discovery: true once the email step passed with no SSO connection, revealing the password form. */
     public bool $identified = false;
@@ -54,6 +65,8 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         $org = app(Organizations::class)->bySlug($slug);
 
         if ($org !== null) {
+            $this->brandedOrgId = $org->id;
+
             // Carry the org's whole settings bag — the auth layout resolves both the
             // logo and the full custom sign-in appearance (Theme Editor) from it.
             View::share('cboxBrand', [
@@ -312,7 +325,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
     <div class="divider my-6">OR</div>
 
-    <x-social-buttons class="mb-2.5" />
+    <x-social-buttons class="mb-2.5" :organization-id="$brandedOrgId" />
 
     <div class="space-y-2.5">
         <button type="button" wire:click="sendMagicLink" class="btn btn-ghost btn-lg w-full" wire:loading.attr="disabled" wire:target="sendMagicLink">

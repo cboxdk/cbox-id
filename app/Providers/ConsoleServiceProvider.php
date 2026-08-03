@@ -59,6 +59,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         // clue which way either moved people.
         $nav->area('authentication', 'Sign-in', 'connections', 30)
             ->page('connections', 'Single sign-on', order: 10)
+            ->page('social-providers', 'Social sign-in', order: 20)
             ->page('directories', 'Sync users in', order: 30)
             ->page('provisioning', 'Sync users out', order: 40);
 

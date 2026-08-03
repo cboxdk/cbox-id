@@ -31,6 +31,7 @@ enum HelpTopic: string
     case Members = 'members';
     case Roles = 'roles';
     case SingleSignOn = 'single-sign-on';
+    case SocialSignIn = 'social-sign-in';
     case SyncUsersIn = 'sync-users-in';
     case SyncUsersOut = 'sync-users-out';
     case AccessReviews = 'access-reviews';
@@ -55,6 +56,7 @@ enum HelpTopic: string
             self::Members => 'Members and invitations',
             self::Roles => 'What roles do',
             self::SingleSignOn => 'Signing in with your own identity provider',
+            self::SocialSignIn => 'Signing in with an account people already have',
             self::SyncUsersIn => 'Keeping people up to date automatically',
             self::SyncUsersOut => 'Pushing people out to your other apps',
             self::AccessReviews => 'Certifying who still needs access',
@@ -86,6 +88,8 @@ enum HelpTopic: string
             self::Roles => 'A role is a job title your apps understand — "Editor", "Support agent". You decide who holds which role here, and each app decides for itself what its roles are allowed to do. Roles travel with the person into every connected app, so you grant and revoke access in one place.',
 
             self::SingleSignOn => 'Lets your people sign in with the company account they already have — Microsoft Entra ID, Okta, Google Workspace — instead of a separate password here. You connect your identity provider once and claim your email domains; everyone on those domains is then sent to your provider to sign in.',
+
+            self::SocialSignIn => 'Offers Google, GitHub, Apple and others as buttons on your sign-in page, for people who would rather use an account they already have than create another password. You supply the credentials from your own account with each provider; everything else — endpoints, scopes, what to read from the response — is filled in for you. An address a provider sends is never enough on its own to reach an existing account here.',
 
             self::SyncUsersIn => 'Your identity provider creates, updates and deactivates people here on its own, over a standard called SCIM. Someone joining or leaving in your HR system reaches your apps within seconds, with no ticket and no leftover accounts — which is the part that matters when someone leaves.',
 
@@ -121,6 +125,7 @@ enum HelpTopic: string
     {
         return match ($this) {
             self::SingleSignOn => 'guides/single-sign-on',
+            self::SocialSignIn => 'guides/social-sign-in',
             self::SyncUsersIn => 'guides/sync-users-in',
             self::SyncUsersOut => 'guides/sync-users-out',
             self::Roles => 'guides/roles',

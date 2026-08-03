@@ -6,7 +6,7 @@ description: Let people sign in with Google, Microsoft, GitHub, Discord, Apple, 
 
 # Social sign-in and connected accounts
 
-**Console page:** Sign-in › Connections
+**Console page:** Sign-in › Social sign-in
 
 Single sign-on connects your *company's* identity provider. Social sign-in is the
 other case: individual people arriving with an account they already hold somewhere
@@ -46,6 +46,35 @@ endpoint and take the address marked primary.
 **Apple** has no client secret to paste. The secret is a short-lived token minted from a
 signing key you download from Apple, and it expires within six months. A setup that
 treats it as a text field will fail half a year later on a day nobody touched it.
+
+## Enabling a provider
+
+Open **Sign-in › Social sign-in** and pick a provider. The screen is ordered the way the
+setup actually goes:
+
+1. **The redirect URI**, first and copyable. Register it with the provider exactly as
+   shown. "The redirect URI does not match" is the most common way any of these fails,
+   and the error providers return for it names their client id rather than the URI — so
+   it reads as a credential problem and gets debugged as one.
+2. **The provider's own steps**, shown beside the fields rather than linked away to. You
+   are switching between two browser tabs while you do this; a third costs you your place.
+3. **What the provider gave you** — usually a client ID and secret, plus anything
+   per-installation (your Okta domain, your Entra directory id).
+
+For an OpenID Connect provider we run discovery the moment you press Enable, so a
+mistyped domain fails with the provider's own error while you are still looking at the
+form — not silently, later, for one of your users. Nothing is offered on your sign-in
+page until it has been saved successfully.
+
+Removing a provider takes the button off your sign-in page. Anyone who signed in with it
+keeps their account and can still use their password.
+
+### Your credentials, not ours
+
+If the platform operator has configured a provider, it appears on every sign-in page in
+the deployment. When your organization has connected the same provider itself, yours is
+used on your branded page. That matters because the accounts people end up with should
+sit with the organization that invited them.
 
 ## Connecting a provider to an existing account
 

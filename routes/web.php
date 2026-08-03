@@ -12,6 +12,8 @@ use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
+use App\Http\Controllers\Sso\OAuth2CallbackController;
+use App\Http\Controllers\Sso\OAuth2RedirectController;
 use App\Http\Controllers\Sso\OidcCallbackController;
 use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
@@ -110,6 +112,13 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
  */
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)->name('sso.saml.acs');
 Route::get('/sso/oidc/{connection}/callback', OidcCallbackController::class)->name('sso.oidc.callback');
+
+// The OAuth 2.0 pair — providers that are not OpenID Providers (GitHub, Discord,
+// Facebook). Both halves live here rather than in the framework because turning a
+// completed federation into a session cookie is this application's job, and because
+// there is no id_token, `state` alone carries CSRF on the callback.
+Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)->name('sso.oauth2.redirect');
+Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)->name('sso.oauth2.callback');
 
 /*
  * Account signup — "create your identity platform" — is an ACCOUNT-plane action in the
@@ -274,6 +283,12 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
     Volt::route('/connections', 'connections')->name('connections');
+
+    // The provider catalogue — Google, GitHub, Apple and the rest, per tenant. A sibling
+    // of Single sign-on rather than a section inside it: connecting the company's own
+    // identity provider and offering consumer accounts as buttons are different jobs,
+    // done by different people, at different times.
+    Volt::route('/social-providers', 'social-providers')->name('social-providers');
     Volt::route('/directories', 'directories')->name('directories');
     Volt::route('/roles', 'roles')->name('roles');
     Volt::route('/clients', 'clients')->name('clients');
