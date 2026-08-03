@@ -79,6 +79,7 @@ class ConsoleNavigation
             ),
             new NavArea('Sign-in', 'connections',
                 new NavPage('environment.connections', 'Single sign-on'),
+                new NavPage('environment.social-providers', 'Social sign-in'),
                 new NavPage('environment.sso-providers', 'Login methods'),
                 // One component serves both planes now, so it has one title — and the
                 // organization plane's "Sync users in" is the name the help topic and the

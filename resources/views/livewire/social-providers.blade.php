@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -30,7 +31,7 @@ use Livewire\Volt\Component;
  * filling this in is switching between two browser tabs and every extra one costs them
  * their place.
  */
-new #[Layout('components.layouts.app', ['title' => 'Social sign-in'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class extends Component
 {
     /** The catalogue key being set up, or null when browsing. */
     #[Locked]
@@ -110,7 +111,7 @@ new #[Layout('components.layouts.app', ['title' => 'Social sign-in'])] class ext
             return;
         }
 
-        $orgId = $this->orgId();
+        $orgId = $this->requireOrgId();
 
         // One connection per provider per tenant. Two would each render a button with the
         // same name, and nothing on the sign-in page could tell a person which to press.
@@ -188,7 +189,7 @@ new #[Layout('components.layouts.app', ['title' => 'Social sign-in'])] class ext
 
         // Scoped to the acting organization. byId() is not tenant-scoped on its own, so
         // without this an admin could disable another tenant's provider by id.
-        if ($connection === null || $connection->organization_id !== $this->orgId()) {
+        if ($connection === null || $connection->organization_id !== $this->requireOrgId()) {
             return;
         }
 
@@ -246,14 +247,36 @@ new #[Layout('components.layouts.app', ['title' => 'Social sign-in'])] class ext
             : url('/sso/oidc/'.$connection->id.'/callback');
     }
 
+    /**
+     * The organization whose sign-in page this is about, or '' when an environment
+     * administrator has not chosen one.
+     *
+     * Empty rather than a refusal on the READ path so the page renders and the picker in
+     * the console header is reachable. Writes cannot slip through on it: every mutating
+     * action calls requireOrganizationId() below.
+     */
     private function orgId(): string
     {
-        return app(CurrentUser::class)->organizationId() ?? '';
+        return app(ConsoleScope::class)->organizationId() ?? '';
     }
 
+    /** The organization to WRITE to, or a refusal. */
+    private function requireOrgId(): string
+    {
+        return app(ConsoleScope::class)->requireOrganizationId();
+    }
+
+    /**
+     * Through ConsoleScope, so this is the SAME page on both planes.
+     *
+     * It read CurrentUser::isAdmin() — a question only the organization plane can answer
+     * — which is why this capability shipped reachable from one console only. The person
+     * who owns the environment could not reach the feature at all without impersonating
+     * one of their own users.
+     */
     private function authorizeAdmin(): void
     {
-        abort_unless(app(CurrentUser::class)->isAdmin(), 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 }; ?>
 

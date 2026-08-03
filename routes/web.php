@@ -297,6 +297,7 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // identity provider and offering consumer accounts as buttons are different jobs,
     // done by different people, at different times.
     Volt::route('/social-providers', 'social-providers')->name('social-providers');
+
     // Sync users in (inbound directories): the SAME components the environment plane
     // serves. The routable index/new/show shape wins over the organization plane's single
     // page — a directory URL is something you send to whoever runs the identity provider,
@@ -454,6 +455,12 @@ Route::middleware('plane:subject')->prefix('admin')->group(function (): void {
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
         Volt::route('/single-sign-on', 'console.connections.index')->name('environment.connections');
+
+        // The SAME component the organization plane serves. It shipped on one plane only
+        // — reachable, but not by the person who owns the environment, who holds an
+        // account session rather than a subject one and would have had to impersonate one
+        // of their own users to reach their own feature.
+        Volt::route('/social-sign-in', 'social-providers')->name('environment.social-providers');
         Volt::route('/single-sign-on/new', 'console.connections.create')->name('environment.connections.create');
         Volt::route('/single-sign-on/{connection}', 'console.connections.show')->name('environment.connections.show');
 

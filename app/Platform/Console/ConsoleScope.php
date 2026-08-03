@@ -7,7 +7,9 @@ namespace App\Platform\Console;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
@@ -66,7 +68,25 @@ class ConsoleScope
     public function organizationId(): ?string
     {
         if ($this->plane() === ConsolePlane::Organization) {
-            return $this->subject->organizationId();
+            $organizationId = $this->subject->organizationId();
+
+            // An organization-plane session with no organization is not a state the
+            // console can render anything for, and it must not be reported as null —
+            // because null here means "an environment administrator has not chosen yet",
+            // and every read in the console is written as
+            // `when($id !== null, fn ($q) => $q->where('organization_id', $id))`.
+            //
+            // Those two readings of null collapsed into one answer, so a member whose
+            // membership had gone — the organization deleted, or they were removed — was
+            // handed the unfiltered query and saw every other organization's rows. I put
+            // that idiom in the worked example six merges copied; half of them caught it
+            // independently and fenced their own reads, half did not. Refusing here makes
+            // the idiom correct everywhere by construction rather than by vigilance.
+            if ($organizationId === null) {
+                throw new AuthorizationException('Your account is not a member of an organization.');
+            }
+
+            return $organizationId;
         }
 
         $chosen = session()->get(self::SELECTION_KEY);
@@ -132,6 +152,38 @@ class ConsoleScope
         }
 
         return $available;
+    }
+
+    /**
+     * Whether THIS PLATFORM has confirmed the acting administrator's address.
+     *
+     * Asked here rather than off CurrentUser, which is the organization plane's answer
+     * and empty on the other one. VerifiedEmailGate read it directly, so on the
+     * environment plane it answered "unverified" for every operator and refused every
+     * creation — and four merges independently worked around that by calling the gate on
+     * one plane only. Four private answers to one question is the divergence this whole
+     * seam exists to remove.
+     *
+     * An environment administrator is a subject of the PLATFORM ROOT, not of the
+     * environment they are administering, so the lookup runs in the root's scope. The
+     * environment scope is deny-by-default, so without that it would find nothing and
+     * report a verified operator as unverified — the same failure in a new place.
+     */
+    public function actorEmailVerified(): bool
+    {
+        if ($this->plane() === ConsolePlane::Organization) {
+            return $this->subject->emailVerified();
+        }
+
+        $actorId = $this->actorId();
+
+        if ($actorId === '') {
+            return false;
+        }
+
+        return app(PlatformRoot::class)->run(
+            fn (): bool => app(Subjects::class)->find($actorId)?->emailVerified === true,
+        ) === true;
     }
 
     /**

@@ -2,10 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Volt\Volt;
@@ -111,4 +117,43 @@ it('says what to do rather than only refusing', function (): void {
 
     expect(fn () => $gate->require('create an application'))
         ->toThrow(AuthorizationException::class, 'Confirm your email address before you create an application.');
+})->group('security');
+
+it('holds an unverified environment administrator back too', function (): void {
+    // The gate read CurrentUser directly — the organization plane's answer, empty on the
+    // other one — so it reported every operator as unverified and refused every creation
+    // they attempted. Four merged capabilities each worked around that by calling the
+    // gate on one plane only, which is four private answers to one question.
+    platformRootEnvironment();
+
+    $provisioned = app(AccountProvisioner::class)->provision(
+        new AccountBlueprint(
+            accountName: 'Acme',
+            ownerEmail: 'gate-owner@acme.example',
+            ownerName: 'Owner',
+            ownerPassword: 'a-strong-unbreached-passphrase',
+        )
+    );
+
+    serveOnTestHost($provisioned->environment);
+    app(EnvironmentContext::class)
+        ->set(GenericEnvironment::of($provisioned->environment->id));
+    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+
+    $scope = app(ConsoleScope::class);
+    $actorId = $scope->actorId();
+
+    // A freshly provisioned owner has not confirmed their address, so the gate holds.
+    expect($scope->actorEmailVerified())->toBeFalse()
+        ->and(app(VerifiedEmailGate::class)->verified())->toBeFalse();
+
+    // Confirm it in the PLATFORM ROOT, where account members actually live — the
+    // environment scope is deny-by-default, so a lookup in the wrong scope would find
+    // nothing and report a verified operator as unverified.
+    app(PlatformRoot::class)->run(function () use ($actorId): void {
+        $subject = app(Subjects::class)->find($actorId);
+        app(Subjects::class)->markEmailVerified($actorId, (string) $subject?->email);
+    });
+
+    expect(app(ConsoleScope::class)->actorEmailVerified())->toBeTrue();
 })->group('security');

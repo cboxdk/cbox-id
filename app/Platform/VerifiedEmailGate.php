@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Console\ConsoleScope;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
@@ -29,11 +30,19 @@ use Illuminate\Auth\Access\AuthorizationException;
  */
 class VerifiedEmailGate
 {
-    public function __construct(private readonly CurrentUser $current) {}
+    public function __construct(private readonly ConsoleScope $scope) {}
 
+    /**
+     * Asked through ConsoleScope so the gate holds on BOTH planes.
+     *
+     * It used to read CurrentUser directly — the organization plane's answer, empty on
+     * the environment plane — so it refused every creation an operator attempted there.
+     * Four merged capabilities each worked around that by calling the gate on one plane
+     * only, which is four private answers to one question.
+     */
     public function verified(): bool
     {
-        return $this->current->emailVerified();
+        return $this->scope->actorEmailVerified();
     }
 
     /**

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\AdminPortalLink;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\WebhookEventCatalogue;
@@ -9,11 +10,11 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Contracts\ManifestFetcher;
 use Cbox\Id\AccessControl\Contracts\Roles;
-use Cbox\Id\AccessControl\Models\Role;
-use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Manifest\DeclaredRole;
 use Cbox\Id\AccessControl\Manifest\Manifest;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
+use Cbox\Id\AccessControl\Models\Permission;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\DirectoryConnectors;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
@@ -708,452 +709,6 @@ it('offers both planes both of the filters they used to have one each of', funct
 
 /*
 |--------------------------------------------------------------------------
-| Appearance
-|--------------------------------------------------------------------------
-| The nearest to true parity of the four, and still not the same thing underneath: the
-| organization page themed an ORGANIZATION, the environment page themed the ENVIRONMENT
-| default that every organization inherits. That difference is a capability, so it is an
-| explicit choice on the merged page rather than an implication of the door you came
-| through — and it stays on the environment plane alone. The organization page's contrast
-| gate, which the environment page never had, now guards both.
-*/
-
-it('serves appearance from one component on the environment plane', function (): void {
-    anEnvironmentAdminActingOn('tenant-appearance');
-
-    $this->get(route('environment.appearance'))->assertOk()->assertSee('Live preview');
-})->group('security');
-
-it('serves appearance from the same component on the organization plane', function (): void {
-    actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.appearance')->assertOk()->assertSee('Live preview');
-})->group('security');
-
-it('still themes the environment default when the environment console saves', function (): void {
-    // The landing state on this plane, unchanged by the merge. Retargeting it at whichever
-    // organization happened to be picked would have an operator re-theming one tenant
-    // while believing they were setting the default for all of them.
-    $orgId = anEnvironmentAdminActingOn('tenant-appearance-env');
-    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
-
-    $theme = Appearance::fromPreset('midnight')->toArray();
-    $theme['light']['primary'] = '#00aa88';
-
-    Volt::test('console.appearance')->call('save', $theme);
-
-    expect(Environment::query()->find($environmentId)?->settings['appearance']['light']['primary'])->toBe('#00aa88')
-        ->and(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
-})->group('security');
-
-it('lets the environment console theme the organization it is acting on instead', function (): void {
-    // The other half of the choice — and the capability the organization plane always had,
-    // now reachable from this one without switching consoles.
-    $orgId = anEnvironmentAdminActingOn('tenant-appearance-org');
-    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
-
-    $theme = Appearance::fromPreset('warm')->toArray();
-    $theme['light']['primary'] = '#123456';
-
-    Volt::test('console.appearance')
-        ->set('environmentDefault', false)
-        ->call('save', $theme);
-
-    expect(app(Organizations::class)->find($orgId)?->settings['appearance']['light']['primary'])->toBe('#123456')
-        ->and(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
-})->group('security');
-
-it('refuses to theme an organization before one is chosen', function (): void {
-    // The editor is not even drawn in this state, so this is the forged half: with no
-    // organization resolved the write would otherwise land wherever a downstream default
-    // pointed, which on this plane is somebody's tenant.
-    $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
-
-    Volt::test('console.appearance')
-        ->set('environmentDefault', false)
-        ->call('save', Appearance::fromPreset('warm')->toArray())
-        ->assertForbidden();
-
-    expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
-})->group('security');
-
-it('refuses an organization admin the environment default theme', function (): void {
-    // Forged, not clicked: the radio is not rendered on this plane, so the refusal has to
-    // live in save(). An organization admin who reached it would be re-theming the sign-in
-    // page of every other tenant in the environment.
-    actingAsRole(MembershipRole::Owner);
-    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
-
-    $theme = Appearance::fromPreset('midnight')->toArray();
-    $theme['light']['primary'] = '#00aa88';
-
-    Volt::test('console.appearance')
-        ->set('environmentDefault', true)
-        ->call('save', $theme)
-        ->assertForbidden();
-
-    expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
-})->group('security');
-
-it('refuses an unreadable environment default, which only the organization plane refused before', function (): void {
-    // The gate the environment page never had. An operator could set an environment
-    // default no tenant's users could read, and the people who cannot read the sign-in
-    // page are never the admin who chose the colours.
-    anEnvironmentAdminActingOn('tenant-appearance-contrast');
-    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
-
-    Volt::test('console.appearance')->call('save', [
-        'radius' => '0.5rem',
-        'font' => 'system',
-        'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
-        'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
-    ]);
-
-    expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)
-        ->toBeNull('an unreadable environment default was saved');
-})->group('security');
-
-it('does not offer the environment default to an organization admin', function (): void {
-    // The view half. A merge that rewires only the PHP leaves the control on screen for
-    // someone the server will refuse.
-    actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.appearance')->assertDontSee('Environment default');
-})->group('security');
-
-it('does offer it to the administrator who holds the environment', function (): void {
-    // The other half of the same trap, and the one that renders a read-only shell: a
-    // capability enforced correctly but never drawn is a capability nobody has.
-    //
-    // A separate test rather than the second half of the one above: the two planes are
-    // told apart by which session exists, and a subject session from the organization
-    // half would still be standing when the environment half ran.
-    anEnvironmentAdminActingOn('tenant-appearance-view');
-
-    Volt::test('console.appearance')->assertSee('Environment default');
-})->group('security');
-
-/*
-|--------------------------------------------------------------------------
-| Single sign-on (federated connections)
-|--------------------------------------------------------------------------
-| The organization plane had one page: an inline create form, row-level activate,
-| domain verification with the capture gate, SAML metadata import, and the Admin Portal
-| invite that hands SSO setup to an external IT admin. It could not edit, disable or
-| delete a connection at all. The environment plane had list → create → detail which
-| could do all three — and had no domains, no portal invite and no entitlement check.
-| The merge is the union of all of it.
-*/
-
-/** A SAML connection with a complete, sealed config, so the detail page can round-trip it. */
-function aSamlConnection(string $organizationId, string $name = 'Corporate SAML'): Connection
-{
-    return app(Connections::class)->create($organizationId, ConnectionType::Saml, $name, [
-        'idp_entity_id' => 'https://idp.corp/metadata',
-        'idp_sso_url' => 'https://idp.corp/sso',
-        'idp_x509cert' => '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----',
-        'sp_entity_id' => 'https://sp.acme/metadata',
-        'sp_acs_url' => 'https://sp.acme/acs',
-    ]);
-}
-
-it('serves single sign-on from one component on the environment plane', function (): void {
-    anEnvironmentAdminActingOn('tenant-sso');
-
-    $this->get(route('environment.connections'))->assertOk()->assertSee('Single sign-on');
-    $this->get(route('environment.connections.create'))->assertOk();
-})->group('security');
-
-it('serves single sign-on from the same component on the organization plane', function (): void {
-    // The organization plane gained the routable shape rather than the environment plane
-    // losing it: a connection URL is something you send to whoever runs the identity
-    // provider.
-    actingAsRole(MembershipRole::Owner);
-
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.connections.index')->assertOk()->assertSee('Single sign-on');
-    Volt::test('console.connections.create')->assertOk();
-
-    expect(Route::has('connections.show'))->toBeTrue()
-        ->and(Route::has('connections.create'))->toBeTrue();
-})->group('security');
-
-it('creates a connection against the organization from the scope', function (): void {
-    // The create form used to carry its own organization picker on the environment plane
-    // and none on the organization plane — the second place the answer lived, validated
-    // differently in each.
-    $orgId = anEnvironmentAdminActingOn('tenant-sso-scoped');
-
-    Volt::test('console.connections.create')
-        ->set('type', 'saml')
-        ->set('name', 'Acme Okta')
-        ->set('idp_entity_id', 'https://idp.corp/metadata')
-        ->set('idp_sso_url', 'https://idp.corp/sso')
-        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
-        ->set('sp_entity_id', 'https://sp.acme/metadata')
-        ->set('sp_acs_url', 'https://sp.acme/acs')
-        ->call('create')
-        ->assertHasNoErrors();
-
-    expect(Connection::query()->where('organization_id', $orgId)->where('name', 'Acme Okta')->exists())->toBeTrue();
-})->group('security');
-
-it('refuses to create a connection before an organization is chosen', function (): void {
-    anEnvironmentAdminActingOn('tenant-sso-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
-
-    Volt::test('console.connections.create')
-        ->set('type', 'saml')
-        ->set('name', 'Acme Okta')
-        ->set('idp_entity_id', 'https://idp.corp/metadata')
-        ->set('idp_sso_url', 'https://idp.corp/sso')
-        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
-        ->set('sp_entity_id', 'https://sp.acme/metadata')
-        ->set('sp_acs_url', 'https://sp.acme/acs')
-        ->call('create')
-        ->assertHasErrors('name');
-
-    expect(Connection::query()->exists())->toBeFalse();
-})->group('security');
-
-it('gives the organization plane the edit, disable and delete it never had', function (): void {
-    // The reason an earlier attempt at this merge was reverted: it routed both planes at
-    // the organization component, which had none of these three. Losing them means a
-    // tenant admin cannot correct a rotated certificate, cannot switch a misconfigured
-    // IdP off, and cannot remove one at all.
-    [, $org] = actingAsRole(MembershipRole::Owner);
-    $connection = aSamlConnection($org->id);
-
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->set('editName', 'Corporate SAML (renamed)')
-        ->call('saveConfig')
-        ->assertHasNoErrors();
-    expect(Connection::query()->whereKey($connection->id)->value('name'))->toBe('Corporate SAML (renamed)');
-
-    Volt::test('console.connections.show', ['connection' => $connection->id])->call('activate')->assertHasNoErrors();
-    expect($connection->fresh()?->isActive())->toBeTrue();
-
-    Volt::test('console.connections.show', ['connection' => $connection->id])->call('disable')->assertHasNoErrors();
-    expect($connection->fresh()?->status)->toBe(Cbox\Id\Federation\Enums\ConnectionStatus::Inactive);
-
-    Volt::test('console.connections.show', ['connection' => $connection->id])->call('deleteConnection');
-    expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
-})->group('security');
-
-it('gives the environment plane domain verification and the Admin Portal invite', function (): void {
-    // The other half of the union. Neither existed on the environment console, so an
-    // operator configuring SSO for a tenant could not prove the tenant's email domain —
-    // which is the thing that routes their people to the IdP at all.
-    $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
-
-    Volt::test('console.connections.index')
-        ->set('domain', 'ACME.com') // upper-case → normalized to lowercase
-        ->call('addDomain')
-        ->assertHasNoErrors();
-
-    expect(VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->exists())->toBeTrue();
-
-    $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
-    expect($component->get('portalUrl'))->toContain('/setup/');
-})->group('security');
-
-it('attributes an Admin Portal link to the environment administrator who minted it', function (): void {
-    // actorId(), not CurrentUser::id(): the environment plane has no subject session, so
-    // the organization page's reader would have recorded '' as the creator of a link
-    // that hands SSO configuration to an outsider.
-    $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
-    $actor = app(ConsoleScope::class)->actorId();
-
-    Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
-
-    expect($actor)->not->toBe('')
-        ->and(AdminPortalLink::query()->where('organization_id', $orgId)->value('created_by'))->toBe($actor);
-})->group('security');
-
-it('refuses an organization admin another organization\'s connection', function (): void {
-    // The escalation this merge had to close. The environment component resolved a
-    // connection on its primary key alone, which was safe only while an environment
-    // administrator was its sole caller. Serving it to a tenant admin unscoped would hand
-    // them saveConfig on every connection in the environment — rewriting where another
-    // company's people authenticate, over a sealed config holding that company's client
-    // secret and signing certificate.
-    actingAsRole(MembershipRole::Owner);
-    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso'));
-    $theirs = aSamlConnection($other->id, 'Not yours');
-
-    // The refusal is at mount, which is why there is no forged-action case below it: the
-    // page never yields a snapshot, so saveConfig cannot be reached to be refused. Every
-    // later read re-resolves through the same scoped query rather than trusting the id
-    // the mount accepted.
-    Volt::test('console.connections.show', ['connection' => $theirs->id])->assertStatus(404);
-    Volt::test('console.connections.index')->assertDontSee('Not yours');
-
-    expect(Connection::query()->whereKey($theirs->id)->value('name'))->toBe('Not yours');
-})->group('security');
-
-it('refuses another organization\'s domain to an organization admin', function (): void {
-    // The same escalation on the domain half: capture on a domain you do not own would
-    // force that company's people through YOUR identity provider.
-    actingAsRole(MembershipRole::Owner);
-    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso-domains'));
-    $foreign = app(DomainVerification::class)->add($other->id, 'foreign.example');
-
-    Volt::test('console.connections.index')->call('verifyDomain', $foreign->id)->assertForbidden();
-    Volt::test('console.connections.index')->call('toggleCapture', $foreign->id)->assertForbidden();
-    Volt::test('console.connections.index')->call('removeDomain', $foreign->id)->assertForbidden();
-
-    expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();
-})->group('security');
-
-it('keeps the whole-environment connection overview on the environment plane', function (): void {
-    // With no organization chosen the list is every connection in the environment. That
-    // is the environment administrator's overview, and it is only reachable on this
-    // plane — an organization member's organization is implicit, so they can never land
-    // in this branch.
-    $orgId = anEnvironmentAdminActingOn('tenant-sso-overview');
-    $other = app(Organizations::class)->create(new NewOrganization('Second Co', 'second-sso'));
-    aSamlConnection($orgId, 'First IdP');
-    aSamlConnection($other->id, 'Second IdP');
-
-    session()->forget(ConsoleScope::SELECTION_KEY);
-
-    Volt::test('console.connections.index')
-        ->assertSee('First IdP')
-        ->assertSee('Second IdP')
-        // Domain verification and the portal invite belong to ONE organization, so they
-        // wait for a choice rather than acting on whichever the page happened to load.
-        ->assertSee('Choose an organization');
-})->group('security');
-
-it('refuses single sign-on to an organization admin with no organization at all', function (): void {
-    // The nullable reader answers null both for "an environment administrator has not
-    // chosen an organization yet" and for "this member has none", and the first means
-    // "show the whole environment". Told apart here, because conflating them turns an
-    // organization page into a list of every connection in the environment.
-    $subject = app(Subjects::class)->create('orphan-sso@acme.test', 'Orphan', 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-sso'));
-    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
-
-    Volt::test('console.connections.index')->assertForbidden();
-})->group('security');
-
-/*
-|--------------------------------------------------------------------------
-| Settings
-|--------------------------------------------------------------------------
-| The pair that looked least like one: the organization page was the ORGANIZATION's
-| record — rename, slug, type, id — and the environment page was the ENVIRONMENT's
-| identity plus the OIDC issuer and discovery URL. Neither offered what the other did.
-|
-| They are one capability under the console's own rule — the environment administrator
-| sees what a tenant admin sees, plus what the environment holds in addition. So the
-| organization's record is on both planes, the environment's identity on the environment
-| plane alone, and the integration details on both.
-*/
-
-it('serves settings from one component on the environment plane', function (): void {
-    anEnvironmentAdminActingOn('tenant-settings');
-
-    $this->get(route('environment.settings'))
-        ->assertOk()
-        ->assertSee('Integration')
-        ->assertSee('Environment ID');
-})->group('security');
-
-it('serves settings from the same component on the organization plane', function (): void {
-    actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.settings')->assertOk()->assertSee('Organization');
-})->group('security');
-
-it('gives the environment plane the rename it never had', function (): void {
-    // An administrator who holds every organization in the environment could not correct
-    // a typo in one's name without signing into that organization's own console.
-    $orgId = anEnvironmentAdminActingOn('tenant-settings-rename');
-
-    Volt::test('console.settings')
-        ->set('orgName', 'Renamed Co')
-        ->call('rename')
-        ->assertHasNoErrors();
-
-    expect(app(Organizations::class)->find($orgId)?->name)->toBe('Renamed Co');
-})->group('security');
-
-it('attributes the rename to the subject who made it, on either plane', function (): void {
-    // The two consoles recorded ids from different tables for the same act — the
-    // organization plane the subject id, the environment plane the AccountMember row's.
-    // Half the trail resolved against `users` and half against `account_members`, with
-    // nothing recording which.
-    $orgId = anEnvironmentAdminActingOn('tenant-settings-actor');
-    $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
-
-    Volt::test('console.settings')->set('orgName', 'Attributed Co')->call('rename');
-
-    expect(AuditEntry::query()->where('action', 'organization.renamed')->value('actor_id'))
-        ->toBe($subjectId)
-        ->and(AuditEntry::query()->where('action', 'organization.renamed')->value('organization_id'))
-        ->toBe($orgId);
-})->group('security');
-
-it('refuses a rename before an organization is chosen', function (): void {
-    anEnvironmentAdminActingOn('tenant-settings-unchosen');
-    session()->forget(ConsoleScope::SELECTION_KEY);
-
-    Volt::test('console.settings')
-        ->set('orgName', 'Nobody In Particular')
-        ->call('rename')
-        ->assertForbidden();
-
-    expect(AuditEntry::query()->where('action', 'organization.renamed')->exists())->toBeFalse();
-})->group('security');
-
-it('renames the organization the console is acting on and no other', function (): void {
-    // The rename takes no id from the wire — it resolves the target through the scope —
-    // so the other organization in the environment is untouchable from this page.
-    $orgId = anEnvironmentAdminActingOn('tenant-settings-scoped');
-    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-settings'));
-
-    Volt::test('console.settings')->set('orgName', 'Only Mine')->call('rename');
-
-    expect(app(Organizations::class)->find($orgId)?->name)->toBe('Only Mine')
-        ->and(app(Organizations::class)->find($other->id)?->name)->toBe('Other Co');
-})->group('security');
-
-it('gives the organization plane the integration details it never had', function (): void {
-    // The environment page's half. An organization admin wiring an OIDC client needed
-    // exactly these two URLs and had nowhere in their own console to find them; both are
-    // already served unauthenticated, so this publishes nothing new.
-    actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.settings')
-        ->assertSee('Integration')
-        ->assertSee('/.well-known/openid-configuration');
-})->group('security');
-
-it('keeps the environment\'s own identity off the organization plane', function (): void {
-    // The other direction of the same merge. The environment record is the control
-    // plane's; a tenant admin has no business reading it and no way to act on it.
-    //
-    // The environment is made REAL and current first. The suite's default context names
-    // an environment key with no row behind it, so a page that resolved the record
-    // unconditionally would still render nothing here — and this assertion would pass
-    // while guarding nothing.
-    $environment = platformRootEnvironment();
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
-
-    actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.settings')
-        ->assertDontSee('Environment ID')
-        ->assertDontSee($environment->name);
-})->group('security');
-
-/*
-|--------------------------------------------------------------------------
 | Webhooks
 |--------------------------------------------------------------------------
 | The organization plane had one page: an inline create form, a row-level pause, a
@@ -1458,255 +1013,221 @@ it('keeps the revealed signing secret out of the wire snapshot on both planes', 
 
 /*
 |--------------------------------------------------------------------------
-| Sync users in (inbound directories)
+| Roles
 |--------------------------------------------------------------------------
-| The worst-drifted pair in the console. The organization plane had one page that could
-| register a SCIM directory, connect Google Workspace or Microsoft Entra as PULL
-| directories, mint an Admin Portal setup link, and map groups onto roles. The
-| environment plane had list → create → detail with rename, token rotation, pause and
-| delete — and SCIM only, so an administrator who holds every organization in the
-| environment could not connect either of the two providers the product ships connectors
-| for. The merge is the union of all of it.
+| The organization plane had one page: define a role and compose it from the declared
+| permission catalog, and nothing else — no rename, no delete, no way to take a
+| permission back. The environment plane had list → create → detail with rename,
+| permission editing and delete, and no catalog grant at all. The merge is the union of
+| all of it.
 */
 
-it('serves sync users in from one component on the environment plane', function (): void {
-    anEnvironmentAdminActingOn('tenant-directories');
+it('serves roles from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-roles');
 
-    $this->get(route('environment.directories'))
-        ->assertOk()
-        ->assertSee('Sync users in')
-        // The view half. Rewiring only the PHP leaves an environment administrator a
-        // read-only shell: the buttons were gated on CurrentUser::isAdmin(), a question
-        // only the organization plane can answer, so on this plane they simply vanish.
-        ->assertSee('New directory')
-        ->assertSee('Invite your IT admin');
-
-    $this->get(route('environment.directories.create'))->assertOk();
+    $this->get(route('environment.roles'))->assertOk()->assertSee('Roles');
+    $this->get(route('environment.roles.create'))->assertOk();
 })->group('security');
 
-it('serves sync users in from the same component on the organization plane', function (): void {
+it('serves roles from the same component on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
-    // losing it: the reveal-once bearer token needs somewhere to land that is not the row
-    // you just submitted, and a directory URL is something you send to whoever runs the
-    // identity provider.
+    // losing it: a role URL is something you send to whoever owns the access.
     actingAsRole(MembershipRole::Owner);
 
     // Driven at the component, because actingAsRole() populates CurrentUser the way the
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.directories.index')->assertOk()->assertSee('Sync users in');
-    Volt::test('console.directories.create')->assertOk();
+    Volt::test('console.roles.index')->assertOk()->assertSee('Roles');
+    Volt::test('console.roles.create')->assertOk();
 
-    expect(Route::has('directories.show'))->toBeTrue()
-        ->and(Route::has('directories.create'))->toBeTrue();
+    expect(Route::has('roles.show'))->toBeTrue()
+        ->and(Route::has('roles.create'))->toBeTrue();
 })->group('security');
 
-it('offers SCIM and both pull providers on both planes', function (): void {
-    // THE finding that started the console merge. The organization console offered
-    // Google Workspace and Microsoft Entra; the environment console offered SCIM alone,
-    // so an environment administrator could not connect either of the two directories
-    // this product ships connectors for — and Google has no SCIM support at all, which
-    // made pull the ONLY path to it. Both planes now offer what the enum publishes,
-    // because the enum is the public contract.
-    $expected = array_map(
-        fn (DirectoryProvider $provider): string => $provider->label(),
-        DirectoryProvider::cases(),
-    );
+it('defines a role against the organization from the scope', function (): void {
+    $orgId = anEnvironmentAdminActingOn('tenant-roles-scoped');
 
-    anEnvironmentAdminActingOn('tenant-dir-providers');
-    $environment = Volt::test('console.directories.create');
-
-    actingAsRole(MembershipRole::Owner);
-    $organization = Volt::test('console.directories.create');
-
-    foreach ($expected as $label) {
-        $environment->assertSee($label);
-        $organization->assertSee($label);
-    }
-})->group('security');
-
-it('registers a directory against the organization from the scope', function (): void {
-    // The create form used to carry its own organization picker on the environment plane
-    // and none on the organization plane — the second place the answer lived, validated
-    // differently in each.
-    $orgId = anEnvironmentAdminActingOn('tenant-dir-scoped');
-
-    Volt::test('console.directories.create')
-        ->set('name', 'Acme Okta SCIM')
-        ->call('register')
+    Volt::test('console.roles.create')
+        ->set('name', 'Manager')
+        ->call('create')
         ->assertHasNoErrors();
 
-    expect(Directory::query()->where('organization_id', $orgId)->exists())->toBeTrue();
+    expect(Role::query()->where('organization_id', $orgId)->where('name', 'Manager')->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to register a directory before an organization is chosen', function (): void {
-    anEnvironmentAdminActingOn('tenant-dir-unchosen');
+it('refuses to define a role before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-roles-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.directories.create')
-        ->set('name', 'Acme Okta SCIM')
-        ->call('register')
+    Volt::test('console.roles.create')
+        ->set('name', 'Manager')
+        ->call('create')
         ->assertHasErrors('name');
 
-    expect(Directory::query()->exists())->toBeFalse();
+    expect(Role::query()->where('name', 'Manager')->exists())->toBeFalse();
 })->group('security');
 
-it('tells an unchosen environment administrator to pick an organization, not to call their account team', function (): void {
-    // `entitled()` answers false for "no organization chosen" as well as for "this
-    // organization has no plan", and the two need different words. Sending an
-    // administrator who holds the whole environment to their account team over a picker
-    // they have simply not touched is a dead end dressed as an answer.
-    config(['cbox-id.entitlements.mode' => 'metered']);
-    anEnvironmentAdminActingOn('tenant-dir-unentitled');
-    session()->forget(ConsoleScope::SELECTION_KEY);
+it('keeps environment-wide role definition on the environment plane', function (): void {
+    // The environment console only ever wrote environment-wide roles — an organization
+    // was never a field on that form, so removing the picker would have taken the
+    // capability with it. A role with no organization is assignable inside every tenant
+    // in the environment, so it survives as its own explicit choice on this plane alone.
+    anEnvironmentAdminActingOn('tenant-roles-wide');
 
-    Volt::test('console.directories.index')
-        ->assertOk()
-        ->assertSee('Choose an organization in the bar above')
-        ->assertDontSee('Enterprise feature');
-})->group('security');
-
-it('connects a pull directory on the environment plane', function (): void {
-    // The capability the environment plane never had. Verified against the connector
-    // before anything is stored, so a wrong key fails here rather than at 3am.
-    $orgId = anEnvironmentAdminActingOn('tenant-dir-pull');
-
-    app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
-        new FakeDirectoryConnector(DirectoryProvider::GoogleWorkspace),
-        new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra),
-    ]));
-
-    Volt::test('console.directories.create')
-        ->set('provider', DirectoryProvider::GoogleWorkspace->value)
-        ->set('googleServiceAccountJson', (string) json_encode([
-            'client_email' => 'sync@acme.iam.gserviceaccount.com',
-            'private_key' => '-----BEGIN PRIVATE KEY-----key-----END PRIVATE KEY-----',
-        ]))
-        ->set('googleAdminEmail', 'admin@acme.test')
-        ->call('connectPull')
+    Volt::test('console.roles.create')
+        ->set('name', 'Everywhere')
+        ->set('environmentWide', true)
+        ->call('create')
         ->assertHasNoErrors();
 
-    $directory = Directory::query()->where('organization_id', $orgId)->firstOrFail();
-
-    expect($directory->provider)->toBe(DirectoryProvider::GoogleWorkspace)
-        // Sealed at rest, bound to the directory id — never the plaintext map.
-        ->and($directory->credentials)->not->toBeNull()
-        ->and($directory->credentials)->not->toContain('BEGIN PRIVATE KEY');
+    expect(Role::query()->whereNull('organization_id')->where('name', 'Everywhere')->exists())->toBeTrue();
 })->group('security');
 
-it('refuses a pull directory whose credentials the provider rejects', function (): void {
-    anEnvironmentAdminActingOn('tenant-dir-pull-bad');
-
-    app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
-        new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra, verifies: false),
-    ]));
-
-    Volt::test('console.directories.create')
-        ->set('provider', DirectoryProvider::MicrosoftEntra->value)
-        ->set('entraTenantId', 'tenant')
-        ->set('entraClientId', 'client')
-        ->set('entraClientSecret', 'shh')
-        ->call('connectPull')
-        ->assertSee('Could not connect to');
-
-    expect(Directory::query()->exists())->toBeFalse();
-})->group('security');
-
-it('gives the organization plane the lifecycle it never had', function (): void {
-    // Rename, rotate, pause and delete existed only on the environment plane. A tenant
-    // admin whose SCIM token leaked had no way to rotate it from their own console.
-    [, $org] = actingAsRole(MembershipRole::Owner);
-    $directory = app(Directories::class)->register($org->id, 'HR')->directory;
-    $originalHash = $directory->bearer_token_hash;
-
-    Volt::test('console.directories.show', ['directory' => $directory->id])
-        ->set('editName', 'HR Renamed')
-        ->call('saveName')
-        ->call('regenerateToken')
-        ->call('toggleStatus')
-        ->assertHasNoErrors();
-
-    $directory->refresh();
-    expect($directory->name)->toBe('HR Renamed')
-        ->and($directory->bearer_token_hash)->not->toBe($originalHash)
-        ->and($directory->status)->toBe(DirectoryStatus::Paused);
-
-    Volt::test('console.directories.show', ['directory' => $directory->id])->call('deleteDirectory');
-    expect(Directory::query()->whereKey($directory->id)->exists())->toBeFalse();
-})->group('security');
-
-it('offers dismissing the revealed bearer token on both planes', function (): void {
-    // Only the organization console had a Dismiss. The banner holds a live credential in
-    // plaintext, and the environment plane — whose administrator holds every
-    // organization in the environment — had no way to take it off the screen.
-    anEnvironmentAdminActingOn('tenant-dir-token');
-
-    Volt::test('console.directories.create')
-        ->set('name', 'Acme Okta SCIM')
-        ->call('register')
-        ->assertHasNoErrors();
-
-    $directory = Directory::query()->firstOrFail();
-
-    Volt::test('console.directories.show', ['directory' => $directory->id])
-        ->assertSee('Copy this now')
-        ->call('dismissToken')
-        ->assertDontSee('Copy this now');
-})->group('security');
-
-it('refuses an organization admin another organization\'s directory', function (): void {
-    // The escalation this merge could have shipped. The environment plane resolved a
-    // directory on its primary key alone, which was safe only while an environment
-    // administrator was its sole caller. Served to a tenant admin that lookup hands over
-    // every other tenant's directory by id — and here that is not a disclosure but a
-    // takeover: regenerateToken would mint a live SCIM bearer token for a directory that
-    // provisions somebody else's users.
+it('refuses an organization admin a role that binds every organization', function (): void {
+    // Forged, not clicked: the checkbox is not rendered on this plane, so the refusal has
+    // to live in create() — an environment-wide role can be assigned inside organizations
+    // that are not this administrator's.
     actingAsRole(MembershipRole::Owner);
-    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-directories'));
-    $directory = app(Directories::class)->register($other->id, 'Not yours')->directory;
-    $originalHash = $directory->bearer_token_hash;
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])->assertNotFound();
+    Volt::test('console.roles.create')
+        ->set('name', 'Everywhere')
+        ->set('environmentWide', true)
+        ->call('create')
+        ->assertHasErrors('environmentWide');
 
-    Volt::test('console.directories.index')->assertDontSee('Not yours');
-
-    expect($directory->fresh()?->bearer_token_hash)->toBe($originalHash);
+    expect(Role::query()->where('name', 'Everywhere')->exists())->toBeFalse();
 })->group('security');
 
-it('refuses a group mapping that belongs to another directory', function (): void {
-    // Both mapping actions take a group id straight off the page. The organization
-    // console scoped neither by directory and the environment console scoped only the
-    // map half, so an id belonging to another directory could be unmapped through a
-    // directory the caller does hold.
+it('gives the organization plane the rename, re-permission and delete it never had', function (): void {
+    // All three existed only on the environment plane. A tenant admin could define a role
+    // and then never rename it, never take a permission back and never remove it.
     [, $org] = actingAsRole(MembershipRole::Owner);
-    $mine = app(Directories::class)->register($org->id, 'Mine')->directory;
-    $theirs = app(Directories::class)->register($org->id, 'Theirs')->directory;
+    $role = app(Roles::class)->define($org->id, 'Support');
+    $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
 
-    $foreign = DirectoryGroup::query()->create([
-        'directory_id' => $theirs->id,
-        'external_id' => 'grp-1',
-        'display_name' => 'Engineering',
-    ]);
-    $role = app(Roles::class)->define($org->id, 'Engineer');
+    Volt::test('console.roles.show', ['role' => $role->id])
+        ->set('editName', 'Support Renamed')
+        ->call('saveDetails')
+        ->call('togglePermission', $permission->id)
+        ->assertHasNoErrors();
 
-    Volt::test('console.directories.show', ['directory' => $mine->id])
-        ->call('mapGroup', $foreign->id, $role->id)
-        ->assertNotFound();
+    expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed')
+        ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
 
-    expect(GroupRoleMapping::query()->exists())->toBeFalse();
+    Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole');
+
+    expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
 })->group('security');
 
-it('refuses an organization admin with no organization at all a directories page', function (): void {
+it('gives the environment plane the catalog grant it never had', function (): void {
+    // The other direction. Composing a role out of the keys the apps declared existed
+    // only on the organization plane, so an administrator holding the ENTIRE environment
+    // could not add a permission to one of its organizations' roles at all.
+    $orgId = anEnvironmentAdminActingOn('tenant-roles-grant');
+    $role = app(Roles::class)->define($orgId, 'Support');
+    Permission::query()->create(['name' => 'reports:view']);
+
+    Volt::test('console.roles.index')->call('grant', $role->id, 'reports:view');
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
+})->group('security');
+
+it('renders the editor on the environment plane rather than a read-only shell', function (): void {
+    // The half of a merge that a PHP-only rewiring silently drops: the markup asked
+    // CurrentUser whether to draw the controls, and CurrentUser holds nothing on this
+    // plane — so every action would have worked and none of them would have been
+    // reachable.
+    anEnvironmentAdminActingOn('tenant-roles-editor');
+    $role = app(Roles::class)->define(null, 'Support');
+
+    $this->get(route('environment.roles'))->assertOk()->assertSee('New role');
+    $this->get(route('environment.roles.show', $role->id))
+        ->assertOk()
+        ->assertSee('Save changes')
+        ->assertSee('Delete role');
+})->group('security');
+
+it('refuses an organization admin another organization\'s role', function (): void {
+    // The environment plane resolved a role on its primary key alone, which is right for
+    // an administrator who holds the environment. Serving the same component to a tenant
+    // would have handed them every other tenant's roles by id — readable, renameable and
+    // deletable, with every holder of the role losing its access.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-roles'));
+    $foreign = app(Roles::class)->define($other->id, 'Not yours');
+    $own = app(Roles::class)->define($org->id, 'Mine');
+
+    expect(fn () => Volt::test('console.roles.show', ['role' => $foreign->id]))
+        ->toThrow(ModelNotFoundException::class);
+
+    Volt::test('console.roles.index')->assertDontSee('Not yours');
+
+    // And forged past the URL: roleId is a public property the browser re-sends, so the
+    // page has to re-resolve it inside the gate on EVERY request rather than trust the id
+    // it was mounted with. (The write gate itself is proven below, on the environment-wide
+    // role an organization can legitimately mount and still may not change.)
+    expect(fn () => Volt::test('console.roles.show', ['role' => $own->id])
+        ->set('roleId', $foreign->id)
+        ->call('deleteRole'))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect(Role::query()->whereKey($foreign->id)->exists())->toBeTrue();
+
+    // The catalog grant is scoped the same way — the picker is not rendered for a role
+    // that is not this organization's, and the action refuses one anyway.
+    Volt::test('console.roles.index')->call('grant', $foreign->id, 'reports:view');
+    expect(DB::table('role_permission')->where('role_id', $foreign->id)->count())->toBe(0);
+})->group('security');
+
+it('shows an organization the environment-wide role it cannot change', function (): void {
+    // The organization must SEE it: an environment-wide role can be assigned to its
+    // people and carries permissions into its apps. The detail page is new to this plane,
+    // so it gets the read-only treatment rather than a delete button for a role every
+    // other organization in the environment also holds.
+    actingAsRole(MembershipRole::Owner);
+    $role = app(Roles::class)->define(null, 'Env-wide support');
+
+    Volt::test('console.roles.show', ['role' => $role->id])
+        ->assertSee('Env-wide support')
+        ->assertSee('Managed for the environment')
+        ->assertDontSee('Delete role');
+
+    expect(fn () => Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole'))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect(Role::query()->whereKey($role->id)->exists())->toBeTrue();
+})->group('security');
+
+it('never lets a tenant tick a permission its apps kept internal', function (): void {
+    // tenant_assignable is how an app publishes a key WITHOUT offering it to the tenants
+    // that use it. The organization plane honoured that in its catalog picker; the
+    // environment plane's permission editor — which this plane now has — never had to,
+    // because its administrator holds the environment. Enforced in the action, because a
+    // checkbox that is not drawn is not a gate.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $role = app(Roles::class)->define($org->id, 'Support');
+    $internal = Permission::query()->create(['name' => 'billing:refund', 'tenant_assignable' => false]);
+
+    Volt::test('console.roles.show', ['role' => $role->id])
+        ->assertDontSee('billing:refund')
+        ->call('togglePermission', $internal->id);
+
+    Volt::test('console.roles.index')->call('grant', $role->id, 'billing:refund');
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
+})->group('security');
+
+it('refuses an organization admin with no organization at all a roles page', function (): void {
     // The nullable reader answers null both for "an environment administrator has not
     // chosen an organization yet" and for "this member has none", and the first means
-    // "show the whole environment". Conflating them turns an organization page into every
-    // directory in the environment.
-    $subject = app(Subjects::class)->create('orphan-dir@acme.test', 'Orphan', 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-dir'));
+    // "show the whole environment". Told apart here, because conflating them turns an
+    // organization page into every role in the environment.
+    $subject = app(Subjects::class)->create('orphan-roles@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-roles'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
 
-    Volt::test('console.directories.index')->assertForbidden();
+    Volt::test('console.roles.index')->assertForbidden();
 })->group('security');
 
 /*
@@ -2026,219 +1547,724 @@ it('never dehydrates a revealed client secret into the wire snapshot', function 
 
 /*
 |--------------------------------------------------------------------------
-| Roles
+| Sync users in (inbound directories)
 |--------------------------------------------------------------------------
-| The organization plane had one page: define a role and compose it from the declared
-| permission catalog, and nothing else — no rename, no delete, no way to take a
-| permission back. The environment plane had list → create → detail with rename,
-| permission editing and delete, and no catalog grant at all. The merge is the union of
-| all of it.
+| The worst-drifted pair in the console. The organization plane had one page that could
+| register a SCIM directory, connect Google Workspace or Microsoft Entra as PULL
+| directories, mint an Admin Portal setup link, and map groups onto roles. The
+| environment plane had list → create → detail with rename, token rotation, pause and
+| delete — and SCIM only, so an administrator who holds every organization in the
+| environment could not connect either of the two providers the product ships connectors
+| for. The merge is the union of all of it.
 */
 
-it('serves roles from one component on the environment plane', function (): void {
-    anEnvironmentAdminActingOn('tenant-roles');
+it('serves sync users in from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-directories');
 
-    $this->get(route('environment.roles'))->assertOk()->assertSee('Roles');
-    $this->get(route('environment.roles.create'))->assertOk();
+    $this->get(route('environment.directories'))
+        ->assertOk()
+        ->assertSee('Sync users in')
+        // The view half. Rewiring only the PHP leaves an environment administrator a
+        // read-only shell: the buttons were gated on CurrentUser::isAdmin(), a question
+        // only the organization plane can answer, so on this plane they simply vanish.
+        ->assertSee('New directory')
+        ->assertSee('Invite your IT admin');
+
+    $this->get(route('environment.directories.create'))->assertOk();
 })->group('security');
 
-it('serves roles from the same component on the organization plane', function (): void {
+it('serves sync users in from the same component on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
-    // losing it: a role URL is something you send to whoever owns the access.
+    // losing it: the reveal-once bearer token needs somewhere to land that is not the row
+    // you just submitted, and a directory URL is something you send to whoever runs the
+    // identity provider.
     actingAsRole(MembershipRole::Owner);
 
     // Driven at the component, because actingAsRole() populates CurrentUser the way the
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.roles.index')->assertOk()->assertSee('Roles');
-    Volt::test('console.roles.create')->assertOk();
+    Volt::test('console.directories.index')->assertOk()->assertSee('Sync users in');
+    Volt::test('console.directories.create')->assertOk();
 
-    expect(Route::has('roles.show'))->toBeTrue()
-        ->and(Route::has('roles.create'))->toBeTrue();
+    expect(Route::has('directories.show'))->toBeTrue()
+        ->and(Route::has('directories.create'))->toBeTrue();
 })->group('security');
 
-it('defines a role against the organization from the scope', function (): void {
-    $orgId = anEnvironmentAdminActingOn('tenant-roles-scoped');
+it('offers SCIM and both pull providers on both planes', function (): void {
+    // THE finding that started the console merge. The organization console offered
+    // Google Workspace and Microsoft Entra; the environment console offered SCIM alone,
+    // so an environment administrator could not connect either of the two directories
+    // this product ships connectors for — and Google has no SCIM support at all, which
+    // made pull the ONLY path to it. Both planes now offer what the enum publishes,
+    // because the enum is the public contract.
+    $expected = array_map(
+        fn (DirectoryProvider $provider): string => $provider->label(),
+        DirectoryProvider::cases(),
+    );
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Manager')
-        ->call('create')
+    anEnvironmentAdminActingOn('tenant-dir-providers');
+    $environment = Volt::test('console.directories.create');
+
+    actingAsRole(MembershipRole::Owner);
+    $organization = Volt::test('console.directories.create');
+
+    foreach ($expected as $label) {
+        $environment->assertSee($label);
+        $organization->assertSee($label);
+    }
+})->group('security');
+
+it('registers a directory against the organization from the scope', function (): void {
+    // The create form used to carry its own organization picker on the environment plane
+    // and none on the organization plane — the second place the answer lived, validated
+    // differently in each.
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-scoped');
+
+    Volt::test('console.directories.create')
+        ->set('name', 'Acme Okta SCIM')
+        ->call('register')
         ->assertHasNoErrors();
 
-    expect(Role::query()->where('organization_id', $orgId)->where('name', 'Manager')->exists())->toBeTrue();
+    expect(Directory::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
 
-it('refuses to define a role before an organization is chosen', function (): void {
-    anEnvironmentAdminActingOn('tenant-roles-unchosen');
+it('refuses to register a directory before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-dir-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Manager')
-        ->call('create')
+    Volt::test('console.directories.create')
+        ->set('name', 'Acme Okta SCIM')
+        ->call('register')
         ->assertHasErrors('name');
 
-    expect(Role::query()->where('name', 'Manager')->exists())->toBeFalse();
+    expect(Directory::query()->exists())->toBeFalse();
 })->group('security');
 
-it('keeps environment-wide role definition on the environment plane', function (): void {
-    // The environment console only ever wrote environment-wide roles — an organization
-    // was never a field on that form, so removing the picker would have taken the
-    // capability with it. A role with no organization is assignable inside every tenant
-    // in the environment, so it survives as its own explicit choice on this plane alone.
-    anEnvironmentAdminActingOn('tenant-roles-wide');
+it('tells an unchosen environment administrator to pick an organization, not to call their account team', function (): void {
+    // `entitled()` answers false for "no organization chosen" as well as for "this
+    // organization has no plan", and the two need different words. Sending an
+    // administrator who holds the whole environment to their account team over a picker
+    // they have simply not touched is a dead end dressed as an answer.
+    config(['cbox-id.entitlements.mode' => 'metered']);
+    anEnvironmentAdminActingOn('tenant-dir-unentitled');
+    session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Everywhere')
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertHasNoErrors();
-
-    expect(Role::query()->whereNull('organization_id')->where('name', 'Everywhere')->exists())->toBeTrue();
-})->group('security');
-
-it('refuses an organization admin a role that binds every organization', function (): void {
-    // Forged, not clicked: the checkbox is not rendered on this plane, so the refusal has
-    // to live in create() — an environment-wide role can be assigned inside organizations
-    // that are not this administrator's.
-    actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.roles.create')
-        ->set('name', 'Everywhere')
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertHasErrors('environmentWide');
-
-    expect(Role::query()->where('name', 'Everywhere')->exists())->toBeFalse();
-})->group('security');
-
-it('gives the organization plane the rename, re-permission and delete it never had', function (): void {
-    // All three existed only on the environment plane. A tenant admin could define a role
-    // and then never rename it, never take a permission back and never remove it.
-    [, $org] = actingAsRole(MembershipRole::Owner);
-    $role = app(Roles::class)->define($org->id, 'Support');
-    $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
-
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->set('editName', 'Support Renamed')
-        ->call('saveDetails')
-        ->call('togglePermission', $permission->id)
-        ->assertHasNoErrors();
-
-    expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed')
-        ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
-
-    Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole');
-
-    expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
-})->group('security');
-
-it('gives the environment plane the catalog grant it never had', function (): void {
-    // The other direction. Composing a role out of the keys the apps declared existed
-    // only on the organization plane, so an administrator holding the ENTIRE environment
-    // could not add a permission to one of its organizations' roles at all.
-    $orgId = anEnvironmentAdminActingOn('tenant-roles-grant');
-    $role = app(Roles::class)->define($orgId, 'Support');
-    Permission::query()->create(['name' => 'reports:view']);
-
-    Volt::test('console.roles.index')->call('grant', $role->id, 'reports:view');
-
-    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
-})->group('security');
-
-it('renders the editor on the environment plane rather than a read-only shell', function (): void {
-    // The half of a merge that a PHP-only rewiring silently drops: the markup asked
-    // CurrentUser whether to draw the controls, and CurrentUser holds nothing on this
-    // plane — so every action would have worked and none of them would have been
-    // reachable.
-    anEnvironmentAdminActingOn('tenant-roles-editor');
-    $role = app(Roles::class)->define(null, 'Support');
-
-    $this->get(route('environment.roles'))->assertOk()->assertSee('New role');
-    $this->get(route('environment.roles.show', $role->id))
+    Volt::test('console.directories.index')
         ->assertOk()
-        ->assertSee('Save changes')
-        ->assertSee('Delete role');
+        ->assertSee('Choose an organization in the bar above')
+        ->assertDontSee('Enterprise feature');
 })->group('security');
 
-it('refuses an organization admin another organization\'s role', function (): void {
-    // The environment plane resolved a role on its primary key alone, which is right for
-    // an administrator who holds the environment. Serving the same component to a tenant
-    // would have handed them every other tenant's roles by id — readable, renameable and
-    // deletable, with every holder of the role losing its access.
+it('connects a pull directory on the environment plane', function (): void {
+    // The capability the environment plane never had. Verified against the connector
+    // before anything is stored, so a wrong key fails here rather than at 3am.
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-pull');
+
+    app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
+        new FakeDirectoryConnector(DirectoryProvider::GoogleWorkspace),
+        new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra),
+    ]));
+
+    Volt::test('console.directories.create')
+        ->set('provider', DirectoryProvider::GoogleWorkspace->value)
+        ->set('googleServiceAccountJson', (string) json_encode([
+            'client_email' => 'sync@acme.iam.gserviceaccount.com',
+            'private_key' => '-----BEGIN PRIVATE KEY-----key-----END PRIVATE KEY-----',
+        ]))
+        ->set('googleAdminEmail', 'admin@acme.test')
+        ->call('connectPull')
+        ->assertHasNoErrors();
+
+    $directory = Directory::query()->where('organization_id', $orgId)->firstOrFail();
+
+    expect($directory->provider)->toBe(DirectoryProvider::GoogleWorkspace)
+        // Sealed at rest, bound to the directory id — never the plaintext map.
+        ->and($directory->credentials)->not->toBeNull()
+        ->and($directory->credentials)->not->toContain('BEGIN PRIVATE KEY');
+})->group('security');
+
+it('refuses a pull directory whose credentials the provider rejects', function (): void {
+    anEnvironmentAdminActingOn('tenant-dir-pull-bad');
+
+    app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
+        new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra, verifies: false),
+    ]));
+
+    Volt::test('console.directories.create')
+        ->set('provider', DirectoryProvider::MicrosoftEntra->value)
+        ->set('entraTenantId', 'tenant')
+        ->set('entraClientId', 'client')
+        ->set('entraClientSecret', 'shh')
+        ->call('connectPull')
+        ->assertSee('Could not connect to');
+
+    expect(Directory::query()->exists())->toBeFalse();
+})->group('security');
+
+it('gives the organization plane the lifecycle it never had', function (): void {
+    // Rename, rotate, pause and delete existed only on the environment plane. A tenant
+    // admin whose SCIM token leaked had no way to rotate it from their own console.
     [, $org] = actingAsRole(MembershipRole::Owner);
-    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-roles'));
-    $foreign = app(Roles::class)->define($other->id, 'Not yours');
-    $own = app(Roles::class)->define($org->id, 'Mine');
+    $directory = app(Directories::class)->register($org->id, 'HR')->directory;
+    $originalHash = $directory->bearer_token_hash;
 
-    expect(fn () => Volt::test('console.roles.show', ['role' => $foreign->id]))
-        ->toThrow(ModelNotFoundException::class);
+    Volt::test('console.directories.show', ['directory' => $directory->id])
+        ->set('editName', 'HR Renamed')
+        ->call('saveName')
+        ->call('regenerateToken')
+        ->call('toggleStatus')
+        ->assertHasNoErrors();
 
-    Volt::test('console.roles.index')->assertDontSee('Not yours');
+    $directory->refresh();
+    expect($directory->name)->toBe('HR Renamed')
+        ->and($directory->bearer_token_hash)->not->toBe($originalHash)
+        ->and($directory->status)->toBe(DirectoryStatus::Paused);
 
-    // And forged past the URL: roleId is a public property the browser re-sends, so the
-    // page has to re-resolve it inside the gate on EVERY request rather than trust the id
-    // it was mounted with. (The write gate itself is proven below, on the environment-wide
-    // role an organization can legitimately mount and still may not change.)
-    expect(fn () => Volt::test('console.roles.show', ['role' => $own->id])
-        ->set('roleId', $foreign->id)
-        ->call('deleteRole'))
-        ->toThrow(ModelNotFoundException::class);
-
-    expect(Role::query()->whereKey($foreign->id)->exists())->toBeTrue();
-
-    // The catalog grant is scoped the same way — the picker is not rendered for a role
-    // that is not this organization's, and the action refuses one anyway.
-    Volt::test('console.roles.index')->call('grant', $foreign->id, 'reports:view');
-    expect(DB::table('role_permission')->where('role_id', $foreign->id)->count())->toBe(0);
+    Volt::test('console.directories.show', ['directory' => $directory->id])->call('deleteDirectory');
+    expect(Directory::query()->whereKey($directory->id)->exists())->toBeFalse();
 })->group('security');
 
-it('shows an organization the environment-wide role it cannot change', function (): void {
-    // The organization must SEE it: an environment-wide role can be assigned to its
-    // people and carries permissions into its apps. The detail page is new to this plane,
-    // so it gets the read-only treatment rather than a delete button for a role every
-    // other organization in the environment also holds.
+it('offers dismissing the revealed bearer token on both planes', function (): void {
+    // Only the organization console had a Dismiss. The banner holds a live credential in
+    // plaintext, and the environment plane — whose administrator holds every
+    // organization in the environment — had no way to take it off the screen.
+    anEnvironmentAdminActingOn('tenant-dir-token');
+
+    Volt::test('console.directories.create')
+        ->set('name', 'Acme Okta SCIM')
+        ->call('register')
+        ->assertHasNoErrors();
+
+    $directory = Directory::query()->firstOrFail();
+
+    Volt::test('console.directories.show', ['directory' => $directory->id])
+        ->assertSee('Copy this now')
+        ->call('dismissToken')
+        ->assertDontSee('Copy this now');
+})->group('security');
+
+it('refuses an organization admin another organization\'s directory', function (): void {
+    // The escalation this merge could have shipped. The environment plane resolved a
+    // directory on its primary key alone, which was safe only while an environment
+    // administrator was its sole caller. Served to a tenant admin that lookup hands over
+    // every other tenant's directory by id — and here that is not a disclosure but a
+    // takeover: regenerateToken would mint a live SCIM bearer token for a directory that
+    // provisions somebody else's users.
     actingAsRole(MembershipRole::Owner);
-    $role = app(Roles::class)->define(null, 'Env-wide support');
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-directories'));
+    $directory = app(Directories::class)->register($other->id, 'Not yours')->directory;
+    $originalHash = $directory->bearer_token_hash;
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->assertSee('Env-wide support')
-        ->assertSee('Managed for the environment')
-        ->assertDontSee('Delete role');
+    Volt::test('console.directories.show', ['directory' => $directory->id])->assertNotFound();
 
-    expect(fn () => Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole'))
-        ->toThrow(ModelNotFoundException::class);
+    Volt::test('console.directories.index')->assertDontSee('Not yours');
 
-    expect(Role::query()->whereKey($role->id)->exists())->toBeTrue();
+    expect($directory->fresh()?->bearer_token_hash)->toBe($originalHash);
 })->group('security');
 
-it('never lets a tenant tick a permission its apps kept internal', function (): void {
-    // tenant_assignable is how an app publishes a key WITHOUT offering it to the tenants
-    // that use it. The organization plane honoured that in its catalog picker; the
-    // environment plane's permission editor — which this plane now has — never had to,
-    // because its administrator holds the environment. Enforced in the action, because a
-    // checkbox that is not drawn is not a gate.
+it('refuses a group mapping that belongs to another directory', function (): void {
+    // Both mapping actions take a group id straight off the page. The organization
+    // console scoped neither by directory and the environment console scoped only the
+    // map half, so an id belonging to another directory could be unmapped through a
+    // directory the caller does hold.
     [, $org] = actingAsRole(MembershipRole::Owner);
-    $role = app(Roles::class)->define($org->id, 'Support');
-    $internal = Permission::query()->create(['name' => 'billing:refund', 'tenant_assignable' => false]);
+    $mine = app(Directories::class)->register($org->id, 'Mine')->directory;
+    $theirs = app(Directories::class)->register($org->id, 'Theirs')->directory;
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->assertDontSee('billing:refund')
-        ->call('togglePermission', $internal->id);
+    $foreign = DirectoryGroup::query()->create([
+        'directory_id' => $theirs->id,
+        'external_id' => 'grp-1',
+        'display_name' => 'Engineering',
+    ]);
+    $role = app(Roles::class)->define($org->id, 'Engineer');
 
-    Volt::test('console.roles.index')->call('grant', $role->id, 'billing:refund');
+    Volt::test('console.directories.show', ['directory' => $mine->id])
+        ->call('mapGroup', $foreign->id, $role->id)
+        ->assertNotFound();
 
-    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
+    expect(GroupRoleMapping::query()->exists())->toBeFalse();
 })->group('security');
 
-it('refuses an organization admin with no organization at all a roles page', function (): void {
+it('refuses an organization admin with no organization at all a directories page', function (): void {
     // The nullable reader answers null both for "an environment administrator has not
     // chosen an organization yet" and for "this member has none", and the first means
-    // "show the whole environment". Told apart here, because conflating them turns an
-    // organization page into every role in the environment.
-    $subject = app(Subjects::class)->create('orphan-roles@acme.test', 'Orphan', 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-roles'));
+    // "show the whole environment". Conflating them turns an organization page into every
+    // directory in the environment.
+    $subject = app(Subjects::class)->create('orphan-dir@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-dir'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
 
-    Volt::test('console.roles.index')->assertForbidden();
+    Volt::test('console.directories.index')->assertForbidden();
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Single sign-on (federated connections)
+|--------------------------------------------------------------------------
+| The organization plane had one page: an inline create form, row-level activate,
+| domain verification with the capture gate, SAML metadata import, and the Admin Portal
+| invite that hands SSO setup to an external IT admin. It could not edit, disable or
+| delete a connection at all. The environment plane had list → create → detail which
+| could do all three — and had no domains, no portal invite and no entitlement check.
+| The merge is the union of all of it.
+*/
+
+/** A SAML connection with a complete, sealed config, so the detail page can round-trip it. */
+function aSamlConnection(string $organizationId, string $name = 'Corporate SAML'): Connection
+{
+    return app(Connections::class)->create($organizationId, ConnectionType::Saml, $name, [
+        'idp_entity_id' => 'https://idp.corp/metadata',
+        'idp_sso_url' => 'https://idp.corp/sso',
+        'idp_x509cert' => '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----',
+        'sp_entity_id' => 'https://sp.acme/metadata',
+        'sp_acs_url' => 'https://sp.acme/acs',
+    ]);
+}
+
+it('serves single sign-on from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-sso');
+
+    $this->get(route('environment.connections'))->assertOk()->assertSee('Single sign-on');
+    $this->get(route('environment.connections.create'))->assertOk();
+})->group('security');
+
+it('serves single sign-on from the same component on the organization plane', function (): void {
+    // The organization plane gained the routable shape rather than the environment plane
+    // losing it: a connection URL is something you send to whoever runs the identity
+    // provider.
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.connections.index')->assertOk()->assertSee('Single sign-on');
+    Volt::test('console.connections.create')->assertOk();
+
+    expect(Route::has('connections.show'))->toBeTrue()
+        ->and(Route::has('connections.create'))->toBeTrue();
+})->group('security');
+
+it('creates a connection against the organization from the scope', function (): void {
+    // The create form used to carry its own organization picker on the environment plane
+    // and none on the organization plane — the second place the answer lived, validated
+    // differently in each.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-scoped');
+
+    Volt::test('console.connections.create')
+        ->set('type', 'saml')
+        ->set('name', 'Acme Okta')
+        ->set('idp_entity_id', 'https://idp.corp/metadata')
+        ->set('idp_sso_url', 'https://idp.corp/sso')
+        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
+        ->set('sp_entity_id', 'https://sp.acme/metadata')
+        ->set('sp_acs_url', 'https://sp.acme/acs')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(Connection::query()->where('organization_id', $orgId)->where('name', 'Acme Okta')->exists())->toBeTrue();
+})->group('security');
+
+it('refuses to create a connection before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-sso-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.connections.create')
+        ->set('type', 'saml')
+        ->set('name', 'Acme Okta')
+        ->set('idp_entity_id', 'https://idp.corp/metadata')
+        ->set('idp_sso_url', 'https://idp.corp/sso')
+        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
+        ->set('sp_entity_id', 'https://sp.acme/metadata')
+        ->set('sp_acs_url', 'https://sp.acme/acs')
+        ->call('create')
+        ->assertHasErrors('name');
+
+    expect(Connection::query()->exists())->toBeFalse();
+})->group('security');
+
+it('gives the organization plane the edit, disable and delete it never had', function (): void {
+    // The reason an earlier attempt at this merge was reverted: it routed both planes at
+    // the organization component, which had none of these three. Losing them means a
+    // tenant admin cannot correct a rotated certificate, cannot switch a misconfigured
+    // IdP off, and cannot remove one at all.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $connection = aSamlConnection($org->id);
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])
+        ->set('editName', 'Corporate SAML (renamed)')
+        ->call('saveConfig')
+        ->assertHasNoErrors();
+    expect(Connection::query()->whereKey($connection->id)->value('name'))->toBe('Corporate SAML (renamed)');
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('activate')->assertHasNoErrors();
+    expect($connection->fresh()?->isActive())->toBeTrue();
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('disable')->assertHasNoErrors();
+    expect($connection->fresh()?->status)->toBe(Cbox\Id\Federation\Enums\ConnectionStatus::Inactive);
+
+    Volt::test('console.connections.show', ['connection' => $connection->id])->call('deleteConnection');
+    expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
+})->group('security');
+
+it('gives the environment plane domain verification and the Admin Portal invite', function (): void {
+    // The other half of the union. Neither existed on the environment console, so an
+    // operator configuring SSO for a tenant could not prove the tenant's email domain —
+    // which is the thing that routes their people to the IdP at all.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
+
+    Volt::test('console.connections.index')
+        ->set('domain', 'ACME.com') // upper-case → normalized to lowercase
+        ->call('addDomain')
+        ->assertHasNoErrors();
+
+    expect(VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->exists())->toBeTrue();
+
+    $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
+    expect($component->get('portalUrl'))->toContain('/setup/');
+})->group('security');
+
+it('attributes an Admin Portal link to the environment administrator who minted it', function (): void {
+    // actorId(), not CurrentUser::id(): the environment plane has no subject session, so
+    // the organization page's reader would have recorded '' as the creator of a link
+    // that hands SSO configuration to an outsider.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
+    $actor = app(ConsoleScope::class)->actorId();
+
+    Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
+
+    expect($actor)->not->toBe('')
+        ->and(AdminPortalLink::query()->where('organization_id', $orgId)->value('created_by'))->toBe($actor);
+})->group('security');
+
+it('refuses an organization admin another organization\'s connection', function (): void {
+    // The escalation this merge had to close. The environment component resolved a
+    // connection on its primary key alone, which was safe only while an environment
+    // administrator was its sole caller. Serving it to a tenant admin unscoped would hand
+    // them saveConfig on every connection in the environment — rewriting where another
+    // company's people authenticate, over a sealed config holding that company's client
+    // secret and signing certificate.
+    actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso'));
+    $theirs = aSamlConnection($other->id, 'Not yours');
+
+    // The refusal is at mount, which is why there is no forged-action case below it: the
+    // page never yields a snapshot, so saveConfig cannot be reached to be refused. Every
+    // later read re-resolves through the same scoped query rather than trusting the id
+    // the mount accepted.
+    Volt::test('console.connections.show', ['connection' => $theirs->id])->assertStatus(404);
+    Volt::test('console.connections.index')->assertDontSee('Not yours');
+
+    expect(Connection::query()->whereKey($theirs->id)->value('name'))->toBe('Not yours');
+})->group('security');
+
+it('refuses another organization\'s domain to an organization admin', function (): void {
+    // The same escalation on the domain half: capture on a domain you do not own would
+    // force that company's people through YOUR identity provider.
+    actingAsRole(MembershipRole::Owner);
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso-domains'));
+    $foreign = app(DomainVerification::class)->add($other->id, 'foreign.example');
+
+    Volt::test('console.connections.index')->call('verifyDomain', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('toggleCapture', $foreign->id)->assertForbidden();
+    Volt::test('console.connections.index')->call('removeDomain', $foreign->id)->assertForbidden();
+
+    expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();
+})->group('security');
+
+it('keeps the whole-environment connection overview on the environment plane', function (): void {
+    // With no organization chosen the list is every connection in the environment. That
+    // is the environment administrator's overview, and it is only reachable on this
+    // plane — an organization member's organization is implicit, so they can never land
+    // in this branch.
+    $orgId = anEnvironmentAdminActingOn('tenant-sso-overview');
+    $other = app(Organizations::class)->create(new NewOrganization('Second Co', 'second-sso'));
+    aSamlConnection($orgId, 'First IdP');
+    aSamlConnection($other->id, 'Second IdP');
+
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.connections.index')
+        ->assertSee('First IdP')
+        ->assertSee('Second IdP')
+        // Domain verification and the portal invite belong to ONE organization, so they
+        // wait for a choice rather than acting on whichever the page happened to load.
+        ->assertSee('Choose an organization');
+})->group('security');
+
+it('refuses single sign-on to an organization admin with no organization at all', function (): void {
+    // The nullable reader answers null both for "an environment administrator has not
+    // chosen an organization yet" and for "this member has none", and the first means
+    // "show the whole environment". Told apart here, because conflating them turns an
+    // organization page into a list of every connection in the environment.
+    $subject = app(Subjects::class)->create('orphan-sso@acme.test', 'Orphan', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-sso'));
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+
+    Volt::test('console.connections.index')->assertForbidden();
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Appearance
+|--------------------------------------------------------------------------
+| The nearest to true parity of the four, and still not the same thing underneath: the
+| organization page themed an ORGANIZATION, the environment page themed the ENVIRONMENT
+| default that every organization inherits. That difference is a capability, so it is an
+| explicit choice on the merged page rather than an implication of the door you came
+| through — and it stays on the environment plane alone. The organization page's contrast
+| gate, which the environment page never had, now guards both.
+*/
+
+it('serves appearance from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-appearance');
+
+    $this->get(route('environment.appearance'))->assertOk()->assertSee('Live preview');
+})->group('security');
+
+it('serves appearance from the same component on the organization plane', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.appearance')->assertOk()->assertSee('Live preview');
+})->group('security');
+
+it('still themes the environment default when the environment console saves', function (): void {
+    // The landing state on this plane, unchanged by the merge. Retargeting it at whichever
+    // organization happened to be picked would have an operator re-theming one tenant
+    // while believing they were setting the default for all of them.
+    $orgId = anEnvironmentAdminActingOn('tenant-appearance-env');
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    $theme = Appearance::fromPreset('midnight')->toArray();
+    $theme['light']['primary'] = '#00aa88';
+
+    Volt::test('console.appearance')->call('save', $theme);
+
+    expect(Environment::query()->find($environmentId)?->settings['appearance']['light']['primary'])->toBe('#00aa88')
+        ->and(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('lets the environment console theme the organization it is acting on instead', function (): void {
+    // The other half of the choice — and the capability the organization plane always had,
+    // now reachable from this one without switching consoles.
+    $orgId = anEnvironmentAdminActingOn('tenant-appearance-org');
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    $theme = Appearance::fromPreset('warm')->toArray();
+    $theme['light']['primary'] = '#123456';
+
+    Volt::test('console.appearance')
+        ->set('environmentDefault', false)
+        ->call('save', $theme);
+
+    expect(app(Organizations::class)->find($orgId)?->settings['appearance']['light']['primary'])->toBe('#123456')
+        ->and(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('refuses to theme an organization before one is chosen', function (): void {
+    // The editor is not even drawn in this state, so this is the forged half: with no
+    // organization resolved the write would otherwise land wherever a downstream default
+    // pointed, which on this plane is somebody's tenant.
+    $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.appearance')
+        ->set('environmentDefault', false)
+        ->call('save', Appearance::fromPreset('warm')->toArray())
+        ->assertForbidden();
+
+    expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('refuses an organization admin the environment default theme', function (): void {
+    // Forged, not clicked: the radio is not rendered on this plane, so the refusal has to
+    // live in save(). An organization admin who reached it would be re-theming the sign-in
+    // page of every other tenant in the environment.
+    actingAsRole(MembershipRole::Owner);
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    $theme = Appearance::fromPreset('midnight')->toArray();
+    $theme['light']['primary'] = '#00aa88';
+
+    Volt::test('console.appearance')
+        ->set('environmentDefault', true)
+        ->call('save', $theme)
+        ->assertForbidden();
+
+    expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
+})->group('security');
+
+it('refuses an unreadable environment default, which only the organization plane refused before', function (): void {
+    // The gate the environment page never had. An operator could set an environment
+    // default no tenant's users could read, and the people who cannot read the sign-in
+    // page are never the admin who chose the colours.
+    anEnvironmentAdminActingOn('tenant-appearance-contrast');
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+
+    Volt::test('console.appearance')->call('save', [
+        'radius' => '0.5rem',
+        'font' => 'system',
+        'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
+        'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
+    ]);
+
+    expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)
+        ->toBeNull('an unreadable environment default was saved');
+})->group('security');
+
+it('does not offer the environment default to an organization admin', function (): void {
+    // The view half. A merge that rewires only the PHP leaves the control on screen for
+    // someone the server will refuse.
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.appearance')->assertDontSee('Environment default');
+})->group('security');
+
+it('does offer it to the administrator who holds the environment', function (): void {
+    // The other half of the same trap, and the one that renders a read-only shell: a
+    // capability enforced correctly but never drawn is a capability nobody has.
+    //
+    // A separate test rather than the second half of the one above: the two planes are
+    // told apart by which session exists, and a subject session from the organization
+    // half would still be standing when the environment half ran.
+    anEnvironmentAdminActingOn('tenant-appearance-view');
+
+    Volt::test('console.appearance')->assertSee('Environment default');
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Settings
+|--------------------------------------------------------------------------
+| The pair that looked least like one: the organization page was the ORGANIZATION's
+| record — rename, slug, type, id — and the environment page was the ENVIRONMENT's
+| identity plus the OIDC issuer and discovery URL. Neither offered what the other did.
+|
+| They are one capability under the console's own rule — the environment administrator
+| sees what a tenant admin sees, plus what the environment holds in addition. So the
+| organization's record is on both planes, the environment's identity on the environment
+| plane alone, and the integration details on both.
+*/
+
+it('serves settings from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-settings');
+
+    $this->get(route('environment.settings'))
+        ->assertOk()
+        ->assertSee('Integration')
+        ->assertSee('Environment ID');
+})->group('security');
+
+it('serves settings from the same component on the organization plane', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.settings')->assertOk()->assertSee('Organization');
+})->group('security');
+
+it('gives the environment plane the rename it never had', function (): void {
+    // An administrator who holds every organization in the environment could not correct
+    // a typo in one's name without signing into that organization's own console.
+    $orgId = anEnvironmentAdminActingOn('tenant-settings-rename');
+
+    Volt::test('console.settings')
+        ->set('orgName', 'Renamed Co')
+        ->call('rename')
+        ->assertHasNoErrors();
+
+    expect(app(Organizations::class)->find($orgId)?->name)->toBe('Renamed Co');
+})->group('security');
+
+it('attributes the rename to the subject who made it, on either plane', function (): void {
+    // The two consoles recorded ids from different tables for the same act — the
+    // organization plane the subject id, the environment plane the AccountMember row's.
+    // Half the trail resolved against `users` and half against `account_members`, with
+    // nothing recording which.
+    $orgId = anEnvironmentAdminActingOn('tenant-settings-actor');
+    $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
+
+    Volt::test('console.settings')->set('orgName', 'Attributed Co')->call('rename');
+
+    expect(AuditEntry::query()->where('action', 'organization.renamed')->value('actor_id'))
+        ->toBe($subjectId)
+        ->and(AuditEntry::query()->where('action', 'organization.renamed')->value('organization_id'))
+        ->toBe($orgId);
+})->group('security');
+
+it('refuses a rename before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-settings-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('console.settings')
+        ->set('orgName', 'Nobody In Particular')
+        ->call('rename')
+        ->assertForbidden();
+
+    expect(AuditEntry::query()->where('action', 'organization.renamed')->exists())->toBeFalse();
+})->group('security');
+
+it('renames the organization the console is acting on and no other', function (): void {
+    // The rename takes no id from the wire — it resolves the target through the scope —
+    // so the other organization in the environment is untouchable from this page.
+    $orgId = anEnvironmentAdminActingOn('tenant-settings-scoped');
+    $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-settings'));
+
+    Volt::test('console.settings')->set('orgName', 'Only Mine')->call('rename');
+
+    expect(app(Organizations::class)->find($orgId)?->name)->toBe('Only Mine')
+        ->and(app(Organizations::class)->find($other->id)?->name)->toBe('Other Co');
+})->group('security');
+
+it('gives the organization plane the integration details it never had', function (): void {
+    // The environment page's half. An organization admin wiring an OIDC client needed
+    // exactly these two URLs and had nowhere in their own console to find them; both are
+    // already served unauthenticated, so this publishes nothing new.
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.settings')
+        ->assertSee('Integration')
+        ->assertSee('/.well-known/openid-configuration');
+})->group('security');
+
+it('keeps the environment\'s own identity off the organization plane', function (): void {
+    // The other direction of the same merge. The environment record is the control
+    // plane's; a tenant admin has no business reading it and no way to act on it.
+    //
+    // The environment is made REAL and current first. The suite's default context names
+    // an environment key with no row behind it, so a page that resolved the record
+    // unconditionally would still render nothing here — and this assertion would pass
+    // while guarding nothing.
+    $environment = platformRootEnvironment();
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
+
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('console.settings')
+        ->assertDontSee('Environment ID')
+        ->assertDontSee($environment->name);
+})->group('security');
+
+it('serves social sign-in on the environment plane, not only the organization one', function (): void {
+    // This capability shipped reachable from one console only — and not the one its owner
+    // uses. The account owner holds an AccountAuth session, a different store entirely, so
+    // reaching their own feature meant impersonating one of their own users.
+    $orgId = anEnvironmentAdminActingOn('tenant-social');
+
+    $this->get(route('environment.social-providers'))
+        ->assertOk()
+        ->assertSee('Social sign-in')
+        ->assertSee('GitHub')
+        ->assertSee('Apple');
+})->group('security');
+
+it('refuses to enable a provider before an organization is chosen', function (): void {
+    anEnvironmentAdminActingOn('tenant-social-unchosen');
+    session()->forget(ConsoleScope::SELECTION_KEY);
+
+    Volt::test('social-providers')
+        ->call('choose', 'github')
+        ->set('clientId', 'gh')
+        ->set('clientSecret', 'gh')
+        ->call('enable')
+        ->assertForbidden();
 })->group('security');
