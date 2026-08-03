@@ -88,6 +88,7 @@ it('keeps every nav label identical to its page title', function (): void {
     // promise the nav label makes is the same either way, so the sweep follows the
     // component rather than losing the page the moment it is merged.
     $mergedViews = [
+        'audit' => 'console/audit',
         'hooks' => 'console/hooks/index',
         'clients' => 'console/clients/index',
         'connections' => 'console/connections/index',
