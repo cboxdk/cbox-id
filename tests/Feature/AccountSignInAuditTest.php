@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Models\Account;
 use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Support\Collection;
 
@@ -84,18 +86,25 @@ it('records a sign-in through the password door', function (): void {
         ->and(signInEntries($account->id))->toHaveCount(1);
 });
 
-it('records nothing while a second factor is still outstanding', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAuditableAccount('mfa@audit.example');
+it('records nothing when the door holds the person back', function (): void {
+    ['account' => $account] = provisionAuditableAccount('held@audit.example');
 
-    // A confirmed TOTP holds the password door at the challenge — no session is
-    // established, so nothing may be recorded as a sign-in yet.
-    $mfa = app(AccountMemberMfa::class);
-    $enroll = $mfa->enrollTotp($member->id, $member->email);
-    $mfa->confirmTotp($member->id, app(TotpAuthenticator::class)->codeAt($enroll->secret, time()));
+    // A door that refuses establishes no session, so there is no sign-in to record — the
+    // log is of sessions, not of attempts, and an entry here would report a person as
+    // having got in when they did not.
+    //
+    // Asserted through the SSO MANDATE. It used to be asserted through an account-plane
+    // TOTP, which no longer exists: that factor was unenforceable once the one sign-in
+    // served the platform root, so it was removed rather than left looking like
+    // protection. The property it was demonstrating is unchanged and is worth keeping, so
+    // it moved to a hold that is still real.
+    app(PlatformRoot::class)->run(
+        fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required)),
+    );
 
-    $outcome = app(AccountAuth::class)->attempt(request(), 'mfa@audit.example', 'a-strong-unbreached-passphrase');
+    $outcome = app(AccountAuth::class)->attempt(request(), 'held@audit.example', 'a-strong-unbreached-passphrase');
 
-    expect($outcome)->toBe(AttemptOutcome::Mfa)
+    expect($outcome)->toBe(AttemptOutcome::SsoRequired)
         ->and(signInEntries($account->id))->toHaveCount(0);
 });
 

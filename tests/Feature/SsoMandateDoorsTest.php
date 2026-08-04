@@ -18,9 +18,7 @@ use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\NeverBreachedCheck;
-use Cbox\Id\Identity\Testing\FakeWebAuthnVerifier;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
-use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -28,8 +26,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Contracts\AccountPasskeys;
-use Cbox\Id\Platform\DatabaseAccountPasskeys;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
@@ -140,15 +136,6 @@ function doorFakePasskeys(string $subjectId): void
             return null;
         }
     });
-}
-
-/** The account-plane equivalent, on the shared verifier double. */
-function doorAccountPasskeys(string $credentialId): AccountPasskeys
-{
-    $passkeys = new DatabaseAccountPasskeys(new FakeWebAuthnVerifier(credentialId: $credentialId), new FakeAuditLog);
-    app()->instance(AccountPasskeys::class, $passkeys);
-
-    return $passkeys;
 }
 
 /**

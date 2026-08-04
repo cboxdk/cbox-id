@@ -9,7 +9,6 @@ use App\Platform\Enums\CredentialVerdict;
 use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
-use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
@@ -27,11 +26,19 @@ use Throwable;
  * A DOOR IT NO LONGER IS. `attempt()` still verifies a member's credential and still
  * consults {@see MemberCredentialGate}, and nothing in the application calls it: the one
  * sign-in is `/login`, which authenticates the SUBJECT — the credential of record — and
- * enforces the lockout and the SSO mandate itself. What that door does NOT yet enforce is
- * the account-member second factor ({@see AccountMemberMfa}), which lives in tables of its
- * own that no door now reads. Moving that factor onto the subject is the remaining half of
- * retiring this one; until then `attempt()` is the statement of what the member gate is
- * FOR, and its tests are the only thing holding it upright.
+ * enforces the lockout and the SSO mandate itself. `attempt()` is the statement of what
+ * the member gate is FOR, and its tests are the only thing holding it upright.
+ *
+ * THE SECOND FACTOR IS THE SUBJECT'S, and no longer has an account-plane copy. There used
+ * to be one, in `account_mfa_factors` and its companions, consulted here and in `adopt()`.
+ * It was already unenforceable before those checks were removed: `/login` serves the root,
+ * so a member with an account-plane TOTP signed in there against their subject credential
+ * and reached the console with a password alone. Deleting it removed the APPEARANCE of a
+ * factor, not a factor — the enrolment UI had gone with the account door, no row was ever
+ * written again, and a store that can still be written but is never checked is worse than
+ * none. `PlatformAuth::attemptPassword()` holds a subject with a confirmed TOTP at the
+ * challenge, and an account member is an ordinary subject, so that is where a member's
+ * second factor is enrolled and enforced.
  *
  * An account member is an ordinary subject in the platform-root
  * environment ({@see docs/core-concepts/unified-account-identity.md}); the member row says
@@ -63,13 +70,6 @@ use Throwable;
 final class AccountAuth
 {
     /**
-     * A password verified but a second factor is still outstanding. Holds only the
-     * member id and grants NO console access on its own: the gate requires a full
-     * session, and a full session is a SUBJECT session that only {@see establish()} mints.
-     */
-    public const PENDING_KEY = 'cbox.account_member_pending';
-
-    /**
      * Per-request memo, KEYED ON THE SUBJECT ID it was resolved from — the same shape,
      * and for the same reasons, as {@see EnvironmentAdminAuth::current()}.
      *
@@ -95,7 +95,6 @@ final class AccountAuth
         private readonly PlatformRoot $platformRoot,
         private readonly PlatformAuth $platformAuth,
         private readonly AccountMembers $members,
-        private readonly AccountMemberMfa $mfa,
         private readonly MemberCredentialGate $gate,
         private readonly AccountActivity $activity,
         private readonly CurrentUser $current,
@@ -105,13 +104,16 @@ final class AccountAuth
     /**
      * Verify credentials. Returns:
      *  - 'invalid' for a wrong password or a suspended member (never authenticates),
-     *  - 'mfa'     when the password is right but a confirmed second factor is
-     *              required — NO session is started, only a short-lived pending marker,
      *  - 'sso_required' when the password is right and an organization this member
      *              belongs to mandates single sign-on — no session, and none obtainable
      *              with a password at all,
-     *  - 'ok'      when the password is right and no second factor is enrolled — the
-     *              full session is established immediately.
+     *  - 'ok'      when the password is right — the full session is established
+     *              immediately.
+     *
+     * NEVER 'mfa'. A second factor is the SUBJECT's and is enforced at
+     * {@see PlatformAuth::attemptPassword()}, which is the door every member actually
+     * uses; the account-plane copy this returned for had no enrolment path left and no
+     * reader but this line.
      *
      * The door authenticates a PERSON. Whether they hold an account membership, operator
      * authority, both or neither is not its business — it used to be, through an
@@ -179,12 +181,6 @@ final class AccountAuth
 
         $this->gate->clearFailures($member);
 
-        if ($this->mfa->hasConfirmedTotp($member->id)) {
-            session()->put(self::PENDING_KEY, $member->id);
-
-            return AttemptOutcome::Mfa;
-        }
-
         return $this->establish($member->id) ? AttemptOutcome::Ok : AttemptOutcome::Invalid;
     }
 
@@ -227,12 +223,6 @@ final class AccountAuth
 
         if ($mandateApplies && $this->gate->admitsFactor($member) === CredentialVerdict::SsoRequired) {
             return AttemptOutcome::SsoRequired;
-        }
-
-        if ($this->mfa->hasConfirmedTotp($member->id)) {
-            session()->put(self::PENDING_KEY, $member->id);
-
-            return AttemptOutcome::Mfa;
         }
 
         return $this->establish($member->id, self::methods($session)) ? AttemptOutcome::Ok : AttemptOutcome::Invalid;
@@ -333,8 +323,6 @@ final class AccountAuth
         // session must never leave a redeemable second-factor handle behind it in the
         // (data-preserving) session. establish() below drops the step-up windows for the
         // same reason, and drops them for every door at once.
-        session()->forget(self::PENDING_KEY);
-
         $this->platformRoot->run(function () use ($subjectId, $amr): bool {
             $this->platformAuth->establish(request(), $subjectId, $amr);
 

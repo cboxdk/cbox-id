@@ -279,7 +279,6 @@ final class Impersonation
 
         $this->forgetSubjectSession($request);
         $request->session()->forget([
-            AccountAuth::PENDING_KEY,
             // The environment ANCHOR, on both doors. The account-member branch captures
             // it first so exit can put it back; the operator branch simply drops it,
             // because an impersonated session must not inherit a binding either — the
