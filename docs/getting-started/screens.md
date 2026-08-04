@@ -1,21 +1,42 @@
 ---
 title: Screens
 weight: 3
-description: A visual tour of the Cbox ID platform section, admin console, and sign-in surface.
+description: A tour of the admin console's nine areas and the sign-in surface, with screenshots dated 2026-07-13.
 ---
 
 # Screens
 
-A visual tour of the Cbox ID app — the admin console and the sign-in surface.
-Screenshots are of the running app (dark theme) with a demo organization.
+A tour of the Cbox ID app — the admin console and the sign-in surface. It follows the
+console's own structure: nine areas, declared once in
+[`ConsoleArea`](https://github.com/cboxdk/cbox-id/blob/main/app/Platform/Console/ConsoleArea.php)
+and rendered by the same components on both planes.
+
+> **The screenshots below are dated 2026-07-13 and are stale.** They were taken against a
+> flat page list — Members / SSO connections / Directory sync / Roles / API clients /
+> Webhooks / Audit / Settings — that the console no longer has, and several pages have
+> since been renamed in the navigation (see each area). The prose is current; the images
+> are not, and nothing here has been re-shot. There is also **no screenshot of the
+> `/platform` section** at all, which is the part of the console the person who runs the
+> deployment spends their time in.
+
+## Two planes, one console
+
+The same console serves an administrator of one **organization** (a tenant) and an
+administrator of one **environment** (a whole IdP, holding many organizations). They see
+the same product; the environment plane holds a *Tenants* area and an acting-organization
+picker in addition, because it administers many organizations rather than one. A health
+check (`cbox-id:doctor`) fails if the two planes ever offer different capabilities.
+
+The deployment's own pages — environments, accounts, operators — are the **`/platform`**
+section, reached from the same console by whoever has authority over the box.
 
 ## Sign-in surface
 
 ### Login
 
 Password sign-in, plus **passwordless options**: email magic link and **passkey**
-(WebAuthn) sign-in. Social buttons (Google/GitHub/Microsoft) appear when a provider
-is configured. Organizations get a branded variant at `/o/{slug}/login`.
+(WebAuthn) sign-in. Social buttons appear when a provider is configured. Organizations
+get a branded variant at `/o/{slug}/login`.
 
 ![Login screen](../screenshots/login.png)
 
@@ -27,87 +48,116 @@ Create a new organization and its first owner. Risk scoring runs on submit
 
 ![Signup screen](../screenshots/signup.png)
 
-## Admin console
+## The console, area by area
 
-### Overview (dashboard)
+### Overview
 
-The org's home: member count, enterprise-SSO status, your role, a live **recent
-activity** feed from the tamper-evident audit log, and an onboarding checklist.
+*Overview · Usage · Agent approvals.* The home page: member count, enterprise-SSO status,
+your role, a live **recent activity** feed from the tamper-evident audit log, and an
+onboarding checklist.
 
 ![Dashboard / overview](../screenshots/dashboard.png)
 
-### Members
+### People
 
-The org's people and their roles (Owner / Admin / Member). Invite, change role, or
-remove — every change is audited.
+*Members · Roles.* The people in this tenant and what they may do — invite, change role,
+remove, every change audited — and the role/permission model itself, org-scoped and
+hierarchy-aware.
 
 ![Members](../screenshots/members.png)
-
-### SSO connections
-
-Per-organization enterprise SSO — connect the customer's own IdP (SAML / OIDC) so
-their staff log in with it.
-
-![SSO connections](../screenshots/connections.png)
-
-### Directory sync (SCIM)
-
-Automatic user provisioning/deprovisioning from the customer's directory over
-SCIM 2.0; deprovision revokes sessions immediately.
-
-![Directory sync](../screenshots/directories.png)
-
-### Roles
-
-Role and permission management, org-scoped, with hierarchy-aware roll-down.
-
 ![Roles](../screenshots/roles.png)
 
-### API clients
+### Sign-in
 
-OAuth clients registered against this instance — for products authenticating via
-OIDC, or MCP clients self-registering through Dynamic Client Registration.
+*Single sign-on · Social sign-in · Sync users in · Sync users out.* Everything about how
+people get in and how their accounts arrive. Enterprise SSO connects the customer's own
+IdP (SAML / OIDC); social sign-in is picked from a catalogue rather than described from
+memory; "sync users in" is inbound SCIM provisioning (deprovision revokes sessions
+immediately) and "sync users out" pushes the same directory to downstream apps.
 
-![API clients](../screenshots/clients.png)
+The two SCIM directions are named as a pair on purpose — "Directory sync" beside
+"Outbound sync" gave no clue which way either moved people. The screenshots below predate
+that rename.
 
-### Webhooks
+![SSO connections](../screenshots/connections.png)
+![Directory sync](../screenshots/directories.png)
 
-HMAC-signed event delivery endpoints with retries; the console shows registered
-endpoints and delivery history.
+### Access control
 
+*Access reviews · Role conflicts.* Certification campaigns — a snapshot of who holds what,
+certified or revoked line by line, with the revokes applied on close — and separation-of-
+duties rules that refuse a combination of roles nobody should hold at once. No screenshot.
+
+### Developers
+
+*Apps & API keys · Webhooks · Inline hooks · Token vault.* OAuth clients registered
+against this instance (including MCP clients self-registering through Dynamic Client
+Registration) and machine credentials that never sign anyone in; HMAC-signed event
+delivery with retries and delivery history; synchronous inline hooks that run *during* a
+flow rather than after it; and the vault holding third-party tokens.
+
+The screenshots below are from when this area was "API clients" and "Webhooks" as two
+separate top-level pages.
+
+![Apps & API keys](../screenshots/clients.png)
 ![Webhooks](../screenshots/webhooks.png)
 
-### Audit log
+### Connectors
 
-The append-only, hash-chained audit trail — filterable, exportable to your SIEM.
+Third-party integrations, contributed by the connectors module rather than written into
+the console. No screenshot.
+
+### Logs
+
+*Activity log.* The append-only, hash-chained audit trail — filterable, exportable to your
+SIEM. The compliance and risk modules append their pages here rather than minting areas of
+their own.
 
 ![Audit log](../screenshots/audit.png)
 
 ### Settings
 
-Organization details, **per-org login branding**, two-factor authentication,
-**passkey** enrolment, and the current session (auth methods, expiry, and
-sign-out-everywhere).
+*Settings · Appearance.* Organization details, and the branding an organization's own
+sign-in page inherits.
 
 ![Settings](../screenshots/settings.png)
 
+### My account
+
+*Security.* The signed-in person's own credentials — two-factor authentication, **passkey**
+enrolment, and the current session (auth methods, expiry, sign-out-everywhere). Shown to
+members and admins alike; every area above is role-gated, this one is not.
+
+It has no counterpart on the environment plane, and that is a decision rather than a gap:
+an environment administrator holds the environment from the account layer, so their own
+password, passkeys and sessions live in the **workspace** console instead.
+
+No screenshot of its own — the 2026-07-13 image above filed these settings under
+*Settings*, which is where they used to live.
+
+## Chrome
+
 ### Organization switcher
 
-A signed-in user who belongs to several organizations switches the active tenant
-from the sidebar card. The switch is server-verified against membership — you can
-only switch into an org you actually belong to — and the role updates with it
-(here: Owner in Acme, Admin in Globex). The security model is described in
+A signed-in user who belongs to several organizations switches the active tenant from the
+sidebar card. The switch is server-verified against membership — you can only switch into
+an org you actually belong to — and the role updates with it (here: Owner in Acme, Admin in
+Globex). The security model is described in
 [Security](../security/_index.md#organization-switcher).
+
+The environment plane has a second, unrelated picker beside it: which organization the
+console is **acting on**. It is a search rather than a list, because an environment with
+four thousand organizations is a real one.
 
 ![Organization switcher](../screenshots/org-switcher.png)
 
 ### Responsive (mobile & tablet)
 
-Below the `lg` breakpoint the sidebar collapses into an off-canvas **navigation
-drawer** (hamburger in the top bar) holding the full nav, org context, theme
-toggle and sign-out; content stacks to a single column and wide tables scroll
-within their card. The sign-in split-screen collapses to a centered form. Verified
-at phone (390px) and tablet (768px) widths.
+Below the `lg` breakpoint the sidebar collapses into an off-canvas **navigation drawer**
+(hamburger in the top bar) holding the full nav, org context, theme toggle and sign-out;
+content stacks to a single column and wide tables scroll within their card. The sign-in
+split-screen collapses to a centered form. Verified at phone (390px) and tablet (768px)
+widths.
 
 ![Console on mobile](../screenshots/mobile-dashboard.png)
 

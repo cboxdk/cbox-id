@@ -78,13 +78,15 @@ Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id
 (a pre-1.0 framework) and has open security follow-ups. Review the
 [security notes](docs/security/_index.md) and [`SECURITY.md`](SECURITY.md) before
 running it in production. Shipped: full auth (password + magic-link + TOTP MFA +
-passkeys + social), signup → org onboarding with signup-mode lockdown, the
-9-section org admin console (Overview, Members, SSO, Directory/SCIM, Roles, API
-clients, Webhooks, Audit, Settings), the **`/platform` section** (environments,
-tenant management, operators) for whoever has authority over the deployment,
-guided install (`cbox-id:install` or `/first-run`), branded error screens with
-telemetry trace IDs, and health/metrics endpoints. Session-cookie auth, strict
-CSP, rate limiting, and argon2id throughout.
+passkeys + social), signup → org onboarding with signup-mode lockdown, the admin
+console in nine areas (Overview, People, Sign-in, Access control, Developers,
+Connectors, Logs, Settings, My account — see
+[`ConsoleArea`](app/Platform/Console/ConsoleArea.php)) served by one set of
+components on both the organization and the environment plane, the **`/platform`
+section** (environments, accounts, operators) for whoever has authority over the
+deployment, guided install (`cbox-id:install` or `/first-run`), branded error
+screens with telemetry trace IDs, and health/metrics endpoints. Session-cookie
+auth, strict CSP, rate limiting, and argon2id throughout.
 
 ## License
 

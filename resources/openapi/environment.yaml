@@ -87,7 +87,16 @@ paths:
                   description: URL-safe; unique within the environment.
                 type:
                   type: string
-                  enum: [customer, internal, reseller]
+                  # OrganizationType has exactly these two cases and the controller
+                  # validates with Rule::enum, so anything else is a hard 422. This
+                  # documented a third value, `internal`, that no enum case has ever
+                  # backed — a client that trusted the schema got a validation error
+                  # for sending what the schema told it to send.
+                  enum: [customer, reseller]
+                  default: customer
+                  description: >-
+                    `reseller` manages customer organizations beneath it in the tree;
+                    `customer` is a leaf tenant.
       responses:
         "201":
           description: Created
@@ -750,7 +759,7 @@ components:
         id: { type: string }
         name: { type: string }
         slug: { type: string }
-        type: { type: string, enum: [customer, internal, reseller] }
+        type: { type: string, enum: [customer, reseller] }
         status: { type: string, enum: [active, suspended] }
         parent_id: { type: ["string", "null"] }
     User:
