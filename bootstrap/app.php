@@ -159,6 +159,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Laravel-encrypted cookie).
         $middleware->encryptCookies(except: [
             'cbox-nav-pinned',
+            // The theme, for exactly the reason above and with exactly the same failure
+            // when it is not done. It lived in `localStorage`, which the server cannot
+            // read, so the first paint used the OS preference and the deferred bundle
+            // flipped it afterwards — and `wire:navigate` re-rendered `<html>` without it
+            // and dropped the choice mid-walk. {@see \App\Platform\Theme}.
+            'cbox-theme',
         ]);
 
         // Global so security headers cover API/JSON + error responses too, not
