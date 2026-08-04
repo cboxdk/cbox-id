@@ -33,12 +33,16 @@ use App\Platform\Install\DatabasePlatformInstaller;
 use App\Platform\Install\EnvFile;
 use App\Platform\Install\FileSetupTokens;
 use App\Platform\OpenEntitlements;
+use App\Platform\RevokingAuthPolicies;
 use App\Platform\TrustedHosts;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
@@ -84,6 +88,20 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->extend(AuditLog::class, function (AuditLog $inner): AuditLog {
             return new ImpersonationAwareAuditLog($inner);
         });
+
+        // A tightened SSO mandate ends the sessions that predate it. Decorating the
+        // CONTRACT rather than the console page that writes it: the mandate is the one
+        // policy rule no live session is ever re-asked (see {@see RevokingAuthPolicies}),
+        // and the policy that governs an ACCOUNT member's password — their organization's
+        // override — has no write surface at all yet, so a rule bolted onto today's
+        // writers would miss the population it exists for. Extend, not bind: the framework
+        // resolves the concrete implementation with its per-request memo, and this wraps
+        // whatever it registered rather than replacing it.
+        $this->app->extend(AuthPolicies::class, fn (AuthPolicies $inner, Application $app): AuthPolicies => new RevokingAuthPolicies(
+            $inner,
+            $app->make(SessionManager::class),
+            $app->make(Memberships::class),
+        ));
 
         // Entitlements: grant-by-default unless this deployment is metered.
         //

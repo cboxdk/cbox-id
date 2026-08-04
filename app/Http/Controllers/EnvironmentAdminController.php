@@ -83,9 +83,17 @@ final class EnvironmentAdminController extends Controller
         // authenticates to the ACCOUNT; a handoff is minted from a session that has
         // already satisfied whatever the account's own door asked of it, and this host
         // cannot see which door that was. Nor does refusing protect anything: the same
-        // session administers billing, members and API keys at the root. If a policy
-        // change should end the sessions that predate it, that is session revocation on
-        // the account plane — one place, for every surface.
+        // session administers billing, members and API keys at the root.
+        //
+        // That argument leans on a session predating a mandate being ENDED rather than
+        // tolerated, and for a while it leaned on nothing: no such revocation existed, so
+        // dropping the check here left every live password session reaching this console.
+        // It exists now, at the write — {@see \App\Platform\RevokingAuthPolicies} ends
+        // every session governed by a policy the moment that policy stops admitting
+        // passwords, in the environment the policy was written in. An admin session is the
+        // member's ordinary platform-root subject session, and
+        // {@see EnvironmentAdminAuth::current()} re-reads that row on every request, so a
+        // revoked one closes this console on the next click rather than at the next mint.
         //
         // The general rule, because `admin.login` bounces back to the mint: a refusal here
         // is only a refusal if the ROOT refuses or RESOLVES it too. This one qualifies —

@@ -7,6 +7,7 @@ use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\MemberCredentialGate;
+use App\Platform\RevokingAuthPolicies;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Enums\PasswordRevocationScope;
@@ -231,11 +232,18 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
 it('opens the tenant console for a member whose account mandates SSO', function (): void {
     $result = anAccountMember();
     handoffShape($result->environment);
-    signInAsMember($result->member);
 
+    // The mandate FIRST, and the sign-in under it. Written the other way round this test
+    // asserted something else once {@see \App\Platform\RevokingAuthPolicies} existed: a
+    // session that predates a mandate is now ended by the write, so the chain would have
+    // bounced for want of a session rather than opened — and the door this test is about
+    // would never have been reached. A member of an SSO-mandated account still HAS an
+    // account session; they got it from the provider their account mandated.
     app(PlatformRoot::class)->run(
         fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required)),
     );
+
+    signInAsMember($result->member);
 
     // From the door the member actually presses — "open" on the account console — so the
     // mint and the redemption are both under test, which is where the cycle lived.
@@ -249,6 +257,45 @@ it('opens the tenant console for a member whose account mandates SSO', function 
 
     // …and it is a real environment-admin session, not merely a page that answered.
     expect(app(EnvironmentAdminAuth::class)->check())->toBeTrue();
+})->group('security');
+
+/**
+ * THE OTHER HALF OF THAT ARGUMENT, WHICH WAS NOT TRUE WHEN IT WAS MADE.
+ *
+ * Dropping the password question from the redemption is defensible only because a policy
+ * change ENDS the sessions that predate it — otherwise turning the mandate on would have
+ * left every live password session walking into the tenant console it used to be refused
+ * at, and the availability fix would have bought a security gap.
+ *
+ * No such revocation existed. It does now, at the write
+ * ({@see RevokingAuthPolicies}), and this is the assertion that the two ends
+ * meet: a member sitting IN the console when their account's policy stops admitting
+ * passwords loses it. Not at the next mint — an admin session is the member's ordinary
+ * platform-root subject session and {@see EnvironmentAdminAuth} re-reads that row every
+ * request, so the console closes on the next click.
+ */
+it('closes an open tenant console when the account\'s policy stops admitting passwords', function (): void {
+    $result = anAccountMember();
+    handoffShape($result->environment);
+    signInAsMember($result->member);
+
+    [$response] = chainFrom($this, 'https://cboxid.com'.route('workspace.environment.open', $result->environment->id, false));
+    $response->assertSuccessful();
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeTrue();
+
+    // The policy governing an ACCOUNT member is written in the platform root — that is
+    // where account members are subjects, and where their sessions live.
+    app(PlatformRoot::class)->run(
+        fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required)),
+    );
+
+    nextRequest();
+
+    [$after, $chain] = chainFrom($this, 'https://cbox-id.test'.route('environment.home', [], false));
+
+    expect($after->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
+        ->and(end($chain))->toBe('https://cboxid.com/workspace/login')
+        ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 })->group('security');
 
 /**

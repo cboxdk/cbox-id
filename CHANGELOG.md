@@ -120,6 +120,26 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   the platform pages to `/platform` dropped the bookmark redirects that were deliberately
   kept when the separate operator login was retired.
 
+### Security
+
+- **Mandating SSO now ends the password sessions that predate the mandate.** Every other
+  rule in a sign-in policy is re-asked of a live session — two-factor and password age are
+  holds on every request — but "a local password is not a way in" was asked at the door
+  and nowhere else, so switching it on governed the next sign-in and nobody already
+  inside. Their sessions kept working until their ttl ran out.
+
+  That gap widened when handoff redemption stopped asking the password question (above):
+  an account tightening its policy left live password sessions reaching the tenant admin
+  console, which they had previously been refused at. Both halves are closed together —
+  the redemption stays out of the password's business, and a policy that stops admitting
+  passwords now revokes the sessions it no longer admits, in the environment it was
+  written in, the administrator who made the change included.
+
+  Revocation happens at the WRITE, wrapping the policy store rather than the console page,
+  so it covers every writer — the sign-in rules page today, an organization-level surface
+  or an API path when either appears. It fires only on a **tightening**: relaxing a
+  mandate, or saving a policy without touching it, strands nobody.
+
 ## [0.35.1] - 2026-08-03
 
 ### Fixed
