@@ -22,7 +22,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'Confirm it\'s you'])] 
         $memberId = $auth->id();
 
         if ($memberId === null) {
-            $this->redirectRoute('workspace.login', navigate: false);
+            // Reached by somebody with a live session but no MEMBERSHIP — a platform
+            // operator, before the pages that send them here were gated. It used to
+            // redirect to the sign-in screen with nothing said, which reads as "your
+            // correct password was wrong" to a person whose session is perfectly valid.
+            // Say what actually happened, and send them somewhere that is theirs.
+            session()->forget('workspace.sudo.intended');
+
+            $this->addError('password', 'This step-up is for a workspace member, and this session holds no membership. Your own security settings are on Platform › Security.');
 
             return;
         }
@@ -50,6 +57,19 @@ new #[Layout('components.layouts.workspace', ['title' => 'Confirm it\'s you'])] 
         $intended = session()->pull('workspace.sudo.intended');
         $this->redirect(is_string($intended) ? $intended : route('workspace.security'), navigate: false);
     }
+
+    /**
+     * Where Cancel goes — the page that asked for the step-up, PEEKED not pulled: the
+     * person may still go on to confirm, and confirm() is what spends the intent.
+     *
+     * @return array<string, mixed>
+     */
+    public function with(): array
+    {
+        $intended = session()->get('workspace.sudo.intended');
+
+        return ['cancelHref' => is_string($intended) ? $intended : route('workspace.home')];
+    }
 }; ?>
 
 <div class="max-w-md">
@@ -74,17 +94,24 @@ new #[Layout('components.layouts.workspace', ['title' => 'Confirm it\'s you'])] 
                     autocomplete="current-password"
                     autofocus
                     class="input w-full"
-                    @error('password') aria-invalid="true" @enderror
+                    @error('password') aria-invalid="true" aria-describedby="sudo-password-error" @enderror
                 />
                 @error('password')
-                    <p class="mt-1.5 text-sm" style="color:var(--danger)">{{ $message }}</p>
+                    <p id="sudo-password-error" class="mt-1.5 text-sm" role="alert" style="color:var(--danger)">{{ $message }}</p>
                 @enderror
             </div>
 
-            <button type="submit" class="btn btn-primary w-full" wire:loading.attr="disabled" wire:target="confirm">
-                <span wire:loading.remove wire:target="confirm">Confirm</span>
-                <span wire:loading wire:target="confirm">Confirming…</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="submit" class="btn btn-primary flex-1" wire:loading.attr="disabled" wire:target="confirm">
+                    <span wire:loading.remove wire:target="confirm">Confirm</span>
+                    <span wire:loading wire:target="confirm">Confirming…</span>
+                </button>
+                {{-- A step-up is an interruption, so it needs a way out that is not the
+                     browser's Back button: this page has no rail entry of its own, so
+                     Back is the only other exit and it re-posts the form on some
+                     browsers. Points at whatever asked for the step-up. --}}
+                <a href="{{ $cancelHref }}" class="btn btn-ghost">Cancel</a>
+            </div>
         </form>
     </div>
 </div>

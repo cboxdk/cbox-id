@@ -111,7 +111,18 @@ it('takes no address argument, so a crafted call cannot steer where the mail goe
 
     // The Livewire control likewise takes only container-resolved services — no scalar a
     // request payload could supply.
+    //
+    // Signed in as a real member first. The launchpad now redirects a session with no
+    // account membership to the platform console — an operator who owns nothing has no
+    // projects to land in — so mounting it as nobody yields a null instance and this
+    // assertion would pass by reflecting over nothing at all.
+    rootForResend();
+    $member = signUpForResend();
+    signInAsSubject((string) $member->subject_id);
+
     $component = Volt::test('workspace.home')->instance();
+
+    expect($component)->not->toBeNull('the launchpad did not mount, so nothing below was checked');
 
     foreach ((new ReflectionMethod($component, 'resendVerification'))->getParameters() as $parameter) {
         $type = $parameter->getType();

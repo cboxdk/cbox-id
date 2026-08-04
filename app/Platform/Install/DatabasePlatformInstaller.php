@@ -8,6 +8,7 @@ use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\Install\Enums\PlatformOccupant;
 use App\Platform\Install\Enums\SchemaState;
 use App\Platform\Install\Exceptions\PlatformNotEmpty;
+use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -44,6 +45,9 @@ use Throwable;
  */
 final class DatabasePlatformInstaller implements PlatformInstaller
 {
+    /** @see isEmpty() — the per-request answer, not a cache. */
+    private ?bool $emptyRecord = null;
+
     public function __construct(
         private readonly EnvironmentContext $context,
         private readonly PlatformOperators $operators,
@@ -56,7 +60,39 @@ final class DatabasePlatformInstaller implements PlatformInstaller
         return $this->schema() === SchemaState::Ready;
     }
 
+    /**
+     * Whether nobody has claimed this deployment yet.
+     *
+     * MEMOISED FOR THE REQUEST. {@see PointAtFirstRun} asks on every request, and it is
+     * registered twice on purpose — once in the global `web` group and once in Livewire's
+     * persistent list, because that list is where "this gate must survive a component
+     * action" is stated rather than inferred from grouping ({@see PlatformServiceProvider}).
+     * Both registrations are right, so the duplicate ask is answered here instead of by
+     * removing one: a Livewire round trip was paying two `select exists(...)` for a fact
+     * that cannot change between them.
+     *
+     * ONLY "CLAIMED" IS REMEMBERED, which is the whole safety of it. A claimed platform
+     * cannot become unclaimed — nothing in the product un-installs a deployment — so that
+     * answer is stable and it is the one every live request gets. "Empty" is the answer
+     * that flips, and it flips against a gate: the first-run screen re-asks on every
+     * action precisely because somebody else may have claimed the platform between the
+     * render and the submit, and a remembered "yes, still empty" would walk that check
+     * past a platform that now has an operator in it. So the empty answer is re-asked, on
+     * the one deployment where nobody is waiting for the page.
+     *
+     * The binding is `scoped` as well, so even the remembered answer cannot outlive the
+     * request, and {@see install()} drops it as it writes.
+     */
     public function isEmpty(): bool
+    {
+        if ($this->emptyRecord === false) {
+            return false;
+        }
+
+        return $this->emptyRecord = $this->resolveEmpty();
+    }
+
+    private function resolveEmpty(): bool
     {
         try {
             return ! $this->anyOccupant();
@@ -94,6 +130,12 @@ final class DatabasePlatformInstaller implements PlatformInstaller
         if (! $occupancy->isEmpty()) {
             throw PlatformNotEmpty::with($occupancy);
         }
+
+        // This request is the one that stops the platform being empty, and the first-run
+        // screen re-asks after it — through the same scoped instance. Dropped BEFORE the
+        // write rather than after, so a failure part-way through cannot leave the memo
+        // asserting an emptiness the transaction may already have contradicted.
+        $this->emptyRecord = null;
 
         return DB::transaction(function () use ($plan): InstalledPlatform {
             $root = $this->platformRoot($plan);

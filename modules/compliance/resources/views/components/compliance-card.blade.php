@@ -8,16 +8,33 @@
         </span>
         <div>
             <p class="text-sm font-medium" style="color:var(--muted)">Audit export</p>
-            <p class="text-lg font-semibold mono" style="color:var(--foreground)">
+            {{-- The display face, like every neighbouring stat card. `mono` set this one
+                 tile in the code face on a row of dashboard cards, so it read as a
+                 machine value rather than as a count of work outstanding. --}}
+            <p class="text-lg font-semibold" style="color:var(--foreground);font-variant-numeric:tabular-nums">
                 {{ number_format($pending) }} pending
             </p>
         </div>
     </div>
+    {{-- The run line is ENVIRONMENT bookkeeping: one run walks every chain in the
+         environment, so "17 scopes scanned" describes other tenants' activity and
+         answers nothing about your own. It is shown to the plane that owns the
+         environment; the organization plane gets a sentence about its own chain
+         instead. Same rule the exports page states at length. --}}
     <p class="mt-3 text-xs" style="color:var(--muted)">
-        @if ($lastRun ?? null)
-            Last run {{ $lastRun->finished_at?->diffForHumans() ?? '—' }} · {{ $lastRun->status }}
+        @if ($showsRuns ?? false)
+            @if ($lastRun ?? null)
+                Last run {{ $lastRun->finished_at?->diffForHumans() ?? '—' }} · {{ $lastRun->status }}
+            @elseif ($pending > 0)
+                {{-- "25 pending" over a flat "No export runs yet" read as a contradiction:
+                     one line counts work, the next says none has been done, and neither
+                     says what to do. Name the state and the next step instead. --}}
+                Nothing has been exported yet — these entries are waiting for the first run.
+            @else
+                No export runs yet, and nothing is waiting for one.
+            @endif
         @else
-            No export runs yet.
+            {{ $pending === 0 ? 'This organization’s audit chain has shipped in full.' : 'From this organization’s audit chain.' }}
         @endif
     </p>
     <a href="{{ route('compliance.exports') }}" class="mt-4 inline-block text-sm font-medium" style="color:var(--accent-strong)">

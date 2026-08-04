@@ -384,14 +384,21 @@ it('lands an account-less operator on the console they actually have', function 
 
     expect($page->errors()->all())->toBe([]);
 
-    // One console, one landing. The destination is the console ROOT — the same one an
-    // account member gets — and the proof is that it SERVES them: asserting only where
-    // they were sent is what let the loop ship, because the redirect was always correct
-    // and it was the arrival that refused.
+    // One console, one landing. The proof is that the landing SERVES them: asserting only
+    // where they were sent is what let the loop ship, because the redirect was always
+    // correct and it was the arrival that refused. So this follows the redirects and
+    // asserts the page that finally answers, which is the assertion that cannot be
+    // satisfied by a loop however many hops it has.
     $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
     signInAsSubject($subjectId);
 
-    $this->get(route('workspace.home'))->assertSuccessful();
+    $this->followingRedirects()->get(route('workspace.home'))->assertSuccessful();
+
+    // …and it is the PLATFORM, not the account launchpad. The console root used to serve
+    // this person a Projects page describing a thing they do not have, with its only
+    // action gated off by a role they do not hold — a 200 that was still a dead end, which
+    // is why "it answered 200" is not on its own the property worth guarding.
+    $this->get(route('workspace.home'))->assertRedirect(route('platform.environments'));
 })->group('security');
 
 /** And an account member still lands on their account, unchanged. */

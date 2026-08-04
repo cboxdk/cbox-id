@@ -14,6 +14,65 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## Unreleased
+
+### Everyone is signed out on deploy
+
+There were three session stores for what is one human, and two of them are gone.
+`cbox.account_member`, `cbox.account_member_v` and `cbox.env_admin_subject` are no
+longer read or written: an account member and a platform operator are ordinary
+subjects in the platform-root environment, so there is one session and the rest is a
+permission read off it.
+
+Nothing migrates a session held in one of the retired shapes, and nothing can — the
+keys held a selection rather than a credential. **Every signed-in browser is logged
+out the moment this deploys**, including yours, including the one you would use to
+fix a bad deploy. There is no error and no warning; people simply land on a sign-in
+form.
+
+Before you deploy:
+
+- Have a credential you can sign in with **that is not a live session** — the
+  operator's password and second factor, in a password manager you can reach from
+  another device.
+- Pick a window. This logs out every end user of every tenant, not only staff.
+- Expect the sign-in rate to spike immediately afterwards; a per-IP limiter in front
+  of `/login` sized for steady state will start refusing real people.
+
+### `/operator` moved to `/platform`
+
+The staff pages stopped being a console of their own and became a section of the one
+console, so they moved with it. `/operator/login` and `/operator/login/mfa` are gone
+outright — the sign-in is `/workspace/login`, the same door everyone else uses.
+
+`/operator`, `/operator/login` and `/operator/login/mfa` are kept as **redirects**, so
+a bookmark still lands somewhere that works. A redirect is not a route, though, and
+three things break on one:
+
+| What | Why | Fix |
+| --- | --- | --- |
+| Uptime monitors on `/operator` | It answers **302**, not 200 | Point them at `/platform` |
+| Reverse-proxy / WAF rules matching `/operator*` | The traffic is on `/platform*` and `/workspace/login` now | Rewrite the location blocks |
+| Anything that POSTs to an `/operator/...` path | Only the three paths above redirect; nothing else at that prefix exists | Use the `/platform/...` path |
+
+Grep your deployment for the old prefix before you cut over:
+
+```
+grep -rn '/operator' k8s/ nginx/ monitoring/
+```
+
+### The unauthenticated first-operator form is gone
+
+A fresh install used to offer a one-time "create the first operator" form at
+`/operator/login`. It was an unauthenticated takeover vector on any platform whose
+last operator had been removed, so it was deleted rather than repaired.
+
+The first operator is created by **`php artisan cbox-id:install`**, or — where nobody
+can open a shell — from **`/first-run`**, which requires the setup token the
+deployment writes to `storage/app/private/cbox-id-first-run.token` and to the
+application log. **No action for a deployment that already has an operator**; this
+matters only if you were relying on the old form to recover one.
+
 ## 0.35.0
 
 ### The `ID_*` env var fallback is gone — rename before upgrading

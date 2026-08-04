@@ -29,25 +29,36 @@ class ConsoleNavigation
      * environment.
      *
      * Role-aware: a member who cannot read billing has no Billing page, and an area
-     * left with no pages disappears rather than rendering an empty rail icon. Null role
-     * means no member is resolved yet, which shows only the pages that need no
-     * permission at all.
+     * left with no pages disappears rather than rendering an empty rail icon.
+     *
+     * A NULL role is not "a member with no permissions" — it is NO MEMBER, the operator
+     * who runs the deployment and buys nothing on it. Every area below is about an
+     * account they do not have, so every one of them is gated on the role being present,
+     * Overview and Personal included. Unconditional, those two shipped as dead ends: an
+     * account-less operator landed on a Projects page whose only CTA was permission-gated
+     * off, and a Profile page that rendered empty fields and three buttons wired to a
+     * member that does not exist. An operator's own identity and second factor live on
+     * Platform › Security, which the areas below this add for exactly that person.
      */
     public function workspace(?AccountRole $role): ConsoleNav
     {
         $areas = [
             ...$this->platformAreas(),
             new NavArea('Overview', 'dashboard',
-                new NavPage('workspace.home', 'Projects'),
+                ...($role !== null ? [new NavPage('workspace.home', 'Projects')] : []),
             ),
             new NavArea('People', 'members',
                 ...($role?->canReadMembers() === true ? [new NavPage('workspace.members', 'Members')] : []),
             ),
-            new NavArea('Developers', 'clients',
+            new NavArea('Developers', 'webhooks',
                 ...($role?->canManageMembers() === true ? [new NavPage('workspace.api-keys', 'API keys')] : []),
                 ...($role?->canManageEnvironments() === true ? [
                     new NavPage('workspace.environment-keys', 'Environment keys'),
-                    new NavPage('workspace.environment-domains', 'Domains'),
+                    // "Environment domains", not "Domains": it is what the page's own
+                    // heading says, it sits one line under "Environment keys", and the
+                    // console has a second, unrelated Domains page (a tenant's verified
+                    // email domains) on the organization plane.
+                    new NavPage('workspace.environment-domains', 'Environment domains'),
                 ] : []),
             ),
             new NavArea('Account', 'settings',
@@ -59,7 +70,7 @@ class ConsoleNavigation
             // than an account setting, so it gets its own area instead of hiding at the
             // bottom of Settings.
             new NavArea('Personal', 'shield-check',
-                new NavPage('workspace.security', 'Profile'),
+                ...($role !== null ? [new NavPage('workspace.security', 'Profile & security')] : []),
             ),
         ];
 
@@ -101,7 +112,12 @@ class ConsoleNavigation
                 // published guide already use. "Directories" also said nothing about
                 // which direction people move, one line above Outbound sync.
                 new NavPage('environment.directories', 'Sync users in'),
-                new NavPage('environment.provisioning', 'Outbound sync'),
+                // …and its pair keeps the pair's other half. The page, its detail view,
+                // its help topic and the organization plane's registry entry all say
+                // "Sync users out"; only this line said "Outbound sync", which is the
+                // name the line above was renamed AWAY from. Found by the extended
+                // ConsoleAreasTest, not by reading — which is the point of that test.
+                new NavPage('environment.provisioning', 'Sync users out'),
             ),
             new NavArea('Access control', 'shield-check',
                 new NavPage('environment.governance', 'Access reviews'),
@@ -121,10 +137,15 @@ class ConsoleNavigation
                 // one line under Webhooks — a different capability that runs after the
                 // fact — and named the synchronous one after the asynchronous one.
                 new NavPage('environment.hooks', 'Inline hooks'),
-                new NavPage('environment.vault', 'Stored tokens'),
+                // "Token vault" on both planes now. One component serves them, so it has
+                // one title — and clicking "Stored tokens" to land on a page headed
+                // "Token vault" is the same broken promise the merged pairs above fixed.
+                new NavPage('environment.vault', 'Token vault'),
             ),
             new NavArea('Logs', 'audit',
-                new NavPage('environment.audit', 'Audit log'),
+                // "Activity log" — what the page, its help topic and the organization
+                // plane's registry entry all call it. Same drift as Sync users out.
+                new NavPage('environment.audit', 'Activity log'),
                 new NavPage('environment.audit-streams', 'Log streaming'),
             ),
             new NavArea('Settings', 'settings',
@@ -264,11 +285,19 @@ class ConsoleNavigation
                 new NavPage('platform.accounts', 'Accounts'),
                 new NavPage('platform.organizations', 'Organizations'),
             ),
-            new NavArea('Insights', 'dashboard',
+            // Icons distinct at 18px, which is the only size the collapsed rail renders
+            // them at. A dual-role person sees these three beside Overview, People,
+            // Developers, Account and Personal in ONE rail, and the merge left three
+            // near-collisions there: Insights and Overview were both `dashboard`, the
+            // same glyph twice; Administration's `shield` and Personal's `shield-check`
+            // are the same silhouette; and `layers` beside Developers' old `clients` was
+            // two stacks of diamonds. Insights takes `chart`, Administration takes `lock`,
+            // and Developers took `webhooks` (the code brackets) above.
+            new NavArea('Insights', 'chart',
                 new NavPage('platform.usage', 'Usage'),
                 new NavPage('platform.search', 'Search'),
             ),
-            new NavArea('Administration', 'shield',
+            new NavArea('Administration', 'lock',
                 new NavPage('platform.operators', 'Operators'),
                 new NavPage('platform.security', 'Security'),
             ),

@@ -60,6 +60,13 @@ class ConsoleParityHealthCheck implements HealthCheck
         'Conflict rules' => ['sod-policies', 'environment.sod-policies'],
         'Webhooks' => ['webhooks', 'environment.webhooks'],
         'Inline hooks' => ['hooks', 'environment.hooks'],
+        // The last pair to be merged, and the one where the drift was a hole rather than
+        // a missing feature: the organization plane's page was behind a step-up and the
+        // environment plane's three were behind nothing, so the same rotate/grant/revoke
+        // actions asked a tenant admin for a password and the administrator of every
+        // tenant for none. Listed here so the two can never again be gated differently
+        // without the doctor saying so.
+        'Token vault' => ['vault', 'environment.vault'],
         'Activity log' => ['audit', 'environment.audit'],
         'Settings' => ['settings', 'environment.settings'],
         'Appearance' => ['appearance', 'environment.appearance'],

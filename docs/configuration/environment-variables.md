@@ -276,6 +276,8 @@ setting one to `false` removes that command from the schedule with no other sign
 | `CBOX_ID_GOVERNANCE_SCHEDULE` | The governance sweeps (access reviews and their reminders/expiries). | `true` | Off only if you do not use governance campaigns. |
 | `CBOX_ID_PRUNE_SCHEDULE` | The daily `cbox-id:prune` sweep (see [Data retention](#data-retention-pruning)). | `true` | Off only if you prune out-of-band. |
 | `CBOX_ID_WEBHOOKS_SCHEDULE_RETRIES` | The webhook retry sweep — see [Webhooks](#webhooks). It is a scheduled **closure**, not an artisan command, though `schedule:list` shows it as `cbox-id:webhooks:retry`. | `true` | Keep on in production. |
+| `CBOX_ID_COMPLIANCE_SCHEDULE_EXPORT` | `id-compliance:export` every five minutes — ships new audit entries to the configured sink (SIEM / JSONL archive). Registers only when the compliance module is active. | `true` | Off only if something else drives the export. With it off and a sink configured, the module reports itself active, the backlog grows, and **nothing is ever shipped**. |
+| `CBOX_ID_COMPLIANCE_SCHEDULE_RETENTION` | `id-compliance:retention` daily — signs a fresh checkpoint on every audit chain so archived history stays externally verifiable. Never deletes entries. Registers only when the compliance module is active. | `true` | Off only if you anchor chains out-of-band. |
 
 The hourly app-manifest re-pull is scheduled too, but has **no** environment variable —
 see the undeclared-key note under [Access control](#access-control-rbac-and-app-manifests).

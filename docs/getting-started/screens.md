@@ -1,7 +1,7 @@
 ---
 title: Screens
 weight: 3
-description: A visual tour of the Cbox ID operator console, admin console, and sign-in surface.
+description: A visual tour of the Cbox ID platform section, admin console, and sign-in surface.
 ---
 
 # Screens

@@ -53,7 +53,7 @@ belong to. The role in effect updates with the switch, and switching is audited.
   admin invitations, which keep working.
 - **`closed`** — no self-service signup at all.
 
-Admin- and operator-initiated provisioning (invitations, the operator console) is
+Admin- and operator-initiated provisioning (invitations, the `/platform` section) is
 **never** gated by this — it is not self-service. Set this to `invite_only` or
 `closed` for a private or internal deployment so the internet-facing signup form
 cannot be used to create tenants.

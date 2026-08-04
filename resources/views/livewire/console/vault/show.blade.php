@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\VaultScope;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
-use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Livewire\Attributes\Layout;
@@ -12,27 +12,30 @@ use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
 /**
- * Environment control plane › Stored tokens › detail. The full, deep-linkable
+ * Console › Token vault › detail — one component, both planes. The full, deep-linkable
  * lifecycle for one downstream credential: metadata, rotation, the client grants that
  * authorize an agent to lease it, and revocation.
  *
  * The sealed value is NEVER displayed — not the stored value, not a rotated one. A new
- * value is handled in the clear only in the rotate input, the one time the admin types
- * it, and is sealed and cleared on submit. Every read/write re-resolves the secret
- * within THIS environment (BelongsToEnvironment) and 404s on a foreign id.
+ * value is handled in the clear only in the rotate input, the one time the administrator
+ * types it, and is sealed and cleared on submit.
+ *
+ * EVERY read and every mutation goes through {@see VaultScope}, which derives the owner
+ * from the CONSOLE'S scope. The environment plane's version derived it from the row
+ * (`VaultOwner::fromRow($secret->owner_type, $secret->owner_id)`) and handed the
+ * framework's deny-by-default owner check its own answer — a tautology that authorized
+ * every row against itself. An id outside this scope now resolves to nothing and is a
+ * 404, which tells the caller nothing about what exists elsewhere.
  */
-new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Stored token'])] class extends Component
 {
     /**
-     * Second layer. The route's `env.admin` middleware is the primary gate and IS
-     * re-run on Livewire actions (PersistentMiddlewareTest holds that), but this
-     * console previously had NO in-component authorization at all — so when that
-     * middleware was missing from the persistent list, every action here answered
-     * unauthenticated. boot() rather than mount(): only boot() runs on each action.
+     * Second layer — see the index page. boot(), not mount(), so it re-runs on every
+     * Livewire message rather than only the first render.
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     public string $secretId = '';
@@ -48,20 +51,20 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
     public function mount(string $secret): void
     {
-        $model = VaultSecret::query()->whereKey($secret)->first();
-        abort_if($model === null, 404);
-
-        $this->secretId = $model->id;
+        $this->secretId = $this->secret($secret)->id;
     }
 
     /**
-     * Resolve the secret THIS environment owns, or refuse. The query is
-     * environment-scoped (BelongsToEnvironment), so an id from another plane resolves
-     * to null and is a 404 — never a cross-tenant mutation (deny-by-default).
+     * Resolve a secret this console's scope owns, or refuse.
+     *
+     * `$secretId` is a public wire property, so on every action it is whatever the client
+     * says it is — which is precisely why the lookup is re-done here per call rather than
+     * trusted from mount().
      */
-    private function secret(): VaultSecret
+    private function secret(?string $id = null): VaultSecret
     {
-        $model = VaultSecret::query()->whereKey($this->secretId)->first();
+        $model = app(VaultScope::class)->find($id ?? $this->secretId);
+
         abort_if($model === null, 404);
 
         return $model;
@@ -79,7 +82,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         $secret = $this->secret();
         $this->validateOnly('rotateSecret');
 
-        $vault->rotate($secret->id, $this->rotateSecret, VaultOwner::fromRow($secret->owner_type, $secret->owner_id));
+        $vault->rotate($secret->id, $this->rotateSecret, app(VaultScope::class)->owner());
 
         $this->reset('rotating', 'rotateSecret');
         $this->dispatch('toast', message: 'Secret rotated — the sealed value was replaced.');
@@ -90,7 +93,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
         $secret = $this->secret();
         $this->validateOnly('grantClient');
 
-        $vault->grant($secret->id, $this->grantClient, VaultOwner::fromRow($secret->owner_type, $secret->owner_id));
+        $vault->grant($secret->id, $this->grantClient, app(VaultScope::class)->owner());
 
         $this->reset('grantClient');
         $this->dispatch('toast', message: 'Access granted.');
@@ -98,17 +101,17 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
     public function revokeGrant(string $clientId, SecretVault $vault): void
     {
-        $vault->revokeGrant($this->secret()->id, $clientId, VaultOwner::fromRow($this->secret()->owner_type, $this->secret()->owner_id));
+        $vault->revokeGrant($this->secret()->id, $clientId, app(VaultScope::class)->owner());
         $this->dispatch('toast', message: 'Access revoked.');
     }
 
     public function revoke(SecretVault $vault): mixed
     {
-        $vault->revoke($this->secret()->id, VaultOwner::fromRow($this->secret()->owner_type, $this->secret()->owner_id));
+        $vault->revoke($this->secret()->id, app(VaultScope::class)->owner());
 
         $this->dispatch('toast', message: 'Secret revoked — no future lease can open it.');
 
-        return $this->redirectRoute('environment.vault', navigate: true);
+        return $this->redirectRoute(app(ConsoleScope::class)->routeName('vault'), navigate: true);
     }
 
     /**
@@ -131,7 +134,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
 
 <div class="space-y-6">
     <div>
-        <a href="{{ route('environment.vault') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Stored tokens</a>
+        <a href="{{ route(app(\App\Platform\Console\ConsoleScope::class)->routeName('vault')) }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Token vault</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $secret->name }}</h1>
             <span class="badge mono">{{ $secret->provider }}</span>
@@ -141,9 +144,6 @@ new #[Layout('components.layouts.environment', ['title' => 'Stored token'])] cla
                 <span class="badge badge-warn">Expired</span>
             @else
                 <span class="badge badge-success">Active</span>
-            @endif
-            @if ($secret->owner_type === 'organization')
-                <span class="badge">Org-scoped</span>
             @endif
         </div>
         <p class="mt-1 text-sm mono" style="color:var(--faint)">{{ $secret->id }}</p>

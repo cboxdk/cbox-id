@@ -76,9 +76,10 @@ platform is empty and requires the setup token the deployment writes to
 internet-exposed box cannot be claimed by whoever finds it first. See
 [Installation](../getting-started/installation.md).
 
-From the operator console, create your remaining environment(s) and use **Provision
-admin** on each to seed its first organization and owner-admin. Those org admins then
-sign in at `/login`.
+Sign in at **`/workspace/login`** — the install command prints the URL — and open the
+**`/platform`** section, the deployment pages in that console's rail. From there
+create your remaining environment(s) and use **Provision admin** on each to seed its
+first organization and owner-admin. Those org admins then sign in at `/login`.
 
 ## 5. Run the workers
 

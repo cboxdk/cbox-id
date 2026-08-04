@@ -6,6 +6,7 @@ namespace Cbox\Id\Analytics;
 
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Analytics\ClickHouse\ClickHouseConnection;
 use Cbox\Id\Analytics\Console\AnalyticsInstallCommand;
@@ -158,15 +159,33 @@ class AnalyticsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Dashboard card: logins in the last day. Empty (nothing rendered) if the reader
-     * can't be read yet (no schema / no environment) — never a broken dashboard.
+     * Dashboard card: logins in the last day, for the ACTING ORGANIZATION. Empty
+     * (nothing rendered) if the reader can't be read yet (no schema / no environment)
+     * — never a broken dashboard.
+     *
+     * The organization id used to be a literal `null`, which {@see ReportReader} reads
+     * as "total across the whole environment". The card renders on an organization's
+     * own dashboard, so one tenant's admin was shown every OTHER tenant's sign-in
+     * volume — live traffic data, on a page nobody thought of as a report. The page
+     * this card links to has always passed the scope; only the card did not.
+     *
+     * Null is refused rather than widened, for the same reason: null means "an
+     * environment administrator has not chosen an organization yet"
+     * ({@see ConsoleScope::organizationId()}), and a stat with no scope is not a
+     * smaller answer, it is a different one.
      */
     private function loginsCard(): string
     {
         try {
+            $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
+
+            if ($organizationId === null) {
+                return '';
+            }
+
             $reader = $this->app->make(ReportReader::class);
             $until = Carbon::now();
-            $logins = $reader->snapshot(null, $until->copy()->subDay(), $until)['auth.login'] ?? 0;
+            $logins = $reader->snapshot($organizationId, $until->copy()->subDay(), $until)['auth.login'] ?? 0;
         } catch (Throwable) {
             return '';
         }

@@ -151,25 +151,23 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organizations', 'width
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Organizations</h1>
-            <p class="cbx-page-desc">Every tenant in the target environment — the management tree of resellers, customers and sub-units.</p>
-        </div>
-        <div class="flex items-center gap-2">
+    <x-page-header title="Organizations" subtitle="Every tenant in the target environment — the management tree of resellers, customers and sub-units.">
+        <x-slot:actions>
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New organization
             </button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
+
+    <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('organization', count($rows)) }} found.</p>
 
     @if ($creating)
         <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="org-name">Name</label>
-                <input wire:model="name" id="org-name" type="text" class="input" placeholder="Acme Inc" autofocus>
-                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="name" id="org-name" type="text" class="input" placeholder="Acme Inc" autofocus
+                       @error('name') aria-invalid="true" aria-describedby="org-name-error" @enderror>
+                @error('name') <p id="org-name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label" for="org-type">Type</label>
@@ -187,64 +185,94 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organizations', 'width
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">
+                <span class="spinner" wire:loading wire:target="create" aria-hidden="true"></span> Create
+            </button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
         </form>
     @endif
 
-    <div class="cbx-panel overflow-hidden mt-8">
-        <div class="hidden sm:grid px-5 py-3 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr 1.4fr auto">
-            <span>Organization</span><span>Type</span><span>Members</span><span>Parent</span><span></span>
+    @if ($rows === [])
+        <div class="cbx-empty mt-8">
+            <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+            <h3>No organizations in this environment</h3>
+            <p>A tenant is where users, sign-in methods and roles live. Create one above, or bootstrap the plane with its first organization and admin from the Environments screen.</p>
         </div>
+    @else
+        {{-- A real table for the same reason Accounts is one: the header row and the body
+             rows were two independent grids over the same `fr` tracks, so they lined up
+             only by luck. --}}
+        <div class="cbx-panel overflow-hidden mt-8">
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Organization</th>
+                            <th scope="col">Type</th>
+                            <th scope="col" class="text-right">Members</th>
+                            <th scope="col">Parent</th>
+                            <th scope="col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($rows as $row)
+                            <tr wire:key="org-{{ $row['id'] }}">
+                                <td>
+                                    <div class="flex items-center" style="padding-left:{{ $row['depth'] * 1.25 }}rem">
+                                        @if ($row['depth'] > 0)
+                                            <span aria-hidden="true" style="color:var(--faint);margin-right:.4rem">└</span>
+                                        @endif
+                                        <div class="min-w-0">
+                                            <p class="font-semibold">
+                                                {{ $row['name'] }}
+                                                @if ($row['status'] === 'suspended')
+                                                    <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
+                                                @endif
+                                            </p>
+                                            <p class="text-xs font-mono" style="color:var(--faint)">{{ $row['slug'] }}</p>
+                                        </div>
+                                    </div>
+                                </td>
 
-        @forelse ($rows as $row)
-            <div wire:key="org-{{ $row['id'] }}" class="px-5 py-3 border-b flex flex-col gap-2 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr 1.4fr auto">
-                <div class="min-w-0 flex items-center" style="padding-left:{{ $row['depth'] * 1.25 }}rem">
-                    @if ($row['depth'] > 0)
-                        <span aria-hidden="true" style="color:var(--faint);margin-right:.4rem">└</span>
-                    @endif
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold truncate">
-                            {{ $row['name'] }}
-                            @if ($row['status'] === 'suspended')
-                                <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
-                            @endif
-                        </p>
-                        <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $row['slug'] }}</p>
-                    </div>
-                </div>
+                                <td class="capitalize whitespace-nowrap" style="color:var(--muted)">{{ $row['type'] }}</td>
+                                <td class="text-right tabular-nums">{{ $row['members'] }}</td>
 
-                <div class="text-sm capitalize" style="color:var(--muted)">{{ $row['type'] }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Members: </span>{{ $row['members'] }}</div>
+                                <td>
+                                    <select class="select"
+                                            wire:change="reparent('{{ $row['id'] }}', $event.target.value)"
+                                            wire:loading.attr="disabled" wire:target="reparent"
+                                            aria-label="Parent organization for {{ $row['name'] }}">
+                                        <option value="" @selected($row['parent_id'] === null)>— Top level —</option>
+                                        @foreach ($all as $o)
+                                            @if ($o['id'] !== $row['id'])
+                                                <option value="{{ $o['id'] }}" @selected($row['parent_id'] === $o['id'])>{{ $o['name'] }}</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </td>
 
-                <div>
-                    <select class="select"
-                            wire:change="reparent('{{ $row['id'] }}', $event.target.value)"
-                            aria-label="Parent organization for {{ $row['name'] }}">
-                        <option value="" @selected($row['parent_id'] === null)>— Top level —</option>
-                        @foreach ($all as $o)
-                            @if ($o['id'] !== $row['id'])
-                                <option value="{{ $o['id'] }}" @selected($row['parent_id'] === $o['id'])>{{ $o['name'] }}</option>
-                            @endif
+                                <td class="text-right whitespace-nowrap">
+                                    <a href="{{ route('platform.organization', $row['id']) }}" wire:navigate class="btn btn-ghost btn-sm">
+                                        View
+                                    </a>
+                                    {{-- Suspending a live tenant sat 8px right of "View" with no dialog,
+                                         no undo and no toast. Same copy pattern as Accounts: name the
+                                         tenant, say who stops being able to sign in. Reversible here, so
+                                         wire:confirm rather than the type-to-confirm dialog. --}}
+                                    <button wire:click="toggleStatus('{{ $row['id'] }}')" class="btn btn-ghost btn-sm"
+                                            wire:loading.attr="disabled" wire:target="toggleStatus('{{ $row['id'] }}')"
+                                            wire:confirm="{{ $row['status'] === 'active'
+                                                ? 'Suspend '.$row['name'].'? Its '.$row['members'].' member(s) can no longer sign in to this tenant, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.'
+                                                : 'Reactivate '.$row['name'].'? Its members can sign in again immediately.' }}">
+                                        <span class="spinner" wire:loading wire:target="toggleStatus('{{ $row['id'] }}')" aria-hidden="true"></span>
+                                        {{ $row['status'] === 'active' ? 'Suspend' : 'Reactivate' }}
+                                    </button>
+                                </td>
+                            </tr>
                         @endforeach
-                    </select>
-                </div>
-
-                <div class="flex items-center gap-1 sm:justify-self-end">
-                    <a href="{{ route('platform.organization', $row['id']) }}" wire:navigate class="btn btn-ghost btn-sm">
-                        View
-                    </a>
-                    <button wire:click="toggleStatus('{{ $row['id'] }}')" class="btn btn-ghost btn-sm">
-                        {{ $row['status'] === 'active' ? 'Suspend' : 'Reactivate' }}
-                    </button>
-                </div>
+                    </tbody>
+                </table>
             </div>
-        @empty
-            <div class="px-5 py-10 text-center text-sm" style="color:var(--faint)">
-                No organizations in this environment yet. Create one, or bootstrap the plane from the Environments screen.
-            </div>
-        @endforelse
-    </div>
+        </div>
+    @endif
 </div>

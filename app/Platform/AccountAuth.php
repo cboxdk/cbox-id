@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
@@ -53,6 +54,28 @@ final class AccountAuth
      * session, and a full session is a SUBJECT session that only {@see establish()} mints.
      */
     public const PENDING_KEY = 'cbox.account_member_pending';
+
+    /**
+     * Per-request memo, KEYED ON THE SUBJECT ID it was resolved from — the same shape,
+     * and for the same reasons, as {@see EnvironmentAdminAuth::current()}.
+     *
+     * `current()` is asked by the workspace gate, by the layout, and by each component's
+     * boot(); `membershipLapsed()` asks the same question again. Every one of those was a
+     * lookup that crosses into the PLATFORM ROOT — a scope switch plus the member row
+     * plus its account — and one account-plane page paid it nine times.
+     *
+     * The key is the input rather than a plain "computed once" flag, deliberately. The
+     * signed-in subject can change within a request (an establish() mid-request is exactly
+     * that), and a memo that outlived it would answer for the PREVIOUS person. Re-deriving
+     * the key each call collapses the repeats without ever answering about somebody else.
+     *
+     * This class is bound `scoped` ({@see PlatformServiceProvider}) so the
+     * memo lives exactly one request; without that binding every `app(AccountAuth::class)`
+     * would be a fresh object and an instance memo would never be hit.
+     */
+    private ?string $memoSubjectId = null;
+
+    private ?AccountMember $memoMember = null;
 
     public function __construct(
         private readonly PlatformRoot $platformRoot,
@@ -231,6 +254,10 @@ final class AccountAuth
 
         $this->members->touchLogin($memberId);
 
+        // The row this request is about to resolve has just been written, and the session
+        // is about to name somebody it did not name a moment ago.
+        $this->forgetMemo();
+
         // The pending marker is spent whether or not a factor was involved: a full
         // session must never leave a redeemable second-factor handle behind it in the
         // (data-preserving) session. establish() below drops the step-up windows for the
@@ -371,14 +398,36 @@ final class AccountAuth
             return null;
         }
 
-        return $this->platformRoot->run(
+        if ($this->memoSubjectId === $subjectId) {
+            return $this->memoMember;
+        }
+
+        $this->memoMember = $this->platformRoot->run(
             fn (): ?AccountMember => $this->members->findBySubject($subjectId),
         );
+        $this->memoSubjectId = $subjectId;
+
+        return $this->memoMember;
+    }
+
+    /**
+     * Forget the memoised resolution — for the two moments the session changes under us.
+     *
+     * Not a general-purpose reset: the memo is keyed on the subject id, so a DIFFERENT
+     * person is already handled. What is not is the SAME person whose row this request
+     * just wrote — establish() stamps `last_login_at`, and logout ends the session
+     * entirely.
+     */
+    private function forgetMemo(): void
+    {
+        $this->memoSubjectId = null;
+        $this->memoMember = null;
     }
 
     public function logout(Request $request): void
     {
         session()->forget(self::PENDING_KEY);
+        $this->forgetMemo();
 
         // Through PlatformAuth, because the session being ended is a subject session:
         // it revokes the framework row and clears the held-account SET, neither of which

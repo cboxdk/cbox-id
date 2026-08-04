@@ -354,7 +354,7 @@ it('labels every search filter and announces its result count', function (): voi
     expect(count(array_filter(
         $searchViews,
         static fn (string $s): bool => str_contains($s, 'wire:model.live.debounce.300ms="search"')
-    )))->toBe(15);
+    )))->toBe(16);
 });
 
 it('never leaves an input labelled by placeholder alone', function (): void {

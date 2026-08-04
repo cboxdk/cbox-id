@@ -93,27 +93,28 @@ return [
     ],
 
     /*
-     * WebAuthn / passkey ceremony parameters. `rp_id` is the Relying Party ID
-     * (usually your registrable domain, e.g. "example.com"); `origin` is the
-     * exact origin the browser reports (scheme + host + port). Both are asserted
-     * during verification — a mismatch is rejected.
-     */
-    /*
-     * Passkeys / WebAuthn.
+     * Passkeys / WebAuthn. `rp_id` is the Relying Party ID (the domain credentials are
+     * scoped to — no scheme, no port); `origin` is the exact origin the browser reports.
+     * Both are asserted during verification — a mismatch is rejected.
      *
-     * Both derive from APP_URL when unset. They used to have NO defaults, so a deploy
-     * that did not set them fell back to the refusing verifier and passkeys were
-     * silently unavailable — a shipped, documented, real-vector-tested security feature
-     * that was simply off. A control that is off by default is worse than one that was
-     * never claimed, so the safe default is the one that works for the host it runs on.
+     * UNSET is the right default, and the working one. These used to derive from APP_URL,
+     * which fixed the older bug (no defaults at all meant the refusing verifier, so a
+     * shipped, documented, real-vector-tested security feature was simply off) and left a
+     * worse one: APP_URL is ONE origin, and this platform serves the account root, every
+     * tenant subdomain and every verified custom domain. Pinned to cboxid.com, every
+     * tenant's passkeys were rejected for origin mismatch — the whole customer base.
      *
-     * rp_id is the registrable domain (no scheme, no port); origin is the full origin
-     * the browser will report. Set them explicitly when the sign-in host differs from
-     * APP_URL (a custom domain, or a reverse proxy terminating elsewhere).
+     * Unset, each request derives the pair from the environment's own issuer, so the same
+     * "a control that is off by default is worse than one that was never claimed" reading
+     * holds, per host instead of per deployment. Set them only if this deployment truly
+     * has one passkey origin AND it is not the issuer; they are then honoured wherever the
+     * deployment-wide issuer holds and ignored on an environment with a host of its own,
+     * because a pin the browser contradicts can only produce a failed ceremony.
+     * `php artisan cbox-id:doctor` reports which answer is in force.
      */
     'webauthn' => [
-        'rp_id' => env('CBOX_ID_WEBAUTHN_RP_ID', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
-        'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN', rtrim((string) env('APP_URL', 'http://localhost'), '/')),
+        'rp_id' => env('CBOX_ID_WEBAUTHN_RP_ID'),
+        'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN'),
     ],
 
     /*

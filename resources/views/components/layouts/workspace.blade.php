@@ -5,7 +5,25 @@
 
     $member = app(AccountAuth::class)->current();
     $account = $member?->account;
-    $accountInitial = strtoupper(substr($account?->name ?? 'W', 0, 1));
+
+    // WHO IS SIGNED IN. Everything identity-shaped here used to fall through $member,
+    // which is null for a platform operator who buys nothing on the deployment they run —
+    // so the topbar read "Workspace / Account", the rail foot read "Account", and the
+    // account popover read "Account" with no address under it. On a console where one
+    // click suspends a customer, nothing on screen named the session. The operator record
+    // is the fallback, and it is the same one ConsoleScope already resolved below.
+    $operator = app(ConsoleScope::class)->operator();
+    $identityName = $member?->name ?? $member?->email ?? $operator?->name ?? $operator?->email ?? 'Account';
+    $identityEmail = $member?->email ?? $operator?->email;
+
+    // The heading beside the initial names the ORGANISATION you are acting for. An
+    // operator acts for the install itself, so it says so rather than borrowing the
+    // customer plane's word for it.
+    $brandName = config('cbox-id.branding.name', 'Cbox ID');
+    $brandName = is_string($brandName) && $brandName !== '' ? $brandName : 'Cbox ID';
+    $contextName = $account?->name ?? ($operator !== null ? $brandName : 'Workspace');
+    $contextRole = $account !== null ? 'Account' : ($operator !== null ? 'Platform operator' : 'Account');
+    $accountInitial = strtoupper(substr($contextName, 0, 1));
 
     // Two-tier IA (grouped), role-aware — declared once in ConsoleNavigation so the
     // sidebar and the eyebrow above each page title cannot disagree. The platform areas
@@ -17,7 +35,7 @@
     // selector lists them all — switching just repoints reads and provisioning. Guarded
     // on the SCOPE rather than on which layout was chosen: the old operator shell was the
     // guard, and a shell is not an authorization check.
-    $isOperator = app(ConsoleScope::class)->isPlatformOperator();
+    $isOperator = $operator !== null;
     $environments = collect();
     $activeEnvId = null;
     $activeEnv = null;
@@ -39,6 +57,25 @@
     $railAreas = $nav->rail();
     $subnavPages = $nav->subnav();
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
+
+    // The rail-pin cookie is written with `path=/` and no domain, so it is host-only:
+    // pin the rail on cbox-id.test, open acme.cbox-id.test, and the rail is unpinned
+    // again. A tenant host is a LABEL UNDER a configured base domain by construction, so
+    // when one is configured the cookie can legitimately carry `.{base}` and the
+    // preference follows the person across the planes they administer.
+    //
+    // Empty in the single-tenant shape (no base_domains), where there is one host and
+    // nothing to cross. Deliberately NOT derived from the request host: a cookie domain
+    // taken from `Host:` is a cookie an attacker's host can plant on ours.
+    $configuredBases = config('cbox-id.environments.base_domains', []);
+    $railCookieDomain = '';
+    foreach (is_array($configuredBases) ? $configuredBases : [] as $base) {
+        $base = is_string($base) ? ltrim(mb_strtolower(trim($base)), '.') : '';
+        if ($base !== '' && (request()->getHost() === $base || str_ends_with(request()->getHost(), '.'.$base))) {
+            $railCookieDomain = ';domain=.'.$base;
+            break;
+        }
+    }
 @endphp
 {{-- The workspace console shell — the account-member (buyer) plane. Self-contained:
      it assumes NO org-user or operator context (an account member has neither). --}}
@@ -51,7 +88,10 @@
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <title>{{ ($title ? $title.' · ' : '').'Workspace · '.config('cbox-id.branding.name', 'Cbox ID') }}</title>
+    {{-- The plane word comes from the nav registry, not from which layout rendered:
+         one shell serves both planes now, and a hard-coded "Workspace" put the customer
+         plane's name on every platform page's tab, history entry and bookmark. --}}
+    <title>{{ ($title ? $title.' · ' : '').app(\App\Platform\ConsoleLocation::class)->planeLabel().' · '.$brandName }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @consoleBrandingStyle
 </head>
@@ -62,16 +102,16 @@
         pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
         subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
         nav: false, env: false, account: false, hover: false,
-        togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; },
+        togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/{{ $railCookieDomain }};max-age=31536000;samesite=lax'; },
         toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
      }"
      @keydown.escape.window="nav=false;env=false;account=false"
      @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
     {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
-    <x-console.rail :areas="$railAreas" :brand-href="route('workspace.home')" :brand-label="$account?->name ?? 'Workspace'">
+    <x-console.rail :areas="$railAreas" :brand-href="route('workspace.home')" :brand-label="$contextName">
         <x-slot:foot>
-            <x-console.account-menu :name="$member?->name ?? $member?->email ?? 'Account'" :email="$member?->email"
+            <x-console.account-menu :name="$identityName" :email="$identityEmail"
                                     :initial="$accountInitial" logout-route="workspace.logout" />
         </x-slot:foot>
     </x-console.rail>
@@ -88,8 +128,8 @@
             <div class="flex items-center gap-2 min-w-0">
                 <span class="grid place-items-center rounded-md text-[11px] font-bold shrink-0" style="width:26px;height:26px;background:var(--accent-soft);color:var(--primary)" aria-hidden="true">{{ $accountInitial }}</span>
                 <span class="min-w-0">
-                    <span class="block text-[13px] font-semibold truncate leading-tight">{{ $account?->name ?? 'Workspace' }}</span>
-                    <span class="block text-[11px] truncate leading-tight" style="color:var(--muted-foreground)">Account</span>
+                    <span class="block text-[13px] font-semibold truncate leading-tight">{{ $contextName }}</span>
+                    <span class="block text-[11px] truncate leading-tight" style="color:var(--muted-foreground)">{{ $contextRole }}</span>
                 </span>
 
                 {{-- Target environment. Present only for whoever runs the deployment, and
@@ -138,9 +178,9 @@
         </main>
     </div>
 
-    <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$account?->name ?? 'Workspace'"
-                  subheading="Account" :initial="$accountInitial" logout-route="workspace.logout"
-                  :member-name="$member?->name" :member-email="$member?->email" />
+    <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$contextName"
+                  :subheading="$contextRole" :initial="$accountInitial" logout-route="workspace.logout"
+                  :member-name="$member?->name ?? $operator?->name" :member-email="$identityEmail" />
 </div>
     <x-toast />
 </body>

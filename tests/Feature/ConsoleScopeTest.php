@@ -14,6 +14,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -136,10 +137,18 @@ it('refuses an organization that is not in this environment', function (): void 
         ->toThrow(AuthorizationException::class, 'not in this environment');
 })->group('security');
 
-it('re-validates the chosen organization on every read', function (): void {
+it('re-validates the chosen organization on every request', function (): void {
     // Not trusted because it was valid when chosen. A session carried to a different
     // host must not act on the organization it names — the environment scope on the
     // model is what makes that true, and this is what consults it.
+    //
+    // PER REQUEST, which is what changed and what this now says out loud. The check used
+    // to run on every READ, and a console page reads it eleven times through entitled();
+    // the answer is memoised for the request now, keyed on the selection AND the
+    // environment. Per-request is the standing this whole platform is built on — a
+    // suspended operator, a deactivated subject and a deleted organization all take effect
+    // on the very next request rather than at the next sign-in — and the memo's key is
+    // what keeps the cross-host half exact rather than merely eventual (below).
     actAsRealEnvironmentAdmin();
     $orgId = anOrganization('acme-env');
     scope()->chooseOrganization($orgId);
@@ -148,7 +157,41 @@ it('re-validates the chosen organization on every read', function (): void {
 
     Organization::query()->whereKey($orgId)->delete();
 
+    // The next request, modelled by dropping THIS object rather than by nextRequest().
+    // nextRequest() ends the request wholesale, ambient environment included, and an
+    // Eloquent read with no environment is answered — correctly, and silently — with zero
+    // rows by the tenancy scope. This assertion would then pass against an implementation
+    // with the re-validation deleted, which is the exact mistake tests/Pest.php warns
+    // about on that helper.
+    app()->forgetInstance(ConsoleScope::class);
+
     expect(scope()->organizationId())->toBeNull();
+})->group('security');
+
+it('does not carry a chosen organization into another environment', function (): void {
+    // The property the re-validation above exists FOR, asserted directly rather than
+    // demonstrated by deleting a row. The session cookie is shared across `*.cboxid.com`,
+    // so a selection made on one environment's host travels to the next one; what must not
+    // travel is the AUTHORITY to act on it. The environment scope on Organization answers
+    // that — the id simply is not there — and this holds WITHIN a request, because the
+    // environment can legitimately change inside one ({@see EnvironmentContext::runAs()})
+    // and a memo that ignored it would answer for the environment we just left.
+    actAsRealEnvironmentAdmin();
+    $orgId = anOrganization('acme-env');
+    scope()->chooseOrganization($orgId);
+
+    expect(scope()->organizationId())->toBe($orgId);
+
+    $elsewhere = Environment::query()->create([
+        'name' => 'Elsewhere', 'slug' => 'scope-elsewhere', 'status' => 'active', 'is_default' => false,
+    ]);
+
+    app(EnvironmentContext::class)->runAs(GenericEnvironment::of($elsewhere->id), function (): void {
+        expect(scope()->organizationId())->toBeNull();
+    });
+
+    // …and coming back is not a downgrade: the selection is still this environment's.
+    expect(scope()->organizationId())->toBe($orgId);
 })->group('security');
 
 it('enforces entitlements on the organization plane', function (): void {

@@ -119,7 +119,16 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
     @endif
 
     {{-- Plugins (billing, …) contribute cards here; each returns a `.card` block, so
-         they tile as a responsive row alongside the native stat cards below. --}}
+         they tile as a responsive row alongside the native stat cards below.
+
+         Inside the admin branch, and that placement is AUTHORIZATION rather than layout.
+         A card is arbitrary module HTML rendered through an ungated slot registry, so
+         whatever it decides to read is read for whoever this page renders for. Every card
+         also narrows to the acting organization itself — four of them did not, and showed
+         one tenant the whole environment's sign-in volume, risk events and audit backlog —
+         but this branch is the layer that keeps a plain member out of the whole row, and
+         moving the slot out of it would silently hand each module a wider audience than
+         its own guard assumes. --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&:empty]:hidden mb-4">
         @consoleSlot('console.dashboard.cards')
     </div>

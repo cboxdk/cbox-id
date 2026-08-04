@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Console\Kit\ConsoleManager;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Risk\Facades\Risk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -33,6 +34,12 @@ it('adds its Risk events page to the host Logs area rather than a "Security" one
 });
 
 it('renders a dashboard risk card', function (): void {
+    // AS AN ADMINISTRATOR OF AN ORGANIZATION, which this test used not to be. Every card
+    // now narrows to the acting organization and renders NOTHING when there is none —
+    // they used to read the whole environment, so they rendered for a caller with no
+    // console scope at all, and that is exactly what this assertion was measuring.
+    actingAsRole(MembershipRole::Owner);
+
     $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
 
     expect($html)->toContain('Risk events')->toContain('elevated');

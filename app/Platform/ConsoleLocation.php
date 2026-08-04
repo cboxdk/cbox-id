@@ -30,6 +30,35 @@ final readonly class ConsoleLocation
 {
     public function __construct(private ConsoleNavigation $navigation) {}
 
+    /**
+     * The PLANE a route belongs to, as the word a person would use for it — the thing
+     * a browser tab, a history entry and a bookmark are named after.
+     *
+     * The one shell serves two planes now, and its <title> said "Workspace" for both:
+     * `Environments · Workspace · Cbox ID` on a page that administers the whole install
+     * and has nothing to do with anybody's workspace. A tab strip full of platform pages
+     * all claiming to be the customer plane is the one place the merge still leaked.
+     *
+     * Asked of the same registry the rail and the eyebrow read, so a page added to the
+     * platform areas is named correctly without this method knowing about it. The route
+     * NAME is the second source, and only for what the registry cannot answer: a
+     * resource detail page (`platform.organization`) has no nav entry to be found under,
+     * and the alternative — listing every detail route in the rail so it can be looked
+     * up — would put pages in the sidebar that are not sidebar pages.
+     */
+    public function planeLabel(?string $route = null): string
+    {
+        $route = $route ?? request()->route()?->getName();
+
+        if (! is_string($route) || $route === '') {
+            return 'Workspace';
+        }
+
+        return $this->navigation->operator()->areaFor($route) !== null || str_starts_with($route, 'platform.')
+            ? 'Platform'
+            : 'Workspace';
+    }
+
     /** The label of the area owning the given route (defaults to the current one). */
     public function areaLabel(?string $route = null): ?string
     {

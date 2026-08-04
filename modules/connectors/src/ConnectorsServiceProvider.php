@@ -6,6 +6,7 @@ namespace Cbox\Id\Connectors;
 
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Connectors\Analytics\NullConnectorAnalytics;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
@@ -94,14 +95,27 @@ class ConnectorsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Dashboard card: how many connectors are active for the current organization.
-     * Empty (nothing rendered) before the platform's tables exist or when there is
-     * no console context — never a broken dashboard.
+     * Dashboard card: how many connectors are active for the acting organization.
+     * Empty (nothing rendered) before the platform's tables exist or when no
+     * organization is resolved — never a broken dashboard.
+     *
+     * Through {@see ConsoleScope}, not the console-kit context. That context answers
+     * `CurrentUser::organizationId()`, which returns null for a member whose membership
+     * has gone — and `activeCount(null)` is the ENVIRONMENT-wide overview. Those are
+     * the two readings of null that the scope throws on precisely to keep apart: null
+     * from the scope can only mean "an environment administrator has not chosen yet",
+     * never "this person's organization could not be resolved". The connectors pages
+     * document not making this mistake; the module's own provider was making it.
      */
     private function connectorsCard(): string
     {
         try {
-            $organizationId = Console::context()->organizationId();
+            $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
+
+            if ($organizationId === null) {
+                return '';
+            }
+
             $count = $this->app->make(ConnectionsOverview::class)->activeCount($organizationId);
         } catch (Throwable) {
             return '';

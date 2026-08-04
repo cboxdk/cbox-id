@@ -165,13 +165,19 @@ new #[Layout('components.layouts.workspace', ['title' => 'Search', 'width' => '7
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Search</h1>
-            <p class="cbx-page-desc">Find an organization or a user across every environment — above the plane the console is currently pinned to.</p>
-        </div>
-    </div>
+    <x-page-header title="Search" subtitle="Find an organization or a user across every environment — above the plane the console is currently pinned to." />
+
+    {{-- The results arrive without a page load (wire:model.live), so nothing else on
+         this page tells a screen-reader user that anything happened. Typing "acme"
+         returned ten rows and announced none of them (WCAG 4.1.3). --}}
+    <p role="status" aria-live="polite" class="sr-only">
+        @if (! $ready)
+            Type at least two characters to search.
+        @else
+            {{ count($organizations) }} {{ \Illuminate\Support\Str::plural('organization', count($organizations)) }} and
+            {{ count($users) }} {{ \Illuminate\Support\Str::plural('user', count($users)) }} found for “{{ $term }}”.
+        @endif
+    </p>
 
     <div class="card p-4 mb-5 mt-8">
         <label class="label" for="search-term">Search term</label>

@@ -8,6 +8,7 @@ use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use Cbox\Id\Identity\Contracts\Passkeys;
+use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
 use Cbox\Id\Identity\Exceptions\InvalidAssertionResponse;
 use Cbox\Id\Identity\Exceptions\UnknownCredential;
@@ -159,11 +160,17 @@ final class PasskeyController extends Controller
         return $decoded === false ? null : $decoded;
     }
 
+    /**
+     * The RP id the challenge is issued under — resolved per request from the environment
+     * this host serves, exactly as the verifier resolves the pair it checks against.
+     *
+     * Read straight from `cbox-id.webauthn.rp_id` before, which is one deployment-wide
+     * value: on any host but the one it named, the browser scoped the credential to a
+     * different RP than the verifier would accept, and the ceremony could only fail.
+     */
     private function rpId(): string
     {
-        $rpId = config('cbox-id.webauthn.rp_id');
-
-        return is_string($rpId) && $rpId !== '' ? $rpId : 'localhost';
+        return app(RelyingParties::class)->current()->id;
     }
 
     private function error(string $message, int $status = 422): JsonResponse

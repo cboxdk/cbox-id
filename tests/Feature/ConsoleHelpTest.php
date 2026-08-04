@@ -95,6 +95,7 @@ it('keeps every nav label identical to its page title', function (): void {
         'hooks' => 'console/hooks/index',
         'provisioning' => 'console/provisioning/index',
         'sod-policies' => 'console/sod-policies/index',
+        'vault' => 'console/vault/index',
     ];
 
     $labels = [];

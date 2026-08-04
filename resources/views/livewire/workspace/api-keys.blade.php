@@ -120,13 +120,15 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">API keys</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">
-            Machine credentials for the account management API — list environments, invite members, read billing. Each key carries a role.
-            <a href="/api/v1/openapi.yaml" target="_blank" rel="noopener" class="underline underline-offset-2" style="color:var(--accent-strong)">API reference ↗</a>
-        </p>
-    </div>
+    {{-- The console's page primitive rather than a hand-rolled h1: this page and
+         Environment keys were the only two in the workspace plane rendering no eyebrow at
+         all, so neither said which area of the rail you were standing in. --}}
+    <x-page-header title="API keys"
+                   subtitle="Machine credentials for the account management API — list environments, invite members, read billing. Each key carries a role.">
+        <x-slot:actions>
+            <a href="/api/v1/openapi.yaml" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">API reference ↗</a>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- The plaintext, shown exactly once. --}}
     @if ($freshKey !== null)

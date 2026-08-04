@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Console\Kit\ConsoleManager;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +38,12 @@ it('registers the Volt catalog and connections routes', function (): void {
 });
 
 it('renders a dashboard connectors card', function (): void {
+    // AS AN ADMINISTRATOR OF AN ORGANIZATION, which this test used not to be. Every card
+    // now narrows to the acting organization and renders NOTHING when there is none —
+    // they used to read the whole environment, so they rendered for a caller with no
+    // console scope at all, and that is exactly what this assertion was measuring.
+    actingAsRole(MembershipRole::Owner);
+
     $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
 
     expect($html)->toContain('Active connectors');

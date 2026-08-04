@@ -139,9 +139,10 @@ immediately — it is the most sensitive account on the system.
 
 ## 3. Provision an environment and organization
 
-From the operator console, create further environments, then use **Provision admin**
-to seed an environment's first organization and owner-admin. That admin signs in at
-`/login`.
+Sign in at **`/workspace/login`**, then open the **`/platform`** section — the
+deployment pages, shown in the rail to whoever has authority over the deployment.
+From there create further environments, then use **Provision admin** to seed an
+environment's first organization and owner-admin. That admin signs in at `/login`.
 
 ## 4. Verify
 

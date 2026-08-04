@@ -6,7 +6,6 @@ use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
-use App\Platform\CurrentUser;
 use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Id\Compliance\Models\AuditExportRun;
@@ -283,13 +282,19 @@ it('refuses every module page to a browser holding no admin session at all', fun
  * would be invisible on the environment plane — where the unscoped read is correct — and
  * a live feed of another tenant's credential stuffing on the other.
  */
-it('shows an organization admin only their own members\' risk events', function (): void {
+it('shows an organization admin their own members\' risk events and nobody else\'s', function (): void {
     everyModuleFeatureOn();
     platformRootEnvironment();
 
+    // The acting admin's OWN organization — actingAsRole() creates one and pins
+    // CurrentUser to it, so the fixture has to hang the member off THAT org. It used to
+    // build a second organization, put the member in it, and act as an owner of the
+    // first: nobody in the acting organization had an address, so the correct answer was
+    // an empty page — and an empty page satisfies "does not contain the stranger".
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
     $mine = app(Subjects::class)->create('mine@acme.test', 'Mine', 'a-strong-unbreached-passphrase');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'risk-scope-acme'));
-    app(Memberships::class)->add($org->id, $mine->id, MembershipRole::Owner);
+    app(Memberships::class)->add($org->id, $mine->id, MembershipRole::Member);
 
     RiskEvent::query()->create([
         'action' => 'auth.login', 'outcome' => 'step_up', 'score' => 80,
@@ -300,12 +305,14 @@ it('shows an organization admin only their own members\' risk events', function 
         'reasons' => ['stranger'], 'email' => 'stranger@elsewhere.test',
     ]);
 
-    actingAsRole(MembershipRole::Owner);
-    app(Memberships::class)->add($org->id, app(CurrentUser::class)->id(), MembershipRole::Owner);
-
     $html = Volt::test('risk-plus.events')->html();
 
-    expect($html)->not->toContain('stranger');
+    // BOTH halves, and the positive one is the half that was missing. A filter built on a
+    // tenant-scoped subquery matched nothing at all, so the page rendered "No elevated
+    // risk events yet" to an organization under credential stuffing — and passed a test
+    // that only asked whether the stranger was absent.
+    expect($html)->toContain('zarquon')
+        ->and($html)->not->toContain('stranger');
 })->group('security');
 
 /**

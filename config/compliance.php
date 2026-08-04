@@ -50,4 +50,20 @@ return [
     'retention' => [
         'checkpoint_on_apply' => (bool) env('CBOX_ID_COMPLIANCE_RETENTION_CHECKPOINT', true),
     ],
+
+    /*
+     * Scheduled work — the half that makes the rest of this file mean anything. Both
+     * are on by default and register only when the module is active (a real sink is
+     * wired, or `enabled` is set), so an install that never configured compliance
+     * schedules nothing.
+     *
+     * Turning one off removes that command from the schedule with no other signal, so
+     * do it only when something else drives it. `export` off with a SIEM configured is
+     * the exact state this module spent its whole life in: active, backlogged, and
+     * shipping nothing.
+     */
+    'schedule' => [
+        'export' => (bool) env('CBOX_ID_COMPLIANCE_SCHEDULE_EXPORT', true),
+        'retention' => (bool) env('CBOX_ID_COMPLIANCE_SCHEDULE_RETENTION', true),
+    ],
 ];

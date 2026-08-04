@@ -344,6 +344,21 @@ class InstallCommand extends Command
             $this->line('  <fg=green>✓</> Account ['.$installed->account->name.'] with environment ['.$installed->tenant->slug.'].');
         }
 
+        // WHERE to present the credential this command just created. Everything above
+        // is walkable from a shell and then stops: the install says who the operator is
+        // and what their password is, and never where to sign in — which made "empty box
+        // to working deployment" a walkthrough with its last step missing. `/platform`
+        // is a SECTION of the one console rather than a door of its own, so the door is
+        // the account plane's sign-in, and on the SaaS shape that plane lives on the
+        // account host rather than on the issuer.
+        $base = $plan->shape->isMultiTenant() && $plan->accountHost !== null
+            ? 'https://'.$plan->accountHost
+            : $this->publicUrl();
+
+        $this->line('  <fg=green>✓</> Sign in at '.$base.route('workspace.login', [], false).'.');
+        $this->line('     The deployment section — environments, accounts, operators — is '
+            .$base.route('platform.environments', [], false).'.');
+
         // Shown ONCE, and only when this command invented it. A password the operator
         // supplied is never echoed — not to the terminal, not to a shell history file,
         // not to whatever is capturing CI output.
@@ -355,6 +370,24 @@ class InstallCommand extends Command
                 'Save this',
             );
         }
+    }
+
+    /**
+     * The deployment's public base URL: the issuer this command just recorded, which is
+     * the answer to "public URL of this platform" it asked for, falling back to the app
+     * URL for a re-run that skipped that question.
+     */
+    private function publicUrl(): string
+    {
+        $issuer = config('cbox-id.issuer');
+
+        if (is_string($issuer) && $issuer !== '') {
+            return rtrim($issuer, '/');
+        }
+
+        $appUrl = config('app.url');
+
+        return rtrim(is_string($appUrl) && $appUrl !== '' ? $appUrl : 'http://localhost', '/');
     }
 
     /**

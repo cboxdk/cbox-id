@@ -12,6 +12,7 @@ use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Closure;
@@ -86,7 +87,7 @@ final class Authenticate
         // would otherwise outlive the account being disabled. Re-check per request
         // (as ConsoleScope::operator() does for operator authority) and refuse an
         // inactive subject.
-        if ($subject === null || ! $this->subjects->isActive($subject->id)) {
+        if ($subject === null || ! $this->stillAdmitted($subject)) {
             $request->session()->forget(PlatformAuth::SESSION_KEY);
             $this->current->clear();
 
@@ -161,6 +162,28 @@ final class Authenticate
         }
 
         return $next($request);
+    }
+
+    /**
+     * The standing re-check above, answered from the row we are already holding when the
+     * resolver told us.
+     *
+     * The check itself is unchanged and non-negotiable — it is what makes deactivating an
+     * account take effect on the very next request rather than at its owner's next
+     * sign-in. What changed is the cost: `find()` and `isActive()` were two separate
+     * `select * from users where id = ?` against the same row, on every authenticated page
+     * AND on every Livewire round trip, because {@see Subject} carried no status for the
+     * second question to be answered from.
+     *
+     * A resolver that does not say still gets asked. {@see Subject::admitsSignIn()}
+     * returns null for a host-bound {@see Subjects} implementation written before the
+     * status existed, and null falls through to the contract — so an unaware resolver
+     * keeps paying the query and keeps being right, rather than having "active" assumed
+     * about its deactivated accounts.
+     */
+    private function stillAdmitted(Subject $subject): bool
+    {
+        return $subject->admitsSignIn() ?? $this->subjects->isActive($subject->id);
     }
 
     /**

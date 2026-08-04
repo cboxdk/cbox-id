@@ -41,6 +41,14 @@ readonly class ConsoleNav
     /**
      * The area the current request sits in — falling back to the first, so the rail is
      * never rendered with nothing selected on a page that isn't in the nav at all.
+     *
+     * A plane can now legitimately hold NO areas: every workspace area is about an
+     * account, so somebody signed in on the account host who is neither a member nor an
+     * operator has nothing here. That is a real state (a tenant user who followed a link
+     * to the wrong host) and it must render an empty rail, not fatal on `areas[0]` — an
+     * undefined-index 500 on the shell would take down every page of the plane at once,
+     * which is the same class of failure {@see ConsoleNavigation::withModulePages()}
+     * already refuses to allow for a missing module route.
      */
     public function currentArea(): NavArea
     {
@@ -50,7 +58,7 @@ readonly class ConsoleNav
             }
         }
 
-        return $this->areas[0];
+        return $this->areas[0] ?? new NavArea('', '');
     }
 
     /** @return list<string> every route named in this plane's navigation */

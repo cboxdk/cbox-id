@@ -13,6 +13,7 @@ use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
+use Cbox\Id\Webhooks\Enums\WebhookEventType;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 
 /**
@@ -24,10 +25,11 @@ use Cbox\Id\Webhooks\Models\WebhookEndpoint;
  * It is deliberately honest about the public surface it stands on:
  *  - Provisioning exposes {@see ProvisioningConnections::active()} (environment-wide,
  *    ACTIVE connections) which it filters to the organization.
- *  - Webhooks exposes only {@see WebhookRegistry::matching()} (by event type), so an
- *    organization's ACTIVE endpoints are recovered by unioning matches over the
- *    configured candidate event types and de-duplicating — paused endpoints and
- *    endpoints subscribed only to an un-listed event type are not surfaced.
+ *  - Webhooks exposes {@see WebhookRegistry::forOrganization()} (every ACTIVE endpoint the
+ *    org's events can reach), narrowed here to the configured candidate event types —
+ *    paused endpoints and endpoints subscribed only to an un-listed event type are not
+ *    surfaced. It used to recover the same set by unioning {@see WebhookRegistry::matching()}
+ *    over each candidate type, which was one full read of the endpoint table per candidate.
  *  - Federation exposes {@see FederationConnections::forOrganization()} — the single
  *    ACTIVE SSO connection for an organization; drafts/inactive are not listed.
  *  - Directory ({@see Directory}) has no per-organization listing on its public
@@ -107,27 +109,55 @@ class ConnectionsOverview
      */
     private function webhookSummaries(?string $organizationId): array
     {
-        /** @var array<string, ConnectionSummary> $byId keep one row per endpoint across event types */
-        $byId = [];
+        $summaries = [];
+
+        // ONE read, then the same subscription test the registry was doing anyway.
+        //
+        // This used to call matching() once per candidate event type, and matching()
+        // ignores the type in SQL — it reads every active endpoint and filters in PHP. So
+        // five candidate types were five identical full reads per render, and the list is
+        // config: aligning it with the app's own catalogue, which names 24 event types,
+        // is a one-line edit that looks harmless and would have made it 24.
+        foreach ($this->webhooks->forOrganization($organizationId) as $endpoint) {
+            /** @var WebhookEndpoint $endpoint */
+            if (! $this->subscribedToAnyCandidate($endpoint)) {
+                continue;
+            }
+
+            $summaries[] = $this->decorate(new ConnectionSummary(
+                category: ConnectorCategory::Webhook,
+                id: $endpoint->id,
+                name: $endpoint->url,
+                status: $endpoint->status->value,
+                target: $endpoint->url,
+            ));
+        }
+
+        return $summaries;
+    }
+
+    /**
+     * Whether an endpoint subscribes to anything this deployment listed as a candidate.
+     *
+     * The same predicate the union of `matching()` calls expressed, said once: an endpoint
+     * appeared in that union if ANY candidate type matched it, and the de-duplication by
+     * id existed only to undo the repetition. A wildcard subscriber matches whatever the
+     * list contains, and an empty list offers nothing to match — which is the honest
+     * reading of a deployment that named no candidates, and what the loop did before.
+     */
+    private function subscribedToAnyCandidate(WebhookEndpoint $endpoint): bool
+    {
+        if (in_array(WebhookEventType::WILDCARD, $endpoint->event_types, true)) {
+            return $this->webhookEventTypes !== [];
+        }
 
         foreach ($this->webhookEventTypes as $eventType) {
-            foreach ($this->webhooks->matching($organizationId, $eventType) as $endpoint) {
-                /** @var WebhookEndpoint $endpoint */
-                if (isset($byId[$endpoint->id])) {
-                    continue;
-                }
-
-                $byId[$endpoint->id] = $this->decorate(new ConnectionSummary(
-                    category: ConnectorCategory::Webhook,
-                    id: $endpoint->id,
-                    name: $endpoint->url,
-                    status: $endpoint->status->value,
-                    target: $endpoint->url,
-                ));
+            if (in_array($eventType, $endpoint->event_types, true)) {
+                return true;
             }
         }
 
-        return array_values($byId);
+        return false;
     }
 
     /**

@@ -20,7 +20,7 @@ use Livewire\Volt\Component;
  * for an environment they can reach. TLS for the domain is an operator/ingress
  * concern once verified (the page says so) — the app only proves control.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class extends Component
+new #[Layout('components.layouts.workspace', ['title' => 'Environment domains'])] class extends Component
 {
     public string $selectedEnvironment = '';
 
@@ -147,13 +147,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Domains'])] class exte
 }; ?>
 
 <div class="max-w-2xl">
-    <div class="cbx-page-header mb-8">
-        <div>
-            <p class="cbx-page-eyebrow">Developers</p>
-            <h1 class="cbx-page-title">Environment domains</h1>
-            <p class="cbx-page-desc">Serve an environment's identity endpoints on your own domain, verified by DNS.</p>
-        </div>
-    </div>
+    {{-- No margin override: the component owns the rhythm, and merging `mb-8` onto its
+         `mb-6` leaves both classes on the element with the stylesheet order deciding. --}}
+    <x-page-header title="Environment domains"
+                   subtitle="Serve an environment's identity endpoints on your own domain, verified by DNS." />
 
     @if ($environments->isEmpty())
         <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No environments yet</h3><p>Create an environment first, then you can give it a custom domain.</p></div>

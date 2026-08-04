@@ -6,11 +6,12 @@ namespace Cbox\Id\RiskPlus;
 
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\RiskPlus\Contracts\GeoLocator;
 use Cbox\Id\RiskPlus\Geo\NullGeoLocator;
 use Cbox\Id\RiskPlus\Listeners\RecordRiskEvent;
-use Cbox\Id\RiskPlus\Models\RiskEvent;
+use Cbox\Id\RiskPlus\Queries\OrganizationRiskEvents;
 use Cbox\Id\RiskPlus\Signals\ImpossibleTravelSignal;
 use Cbox\Id\RiskPlus\Signals\NewDeviceSignal;
 use Cbox\Id\RiskPlus\Support\SubjectKey;
@@ -108,13 +109,33 @@ class RiskPlusServiceProvider extends ServiceProvider
     }
 
     /**
-     * Dashboard card: how many elevated risk events in the last 24h. Empty (nothing
-     * rendered) before migrations run or when the trail is clean.
+     * Dashboard card: how many elevated risk events in the last 24h, for the ACTING
+     * ORGANIZATION's members. Empty (nothing rendered) before migrations run or when
+     * the trail is clean.
+     *
+     * The count used to be unqualified, so it was every flagged sign-in in the
+     * ENVIRONMENT. On an organization's own dashboard that is a live indicator of when
+     * ANOTHER tenant is under credential stuffing — an attack signal that belongs to
+     * them, published to everyone else on the deployment. The page this card links to
+     * has narrowed by membership since it shipped; the card beside it did not.
+     *
+     * Null — an environment administrator who has not chosen an organization — renders
+     * nothing rather than the environment total, because a stat with no scope on a
+     * per-organization card is a different answer, not a wider one.
      */
     private function riskCard(): string
     {
         try {
-            $count = RiskEvent::query()->where('created_at', '>=', Carbon::now()->subDay())->count();
+            $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
+
+            if ($organizationId === null) {
+                return '';
+            }
+
+            $count = $this->app->make(OrganizationRiskEvents::class)
+                ->query($organizationId)
+                ->where('created_at', '>=', Carbon::now()->subDay())
+                ->count();
         } catch (Throwable) {
             return '';
         }

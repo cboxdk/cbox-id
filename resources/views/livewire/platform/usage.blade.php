@@ -159,13 +159,12 @@ new #[Layout('components.layouts.workspace', ['title' => 'Usage', 'width' => '72
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Usage</h1>
-            <p class="cbx-page-desc">Platform-wide usage across every environment — above the plane the console is currently pinned to.</p>
-        </div>
-    </div>
+    <x-page-header title="Usage" subtitle="Platform-wide usage across every environment — above the plane the console is currently pinned to." />
+
+    <p role="status" aria-live="polite" class="sr-only">
+        {{ count($breakdown) }} {{ \Illuminate\Support\Str::plural('environment', count($breakdown)) }} and
+        {{ count($topOrganizations) }} top {{ \Illuminate\Support\Str::plural('organization', count($topOrganizations)) }} shown.
+    </p>
 
     {{-- Headline totals --}}
     <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5 mt-8">
@@ -196,24 +195,37 @@ new #[Layout('components.layouts.workspace', ['title' => 'Usage', 'width' => '72
             <h2 class="cbx-panel-title">Per-environment breakdown</h2>
             <span class="text-xs" style="color:var(--faint)">{{ count($breakdown) }} {{ count($breakdown) === 1 ? 'plane' : 'planes' }}</span>
         </div>
-        <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr 1fr">
-            <span>Environment</span><span class="text-right">Organizations</span><span class="text-right">Users</span><span class="text-right">Active sessions</span>
-        </div>
-        @forelse ($breakdown as $env)
-            <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr 1fr">
-                <div class="min-w-0">
-                    <p class="text-sm font-medium truncate">{{ $env['name'] }}</p>
-                    <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $env['slug'] }}</p>
-                </div>
-                <div class="text-sm sm:text-right tabular-nums"><span class="sm:hidden" style="color:var(--faint)">Organizations: </span>{{ number_format($env['organizations']) }}</div>
-                <div class="text-sm sm:text-right tabular-nums"><span class="sm:hidden" style="color:var(--faint)">Users: </span>{{ number_format($env['users']) }}</div>
-                <div class="text-sm sm:text-right tabular-nums"><span class="sm:hidden" style="color:var(--faint)">Active sessions: </span>{{ number_format($env['sessions']) }}</div>
+        @if ($breakdown === [])
+            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">
+                No environments provisioned yet — create one on Platform › Environments and its counts appear here.
             </div>
-        @empty
-            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">No environments provisioned yet.</div>
-        @endforelse
+        @else
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Environment</th>
+                            <th scope="col" class="text-right">Organizations</th>
+                            <th scope="col" class="text-right">Users</th>
+                            <th scope="col" class="text-right">Active sessions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($breakdown as $env)
+                            <tr>
+                                <td>
+                                    <p class="font-medium">{{ $env['name'] }}</p>
+                                    <p class="text-xs font-mono" style="color:var(--faint)">{{ $env['slug'] }}</p>
+                                </td>
+                                <td class="text-right tabular-nums">{{ number_format($env['organizations']) }}</td>
+                                <td class="text-right tabular-nums">{{ number_format($env['users']) }}</td>
+                                <td class="text-right tabular-nums">{{ number_format($env['sessions']) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     {{-- Top tenants by member count --}}
@@ -222,28 +234,41 @@ new #[Layout('components.layouts.workspace', ['title' => 'Usage', 'width' => '72
             <h2 class="cbx-panel-title">Top organizations by members</h2>
             <span class="text-xs" style="color:var(--faint)">Across every plane</span>
         </div>
-        <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1.4fr 1fr auto">
-            <span>Organization</span><span>Plane</span><span class="text-right">Members</span><span></span>
-        </div>
-        @forelse ($topOrganizations as $org)
-            <div class="px-5 py-3 border-b flex flex-col gap-2 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2.5fr 1.4fr 1fr auto">
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold truncate">{{ $org['name'] }}</p>
-                </div>
-                <div>
-                    <span class="cbx-pill cbx-pill--info" title="Environment">
-                        <x-icon name="layers" class="w-3 h-3" aria-hidden="true" /> {{ $org['plane'] }}
-                    </span>
-                </div>
-                <div class="text-sm sm:text-right tabular-nums"><span class="sm:hidden" style="color:var(--faint)">Members: </span>{{ number_format($org['members']) }}</div>
-                <div class="sm:justify-self-end">
-                    <a href="{{ route('platform.search.jump', $org['id']) }}" class="btn btn-ghost btn-sm">View</a>
-                </div>
+        @if ($topOrganizations === [])
+            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">
+                No organization on this install has a member yet. This ranks tenants by member count once they do.
             </div>
-        @empty
-            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">No organizations with members yet.</div>
-        @endforelse
+        @else
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Organization</th>
+                            <th scope="col">Plane</th>
+                            <th scope="col" class="text-right">Members</th>
+                            <th scope="col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($topOrganizations as $org)
+                            <tr>
+                                <td class="font-semibold">{{ $org['name'] }}</td>
+                                <td>
+                                    <span class="cbx-pill cbx-pill--info" title="Environment">
+                                        <x-icon name="layers" class="w-3 h-3" aria-hidden="true" /> {{ $org['plane'] }}
+                                    </span>
+                                </td>
+                                <td class="text-right tabular-nums">{{ number_format($org['members']) }}</td>
+                                <td class="text-right whitespace-nowrap">
+                                    {{-- Repoints the console at the tenant's OWN plane before opening
+                                         it, so the busy state matters: it is a plane switch, not a link. --}}
+                                    <a href="{{ route('platform.search.jump', $org['id']) }}" class="btn btn-ghost btn-sm">View</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 </div>

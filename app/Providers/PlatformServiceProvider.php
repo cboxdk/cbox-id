@@ -14,11 +14,13 @@ use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Http\Middleware\TargetEnvironment;
 use App\Listeners\RevokeTokensOnRoleChange;
+use App\Platform\AccountAuth;
 use App\Platform\BreachedPasswords;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
@@ -59,6 +61,14 @@ final class PlatformServiceProvider extends ServiceProvider
         // by the persistent middleware, the layout, and each component boot() — scoping
         // it lets current() memoise instead of re-running ~3 identity queries per call.
         $this->app->scoped(EnvironmentAdminAuth::class);
+
+        // …and its sibling on the account plane, which was left out of that refactor. It
+        // is asked by the workspace gate, the layout and every component boot() exactly as
+        // the environment one is, and each ask crosses into the platform root for the
+        // member row and its account: measured at four resolutions on /workspace and nine
+        // on /workspace/activity. Without the `scoped` binding the memo it now carries
+        // would never be hit, because every app() call would build a new object.
+        $this->app->scoped(AccountAuth::class);
 
         // Replace the framework's deliberately-inert breach check with the real HIBP
         // k-anonymity lookup, so the tenant password policy's requireBreachCheck
@@ -166,6 +176,7 @@ final class PlatformServiceProvider extends ServiceProvider
             RequireMultiTenant::class,
             RequireSudo::class,
             RequireWorkspaceSudo::class,
+            RequireEnvironmentSudo::class,
             // Keeps the "an impersonator cannot plant persistence" property true for
             // component actions, not just full page loads.
             BlockDuringImpersonation::class,

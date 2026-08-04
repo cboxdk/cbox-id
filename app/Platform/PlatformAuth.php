@@ -282,7 +282,7 @@ final class PlatformAuth
         // without this a step-up made before a transition carried straight through it —
         // and the sudo gate is meant to be the independent second layer, not something
         // load-bearing on whatever else happens to refuse first.
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         // Pin to the caller-supplied org when given (impersonation authorizes against
         // a SPECIFIC org — the session must land there, not in the subject's oldest
@@ -310,7 +310,7 @@ final class PlatformAuth
      */
     public function adopt(Request $request, Session $session): void
     {
-        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         $organizationId = $session->organization_id
             ?? $this->memberships->forUser($session->user_id)->value('organization_id');
@@ -438,7 +438,7 @@ final class PlatformAuth
      */
     private function dropStepUp(): void
     {
-        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
     }
 
     public function switchOrganization(Request $request, string $organizationId): void

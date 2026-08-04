@@ -53,10 +53,17 @@ final class EnforcePlane
             // operator sign-in was served on every tenant subdomain AND on every
             // customer-controlled brand domain (whitelabel writes environments.domain,
             // which is what host resolution keys on). No privilege was granted there —
-            // the operator session is separate and AuthenticateOperator guards the rest
-            // — but a staff login form on a customer's own domain is a phishing surface
-            // and an unnecessary disclosure. It belongs on the platform root, with the
-            // account plane.
+            // AuthenticateOperator guards the pages themselves — but a staff login form
+            // on a customer's own domain is a phishing surface and an unnecessary
+            // disclosure. It belongs on the platform root, with the account plane.
+            //
+            // Nothing carries `plane:operator` today: the staff pages became a SECTION of
+            // the one console (`/platform`), which asks who you are rather than which host
+            // you are on, and the separate operator door they needed a bulkhead for is
+            // gone. Kept because the plane name is still a name a route may take, and
+            // because deleting the arm would make an unknown plane fall to `false` here
+            // while the single-tenant branch above still admits it — the two lists must
+            // agree on what a plane IS.
             // A HOST question, not a context question — see PlaneResolver::onOperatorPlane().
             // Asking onAccountPlane() here meant an operator who used the environment
             // switcher 404'd out of the entire staff console, logout included.

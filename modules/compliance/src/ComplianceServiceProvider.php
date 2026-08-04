@@ -6,8 +6,11 @@ namespace Cbox\Id\Compliance;
 
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
+use Cbox\Id\Compliance\Console\ApplyRetentionCommand;
 use Cbox\Id\Compliance\Console\ExportAuditCommand;
 use Cbox\Id\Compliance\Contracts\AuditExportSink;
 use Cbox\Id\Compliance\Export\ExportAuditTrail;
@@ -17,8 +20,10 @@ use Cbox\Id\Compliance\Retention\RetentionPolicy;
 use Cbox\Id\Compliance\Sinks\HttpSiemExportSink;
 use Cbox\Id\Compliance\Sinks\JsonlBundleExportSink;
 use Cbox\Id\Compliance\Sinks\NullAuditExportSink;
+use Cbox\Id\Devices\DevicesServiceProvider;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory as ViewFactory;
@@ -104,8 +109,60 @@ class ComplianceServiceProvider extends ServiceProvider
         Console::dashboardCard(fn (): string => $this->exportCard(), 8);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ExportAuditCommand::class]);
+            $this->commands([ExportAuditCommand::class, ApplyRetentionCommand::class]);
         }
+
+        $this->scheduleComplianceWork();
+    }
+
+    /**
+     * Put the engine on the schedule — the step that was missing, and without which the
+     * whole module was decoration.
+     *
+     * `id-compliance:export` was registered as a command and scheduled NOWHERE, and there
+     * was no retention command to schedule at all. So an operator could point
+     * `CBOX_ID_COMPLIANCE_SINK=http` at their SIEM, watch the module report itself active
+     * and the dashboard card show a pending backlog, and never have one audit entry
+     * shipped — while believing the pipeline was live. That is the module's entire value
+     * proposition, and it could not run in any deployment.
+     *
+     * Registered here rather than in the host's `routes/console.php`, which this module
+     * does not edit — the same socket {@see DevicesServiceProvider} uses.
+     * The activity check is INSIDE the callback so it reads config at schedule-resolution
+     * time and resolves the sink no earlier than it must.
+     */
+    private function scheduleComplianceWork(): void
+    {
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+            // With the inert null sink the export writes a run row per environment and
+            // ships nothing, so an install that never wired compliance would collect
+            // bookkeeping for work it did not ask for. Same gate the console uses.
+            if (! $this->complianceActive()) {
+                return;
+            }
+
+            // Minutes, not hours: the backlog between runs is audit evidence sitting only
+            // in this database, and a SIEM pipeline that lags an hour is one an incident
+            // responder cannot use. Idempotent and cursor-based, so a run that overlaps a
+            // slow one is skipped rather than re-shipping.
+            if ((bool) config('compliance.schedule.export', true)) {
+                $schedule->command(ExportAuditCommand::class)
+                    ->everyFiveMinutes()
+                    ->name('cbox-id:compliance:export')
+                    ->withoutOverlapping()
+                    ->onOneServer();
+            }
+
+            // Daily is enough: this signs a checkpoint per chain, which is an anchor for
+            // history already written, not a race with new entries.
+            if ((bool) config('compliance.schedule.retention', true)) {
+                $schedule->command(ApplyRetentionCommand::class)
+                    ->daily()
+                    ->name('cbox-id:compliance:retention')
+                    ->withoutOverlapping()
+                    ->onOneServer();
+            }
+        });
     }
 
     private function registerConfiguredSink(): void
@@ -140,15 +197,36 @@ class ComplianceServiceProvider extends ServiceProvider
     }
 
     /**
-     * Dashboard card: entries still pending export and the last run's status. Empty
-     * (nothing rendered) before migrations run or when the trail can't be read —
-     * never a broken dashboard.
+     * Dashboard card: entries still pending export, for the ACTING ORGANIZATION's own
+     * audit chain. Empty (nothing rendered) before migrations run or when the trail
+     * can't be read — never a broken dashboard.
+     *
+     * The count used to sum EVERY chain in the environment, so a tenant admin's own
+     * dashboard reported the size of every other tenant's audit backlog, and the last
+     * run's status beside it. The page this card links to already draws the line
+     * exactly here and says why: a run row has no organization — one run walks every
+     * chain in the environment — so the run history is shown to the plane that owns the
+     * environment and withheld from the plane that owns one tenant. The card is now the
+     * same rule in a smaller frame.
      */
     private function exportCard(): string
     {
         try {
-            $pending = $this->pendingEntryCount();
-            $lastRun = AuditExportRun::query()->latest('id')->first();
+            $scope = $this->app->make(ConsoleScope::class);
+            $organizationId = $scope->organizationId();
+
+            if ($organizationId === null) {
+                return '';
+            }
+
+            $pending = $this->pendingEntryCount($organizationId);
+
+            // Environment bookkeeping, on the plane that owns the environment. Read at
+            // all only there, so a tenant's dashboard cannot report on work done across
+            // every tenant.
+            $lastRun = $scope->plane() === ConsolePlane::Environment
+                ? AuditExportRun::query()->latest('id')->first()
+                : null;
         } catch (Throwable) {
             return '';
         }
@@ -157,31 +235,31 @@ class ComplianceServiceProvider extends ServiceProvider
             ->make('id-compliance::components.compliance-card', [
                 'pending' => $pending,
                 'lastRun' => $lastRun,
+                'showsRuns' => $scope->plane() === ConsolePlane::Environment,
             ])
             ->render();
     }
 
     /**
-     * How many recorded entries have not yet been shipped, summed across chains.
+     * How many of this organization's recorded entries have not yet been shipped.
      * Sequences are contiguous per scope, so head − cursor is an exact backlog.
+     *
+     * A chain is addressed by (environment, scope) and the scope of an organization's
+     * chain IS its id — the framework's audit log writes `organizationId ?? '__system__'`
+     * into that column — so one organization's backlog is one head minus one cursor. No
+     * grouping, and nothing summed across tenants.
      */
-    private function pendingEntryCount(): int
+    private function pendingEntryCount(string $organizationId): int
     {
-        $heads = AuditEntry::query()
-            ->selectRaw('scope, MAX(sequence) as head')
-            ->groupBy('scope')
-            ->pluck('head', 'scope');
+        $head = AuditEntry::query()
+            ->where('scope', $organizationId)
+            ->max('sequence');
 
-        $cursors = AuditExportCursor::query()->pluck('last_sequence', 'scope');
+        $exported = AuditExportCursor::query()
+            ->where('scope', $organizationId)
+            ->value('last_sequence');
 
-        $pending = 0;
-
-        foreach ($heads as $scope => $head) {
-            $exported = $cursors->get($scope, 0);
-            $pending += max(0, $this->toInt($head) - $this->toInt($exported));
-        }
-
-        return $pending;
+        return max(0, $this->toInt($head) - $this->toInt($exported));
     }
 
     private function toInt(mixed $value): int

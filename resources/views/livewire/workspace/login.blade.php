@@ -283,9 +283,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
         </form>
     @endif
 
-    <div class="mt-5 flex items-center gap-3 text-xs" style="color:var(--faint)">
-        <span class="flex-1" style="height:1px;background:var(--border)"></span> or <span class="flex-1" style="height:1px;background:var(--border)"></span>
-    </div>
+    {{-- The console's own .divider, not a hand-rolled copy of it: the tenant door two
+         directories over renders `<div class="divider">OR</div>`, and the two sign-in
+         screens a customer sees are the two most compared surfaces we have. --}}
+    <div class="divider my-5">OR</div>
     <div class="space-y-2.5 mt-5">
         <button type="button" wire:click="sendMagicLink" class="btn btn-ghost btn-lg w-full" wire:loading.attr="disabled" wire:target="sendMagicLink">
             <x-icon name="magic" class="w-4 h-4" /> Email me a magic link

@@ -42,26 +42,6 @@ new #[Layout('components.layouts.console', ['title' => 'Exports & retention'])] 
     public string $subjectId = '';
 
     /**
-     * Both of these act on EVERY chain in the environment — `run()` advances every
-     * tenant's export cursor, `apply()` checkpoints every scope. They sat on an
-     * org-scoped page behind an "is an admin" check, so one tenant's admin could burn
-     * another tenant's cursor and make that tenant's next export skip its own entries.
-     *
-     * They are operator work, so they stay operator work: the artisan commands and the
-     * schedule. Left here only as a refusal, so the buttons that used to call them fail
-     * loudly rather than silently doing nothing if one is missed in the markup.
-     */
-    public function runExport(): void
-    {
-        abort(403, 'Running an export affects every organization in this environment — use the scheduled export or the artisan command.');
-    }
-
-    public function applyRetention(): void
-    {
-        abort(403, 'Retention applies to every organization in this environment — use the scheduled job or the artisan command.');
-    }
-
-    /**
      * Whether the run history belongs to the reader.
      *
      * A run row has no organization — one run walks every chain in the environment — so
@@ -131,26 +111,29 @@ new #[Layout('components.layouts.console', ['title' => 'Exports & retention'])] 
     <x-page-header title="Exports & retention"
                    subtitle="Ship the audit trail to your SIEM or cold archive, and run data-subject exports." />
 
+    {{-- No buttons here. Both jobs act on EVERY chain in the environment — an export
+         advances every tenant's cursor, retention checkpoints every scope — so one
+         tenant's admin pressing either would move another tenant's position. They are
+         operator work, and they run on the schedule; these cards say so, because the two
+         buttons that used to sit here called methods that only ever returned 403. --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="card p-5">
             <h2 class="text-sm font-semibold" style="color:var(--foreground)">Audit export</h2>
             <p class="mt-1 text-xs" style="color:var(--muted)">
-                Cursor-based and idempotent — only entries newer than the last shipped position are sent.
+                Runs on the schedule every five minutes. Cursor-based and idempotent — only entries newer
+                than the last shipped position are sent.
             </p>
-            <button type="button" wire:click="runExport" class="btn btn-primary btn-sm mt-4">
-                Run export now
-            </button>
+            <p class="mt-3 text-xs mono" style="color:var(--muted)">php artisan id-compliance:export</p>
         </div>
 
         <div class="card p-5">
             <h2 class="text-sm font-semibold" style="color:var(--foreground)">Retention</h2>
             <p class="mt-1 text-xs" style="color:var(--muted)">
-                The trail is append-only and hash-chained, so retention <strong>never deletes entries</strong>.
-                Applying it signs a fresh checkpoint per chain and relies on the export sink to archive to cold storage.
+                Runs on the schedule daily. The trail is append-only and hash-chained, so retention
+                <strong>never deletes entries</strong>: it signs a fresh checkpoint per chain and relies on
+                the export sink to archive to cold storage.
             </p>
-            <button type="button" wire:click="applyRetention" class="btn btn-ghost btn-sm mt-4">
-                Checkpoint &amp; anchor
-            </button>
+            <p class="mt-3 text-xs mono" style="color:var(--muted)">php artisan id-compliance:retention</p>
         </div>
     </div>
 
@@ -192,7 +175,8 @@ new #[Layout('components.layouts.console', ['title' => 'Exports & retention'])] 
                                 <td colspan="5">
                                     <div class="cbx-empty">
                                         <h3>No export runs yet</h3>
-                                        <p>Run an export above and completed runs will appear here.</p>
+                                        <p>The scheduled export records a run here every five minutes once
+                                           <code>schedule:run</code> is running and a sink is configured.</p>
                                     </div>
                                 </td>
                             </tr>

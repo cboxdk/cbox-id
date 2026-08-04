@@ -145,13 +145,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security', 'width' => 
 }; ?>
 
 <div class="space-y-6">
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Security</h1>
-            <p class="cbx-page-desc">Protect your operator account with a second factor.</p>
-        </div>
-    </div>
+    <x-page-header title="Security" subtitle="Your own operator identity — the second factor that protects everything on the Platform rail." />
 
     {{-- Two-factor authentication --}}
     <section class="card p-5">
@@ -161,12 +155,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security', 'width' => 
             </span>
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <h3 class="font-semibold">Two-factor authentication</h3>
+                    {{-- h2, not h3: this is the first section under the page's h1, and
+                         skipping a level breaks heading navigation (WCAG 1.3.1). --}}
+                    <h2 class="font-semibold">Two-factor authentication</h2>
                     @if ($twoFactorEnabled)
                         <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Enabled</span>
                     @endif
                 </div>
-                <p class="text-sm" style="color:var(--muted)">An authenticator app adds a second step when you sign in to the operator console.</p>
+                {{-- There is no separate "operator console" any more — operators and account
+                     members sign in at the same door and see one rail, wider or narrower. --}}
+                <p class="text-sm" style="color:var(--muted)">An authenticator app adds a second step whenever you sign in.</p>
             </div>
         </div>
 
@@ -178,7 +176,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security', 'width' => 
 
             <div class="mt-4 pt-4" style="border-top:1px solid var(--border)">
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                    <h4 class="font-medium text-sm">Recovery codes</h4>
+                    <h3 class="font-medium text-sm">Recovery codes</h3>
                     <span class="cbx-pill">{{ $recoveryRemaining }} left</span>
                 </div>
                 <p class="text-sm" style="color:var(--muted)">
@@ -210,8 +208,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security', 'width' => 
                         <div class="min-w-[14rem]">
                             <label class="label" for="disablePassword">Confirm your password to disable</label>
                             <input wire:model="disablePassword" id="disablePassword" type="password" autocomplete="current-password"
-                                   class="input" placeholder="••••••••••••" autofocus>
-                            @error('disablePassword') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                                   class="input" placeholder="••••••••••••" autofocus
+                                   @error('disablePassword') aria-invalid="true" aria-describedby="disablePassword-error" @enderror>
+                            @error('disablePassword') <p id="disablePassword-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                         </div>
                         <button type="submit" class="btn btn-danger" wire:loading.attr="disabled">Disable 2FA</button>
                         <button type="button" wire:click="cancel" class="btn btn-ghost">Cancel</button>
@@ -244,8 +243,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security', 'width' => 
                     <div class="min-w-[10rem]">
                         <label class="label" for="code">6-digit code</label>
                         <input wire:model="code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
-                               maxlength="6" class="input mono" placeholder="000000" autofocus>
-                        @error('code') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                               maxlength="6" class="input mono" placeholder="000000" autofocus
+                               @error('code') aria-invalid="true" aria-describedby="code-error" @enderror>
+                        @error('code') <p id="code-error" class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Confirm</button>
                     <button type="button" wire:click="cancel" class="btn btn-ghost">Cancel</button>

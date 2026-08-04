@@ -66,8 +66,20 @@ it('hides what a role may not see, and drops an area left empty', function (): v
         }
     }
 
-    // And with no member resolved at all, the nav still stands up.
-    expect($navigation->workspace(null)->routes())->toContain('workspace.home');
+    // A NULL role is no member at all — a platform operator who buys nothing on the
+    // deployment they run. It used to keep Overview › Projects and Personal › Profile,
+    // and both were dead: Projects explained what a project is and gated its only CTA
+    // off, Profile rendered a form bound to nobody whose Enable button walked through
+    // the step-up and landed on the signed-out screen. Every area here is about an
+    // account, so with no membership there is no workspace area — the rail such a person
+    // sees is the platform one, which ConsoleScope adds above these.
+    expect($navigation->workspace(null)->routes())->toBe([]);
+
+    // …and the shell must survive that rather than fataling on areas[0]. This is the
+    // whole plane's rail: a 500 here is a 500 on every page of it.
+    expect($navigation->workspace(null)->currentArea()->pages)->toBe([])
+        ->and($navigation->workspace(null)->rail())->toBe([])
+        ->and($navigation->workspace(null)->subnav())->toBe([]);
 });
 
 /**

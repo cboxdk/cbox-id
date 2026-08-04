@@ -9,6 +9,7 @@ use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
@@ -169,6 +170,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.guest' => RedirectIfAuthenticated::class,
             'portal.session' => PortalSession::class,
             'sudo' => RequireSudo::class,
+            // The environment plane's own step-up. A separate alias AND a separate
+            // session key: a confirmation on one plane must never satisfy the other,
+            // and this plane's administrator acts on every organization in the
+            // environment.
+            'env.sudo' => RequireEnvironmentSudo::class,
             'scope' => RequireScope::class,
             'account.api' => AuthenticateAccountApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,

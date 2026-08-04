@@ -216,112 +216,147 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Environments</h1>
-            <p class="cbx-page-desc">Isolation planes above every organization. Create one, point the console at it, and bootstrap it with an admin.</p>
-        </div>
-        <div class="flex items-center gap-2">
+    <x-page-header title="Environments" subtitle="Isolation planes above every organization. Create one, point the console at it, and bootstrap it with an admin.">
+        <x-slot:actions>
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New environment
             </button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
+
+    <p role="status" aria-live="polite" class="sr-only">{{ $environments->count() }} {{ \Illuminate\Support\Str::plural('environment', $environments->count()) }} found.</p>
 
     @if ($creating)
         <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="env-name">Name</label>
-                <input wire:model="name" id="env-name" type="text" class="input" placeholder="Production" autofocus>
-                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="name" id="env-name" type="text" class="input" placeholder="Production" autofocus
+                       @error('name') aria-invalid="true" aria-describedby="env-name-error" @enderror>
+                @error('name') <p id="env-name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1 min-w-[14rem]">
                 <label class="label" for="env-domain">Custom domain <span style="color:var(--faint)">(optional)</span></label>
-                <input wire:model="domain" id="env-domain" type="text" class="input" placeholder="id.acme.com">
-                @error('domain') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="domain" id="env-domain" type="text" class="input" placeholder="id.acme.com"
+                       aria-describedby="env-domain-hint @error('domain') env-domain-error @enderror"
+                       @error('domain') aria-invalid="true" @enderror>
+                <p id="env-domain-hint" class="mt-1 text-xs" style="color:var(--faint)">Recorded, not routed: the plane serves its own issuer until the domain is verified by DNS.</p>
+                @error('domain') <p id="env-domain-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">
+                <span class="spinner" wire:loading wire:target="create" aria-hidden="true"></span> Create
+            </button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
         </form>
     @endif
 
-    <div class="cbx-panel overflow-hidden mt-8">
-        <div class="hidden sm:grid px-5 py-3 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2fr 1.5fr 1fr 1fr auto">
-            <span>Environment</span><span>Domain</span><span>Orgs</span><span>Users</span><span></span>
+    @if ($environments->isEmpty())
+        <div class="cbx-empty mt-8">
+            <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
+            <h3>No environments yet</h3>
+            <p>An environment is one isolation plane — its own users, keys, sign-in and issuer. Create your first one above, then bootstrap it with an organization and an admin.</p>
         </div>
+    @else
+        <div class="cbx-panel overflow-hidden mt-8">
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Environment</th>
+                            <th scope="col">Domain</th>
+                            <th scope="col" class="text-right">Orgs</th>
+                            <th scope="col" class="text-right">Users</th>
+                            <th scope="col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($environments as $env)
+                            <tr wire:key="environment-{{ $env['id'] }}">
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"
+                                              style="width:1.9rem;height:1.9rem;background:var(--accent-soft);color:var(--accent-strong)">
+                                            {{ strtoupper(substr($env['name'], 0, 1)) }}
+                                        </span>
+                                        <div class="min-w-0">
+                                            <p class="font-semibold">
+                                                {{ $env['name'] }}
+                                                @if ($env['id'] === $activeId)
+                                                    <span class="cbx-pill cbx-pill--success align-middle ml-1"><span class="dot"></span>Target</span>
+                                                @endif
+                                            </p>
+                                            <p class="text-xs font-mono" style="color:var(--faint)">{{ $env['slug'] }}</p>
+                                        </div>
+                                    </div>
+                                </td>
 
-        @foreach ($environments as $env)
-            <div wire:key="environment-{{ $env['id'] }}" class="px-5 py-4 border-b flex flex-col gap-3 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2fr 1.5fr 1fr 1fr auto">
-                <div class="flex items-center gap-3 min-w-0">
-                    <span aria-hidden="true" class="grid place-items-center rounded-md text-xs font-bold shrink-0"
-                          style="width:1.9rem;height:1.9rem;background:var(--accent-soft);color:var(--accent-strong)">
-                        {{ strtoupper(substr($env['name'], 0, 1)) }}
-                    </span>
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold truncate">
-                            {{ $env['name'] }}
-                            @if ($env['id'] === $activeId)
-                                <span class="cbx-pill cbx-pill--success align-middle ml-1"><span class="dot"></span>Target</span>
+                                <td style="color:var(--muted)">{{ $env['domain'] ?? 'None — served on the fallback host' }}</td>
+                                <td class="text-right tabular-nums">{{ $env['orgs'] }}</td>
+                                <td class="text-right tabular-nums">{{ $env['users'] }}</td>
+
+                                <td class="text-right whitespace-nowrap">
+                                    <button wire:click="startProvisioning('{{ $env['id'] }}')" class="btn btn-ghost btn-sm">Provision admin</button>
+                                    @if ($env['id'] === $activeId)
+                                        <span class="text-xs" style="color:var(--faint)">Target</span>
+                                    @else
+                                        {{-- Repoints EVERY subsequent read in this console at another
+                                             plane, so it gets both a confirmation and a busy state: with
+                                             neither, a slow switch looked like a dead button and the
+                                             operator's next page was quietly about a different estate. --}}
+                                        <button wire:click="switchTo('{{ $env['id'] }}')" class="btn btn-ghost btn-sm"
+                                                wire:loading.attr="disabled" wire:target="switchTo('{{ $env['id'] }}')"
+                                                wire:confirm="Point this console at {{ $env['name'] }}? Every page you open from now on — organizations, usage, tenant detail — reads that plane instead of the current one. Nothing is changed in either.">
+                                            <span class="spinner" wire:loading wire:target="switchTo('{{ $env['id'] }}')" aria-hidden="true"></span>
+                                            Target
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+
+                            @if ($provisioningEnvId === $env['id'])
+                                <tr wire:key="provision-{{ $env['id'] }}">
+                                    <td colspan="5" style="background:var(--surface-2)">
+                                        <form wire:submit="provisionAdmin">
+                                            <p class="text-sm font-semibold mb-3">Bootstrap {{ $env['name'] }} — first organization &amp; admin</p>
+                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label class="label" for="org-name-{{ $env['id'] }}">Organization name</label>
+                                                    <input wire:model="orgName" id="org-name-{{ $env['id'] }}" type="text" class="input" placeholder="Acme Inc"
+                                                           @error('orgName') aria-invalid="true" aria-describedby="org-name-error-{{ $env['id'] }}" @enderror>
+                                                    @error('orgName') <p id="org-name-error-{{ $env['id'] }}" class="field-error" role="alert">{{ $message }}</p> @enderror
+                                                </div>
+                                                <div>
+                                                    <label class="label" for="admin-name-{{ $env['id'] }}">Admin name</label>
+                                                    <input wire:model="adminName" id="admin-name-{{ $env['id'] }}" type="text" class="input" placeholder="Ada Lovelace"
+                                                           @error('adminName') aria-invalid="true" aria-describedby="admin-name-error-{{ $env['id'] }}" @enderror>
+                                                    @error('adminName') <p id="admin-name-error-{{ $env['id'] }}" class="field-error" role="alert">{{ $message }}</p> @enderror
+                                                </div>
+                                                <div>
+                                                    <label class="label" for="admin-email-{{ $env['id'] }}">Admin email</label>
+                                                    <input wire:model="adminEmail" id="admin-email-{{ $env['id'] }}" type="email" class="input" placeholder="admin@acme.com"
+                                                           @error('adminEmail') aria-invalid="true" aria-describedby="admin-email-error-{{ $env['id'] }}" @enderror>
+                                                    @error('adminEmail') <p id="admin-email-error-{{ $env['id'] }}" class="field-error" role="alert">{{ $message }}</p> @enderror
+                                                </div>
+                                                <div>
+                                                    <label class="label" for="admin-password-{{ $env['id'] }}">Admin password</label>
+                                                    <input wire:model="adminPassword" id="admin-password-{{ $env['id'] }}" type="password" autocomplete="new-password" class="input" placeholder="At least 12 characters"
+                                                           @error('adminPassword') aria-invalid="true" aria-describedby="admin-password-error-{{ $env['id'] }}" @enderror>
+                                                    @error('adminPassword') <p id="admin-password-error-{{ $env['id'] }}" class="field-error" role="alert">{{ $message }}</p> @enderror
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 flex gap-2">
+                                                <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled" wire:target="provisionAdmin">
+                                                    <span class="spinner" wire:loading wire:target="provisionAdmin" aria-hidden="true"></span> Provision
+                                                </button>
+                                                <button type="button" wire:click="$set('provisioningEnvId', null)" class="btn btn-ghost btn-sm">Cancel</button>
+                                            </div>
+                                        </form>
+                                    </td>
+                                </tr>
                             @endif
-                        </p>
-                        <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $env['slug'] }}</p>
-                    </div>
-                </div>
-
-                <div class="text-sm truncate" style="color:var(--muted)">{{ $env['domain'] ?? '—' }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Orgs: </span>{{ $env['orgs'] }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Users: </span>{{ $env['users'] }}</div>
-
-                <div class="flex items-center gap-2 sm:justify-self-end">
-                    <button wire:click="startProvisioning('{{ $env['id'] }}')" class="btn btn-ghost btn-sm">Provision admin</button>
-                    @if ($env['id'] === $activeId)
-                        <span class="text-xs" style="color:var(--faint)">Target</span>
-                    @else
-                        <button wire:click="switchTo('{{ $env['id'] }}')" class="btn btn-ghost btn-sm">Target</button>
-                    @endif
-                </div>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-
-            @if ($provisioningEnvId === $env['id'])
-                <form wire:submit="provisionAdmin" class="px-5 py-4 border-b" style="border-color:var(--border);background:var(--surface-2)">
-                    <p class="text-sm font-semibold mb-3">Bootstrap {{ $env['name'] }} — first organization &amp; admin</p>
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="label" for="org-name-{{ $env['id'] }}">Organization name</label>
-                            <input wire:model="orgName" id="org-name-{{ $env['id'] }}" type="text" class="input" placeholder="Acme Inc">
-                            @error('orgName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="label" for="admin-name-{{ $env['id'] }}">Admin name</label>
-                            <input wire:model="adminName" id="admin-name-{{ $env['id'] }}" type="text" class="input" placeholder="Ada Lovelace">
-                            @error('adminName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="label" for="admin-email-{{ $env['id'] }}">Admin email</label>
-                            <input wire:model="adminEmail" id="admin-email-{{ $env['id'] }}" type="email" class="input" placeholder="admin@acme.com">
-                            @error('adminEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="label" for="admin-password-{{ $env['id'] }}">Admin password</label>
-                            <input wire:model="adminPassword" id="admin-password-{{ $env['id'] }}" type="password" autocomplete="new-password" class="input" placeholder="At least 12 characters">
-                            @error('adminPassword') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                    <div class="mt-3 flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled">Provision</button>
-                        <button type="button" wire:click="$set('provisioningEnvId', null)" class="btn btn-ghost btn-sm">Cancel</button>
-                    </div>
-                </form>
-            @endif
-        @endforeach
-
-        @if ($environments->isEmpty())
-            <div class="px-5 py-10 text-center text-sm" style="color:var(--faint)">
-                No environments yet. Create your first plane to get started.
-            </div>
-        @endif
-    </div>
+        </div>
+    @endif
 </div>

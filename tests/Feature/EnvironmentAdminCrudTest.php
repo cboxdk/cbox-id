@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\EnvironmentSudo;
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
+use App\Platform\WorkspaceSudo;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -383,9 +386,54 @@ it('renders the access-review, stored-token and log-stream detail pages', functi
     )->stream;
 
     $this->get("/admin/access-reviews/{$campaign->id}")->assertOk()->assertSee('Q3 Review');
-    $this->get("/admin/stored-tokens/{$secret->id}")->assertOk()->assertSee('Stripe key');
     $this->get("/admin/log-streaming/{$stream->id}")->assertOk()->assertSee('SIEM export');
+
+    // The vault is the one page here behind a step-up, so this test has to take the step
+    // up. It used to assert a bare 200 on this URL, which is a test asserting the ABSENCE
+    // of the gate — and that is what kept the weaker half of the pair in place: the
+    // organization plane's identical page had demanded a fresh password since it shipped.
+    app(EnvironmentSudo::class)->confirm();
+    $this->get("/admin/stored-tokens/{$secret->id}")->assertOk()->assertSee('Stripe key');
 });
+
+/**
+ * The gate itself, stated separately from the render.
+ *
+ * An environment administrator rotates, re-grants and revokes ANY organization's
+ * downstream provider credentials from these three pages. On the organization plane the
+ * same actions have always demanded a fresh password or passkey; here they demanded
+ * nothing, so an unattended or hijacked env-admin session could plant a grant to an
+ * attacker-controlled client id and lease a tenant's production API key.
+ */
+it('demands a fresh step-up before any token-vault page on the environment plane', function (): void {
+    crudSetup();
+    $secret = app(SecretVault::class)->store('Stripe key', 'stripe', 'sk_test_x');
+
+    foreach (['/admin/stored-tokens', '/admin/stored-tokens/new', "/admin/stored-tokens/{$secret->id}"] as $url) {
+        $this->get($url)->assertRedirect(route('environment.sudo'));
+    }
+
+    app(EnvironmentSudo::class)->confirm();
+
+    foreach (['/admin/stored-tokens', '/admin/stored-tokens/new', "/admin/stored-tokens/{$secret->id}"] as $url) {
+        $this->get($url)->assertOk();
+    }
+})->group('security');
+
+/**
+ * And the confirmation is this plane's own. The three step-ups keep separate session keys
+ * precisely so a confirmation made where less is at stake cannot unlock more: an
+ * organization member's sudo must not open the console that administers every
+ * organization.
+ */
+it('never lets an organization-plane step-up satisfy the environment plane', function (): void {
+    crudSetup();
+
+    app(Sudo::class)->confirm();
+    app(WorkspaceSudo::class)->confirm();
+
+    $this->get('/admin/stored-tokens')->assertRedirect(route('environment.sudo'));
+})->group('security');
 
 // RP-initiated logout only returns the browser to the app when the requested
 // post_logout_redirect_uri is on THAT client's registered allow-list, byte for byte.

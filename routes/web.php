@@ -26,9 +26,8 @@ use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Http\Middleware\TargetEnvironment;
+use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -46,26 +45,29 @@ use Livewire\Volt\Volt;
 Volt::route('/first-run', 'first-run')->name('first-run');
 
 /*
- * The root is plane-aware, but ONLY in the multi-tenant SaaS shape. When
- * `base_domains` is set (e.g. cboxid.com), the platform-root (is_default) host is the
- * ACCOUNT door — sign in / sign up as an account member to create and manage your IdP
- * — and a tenant's OWN subdomain serves the subject/tenant plane. In the single-tenant
- * / self-hosted shape (no `base_domains`) there is NO account door: the one host is
- * the IdP itself, so the root goes straight to the subject sign-in/dashboard.
+ * The root is plane-aware: on the ACCOUNT plane — the platform-root host of a
+ * multi-tenant deployment — it is the account door (sign in / sign up as an account
+ * member to create and manage your IdP); everywhere else it is the IdP's own
+ * sign-in/dashboard, which is the single-tenant / self-hosted shape's one host and a
+ * tenant's own subdomain alike.
+ *
+ * The decision is PlaneResolver's, whole. This closure used to re-derive it, and
+ * disagreed with the resolver twice over — which is exactly the failure the resolver's
+ * own docblock exists to prevent, since "which plane is this?" answered in two places
+ * eventually gets two answers:
+ *
+ *  - It read multi-tenancy as `base_domains !== []`, the COMPATIBILITY fallback, ignoring
+ *    the stated `cbox-id.tenancy.multi_tenant`. With multi-tenancy on and every tenant on
+ *    its own domain (base domains empty — a supported shape {@see PlaneResolver} describes
+ *    itself), the apex fell through to `route('login')`, a `plane:subject` route that
+ *    404s on the account host. The account console's front door was a 404.
+ *  - It resolved the platform root config-first, which is backwards: SetEnvironment
+ *    returns the DB `is_default` row and falls back to config only when no environment
+ *    exists at all. A deployment setting both to different environments had the apex
+ *    comparing against one root while its own request had resolved to another.
  */
-Route::get('/', function (EnvironmentContext $environments, EnvironmentResolver $resolver) {
-    $bases = config('cbox-id.environments.base_domains', []);
-    $multiTenant = is_array($bases) && $bases !== [];
-
-    // The platform-root env — resolved like SetEnvironment: configured default first,
-    // else the DB is_default env.
-    $configuredDefault = config('cbox-id.environments.default');
-    $current = $environments->current()?->environmentKey();
-    $default = is_string($configuredDefault) && $configuredDefault !== ''
-        ? $configuredDefault
-        : $resolver->defaultEnvironment()?->environmentKey();
-
-    if ($multiTenant && $current !== null && $current === $default) {
+Route::get('/', function (PlaneResolver $planes) {
+    if ($planes->onAccountPlane()) {
         // One session, so one question. This used to ask for an account-MEMBER session,
         // which an operator with no account never has — so the person who runs the
         // deployment was sent to a sign-in they had already completed.
@@ -380,9 +382,13 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     Volt::route('/provisioning/new', 'console.provisioning.create')->name('provisioning.create');
     Volt::route('/provisioning/{sync}', 'console.provisioning.show')->name('provisioning.show');
 
-    // AI token vault + inline-hook (external action) endpoints. Storing/revealing a
-    // secret is sensitive, so the vault is behind the sudo step-up gate.
-    Volt::route('/vault', 'vault')->middleware('sudo')->name('vault');
+    // AI token vault — the SAME components the environment plane serves, on the routable
+    // index/new/show shape. Storing, rotating and granting a downstream credential is
+    // sensitive, so every page is behind the sudo step-up gate — as is its mirror on the
+    // environment plane, which for a long time had no step-up at all.
+    Volt::route('/vault', 'console.vault.index')->middleware('sudo')->name('vault');
+    Volt::route('/vault/new', 'console.vault.create')->middleware('sudo')->name('vault.create');
+    Volt::route('/vault/{secret}', 'console.vault.show')->middleware('sudo')->name('vault.show');
     // Inline hooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — an endpoint
     // has a lifecycle worth linking to, and the one-time signing secret needs somewhere
@@ -540,10 +546,23 @@ Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(fun
         Volt::route('/event-hooks/new', 'console.hooks.create')->name('environment.hooks.create');
         Volt::route('/event-hooks/{hook}', 'console.hooks.show')->name('environment.hooks.show');
 
-        // Stored tokens (secret vault) — routable list → create → detail.
-        Volt::route('/stored-tokens', 'environment.vault.index')->name('environment.vault');
-        Volt::route('/stored-tokens/new', 'environment.vault.create')->name('environment.vault.create');
-        Volt::route('/stored-tokens/{secret}', 'environment.vault.show')->name('environment.vault.show');
+        // Token vault — routable list → create → detail, on the merged component. The URL
+        // keeps its old spelling so existing links and bookmarks still resolve; the route
+        // names are what the two planes disagree on, and both are preserved.
+        //
+        // BEHIND `env.sudo`, which did not exist until this pair was merged. These pages
+        // rotate, re-grant and revoke downstream provider credentials for any organization
+        // in the environment, and the identical actions on the organization plane have
+        // always demanded a fresh password. The asymmetry meant the more privileged door
+        // was the one with no step-up behind it.
+        Volt::route('/stored-tokens', 'console.vault.index')->middleware('env.sudo')->name('environment.vault');
+        Volt::route('/stored-tokens/new', 'console.vault.create')->middleware('env.sudo')->name('environment.vault.create');
+        Volt::route('/stored-tokens/{secret}', 'console.vault.show')->middleware('env.sudo')->name('environment.vault.show');
+
+        // Step-up re-authentication for this plane. Inside the env-admin group — only an
+        // administrator has anything to step up FROM — but never behind `env.sudo` itself,
+        // which would be a gate in front of its own key.
+        Volt::route('/sudo', 'environment.sudo')->name('environment.sudo');
 
         // Activity log — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.

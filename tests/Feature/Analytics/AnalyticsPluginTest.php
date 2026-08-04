@@ -7,6 +7,7 @@ use Cbox\Console\Kit\ConsoleManager;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Analytics\Contracts\ReportSink;
 use Cbox\Id\Analytics\Testing\FakeReportSink;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -64,6 +65,12 @@ it('names its route outside the environment console\'s analytics namespace', fun
 });
 
 it('renders a dashboard analytics card', function (): void {
+    // AS AN ADMINISTRATOR OF AN ORGANIZATION, which this test used not to be. Every card
+    // now narrows to the acting organization and renders NOTHING when there is none —
+    // they used to read the whole environment, so they rendered for a caller with no
+    // console scope at all, and that is exactly what this assertion was measuring.
+    actingAsRole(MembershipRole::Owner);
+
     $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
 
     expect($html)->toContain('Logins');

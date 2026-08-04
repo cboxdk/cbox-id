@@ -109,37 +109,41 @@ new #[Layout('components.layouts.workspace', ['title' => 'Operators', 'width' =>
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Operators</h1>
-            <p class="cbx-page-desc">Platform operators administer environments across the whole install.</p>
-        </div>
-        <div class="flex items-center gap-2">
+    <x-page-header title="Operators" subtitle="Platform operators administer environments across the whole install.">
+        <x-slot:actions>
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New operator
             </button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
+
+    <p role="status" aria-live="polite" class="sr-only">{{ $operators->count() }} {{ \Illuminate\Support\Str::plural('operator', $operators->count()) }} found.</p>
 
     @if ($creating)
         <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-name">Name</label>
-                <input wire:model="name" id="op-name" type="text" class="input" placeholder="Grace Hopper" autofocus>
-                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="name" id="op-name" type="text" class="input" placeholder="Grace Hopper" autofocus
+                       @error('name') aria-invalid="true" aria-describedby="op-name-error" @enderror>
+                @error('name') <p id="op-name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-email">Email</label>
-                <input wire:model="email" id="op-email" type="email" class="input" placeholder="grace@yourco.example">
-                @error('email') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="email" id="op-email" type="email" class="input" placeholder="grace@yourco.example"
+                       @error('email') aria-invalid="true" aria-describedby="op-email-error" @enderror>
+                @error('email') <p id="op-email-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1 min-w-[12rem]">
                 <label class="label" for="op-password">Password</label>
-                <input wire:model="password" id="op-password" type="password" autocomplete="new-password" class="input" placeholder="At least 12 characters">
-                @error('password') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="password" id="op-password" type="password" autocomplete="new-password" class="input" placeholder="At least 12 characters"
+                       aria-describedby="op-password-hint @error('password') op-password-error @enderror"
+                       @error('password') aria-invalid="true" @enderror>
+                <p id="op-password-hint" class="mt-1 text-xs" style="color:var(--faint)">At least 12 characters, and checked against known breach corpora.</p>
+                @error('password') <p id="op-password-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Create</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">
+                <span class="spinner" wire:loading wire:target="create" aria-hidden="true"></span> Create
+            </button>
             <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
         </form>
     @endif
@@ -163,7 +167,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Operators', 'width' =>
                     </p>
                 </div>
                 @if ($op['id'] !== $currentId)
-                    <button wire:click="toggleStatus('{{ $op['id'] }}')" class="btn btn-ghost btn-sm shrink-0">
+                    {{-- Suspending a colleague sat 8px from nothing, unconfirmed and with no
+                         undo. Same pattern as Accounts next door: name the person, say what
+                         stops working. Reversible on this screen, so wire:confirm rather than
+                         the type-to-confirm dialog (which is for actions with no way back). --}}
+                    <button wire:click="toggleStatus('{{ $op['id'] }}')" class="btn btn-ghost btn-sm shrink-0"
+                            wire:loading.attr="disabled" wire:target="toggleStatus('{{ $op['id'] }}')"
+                            wire:confirm="{{ $op['active']
+                                ? 'Suspend '.($op['name'] ?? $op['email']).'? They lose access to every platform page on this install immediately, and their existing sessions stop working on the next request. You can reactivate them here.'
+                                : 'Reactivate '.($op['name'] ?? $op['email']).'? They regain full platform-operator access to this install.' }}">
+                        <span class="spinner" wire:loading wire:target="toggleStatus('{{ $op['id'] }}')" aria-hidden="true"></span>
                         {{ $op['active'] ? 'Suspend' : 'Reactivate' }}
                     </button>
                 @endif

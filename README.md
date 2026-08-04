@@ -28,11 +28,18 @@ composer setup          # installs deps, copies .env, creates the sqlite db,
 composer run dev        # serve + queue + vite + logs
 ```
 
-Then create the first **platform operator** (the identity above every
-environment) by visiting **`/operator/login`** — on a fresh install it offers a
-one-time "create the first operator" form, then closes. From the operator console
-you create environments and provision each one's first organization + admin. End
-users then sign in at `/login`.
+`cbox-id:install` is what creates the first **platform operator** — the identity
+above every environment — along with the platform-root environment and, in the SaaS
+shape, the first account. It prints where to sign in, and the generated password if
+it invented one. Sign in at **`/workspace/login`**; the deployment pages —
+environments, accounts, operators — are the **`/platform`** section of that console,
+where you create environments and provision each one's first organization + admin.
+End users then sign in at `/login`.
+
+No shell on the box? An empty deployment serves one page, at **`/first-run`**, and
+points every other page at it. It requires the setup token the deployment writes to
+`storage/app/private/cbox-id-first-run.token` and to the application log, so reaching
+the URL is not enough to claim the platform. See [Quickstart](docs/quickstart.md).
 
 Required env (all in `.env.example`, keep secrets out of git): `CBOX_ID_CRYPTO_KEY`
 (base64 32 bytes — **back it up**), `CBOX_ID_ISSUER`, `CBOX_ID_WEBAUTHN_RP_ID`,
@@ -73,8 +80,9 @@ Actively developed and dogfooded; **pre-1.0** — it composes `cboxdk/laravel-id
 running it in production. Shipped: full auth (password + magic-link + TOTP MFA +
 passkeys + social), signup → org onboarding with signup-mode lockdown, the
 9-section org admin console (Overview, Members, SSO, Directory/SCIM, Roles, API
-clients, Webhooks, Audit, Settings), the **operator console** (environments,
-tenant management, operators) above every environment, branded error screens with
+clients, Webhooks, Audit, Settings), the **`/platform` section** (environments,
+tenant management, operators) for whoever has authority over the deployment,
+guided install (`cbox-id:install` or `/first-run`), branded error screens with
 telemetry trace IDs, and health/metrics endpoints. Session-cookie auth, strict
 CSP, rate limiting, and argon2id throughout.
 

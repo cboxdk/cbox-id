@@ -175,13 +175,14 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 }; ?>
 
 <div>
-    <div>
-        <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">Environment keys</h1>
-        <p class="mt-1 text-sm" style="color:var(--muted)">
-            Machine credentials for the per-environment management API — provision organizations and users inside one environment. Each key carries explicit scopes.
-            <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noopener" class="underline underline-offset-2" style="color:var(--accent-strong)">API reference ↗</a>
-        </p>
-    </div>
+    {{-- See api-keys.blade.php: these two were the workspace plane's only pages with a
+         hand-rolled h1 and no eyebrow. --}}
+    <x-page-header title="Environment keys"
+                   subtitle="Machine credentials for the per-environment management API — provision organizations and users inside one environment. Each key carries explicit scopes.">
+        <x-slot:actions>
+            <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">API reference ↗</a>
+        </x-slot:actions>
+    </x-page-header>
 
     @if ($environments->isEmpty())
         <div class="cbx-empty mt-6"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No environments yet</h3><p>Create an environment first, then you can issue keys scoped to it.</p></div>

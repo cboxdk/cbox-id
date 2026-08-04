@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Enums\EnvironmentType;
@@ -127,6 +128,32 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
 
         $this->cancelCreate();
         $this->dispatch('toast', message: 'Environment created.');
+    }
+
+    /**
+     * The console root is only a launchpad for somebody who HAS an account.
+     *
+     * A platform operator who buys nothing on the deployment they run has no membership,
+     * so this page had nothing on it for them: a paragraph explaining what a project is,
+     * and a "Create your first project" CTA gated off by a role they do not hold — as the
+     * first screen after sign-in, for the primary operator persona. Every door into the
+     * console ends at `route('workspace.home')` (the login, the magic link, the SSO
+     * landing, email verification, the passkey ceremony), so the redirect belongs here
+     * rather than at six call sites that would each have to remember it.
+     *
+     * Anyone else with no membership is nobody this plane serves;
+     * {@see \App\Http\Middleware\AuthenticateAccountMember} has already established they
+     * are signed in, so the only remaining reading is a session that outlived its member.
+     */
+    public function mount(AccountAuth $auth, ConsoleScope $scope): void
+    {
+        if ($auth->current() !== null) {
+            return;
+        }
+
+        abort_unless($scope->isPlatformOperator(), 403);
+
+        $this->redirectRoute('platform.environments', navigate: false);
     }
 
     /**

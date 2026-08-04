@@ -3,10 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
-use Cbox\Id\Identity\Models\User;
-use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
-use Illuminate\Database\Eloquent\Builder;
+use Cbox\Id\RiskPlus\Queries\OrganizationRiskEvents;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -52,31 +50,28 @@ new #[Layout('components.layouts.console', ['title' => 'Risk events'])] class ex
     /** @return Collection<int, RiskEvent> */
     private function events(): Collection
     {
-        // Confined to addresses belonging to the acting organization's members.
+        // Confined to addresses belonging to the acting organization's members, through
+        // {@see OrganizationRiskEvents} — which is where the reasoning for matching on
+        // the address, and for fetching the membership ids through the contract rather
+        // than as a subquery, is written down.
         //
-        // `RiskEvent` carries no organization — only an email — so an unqualified read on
-        // an ORGANIZATION-gated page showed an admin of one tenant every flagged sign-in
-        // in the environment, with the address in the clear. That is a live feed of when
-        // another tenant is under credential stuffing, and of who their users are.
-        //
-        // Matching on the email is the narrowest thing available without a schema change.
-        // It means an event for an address that belongs to nobody in the organization is
-        // not shown at all, which is the correct direction: an org admin has no standing
-        // to see a stranger's failed sign-in.
+        // The subquery is the part that mattered. `Membership` is `TenantOwned` and its
+        // scope denies by default with no tenant in context, which nothing in this
+        // console ever sets — so the filter matched nothing, the page said "No elevated
+        // risk events yet" to an organization under credential stuffing, and it did that
+        // silently. The devices module had already measured this exact trap and routed
+        // around it; this page copied the intent and not the mechanism.
         //
         // Null is reachable only from the environment plane — ConsoleScope refuses rather
         // than answering null on the other one — and there it means the environment's own
         // whole feed, still bounded by RiskEvent's environment scope.
         $organizationId = app(ConsoleScope::class)->organizationId();
 
-        return RiskEvent::query()
-            ->when($organizationId !== null, function (Builder $query) use ($organizationId): void {
-                $memberEmails = User::query()
-                    ->select('email')
-                    ->whereIn('id', Membership::query()->select('user_id')->where('organization_id', $organizationId));
+        $query = $organizationId === null
+            ? RiskEvent::query()
+            : app(OrganizationRiskEvents::class)->query($organizationId);
 
-                $query->whereNotNull('email')->whereIn('email', $memberEmails);
-            })
+        return $query
             ->latest('created_at')
             ->limit(50)
             ->get();

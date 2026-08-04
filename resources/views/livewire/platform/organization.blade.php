@@ -238,19 +238,26 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
         </a>
     </div>
 
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Organization</p>
-            <h1 class="cbx-page-title">{{ $org['name'] }}</h1>
-            <p class="cbx-page-desc">Read-only tenant detail — members, SSO, domains, entitlements and recent activity in the current environment.</p>
-        </div>
-        <div class="flex items-center gap-2">
+    {{-- An explicit eyebrow, the one case the component documents: this is a resource
+         detail page, so it has no nav entry of its own to be derived from. It says
+         "Platform" because that is the rail area highlighted behind it — it used to say
+         "Organization", which names the resource type rather than where you are standing,
+         and so disagreed with the sidebar on the one label whose only job is orientation. --}}
+    <x-page-header eyebrow="Platform" :title="$org['name']"
+                   subtitle="Tenant detail in the target environment — members, SSO, domains, entitlements and recent activity. The only thing changed from this page is the tenant's status.">
+        <x-slot:actions>
+            {{-- Same confirmation as the Organizations list, and for the same reason: a
+                 bare click here signs out every member of a live tenant. --}}
             <button wire:click="toggleStatus" class="btn {{ $org['status'] === 'active' ? 'btn-ghost' : 'btn-primary' }}"
-                    wire:loading.attr="disabled">
+                    wire:loading.attr="disabled" wire:target="toggleStatus"
+                    wire:confirm="{{ $org['status'] === 'active'
+                        ? 'Suspend '.$org['name'].'? Its '.$memberTotal.' member(s) can no longer sign in to this tenant, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.'
+                        : 'Reactivate '.$org['name'].'? Its members can sign in again immediately.' }}">
+                <span class="spinner" wire:loading wire:target="toggleStatus" aria-hidden="true"></span>
                 {{ $org['status'] === 'active' ? 'Suspend' : 'Reactivate' }}
             </button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- Overview --}}
     <div class="cbx-panel mb-5 mt-8">
@@ -266,7 +273,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
             @endif
 
             <div class="flex flex-wrap items-center gap-2 mb-4">
-                <h3 class="text-base font-semibold">{{ $org['name'] }}</h3>
+                {{-- h2 throughout this page's sections: the h1 is the tenant name above,
+                     and jumping straight to h3 leaves a screen-reader user with no level
+                     to navigate by (WCAG 1.3.1). --}}
+                <h2 class="text-base font-semibold">{{ $org['name'] }}</h2>
                 @if ($org['status'] === 'suspended')
                     <span class="cbx-pill cbx-pill--destructive"><span class="dot"></span>Suspended</span>
                 @elseif ($org['status'] === 'active')
@@ -290,7 +300,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
 
     {{-- Usage --}}
     <section class="mb-5">
-        <h3 class="text-sm font-semibold mb-3">Usage</h3>
+        <h2 class="text-sm font-semibold mb-3">Usage</h2>
         @php
             $usageTiles = [
                 ['label' => 'Members', 'value' => number_format($usage['members'])],
@@ -326,52 +336,67 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
                 {{ count($members) < $memberTotal ? 'Showing '.count($members).' of '.$memberTotal : $memberTotal.' total' }}
             </span>
         </div>
-        <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr auto">
-            <span>User</span><span>Role</span><span>Status</span><span class="text-right">Support</span>
-        </div>
-        @forelse ($members as $member)
-            <div wire:key="member-{{ $member['user_id'] }}" class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr auto">
-                <div class="min-w-0">
-                    <p class="text-sm font-medium truncate">{{ $member['email'] ?? $member['name'] ?? $member['user_id'] }}</p>
-                    @if ($member['name'] !== null && $member['email'] !== null)
-                        <p class="text-xs truncate" style="color:var(--faint)">{{ $member['name'] }}</p>
-                    @endif
-                </div>
-                <div class="text-sm capitalize"><span class="sm:hidden" style="color:var(--faint)">Role: </span>{{ $member['role'] }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Status: </span><span class="cbx-pill {{ $member['status'] === 'active' ? 'cbx-pill--success' : ($member['status'] === 'suspended' ? 'cbx-pill--destructive' : 'cbx-pill--warning') }}"><span class="dot"></span><span class="capitalize">{{ $member['status'] }}</span></span></div>
-                {{-- Step into this member's session for support. Heavily rail-guarded:
-                     the console is read-only while impersonating, credential changes
-                     are blocked, a justification is required, and the session
-                     self-terminates after 30 minutes. Owners and admins are never
-                     impersonable — their elevated surface is off-limits. --}}
-                @if (in_array($member['role'], ['owner', 'admin'], true))
-                    <span class="sm:text-right text-xs" style="color:var(--faint)">Not impersonable</span>
-                @else
-                    <form method="POST" action="{{ route('platform.impersonate', $member['user_id']) }}"
-                          class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
-                          x-on:submit="if (! window.confirm(@js('Impersonate '.($member['email'] ?? $member['user_id']).'? Everything you do will be logged.'))) $event.preventDefault()">
-                        @csrf
-                        <input type="hidden" name="organization" value="{{ $org['id'] }}">
-                        <input type="text" name="reason" required maxlength="200"
-                               placeholder="Reason for access"
-                               class="input text-xs" style="max-width:12rem"
-                               aria-label="Reason for impersonating {{ $member['email'] ?? $member['user_id'] }}">
-                        <button type="submit" class="btn btn-ghost text-xs" wire:loading.attr="disabled">Impersonate</button>
-                    </form>
-                @endif
+        @if (count($members) === 0)
+            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">
+                No members in this organization yet — nobody can sign in to it until somebody is invited or provisioned in.
             </div>
-        @empty
-            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">No members in this organization.</div>
-        @endforelse
+        @else
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">User</th>
+                            <th scope="col">Role</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-right">Support</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($members as $member)
+                            <tr wire:key="member-{{ $member['user_id'] }}">
+                                <td>
+                                    <p class="font-medium">{{ $member['email'] ?? $member['name'] ?? $member['user_id'] }}</p>
+                                    @if ($member['name'] !== null && $member['email'] !== null)
+                                        <p class="text-xs" style="color:var(--faint)">{{ $member['name'] }}</p>
+                                    @endif
+                                </td>
+                                <td class="capitalize whitespace-nowrap">{{ $member['role'] }}</td>
+                                <td class="whitespace-nowrap"><span class="cbx-pill {{ $member['status'] === 'active' ? 'cbx-pill--success' : ($member['status'] === 'suspended' ? 'cbx-pill--destructive' : 'cbx-pill--warning') }}"><span class="dot"></span><span class="capitalize">{{ $member['status'] }}</span></span></td>
+                                {{-- Step into this member's session for support. Heavily rail-guarded:
+                                     the console is read-only while impersonating, credential changes
+                                     are blocked, a justification is required, and the session
+                                     self-terminates after 30 minutes. Owners and admins are never
+                                     impersonable — their elevated surface is off-limits. --}}
+                                <td class="text-right">
+                                    @if (in_array($member['role'], ['owner', 'admin'], true))
+                                        <span class="text-xs" style="color:var(--faint)">Not impersonable</span>
+                                    @else
+                                        <form method="POST" action="{{ route('platform.impersonate', $member['user_id']) }}"
+                                              class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
+                                              x-on:submit="if (! window.confirm(@js('Impersonate '.($member['email'] ?? $member['user_id']).'? Everything you do will be logged.'))) $event.preventDefault()">
+                                            @csrf
+                                            <input type="hidden" name="organization" value="{{ $org['id'] }}">
+                                            <input type="text" name="reason" required maxlength="200"
+                                                   placeholder="Reason for access"
+                                                   class="input text-xs" style="max-width:12rem"
+                                                   aria-label="Reason for impersonating {{ $member['email'] ?? $member['user_id'] }}">
+                                            <button type="submit" class="btn btn-ghost text-xs" wire:loading.attr="disabled">Impersonate</button>
+                                        </form>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     <div class="grid gap-5 lg:grid-cols-2 mb-5">
         {{-- SSO --}}
         <div class="cbx-panel">
             <div class="cbx-panel-body">
-                <h3 class="text-sm font-semibold mb-3">SSO connection</h3>
+                <h2 class="text-sm font-semibold mb-3">SSO connection</h2>
                 @if ($sso === null)
                     <p class="text-sm" style="color:var(--faint)">No SSO connection configured.</p>
                 @else
@@ -388,7 +413,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
         {{-- Domains --}}
         <div class="cbx-panel">
             <div class="cbx-panel-body">
-                <h3 class="text-sm font-semibold mb-3">Verified domains</h3>
+                <h2 class="text-sm font-semibold mb-3">Verified domains</h2>
                 @forelse ($domains as $domain)
                     <div class="flex items-center justify-between py-1.5 border-b last:border-0" style="border-color:var(--border)">
                         <span class="text-sm font-mono">{{ $domain['domain'] }}</span>
@@ -415,21 +440,34 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
         <div class="cbx-panel-header">
             <h2 class="cbx-panel-title">Entitlements</h2>
         </div>
-        <div class="hidden sm:grid px-5 py-2 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2fr 2fr 1fr 1fr">
-            <span>Key</span><span>Value</span><span>Enforcement</span><span>Source</span>
-        </div>
-        @forelse ($entitlements as $entitlement)
-            <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2fr 2fr 1fr 1fr">
-                <div class="text-sm font-mono truncate">{{ $entitlement['key'] }}</div>
-                <div class="text-xs font-mono truncate" style="color:var(--muted)">{{ json_encode($entitlement['value']) }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Enforcement: </span>{{ $entitlement['mode'] }}</div>
-                <div class="text-sm capitalize"><span class="sm:hidden" style="color:var(--faint)">Source: </span>{{ $entitlement['source'] }}</div>
+        @if ($entitlements === [])
+            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">
+                No entitlements set for this organization — it runs on the deployment's defaults.
             </div>
-        @empty
-            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">No entitlements set for this organization.</div>
-        @endforelse
+        @else
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Key</th>
+                            <th scope="col">Value</th>
+                            <th scope="col">Enforcement</th>
+                            <th scope="col">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($entitlements as $entitlement)
+                            <tr>
+                                <td class="font-mono">{{ $entitlement['key'] }}</td>
+                                <td class="font-mono text-xs" style="color:var(--muted)">{{ json_encode($entitlement['value']) }}</td>
+                                <td class="whitespace-nowrap">{{ $entitlement['mode'] }}</td>
+                                <td class="capitalize whitespace-nowrap">{{ $entitlement['source'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     {{-- Recent audit --}}
@@ -437,15 +475,31 @@ new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width'
         <div class="cbx-panel-header">
             <h2 class="cbx-panel-title">Recent activity</h2>
         </div>
-        @forelse ($recent as $event)
-            <div class="px-5 py-3 border-b flex flex-col gap-1 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2fr 2fr 1.5fr">
-                <div class="text-sm font-mono truncate">{{ $event['action'] }}</div>
-                <div class="text-xs truncate" style="color:var(--muted)">{{ $event['actor_type'] }}{{ $event['actor_id'] !== null ? ' · '.$event['actor_id'] : '' }}</div>
-                <div class="text-xs" style="color:var(--faint)">{{ $event['recorded_at'] ?? '—' }}</div>
+        @if ($recent === [])
+            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">
+                No recent activity recorded for this tenant. Sign-ins, role changes and connection edits appear here as they happen.
             </div>
-        @empty
-            <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">No recent activity recorded.</div>
-        @endforelse
+        @else
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Action</th>
+                            <th scope="col">Actor</th>
+                            <th scope="col">Recorded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($recent as $event)
+                            <tr>
+                                <td class="font-mono">{{ $event['action'] }}</td>
+                                <td class="text-xs" style="color:var(--muted)">{{ $event['actor_type'] }}{{ $event['actor_id'] !== null ? ' · '.$event['actor_id'] : '' }}</td>
+                                <td class="whitespace-nowrap text-xs" style="color:var(--faint)">{{ $event['recorded_at'] ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 </div>

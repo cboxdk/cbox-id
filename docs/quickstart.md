@@ -1,7 +1,7 @@
 ---
 title: Quickstart
 weight: 2
-description: Operator zero-to-running — from a fresh checkout to a signed-in operator console.
+description: Operator zero-to-running — from a fresh checkout to a signed-in platform console.
 ---
 
 # Quickstart
@@ -49,9 +49,12 @@ system.
 
 ## 3. Create an environment and its first org
 
-From the operator console, create your environment(s) and use **Provision admin**
-on each to seed its first organization and owner-admin. Those org admins then sign
-in at `/login`; end users sign in there too.
+Sign in at **`/workspace/login`** — the one door; there is no separate operator
+login. The deployment pages are the **`/platform`** section of that console, and they
+appear in the rail for whoever has authority over the deployment. From there create
+your environment(s) and use **Provision admin** on each to seed its first
+organization and owner-admin. Those org admins then sign in at `/login`; end users
+sign in there too.
 
 ## 4. Verify
 

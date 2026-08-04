@@ -8,6 +8,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
@@ -38,9 +39,24 @@ class ConsoleScope
     /** The environment plane's chosen organization, held so a picker survives navigation. */
     public const SELECTION_KEY = 'cbox.console.organization';
 
+    /** How many organizations the switcher offers at once before asking for a search. */
+    public const SWITCHER_LIMIT = 8;
+
     private bool $operatorResolved = false;
 
     private ?PlatformOperator $operatorRecord = null;
+
+    /** @var array<string, string>|null memo for {@see availableOrganizations()} */
+    private ?array $availableRecord = null;
+
+    private bool $nameResolved = false;
+
+    private ?string $nameRecord = null;
+
+    /** @see validatedThisRequest() — "(selection, environment)" the verdict below belongs to. */
+    private ?string $validatedKey = null;
+
+    private bool $validatedRecord = false;
 
     public function __construct(
         private readonly CurrentUser $subject,
@@ -106,7 +122,39 @@ class ConsoleScope
         // The environment scope on Organization is what makes this safe: an id belonging
         // to another environment resolves to nothing here, so a session carried to a
         // different host cannot act on the organization it named.
-        return array_key_exists($chosen, $this->availableOrganizations()) ? $chosen : null;
+        //
+        // Asked as an EXISTENCE question about the one id, rather than by loading every
+        // organization in the environment and looking for it in the map. The property is
+        // identical — the same global scope answers both — but the map version made the
+        // cost of validating one id the size of the tenant: a console page asks this ten
+        // times through entitled(), and an environment holding a few thousand B2B
+        // organizations paid ten full reads of them per render.
+        return $this->validatedThisRequest($chosen) ? $chosen : null;
+    }
+
+    /**
+     * The re-validation above, asked once per (selection, environment) rather than ten
+     * times per render.
+     *
+     * MEMOISED ON ITS INPUTS, not merely computed once, and the environment is one of
+     * them. That is the whole of the property this re-validation exists for: the answer is
+     * "does this id name an organization on THIS host", and a request can legitimately
+     * move between environments ({@see EnvironmentContext::runAs()}) — a flat memo would
+     * carry the previous environment's verdict across that move, which is precisely the
+     * bleed the check is here to stop.
+     */
+    private function validatedThisRequest(string $organizationId): bool
+    {
+        $key = $organizationId."\0".(app(EnvironmentContext::class)->current()?->environmentKey() ?? '');
+
+        if ($this->validatedKey === $key) {
+            return $this->validatedRecord;
+        }
+
+        $this->validatedRecord = $this->existsHere($organizationId);
+        $this->validatedKey = $key;
+
+        return $this->validatedRecord;
     }
 
     /**
@@ -124,28 +172,61 @@ class ConsoleScope
             throw new AuthorizationException('Only an environment administrator may choose which organization to act on.');
         }
 
-        if (! array_key_exists($organizationId, $this->availableOrganizations())) {
+        if (! $this->existsHere($organizationId)) {
             throw new AuthorizationException('That organization is not in this environment.');
         }
 
         session()->put(self::SELECTION_KEY, $organizationId);
+
+        // The selection has moved, so anything derived from it has to. Nothing here can
+        // have changed the SET — but a memo that survives the write it belongs to is the
+        // bug memoising would otherwise introduce, and the name definitely has changed.
+        $this->availableRecord = null;
+        $this->nameResolved = false;
+        $this->nameRecord = null;
+    }
+
+    /**
+     * Whether an organization id names an organization IN THIS ENVIRONMENT.
+     *
+     * The environment scope on {@see Organization} does the work: the model's global scope
+     * filters by the host-resolved environment, so an id belonging to another one simply
+     * is not found. That is the property both callers above need, and it is the reason
+     * neither has to compare against a list it built itself.
+     */
+    private function existsHere(string $organizationId): bool
+    {
+        return $organizationId !== ''
+            && Organization::query()->whereKey($organizationId)->exists();
     }
 
     /**
      * The organizations this administrator may act on, id => name.
      *
-     * A plain map rather than a Collection: this is a picker's option list — a
-     * serialization edge — and `pluck()` returns a shape neither PHPStan nor a reader can
-     * pin down, which is how a key silently becomes an int.
+     * A plain map rather than a Collection: this is a label lookup — a serialization edge
+     * — and `pluck()` returns a shape neither PHPStan nor a reader can pin down, which is
+     * how a key silently becomes an int.
+     *
+     * FOR LABELLING ROWS THE PAGE HAS ALREADY LOADED, not for offering a choice. The
+     * switcher used to render this whole map as an option list and stopped doing so —
+     * see {@see searchOrganizations()} — because on the environment plane it is
+     * unbounded, and "every organization in the tenant" is not a size a page can be.
+     *
+     * Memoised per request, the same way {@see operator()} is and for the same reason:
+     * several list components ask on one render, and the answer cannot change under them.
      *
      * @return array<string, string>
      */
     public function availableOrganizations(): array
     {
+        if ($this->availableRecord !== null) {
+            return $this->availableRecord;
+        }
+
         if ($this->plane() === ConsolePlane::Organization) {
             $organization = $this->subject->organization();
 
-            return $organization === null
+            return $this->availableRecord = $organization === null
                 ? []
                 : [$organization->id => $organization->name];
         }
@@ -158,7 +239,89 @@ class ConsoleScope
             $available[$organization->id] = $organization->name;
         }
 
-        return $available;
+        return $this->availableRecord = $available;
+    }
+
+    /**
+     * The organizations to OFFER, for a term the administrator typed — a bounded page of
+     * the same set {@see availableOrganizations()} describes.
+     *
+     * This exists because the set has no size limit. The switcher rendered every
+     * organization in the environment, each as its own `<form>` with its own CSRF token,
+     * so an environment holding a few thousand of them — the shape this product is sold
+     * into — served a 3.5 MB document on every console page. That is an availability
+     * problem, not a slow one, and no amount of caching fixes a response that large.
+     *
+     * The organization plane has exactly one and never chooses, so it answers with that
+     * one and ignores the term: the switcher is a label there, not a control.
+     *
+     * @return list<ConsoleOrganization>
+     */
+    public function searchOrganizations(string $term = '', int $limit = self::SWITCHER_LIMIT): array
+    {
+        if ($this->plane() === ConsolePlane::Organization) {
+            $organization = $this->subject->organization();
+
+            return $organization === null ? [] : [new ConsoleOrganization($organization->id, $organization->name)];
+        }
+
+        $term = trim($term);
+
+        $query = Organization::query()->orderBy('name');
+
+        if ($term !== '') {
+            // Escaped, because `%` and `_` in a typed term would otherwise be wildcards —
+            // harmless here, but a search box that quietly means something else is a
+            // search box people stop trusting.
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $term);
+
+            $query->where('name', 'like', '%'.$escaped.'%');
+        }
+
+        return array_values(
+            $query->limit(max(1, $limit))
+                ->get(['id', 'name'])
+                ->map(fn (Organization $organization): ConsoleOrganization => new ConsoleOrganization(
+                    $organization->id,
+                    $organization->name,
+                ))
+                ->all()
+        );
+    }
+
+    /** How many organizations this administrator may act on, in total. */
+    public function organizationCount(): int
+    {
+        return $this->plane() === ConsolePlane::Organization
+            ? ($this->subject->organization() === null ? 0 : 1)
+            : Organization::query()->count();
+    }
+
+    /**
+     * The acting organization's name, or null when none is chosen.
+     *
+     * Asked of the ONE organization rather than looked up in
+     * {@see availableOrganizations()}, which is the whole point: rendering the chosen
+     * organization's name in the chrome must not cost a read of every organization in the
+     * environment. Memoised because the chrome asks and so does the page eyebrow.
+     */
+    public function organizationName(): ?string
+    {
+        if ($this->nameResolved) {
+            return $this->nameRecord;
+        }
+
+        $this->nameResolved = true;
+
+        $organizationId = $this->organizationId();
+
+        if ($organizationId === null) {
+            return $this->nameRecord = null;
+        }
+
+        $name = Organization::query()->whereKey($organizationId)->value('name');
+
+        return $this->nameRecord = is_string($name) ? $name : null;
     }
 
     /**

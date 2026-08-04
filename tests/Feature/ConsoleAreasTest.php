@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\Navigation\ConsoleNav;
+use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlatformAuth;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -11,6 +13,9 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -83,4 +88,109 @@ it('lands every nav entry on a page titled the way the entry is labelled', funct
     // Guard against the loop silently checking nothing: a broken session would 302
     // every page and turn this into a test that always passes.
     expect($checked)->toBeGreaterThanOrEqual(12);
+});
+
+/**
+ * The same promise, on the planes the test above cannot see.
+ *
+ * `Console::nav()` is the plugin registry, which is the ORGANIZATION plane only. The
+ * workspace and platform planes declare themselves in {@see ConsoleNavigation}, so
+ * nothing reached them and both had shipped violations: the rail said "Profile" while
+ * the tab said "Security" and the heading said "Profile & security"; the rail said
+ * "Domains" over a page headed "Environment domains". The organization plane does not
+ * have this class of bug precisely because it has had a test since the day it was
+ * written, so the guard is the durable half of the fix, not the renames.
+ *
+ * Three assertions per page, not one: nav label === <title> === <h1>. A page can satisfy
+ * any two of those and still tell a person three different things.
+ */
+function assertNavEntriesMatchTheirPages(ConsoleNav $nav, string $plane): int
+{
+    $checked = 0;
+
+    foreach ($nav->areas as $area) {
+        foreach ($area->pages as $page) {
+            if (! Route::has($page->route)) {
+                continue;
+            }
+
+            $response = test()->get(route($page->route));
+
+            // Gated off in this environment (inactive module, missing entitlement, a
+            // shape this deployment does not have) is not a naming failure.
+            if ($response->status() !== 200) {
+                continue;
+            }
+
+            $html = (string) $response->getContent();
+            $label = e($page->label);
+
+            // `toContain` is variadic in Pest, so a message passed to it reads as a
+            // second needle and the failure names the wrong thing. Assert the boolean.
+            expect(str_contains($html, '<title>'.$label.' · '))->toBeTrue(
+                "{$plane} › {$area->label} › {$page->label}: the nav entry and the <title> disagree",
+            );
+
+            // The h1 carries classes and whitespace, so match on its text rather than on
+            // a whole tag: this has to hold for a heading rendered by x-page-header and
+            // for one a page still writes itself.
+            expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+                "{$plane} › {$area->label} › {$page->label}: the nav entry and the <h1> disagree",
+            );
+
+            $checked++;
+        }
+    }
+
+    return $checked;
+}
+
+it('lands every workspace nav entry on a page titled and headed the way the entry is labelled', function (): void {
+    platformRootDeployment();
+
+    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        accountName: 'Acme',
+        ownerEmail: 'areas-owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    signInAsMember($result->member);
+
+    // At its widest role: the question is "does this page name itself the way the rail
+    // names it", not "may an auditor see it".
+    $checked = assertNavEntriesMatchTheirPages(
+        app(ConsoleNavigation::class)->workspace(AccountRole::Owner),
+        'workspace',
+    );
+
+    expect($checked)->toBeGreaterThanOrEqual(4);
+});
+
+it('lands every environment nav entry on a page titled and headed the way the entry is labelled', function (): void {
+    // The environment plane is where the module-declared pages are merged in, so this is
+    // also the loop that catches a module naming its page one thing in the rail and
+    // another in its own heading — without that module knowing this test exists.
+    $setup = crudSetup();
+
+    $checked = assertNavEntriesMatchTheirPages(
+        app(ConsoleNavigation::class)->environment(),
+        'environment',
+    );
+
+    expect($setup['envId'])->not->toBe('')
+        ->and($checked)->toBeGreaterThanOrEqual(10);
+});
+
+it('lands every platform nav entry on a page titled and headed the way the entry is labelled', function (): void {
+    actAsOperator();
+
+    $checked = assertNavEntriesMatchTheirPages(
+        app(ConsoleNavigation::class)->operator(),
+        'platform',
+    );
+
+    // Seven pages across three areas; anything less means the session stopped resolving
+    // and the loop is asserting nothing.
+    expect($checked)->toBe(7);
 });

@@ -79,7 +79,7 @@ final class Impersonation
         // direction. Entering, the confirmation belongs to the operator and not to the
         // person whose session this becomes; leaving, it belongs to a session that no
         // longer exists. Either way it attests to something that has stopped being true.
-        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         // Capture the operator's currently-targeted plane so exit can re-pin it —
         // it is the plane the org lives in (the operator reached the member in-plane).
@@ -135,7 +135,7 @@ final class Impersonation
         // direction. Entering, the confirmation belongs to the operator and not to the
         // person whose session this becomes; leaving, it belongs to a session that no
         // longer exists. Either way it attests to something that has stopped being true.
-        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         // An env-admin session is anchored to exactly one environment; capture the anchor
         // so exit can restore it, and drop it so /admin is unreachable until then.
@@ -184,7 +184,7 @@ final class Impersonation
         // direction. Entering, the confirmation belongs to the operator and not to the
         // person whose session this becomes; leaving, it belongs to a session that no
         // longer exists. Either way it attests to something that has stopped being true.
-        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY]);
+        session()->forget([Sudo::SESSION_KEY, WorkspaceSudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         $marker = $this->active();
 

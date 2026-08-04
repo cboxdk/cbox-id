@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Compliance\Dsr\SubjectDataExport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Volt\Volt;
 use Tests\Support\InteractsWithAuditTrail;
 
@@ -50,14 +51,27 @@ it('shows an admin only their own organization\'s trail, whatever they send', fu
 /**
  * Running an export advances EVERY tenant's cursor, so the next export for a tenant that
  * did not ask for it skips its own entries. Applying retention checkpoints every scope.
- * Neither belongs to one organization's admin.
+ * Neither belongs to one organization's admin — so the page offers neither.
+ *
+ * This used to assert a 403 from two refusal methods kept "so the buttons that used to
+ * call them fail loudly if one is missed in the markup". Both buttons WERE missed: they
+ * were still wired, still rendered, and every click was a guaranteed 403. The refusals
+ * and the buttons are gone together, and the work runs on the schedule — asserting the
+ * absence is what keeps a future edit from re-adding a control nothing may authorize.
  */
-it('refuses environment-wide export and retention from an org-scoped page', function (): void {
+it('offers no environment-wide export or retention action on an org-scoped page', function (): void {
     $orgId = gateAdmin('scope-ops');
     grantFeature($orgId, 'compliance');
 
-    Volt::test('compliance.exports')->call('runExport')->assertForbidden();
-    Volt::test('compliance.exports')->call('applyRetention')->assertForbidden();
+    $component = Volt::test('compliance.exports');
+
+    foreach (['runExport', 'applyRetention'] as $method) {
+        expect(fn () => $component->call($method))->toThrow(MethodNotFoundException::class);
+    }
+
+    // And nothing in the markup invites the click either.
+    $component->assertDontSee('wire:click="runExport"', escape: false)
+        ->assertDontSee('wire:click="applyRetention"', escape: false);
 });
 
 /**

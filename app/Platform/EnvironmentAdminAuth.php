@@ -6,6 +6,7 @@ namespace App\Platform;
 
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
@@ -175,7 +176,20 @@ final class EnvironmentAdminAuth
 
             // The subject is the credential of record, so a deactivated one (removed
             // member, unaccepted invitation) must lose the admin session immediately.
-            return $this->subjects->find($session->user_id) !== null && $this->subjects->isActive($session->user_id)
+            //
+            // Standing is read off the row already loaded when the resolver says
+            // ({@see Subject::admitsSignIn()}), and falls back to asking the contract when
+            // it does not — a host-bound Subjects implementation that predates the field
+            // keeps being asked rather than being assumed active. It was two identical
+            // `select * from users where id = ?` before, on every environment-console page
+            // and every Livewire round trip.
+            $subject = $this->subjects->find($session->user_id);
+
+            if ($subject === null) {
+                return null;
+            }
+
+            return ($subject->admitsSignIn() ?? $this->subjects->isActive($session->user_id))
                 ? $session->user_id
                 : null;
         });

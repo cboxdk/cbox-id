@@ -287,7 +287,10 @@ it('exercises the vault detail mutating actions (startRotate, rotate, addGrant, 
         scopes: ['openid'],
     ))->client;
 
-    Volt::test('environment.vault.show', ['secret' => $secret->id])
+    // The merged component — one page for both planes. It resolves the owner from the
+    // CONSOLE'S scope rather than from the row, so with no organization chosen this acts
+    // on the environment's own unowned secrets, which is what store() above created.
+    Volt::test('console.vault.show', ['secret' => $secret->id])
         ->call('startRotate')
         ->set('rotateSecret', 'sk_rotated_value')
         ->call('rotate')
@@ -299,7 +302,7 @@ it('exercises the vault detail mutating actions (startRotate, rotate, addGrant, 
     expect(VaultGrant::query()->where('secret_id', $secret->id)->whereNull('revoked_at')->exists())->toBeFalse();
 
     // revoke is a soft revoke (isRevoked), not a hard delete — the row stays but is sealed off.
-    Volt::test('environment.vault.show', ['secret' => $secret->id])
+    Volt::test('console.vault.show', ['secret' => $secret->id])
         ->call('revoke');
     expect(VaultSecret::query()->whereKey($secret->id)->value('revoked_at'))->not->toBeNull();
 });

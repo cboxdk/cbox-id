@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\WorkspaceSudo;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -10,6 +11,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Cbox\Id\Platform\Contracts\AccountMemberMfa;
 use Cbox\Id\Platform\Contracts\AccountPasskeys;
+use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\Models\AccountWebAuthnCredential;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -20,7 +22,10 @@ use Livewire\Volt\Component;
  * member secures their OWN login (no role gate). These accounts own customer IdPs,
  * so a second factor is the single most important control on the plane.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class extends Component
+// Titled exactly as the nav entry labels it and the <h1> reads. The rail said
+// "Profile", the tab said "Security" and the heading said "Profile & security" — three
+// names for one page, which is what ConsoleAreasTest now refuses across every plane.
+new #[Layout('components.layouts.workspace', ['title' => 'Profile & security'])] class extends Component
 {
     public bool $enrolling = false;
 
@@ -62,16 +67,59 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public string $name = '';
 
-    public function mount(AccountAuth $auth): void
+    /**
+     * This page is a MEMBER's own profile, so it needs a member.
+     *
+     * A platform operator who holds no membership used to be let in and shown a form
+     * bound to nobody: an empty Name, a disabled empty Email, and three buttons whose
+     * handlers all began `if ($member === null) return;`. Clicking Enable took them
+     * through the step-up, accepted the correct password, and dropped them on the
+     * signed-out screen with no message — because {@see requiresSudo()} redirects to
+     * a route that reads the member id off a session that has none.
+     *
+     * Their own identity, second factor and passkeys are on Platform › Security, which
+     * is where they are sent. The nav no longer offers this area to them at all; this is
+     * the guard for the URL, which the nav is not.
+     */
+    public function mount(AccountAuth $auth, ConsoleScope $scope): void
     {
-        $this->name = $auth->current()->name ?? '';
+        $member = $auth->current();
+
+        if ($member === null) {
+            abort_unless($scope->isPlatformOperator(), 403);
+
+            $this->redirectRoute('platform.security', navigate: false);
+
+            return;
+        }
+
+        $this->name = $member->name ?? '';
+    }
+
+    /**
+     * The member this page acts on, or a refusal.
+     *
+     * Every action below used to `return;` on a null member — no toast, no error, a
+     * button that simply did nothing however many times it was pressed. mount() means
+     * a null here can only be a membership that lapsed mid-session, which is a real
+     * event and deserves to be said out loud rather than absorbed.
+     */
+    private function actingMember(AccountAuth $auth): ?AccountMember
+    {
+        $member = $auth->current();
+
+        if ($member === null) {
+            $this->dispatch('toast', severity: 'error', message: 'Your workspace membership is no longer active — sign in again to continue.');
+        }
+
+        return $member;
     }
 
     public function updateProfile(AccountAuth $auth): void
     {
         $this->validate(['name' => ['required', 'string', 'max:120']]);
 
-        $member = $auth->current();
+        $member = $this->actingMember($auth);
         if ($member !== null) {
             $member->forceFill(['name' => trim($this->name)])->save();
             $this->dispatch('toast', message: 'Profile updated.');
@@ -84,7 +132,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
             return;
         }
 
-        $member = $auth->current();
+        $member = $this->actingMember($auth);
 
         if ($member === null || $mfa->hasConfirmedTotp($member->id)) {
             return;
@@ -101,7 +149,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     public function confirmEnroll(AccountAuth $auth, AccountMemberMfa $mfa): void
     {
-        $member = $auth->current();
+        $member = $this->actingMember($auth);
 
         if ($member === null) {
             return;
@@ -129,7 +177,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
             return;
         }
 
-        $member = $auth->current();
+        $member = $this->actingMember($auth);
 
         if ($member === null || ! $mfa->hasConfirmedTotp($member->id)) {
             return;
@@ -144,7 +192,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
             return;
         }
 
-        $member = $auth->current();
+        $member = $this->actingMember($auth);
 
         if ($member === null) {
             return;
@@ -161,7 +209,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
             return;
         }
 
-        $member = $auth->current();
+        $member = $this->actingMember($auth);
 
         if ($member !== null && $passkeys->remove($id, $member->id)) {
             $this->dispatch('toast', message: 'Passkey removed.');
@@ -232,12 +280,15 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
 
     {{-- Profile --}}
     <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Profile</p>
+        {{-- Headings, not styled paragraphs: these are the page's section structure, and
+             as <p> the only heading on the page was the h1 (WCAG 1.3.1). --}}
+        <h2 class="text-sm font-medium">Profile</h2>
         <form wire:submit="updateProfile" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-start">
             <div>
                 <label for="name" class="label">Name</label>
-                <input wire:model="name" id="name" type="text" class="input" placeholder="Your name">
-                @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                <input wire:model="name" id="name" type="text" class="input" placeholder="Your name"
+                       @error('name') aria-invalid="true" aria-describedby="name-error" @enderror>
+                @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="label">Email</label>
@@ -250,7 +301,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
     {{-- Freshly-generated recovery codes — shown exactly once. --}}
     @if ($recoveryCodes !== [])
         <div class="mt-6 rounded-xl border p-5" style="border-color:color-mix(in oklch,var(--warning) 35%,transparent);background:color-mix(in oklch,var(--warning) 8%,var(--background))">
-            <p class="text-sm font-medium">Save your recovery codes</p>
+            <h2 class="text-sm font-medium">Save your recovery codes</h2>
             <p class="mt-1 text-sm" style="color:var(--muted)">Each works once if you lose your authenticator. Store them somewhere safe — you won't see them again.</p>
             <div class="mt-3 grid grid-cols-2 gap-2 mono text-sm">
                 @foreach ($recoveryCodes as $rc)
@@ -263,7 +314,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
     <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <p class="font-medium">Authenticator app (TOTP)</p>
+                <h2 class="font-medium">Authenticator app (TOTP)</h2>
                 <p class="mt-1 text-sm" style="color:var(--muted)">
                     @if ($enabled)
                         On · {{ $remainingRecoveryCodes }} recovery {{ \Illuminate\Support\Str::plural('code', $remainingRecoveryCodes) }} left
@@ -307,7 +358,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Security'])] class ext
     <div class="mt-4 rounded-xl border p-5" style="border-color:var(--border)">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <p class="font-medium">Passkeys</p>
+                <h2 class="font-medium">Passkeys</h2>
                 <p class="mt-1 text-sm" style="color:var(--muted)">Sign in with Touch ID, Windows Hello, or a security key — no password, phishing-resistant.</p>
             </div>
             <button type="button" class="btn btn-primary btn-sm shrink-0"

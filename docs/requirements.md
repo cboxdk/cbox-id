@@ -55,9 +55,14 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `laravel/socialite` | `^5.28` | Social/enterprise OAuth sign-in. |
-| `socialiteproviders/microsoft` | `^4.9` | Microsoft/Entra provider for Socialite. |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
+
+> Social and enterprise sign-in needs **no third-party package**. Google, Entra, Okta,
+> GitHub, Apple and the rest are the framework's own `Federation` stack in
+> `cboxdk/laravel-id` — a provider catalogue plus OIDC and OAuth 2.0 clients that go
+> through this app's SSRF guard. This page previously listed `laravel/socialite` and
+> `socialiteproviders/microsoft`, which are in neither `composer.json` nor
+> `composer.lock` and appear nowhere in the code; do not add them.
 
 > `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.77.1 <1.0` — 0.77.0 is withdrawn: its `saml_idp_sessions` migration cannot run on MySQL or MariaDB). Minor bumps in that
 > range may carry breaking changes — read its changelog before upgrading.

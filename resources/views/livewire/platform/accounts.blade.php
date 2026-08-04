@@ -117,63 +117,80 @@ new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => 
 }; ?>
 
 <div>
-    <div class="cbx-page-header">
-        <div>
-            <p class="cbx-page-eyebrow">Platform</p>
-            <h1 class="cbx-page-title">Accounts</h1>
-            <p class="cbx-page-desc">Every customer workspace on this install. Suspending one signs out its members and stops every environment it owns from serving auth.</p>
+    <x-page-header title="Accounts"
+                   subtitle="Every customer workspace on this install. Suspending one signs out its members and stops every environment it owns from serving auth." />
+
+    <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('account', count($rows)) }} found.</p>
+
+    {{-- A real table, not a div grid with matching grid-template-columns. The two rows
+         resolved their `fr` tracks against different content — the header's last cell was
+         an empty span, the body's a button — so by "Created" the data sat 121px left of
+         its own heading. A table cannot disagree with itself, and it is what the rest of
+         the console uses, so a screen reader gets the column association too. --}}
+    @if ($rows === [])
+        <div class="cbx-empty mt-8">
+            <div class="cbx-empty-icon"><x-icon name="settings" class="w-5 h-5" /></div>
+            <h3>No accounts yet</h3>
+            <p>An account appears here the moment somebody signs up for a workspace. Nothing to do until then.</p>
         </div>
-    </div>
+    @else
+        <div class="cbx-panel overflow-hidden mt-8">
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Account</th>
+                            <th scope="col" class="text-right">Members</th>
+                            <th scope="col" class="text-right">Projects</th>
+                            <th scope="col" class="text-right">Environments</th>
+                            <th scope="col">Created</th>
+                            <th scope="col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($rows as $row)
+                            <tr wire:key="account-{{ $row['id'] }}">
+                                <td>
+                                    <p class="font-semibold">
+                                        {{ $row['name'] }}
+                                        @unless ($row['active'])
+                                            <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
+                                        @endunless
+                                    </p>
+                                    <p class="text-xs font-mono" style="color:var(--faint)">{{ $row['id'] }}</p>
+                                </td>
+                                <td class="text-right tabular-nums">{{ $row['members'] }}</td>
+                                <td class="text-right tabular-nums">{{ $row['projects'] }}</td>
+                                <td class="text-right tabular-nums">{{ $row['environments'] }}</td>
+                                <td class="whitespace-nowrap text-xs" style="color:var(--faint)">{{ $row['created_at'] ?? '—' }}</td>
 
-    <div class="cbx-panel overflow-hidden mt-8">
-        <div class="hidden sm:grid px-5 py-3 border-b text-xs font-medium uppercase tracking-wide"
-             style="border-color:var(--border);color:var(--faint);grid-template-columns:2.5fr 1fr 1fr 1fr 1.4fr auto">
-            <span>Account</span><span>Members</span><span>Projects</span><span>Environments</span><span>Created</span><span></span>
+                                {{-- A reversible two-way switch, so wire:confirm rather than the
+                                     type-to-confirm dialog: that component exists for actions with no way
+                                     back, and it stamps the operator's pinned ENVIRONMENT into the dialog,
+                                     which is meaningless for an account (accounts sit above every plane).
+                                     The copy still names the account and its blast radius. --}}
+                                <td class="text-right whitespace-nowrap">
+                                    <button wire:click="toggleStatus('{{ $row['id'] }}')"
+                                            class="btn {{ $row['active'] ? 'btn-ghost' : 'btn-primary' }} btn-sm"
+                                            wire:loading.attr="disabled"
+                                            wire:target="toggleStatus('{{ $row['id'] }}')"
+                                            wire:confirm="{{ $row['active']
+                                                ? 'Suspend '.$row['name'].'? Its members are signed out and all '.$row['environments'].' environment(s) it owns stop serving auth on the next request. You can reactivate it here.'
+                                                : 'Reactivate '.$row['name'].'? Its members can sign in again and its environments resume serving auth.' }}">
+                                        <span class="spinner" wire:loading wire:target="toggleStatus('{{ $row['id'] }}')" aria-hidden="true"></span>
+                                        {{ $row['active'] ? 'Suspend' : 'Reactivate' }}
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        @forelse ($rows as $row)
-            <div wire:key="account-{{ $row['id'] }}" class="px-5 py-3 border-b flex flex-col gap-2 sm:grid sm:items-center sm:gap-4"
-                 style="border-color:var(--border);grid-template-columns:2.5fr 1fr 1fr 1fr 1.4fr auto">
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold truncate">
-                        {{ $row['name'] }}
-                        @unless ($row['active'])
-                            <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
-                        @endunless
-                    </p>
-                    <p class="text-xs font-mono truncate" style="color:var(--faint)">{{ $row['id'] }}</p>
-                </div>
-
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Members: </span>{{ $row['members'] }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Projects: </span>{{ $row['projects'] }}</div>
-                <div class="text-sm"><span class="sm:hidden" style="color:var(--faint)">Environments: </span>{{ $row['environments'] }}</div>
-                <div class="text-xs" style="color:var(--faint)">{{ $row['created_at'] ?? '—' }}</div>
-
-                {{-- A reversible two-way switch, so wire:confirm rather than the
-                     type-to-confirm dialog: that component exists for actions with no way
-                     back, and it stamps the operator's pinned ENVIRONMENT into the dialog,
-                     which is meaningless for an account (accounts sit above every plane).
-                     The copy still names the account and its blast radius. --}}
-                <div class="flex items-center gap-1 sm:justify-self-end">
-                    <button wire:click="toggleStatus('{{ $row['id'] }}')"
-                            class="btn {{ $row['active'] ? 'btn-ghost' : 'btn-primary' }} btn-sm"
-                            wire:loading.attr="disabled"
-                            wire:confirm="{{ $row['active']
-                                ? 'Suspend '.$row['name'].'? Its members are signed out and all '.$row['environments'].' environment(s) it owns stop serving auth on the next request. You can reactivate it here.'
-                                : 'Reactivate '.$row['name'].'? Its members can sign in again and its environments resume serving auth.' }}">
-                        {{ $row['active'] ? 'Suspend' : 'Reactivate' }}
-                    </button>
-                </div>
-            </div>
-        @empty
-            <div class="px-5 py-10 text-center text-sm" style="color:var(--faint)">
-                No accounts on this install yet. An account is created when someone signs up for a workspace.
-            </div>
-        @endforelse
-    </div>
-
-    <p class="mt-4 text-xs" style="color:var(--faint)">
-        Suspension is the only lever here, and it is reversible. Nothing on this screen
-        deletes or purges an account.
-    </p>
+        <p class="mt-4 text-xs" style="color:var(--faint)">
+            Suspension is the only lever here, and it is reversible. Nothing on this screen
+            deletes or purges an account.
+        </p>
+    @endif
 </div>

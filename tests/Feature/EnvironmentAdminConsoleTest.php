@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentSudo;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -104,6 +105,12 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
     serveOnTestHost($env);
     actAsEnvironmentAdmin($member, $envId);
 
+    // The token vault is the one capability here behind a step-up, so this sweep takes it
+    // once rather than dropping the two pages that would otherwise 302. Confirming it up
+    // front keeps the sweep about RENDERING; the gate itself is asserted on its own in
+    // EnvironmentAdminCrudTest, where a page that stopped redirecting would be caught.
+    app(EnvironmentSudo::class)->confirm();
+
     foreach ([
         '/admin' => 'Overview',
         '/admin/organizations' => 'Organizations',
@@ -119,7 +126,10 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/login-methods/new' => 'method',
         '/admin/directories' => 'Sync users in',
         '/admin/directories/new' => 'directory',
-        '/admin/outbound-sync' => 'Outbound sync',
+        // "Sync users out", the name its page, its help topic and the organization
+        // plane's registry have always used; only the environment rail said "Outbound
+        // sync", one line under the "Sync users in" it is the pair of.
+        '/admin/outbound-sync' => 'Sync users out',
         '/admin/outbound-sync/new' => 'connection',
         '/admin/roles' => 'Roles',
         '/admin/roles/new' => 'role',
@@ -134,8 +144,9 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/conflict-rules' => 'Role conflicts',
         '/admin/webhooks' => 'Webhooks',
         '/admin/event-hooks' => 'Inline hooks',
-        '/admin/stored-tokens' => 'Stored tokens',
-        '/admin/audit' => 'Audit log',
+        '/admin/stored-tokens' => 'Token vault',
+        // Likewise: the page is headed "Activity log" on both planes.
+        '/admin/audit' => 'Activity log',
         '/admin/log-streaming' => 'Log streaming',
         '/admin/analytics' => 'Analytics',
         '/admin/approvals' => 'Agent approvals',
