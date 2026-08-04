@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -177,15 +178,47 @@ it('bounces an unauthenticated tenant admin to the ROOT open-environment handoff
         ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
 });
 
-it('also bounces the local admin login FORM to the root on a multi-tenant deployment', function (): void {
+it('sends /admin/login to the root rather than serving a door of its own', function (): void {
     ['envId' => $envId, 'host' => $host] = envAdminSetup();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
 
-    // Directly navigating to the tenant credential form is closed off too — account
-    // credentials are never entered on a tenant-controlled host.
+    // There is no credential form behind this path any more — account credentials are
+    // never entered on a tenant-controlled host, and the form that used to be here was
+    // reachable by no correctly-configured deployment. The name survives because every
+    // "send them to the door" redirect in the console uses it (the handoff's refusals,
+    // logout, the sudo screen), and it now sits BEHIND `env.admin`: the gate IS the door,
+    // so the bounce below comes from the middleware rather than from a mount() that had
+    // to remember to duplicate it.
     $this->get("https://{$host}/admin/login")
         ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
 });
+
+/**
+ * The one state in which the bounce above has nowhere to go.
+ *
+ * Multi-tenancy claimed and no account host named anywhere is
+ * {@see PlaneResolver::misconfigured()} — the first-run screen refuses to
+ * install into it and `cbox-id:doctor` reports it, so the only way to arrive here is
+ * configuration changed after a good install. This used to answer with a local credential
+ * form: a second account-credential store, on a tenant-controlled host, offered because
+ * the deployment was broken. A configuration error must not look like a working product
+ * to everyone except the person whose password it takes.
+ */
+it('refuses the admin console outright when the deployment names no account host', function (): void {
+    ['env' => $env] = envAdminSetup();
+    serveOnTestHost($env);
+
+    config()->set('cbox-id.tenancy.account_host', null);
+    config()->set('cbox-id.environments.base_domains', []);
+    config()->set('cbox-id.environments.platform_root_hosts', []);
+
+    expect(app(PlaneResolver::class)->misconfigured())->toBeTrue();
+
+    // 503, not 404: the console is not absent, the deployment is unfinished, and an
+    // operator reading a log needs to be able to tell those apart.
+    $this->get('/admin/organizations')->assertStatus(503);
+    $this->get('/admin/login')->assertStatus(503);
+})->group('security');
 
 it('has no admin door at all on a single-host deployment', function (): void {
     // This asserted the OPPOSITE until the console became multi-tenant-only: that a

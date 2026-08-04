@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
-use App\Http\Controllers\ConsoleOrganizationController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\ImpersonationController;
@@ -442,13 +441,11 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
 |--------------------------------------------------------------------------
 |
 | The account-layer path into a tenant environment's admin: redeem the signed
-| account→environment handoff, or "sign in as admin" against the account layer.
-| Wired for the identity model (control-plane admin, never a subject in the env);
-| the console re-gate onto `env.admin` follows once the console components are
-| moved off the subject session.
+| account→environment handoff. There is no credential form here — signing in is
+| unified on the account plane, and a tenant-controlled host is the last place
+| account credentials should be typed.
 */
 Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    Volt::route('/login', 'admin.login')->name('admin.login');
     Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 
@@ -456,10 +453,18 @@ Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(fun
     // (organizations, users, connections…). Gated by an env-admin session; a subject
     // session grants nothing here.
     Route::middleware('env.admin')->group(function (): void {
-        // Which organization the environment console is acting on. The one difference
-        // between the planes, modelled as a picker beside the environment switcher.
-        Route::post('/acting-organization', ConsoleOrganizationController::class)
-            ->name('environment.organization.choose');
+        // `admin.login` is the name every "send them to the door" redirect uses — the
+        // handoff's refusals, logout, the sudo screen. It is BEHIND the gate on purpose:
+        // the gate IS the door now. Unauthenticated, `AuthenticateEnvironmentAdmin`
+        // bounces to the account host's open-environment handoff; already signed in,
+        // there is nothing to sign into and the console's front page is where they meant
+        // to be. It used to be a Volt credential form that no correctly-configured
+        // deployment could reach — single-tenant 404s this whole prefix, and multi-tenant
+        // redirected away from it in mount() — so it was a second account-credential
+        // store openable only on a deployment that is already
+        // {@see App\Platform\PlaneResolver::misconfigured()}, a state the first-run screen
+        // and `cbox-id:doctor` both already name and refuse to install into.
+        Route::get('/login', fn () => redirect()->route('environment.home'))->name('admin.login');
 
         Volt::route('/', 'environment.home')->name('environment.home');
 
