@@ -13,7 +13,6 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\DatabaseAccountMembers;
 use Cbox\Id\Platform\Enums\AccountRole;
@@ -525,14 +524,29 @@ class ConsoleScope
      * switched organizations would be offered their own projects and billing while the
      * chrome named a different tenant.
      *
-     * …unless the account HAS no organization, which is a real shape and not a broken one:
-     * {@see AccountProvisioner::homeAccount()} leaves an account unhomed
-     * when it is created before the deployment has a platform root, and every account
-     * provisioned before that homing existed is unhomed too. There is then no organization
-     * to compare against, and requiring one would take the whole area away from exactly the
-     * oldest accounts on an install — which is how a correctness check becomes an outage.
-     * Nothing is loosened by allowing it: every page in the area reads by `account_id`, and
-     * a member row is reachable only from the subject the session names.
+     * AN UNHOMED ACCOUNT ANSWERS NULL, and the exception that used to be here is worth
+     * naming so it is not re-added. It read: when the account has no organization there is
+     * nothing to compare against, so return the role. Its premise was true — every account
+     * created before `accounts.organization_id` existed was unhomed, and the local dev
+     * database still held two — and its stated defence was that nothing is loosened
+     * because every page in the area reads by `account_id`.
+     *
+     * That defence answers the wrong question. It is about which DATA the pages show; the
+     * two-condition rule is about where the area APPEARS. Returning the role with no
+     * comparison at all put the whole identity-platform area in the rail on every
+     * organization the person could act on, tenant hosts included — precisely the "offered
+     * their own projects and billing while the chrome named a different tenant" the
+     * paragraph above exists to prevent. It is the same collapse
+     * {@see self::organizationId()} argues against: "we do not know which organization this
+     * account owns" became "all of them".
+     *
+     * The premise is now gone rather than merely overruled. `2026_08_05_000200` in the
+     * framework homes every account that predates the column, and no reachable path
+     * creates a new unhomed one — the installer stamps the platform root inside the same
+     * transaction, BEFORE it provisions the first account, and signup only ever runs on a
+     * deployment that is already installed. So an account with no organization is a broken
+     * row, not a shape to accommodate, and the honest answer to a broken row is the closed
+     * one: the area is hidden, not offered everywhere.
      *
      * `AccountRole` is still the predicate rather than {@see MembershipRole},
      * because the account member row is still where account capabilities live: the
@@ -555,7 +569,7 @@ class ConsoleScope
         $accountOrganizationId = $member->account?->organization_id;
 
         if (! is_string($accountOrganizationId) || $accountOrganizationId === '') {
-            return $member->role;
+            return null;
         }
 
         $organizationId = $this->plane() === ConsolePlane::Organization

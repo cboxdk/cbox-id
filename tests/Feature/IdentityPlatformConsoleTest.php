@@ -24,6 +24,7 @@ use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Illuminate\Support\Facades\DB;
 use Livewire\Volt\Volt;
 
 beforeEach(function (): void {
@@ -547,6 +548,30 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
     // …and at the page, not only in the rail — a rail is not an authorization check. They
     // are an OWNER of their own organization, so this is the area refusing them rather
     // than the console.
+    Volt::test('console.billing')->assertRedirect(route('projects'));
+})->group('security');
+
+it('takes the area away from an account with no organization at all', function (): void {
+    ['member' => $member, 'account' => $account] = provisionAccount();
+
+    // The state every account created before `accounts.organization_id` existed was in,
+    // and the one the framework's 2026_08_05_000200 backfill now repairs. It is reproduced
+    // by hand because no production path creates it any more: the installer stamps the
+    // platform root inside the same transaction, ahead of the first account, and signup
+    // only runs on an installed deployment.
+    DB::table('accounts')->where('id', $account->id)->update(['organization_id' => null]);
+
+    signInAsMember($member);
+
+    // NULL, not the role. An earlier version returned the role here on the grounds that
+    // there was no organization to compare against — which put the area in the rail on
+    // every organization this person could act on, tenant hosts included. "We do not know
+    // which organization this account owns" is not "all of them"; a broken row fails
+    // closed.
+    expect(app(ConsoleScope::class)->accountRole())->toBeNull()
+        ->and(identityPlatformPages())->toBe([]);
+
+    // And at the page too, because a rail is not an authorization check.
     Volt::test('console.billing')->assertRedirect(route('projects'));
 })->group('security');
 
