@@ -222,10 +222,20 @@ it('derives the trusted hosts from the deployment, and anchors them', function (
         ->and(hostIsTrusted('evil-cboxid-com.example'))->toBeFalse();
 });
 
-it('trusts nothing extra on a single-tenant deployment, so TrustHosts falls back to app.url', function (): void {
-    // The lockout case. `patterns()` returning [] is SAFE and must stay safe: TrustHosts
-    // is registered with `subdomains: true`, which adds `app.url` and everything under it
-    // — the one host a self-hosted install serves.
-    expect(app(TrustedHosts::class)->patterns())->toBe([])
-        ->and(hostIsTrusted((string) parse_url((string) config('app.url'), PHP_URL_HOST)))->toBeFalse();
+it('invents no public host on a single-tenant deployment, so TrustHosts falls back to app.url', function (): void {
+    // The lockout case. Deriving no public name is SAFE and must stay safe: TrustHosts is
+    // registered with `subdomains: true`, which adds `app.url` and everything under it —
+    // the one host a self-hosted install serves.
+    //
+    // This asserted `patterns() === []` until the list gained the addresses a container
+    // reaches ITSELF by, without which a Kubernetes liveness probe 400s and crash-loops
+    // every pod. Relaxing that assertion was not free — an empty list is exactly what a
+    // self-hosted install produces — so it is restated as BEHAVIOUR rather than as the
+    // shape of the array: no public name is invented here. Introspecting the strings is
+    // what made the old assertion brittle in the first place.
+    expect(hostIsTrusted((string) parse_url((string) config('app.url'), PHP_URL_HOST)))->toBeFalse()
+        ->and(hostIsTrusted('cboxid.com'))->toBeFalse()
+        ->and(hostIsTrusted('acme.cboxid.com'))->toBeFalse()
+        ->and(hostIsTrusted('evil.example'))->toBeFalse()
+        ->and(hostIsTrusted('8.8.8.8'))->toBeFalse();
 });

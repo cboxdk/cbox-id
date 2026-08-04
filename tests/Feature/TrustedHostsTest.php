@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\TrustHostsExceptHealth;
 use App\Platform\TrustedHosts;
+use Illuminate\Http\Request;
 
 /**
  * The Host headers this deployment answers on.
@@ -38,20 +40,42 @@ it('trusts the names this deployment actually serves', function (): void {
 })->group('security');
 
 /**
- * The one that mattered.
+ * The one that mattered, and the mechanism that answers it.
  *
  * Kubernetes sends the POD IP as `Host` on an `httpGet` probe unless the manifest sets a
- * header, and `apps/id/deployment.yaml`'s three probes do not. Every other pattern is a
- * public name, so the liveness probe would have answered 400, the pod would have been
- * killed, and its replacement would have done the same — a total outage on the first
- * rollout, caused by the fix for host-header poisoning.
+ * header, and `TrustHosts` runs first in the global stack, ahead of routing. Every pattern
+ * derived above is a public name, so all three probes would have answered 400 and
+ * crash-looped every pod on the first rollout.
+ *
+ * The first attempt trusted loopback and the private IPv4 ranges. That enumerated the
+ * shapes an internal caller might arrive as, and the enumeration was incomplete the moment
+ * it was written — an IPv6 pod address on a dual-stack cluster, a link-local probe, a bare
+ * Service name with no dots. Each miss is the same outage, and it widened Host trust for
+ * every request to fix two paths.
+ *
+ * The promise `docs/operations/deployment.md` makes is about the PATH. So the health
+ * endpoints are exempt from the check, no additional host is trusted for anything else,
+ * and no cluster's addressing can make it wrong.
  */
-it('trusts the addresses a container reaches itself by, so health probes survive', function (): void {
-    expect(trusts('10.42.0.17'))->toBeTrue('a Kubernetes liveness probe would 400 and crash-loop every pod')
-        ->and(trusts('localhost'))->toBeTrue()
-        ->and(trusts('127.0.0.1'))->toBeTrue()
-        ->and(trusts('192.168.1.10'))->toBeTrue()
-        ->and(trusts('172.20.0.5'))->toBeTrue();
+it('exempts the health endpoints, so a probe cannot crash-loop the deployment', function (): void {
+    $middleware = app(TrustHostsExceptHealth::class);
+
+    // Asserted on the DECISION, not on a 200. Laravel's TrustHosts is inert under
+    // `runningUnitTests()` and in `local`, so driving handle() and seeing a 200 proves
+    // nothing at all — which is precisely why this bug reached a tagged release with a
+    // green suite.
+    foreach (['10.42.0.17', '[fd00:10:244::a]', '169.254.10.5', 'cbox-id-web-7d8', 'localhost'] as $host) {
+        foreach (['up', 'health/ready'] as $path) {
+            expect($middleware->exempt(Request::create('http://'.$host.'/'.$path)))
+                ->toBeTrue("a probe on {$host}/{$path} would 400 and crash-loop every pod");
+        }
+    }
+
+    // And nothing else is exempt — an exemption from a security control is enumerable.
+    foreach (['workspace/login', 'oauth/token', 'platform', ''] as $path) {
+        expect($middleware->exempt(Request::create('http://evil.example/'.$path)))
+            ->toBeFalse("{$path} was handed a bypass it was never meant to have");
+    }
 })->group('security');
 
 /**

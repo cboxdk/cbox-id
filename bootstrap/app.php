@@ -15,6 +15,7 @@ use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
+use App\Http\Middleware\TrustHostsExceptHealth;
 use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
@@ -27,6 +28,7 @@ use Cbox\Id\Whitelabel\WhitelabelServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -94,6 +96,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // keeps a single-tenant install (no base domains, no account host) from fencing
         // itself out: the derivation returning nothing is a safe answer there.
         $middleware->trustHosts(at: static fn (): array => app(TrustedHosts::class)->patterns());
+
+        // …with the health endpoints exempt. A kubelet probes the POD IP, and every host
+        // derived above is a public name, so TrustHosts — which runs first, before routing
+        // — would 400 the liveness probe and crash-loop every pod. See the middleware: the
+        // promise `docs/operations/deployment.md` makes is about the PATH, and enumerating
+        // the shapes an internal caller arrives as (IPv6, link-local, a bare Service name)
+        // is an enumeration that is wrong the moment a cluster changes.
+        $middleware->replace(TrustHosts::class, TrustHostsExceptHealth::class);
 
         // The SAML HTTP-POST binding delivers the SP's AuthnRequest as a cross-site
         // form POST from the SP's own origin — it carries no Laravel CSRF token, so
