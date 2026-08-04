@@ -193,6 +193,12 @@ final class Authenticate
      * someone leaves. Holding any of them turns a requirement into a lock-in with no way
      * forward and no way out.
      *
+     * The LANDING belongs here for the same reason read from the other end. A hold sends
+     * people somewhere; the destination is free to send them on; and the last page in that
+     * chain is where somebody who can satisfy nothing comes to rest. Exempting the pages
+     * that satisfy a hold and not the page that answers a person who cannot is what turned
+     * `workspace.no-access` into a cycle rather than a landing.
+     *
      * `prompt=none` is exempt for a different reason: OIDC Core §3.1.2.6 requires the
      * CLIENT to be answered with `error=login_required` rather than a user agent being
      * redirected after being told not to interact. The authorize endpoint makes that
@@ -215,6 +221,16 @@ final class Authenticate
             // which nothing else populates — so its holds apply there, and a hold whose
             // destination is itself held is a lock-in with no way forward and no way out.
             'workspace.password.change', 'workspace.logout',
+            // …and the account plane's landing for somebody who holds nothing, which is
+            // where BOTH workspace guards send a member-less non-operator —
+            // `workspace.security` among them. Exempting the security page and not this
+            // one made an environment-wide MFA mandate a two-hop cycle: held to the
+            // security page, turned around to the landing, held again, unbounded. Under
+            // every hold and not just that one, because nothing on this page satisfies
+            // any of them: a person with no membership cannot enrol a factor into an
+            // organization they do not belong to, and the sign-out this page offers is
+            // the only move they have left.
+            'workspace.no-access',
             'oauth.authorize', 'oauth.authorize.post',
         );
     }

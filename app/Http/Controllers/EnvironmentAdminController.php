@@ -64,11 +64,34 @@ final class EnvironmentAdminController extends Controller
             return redirect()->route('admin.login');
         }
 
-        // The same rules the doors apply to a password. A handoff is not a credential the
-        // member just proved, but it stands in for one, and a member whose SSO mandate or
-        // administrative password expiry says "no local password" must not get in through
-        // a token minted before that became true either.
-        if (! $gate->admits($member) || $gate->owesPasswordChange($member)) {
+        // A standing requirement to replace an administratively-issued password outlives
+        // the token. A handoff is not a credential the member just proved, but it stands
+        // in for one, and a password the administrator who issued it also knows has no
+        // business opening the highest-privilege surface on a tenant. (It subsumes the
+        // expiry rule the password doors also apply: an expired temporary password IS a
+        // requirement row, so it is already refused here.)
+        //
+        // WHAT IS NOT ASKED, AND WHY. This used to ask `admits()` as well — the PASSWORD
+        // question — and an account that mandates SSO answers it "no" forever. The refusal
+        // went to `admin.login`, which sits behind the env-admin gate, which bounces to
+        // the account console's minting door, which minted again: three hops and back to
+        // the first, for as long as the browser would follow. So the enterprise
+        // configuration this product is sold on could not reach its own tenant console,
+        // and got a redirect loop instead of a reason.
+        //
+        // It was never this door's question. The mandate governs how a person
+        // authenticates to the ACCOUNT; a handoff is minted from a session that has
+        // already satisfied whatever the account's own door asked of it, and this host
+        // cannot see which door that was. Nor does refusing protect anything: the same
+        // session administers billing, members and API keys at the root. If a policy
+        // change should end the sessions that predate it, that is session revocation on
+        // the account plane — one place, for every surface.
+        //
+        // The general rule, because `admin.login` bounces back to the mint: a refusal here
+        // is only a refusal if the ROOT refuses or RESOLVES it too. This one qualifies —
+        // the same requirement row holds the member on the account plane's change page,
+        // which is where the bounce lands and stops.
+        if ($gate->owesPasswordChange($member)) {
             return redirect()->route('admin.login');
         }
 

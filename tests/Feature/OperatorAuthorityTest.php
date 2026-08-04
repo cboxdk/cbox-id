@@ -8,8 +8,12 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Enums\MfaRequirement;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -18,7 +22,9 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Testing\TestResponse;
 use Livewire\Volt\Volt;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -473,4 +479,87 @@ it('does not answer for the previous identity after a sign-out', function (): vo
 
     expect(app(AccountAuth::class)->current()?->email)
         ->toBe('second@acme.example', 'the memo answered for the account that just left');
+})->group('security');
+
+/**
+ * Follow a redirect chain with a HOP LIMIT, and answer where it ARRIVES.
+ *
+ * Neither of the two shapes already in this file can see a loop. `assertRedirect()` reads
+ * ONE hop, so it passes against an infinite chain — which is exactly how the loop below
+ * shipped green. And `followingRedirects()` reads every hop but its `while` has no bound,
+ * so an infinite chain hangs the suite rather than failing it, and a hang reads as CI
+ * trouble rather than as a bug in the product.
+ *
+ * A bound is the whole point: the chain either ends somewhere a person can act, within a
+ * number of hops a browser would tolerate, or this says so and names the chain it walked.
+ */
+function arrivalWithin(TestCase $test, string $url, int $hops = 4): TestResponse
+{
+    $response = $test->get($url);
+    $chain = [$url];
+
+    for ($hop = 0; $hop < $hops && $response->isRedirect(); $hop++) {
+        $location = (string) $response->headers->get('Location');
+        $chain[] = $location;
+
+        // Each hop is a REQUEST, and ConsoleScope memoises per request — without this the
+        // second hop answers with the first hop's authority.
+        nextRequest();
+        $response = $test->get($location);
+    }
+
+    expect($response->isRedirect())->toBeFalse(
+        'still redirecting after '.$hops.' hops: '.implode(' -> ', $chain),
+    );
+
+    return $response;
+}
+
+/**
+ * THE LANDING IS NOT A PAGE A HOLD MAY HOLD.
+ *
+ * `workspace.no-access` exists so a member-less non-operator is not stuck at a door — and
+ * under an environment-wide MFA mandate it became the door. The MFA hold exempted
+ * `workspace.security`, which turns this persona around to the landing, and the landing
+ * was not exempt: held, sent to the security page, turned around, held again. A 403 with
+ * no sign-out was the bug this page was written for; ERR_TOO_MANY_REDIRECTS is worse.
+ *
+ * No membership is needed to reach that state. {@see DatabaseMfaMandate} starts from the
+ * environment BASELINE — the `organization_id IS NULL` policy an environment admin sets
+ * on the sign-in rules page — so every subject in the environment is held, including one
+ * who belongs to no organization and therefore has nothing to enrol INTO.
+ */
+it('keeps the no-access landing reachable under an environment-wide MFA mandate', function (): void {
+    $root = platformRootEnvironment();
+    installedDeployment();
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($root->id));
+
+    // The persona the landing exists for: a real subject, no membership anywhere, no
+    // operator record.
+    $subject = app(Subjects::class)->create('stranger@nowhere.test', 'Stranger', 'a-strong-unbreached-passphrase');
+    app(Subjects::class)->markEmailVerified($subject->id, 'stranger@nowhere.test');
+    signInAsSubject($subject->id);
+
+    // The BASELINE this test would be worthless without: with no mandate the landing
+    // answers, so a failure below is the hold and nothing else.
+    arrivalWithin($this, route('workspace.no-access'))->assertSuccessful();
+
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Required));
+
+    expect(app(MfaMandate::class)->requiresEnrolment($subject->id))
+        ->toBeTrue('fixture: the mandate does not bind this subject, so nothing is being tested');
+
+    nextRequest();
+    arrivalWithin($this, route('workspace.no-access'))
+        ->assertSuccessful()
+        ->assertSee("there's nothing here yet", escape: false)
+        // The one action always available to somebody who cannot satisfy the hold.
+        ->assertSee(route('workspace.logout'), escape: false);
+
+    // The console root enters the same cycle — `workspace.home` sends this persona to the
+    // landing too — so it is asserted with the same bound rather than assumed.
+    nextRequest();
+    arrivalWithin($this, route('workspace.home'))
+        ->assertSuccessful()
+        ->assertSee("there's nothing here yet", escape: false);
 })->group('security');

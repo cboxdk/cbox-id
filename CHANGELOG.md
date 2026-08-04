@@ -91,6 +91,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **The "no workspace yet" landing was itself a redirect loop under an environment-wide
+  MFA mandate.** The hold exempted the security page, and the security page turns a
+  member-less non-operator around to the landing, which was not exempt — so the page that
+  exists precisely so this person is not stuck at a door became `ERR_TOO_MANY_REDIRECTS`.
+  No membership is needed to reach it: the mandate resolves from the environment
+  baseline, which the sign-in rules page sets. The landing is now exempt from every hold,
+  because nothing on it satisfies any of them and the sign-out it offers is the only move
+  a person with no membership has.
+
+- **An account that mandates SSO could not open its own tenant console.** The redemption
+  of an account→environment handoff asked whether a *password* would still be admitted;
+  an SSO mandate answers no forever, and the refusal went to the admin sign-in, which is
+  behind the environment-admin gate and bounces back to the account console's minting
+  door, which minted again. The mandate governs a door the handoff is not: it is minted
+  from a session that already satisfied whatever the account's own door asked of it, and
+  the tenant cannot see which door that was. Redemption now asks only the standing
+  requirement it can answer — an administrative password owed a change — which the
+  account plane resolves on its change page, so the bounce ends there instead of cycling.
+
 - **`Authenticate` populated `CurrentUser` but could never empty it.** "Nobody is signed
   in" was a fact the object could not state, only fail to have been told — safe only
   because a real deployment drops scoped instances between requests. Once the console

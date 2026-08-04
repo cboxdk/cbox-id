@@ -74,6 +74,13 @@ final class MemberCredentialGate
      *
      * A member with no subject is the first-install bootstrap window — nowhere for the
      * subject to live yet, and no policy to consult, so the founder gets in.
+     *
+     * ASKED OF A PASSWORD, and only of one. The account→environment handoff briefly asked
+     * it too — of a token minted from a session that had already got past whichever door
+     * the account's policy governs — so an account mandating SSO was refused its own
+     * tenant console forever, in a loop rather than with a reason. The whole argument is
+     * in `EnvironmentAdminController::handoff()`, and it generalises: a rule that belongs
+     * to a credential does not automatically belong to everything that credential opened.
      */
     public function admits(AccountMember $member): bool
     {

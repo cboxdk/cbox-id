@@ -26,6 +26,16 @@ final class WorkspaceController extends Controller
      * env-admin session. No second login — the account member lands straight in the
      * environment's control plane. Access is re-checked here (never mint for an
      * environment the member can't reach) AND on redemption.
+     *
+     * THIS DOOR IS ALSO WHERE A REFUSED REDEMPTION COMES BACK TO. The tenant has no
+     * session for an account member and, by design, no credential form, so every refusal
+     * it makes redirects to `admin.login` → the env-admin gate → here. Which makes the
+     * invariant: whatever the redemption refuses, this door must refuse or RESOLVE, or the
+     * two of them mint and refuse each other forever. The reasons it refuses are checked
+     * here — role, environment access, a subject to name — and the standing credential
+     * requirements are held one layer up, in the `Authenticate` middleware, which takes a
+     * member owing a password change to the change page before this method is ever
+     * reached. A refusal added to the redemption alone is a redirect loop.
      */
     public function openEnvironment(
         string $environment,

@@ -25,6 +25,8 @@ use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Testing\TestResponse;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -45,6 +47,11 @@ uses(RefreshDatabase::class);
  *  - the ACCOUNT password door ({@see AccountAuth::attempt()}), which is now the only
  *    place an account member types a password at all, and
  *  - the HANDOFF, which is not a credential the member just proved but stands in for one.
+ *
+ * They are not asked the same question, and asking them the same question is what put an
+ * SSO-mandated account into a redirect loop between the two consoles. `admits()` is the
+ * password rules; {@see MemberCredentialGate::admitsHandoff()} is the standing facts a
+ * minted token must still respect. The tests below hold each to its own.
  *
  * The gate has four rules and the other two are already held to elsewhere, on the same
  * account door, so they are not restated here: the SSO mandate by "holds the account door
@@ -177,18 +184,113 @@ it('refuses a handoff for a member whose account has been suspended', function (
         ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 })->group('security');
 
-it('refuses a handoff when the policy mandates SSO', function (): void {
+/**
+ * Walk a redirect chain with a HOP LIMIT and return where it stops.
+ *
+ * A single-hop `assertRedirect()` cannot tell a refusal from a cycle — both look identical
+ * one hop in, which is how the SSO refusal this file used to assert shipped green while
+ * being hop one of an infinite chain. `followingRedirects()` cannot be used either: its
+ * `while` is unbounded, so a cycle hangs the suite instead of failing it.
+ *
+ * The chain here crosses HOSTS — root, tenant, root — which the harness expresses because
+ * every hop is an absolute URL and one session serves both. That is not what a browser
+ * does (each host has its own cookies), but it is the loop the browser walks: the tenant
+ * half needs no session at all, only the token in the URL.
+ *
+ * @return array{0: TestResponse, 1: list<string>}
+ */
+function chainFrom(TestCase $test, string $url, int $hops = 6): array
+{
+    $response = $test->get($url);
+    $chain = [$url];
+
+    for ($hop = 0; $hop < $hops && $response->isRedirect(); $hop++) {
+        $location = (string) $response->headers->get('Location');
+        $chain[] = $location;
+        nextRequest();
+        $response = $test->get($location);
+    }
+
+    return [$response, $chain];
+}
+
+/**
+ * THE ENTERPRISE PATH, WHICH DID NOT EXIST.
+ *
+ * An account that mandates SSO is the configuration this product is sold on, and it could
+ * not reach its own tenant console: the root minted a handoff, the redemption asked
+ * whether a PASSWORD would be admitted, the SSO mandate answered no forever, and the
+ * refusal went to `admin.login` — which is behind the env-admin gate and bounces to the
+ * root's minting door. Three hops and back to hop one, for as long as the browser would
+ * follow.
+ *
+ * The mandate governs a DOOR. The handoff is not that door: it is minted from an account
+ * session that has already satisfied whatever the account's policy asked of the door it
+ * came through, and the tenant cannot see which door that was.
+ */
+it('opens the tenant console for a member whose account mandates SSO', function (): void {
     $result = anAccountMember();
     handoffShape($result->environment);
-
-    $subjectId = (string) $result->member->refresh()->subject_id;
-    $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
+    signInAsMember($result->member);
 
     app(PlatformRoot::class)->run(
         fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required)),
     );
 
-    $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
+    // From the door the member actually presses — "open" on the account console — so the
+    // mint and the redemption are both under test, which is where the cycle lived.
+    [$response, $chain] = chainFrom($this, 'https://cboxid.com'.route('workspace.environment.open', $result->environment->id, false));
 
-    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+    expect($response->isRedirect())->toBeFalse('the console bounced instead of opening: '.implode(' -> ', $chain))
+        ->and(collect($chain)->filter(fn (string $hop): bool => str_contains($hop, '/workspace/open/'))->count())
+        ->toBe(1, 'the chain re-entered the minting door, which is the cycle: '.implode(' -> ', $chain));
+
+    $response->assertSuccessful();
+
+    // …and it is a real environment-admin session, not merely a page that answered.
+    expect(app(EnvironmentAdminAuth::class)->check())->toBeTrue();
+})->group('security');
+
+/**
+ * And the refusal that REMAINS on a handoff ends somewhere a person can act.
+ *
+ * An administratively-issued temporary password past its deadline stops opening things,
+ * and it is a fact about the subject rather than about a door, so the redemption is right
+ * to refuse it. What makes that a refusal rather than a cycle is the other end: the same
+ * requirement row holds the member on the account plane's change page, so the bounce back
+ * to the minting door lands on the one screen that can end the requirement.
+ *
+ * Asserted as a CHAIN for that reason. The refusal and its landing are two facts, and this
+ * file previously asserted only the first.
+ */
+it('ends an expired-password handoff on the change page rather than bouncing', function (): void {
+    $result = anAccountMember();
+    handoffShape($result->environment);
+
+    $subjectId = (string) $result->member->refresh()->subject_id;
+
+    app(PlatformRoot::class)->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
+        userId: $subjectId,
+        password: 'a-handed-over-temporary-passphrase',
+        temporary: true,
+        expiresAt: now()->addHour(),
+        revoke: PasswordRevocationScope::Nothing,
+    )));
+
+    $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
+
+    // Past the deadline, and signed in AFTER it — the account session outlives a temporary
+    // password's window, which is the whole reason the requirement is standing rather than
+    // asked once at the door. (Signing in before travelling would only prove that a
+    // two-hour-old session has expired.)
+    $this->travel(2)->hours();
+    signInAsMember($result->member);
+
+    [$response, $chain] = chainFrom($this, 'https://cbox-id.test/admin/handoff?token='.$token);
+
+    expect($response->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
+        ->and(end($chain))->toBe('https://cboxid.com/workspace/password/change')
+        ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+
+    $response->assertSuccessful();
 })->group('security');
