@@ -12,13 +12,18 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Organization;
 
 /**
- * Which of a subject's organizations refused their password, and where to send them.
+ * Which of a subject's organizations refused their sign-in, and where to send them.
  *
- * {@see PlatformAuth::passwordLoginAllowedFor()} answers whether a password is still a
- * way in and deliberately answers nothing else — it is a gate, and a gate that returned
- * an explanation would tempt callers into treating the explanation as the decision. This
+ * {@see PlatformAuth::localSignInAllowedFor()} answers whether there is still a local way
+ * in and deliberately answers nothing else — it is a gate, and a gate that returned an
+ * explanation would tempt callers into treating the explanation as the decision. This
  * asks the same memberships the same question a second time, for the screen rather than
  * for the door, and it runs only on the refusal path.
+ *
+ * One lookup for every door. The doors that cannot render their own refusal hand the
+ * subject to a sign-in screen through {@see SsoRefusal}, and the screen asks THIS — so a
+ * magic link, a passkey and a password all end up naming the same organization and
+ * linking to the same connection, because they all end up here.
  *
  * Home-realm discovery ({@see DomainVerification::connectionForEmail()})
  * already routes people whose EMAIL DOMAIN is verified against an active connection, so
@@ -38,10 +43,10 @@ final readonly class SsoMandates
     /**
      * The first of the subject's organizations that mandates SSO, or null when none does.
      *
-     * FIRST rather than all of them, and that is not a shortcut: the rule the door
-     * enforces is "any mandating membership refuses the password", so one is enough to
+     * FIRST rather than all of them, and that is not a shortcut: the rule the doors
+     * enforce is "any mandating membership refuses the sign-in", so one is enough to
      * explain the refusal, and listing every organization a person belongs to on a
-     * pre-session screen would publish their affiliations to whoever typed the password.
+     * pre-session screen would publish their affiliations to whoever reached it.
      */
     public function forSubject(string $subjectId): ?SsoMandate
     {

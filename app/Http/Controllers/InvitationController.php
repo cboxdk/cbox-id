@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\InvitationRoleGrant;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\PlatformAuth;
 use App\Platform\SodGuard;
+use App\Platform\SsoRefusal;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Exceptions\GrantRefused;
@@ -25,6 +27,9 @@ use Illuminate\Http\Request;
  * possessing it proves control of that address — the same trust as a magic link.
  * Accepting resolves (or creates) the subject for the invited email, grants the
  * membership, and signs them in. Membership is never created without this action.
+ *
+ * If that organization mandates SSO, the joining still happens and the session does not:
+ * they are a member, and their way in is the identity provider their administrator chose.
  */
 final class InvitationController extends Controller
 {
@@ -108,6 +113,21 @@ final class InvitationController extends Controller
                 targetId: $subject->id,
                 context: ['organization_id' => $invitation->organization_id, 'role_ids' => $withheld, 'reason' => 'role retired before the invitation was accepted'],
             ));
+        }
+
+        // The membership is committed above and STAYS committed: the invitation was valid,
+        // the roles are granted, and this person is a member of the organization now. What
+        // a mandate refuses is the session, not the joining — an invitation is an emailed
+        // bearer token, the same trust as a magic link, and an organization that requires
+        // SSO has said that is not what opens a session here.
+        //
+        // Asked after the acceptance rather than before it, and the order is what makes the
+        // check work at all: the membership that mandates SSO is the one this request just
+        // created, so a check above would have walked a subject who belonged to nothing.
+        if (! $auth->localSignInAllowedFor($subject->id)) {
+            SsoRefusal::hold($subject->id, RefusedFactor::Invitation);
+
+            return redirect()->route('login');
         }
 
         $auth->establish($request, $subject->id, ['invitation']);

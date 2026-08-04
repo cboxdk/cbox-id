@@ -6,11 +6,13 @@ namespace App\Http\Controllers;
 
 use App\Mail\EmailVerificationMail;
 use App\Platform\CurrentUser;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\Social\OperatorProvider;
 use App\Platform\Social\OperatorProviders;
 use App\Platform\Social\OperatorSocialFlow;
+use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
@@ -82,6 +84,25 @@ final class SocialController extends Controller
             // Don't dead-end: hold the verified identity aside and ask the user to
             // sign in to the existing account — linking then completes on login.
             $auth->startPendingLink($principal);
+
+            return redirect()->route('login');
+        }
+
+        // Refused under a mandate, and this is the least arguable of the doors. Every other
+        // one is about how strong a local factor is; this one authenticates against a
+        // DIFFERENT IDENTITY PROVIDER than the mandated one, which is the exact thing the
+        // mandate is for. "Continue with Google" is a fine way in until an administrator
+        // says their directory decides, and then it is somebody else's directory deciding.
+        //
+        // These are the OPERATOR's providers — the buttons the deployment offers — not the
+        // organization's connection, so there is no reading on which the mandate points
+        // here. {@see \App\Platform\SsoMandates::describe()} excludes them from the link it
+        // renders for exactly the same reason.
+        //
+        // After the provider's callback verifies and the subject resolves, never before:
+        // the refusal must depend on having completed the flow, not on the address.
+        if (! $auth->localSignInAllowedFor($subject->id)) {
+            SsoRefusal::hold($subject->id, RefusedFactor::Social);
 
             return redirect()->route('login');
         }

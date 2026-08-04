@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\CurrentUser;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
+use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
@@ -125,6 +127,28 @@ final class PasskeyController extends Controller
             return $this->error('That passkey could not be verified.');
         } catch (Throwable) {
             return $this->error('Something went wrong signing in.');
+        }
+
+        // A passkey is the strongest factor here and it is still refused under a mandate.
+        // Not because it is weak — it is phishing-resistant and device-bound — but because
+        // a mandate is not a statement about credential strength. It says the
+        // organization's identity provider decides who gets in, and a passkey registered
+        // on this platform is this platform deciding. `SsoEnforcement::Required` is
+        // documented as "the only way in", and that is the sentence the console shows the
+        // administrator who turns it on; admitting a passkey anyway would be us making an
+        // exception on their behalf that they were told did not exist. If passkeys should
+        // stand alongside SSO it has to become something an organization can CHOOSE, on
+        // the sign-in rules page, and mean it.
+        //
+        // After the assertion verifies, like every other door: the refusal must never be
+        // reachable by anyone who has not already proved they hold the credential.
+        if (! $auth->localSignInAllowedFor($subjectId)) {
+            SsoRefusal::hold($subjectId, RefusedFactor::Passkey);
+
+            // A redirect rather than an error string: the explanation needs an
+            // organization's name and a link to its provider, which is a screen, not a
+            // toast. The bundled app.js follows `redirect` and shows `error` inline.
+            return new JsonResponse(['redirect' => route('login')]);
         }
 
         $auth->establish($request, $subjectId, ['passkey']);

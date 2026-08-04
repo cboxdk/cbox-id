@@ -4,8 +4,17 @@ declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
 use App\Platform\Social\OperatorProviders;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Ssrf\Contracts\UrlGuard;
 use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -412,6 +421,52 @@ it('never merges into an existing account by email', function () {
 
     // Held aside, so the legitimate owner is not dead-ended.
     expect(app(PlatformAuth::class)->pendingLink())->not->toBeNull();
+})->group('security');
+
+it('refuses a social sign-in when the subject\'s organization mandates SSO', function () {
+    // The least arguable of the mandate's doors. Every other one is about how strong a
+    // local factor is; this authenticates against a DIFFERENT identity provider than the
+    // mandated one, which is the exact thing the mandate exists to decide. These are the
+    // OPERATOR's buttons rather than the organization's connection, so there is no reading
+    // on which "require SSO" points here.
+    // Linked up front rather than by signing in twice: the fixtures stub the token
+    // endpoint per flow and Http::fake() merges stubs first-match-wins, so a second
+    // sign-in in one test replays the first flow's nonce and fails for the wrong reason.
+    // This is the state a real second visit is in — an identity linked on an earlier one.
+    $subject = app(Subjects::class)->create('newcomer@example.test', 'New Comer', 'supersecret123');
+    app(Subjects::class)->link(
+        $subject->id,
+        new FederatedPrincipal('social:google', 'google|12345', 'newcomer@example.test', 'New Comer'),
+    );
+
+    // That identity belongs to somebody whose company has chosen its own directory.
+    $org = app(Organizations::class)->create(new NewOrganization('Directory Co', 'directory-co'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
+
+    $connection = app(Connections::class)->create(
+        $org->id,
+        ConnectionType::Oidc,
+        'Directory IdP',
+        ['issuer' => 'https://idp.directory.test', 'client_id' => 'abc', 'client_secret' => 's', 'signing_key' => 'k'],
+    );
+    app(Connections::class)->activate($org->id, $connection->id);
+    // The provider still says yes, and without a mandate this signs them straight in —
+    // proven by every other test in this file.
+    app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
+
+    $stash = googleSignInInProgress();
+    $this->get('/auth/google/callback?code=auth-code&state='.$stash['state'])
+        ->assertRedirect(route('login'));
+
+    expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
+        // Not the "already taken, link it from Settings" hold — that is a different
+        // refusal with a different screen, and it would satisfy the redirect above.
+        ->and(app(PlatformAuth::class)->pendingLink())->toBeNull();
+
+    nextRequest();
+    $this->get(route('login'))
+        ->assertSee('Directory Co requires single sign-on')
+        ->assertSee(url("/sso/oidc/{$connection->id}/redirect"));
 })->group('security');
 
 it('keeps the held identity labelled by the catalogue', function () {

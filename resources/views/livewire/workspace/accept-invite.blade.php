@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Enums\CredentialVerdict;
+use App\Platform\Enums\RefusedFactor;
+use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Livewire\Attributes\Layout;
@@ -54,6 +57,29 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
         // activate() is a no-op unless the member is still 'invited', so a replayed
         // or racing accept can never reset an active member's password.
         if (! $members->activate($this->member, $this->password)) {
+            $this->redirect(route('workspace.login'), navigate: false);
+
+            return;
+        }
+
+        // The membership is ACTIVE now and stays active — the invitation was real and this
+        // person belongs here. What a mandate refuses is the session: an invitation is an
+        // emailed bearer token, and the account's organization has said email possession
+        // does not open its console.
+        //
+        // After activate() rather than at mount(), and the awkward part is deliberate. The
+        // password they just chose will never sign them in, which reads as a wasted step —
+        // but activate() is what turns an invited member into one an SSO assertion can
+        // land on ({@see \App\Platform\AccountAuth::adoptFederated()} requires isActive),
+        // so refusing earlier would leave them permanently unable to enter by the very
+        // door they are being sent to. Better a spare password than a dead end.
+        if ($auth->admitsFactor($this->member) === CredentialVerdict::SsoRequired) {
+            $subjectId = $auth->subjectFor($this->member);
+
+            if ($subjectId !== null) {
+                SsoRefusal::hold($subjectId, RefusedFactor::Invitation);
+            }
+
             $this->redirect(route('workspace.login'), navigate: false);
 
             return;

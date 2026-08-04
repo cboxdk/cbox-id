@@ -119,7 +119,7 @@ kind as the console's organization picker and an operator's target environment.
 
 - `AccountAuth` stops being a credential store and, in a second pass, stops being a
   session at all. The password is verified against the member's subject; the SSO mandate
-  is `PlatformAuth::passwordLoginAllowedFor()`, the same method the tenant door calls; an
+  is `PlatformAuth::localSignInAllowedFor()`, the same method the tenant door calls; an
   administratively-issued temporary password expires on both doors alike.
 
   The account session was kept distinct at first, on the reasoning that the account host

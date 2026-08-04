@@ -119,7 +119,7 @@ it('does not exempt the session that made the change', function (): void {
 
 /**
  * An organization's override governs its MEMBERS — the population
- * {@see PlatformAuth::passwordLoginAllowedFor()} walks — and nobody else in the
+ * {@see PlatformAuth::localSignInAllowedFor()} walks — and nobody else in the
  * environment. A revocation wider than the policy is an outage.
  */
 it('ends the sessions of an organization\'s members, and only theirs', function (): void {

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Enums\CredentialVerdict;
+use App\Platform\Enums\RefusedFactor;
+use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Livewire\Attributes\Layout;
@@ -50,6 +53,26 @@ new #[Layout('components.layouts.auth', ['title' => 'Set a new password'])] clas
         ]);
 
         if (! $members->resetPassword($this->member, $this->password)) {
+            $this->redirect(route('workspace.login'), navigate: false);
+
+            return;
+        }
+
+        // This door is the password door with an inbox in front of it: prove you can read
+        // the mail, choose a credential, be signed in on it. Every argument for refusing a
+        // password under a mandate applies here twice over, and this one skipped the check
+        // entirely — a member of a mandating organization could reset their way in.
+        //
+        // After resetPassword() rather than at mount(). The reset ALSO revokes the member's
+        // existing sessions, which is the point of it and must still happen; and the link
+        // stays single-use either way, so a refusal cannot be replayed into a second try.
+        if ($auth->admitsFactor($this->member) === CredentialVerdict::SsoRequired) {
+            $subjectId = $auth->subjectFor($this->member);
+
+            if ($subjectId !== null) {
+                SsoRefusal::hold($subjectId, RefusedFactor::PasswordReset);
+            }
+
             $this->redirect(route('workspace.login'), navigate: false);
 
             return;

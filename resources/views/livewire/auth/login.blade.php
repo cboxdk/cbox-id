@@ -5,11 +5,14 @@ declare(strict_types=1);
 use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\MailLinks;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
 use App\Platform\SignupPolicy;
+use App\Platform\SsoMandate;
 use App\Platform\SsoMandates;
+use App\Platform\SsoRefusal;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
@@ -65,11 +68,31 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     public ?string $ssoStartUrl = null;
 
     /**
+     * What happened, in the words of the door it happened at.
+     *
+     * This screen is now the terminal screen for every door — the password form below, a
+     * redeemed magic link, a passkey ceremony, a social callback, an accepted invitation —
+     * and "your password is correct" is true at exactly one of them. See
+     * {@see RefusedFactor}.
+     */
+    public string $ssoReason = '';
+
+    /**
      * Branded, per-organization login (/o/{slug}/login) themes the page with the
      * org's colour, logo and name.
      */
     public function mount(?string $slug = null): void
     {
+        // A refusal from a door that could not explain itself. Those doors are controllers
+        // and JSON endpoints: they redirect here holding only WHO was refused and WHAT
+        // they proved, and the organization is resolved below through the one lookup that
+        // knows how to name it.
+        $refusal = SsoRefusal::take();
+
+        if ($refusal !== null) {
+            $this->applyMandate(app(SsoMandates::class)->forSubject($refusal->subjectId), $refusal->factor);
+        }
+
         $this->pendingLink = app(PlatformAuth::class)->pendingLink()?->label();
 
         if ($slug === null) {
@@ -255,28 +278,43 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
      */
     public function startOver(): void
     {
-        $this->reset('ssoOrganization', 'ssoStartUrl', 'identified', 'password');
+        $this->reset('ssoOrganization', 'ssoStartUrl', 'ssoReason', 'identified', 'password');
     }
 
     /**
-     * Turn the mandate refusal into the terminal screen.
-     *
-     * The password is dropped on the way: this component is not going to authenticate
-     * with it, and a verified credential left in a public property is dehydrated into the
-     * wire:snapshot embedded in the page it is about to render.
+     * Turn this door's own mandate refusal into the terminal screen.
      */
     private function showSsoMandate(SsoMandates $mandates): void
     {
         $subject = app(Subjects::class)->findByEmail($this->email);
-        $mandate = $subject === null ? null : $mandates->forSubject($subject->id);
 
+        $this->applyMandate(
+            $subject === null ? null : $mandates->forSubject($subject->id),
+            RefusedFactor::Password,
+        );
+    }
+
+    /**
+     * Render a mandate, wherever it was refused.
+     *
+     * One method for both entry points — this page's own password form and the doors that
+     * redirect here — because the screen they produce has to be the same screen. Two
+     * copies is how one of them would eventually stop naming the organization.
+     *
+     * The password is dropped on the way: this component is not going to authenticate with
+     * it, and a verified credential left in a public property is dehydrated into the
+     * wire:snapshot embedded in the page it is about to render.
+     */
+    private function applyMandate(?SsoMandate $mandate, RefusedFactor $factor): void
+    {
         $this->reset('password');
 
-        // Never null in practice — the door only reports SsoRequired after walking the
+        // Never null in practice — every door reports the refusal only after walking the
         // same memberships — but the lookup is a second read, and a screen that says
         // nothing is worse than one that names no organization.
         $this->ssoOrganization = $mandate === null ? 'Your organization' : $mandate->organizationName;
         $this->ssoStartUrl = $mandate?->startUrl;
+        $this->ssoReason = $factor->sentence();
     }
 
     private function throttleKey(string $action): string
@@ -330,10 +368,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     @if ($ssoOrganization !== null)
         <div role="alert" class="mt-7 card p-5">
             <h2 class="text-base font-semibold">{{ $ssoOrganization }} requires single sign-on</h2>
-            <p class="mt-2 text-sm" style="color:var(--muted)">
-                Your password is correct — it is just not a way in here any more. Sign in through
-                your organization's identity provider instead.
-            </p>
+            <p class="mt-2 text-sm" style="color:var(--muted)">{{ $ssoReason }}</p>
 
             @if ($ssoStartUrl !== null)
                 {{-- A full navigation, not wire:navigate: the destination is the identity

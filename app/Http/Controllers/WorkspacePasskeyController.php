@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\AccountAuth;
+use App\Platform\Enums\CredentialVerdict;
+use App\Platform\Enums\RefusedFactor;
+use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
 use Cbox\Id\Identity\Exceptions\InvalidAssertionResponse;
@@ -128,6 +131,29 @@ final class WorkspacePasskeyController extends Controller
             return $this->error('That passkey could not be verified.');
         } catch (Throwable) {
             return $this->error('Something went wrong signing in.');
+        }
+
+        // The same decision as the tenant passkey door, one plane up, and it has to be the
+        // same one: an account member IS an ordinary subject in the platform root, so an
+        // organization that mandates SSO and is honoured on the tenant plane but not here
+        // has not mandated anything — it has moved the bypass to the console that owns the
+        // billing. The argument for refusing a phishing-resistant factor is in
+        // {@see \App\Platform\MemberCredentialGate::admitsFactor()}.
+        //
+        // Asked after the assertion verifies, so it is never an existence oracle. The
+        // member id comes FROM the assertion; nobody who has not signed the challenge with
+        // a registered credential ever reaches this line.
+        if ($auth->admitsFactor($memberId) === CredentialVerdict::SsoRequired) {
+            // Non-null by construction — the gate can only have reached that verdict
+            // through the member's subject — but this is a second read, and a nullsafe
+            // hold costs less than a promise about the first one.
+            $subjectId = $auth->subjectFor($memberId);
+
+            if ($subjectId !== null) {
+                SsoRefusal::hold($subjectId, RefusedFactor::Passkey);
+            }
+
+            return new JsonResponse(['redirect' => route('workspace.login')]);
         }
 
         // A passkey is phishing-resistant strong auth — it establishes the session

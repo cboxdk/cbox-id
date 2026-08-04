@@ -455,12 +455,12 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
             <h2 class="text-base font-semibold">Make {{ $connection->name }} the only way in?</h2>
             <p class="mt-2 text-sm" style="color:var(--muted)">
                 {{ $orgName ?? 'This organization' }} can sign in with passwords or with this connection.
-                Requiring single sign-on refuses passwords outright, so an old credential cannot go around the
+                Requiring single sign-on refuses every other way in, so nothing already issued can go around the
                 provider you just set up. Most companies that connect an IdP want this — but read what it does first.
             </p>
             <ul class="mt-3 space-y-1 text-sm list-disc pl-5" style="color:var(--muted)">
-                <li>Password sign-in stops working for everyone in this organization, immediately.</li>
-                <li>Every session that was opened with a password ends — <strong>including yours</strong>, if you signed in that way.</li>
+                <li>Passwords, emailed sign-in links, passkeys and social buttons all stop working for everyone in this organization, immediately.</li>
+                <li>Every session in this organization ends — <strong>including yours</strong>.</li>
                 <li>You can turn it off again on Sign-in rules; sessions that ended stay ended.</li>
             </ul>
             <div class="mt-4 flex flex-wrap gap-2">
@@ -479,7 +479,7 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
         <div class="rounded-xl border p-4 flex flex-wrap items-center justify-between gap-3"
              style="border-color:var(--border);background:var(--surface-2)">
             <p class="text-sm" style="color:var(--muted)">
-                <strong style="color:var(--text)">Single sign-on is required</strong> for {{ $orgName ?? 'this organization' }} — password sign-in is refused.
+                <strong style="color:var(--text)">Single sign-on is required</strong> for {{ $orgName ?? 'this organization' }} — every other way in is refused.
             </p>
             <a href="{{ route($scopeRoute('auth-policy')) }}" class="btn btn-ghost btn-sm">Sign-in rules</a>
         </div>

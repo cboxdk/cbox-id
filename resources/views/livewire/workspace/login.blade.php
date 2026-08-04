@@ -6,9 +6,11 @@ use App\Mail\MagicLinkMail;
 use App\Platform\AccountAuth;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\MailLinks;
 use App\Platform\SsoMandate;
 use App\Platform\SsoMandates;
+use App\Platform\SsoRefusal;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
@@ -57,6 +59,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
 
     public ?string $ssoStartUrl = null;
 
+    /**
+     * What happened, in the words of the door it happened at — see the tenant screen, and
+     * {@see RefusedFactor}. This page is the terminal screen for every workspace door now,
+     * and only one of them can honestly say "your password is correct".
+     */
+    public string $ssoReason = '';
+
     public bool $magicSent = false;
 
     public ?string $magicUrl = null;
@@ -74,6 +83,20 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     {
         if ($scope->signedIn()) {
             return redirect()->intended(route('workspace.home'));
+        }
+
+        // A refusal from a workspace door that could not explain itself — the passkey
+        // ceremony, a redeemed magic link, an accepted invitation, a reset link. They
+        // redirect here holding only who was refused and what they had proved.
+        $refusal = SsoRefusal::take();
+
+        if ($refusal !== null) {
+            $this->applyMandate(
+                app(PlatformRoot::class)->run(
+                    fn (): ?SsoMandate => app(SsoMandates::class)->forSubject($refusal->subjectId),
+                ),
+                $refusal->factor,
+            );
         }
 
         return null;
@@ -204,19 +227,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
      */
     public function startOver(): void
     {
-        $this->reset('ssoOrganization', 'ssoStartUrl', 'identified', 'password');
+        $this->reset('ssoOrganization', 'ssoStartUrl', 'ssoReason', 'identified', 'password');
     }
 
     /**
-     * Turn the mandate refusal into the terminal screen.
+     * Turn this door's own mandate refusal into the terminal screen.
      *
      * Resolved in the PLATFORM ROOT's scope, like every other lookup this door makes: the
      * member's subject, their memberships and their organization's connection all live
      * there, and under this host's ambient scope the memberships simply are not found —
      * which would render the refusal with no organization named and no link at all.
-     *
-     * The password is dropped on the way, so a verified credential is not dehydrated into
-     * the wire:snapshot of the page this is about to render.
      */
     private function showSsoMandate(SsoMandates $mandates): void
     {
@@ -226,10 +246,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             return $subject === null ? null : $mandates->forSubject($subject->id);
         });
 
+        $this->applyMandate($mandate, RefusedFactor::Password);
+    }
+
+    /**
+     * Render a mandate, wherever on this plane it was refused — see the tenant screen for
+     * why both entry points share one method.
+     *
+     * The password is dropped on the way, so a verified credential is not dehydrated into
+     * the wire:snapshot of the page this is about to render.
+     */
+    private function applyMandate(?SsoMandate $mandate, RefusedFactor $factor): void
+    {
         $this->reset('password');
 
         $this->ssoOrganization = $mandate === null ? 'Your organization' : $mandate->organizationName;
         $this->ssoStartUrl = $mandate?->startUrl;
+        $this->ssoReason = $factor->sentence();
     }
 
     /**
@@ -300,10 +333,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     @if ($ssoOrganization !== null)
         <div role="alert" class="mt-7 card p-5">
             <h2 class="text-base font-semibold">{{ $ssoOrganization }} requires single sign-on</h2>
-            <p class="mt-2 text-sm" style="color:var(--muted)">
-                Your password is correct — it is just not a way into this workspace any more.
-                Sign in through your organization's identity provider instead.
-            </p>
+            <p class="mt-2 text-sm" style="color:var(--muted)">{{ $ssoReason }}</p>
 
             @if ($ssoStartUrl !== null)
                 {{-- A full navigation, not wire:navigate: the destination is the identity

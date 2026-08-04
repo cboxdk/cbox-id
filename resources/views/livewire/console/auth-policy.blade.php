@@ -22,7 +22,7 @@ use Livewire\WithPagination;
  * The environment plane had a page that wrote the baseline; the per-ORGANIZATION policy —
  * {@see AuthPolicies::setForOrganization()} and its clear — had no writer anywhere in the
  * product, while both read paths enforced it on every sign-in
- * ({@see \App\Platform\PlatformAuth::passwordLoginAllowedFor()} walks a subject's
+ * ({@see \App\Platform\PlatformAuth::localSignInAllowedFor()} walks a subject's
  * memberships, and {@see \App\Platform\MemberCredentialGate::admits()} asks it for account
  * members). A rule the platform enforces and nobody can set is worse than no rule: it is a
  * capability the docs describe, the API implies, and the console silently withholds.
@@ -553,7 +553,7 @@ new #[Layout('components.layouts.console', ['title' => 'Sign-in rules'])] class 
                         @error('sso') aria-invalid="true" aria-describedby="sso-error" @enderror>
                     <option value="off">Passwords and SSO both available</option>
                     <option value="preferred">Prefer SSO, passwords still work</option>
-                    <option value="required">Require SSO — password sign-in is refused</option>
+                    <option value="required">Require SSO — every other way in is refused</option>
                 </select>
                 @error('sso') <p id="sso-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>

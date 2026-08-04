@@ -7,11 +7,12 @@ namespace App\Platform;
 use App\Platform\Enums\CredentialVerdict;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
- * The rules that decide whether an account member's verified password is still a way in.
+ * The rules that decide whether an account member's verified credential is still a way in.
  *
  * There are two doors that authenticate an account member by password — the account
  * console ({@see AccountAuth}) and, on a single-host deployment, the environment admin
@@ -23,6 +24,12 @@ use Cbox\Id\Platform\PlatformRoot;
  * One class, asked by both, so a rule cannot be honoured at one door and skipped at the
  * other. Every check runs in the PLATFORM ROOT's scope — policies, memberships and
  * counters are environment-owned, and the account's people live there.
+ *
+ * The account plane also has doors that are not passwords at all — a workspace passkey, a
+ * magic link, an invitation, a reset link — and they were the same divergence one level
+ * along: the mandate was honoured by the password and ignored by every one of them.
+ * {@see admitsFactor()} is what they ask now, and it lives here rather than at each door
+ * for precisely the reason this class exists.
  */
 final class MemberCredentialGate
 {
@@ -82,6 +89,8 @@ final class MemberCredentialGate
      * tenant console forever, in a loop rather than with a reason. The whole argument is
      * in `EnvironmentAdminController::handoff()`, and it generalises: a rule that belongs
      * to a credential does not automatically belong to everything that credential opened.
+     * The corollary is {@see admitsFactor()}: the mandate is NOT one of those rules, and
+     * the doors that prove something other than a password have to ask it too.
      *
      * The two refusals are told apart because only one of them is actionable. An SSO
      * mandate is a door the member can walk through; an expired hand-off credential is a
@@ -94,9 +103,45 @@ final class MemberCredentialGate
             $member,
             fn (string $id): CredentialVerdict => match (true) {
                 $this->adminPasswords->hasExpired($id) => CredentialVerdict::Refused,
-                ! $this->platform->passwordLoginAllowedFor($id) => CredentialVerdict::SsoRequired,
+                ! $this->platform->localSignInAllowedFor($id) => CredentialVerdict::SsoRequired,
                 default => CredentialVerdict::Admitted,
             },
+        ) ?? CredentialVerdict::Admitted;
+    }
+
+    /**
+     * Whether a mandate refuses this member a session for a factor that is NOT a password
+     * — a passkey ceremony, a redeemed magic link, an accepted invitation, a reset link.
+     *
+     * Everything {@see admits()} checks about the credential itself drops away here, and
+     * deliberately: an administratively-issued temporary password whose deadline has
+     * passed is a fact about a PASSWORD, and refusing somebody's passkey because of it
+     * would be the same category error in the other direction. So this asks the one rule
+     * that is not about the credential at all. A mandate says which DIRECTORY decides who
+     * gets in; a passkey is a very good answer to a question the organization has said it
+     * no longer asks.
+     *
+     * A passkey is the arguable one, and it is refused on purpose. It is phishing-resistant
+     * and device-bound, and a deployment could reasonably decide it stands alongside SSO —
+     * but that is the ORGANIZATION's decision and there is nowhere for them to make it:
+     * {@see SsoEnforcement} has three cases, and the strongest is documented as "SSO is the
+     * only way in" — which is also the sentence the console shows the administrator who
+     * turns it on. Permitting passkeys under that would be us making an exception on their
+     * behalf, by silence, against the words they were shown. If a per-organization
+     * allowance is ever wanted it belongs on the policy, on the sign-in rules page, and in
+     * what the console promises — not here, and not by omission.
+     *
+     * Only two verdicts are reachable, and it still returns the enum: this is the same
+     * question {@see admits()} answers, and a bool here would be the parallel vocabulary
+     * that lets one door start disagreeing with the other again.
+     */
+    public function admitsFactor(AccountMember $member): CredentialVerdict
+    {
+        return $this->onSubject(
+            $member,
+            fn (string $id): CredentialVerdict => $this->platform->localSignInAllowedFor($id)
+                ? CredentialVerdict::Admitted
+                : CredentialVerdict::SsoRequired,
         ) ?? CredentialVerdict::Admitted;
     }
 

@@ -124,7 +124,7 @@ final class PlatformAuth
         // reaches it is exactly the people who typed the right password, and telling them
         // it was wrong is how this refusal dead-ended — see {@see AttemptOutcome::SsoRequired}
         // for what that distinction does and does not disclose.
-        if (! $this->passwordLoginAllowedFor($subject->id)) {
+        if (! $this->localSignInAllowedFor($subject->id)) {
             return AttemptOutcome::SsoRequired;
         }
 
@@ -199,19 +199,29 @@ final class PlatformAuth
     }
 
     /**
-     * Whether local password sign-in is still permitted for this subject.
+     * Whether a LOCAL sign-in — any of them — may still establish a session for this
+     * subject.
      *
      * A subject belongs to organizations, each of which may mandate SSO. If ANY of them
-     * requires it, password sign-in is refused — the strictest membership wins, so a
-     * user cannot sidestep a mandating tenant by holding a second, laxer membership.
+     * requires it, a local sign-in is refused — the strictest membership wins, so a user
+     * cannot sidestep a mandating tenant by holding a second, laxer membership. The
+     * environment's own baseline is asked last, so an operator-wide mandate covers the
+     * subjects who belong to no organization at all.
      *
-     * Public because the ACCOUNT door asks the same question of the same subject: account
-     * members are ordinary subjects in the platform-root environment, so an account whose
-     * organization mandates SSO must not be able to sidestep it by signing in at the
-     * workspace door instead. One implementation, both doors — the whole point of the
-     * unification is that this rule does not get written twice.
+     * It was `passwordLoginAllowedFor()`, and the name was the bug. `SsoEnforcement::Required`
+     * says SSO is the only way in and the console says so in those words — but only the
+     * password doors asked, so a magic link, a passkey, an operator social button, an
+     * accepted invitation and a workspace password reset all still opened a session in an
+     * organization that had been told it had closed them. A mandate is a statement about
+     * WHICH DIRECTORY decides, not about which credential was typed, and a name that said
+     * "password" is what let four doors read it as somebody else's rule.
+     *
+     * Public because every door asks it of the same subject: account members are ordinary
+     * subjects in the platform-root environment, so an account whose organization mandates
+     * SSO must not be able to sidestep it by picking a different door. One implementation,
+     * every door — the whole point of the unification is that this rule is not written twice.
      */
-    public function passwordLoginAllowedFor(string $subjectId): bool
+    public function localSignInAllowedFor(string $subjectId): bool
     {
         foreach ($this->memberships->forUser($subjectId) as $membership) {
             if (! $this->policies->resolve($membership->organization_id)->sso->allowsPasswordLogin()) {

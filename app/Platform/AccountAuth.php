@@ -187,9 +187,39 @@ final class AccountAuth
     }
 
     /**
+     * Admit a subject the account's own IDENTITY PROVIDER just vouched for.
+     *
+     * This is the door a mandate points AT, so it is the one door that must never consult
+     * the mandate: refusing an SSO assertion because SSO is required is the loop that
+     * locks an organization out of the console it just secured.
+     */
+    public function adoptFederated(Session $session): AttemptOutcome
+    {
+        return $this->adopt($session, mandateApplies: false);
+    }
+
+    /**
+     * Admit a subject a LOCAL sign-in just verified — today, a redeemed magic link.
+     *
+     * Same landing, opposite side of the mandate. An emailed bearer token is a
+     * password-equivalent factor with weaker binding than the password itself, and an
+     * organization that mandates SSO has said email possession is not what decides who
+     * gets in. It went straight through: the door was `adoptSubject()`, both callers used
+     * it, and the class had no way to tell an assertion from a link.
+     *
+     * Two named entry points rather than a flag, because the difference is not a detail of
+     * this method — it is which of two doors the caller IS, and that is knowable only at
+     * the call site. A default would have picked a side for every door added later, and
+     * the safe-looking default (check the mandate) is the one that breaks SSO.
+     */
+    public function adoptLocal(Session $session): AttemptOutcome
+    {
+        return $this->adopt($session, mandateApplies: true);
+    }
+
+    /**
      * Admit an ALREADY-AUTHENTICATED platform-root subject to the workspace — the landing
-     * point for the sign-in methods the account plane inherits by being ordinary subjects:
-     * an SSO assertion from the account's own connection, or a magic link.
+     * point for the sign-in methods the account plane inherits by being ordinary subjects.
      *
      * Takes the framework {@see Session} the redemption or assertion produced, so the
      * session this mints records how the person ACTUALLY authenticated rather than a
@@ -200,13 +230,21 @@ final class AccountAuth
      * as any tenant user never opens the account console. And a member who has enrolled a
      * second factor on this plane is still held at the challenge: a new way in must not
      * be a way AROUND the factor they added.
+     *
+     * The mandate is asked AFTER the membership is resolved and never before, which keeps
+     * it off the enumeration path for the same reason the password door's is: reaching it
+     * at all means a factor has already been proven.
      */
-    public function adoptSubject(Session $session): AttemptOutcome
+    private function adopt(Session $session, bool $mandateApplies): AttemptOutcome
     {
         $member = $this->findMemberBySubject($session->user_id);
 
         if ($member === null || ! $member->isActive() || ! ($member->account?->isActive() ?? false)) {
             return AttemptOutcome::Invalid;
+        }
+
+        if ($mandateApplies && $this->gate->admitsFactor($member) === CredentialVerdict::SsoRequired) {
+            return AttemptOutcome::SsoRequired;
         }
 
         if ($this->mfa->hasConfirmedTotp($member->id)) {
@@ -216,6 +254,47 @@ final class AccountAuth
         }
 
         return $this->establish($member->id, self::methods($session)) ? AttemptOutcome::Ok : AttemptOutcome::Invalid;
+    }
+
+    /**
+     * Whether a mandate refuses this member a session, for a door that has already proved
+     * a factor which is not a password — the workspace passkey ceremony, an accepted
+     * invitation, a redeemed reset link.
+     *
+     * Takes a member ID because that is what those doors are holding: the passkey
+     * assertion identifies a credential, and the invitation and reset links are signed for
+     * one member. The gate does the rest, in the platform root's scope, where the
+     * memberships and policies are.
+     *
+     * A member id that resolves to nothing answers Admitted rather than inventing a
+     * refusal: {@see establish()} is the one place that decides there is nobody to sign
+     * in, and it already returns false — a second opinion here would send somebody to a
+     * mandate screen naming no organization, over a member that does not exist.
+     */
+    public function admitsFactor(string $memberId): CredentialVerdict
+    {
+        $member = $this->members->find($memberId);
+
+        return $member === null
+            ? CredentialVerdict::Admitted
+            : $this->gate->admitsFactor($member);
+    }
+
+    /**
+     * The platform-root subject behind a member, or null when there is not one.
+     *
+     * Exposed for the doors that have to name the person to something OUTSIDE this class —
+     * {@see SsoRefusal} carries a subject, because the screen that renders a mandate
+     * resolves it through {@see SsoMandates}, and memberships hang off subjects rather than
+     * off account members. Deliberately not "the member": handing a member row to a
+     * pre-session screen would hand it an account id and an email it has no business
+     * holding.
+     */
+    public function subjectFor(string $memberId): ?string
+    {
+        $subjectId = $this->members->find($memberId)?->subject_id;
+
+        return is_string($subjectId) && $subjectId !== '' ? $subjectId : null;
     }
 
     /**

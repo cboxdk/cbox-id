@@ -18,7 +18,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
  * Every other rule an {@see AuthPolicy} carries is re-asked of a LIVE session: the MFA
  * mandate and the password-age requirement are holds in {@see Authenticate}, so switching
  * either on takes effect on the next request of everybody already signed in. The SSO
- * mandate is the one rule asked only at a DOOR — {@see PlatformAuth::passwordLoginAllowedFor()}
+ * mandate is the one rule asked only at a DOOR — {@see PlatformAuth::localSignInAllowedFor()}
  * is consulted when a password is typed and never again — so turning it on governed the
  * next sign-in and nothing that was already inside. An operator declared "a password is no
  * longer a way in" and every password session stayed open, for as long as its ttl allowed.
@@ -98,10 +98,10 @@ final class RevokingAuthPolicies implements AuthPolicies
 
     /**
      * An organization's override governs its MEMBERS — the population
-     * {@see PlatformAuth::passwordLoginAllowedFor()} walks — so a tightening ends their
+     * {@see PlatformAuth::localSignInAllowedFor()} walks — so a tightening ends their
      * sessions, all of them, not only the ones stamped with this organization. That rule
-     * refuses the subject's password outright when ANY of their organizations mandates
-     * SSO, so a member of a mandating tenant has no password door left anywhere in the
+     * refuses the subject's local sign-in outright when ANY of their organizations mandates
+     * SSO, so a member of a mandating tenant has no local door left anywhere in the
      * environment, and no session of theirs predates a policy that still admits it.
      */
     public function setForOrganization(string $organizationId, AuthPolicy $policy): void
