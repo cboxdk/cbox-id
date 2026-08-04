@@ -42,6 +42,7 @@ final class MemberEmailVerification
         private readonly EmailVerification $verification,
         private readonly Subjects $subjects,
         private readonly PlatformRoot $platformRoot,
+        private readonly MailLinks $links,
     ) {}
 
     /**
@@ -91,7 +92,9 @@ final class MemberEmailVerification
                 ->whereNull('consumed_at')
                 ->update(['consumed_at' => now()]);
 
-            return route('verification.verify', $this->verification->issue($subjectId, $member->email));
+            // MailLinks, not route(): this link is MAILED, and the confirmation token it
+            // carries is a bearer credential — see that class.
+            return $this->links->route('verification.verify', $this->verification->issue($subjectId, $member->email));
         });
 
         if (is_string($url)) {

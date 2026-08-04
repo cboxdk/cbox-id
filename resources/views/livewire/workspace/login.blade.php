@@ -6,6 +6,7 @@ use App\Mail\MagicLinkMail;
 use App\Platform\AccountAuth;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\MailLinks;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
@@ -136,7 +137,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
      * link would be a way to mint one. The confirmation shows either way, so the page
      * never reveals whether an address is a member.
      */
-    public function sendMagicLink(MagicLink $links, AccountMembers $members, PlatformRoot $root): void
+    public function sendMagicLink(MagicLink $links, AccountMembers $members, PlatformRoot $root, MailLinks $mailLinks): void
     {
         $this->validate(['email' => 'required|email|max:190']);
 
@@ -158,7 +159,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             $token = $root->run(fn (): string => $links->request($this->email));
 
             if (is_string($token)) {
-                $url = route('workspace.magic.redeem', $token);
+                // MailLinks, not route(). This one carries a BEARER token in the path and
+                // nothing signs the origin, so a poisoned Host needed no replay trick at
+                // all — the recipient's click handed the token straight over.
+                $url = $mailLinks->route('workspace.magic.redeem', $token);
 
                 Mail::to($this->email)->send(new MagicLinkMail($url));
 

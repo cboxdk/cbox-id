@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\MagicLinkMail;
 use App\Platform\PlatformAuth;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\MailLinks;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
 use App\Platform\SignupPolicy;
@@ -158,7 +159,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         );
     }
 
-    public function sendMagicLink(MagicLink $links, Subjects $subjects, SignupPolicy $signup): void
+    public function sendMagicLink(MagicLink $links, Subjects $subjects, SignupPolicy $signup, MailLinks $mailLinks): void
     {
         $this->validateOnly('email');
 
@@ -180,7 +181,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         // whether an account exists (mirrors the password-reset pattern).
         if ($signup->isOpen() || $subjects->findByEmail($this->email) !== null) {
             $token = $links->request($this->email);
-            $url = route('magic.redeem', $token);
+            $url = $mailLinks->route('magic.redeem', $token);
 
             Mail::to($this->email)->send(new MagicLinkMail($url));
 

@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Mail\WorkspacePasswordResetMail;
+use App\Platform\MailLinks;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -20,7 +20,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
 {
     public string $email = '';
 
-    public function request(AccountMembers $members): void
+    public function request(AccountMembers $members, MailLinks $links): void
     {
         $this->validate(['email' => ['required', 'email', 'max:190']]);
 
@@ -40,7 +40,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
         if ($member !== null && $member->isActive()) {
             // Bind the link to the member's current security stamp: using it bumps
             // the stamp, so the link (and any earlier one) is single-use.
-            $url = URL::temporarySignedRoute('workspace.password.reset', now()->addHour(), [
+            // Through MailLinks, not URL::, so the signature is computed over a host this
+            // deployment actually serves — see that class. This page is on the ACCOUNT
+            // plane, which an unmapped Host still reaches.
+            $url = $links->temporarySignedRoute('workspace.password.reset', now()->addHour(), [
                 'member' => $member->id,
                 'v' => $member->session_version,
             ]);

@@ -7,13 +7,13 @@ namespace App\Http\Controllers\Api\Account;
 use App\Http\Controllers\Controller;
 use App\Mail\AccountInviteMail;
 use App\Platform\AccountApiContext;
+use App\Platform\MailLinks;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
 /**
@@ -34,7 +34,7 @@ final class MemberController extends Controller
         ]);
     }
 
-    public function store(Request $request, AccountApiContext $context, AccountMembers $members): JsonResponse
+    public function store(Request $request, AccountApiContext $context, AccountMembers $members, MailLinks $links): JsonResponse
     {
         $request->validate([
             'email' => ['required', 'email', 'max:190'],
@@ -60,7 +60,10 @@ final class MemberController extends Controller
 
         $invited = $members->invite($account->id, $email, $role, $name);
 
-        $url = URL::temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
+        // MailLinks, not URL:: — the console invite and this one mint the SAME link, so
+        // they mint it the same way (see that class); an API caller's Host is no more
+        // trustworthy than a browser's.
+        $url = $links->temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
         Mail::to($invited->email)->send(new AccountInviteMail(
             account: $account->name,
             inviter: $key->name,

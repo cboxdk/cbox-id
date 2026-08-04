@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\GrantAccessRole;
+use App\Platform\MailLinks;
 use App\Platform\CurrentUser;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -114,7 +115,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         }
     }
 
-    public function invite(Invitations $invitations): void
+    public function invite(Invitations $invitations, MailLinks $links): void
     {
         $this->authorizeAdmin();
         $this->validate();
@@ -148,7 +149,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         Mail::to($email)->send(new InvitationMail(
             organization: $me->organization()->name ?? 'your team',
             inviter: $me->name(),
-            url: route('invitation.accept', $pending->token),
+            url: $links->route('invitation.accept', $pending->token),
         ));
 
         // Park the chosen access roles for this email — applied on acceptance, so

@@ -5,13 +5,13 @@ declare(strict_types=1);
 use App\Mail\AccountInviteMail;
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\MailLinks;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -47,7 +47,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         return null;
     }
 
-    public function invite(AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
+    public function invite(AccountAuth $auth, AccountMembers $members, AccountActivity $activity, MailLinks $links): void
     {
         $current = $auth->current();
         $account = $current?->account;
@@ -79,7 +79,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         }
 
         $invited = $members->invite($account->id, $this->inviteEmail, AccountRole::from($this->inviteRole), trim($this->inviteName) ?: null);
-        $url = URL::temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
+        // MailLinks, not URL:: — an invitation is mailed, so its origin must come from
+        // the deployment rather than from the Host header of whoever asked to send it.
+        $url = $links->temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
         Mail::to($invited->email)->send(new AccountInviteMail($account->name, $current->name ?? $current->email, $url));
 
         $activity->record($account->id, 'account.member_invited', $current->id,

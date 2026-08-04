@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
 use App\Platform\AccountAuth;
+use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
@@ -82,7 +83,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         ];
     }
 
-    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup, DomainVerification $domains, Turnstile $turnstile): void
+    public function register(Subjects $subjects, Organizations $orgs, Memberships $memberships, PlatformAuth $auth, RiskGuard $risk, SignupPolicy $signup, DomainVerification $domains, Turnstile $turnstile, MailLinks $links): void
     {
         // Defense in depth: never create an account when signup isn't open, even
         // if the form was reached or replayed out of band.
@@ -178,7 +179,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
 
             if (is_string($subjectId) && $subjectId !== '') {
                 $token = app(EmailVerification::class)->issue($subjectId, $this->email);
-                Mail::to($this->email)->send(new EmailVerificationMail(route('verification.verify', $token)));
+                Mail::to($this->email)->send(new EmailVerificationMail($links->route('verification.verify', $token)));
             } else {
                 // No platform root yet (the first-install bootstrap window) — the member
                 // has no subject, so no verification token can be bound to them. Release
@@ -223,7 +224,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         // Send a confirmation link; the account is usable immediately, verification
         // just confirms the address out of band.
         $verifyToken = app(EmailVerification::class)->issue($subject->id, $this->email);
-        Mail::to($this->email)->send(new EmailVerificationMail(route('verification.verify', $verifyToken)));
+        Mail::to($this->email)->send(new EmailVerificationMail($links->route('verification.verify', $verifyToken)));
 
         $auth->establish(request(), $subject->id, ['pwd']);
 

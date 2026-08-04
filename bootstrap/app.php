@@ -14,6 +14,7 @@ use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetEnvironment;
+use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Analytics\AnalyticsServiceProvider;
@@ -78,6 +79,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        // Refuse a Host header this deployment does not answer on, before anything reads
+        // it. Nothing registered this, and `SetEnvironment` answers an unmapped host with
+        // the platform root rather than a 404 (deliberately — see that class), so every
+        // account-plane surface rendered under any name pointed at us: `Host: evil.example`
+        // on the workspace forgot-password page mailed a working reset link on the
+        // attacker's domain, because `route()` builds its origin from the Host.
+        //
+        // Derived per request from what the deployment already states — account host,
+        // `base_domains`, tenant custom domains ({@see TrustedHosts}) — never a hardcoded
+        // list. `subdomains: true` adds `app.url` and everything under it, which is what
+        // keeps a single-tenant install (no base domains, no account host) from fencing
+        // itself out: the derivation returning nothing is a safe answer there.
+        $middleware->trustHosts(at: static fn (): array => app(TrustedHosts::class)->patterns());
 
         // The SAML HTTP-POST binding delivers the SP's AuthnRequest as a cross-site
         // form POST from the SP's own origin — it carries no Laravel CSRF token, so

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\PasswordResetMail;
+use App\Platform\MailLinks;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
@@ -20,7 +21,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
     /** Surfaced only outside production, for local development. */
     public ?string $devUrl = null;
 
-    public function sendResetLink(PasswordReset $resets): void
+    public function sendResetLink(PasswordReset $resets, MailLinks $links): void
     {
         $this->validate();
 
@@ -39,7 +40,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Reset password'])] class ex
         $token = $resets->request($this->email);
 
         if ($token !== null) {
-            $url = route('password.reset', $token);
+            $url = $links->route('password.reset', $token);
             Mail::to($this->email)->send(new PasswordResetMail($url));
             $this->devUrl = app()->environment('local') ? $url : null;
         }

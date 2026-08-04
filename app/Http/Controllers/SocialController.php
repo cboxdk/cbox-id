@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\EmailVerificationMail;
 use App\Platform\CurrentUser;
+use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\Social\OperatorProvider;
 use App\Platform\Social\OperatorProviders;
@@ -49,7 +50,7 @@ final class SocialController extends Controller
         return $this->start($request, $provider, route('social.callback', $provider));
     }
 
-    public function callback(string $provider, Request $request, Subjects $subjects, PlatformAuth $auth): RedirectResponse
+    public function callback(string $provider, Request $request, Subjects $subjects, PlatformAuth $auth, MailLinks $links): RedirectResponse
     {
         $operator = $this->providers->find($provider);
 
@@ -72,7 +73,10 @@ final class SocialController extends Controller
             // their relationship with the user, not ours.
             if ($provisioning->created && $principal->email !== null) {
                 $token = app(EmailVerification::class)->issue($subject->id, $principal->email);
-                Mail::to($principal->email)->send(new EmailVerificationMail(route('verification.verify', $token)));
+                Mail::to($principal->email)->send(new EmailVerificationMail(
+                    // MailLinks: mailed, so the origin comes from the deployment.
+                    $links->route('verification.verify', $token),
+                ));
             }
         } catch (AccountExistsForEmail) {
             // Don't dead-end: hold the verified identity aside and ask the user to

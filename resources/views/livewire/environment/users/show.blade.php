@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Illuminate\Support\Str;
 use App\Platform\GrantAccessRole;
+use App\Platform\MailLinks;
 use App\Platform\EnvironmentAdminAuth;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
@@ -249,19 +250,19 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $this->issuedPassword = null;
     }
 
-    public function sendPasswordReset(PasswordReset $resets): void
+    public function sendPasswordReset(PasswordReset $resets, MailLinks $links): void
     {
         $user = $this->user();
 
         $token = $resets->request($user->email);
         if (is_string($token)) {
-            Mail::to($user->email)->send(new PasswordResetMail(route('password.reset', $token)));
+            Mail::to($user->email)->send(new PasswordResetMail($links->route('password.reset', $token)));
         }
 
         $this->dispatch('toast', message: 'Password reset email sent to '.$user->email.'.');
     }
 
-    public function resendVerification(EmailVerification $verification): void
+    public function resendVerification(EmailVerification $verification, MailLinks $links): void
     {
         $user = $this->user();
         if ($user->email_verified_at !== null) {
@@ -269,7 +270,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         }
 
         $token = $verification->issue($user->id, $user->email);
-        Mail::to($user->email)->send(new EmailVerificationMail(route('verification.verify', $token)));
+        Mail::to($user->email)->send(new EmailVerificationMail($links->route('verification.verify', $token)));
 
         $this->dispatch('toast', message: 'Verification email sent to '.$user->email.'.');
     }

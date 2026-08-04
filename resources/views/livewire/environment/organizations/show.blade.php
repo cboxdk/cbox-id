@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\GrantAccessRole;
+use App\Platform\MailLinks;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -341,7 +342,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         }
     }
 
-    public function invite(Invitations $invitations): void
+    public function invite(Invitations $invitations, MailLinks $links): void
     {
         $org = $this->org();
 
@@ -357,7 +358,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         Mail::to($this->inviteEmail)->send(new InvitationMail(
             organization: $org->name,
             inviter: app(EnvironmentAdminAuth::class)->current()->name ?? 'An administrator',
-            url: route('invitation.accept', $pending->token),
+            url: $links->route('invitation.accept', $pending->token),
         ));
 
         // Park the chosen access roles for this email — applied on acceptance
