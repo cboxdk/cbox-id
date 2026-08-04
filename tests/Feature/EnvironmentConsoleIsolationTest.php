@@ -7,6 +7,9 @@ use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Governance\Contracts\AccessReviews;
+use Cbox\Id\Governance\Enums\CampaignStatus;
+use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -26,6 +29,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -280,4 +284,58 @@ it('refuses a deep link to another environment\'s record', function (): void {
     }
 
     expect($reachable)->toBe([], 'another environment\'s record opened on: '.implode(', ', $reachable));
+});
+
+/**
+ * The sweep above is cross-ENVIRONMENT, and the environment scope is what refuses every
+ * one of those. That is the easier tenancy boundary, and it left a whole class untested:
+ * many ORGANIZATIONS share one environment, so a page fenced only by
+ * `BelongsToEnvironment` is not fenced at all against the tenant next door.
+ *
+ * Governance was the one page in the console that had no second fence — it resolved on
+ * the primary key alone — and it is the worst page to leave open: the read is a
+ * certification worklist naming every reviewed subject, and `close()` APPLIES the revokes
+ * on it, so the same deep link is a write that strips access inside another tenant.
+ */
+it('refuses a deep link to another organization\'s access review, read and write', function (): void {
+    // The attacker: an Admin, on the ORGANIZATION plane, of their own organization. This
+    // is what `ConsoleScope::assertMayAdminister()` answers true for — and it says
+    // nothing whatsoever about WHICH organization.
+    [, $attackerOrg] = actingAsRole(MembershipRole::Admin);
+
+    // The victim: a different organization in the SAME environment, with a real review
+    // open over a real member — so a leak has something recognizable to leak.
+    $victimOrg = app(Organizations::class)->create(new NewOrganization('Zarquon Co', 'zarquon-co'));
+    $victim = app(Subjects::class)->create('zarquon@victim.example', 'Zarquon Person', 'a-strong-unbreached-passphrase');
+    app(Memberships::class)->add($victimOrg->id, $victim->id, MembershipRole::Member);
+
+    $reviews = app(AccessReviews::class);
+    $victimCampaign = $reviews->open($victimOrg->id, 'Zarquon Q3 review');
+    $ownCampaign = $reviews->open($attackerOrg->id, 'Own Q3 review');
+
+    // The fixture has to be capable of leaking, or the refusals below prove nothing.
+    expect($reviews->itemsFor($victimCampaign->id))->not->toBeEmpty();
+
+    // READ — the deep link mounted with the victim's id.
+    Volt::test('console.governance.show', ['campaign' => $victimCampaign->id])->assertNotFound();
+
+    // …and their OWN campaign still opens, so the refusal above is a fence rather than a
+    // page that stopped working.
+    Volt::test('console.governance.show', ['campaign' => $ownCampaign->id])->assertOk();
+
+    // WRITE — mounted legitimately, then the id swapped on the wire. `campaignId` is a
+    // plain public property, so this is a real request shape and not a contrivance; it is
+    // also why the fence has to live in the per-request resolve rather than in mount()
+    // alone. The refusal lands before `close()` can run, which is the point: `close()`
+    // applies every revoke, so it must be unreachable rather than merely unsuccessful.
+    Volt::test('console.governance.show', ['campaign' => $ownCampaign->id])
+        ->set('campaignId', $victimCampaign->id)
+        ->assertNotFound();
+
+    expect(CertificationCampaign::query()->whereKey($victimCampaign->id)->value('status'))
+        ->toBe(CampaignStatus::Open)
+        // close() applies the campaign's PendingPolicy (Revoke by default) to every
+        // un-reviewed item, so a successful foreign close would have taken this
+        // membership with it.
+        ->and(app(Memberships::class)->of($victimOrg->id, $victim->id))->not->toBeNull();
 });

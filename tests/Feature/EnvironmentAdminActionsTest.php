@@ -239,6 +239,14 @@ it('exercises the governance detail mutating action (close)', function (): void 
     $orgId = makeOrg('gov-org');
     $campaign = app(AccessReviews::class)->open($orgId, 'Q3');
 
+    // Choose the organization, as the console chrome's picker does. Applying revokes now
+    // goes through ConsoleScope::requireOrganizationId() rather than reading the
+    // campaign's own organization_id back out of the record — which is what made the
+    // framework's ownership assertion compare a campaign to itself and pass for any
+    // caller. Opening a review already required a selection (governance/create), so this
+    // states a precondition the flow always had rather than adding one.
+    app(ConsoleScope::class)->chooseOrganization($orgId);
+
     // note: certify() and revoke() require a seeded campaign item (a snapshotted role
     // assignment / membership for a subject in the org). A freshly opened campaign over
     // an empty org has no items, so only close() is exercised here.
@@ -248,6 +256,24 @@ it('exercises the governance detail mutating action (close)', function (): void 
 
     expect(CertificationCampaign::query()->whereKey($campaign->id)->value('status'))
         ->toBe(CampaignStatus::Closed);
+});
+
+it('refuses to close a review before an organization is chosen', function (): void {
+    // The other half of the same fix. `close()` used to pass the campaign's OWN
+    // `organization_id` to the framework's ownership assertion, so the assertion compared
+    // the record to itself and passed for every caller — the check existed and could not
+    // fail. It asks the SCOPE now, which means an environment administrator who has not
+    // named an organization is refused rather than applying revokes on one they never
+    // chose. Opening a review already required a selection, so nothing legitimate lost it.
+    crudSetup();
+    $campaign = app(AccessReviews::class)->open(makeOrg('gov-unchosen'), 'Q4');
+
+    Volt::test('console.governance.show', ['campaign' => $campaign->id])
+        ->call('close')
+        ->assertForbidden();
+
+    expect(CertificationCampaign::query()->whereKey($campaign->id)->value('status'))
+        ->toBe(CampaignStatus::Open);
 });
 
 it('exercises the vault detail mutating actions (startRotate, rotate, addGrant, revokeGrant, revoke)', function (): void {

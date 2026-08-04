@@ -18,9 +18,9 @@ use Livewire\Volt\Component;
  * membership, each certified or revoked, and the close action that applies revokes.
  *
  * Every read/write re-resolves the campaign within THIS environment (the
- * CertificationCampaign model's BelongsToEnvironment scope) and 404s otherwise — an
- * id from another plane never matches (deny-by-default), so a foreign close can never
- * apply. The acting reviewer is the env-admin account member, resolved from session.
+ * CertificationCampaign model's BelongsToEnvironment scope) AND within the acting
+ * organization, then 404s — see {@see self::resolve()}. The acting reviewer is the
+ * env-admin account member, resolved from session.
  */
 new #[Layout('components.layouts.console', ['title' => 'Access review'])] class extends Component
 {
@@ -40,15 +40,43 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
 
     public function mount(string $campaign): void
     {
-        $model = CertificationCampaign::query()->whereKey($campaign)->first();
-        abort_if($model === null, 404);
-
-        $this->campaignId = $model->id;
+        $this->campaignId = $this->resolve($campaign)->id;
     }
 
     private function campaign(): CertificationCampaign
     {
-        $model = CertificationCampaign::query()->whereKey($this->campaignId)->first();
+        return $this->resolve($this->campaignId);
+    }
+
+    /**
+     * The campaign this page acts on, or 404.
+     *
+     * Fenced to the acting organization, not merely to the environment. This page
+     * resolved on the primary key alone, and the environment scope is NOT a tenant
+     * boundary here — many organizations share one environment — so an Admin of any
+     * organization could deep-link another's campaign id and get the whole certification
+     * worklist: every reviewed subject's name, email and role names. `close()` then
+     * APPLIES every revoke on it, which made the same id a cross-organization write that
+     * strips access inside somebody else's tenant.
+     *
+     * The ownership argument the framework offers ({@see AccessReviews::close()} takes an
+     * organization id) could not catch it either, because the campaign's OWN
+     * `organization_id` was what got fed back in — an ownership check compared against
+     * itself. It is the ACTING organization that has to bound the lookup, which is what
+     * every sibling in this console already does ({@see ConsoleScope}).
+     *
+     * With no organization chosen — only reachable by an environment administrator —
+     * the whole environment resolves, which is the overview the list already shows.
+     */
+    private function resolve(string $id): CertificationCampaign
+    {
+        $actingOrganizationId = app(ConsoleScope::class)->organizationId();
+
+        $model = CertificationCampaign::query()
+            ->whereKey($id)
+            ->when($actingOrganizationId !== null, fn ($q) => $q->where('organization_id', $actingOrganizationId))
+            ->first();
+
         abort_if($model === null, 404);
 
         return $model;
@@ -56,12 +84,12 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
 
     public function certify(string $itemId, AccessReviews $reviews): void
     {
-        $reviews->certify($itemId, $this->reviewerId(), $this->campaign()->organization_id);
+        $reviews->certify($itemId, $this->reviewerId(), $this->writeOrganizationId());
     }
 
     public function revoke(string $itemId, AccessReviews $reviews): void
     {
-        $reviews->revoke($itemId, $this->reviewerId(), $this->campaign()->organization_id);
+        $reviews->revoke($itemId, $this->reviewerId(), $this->writeOrganizationId());
     }
 
     /**
@@ -76,8 +104,25 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
             return;
         }
 
-        $reviews->close($campaign->id, $campaign->organization_id);
+        $reviews->close($campaign->id, $this->writeOrganizationId());
         $this->dispatch('toast', message: 'Access review closed — revoked access was applied.');
+    }
+
+    /**
+     * The organization a write is attributed to and checked against.
+     *
+     * `requireOrganizationId()`, never `$campaign->organization_id`. Reading the id off
+     * the record being written is what made the framework's ownership assertion vacuous:
+     * it compared the campaign to itself and passed for every caller. Asking the scope
+     * instead means the assertion compares the record to the ADMINISTRATOR, which is the
+     * question it was written to answer — and an environment administrator who has chosen
+     * no organization is refused rather than allowed to apply revokes environment-wide.
+     * No new burden: opening a review already requires a chosen organization (see
+     * governance/create), so a campaign that exists was named against one.
+     */
+    private function writeOrganizationId(): string
+    {
+        return app(ConsoleScope::class)->requireOrganizationId();
     }
 
     /**
