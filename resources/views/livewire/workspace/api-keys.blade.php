@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\StepUpReason;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
 use Cbox\Id\Platform\Enums\AccountRole;
@@ -48,13 +49,17 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 
     public function createKey(AccountAuth $auth, AccountApiKeys $keys): void
     {
-        if ($this->requiresSudo('workspace.api-keys')) {
+        $account = $auth->current()?->account;
+
+        // Authorization FIRST, then the step-up. It ran the other way round, which handed
+        // a member who may not mint anything a password prompt and then refused them in
+        // silence once they had typed it — and taught everybody else that the prompt is
+        // something you get past rather than something that means what it says.
+        if ($account === null || ! $auth->current()->role->canManageMembers()) {
             return;
         }
 
-        $account = $auth->current()?->account;
-
-        if ($account === null || ! $auth->current()->role->canManageMembers()) {
+        if ($this->requiresSudo('workspace.api-keys', 'An account API key acts with this role across the whole workspace, and its value is shown once.')) {
             return;
         }
 
@@ -76,13 +81,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
         // non-sudo session could not MINT persistence — create requires the step-up — but
         // it could destroy the machine credentials that run provisioning and automation,
         // which is a denial of service the same session was otherwise held back from.
-        if ($this->requiresSudo('workspace.api-keys')) {
-            return;
-        }
-
         $current = $auth->current();
 
         if ($current === null || ! $current->role->canManageMembers()) {
+            return;
+        }
+
+        if ($this->requiresSudo('workspace.api-keys', 'Revoking an API key stops whatever is using it, immediately.')) {
             return;
         }
 
@@ -95,13 +100,23 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
         }
     }
 
-    private function requiresSudo(string $returnRoute): bool
+    /**
+     * True when the member has been sent to re-enter their password first.
+     *
+     * `$reason` is required, not decorative: the step-up screen otherwise says "this is a
+     * protected action", which is the sentence people learn to type a password past.
+     */
+    private function requiresSudo(string $returnRoute, string $reason): bool
     {
         if (app(WorkspaceSudo::class)->confirmed()) {
             return false;
         }
 
-        session()->put('workspace.sudo.intended', route($returnRoute));
+        $intended = route($returnRoute);
+
+        session()->put('workspace.sudo.intended', $intended);
+        StepUpReason::record('workspace.sudo', $reason, $intended);
+
         $this->redirectRoute('workspace.sudo', navigate: false);
 
         return true;

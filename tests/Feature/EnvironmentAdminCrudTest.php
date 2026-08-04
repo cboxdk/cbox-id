@@ -363,6 +363,7 @@ it('rejects an out-of-environment organization for an inline-hook registration',
     // …and with the refused choice never taken there is no organization to register
     // against, so the endpoint is not created at all rather than landing on whichever
     // organization a downstream default would have picked.
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('hook', HookPoint::TokenMinting->value)
         ->set('url', 'https://example.com/hook')
@@ -445,6 +446,7 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
     // Environment-wide: crudSetup() picks no organization, and the merged create page
     // takes its organization from the console scope rather than from a field. An app the
     // ENVIRONMENT owns is what this plane always registered — now it says so.
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Logout App')
         ->set('environmentWide', true)
@@ -472,6 +474,7 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
 it('refuses a cleartext post-logout redirect URI on a public host', function (): void {
     crudSetup();
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Insecure Logout App')
         ->set('environmentWide', true)

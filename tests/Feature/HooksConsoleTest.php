@@ -41,6 +41,7 @@ it('registers a hook and reveals the signing secret once', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     $orgId = hooksAdmin();
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('hook', 'token_minting')
         ->set('url', 'https://hooks.example.test/token')
@@ -62,6 +63,7 @@ it('dismisses the revealed secret', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     $orgId = hooksAdmin();
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/token')
         ->call('register')
@@ -82,6 +84,7 @@ it('pauses, activates then removes an endpoint', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     $orgId = hooksAdmin();
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/token')
         ->call('register')
@@ -144,5 +147,6 @@ it('forbids a non-admin member', function (): void {
     hooksAdmin(MembershipRole::Member);
 
     Volt::test('console.hooks.index')->assertForbidden();
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')->assertForbidden();
 })->group('security');

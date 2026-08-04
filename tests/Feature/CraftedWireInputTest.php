@@ -113,6 +113,7 @@ it('refuses a crafted hook point instead of throwing', function (): void {
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, app(Organizations::class)->find($org->id), MembershipRole::Admin);
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('hook', 'definitely_not_a_hook_point')
         ->set('url', 'https://example.test/hook')

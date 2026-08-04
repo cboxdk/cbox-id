@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\StepUpReason;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -74,11 +75,15 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 
     public function createKey(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
     {
-        if ($this->requiresSudo('workspace.environment-keys')) {
+        // Authorization FIRST, then the step-up. It ran the other way round, which handed
+        // a member who may not mint anything a password prompt and then refused them in
+        // silence once they had typed it — and taught everybody else that the prompt is
+        // something you get past rather than something that means what it says.
+        if (! $this->guard($auth, $members)) {
             return;
         }
 
-        if (! $this->guard($auth, $members)) {
+        if ($this->requiresSudo('workspace.environment-keys', 'An environment API key reads and writes this environment\'s organizations and people over the API, and its value is shown once.')) {
             return;
         }
 
@@ -108,11 +113,11 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         // non-sudo session could not MINT persistence — create requires the step-up — but
         // it could destroy the machine credentials that run provisioning and automation,
         // which is a denial of service the same session was otherwise held back from.
-        if ($this->requiresSudo('workspace.environment-keys')) {
+        if (! $this->guard($auth, $members)) {
             return;
         }
 
-        if (! $this->guard($auth, $members)) {
+        if ($this->requiresSudo('workspace.environment-keys', 'Revoking an environment key stops whatever is using it, immediately.')) {
             return;
         }
 
@@ -143,13 +148,23 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
         return in_array($this->selectedEnvironment, $members->accessibleEnvironmentIds($member), true);
     }
 
-    private function requiresSudo(string $returnRoute): bool
+    /**
+     * True when the member has been sent to re-enter their password first.
+     *
+     * `$reason` is required, not decorative: the step-up screen otherwise says "this is a
+     * protected action", which is the sentence people learn to type a password past.
+     */
+    private function requiresSudo(string $returnRoute, string $reason): bool
     {
         if (app(WorkspaceSudo::class)->confirmed()) {
             return false;
         }
 
-        session()->put('workspace.sudo.intended', route($returnRoute));
+        $intended = route($returnRoute);
+
+        session()->put('workspace.sudo.intended', $intended);
+        StepUpReason::record('workspace.sudo', $reason, $intended);
+
         $this->redirectRoute('workspace.sudo', navigate: false);
 
         return true;

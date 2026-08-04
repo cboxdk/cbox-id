@@ -565,13 +565,16 @@ function confirmConsoleStepUp(): void
  * had ever POSTed to the endpoint, so there was no path that ran the middleware at all.
  *
  * @param  list<mixed>  $params
+ * @param  array<string, mixed>  $updates  form state to send with the call, as `wire:model`
+ *                                         does — the properties a person would have typed
+ *                                         before pressing the button
  */
-function livewireUpdate(string $pageUrl, string $component, string $method, array $params = []): TestResponse
+function livewireUpdate(string $pageUrl, string $component, string $method, array $params = [], array $updates = []): TestResponse
 {
     $page = test()->get($pageUrl);
     $page->assertSuccessful();
 
-    return replaySnapshot($pageUrl, snapshotFor((string) $page->getContent(), $component), $method, $params);
+    return replaySnapshot($pageUrl, snapshotFor((string) $page->getContent(), $component), $method, $params, $updates);
 }
 
 /**
@@ -612,9 +615,14 @@ function snapshotFor(string $html, string $component): string
  * exists for: a page rendered while a step-up window was open must not go on acting once
  * it has closed.
  *
+ * `$updates` is how a CREATE page is driven: its action mints nothing until the form is
+ * filled, so a test that sends no properties proves only that validation runs. Livewire
+ * applies these before the call, exactly as the browser sends `wire:model` state.
+ *
  * @param  list<mixed>  $params
+ * @param  array<string, mixed>  $updates
  */
-function replaySnapshot(string $pageUrl, string $snapshot, string $method, array $params = []): TestResponse
+function replaySnapshot(string $pageUrl, string $snapshot, string $method, array $params = [], array $updates = []): TestResponse
 {
     // Same ORIGIN as the page. The endpoint's PATH is Livewire's to choose — it is
     // anonymised per application key, so a hardcoded `/livewire/update` simply 404s.
@@ -626,7 +634,7 @@ function replaySnapshot(string $pageUrl, string $snapshot, string $method, array
             '_token' => csrf_token(),
             'components' => [[
                 'snapshot' => $snapshot,
-                'updates' => (object) [],
+                'updates' => $updates === [] ? (object) [] : $updates,
                 'calls' => [['path' => '', 'method' => $method, 'params' => $params]],
             ]],
         ],

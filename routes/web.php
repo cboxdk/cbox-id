@@ -579,8 +579,18 @@ Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(fun
         Volt::route('/audit', 'console.audit')->name('environment.audit');
 
         // Log streaming (SIEM) — routable list → create → detail.
+        //
+        // The create page is BEHIND `env.sudo`, because registering a stream mints its
+        // HMAC signing key (or echoes the token you supply) and reveals it once, which is
+        // the same class of credential every other console create page now asks for a
+        // password before minting. Gated on the ROUTE rather than in the component, and
+        // deliberately so: this page is the environment plane's alone — it is not one of
+        // the merged pair-per-plane components — and ConsoleStepUp resolves the plane from
+        // the session, which answers "organization" for a browser that happens to hold a
+        // subject session on this host. Naming the plane here is the only way to be sure
+        // the widest of the three windows is the one that has to be open.
         Volt::route('/log-streaming', 'environment.audit-streams.index')->name('environment.audit-streams');
-        Volt::route('/log-streaming/new', 'environment.audit-streams.create')->name('environment.audit-streams.create');
+        Volt::route('/log-streaming/new', 'environment.audit-streams.create')->middleware('env.sudo')->name('environment.audit-streams.create');
         Volt::route('/log-streaming/{stream}', 'environment.audit-streams.show')->name('environment.audit-streams.show');
         Volt::route('/analytics', 'environment.analytics')->name('environment.analytics');
         Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');

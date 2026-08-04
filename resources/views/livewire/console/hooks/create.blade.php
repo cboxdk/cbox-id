@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -45,6 +46,15 @@ new #[Layout('components.layouts.console', ['title' => 'New inline hook'])] clas
     public function boot(): void
     {
         app(ConsoleScope::class)->assertMayAdminister();
+    }
+
+    /**
+     * Ask for the step-up at the door, before there is a form to lose — see
+     * {@see stepUpPending()} for what it guards and why the write asks again.
+     */
+    public function mount(): void
+    {
+        $this->stepUpPending();
     }
 
     public string $hook = 'token_minting';
@@ -89,6 +99,12 @@ new #[Layout('components.layouts.console', ['title' => 'New inline hook'])] clas
             return null;
         }
 
+        // LAST, after authorization and after the refusals above — the order every other
+        // credential in this console uses. Normally a no-op, because mount() already asked.
+        if ($this->stepUpPending()) {
+            return null;
+        }
+
         $registered = $actions->register(
             HookPoint::from($this->hook),
             $this->url,
@@ -120,6 +136,32 @@ new #[Layout('components.layouts.console', ['title' => 'New inline hook'])] clas
             // administrator acts on several organizations or implicitly on their own.
             'mayScopeEnvironmentWide' => app(ConsoleScope::class)->plane()->choosesOrganization(),
         ];
+    }
+
+    /**
+     * True when the administrator has been sent to re-enter their password first.
+     *
+     * Registration mints the secret the endpoint verifies our calls with and hands it
+     * over in plaintext. There is no rotation on this resource at all, so creation is not
+     * merely one way to reach the credential — it is the only one, which makes an ungated
+     * create the whole surface rather than a way around a gate.
+     */
+    private function stepUpPending(): bool
+    {
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'hooks.create',
+            'environment.hooks.create',
+            [],
+            'Registering an inline hook issues a signing secret and puts your endpoint inside the sign-in path.',
+        );
+
+        if ($sudo === null) {
+            return false;
+        }
+
+        $this->redirectRoute($sudo, navigate: false);
+
+        return true;
     }
 
     /**

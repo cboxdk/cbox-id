@@ -78,6 +78,7 @@ it('refuses a create from an account whose address we have not confirmed', funct
     $me = app(CurrentUser::class);
     expect($me->emailVerified())->toBeFalse();
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://example.test/hook')
         ->set('eventTypes', ['user.created'])
@@ -98,6 +99,7 @@ it('allows the same create once the address is confirmed', function (): void {
     app(Subjects::class)->markEmailVerified($me->id(), (string) $subject?->email);
     $me->refreshSubject(app(Subjects::class)->find($me->id()));
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://example.test/hook')
         ->set('eventTypes', ['user.created'])

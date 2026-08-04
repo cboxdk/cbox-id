@@ -278,6 +278,7 @@ it('serves inline hooks from one component on the environment plane', function (
     anEnvironmentAdminActingOn('tenant-hooks');
 
     $this->get(route('environment.hooks'))->assertOk()->assertSee('Inline hooks');
+    confirmConsoleStepUp();
     $this->get(route('environment.hooks.create'))->assertOk();
 })->group('security');
 
@@ -291,6 +292,7 @@ it('serves inline hooks from the same component on the organization plane', func
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
     Volt::test('console.hooks.index')->assertOk()->assertSee('Inline hooks');
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')->assertOk();
 
     expect(Route::has('hooks.show'))->toBeTrue()
@@ -305,9 +307,11 @@ it('offers every hook point on both planes', function (): void {
     $expected = array_map(fn (HookPoint $point): string => $point->label(), HookPoint::cases());
 
     anEnvironmentAdminActingOn('tenant-hookpoints');
+    confirmConsoleStepUp();
     $environment = Volt::test('console.hooks.create');
 
     actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
     $organization = Volt::test('console.hooks.create');
 
     foreach ($expected as $label) {
@@ -320,6 +324,7 @@ it('registers a hook against the organization from the scope', function (): void
     config(['cbox-id.external_actions.verify_url' => false]);
     $orgId = anEnvironmentAdminActingOn('tenant-hooks-scoped');
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/token')
         ->call('register')
@@ -333,6 +338,7 @@ it('refuses to register a hook before an organization is chosen', function (): v
     anEnvironmentAdminActingOn('tenant-hooks-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/token')
         ->call('register')
@@ -347,6 +353,7 @@ it('keeps environment-wide hook registration on the environment plane', function
     config(['cbox-id.external_actions.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-hooks-wide');
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/everyone')
         ->set('environmentWide', true)
@@ -364,6 +371,7 @@ it('refuses environment-wide registration from the organization plane', function
     config(['cbox-id.external_actions.verify_url' => false]);
     actingAsRole(MembershipRole::Owner);
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/everyone')
         ->set('environmentWide', true)
@@ -397,6 +405,7 @@ it('offers dismissing the revealed secret on the environment plane too', functio
     config(['cbox-id.external_actions.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-hooks-secret');
 
+    confirmConsoleStepUp();
     Volt::test('console.hooks.create')
         ->set('url', 'https://hooks.example.test/token')
         ->call('register')
@@ -740,6 +749,7 @@ it('serves webhooks from one component on the environment plane', function (): v
     anEnvironmentAdminActingOn('tenant-webhooks');
 
     $this->get(route('environment.webhooks'))->assertOk()->assertSee('Webhooks');
+    confirmConsoleStepUp();
     $this->get(route('environment.webhooks.create'))->assertOk();
 })->group('security');
 
@@ -754,6 +764,7 @@ it('serves webhooks from the same component on the organization plane', function
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
     Volt::test('console.webhooks.index')->assertOk()->assertSee('Webhooks');
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')->assertOk();
 
     expect(Route::has('webhooks.show'))->toBeTrue()
@@ -767,9 +778,11 @@ it('offers the same event catalogue on both planes', function (): void {
     // a role change or an invitation being accepted — in the console whose whole job is
     // telling their systems what happened — and nothing on the page said so.
     anEnvironmentAdminActingOn('tenant-webhook-events');
+    confirmConsoleStepUp();
     $environment = Volt::test('console.webhooks.create');
 
     actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
     $organization = Volt::test('console.webhooks.create');
 
     foreach (WebhookEventCatalogue::EVENTS as $event) {
@@ -786,6 +799,7 @@ it('registers an endpoint against the organization from the scope', function ():
     config(['cbox-id.webhooks.verify_url' => false]);
     $orgId = anEnvironmentAdminActingOn('tenant-webhooks-scoped');
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://hooks.example.test/events')
         ->set('eventTypes', ['user.created'])
@@ -800,6 +814,7 @@ it('refuses to register an endpoint before an organization is chosen', function 
     anEnvironmentAdminActingOn('tenant-webhooks-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://hooks.example.test/events')
         ->set('eventTypes', ['user.created'])
@@ -817,6 +832,7 @@ it('keeps environment-wide webhook registration on the environment plane', funct
     config(['cbox-id.webhooks.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-webhooks-wide');
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://hooks.example.test/everyone')
         ->set('eventTypes', ['user.created'])
@@ -835,6 +851,7 @@ it('refuses environment-wide webhook registration from the organization plane', 
     config(['cbox-id.webhooks.verify_url' => false]);
     actingAsRole(MembershipRole::Owner);
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://hooks.example.test/everyone')
         ->set('eventTypes', ['user.created'])
@@ -1008,6 +1025,7 @@ it('keeps the revealed signing secret out of the wire snapshot on both planes', 
     config(['cbox-id.webhooks.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-webhooks-secret');
 
+    confirmConsoleStepUp();
     Volt::test('console.webhooks.create')
         ->set('url', 'https://hooks.example.test/events')
         ->set('eventTypes', ['user.created'])
@@ -1264,6 +1282,7 @@ it('serves apps from one component on the environment plane', function (): void 
     anEnvironmentAdminActingOn('tenant-apps');
 
     $this->get(route('environment.clients'))->assertOk()->assertSee('API keys');
+    confirmConsoleStepUp();
     $this->get(route('environment.clients.create'))->assertOk();
 })->group('security');
 
@@ -1277,6 +1296,7 @@ it('serves apps from the same component on the organization plane', function ():
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
     Volt::test('console.clients.index')->assertOk()->assertSee('API keys');
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')->assertOk();
 
     expect(Route::has('clients.show'))->toBeTrue()
@@ -1289,6 +1309,7 @@ it('registers an app against the organization from the scope', function (): void
     // different depending which door you came through.
     $orgId = anEnvironmentAdminActingOn('tenant-apps-scoped');
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Support Portal')
         ->set('redirectUris', 'https://portal.example.test/callback')
@@ -1302,6 +1323,7 @@ it('refuses to register an app before an organization is chosen', function (): v
     anEnvironmentAdminActingOn('tenant-apps-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Support Portal')
         ->set('redirectUris', 'https://portal.example.test/callback')
@@ -1319,6 +1341,7 @@ it('keeps environment-owned registration on the environment plane', function ():
     // survives as its own explicit choice rather than as the silent default.
     anEnvironmentAdminActingOn('tenant-apps-wide');
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Platform Console')
         ->set('environmentWide', true)
@@ -1335,6 +1358,7 @@ it('refuses environment-owned registration from the organization plane', functio
     // client-settable, so the refusal is in the action.
     actingAsRole(MembershipRole::Owner);
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Everyone\'s App')
         ->set('environmentWide', true)
@@ -1494,6 +1518,7 @@ it('offers dismissing the revealed client secret on both planes', function (): v
     // state, and only one of them held the plaintext out of the wire snapshot.
     $orgId = anEnvironmentAdminActingOn('tenant-apps-secret');
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Secretive App')
         ->set('redirectUris', 'https://secretive.example.test/callback')
@@ -1522,6 +1547,7 @@ it('holds an unverified organization admin back from registering an app, and onl
     // this same request onto the other plane.
     $orgId = anEnvironmentAdminActingOn('tenant-apps-unverified');
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Env Admin App')
         ->set('redirectUris', 'https://envadmin.example.test/callback')
@@ -1532,6 +1558,7 @@ it('holds an unverified organization admin back from registering an app, and onl
 
     actingAsRole(MembershipRole::Owner, emailVerified: false);
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Unverified App')
         ->set('redirectUris', 'https://unverified.example.test/callback')
@@ -1592,6 +1619,7 @@ it('serves sync users in from one component on the environment plane', function 
         ->assertSee('New directory')
         ->assertSee('Invite your IT admin');
 
+    confirmConsoleStepUp();
     $this->get(route('environment.directories.create'))->assertOk();
 })->group('security');
 
@@ -1606,6 +1634,7 @@ it('serves sync users in from the same component on the organization plane', fun
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
     Volt::test('console.directories.index')->assertOk()->assertSee('Sync users in');
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')->assertOk();
 
     expect(Route::has('directories.show'))->toBeTrue()
@@ -1625,9 +1654,11 @@ it('offers SCIM and both pull providers on both planes', function (): void {
     );
 
     anEnvironmentAdminActingOn('tenant-dir-providers');
+    confirmConsoleStepUp();
     $environment = Volt::test('console.directories.create');
 
     actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
     $organization = Volt::test('console.directories.create');
 
     foreach ($expected as $label) {
@@ -1644,9 +1675,11 @@ it('shows each pull provider its own directory guide, on both planes', function 
     // got an empty credential box and no hint that a directory wants a service account
     // rather than the OAuth client they had in front of them.
     anEnvironmentAdminActingOn('tenant-dir-guide');
+    confirmConsoleStepUp();
     $planes = [Volt::test('console.directories.create')];
 
     actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
     $planes[] = Volt::test('console.directories.create');
 
     foreach ([DirectoryProvider::GoogleWorkspace, DirectoryProvider::MicrosoftEntra] as $provider) {
@@ -1678,6 +1711,7 @@ it('registers a directory against the organization from the scope', function ():
     // differently in each.
     $orgId = anEnvironmentAdminActingOn('tenant-dir-scoped');
 
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('name', 'Acme Okta SCIM')
         ->call('register')
@@ -1690,6 +1724,7 @@ it('refuses to register a directory before an organization is chosen', function 
     anEnvironmentAdminActingOn('tenant-dir-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('name', 'Acme Okta SCIM')
         ->call('register')
@@ -1723,6 +1758,7 @@ it('connects a pull directory on the environment plane', function (): void {
         new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra),
     ]));
 
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('provider', DirectoryProvider::GoogleWorkspace->value)
         ->set('googleServiceAccountJson', (string) json_encode([
@@ -1748,6 +1784,7 @@ it('refuses a pull directory whose credentials the provider rejects', function (
         new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra, verifies: false),
     ]));
 
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('provider', DirectoryProvider::MicrosoftEntra->value)
         ->set('entraTenantId', 'tenant')
@@ -1790,6 +1827,7 @@ it('offers dismissing the revealed bearer token on both planes', function (): vo
     // organization in the environment — had no way to take it off the screen.
     anEnvironmentAdminActingOn('tenant-dir-token');
 
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('name', 'Acme Okta SCIM')
         ->call('register')

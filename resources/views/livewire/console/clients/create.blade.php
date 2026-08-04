@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\ScopeCatalog;
 use App\Platform\VerifiedEmailGate;
 use App\Rules\SecureRedirectUri;
@@ -23,6 +24,10 @@ use Livewire\Volt\Component;
  * the session and the page routes to the app's detail page, which reveals it a single
  * time beside the values needed to wire the app up — only the SHA-256 hash is stored, so
  * it is never retrievable again (rotate mints a fresh one, shown once).
+ *
+ * Which is why this page is behind the same step-up as rotation ({@see ConsoleStepUp}).
+ * It hands over the identical credential; a gate on only the rotate button would have
+ * been a gate on the more expensive of two ways to get one.
  *
  * One component, both planes. The organization plane registered from an inline form on
  * the list with the organization implied; the environment plane from this page, with the
@@ -44,6 +49,24 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
     public function boot(): void
     {
         app(ConsoleScope::class)->assertMayAdminister();
+    }
+
+    /**
+     * Ask for the step-up at the door, before there is a form to lose.
+     *
+     * The gate that actually enforces is the one in {@see create()} — mount() never runs
+     * for a crafted POST to the update endpoint. This one is here for the person: a
+     * password prompt raised on submit sends them to another page and back to an empty
+     * form, and the form is where they have just described an app. Nothing on this page
+     * is worth reading before the prompt, so the prompt comes first.
+     *
+     * Deliberately NOT in boot(): boot() re-runs on every wire:model.live round trip, so
+     * a window lapsing while the form sat open would throw the work away mid-typing.
+     * mount() plus the write is the pair that costs nothing and protects everything.
+     */
+    public function mount(): void
+    {
+        $this->stepUpPending();
     }
 
     public string $name = '';
@@ -150,6 +173,15 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             return null;
         }
 
+        // LAST, after authorization and after every refusal above — the same order the
+        // rotation on the detail page uses, and for the same two reasons: a step-up in
+        // front of a 403 hands somebody who may not register anything a password prompt
+        // instead of a refusal, and one in front of a validation error teaches people to
+        // type it unread. Normally a no-op, because mount() already asked.
+        if ($this->stepUpPending()) {
+            return null;
+        }
+
         // Only catalog scopes from the picker, plus any advanced custom keys.
         $scopes = array_values(array_unique(array_merge(
             array_values(array_intersect($this->selectedScopes, $catalog->keys())),
@@ -186,6 +218,32 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             ['client' => $registered->client->id],
             navigate: true,
         );
+    }
+
+    /**
+     * True when the administrator has been sent to re-enter their password first.
+     *
+     * Registering a confidential app mints `csec_…` and puts it on the next screen, which
+     * is the same live credential rotation hands over — so it answers to the same gate.
+     * Gating rotation alone only moved the cheap path: create a second app instead of
+     * re-keying the first, and the plaintext arrives just the same.
+     */
+    private function stepUpPending(): bool
+    {
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'clients.create',
+            'environment.clients.create',
+            [],
+            'Registering an app issues a client secret, shown once on the next screen — it signs in as this app until it is rotated.',
+        );
+
+        if ($sudo === null) {
+            return false;
+        }
+
+        $this->redirectRoute($sudo, navigate: false);
+
+        return true;
     }
 
     /**

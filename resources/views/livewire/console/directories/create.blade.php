@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\DirectoryConnectors;
 use Cbox\Id\Directory\DirectoryPullSync;
@@ -61,6 +62,16 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
         app(ConsoleScope::class)->assertMayAdminister();
     }
 
+    /**
+     * Ask for the step-up at the door, before there is a form to lose — see
+     * {@see stepUpPending()}. It matters more here than anywhere: the pull half of this
+     * form is where an administrator pastes a Google service-account JSON by hand.
+     */
+    public function mount(): void
+    {
+        $this->stepUpPending();
+    }
+
     /** Which shape of directory is being connected. Validated against the enum. */
     public string $provider = 'scim';
 
@@ -106,6 +117,13 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
             // failure, and the form must survive to be resubmitted.
             $this->addError('name', 'Choose an organization before connecting a directory.');
 
+            return null;
+        }
+
+        // LAST, after authorization and after the refusals above — the same order the
+        // token rotation on the detail page uses. Normally a no-op, because mount()
+        // already asked.
+        if ($this->stepUpPending()) {
             return null;
         }
 
@@ -165,6 +183,15 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
             return null;
         }
 
+        // Same gate, immediately before the write. The pull path mints nothing and
+        // reveals nothing, so it is not the exfiltration shape the rest of this guards —
+        // but it seals a customer's provider credentials into the environment and opens a
+        // standing sync that creates and deactivates their people, which a session that
+        // cannot be shown to still be the administrator's has no business starting.
+        if ($this->stepUpPending()) {
+            return null;
+        }
+
         $directory = $directories->registerPull($organizationId, $provider->label(), $provider, $credentials);
 
         // Kick off the first sync now, so the administrator watches people arrive rather
@@ -187,6 +214,33 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
             ['directory' => $directory->id],
             navigate: true,
         );
+    }
+
+    /**
+     * True when the administrator has been sent to re-enter their password first.
+     *
+     * A SCIM registration mints `scim_…` — the bearer token that authenticates every
+     * inbound provisioning call for this organization — and hands it over in plaintext,
+     * which is precisely what the detail page's rotation was gated for. Gating only
+     * rotation left the cheaper path: register a second directory and read its token off
+     * the confirmation.
+     */
+    private function stepUpPending(): bool
+    {
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'directories.create',
+            'environment.directories.create',
+            [],
+            'Connecting a directory issues the credential that provisions people into this organization.',
+        );
+
+        if ($sudo === null) {
+            return false;
+        }
+
+        $this->redirectRoute($sudo, navigate: false);
+
+        return true;
     }
 
     /**

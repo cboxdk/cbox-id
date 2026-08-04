@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\StepUpReason;
 use App\Platform\WorkspaceSudo;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Illuminate\Support\Facades\RateLimiter;
@@ -55,12 +56,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Confirm it\'s you'])] 
         $sudo->confirm();
 
         $intended = session()->pull('workspace.sudo.intended');
+        StepUpReason::forget('workspace.sudo');
+
         $this->redirect(is_string($intended) ? $intended : route('workspace.security'), navigate: false);
     }
 
     /**
      * Where Cancel goes — the page that asked for the step-up, PEEKED not pulled: the
-     * person may still go on to confirm, and confirm() is what spends the intent.
+     * person may still go on to confirm, and confirm() is what spends the intent. The
+     * reason is read the same way and for the same reason: a wrong password re-renders,
+     * and the sentence saying what is waiting has to survive the second attempt.
      *
      * @return array<string, mixed>
      */
@@ -68,7 +73,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Confirm it\'s you'])] 
     {
         $intended = session()->get('workspace.sudo.intended');
 
-        return ['cancelHref' => is_string($intended) ? $intended : route('workspace.home')];
+        return [
+            'cancelHref' => is_string($intended) ? $intended : route('workspace.home'),
+            'stepUpReason' => StepUpReason::pending('workspace.sudo'),
+        ];
     }
 }; ?>
 
@@ -79,7 +87,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Confirm it\'s you'])] 
         </span>
         <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Confirm it's you</h1>
         <p class="mt-2 text-sm" style="color:var(--muted)">
-            This is a protected action. Re-enter your password to continue.
+            {{ $stepUpReason ?? 'This is a protected action.' }} Re-enter your password to continue.
         </p>
     </div>
 

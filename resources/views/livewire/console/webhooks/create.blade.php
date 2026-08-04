@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
@@ -40,6 +41,15 @@ new #[Layout('components.layouts.console', ['title' => 'New webhook'])] class ex
     public function boot(): void
     {
         app(ConsoleScope::class)->assertMayAdminister();
+    }
+
+    /**
+     * Ask for the step-up at the door, before there is a form to lose — see
+     * {@see stepUpPending()} for what it guards and why the write asks again.
+     */
+    public function mount(): void
+    {
+        $this->stepUpPending();
     }
 
     public string $url = '';
@@ -95,6 +105,12 @@ new #[Layout('components.layouts.console', ['title' => 'New webhook'])] class ex
             return null;
         }
 
+        // LAST, after authorization and after the refusals above — the same order the
+        // re-key on the detail page uses. Normally a no-op, because mount() already asked.
+        if ($this->stepUpPending()) {
+            return null;
+        }
+
         try {
             $registered = $webhooks->register($organizationId, $this->url, array_values($this->eventTypes));
         } catch (UnsafeWebhookUrl) {
@@ -130,6 +146,33 @@ new #[Layout('components.layouts.console', ['title' => 'New webhook'])] class ex
             // administrator acts on several organizations or implicitly on their own.
             'mayScopeEnvironmentWide' => app(ConsoleScope::class)->plane()->choosesOrganization(),
         ];
+    }
+
+    /**
+     * True when the administrator has been sent to re-enter their password first.
+     *
+     * Registration mints the signing secret this endpoint's receiver verifies with, and
+     * hands it over in plaintext — the same credential the detail page's re-key hands
+     * over, behind the same gate since the day that gate was written. Gating only the
+     * re-key left the shorter path open: register a second endpoint at the address you
+     * control and read its secret off the confirmation.
+     */
+    private function stepUpPending(): bool
+    {
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'webhooks.create',
+            'environment.webhooks.create',
+            [],
+            'Registering an endpoint issues a signing secret and starts sending it live events.',
+        );
+
+        if ($sudo === null) {
+            return false;
+        }
+
+        $this->redirectRoute($sudo, navigate: false);
+
+        return true;
     }
 
     /**

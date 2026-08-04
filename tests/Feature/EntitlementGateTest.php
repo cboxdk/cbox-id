@@ -71,7 +71,9 @@ it('shows the SCIM upsell and refuses every SCIM action for a non-entitled org',
     // Both shapes of "connect a directory" are refused, not just SCIM: the merged page
     // offers the two pull providers on this plane as well, and an entitlement gate that
     // only covers the form it was written against is not a gate.
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')->call('register')->assertForbidden();
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')->call('connectPull')->assertForbidden();
     Volt::test('console.directories.index')->call('invite')->assertForbidden();
 });
@@ -80,6 +82,7 @@ it('allows SCIM directory registration once the org is entitled', function () {
     $orgId = gateAdmin('gate-scim-allow');
     grantFeature($orgId, 'cbox-id-scim');
 
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('name', 'Okta')
         ->call('register')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
+use App\Platform\StepUpReason;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\RateLimiter;
@@ -78,7 +79,23 @@ new #[Layout('components.layouts.environment', ['title' => 'Confirm it\'s you'])
         $sudo->confirm();
 
         $intended = session()->pull('environment.sudo.intended');
+        StepUpReason::forget('environment.sudo');
+
         $this->redirect(is_string($intended) ? $intended : route('environment.home'), navigate: false);
+    }
+
+    /**
+     * Why this screen appeared, when whatever raised it said so.
+     *
+     * Read per render rather than pulled into a property: a wrong password re-renders,
+     * and the sentence explaining what is waiting on the other side has to still be there
+     * on the second attempt. It is spent in confirm(), with the intent it belongs to.
+     *
+     * @return array<string, mixed>
+     */
+    public function with(): array
+    {
+        return ['stepUpReason' => StepUpReason::pending('environment.sudo')];
     }
 }; ?>
 
@@ -89,7 +106,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Confirm it\'s you'])
         </span>
         <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Confirm it's you</h1>
         <p class="mt-2 text-sm" style="color:var(--muted)">
-            This is a protected action. Re-enter your password to continue.
+            {{ $stepUpReason ?? 'This is a protected action.' }} Re-enter your password to continue.
         </p>
     </div>
 

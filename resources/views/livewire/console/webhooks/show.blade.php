@@ -219,6 +219,7 @@ new #[Layout('components.layouts.console', ['title' => 'Webhook'])] class extend
             'webhooks.show',
             'environment.webhooks.show',
             ['webhook' => $this->endpointId],
+            'Re-keying this endpoint issues a new signing secret; deliveries signed with the old one stop verifying.',
         );
 
         if ($sudo !== null) {

@@ -332,6 +332,7 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
             'clients.show',
             'environment.clients.show',
             ['client' => $this->clientId],
+            'Rotating this app\'s secret issues a new one and stops the old one working immediately.',
         );
 
         if ($sudo !== null) {

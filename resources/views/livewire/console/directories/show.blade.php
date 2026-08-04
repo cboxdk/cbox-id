@@ -170,6 +170,7 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
             'directories.show',
             'environment.directories.show',
             ['directory' => $this->directoryId],
+            'Rotating this directory\'s bearer token stops the one your identity provider holds, until you paste the new one in.',
         );
 
         if ($sudo !== null) {

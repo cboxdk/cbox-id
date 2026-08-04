@@ -86,6 +86,14 @@ dataset('durable_access_sinks', [
 it('refuses every durable-access console action while impersonating (403)', function (string $component, string $method, array $args): void {
     impersonatingSubject();
 
+    // The step-up window, opened so the impersonation guard is the only thing left that
+    // can refuse. Several of these sinks are the credential-minting create pages, which
+    // now ask for a password before they will even render a form — without this the page
+    // would never load and the test would pass on the wrong refusal. An impersonator
+    // could not open this window for themselves (`admin/sudo` and both siblings carry
+    // BlockDuringImpersonation); handing it to them is what makes the assertion sharp.
+    confirmConsoleStepUp();
+
     Volt::test($component)->call($method, ...$args)->assertStatus(403);
 })->with('durable_access_sinks');
 

@@ -51,6 +51,7 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
     // on the directory's own detail page — flashed across the single redirect, because a
     // token that is shown once needs somewhere to be shown that is not the row you just
     // submitted.
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')
         ->set('name', 'Okta')
         ->call('register')
@@ -69,6 +70,7 @@ it('registers an OAuth client for the organization', function () {
     // A machine-to-machine app (client-credentials), so no redirect URI is needed;
     // its scopes come from the advanced/custom field. Registration moved to its own
     // routable page when the two consoles merged; the capability is unchanged.
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'CI Pipeline')
         ->set('grantAuthorizationCode', false)
@@ -90,6 +92,7 @@ it('registers an OAuth client for the organization', function () {
 it('registers an OAuth client with post-logout redirect URIs', function () {
     $orgId = owner();
 
+    confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'Support Portal')
         ->set('grantAuthorizationCode', true)
@@ -129,6 +132,7 @@ it('forbids a non-admin from registering a directory', function () {
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
     // The read gate now blocks a member at mount — they never reach register().
+    confirmConsoleStepUp();
     Volt::test('console.directories.create')->assertForbidden();
 });
 
