@@ -414,3 +414,39 @@ it('still lands an account member on their workspace', function (): void {
 
     expect($page->effects['redirect'] ?? '')->toBe(route('workspace.home'));
 })->group('security');
+
+/**
+ * The member memo must not answer for whoever was signed in a moment ago.
+ *
+ * `AccountAuth::current()` is memoised now — the lookup crosses into the platform root
+ * and was costing four to nine reads per page. A memo on an identity is the one kind that
+ * fails dangerously: answer from it after the session changed and the console renders one
+ * person's account under another person's session.
+ *
+ * Two accounts in one request, with a real sign-out between them, because that is the
+ * shape a person actually produces — switching accounts, or signing out on a shared
+ * machine and someone else signing in.
+ */
+it('does not answer for the previous identity after a sign-out', function (): void {
+    platformRootEnvironment();
+    installedDeployment();
+
+    $first = anAccountOwner('first@acme.example');
+    $second = anAccountOwner('second@acme.example');
+
+    $auth = app(AccountAuth::class);
+    $request = fn () => Request::create('/workspace/login', 'POST');
+
+    expect($auth->attempt($request(), 'first@acme.example', 'a-strong-unbreached-passphrase')->name)->toBe('Ok')
+        ->and(app(AccountAuth::class)->current()?->email)->toBe('first@acme.example');
+
+    // The subject session is repointed WITHOUT AccountAuth being told — which is what an
+    // account switch and an impersonation resume both do. Going through logout() instead
+    // would clear the memo and prove nothing about the key: the docblock on forgetMemo()
+    // is explicit that the key is what handles a DIFFERENT person, and the reset is only
+    // for the same person's freshly-written row. An unkeyed memo passes the logout path.
+    signInAsSubject((string) $second->subject_id);
+
+    expect(app(AccountAuth::class)->current()?->email)
+        ->toBe('second@acme.example', 'the memo answered for the account that just left');
+})->group('security');
