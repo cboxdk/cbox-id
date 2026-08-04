@@ -291,7 +291,12 @@ it('closes an open tenant console when the account\'s policy stops admitting pas
 
     nextRequest();
 
-    [$after, $chain] = chainFrom($this, 'https://cbox-id.test'.route('environment.home', [], false));
+    // Addressed by the host the fixture actually serves on, not by a literal.
+    // `serveOnTestHost()` takes that host from `app.url`, so a hardcoded `cbox-id.test`
+    // is only right on a machine whose `.env` happens to say so — on CI, which copies
+    // `.env.example`, the environment answered on `localhost` while the request arrived
+    // at `cbox-id.test`, and the chain ended somewhere nobody asserted.
+    [$after, $chain] = chainFrom($this, 'https://'.$result->environment->domain.route('environment.home', [], false));
 
     expect($after->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
         ->and(end($chain))->toBe('https://cboxid.com/login')
@@ -333,7 +338,8 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     $this->travel(2)->hours();
     signInAsMember($result->member);
 
-    [$response, $chain] = chainFrom($this, 'https://cbox-id.test/admin/handoff?token='.$token);
+    // Same as above: the host the fixture serves on, not the one this file used to name.
+    [$response, $chain] = chainFrom($this, 'https://'.$result->environment->domain.'/admin/handoff?token='.$token);
 
     expect($response->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
         ->and(end($chain))->toBe('https://cboxid.com/password/change')

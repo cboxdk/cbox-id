@@ -157,6 +157,22 @@ function installedDeployment(): void
  * Idempotent and first-come: an environment can only own a host if no other one already
  * does, so a test that provisions several gets host resolution for the first.
  */
+/**
+ * Give this environment the suite's own host, so a request that arrives on it resolves
+ * here rather than falling back to the platform root.
+ *
+ * ADDRESS THE RESULT BY `$environment->domain`, never by a literal. The host comes from
+ * `app.url`, which is the developer's `.env` — `https://cbox-id.test` on a machine set up
+ * for Herd, `http://localhost` on CI, which copies `.env.example`. Two tests wrote
+ * `https://cbox-id.test` into the request by hand and passed for a year on the machines
+ * where those two happened to agree, then failed on every CI engine at once: the fixture
+ * answered on one host and the request arrived at another, so the redirect chain ended
+ * somewhere neither test asserted.
+ *
+ * Returns early — leaving `domain` null — when there is no host to take or another
+ * environment already holds it, so a caller that ignores the return value and assumes a
+ * domain was set is making the same mistake in a quieter way.
+ */
 function serveOnTestHost(Environment $environment): Environment
 {
     $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
