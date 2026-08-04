@@ -42,6 +42,38 @@ final class TrustedHosts
     public function __construct(private readonly PlaneResolver $planes) {}
 
     /**
+     * The names a container reaches itself by, always trusted.
+     *
+     * Kubernetes sends the POD IP as the `Host` on an `httpGet` probe unless the manifest
+     * overrides it, and ours do not. Every derived pattern above is a public name, so the
+     * liveness probe presented `Host: 10.42.0.17`, TrustHosts answered 400, the probe
+     * failed, the pod was killed — and the same happened to its replacement. Registering
+     * TrustHosts for the first time would have taken the whole deployment down on the
+     * first rollout, and nothing in the suite could see it: the middleware is inert in the
+     * `local` environment and under `runningUnitTests()`.
+     *
+     * Trusting these does not reopen the hole. The attack is a poisoned `Host` reaching a
+     * mailed link, and a host that does not resolve to an environment can no longer reach
+     * one — {@see MailLinks} forces the configured root for exactly that case. Nor can
+     * these be presented from outside: an ingress rewrites `Host` to the public name, so
+     * a loopback or private address only arrives from inside the network namespace.
+     *
+     * The private ranges are deliberate rather than a blanket `.*`: an operator who puts
+     * a public address in this position has misconfigured something, and should hear about
+     * it as a 400 rather than have it silently trusted.
+     *
+     * @var list<string>
+     */
+    private const LOOPBACK = [
+        '^localhost$',
+        '^127\\.\\d+\\.\\d+\\.\\d+$',
+        '^\\[::1\\]$',
+        '^10\\.\\d+\\.\\d+\\.\\d+$',
+        '^192\\.168\\.\\d+\\.\\d+$',
+        '^172\\.(1[6-9]|2\\d|3[01])\\.\\d+\\.\\d+$',
+    ];
+
+    /**
      * @return list<string>
      */
     public function patterns(): array
@@ -63,7 +95,7 @@ final class TrustedHosts
             $patterns[] = $this->exactly($domain);
         }
 
-        return array_values(array_unique($patterns));
+        return array_values(array_unique([...$patterns, ...self::LOOPBACK]));
     }
 
     private function exactly(string $host): string
