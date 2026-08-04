@@ -215,7 +215,7 @@ final class EnvironmentAdminAuth
         // (all_environments defaults true on invite) but must never administer it —
         // "accessible" is not "administrable". This is the single chokepoint every
         // guard consults, so the check holds for both the handoff and admin-login paths.
-        if (! $member->role->canManageEnvironments()) {
+        if (! AccountCapabilities::of($member->role)->canManageEnvironments()) {
             return null;
         }
 

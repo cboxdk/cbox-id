@@ -26,7 +26,7 @@ new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Co
     {
         // Billing is visible to roles that can read it (owner/admin/billing + the
         // read-only viewer) — not a technical Developer role.
-        if ($scope->accountRole()?->canReadBilling() !== true) {
+        if ($scope->capabilities()?->canReadBilling() !== true) {
             return redirect()->route('projects');
         }
 

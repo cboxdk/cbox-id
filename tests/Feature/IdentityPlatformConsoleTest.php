@@ -607,3 +607,65 @@ it('takes the area away when the acting organization is not the account\'s own',
     expect(app(ConsoleScope::class)->accountRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 })->group('security');
+
+/**
+ * THE MATRIX, and the reason it exists.
+ *
+ * Every guard on this area now asks {@see AccountCapabilities} rather than the enum, so
+ * the whole of the account plane's authorization is decided in one file — which is what
+ * makes the Account→Organization fold a change to one file instead of thirty. The risk is
+ * exactly proportional: a wrong extension there is wrong everywhere at once.
+ *
+ * Falsifying that seam by hand — rewriting `canManageEnvironments()` as
+ * `MembershipRole::canWrite()`'s shape, which is the substitution the fold invites — turned
+ * only TWO tests red. The seam was load-bearing and the net under it was not, so this pins
+ * the whole verdict table instead: for each role, exactly which pages exist.
+ *
+ * It is written as data on purpose. The fold's acceptance criterion is that this table
+ * reads identically before and after the source of truth changes from `AccountRole` to a
+ * membership — so it must be readable as a table, not inferred from a dozen scattered
+ * assertions.
+ */
+it('shows exactly these pages to each account role', function (AccountRole $role, array $expected): void {
+    ['member' => $member] = provisionAccount();
+
+    // The role is set on the row rather than provisioned, because provisioning always
+    // mints an Owner — and Owner is the one role whose verdicts prove least.
+    $member->forceFill(['role' => $role])->save();
+
+    signInAsMember($member);
+
+    expect(identityPlatformPages())->toBe($expected, $role->value.' sees the wrong pages');
+})->with([
+    // Everything. Ownership itself is guarded per-action, not by hiding pages.
+    'owner' => [AccountRole::Owner, [
+        'projects', 'account-members', 'api-keys', 'environment-keys',
+        'environment-domains', 'account-activity', 'billing', 'account-settings',
+    ]],
+
+    // An admin is an owner minus the ownership transfer, which is not a page.
+    'admin' => [AccountRole::Admin, [
+        'projects', 'account-members', 'api-keys', 'environment-keys',
+        'environment-domains', 'account-activity', 'billing', 'account-settings',
+    ]],
+
+    // THE ONE THE FOLD BREAKS. A developer is a technical credential: environments and
+    // their keys and domains, and NOT the member roster — `canReadMembers()` excludes them
+    // by design, because a leaked developer key must not enumerate the team — and not
+    // billing. `MembershipRole` has no read predicate at all, so a naive translation hands
+    // both back.
+    'developer' => [AccountRole::Developer, [
+        'projects', 'environment-keys', 'environment-domains',
+    ]],
+
+    // Billing-only: the plan, and nothing else. Not the roster, not the environments.
+    'billing' => [AccountRole::Billing, [
+        'projects', 'billing',
+    ]],
+
+    // Read-only across the account: it may SEE the roster and the bill, and change
+    // neither — so no API keys, no environment keys or domains, no settings.
+    'viewer' => [AccountRole::Viewer, [
+        'projects', 'account-members', 'account-activity', 'billing',
+    ]],
+])->group('security');

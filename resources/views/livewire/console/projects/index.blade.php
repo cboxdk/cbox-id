@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -122,7 +123,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner, AccountActivity $activity): void
     {
         $member = $auth->current();
-        abort_if($member === null || ! $member->role->canManageEnvironments(), 403);
+        abort_if($member === null || ! AccountCapabilities::of($member->role)->canManageEnvironments(), 403);
 
         $project = Project::query()->whereKey($this->creatingIn)->first();
         abort_if($project === null || $project->account_id !== $member->account_id, 404);
@@ -188,7 +189,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, Projects $projects, AccountMembers $members): array
+    public function with(AccountAuth $auth, Projects $projects, AccountMembers $members, ConsoleScope $scope): array
     {
         $member = $auth->current();
         $account = $member?->account;
@@ -248,7 +249,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
 
         return [
             'projects' => $rows,
-            'canManage' => $member?->role->canManageEnvironments() ?? false,
+            'canManage' => $scope->capabilities()?->canManageEnvironments() === true,
             'awaitingVerification' => $this->awaitingVerification($member),
             'verificationEmail' => $member->email ?? '',
             // Named in the banner so "it never arrived" has somewhere to go: this is the

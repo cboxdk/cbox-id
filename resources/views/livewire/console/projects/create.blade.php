@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Platform\AccountProvisioner;
 use Livewire\Attributes\Layout;
@@ -37,7 +38,7 @@ new #[Layout('components.layouts.app', ['title' => 'New project'])] class extend
         $account = $member?->account;
 
         // Only roles that manage environments may stand up a new product.
-        if ($account === null || ! $member->role->canManageEnvironments()) {
+        if ($account === null || ! AccountCapabilities::of($member->role)->canManageEnvironments()) {
             abort(403);
         }
 

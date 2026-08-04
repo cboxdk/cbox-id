@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\AccountInviteMail;
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\MailLinks;
 use Cbox\Id\Organization\Models\Environment;
@@ -41,7 +42,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
     public function mount(ConsoleScope $scope): mixed
     {
         // The roster is PII — a Developer/Billing-only role may not read it.
-        if ($scope->accountRole()?->canReadMembers() !== true) {
+        if ($scope->capabilities()?->canReadMembers() !== true) {
             return redirect()->route('projects');
         }
 
@@ -53,7 +54,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
         $current = $auth->current();
         $account = $current?->account;
 
-        if ($account === null || ! $current->role->canManageMembers()) {
+        if ($account === null || ! AccountCapabilities::of($current->role)->canManageMembers()) {
             return;
         }
 
@@ -195,7 +196,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
         // the roster but not manage it, or one naming themselves, is looking at a person
         // they can genuinely see. A 404 there would deny the existence of a row rendered
         // three lines above it on the same page.
-        if ($current === null || ! $current->role->canManageMembers() || $memberId === $current->id) {
+        if ($current === null || ! AccountCapabilities::of($current->role)->canManageMembers() || $memberId === $current->id) {
             return null;
         }
 
@@ -242,7 +243,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, AccountMembers $members): array
+    public function with(AccountAuth $auth, AccountMembers $members, ConsoleScope $scope): array
     {
         $current = $auth->current();
         $account = $current?->account;
@@ -255,7 +256,11 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
             'current' => $current,
             'members' => $roster,
             'environments' => $environments,
-            'canManage' => $current?->role->canManageMembers() ?? false,
+            // Asked of the SCOPE, not of the member row, so the rail, this page's own
+            // guard and the buttons it renders all answer from one place — and so a
+            // person acting on somebody else's organization is refused here too, which
+            // a bare role read on the member cannot express.
+            'canManage' => $scope->capabilities()?->canManageMembers() === true,
             'isOwner' => $current?->role === AccountRole::Owner,
             'assignableRoles' => AccountRole::assignable(),
         ];

@@ -25,7 +25,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
     {
         // Account-wide activity names every actor and target — an admin view. A
         // member who cannot read members cannot read the account's activity either.
-        abort_unless($scope->accountRole()?->canReadMembers() === true, 403);
+        abort_unless($scope->capabilities()?->canReadMembers() === true, 403);
     }
 
     /**

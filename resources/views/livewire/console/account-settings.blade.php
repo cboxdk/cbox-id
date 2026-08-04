@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Platform\Contracts\Accounts;
 use Livewire\Attributes\Layout;
@@ -21,7 +22,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class e
     {
         $account = $auth->current()?->account;
 
-        if ($account === null || $scope->accountRole()?->canManageMembers() !== true) {
+        if ($account === null || $scope->capabilities()?->canManageMembers() !== true) {
             return redirect()->route('projects');
         }
 
@@ -34,7 +35,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class e
     {
         $account = $auth->current()?->account;
 
-        if ($account === null || ! $auth->current()->role->canManageMembers()) {
+        if ($account === null || ! AccountCapabilities::of($auth->current()->role)->canManageMembers()) {
             return;
         }
 

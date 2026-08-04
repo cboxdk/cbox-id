@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
@@ -577,6 +578,29 @@ class ConsoleScope
             : $this->organizationId();
 
         return $accountOrganizationId === $organizationId ? $member->role : null;
+    }
+
+    /**
+     * What the acting person MAY DO on the account they are administering — null when
+     * they are administering somebody else's organization, or no account at all.
+     *
+     * The capability question, separated from the role question that {@see AccountRole()}
+     * answers. Every guard, nav entry and feature closure asks this one; `accountRole()`
+     * remains for the two places that need the VALUE — the role stamped on a machine
+     * credential, and the role rendered next to a person's name.
+     *
+     * The separation is the point of the seam. While the account plane owned its own role
+     * column the two questions had the same answer, so thirty call sites asked the enum
+     * directly and nothing was lost. Once an account IS an organization they stop being
+     * the same question: the capability has to be derived from a membership plus a
+     * refinement the organization plane cannot express, and a call site that asked the
+     * enum would keep answering from the old column without ever going red.
+     */
+    public function capabilities(): ?AccountCapabilities
+    {
+        $role = $this->accountRole();
+
+        return $role === null ? null : AccountCapabilities::of($role);
     }
 
     /** Whether the organization being administered owns identity providers of its own. */

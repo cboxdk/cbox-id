@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
@@ -61,7 +62,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
         // organization being administered own identity providers, and may this person
         // manage their environments. The member row is what the page then READS, and the
         // scope answering yes does not hand it over.
-        if ($member === null || $scope->accountRole()?->canManageEnvironments() !== true) {
+        if ($member === null || $scope->capabilities()?->canManageEnvironments() !== true) {
             $this->redirect(route('projects'));
 
             return;
@@ -146,7 +147,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
     {
         $member = $auth->current();
 
-        if ($member === null || ! $member->role->canManageEnvironments() || $this->selectedEnvironment === '') {
+        if ($member === null || ! AccountCapabilities::of($member->role)->canManageEnvironments() || $this->selectedEnvironment === '') {
             return false;
         }
 
