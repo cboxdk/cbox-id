@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\WorkspaceSudo;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -141,9 +141,9 @@ it('lets an environment manager mint a scoped key for their environment in the c
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
     signInAsMember($result->member);
-    app(WorkspaceSudo::class)->confirm();
+    app(Sudo::class)->confirm();
 
-    $component = Volt::test('workspace.environment-api-keys')
+    $component = Volt::test('console.environment-keys')
         ->set('newKeyName', 'Provisioner')
         ->set('newKeyScopes', [EnvironmentApiScope::UsersWrite->value])
         ->call('createKey')
@@ -176,6 +176,6 @@ it('redirects a non-manager away from the environment-keys console', function ()
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     signInAsMember($viewer);
-    $this->get(route('workspace.environment-keys'))
-        ->assertRedirect(route('workspace.home'));
+    $this->get(route('environment-keys'))
+        ->assertRedirect(route('projects'));
 });

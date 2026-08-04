@@ -14,7 +14,7 @@ use Livewire\Volt\Component;
 
 /**
  * Step-up re-authentication for the ENVIRONMENT control plane — the third plane's
- * mirror of `auth.sudo` and `workspace.sudo`.
+ * mirror of `auth.sudo`.
  *
  * The password is verified against the administrator's PLATFORM-ROOT subject, resolved
  * inside {@see PlatformRoot::run()}. An environment administrator is a subject of the

@@ -9,19 +9,11 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
-final class WorkspaceController extends Controller
+final class EnvironmentHandoffController extends Controller
 {
-    public function logout(Request $request, AccountAuth $auth): RedirectResponse
-    {
-        $auth->logout($request);
-
-        return redirect()->route('workspace.login')->with('status', 'Signed out of your workspace.');
-    }
-
     /**
-     * "Open" an environment from the account console: mint a short-lived signed
+     * "Open" an environment from the Identity platform area: mint a short-lived signed
      * handoff and bounce to that environment's OWN host, where it is redeemed into an
      * env-admin session. No second login — the account member lands straight in the
      * environment's control plane. Access is re-checked here (never mint for an
@@ -46,7 +38,7 @@ final class WorkspaceController extends Controller
         $member = $auth->current();
 
         if ($member === null) {
-            return redirect()->route('workspace.login');
+            return redirect()->route('login');
         }
 
         // Fail before a credential is minted: only owner/admin/developer administer

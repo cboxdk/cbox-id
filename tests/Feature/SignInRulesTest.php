@@ -460,10 +460,12 @@ it('offers a way back off the refusal screen', function (): void {
         ->assertSee('Continue');
 })->group('security');
 
-it('gives the account door the same terminal refusal', function (): void {
+it('gives an account member the same terminal refusal', function (): void {
     // An account member is an ordinary subject in the platform root, so the account's own
-    // organization can mandate SSO — and this door answered that with "those credentials
-    // do not match a workspace", to the owner of the workspace.
+    // organization can mandate SSO. There was a SECOND door for these people, and it
+    // answered that mandate with "those credentials do not match a workspace" — to the
+    // owner of the workspace. One door now, and this is the same door the test above
+    // drives, aimed at a member instead of a tenant user.
     platformRootDeployment();
 
     $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
@@ -482,7 +484,7 @@ it('gives the account door the same terminal refusal', function (): void {
         fn (): mixed => Organization::query()->whereKey($provisioned->account->organization_id)->value('name'),
     );
 
-    Volt::test('workspace.login')
+    Volt::test('auth.login')
         ->set('identified', true)
         ->set('email', 'refused-owner@acme.example')
         ->set('password', 'a-strong-unbreached-passphrase')
@@ -496,10 +498,11 @@ it('gives the account door the same terminal refusal', function (): void {
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 })->group('security');
 
-it('resolves the mandate in the platform root from the account door', function (): void {
-    // The account host's ambient scope is the root only by coincidence of configuration.
-    // Without the explicit scope the memberships are simply not found, and the screen
-    // renders with no organization named and no link — a refusal that says nothing.
+it('resolves an account member\'s mandate in the platform root', function (): void {
+    // The root host's ambient scope is the platform root only by coincidence of
+    // configuration. Without the explicit scope the memberships are simply not found, and
+    // the screen renders with no organization named and no link — a refusal that says
+    // nothing.
     platformRootDeployment();
 
     $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
@@ -514,7 +517,7 @@ it('resolves the mandate in the platform root from the account door', function (
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 
-    Volt::test('workspace.login')
+    Volt::test('auth.login')
         ->set('identified', true)
         ->set('email', 'scoped-owner@acme.example')
         ->set('password', 'a-strong-unbreached-passphrase')

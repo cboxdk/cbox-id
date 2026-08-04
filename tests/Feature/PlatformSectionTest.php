@@ -54,8 +54,8 @@ it('keeps the old operator URLs working, pointed at where those pages went', fun
     // in somebody's bookmark bar, and a 404 there reads as "it moved and nobody said
     // where" rather than as a page that was retired.
     $this->get('/operator')->assertRedirect('/platform');
-    $this->get('/operator/login')->assertRedirect('/workspace/login');
-    $this->get('/operator/login/mfa')->assertRedirect('/workspace/login');
+    $this->get('/operator/login')->assertRedirect('/login');
+    $this->get('/operator/login/mfa')->assertRedirect('/login');
 });
 
 it('lets a signed-in operator in', function (): void {

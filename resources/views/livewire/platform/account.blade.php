@@ -43,7 +43,7 @@ use Livewire\Volt\Component;
  * anything. Nothing here deletes, purges, or reassigns — the platform root and the
  * unattached environment in particular are surfaced and explained, never adopted.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Account', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '72rem'])] class extends Component
 {
     public string $accountId = '';
 

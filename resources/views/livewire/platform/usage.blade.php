@@ -34,7 +34,7 @@ use Livewire\Volt\Component;
  * row's "View" hands off to the existing jump route, which re-points the console
  * at that tenant's OWN plane before opening its (plane-scoped) detail page.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Usage', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.platform', ['title' => 'Usage', 'width' => '72rem'])] class extends Component
 {
     /** Re-check operator AUTHORITY on every request, including Livewire actions. */
     public function boot(ConsoleScope $scope): void

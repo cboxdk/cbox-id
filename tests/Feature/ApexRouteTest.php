@@ -39,12 +39,15 @@ it('sends the apex to the account door on the platform-root host of a SUBDOMAIN 
     ]);
     platformRootEnvironment();
 
-    $this->get('https://cboxid.com/')->assertRedirect(route('workspace.login'));
+    $this->get('https://cboxid.com/')->assertRedirect(route('login'));
 });
 
-it('sends the apex to the account door on a PER-DOMAIN multi-tenant deployment', function (): void {
+it('sends the apex to the sign-in on a PER-DOMAIN multi-tenant deployment', function (): void {
     // The shape that 404'd: multi-tenancy STATED, tenants on their own domains, so there
-    // is no base-domain list to infer the mode from.
+    // is no base-domain list to infer the mode from. The apex used to fork on the plane
+    // and read multi-tenancy off that empty list, so it fell through to a route the
+    // account host did not serve. There is one destination now, which is what makes the
+    // shape unrepresentable rather than merely tested.
     config([
         'cbox-id.tenancy.multi_tenant' => true,
         'cbox-id.tenancy.account_host' => 'cboxid.com',
@@ -52,9 +55,7 @@ it('sends the apex to the account door on a PER-DOMAIN multi-tenant deployment',
     ]);
     platformRootEnvironment();
 
-    $this->get('https://cboxid.com/')
-        ->assertRedirect(route('workspace.login'))
-        ->assertRedirectContains('workspace');
+    $this->get('https://cboxid.com/')->assertRedirect(route('login'));
 })->group('security');
 
 it('sends the apex to the tenant sign-in on a tenant host, never the account door', function (): void {
@@ -90,5 +91,5 @@ it('follows the DATABASE platform root, not a stale configured default', functio
     ]);
     platformRootEnvironment();
 
-    $this->get('https://cboxid.com/')->assertRedirect(route('workspace.login'));
+    $this->get('https://cboxid.com/')->assertRedirect(route('login'));
 })->group('security');

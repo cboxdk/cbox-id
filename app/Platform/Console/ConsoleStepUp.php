@@ -9,7 +9,6 @@ use App\Http\Middleware\RequireSudo;
 use App\Platform\EnvironmentSudo;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
-use App\Platform\WorkspaceSudo;
 
 /**
  * The step-up a CONSOLE component must clear before it mints or reveals a credential —
@@ -21,7 +20,7 @@ use App\Platform\WorkspaceSudo;
  * application's name and redirect URIs, a directory's mappings, a webhook's endpoint)
  * with one dangerous button on them. Gating the page would demand a password to read
  * a redirect URI, so the gate belongs on the ACTION, which is also where the account
- * plane has always put it ({@see WorkspaceSudo} via `api-keys`).
+ * plane has always put it (the account API-key page's own inline step-up).
  *
  * ROTATION WAS ONLY HALF OF IT. Every credential this guards is minted twice — once when
  * the app, directory, webhook or hook is CREATED, and again when its secret is rotated —

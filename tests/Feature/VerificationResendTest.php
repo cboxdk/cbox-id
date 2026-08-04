@@ -62,6 +62,13 @@ function signUpForResend(string $email = 'dana@acme.example', string $organizati
     expect($member)->not->toBeNull();
 
     /** @var AccountMember $member */
+    // Re-establish through the fixture, so the ACTING ORGANIZATION is resolved. Signing up
+    // mints the session and hands the browser straight to a redirect; the middleware on
+    // the next request is what resolves which organization the person is acting on, and
+    // the Identity platform pages will not render for a request that has none. Driving a
+    // component directly skips that request, so the fixture stands in for it.
+    signInAsMember($member);
+
     return $member;
 }
 
@@ -83,7 +90,7 @@ it('sends a fresh link to the signed-in member and to nobody else', function ():
 
     $before = count(verificationLinks());
 
-    Volt::test('workspace.home')
+    Volt::test('console.projects.index')
         ->call('resendVerification')
         ->assertRenderedNotRedirected()
         ->assertSee('on its way to dana@acme.example');
@@ -120,7 +127,7 @@ it('takes no address argument, so a crafted call cannot steer where the mail goe
     $member = signUpForResend();
     signInAsSubject((string) $member->subject_id);
 
-    $component = Volt::test('workspace.home')->instance();
+    $component = Volt::test('console.projects.index')->instance();
 
     expect($component)->not->toBeNull('the launchpad did not mount, so nothing below was checked');
 
@@ -136,7 +143,7 @@ it('offers the resend control on the launchpad while the environment is held bac
     signUpForResend();
 
     // The banner's own control, asserted on copy that exists nowhere else on the page.
-    $this->get(route('workspace.home'))
+    $this->get(route('projects'))
         ->assertOk()
         ->assertSee('Send the link again')
         ->assertSee('The link stays valid for 24 hours.');
@@ -146,7 +153,7 @@ it('refuses the fourth resend inside the window', function (): void {
     rootForResend();
     signUpForResend();
 
-    $component = Volt::test('workspace.home');
+    $component = Volt::test('console.projects.index');
 
     for ($attempt = 1; $attempt <= 3; $attempt++) {
         $component->call('resendVerification')->assertSee('on its way to dana@acme.example');
@@ -164,7 +171,7 @@ it('says exactly the same thing whether or not the address is already confirmed'
     rootForResend();
     $member = signUpForResend();
 
-    $unverifiedNotice = Volt::test('workspace.home')
+    $unverifiedNotice = Volt::test('console.projects.index')
         ->call('resendVerification')
         ->get('resendNotice');
 
@@ -176,7 +183,7 @@ it('says exactly the same thing whether or not the address is already confirmed'
 
     $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
 
-    $verifiedNotice = Volt::test('workspace.home')
+    $verifiedNotice = Volt::test('console.projects.index')
         ->call('resendVerification')
         ->get('resendNotice');
 
@@ -190,7 +197,7 @@ it('leaves exactly one live link: the resent one works and the earlier one does 
     rootForResend();
     $member = signUpForResend();
 
-    Volt::test('workspace.home')->call('resendVerification');
+    Volt::test('console.projects.index')->call('resendVerification');
 
     $links = verificationLinks();
     expect($links)->toHaveCount(2);
@@ -217,7 +224,7 @@ it('is a harmless no-op once the environment has been released', function (): vo
 
     $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
 
-    Volt::test('workspace.home')
+    Volt::test('console.projects.index')
         ->call('resendVerification')
         ->assertRenderedNotRedirected()
         ->assertHasNoErrors()

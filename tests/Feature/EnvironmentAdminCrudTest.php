@@ -8,7 +8,6 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentSudo;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
-use App\Platform\WorkspaceSudo;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -431,7 +430,7 @@ it('never lets an organization-plane step-up satisfy the environment plane', fun
     crudSetup();
 
     app(Sudo::class)->confirm();
-    app(WorkspaceSudo::class)->confirm();
+    app(Sudo::class)->confirm();
 
     $this->get('/admin/stored-tokens')->assertRedirect(route('environment.sudo'));
 })->group('security');

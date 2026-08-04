@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\Console\ConsoleScope;
-use App\Platform\PlaneResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,17 +34,16 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Both questions go to {@see ConsoleScope}, and that is the point rather than tidiness.
  * The first version asked `CurrentUser::check()` — the SUBJECT session — while the scope
- * resolved operators from the account-member session too. Since the sign-in this gate
- * points at is the account door, which writes only the member key, an operator who did
- * exactly what the gate told them to was refused and sent straight back to it. Forever.
- * Two places answering "who is signed in" is how that happens, so now there is one.
+ * resolved operators from a second, account-member one. The gate pointed at the account
+ * door, which wrote only the member key, so an operator who did exactly what it told them
+ * to was refused and sent straight back to it. Forever. Two places answering "who is
+ * signed in" is how that happens; there is one session and one door now, and this sends
+ * people to it without asking what shape the deployment is — `/login` answers on every
+ * host, which is the whole of what the account door's `plane:account` gate got wrong.
  */
 final class AuthenticateOperator
 {
-    public function __construct(
-        private readonly ConsoleScope $scope,
-        private readonly PlaneResolver $planes,
-    ) {}
+    public function __construct(private readonly ConsoleScope $scope) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -53,25 +51,11 @@ final class AuthenticateOperator
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->scope->signedIn()) {
-            return redirect()->route($this->signInRoute());
+            return redirect()->route('login');
         }
 
         abort_unless($this->scope->isPlatformOperator(), 404);
 
         return $next($request);
-    }
-
-    /**
-     * Where signing in actually happens on THIS deployment shape.
-     *
-     * Not `Route::has()`: both routes are always registered, and which one answers is a
-     * question about the plane, not the route table. `workspace.login` carries
-     * `plane:account`, which is false on a single-host install by design — there is no
-     * separate account plane when there is no host split — so sending a self-hosted
-     * operator there is sending them to a 404. Their sign-in is the ordinary one.
-     */
-    private function signInRoute(): string
-    {
-        return $this->planes->isMultiTenant() ? 'workspace.login' : 'login';
     }
 }

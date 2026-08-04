@@ -174,10 +174,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
         $host = $planes->accountHost();
 
         if (! $installed->shape->isMultiTenant() || $host === null || $host === request()->getHost()) {
-            return route('workspace.login');
+            return route('login');
         }
 
-        return request()->getScheme().'://'.$host.route('workspace.login', absolute: false);
+        return request()->getScheme().'://'.$host.route('login', absolute: false);
     }
 }; ?>
 
@@ -254,7 +254,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
                     <input wire:model="accountName" id="accountName" type="text" class="input input-lg" placeholder="Your company">
                     <p class="mt-1 text-xs" style="color:var(--faint)">
                         This deployment is configured as multi-tenant, so the install also creates the first account —
-                        the workspace that owns environments and billing.
+                        the organization that owns environments and billing.
                     </p>
                     @error('accountName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>

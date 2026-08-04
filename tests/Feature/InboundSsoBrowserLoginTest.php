@@ -52,10 +52,11 @@ function ssoConnection(): object
  */
 function ssoRootEnvironment(): Environment
 {
-    // The account plane only EXISTS on a multi-tenant deployment: `FederatedLanding` forks
-    // on `onAccountPlane()`, which is false on a single-host install however the domain list
-    // reads, so without this the callbacks below land on the subject door and the fork under
-    // test is never taken.
+    // The SaaS shape, stated: the root and the tenants are different hosts, so `/login`
+    // has to be asked for on the one under test rather than on whichever the default is.
+    // FederatedLanding used to FORK on that distinction and does not any more — one
+    // console, one landing — so what this shape still buys is the plane bulkhead, which
+    // is what turned the failure branch into a 404 in the first place.
     multiTenantDeployment();
 
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
@@ -180,7 +181,7 @@ it('explains the collision when an account already exists for that email', funct
  * (expired, clock skew, signature mismatch, unknown NameID) got a bare 404 AFTER
  * authenticating successfully at their IdP, and had every reason to think SSO had worked.
  */
-it('sends an account-plane SSO failure to the workspace sign-in, not a 404', function (): void {
+it('sends a root-host SSO failure to a sign-in that actually serves, not a 404', function (): void {
     ssoRootEnvironment();
     $fixture = ssoConnection();
 
@@ -192,27 +193,31 @@ it('sends an account-plane SSO failure to the workspace sign-in, not a 404', fun
         }
     });
 
-    $response = $this->post('/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'forged']);
+    // On the platform root's own host. This used to be the ACCOUNT plane and had a
+    // landing of its own; the root is a tenant like any other, so there is one landing —
+    // and the property worth guarding is unchanged and is the whole reason this file
+    // exists: the destination must actually SERVE, because a redirect to a 404 arrives
+    // AFTER a successful authentication at the IdP.
+    $response = $this->post('https://cboxid.com/sso/saml/'.$fixture->connection->id.'/acs', ['SAMLResponse' => 'forged']);
 
-    $response->assertRedirect(route('workspace.login'));
+    $response->assertRedirect(route('login'));
     $response->assertSessionHasErrors('email');
     expect(session('errors')->first('email'))->toContain('could not verify');
 
-    // The destination must actually SERVE on this plane — a redirect to a 404 is the bug.
-    $this->get(route('workspace.login'))->assertOk();
+    $this->get('https://cboxid.com/login')->assertOk();
 
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
 
-it('sends an account-plane OIDC failure to the workspace sign-in, not a 404', function (): void {
+it('sends a root-host OIDC failure to a sign-in that actually serves, not a 404', function (): void {
     ssoRootEnvironment();
     $fixture = ssoConnection();
 
     // An unknown connection id is the earliest error branch, and it needs no OIDC
     // handshake to reach — the plane fork is what is under test, not the protocol.
-    $response = $this->get('/sso/oidc/con_does_not_exist/callback?state=x&code=y');
+    $response = $this->get('https://cboxid.com/sso/oidc/con_does_not_exist/callback?state=x&code=y');
 
-    $response->assertRedirect(route('workspace.login'));
+    $response->assertRedirect(route('login'));
     expect(session('errors')->first('email'))->toContain('no longer active');
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });

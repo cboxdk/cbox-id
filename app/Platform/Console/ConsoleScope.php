@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Platform\AccountAuth;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\DatabaseAccountMembers;
+use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -500,6 +505,70 @@ class ConsoleScope
         $subjectId = $this->subject->check() ? $this->subject->id() : '';
 
         return $subjectId === '' ? null : $subjectId;
+    }
+
+    /**
+     * What the acting person holds on the organization they are administering, WHEN that
+     * organization owns identity providers — null otherwise.
+     *
+     * This is the predicate behind the console's IdP-ownership area, and it is asked here
+     * rather than of {@see AccountAuth} directly for the reason every other question on
+     * this class is: "who is acting, on which organization, and what may they do" has one
+     * answer per request, and the layout, the nav features and each page's own guard would
+     * otherwise be three places that could disagree about it.
+     *
+     * TWO conditions, not one. Holding an account role is not enough — the acting
+     * ORGANIZATION has to be the one that account owns. On `acme.cboxid.com` the acting
+     * organization is a tenant of somebody else's IdP, so this answers null and the area is
+     * simply absent; the same is true on the root the moment an operator switches to an
+     * organization that is not their own. Without the second condition an account owner who
+     * switched organizations would be offered their own projects and billing while the
+     * chrome named a different tenant.
+     *
+     * …unless the account HAS no organization, which is a real shape and not a broken one:
+     * {@see AccountProvisioner::homeAccount()} leaves an account unhomed
+     * when it is created before the deployment has a platform root, and every account
+     * provisioned before that homing existed is unhomed too. There is then no organization
+     * to compare against, and requiring one would take the whole area away from exactly the
+     * oldest accounts on an install — which is how a correctness check becomes an outage.
+     * Nothing is loosened by allowing it: every page in the area reads by `account_id`, and
+     * a member row is reachable only from the subject the session names.
+     *
+     * `AccountRole` is still the predicate rather than {@see MembershipRole},
+     * because the account member row is still where account capabilities live: the
+     * membership that places a member in the account's organization carries a NEUTRAL role
+     * on purpose ({@see DatabaseAccountMembers::attachSubject()}), so
+     * asking the membership would answer "member" for the account's owner.
+     *
+     * Resolved through the container rather than the constructor, like the operator and
+     * environment lookups above: this class is constructed directly by the tests that
+     * assert the rail's invariants, and a fourth constructor dependency buys nothing here.
+     */
+    public function accountRole(): ?AccountRole
+    {
+        $member = app(AccountAuth::class)->current();
+
+        if ($member === null) {
+            return null;
+        }
+
+        $accountOrganizationId = $member->account?->organization_id;
+
+        if (! is_string($accountOrganizationId) || $accountOrganizationId === '') {
+            return $member->role;
+        }
+
+        $organizationId = $this->plane() === ConsolePlane::Organization
+            ? $this->subject->organizationId()
+            : $this->organizationId();
+
+        return $accountOrganizationId === $organizationId ? $member->role : null;
+    }
+
+    /** Whether the organization being administered owns identity providers of its own. */
+    public function ownsIdentityProviders(): bool
+    {
+        return $this->accountRole() !== null;
     }
 
     /** @throws AuthorizationException */

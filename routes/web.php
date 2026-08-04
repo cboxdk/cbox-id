@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
+use App\Http\Controllers\EnvironmentHandoffController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
@@ -17,13 +18,9 @@ use App\Http\Controllers\Sso\OAuth2RedirectController;
 use App\Http\Controllers\Sso\OidcCallbackController;
 use App\Http\Controllers\Sso\SamlAcsController;
 use App\Http\Controllers\Sso\SamlIdpSsoController;
-use App\Http\Controllers\WorkspaceController;
-use App\Http\Controllers\WorkspacePasskeyController;
-use App\Http\Middleware\AuthenticateAccountMember;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
-use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Http\Middleware\TargetEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
@@ -44,47 +41,25 @@ use Livewire\Volt\Volt;
 Volt::route('/first-run', 'first-run')->name('first-run');
 
 /*
- * The apex is plane-aware: on the platform root it is the ACCOUNT door (sign in / sign up
- * as an account member to create and manage your IdP); everywhere else it is the tenant's
- * own sign-in/dashboard.
+ * The apex — one destination, because there is one console.
  *
- * Both destinations are now served on both hosts — `/login` and `/dashboard` are
- * `plane:console`, which includes the root — so this fork is no longer about what EXISTS
- * here. It is about what somebody arriving at the bare apex most likely came for, and on
- * `cboxid.com` that is the account: the environments they own, their billing, their keys.
- * A subject of the root who wants the tenant console asks for `/login` or `/dashboard` by
- * name and gets it. (Folding the two together is a later step; this fork is deliberately
- * still here.)
+ * This used to fork on the plane: the root sent people to the account console and every
+ * other host to the tenant one. Both of those are the same console now — the account's
+ * projects, keys and billing are an AREA of it ({@see \App\Providers\ConsoleServiceProvider}),
+ * shown to whoever's organization owns identity providers — so the fork had nothing left
+ * to choose between, and every version of it that ever shipped was a bug: it read
+ * multi-tenancy as `base_domains !== []` and 404'd the account console's own front door
+ * on a per-domain deployment, and it resolved the platform root config-first while
+ * SetEnvironment resolved it database-first, so a deployment setting both had the apex
+ * comparing against one root while its own request had resolved to another.
  *
- * The decision is PlaneResolver's, whole. This closure used to re-derive it, and
- * disagreed with the resolver twice over — which is exactly the failure the resolver's
- * own docblock exists to prevent, since "which plane is this?" answered in two places
- * eventually gets two answers:
- *
- *  - It read multi-tenancy as `base_domains !== []`, the COMPATIBILITY fallback, ignoring
- *    the stated `cbox-id.tenancy.multi_tenant`. With multi-tenancy on and every tenant on
- *    its own domain (base domains empty — a supported shape {@see PlaneResolver} describes
- *    itself), the apex fell through to `route('login')`, which at the time 404'd on the
- *    account host. The account console's front door was a 404.
- *  - It resolved the platform root config-first, which is backwards: SetEnvironment
- *    returns the DB `is_default` row and falls back to config only when no environment
- *    exists at all. A deployment setting both to different environments had the apex
- *    comparing against one root while its own request had resolved to another.
+ * `PlaneResolver` still answers "which plane is this?" for the surfaces that genuinely
+ * differ — the issuer endpoints, the environment-admin door. The apex is no longer one
+ * of them.
  */
-Route::get('/', function (PlaneResolver $planes) {
-    if ($planes->onAccountPlane()) {
-        // One session, so one question. This used to ask for an account-MEMBER session,
-        // which an operator with no account never has — so the person who runs the
-        // deployment was sent to a sign-in they had already completed.
-        return redirect()->route(
-            session()->has(PlatformAuth::SESSION_KEY) ? 'workspace.home' : 'workspace.login'
-        );
-    }
-
-    return redirect()->route(
-        session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
-    );
-})->name('home');
+Route::get('/', fn () => redirect()->route(
+    session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
+))->name('home');
 
 /*
  * SAML 2.0 Identity Provider — the SingleSignOnService endpoint downstream SPs
@@ -122,13 +97,11 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
  * `plane:issuer` gates the ISSUER surface: a host that is not an identity provider must
  * not advertise or answer as one. Inbound federation is the opposite role (this server as
  * the RELYING party), and the ACCOUNT plane genuinely does it: an account's organization
- * lives in the platform-root environment, so home-realm discovery on `/workspace/login`
- * and `/signup` — both `plane:account`, both root-host only — sends the member to
- * `/sso/{oidc,saml}/{connection}/...` on the very host they are standing on. Gating these
- * 404'd that redirect and its callback, and {@see \App\Platform\FederatedLanding}'s
- * `onAccountPlane()` branch — which exists to land exactly this — became unreachable. An
- * account org with SsoEnforcement::Required and a verified domain was then locked out of
- * its own workspace: the password is refused and the SSO door does not exist.
+ * lives in the platform-root environment, so home-realm discovery on `/login` and
+ * `/signup` sends the member to `/sso/{oidc,saml}/{connection}/...` on the very host they
+ * are standing on. Gating these 404'd that redirect and its callback, and an account org
+ * with SsoEnforcement::Required and a verified domain was then locked out of the console
+ * it had just secured: the password is refused and the SSO door does not exist.
  *
  * The environment scope on `Connection` is the real boundary, and it holds on either
  * plane: the platform root IS an environment, so a tenant's connection id resolves to
@@ -319,6 +292,36 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 
     Volt::route('/usage', 'usage')->name('usage');
     Volt::route('/members', 'members')->name('members');
+
+    /*
+     * IDENTITY PLATFORM — what an organization has because it OWNS identity providers.
+     *
+     * This was `/workspace`, a console of its own with its own prefix, its own shell and
+     * its own sign-in. None of that was a plane: an account is an organization in tenant 1
+     * that happens to own IdPs, and everything below is the same console page it always
+     * was, standing in the one console beside the tenant's own.
+     *
+     * No `plane:account` gate, and that is the point of the move. The host decides which
+     * SURFACES exist; whether an organization owns identity providers is a question about
+     * the organization, and it has an answer on every host — no on all but the root's own
+     * accounts. {@see \App\Platform\Console\ConsoleScope::accountRole()} is that answer,
+     * and it is what the rail reads, so on `acme.cboxid.com` the area is simply absent
+     * rather than gated: the same mechanism that already drops an area with no pages.
+     */
+    Volt::route('/projects', 'console.projects.index')->name('projects');
+    Volt::route('/projects/new', 'console.projects.create')->name('projects.create');
+    Volt::route('/projects/{project}', 'console.projects.show')->name('projects.show');
+
+    // Open an environment → signed handoff → its own admin console (no second login).
+    Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
+
+    Volt::route('/account-members', 'console.account-members')->name('account-members');
+    Volt::route('/api-keys', 'console.api-keys')->name('api-keys');
+    Volt::route('/environment-keys', 'console.environment-keys')->name('environment-keys');
+    Volt::route('/environment-domains', 'console.environment-domains')->name('environment-domains');
+    Volt::route('/account-activity', 'console.account-activity')->name('account-activity');
+    Volt::route('/billing', 'console.billing')->name('billing');
+    Volt::route('/account-settings', 'console.account-settings')->name('account-settings');
     // Single sign-on: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — a connection
     // URL is something you send to whoever runs the identity provider — and this plane
@@ -672,8 +675,8 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
  * `Location` header to a public sign-in does not.
  */
 Route::redirect('/operator', '/platform');
-Route::redirect('/operator/login', '/workspace/login');
-Route::redirect('/operator/login/mfa', '/workspace/login');
+Route::redirect('/operator/login', '/login');
+Route::redirect('/operator/login/mfa', '/login');
 
 Route::prefix('platform')->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then
@@ -722,102 +725,45 @@ Route::prefix('platform')->group(function (): void {
 
 /*
 |--------------------------------------------------------------------------
-| Workspace console — account members, the customer's buyer/admin plane.
+| Account invitations — the one door the account plane still owns.
 |--------------------------------------------------------------------------
 |
-| A third world, distinct from both the org-user console (end-users, who
-| authenticate INTO an environment) and the operator console (Cbox staff, above
-| every account). An account member signs in once at the root and administers
-| the environments their account owns — the Account → Environment relationship.
-| Neither an org-user nor an operator session grants anything here.
+| Everything else that lived under `/workspace` is gone: the console pages moved into
+| the one console, and the sign-in doors were duplicates of doors that already serve on
+| every host — `/login`, `/mfa`, `/forgot-password`, `/reset-password/{token}`,
+| `/password/change`, `/sudo`. An account member is an ordinary subject in the platform
+| root and the SUBJECT is the credential of record, so those doors were the same doors
+| wearing account clothes.
+|
+| This one is not a duplicate, and it cannot become one yet. An account invitation is
+| its own aggregate — a signed link naming an `AccountMember` row with an `AccountRole`
+| — while `/invitations/{token}/accept` mints an organization `Membership`. Reconciling
+| them means folding AccountMember into Membership, which is the next step and a data
+| migration, not a route change. So it keeps its own door and loses only its prefix.
+|
+| `plane:console`, like every other door: the host decides which surfaces exist, and
+| this one exists wherever the console does.
 */
-Route::middleware('plane:account')->prefix('workspace')->group(function (): void {
-    Volt::route('/login', 'workspace.login')->name('workspace.login');
-
-    // Two-factor challenge — between password and a full session; the component
-    // self-guards on the pending marker, so it's neither guest nor authenticated.
-    Volt::route('/login/mfa', 'workspace.login-mfa')->name('workspace.login.mfa');
-
-    // Passwordless passkey sign-in (guest — a passkey is strong auth on its own).
-    Route::post('/passkeys/login/options', [WorkspacePasskeyController::class, 'loginOptions'])->name('workspace.passkeys.login.options');
-    Route::post('/passkeys/login', [WorkspacePasskeyController::class, 'login'])->name('workspace.passkeys.login');
-
-    // Magic-link sign-in on the ACCOUNT plane. Account members ARE subjects in the
-    // platform root, so `/magic/{token}` now answers on this host too (`plane:console`) —
-    // but it lands them in the tenant console. This door is the one that redeems the same
-    // token into an ACCOUNT session and the workspace, which is where a member who
-    // followed a workspace invitation meant to end up.
-    Route::get('/magic/{token}', [MagicLinkController::class, 'redeemForWorkspace'])->name('workspace.magic.redeem');
-
-    // Invitation acceptance — guest-accessible but gated by a signed URL (the token
-    // is the signature; no token table needed). The invitee sets their password and
-    // is signed in. The component locks the member id so it can't be swapped after
-    // the signed load.
-    Volt::route('/invite/{member}/accept', 'workspace.accept-invite')
+Route::middleware('plane:console')->group(function (): void {
+    // Guest-accessible but gated by a signed URL (the token IS the signature; no token
+    // table needed). The invitee sets their password and is signed in. The component
+    // locks the member id so it cannot be swapped after the signed load.
+    Volt::route('/invite/{member}/accept', 'auth.accept-account-invite')
         ->middleware('signed')
-        ->name('workspace.invite.accept');
-
-    // Forgot / reset password (guest, reset gated by a signed URL).
-    Volt::route('/forgot-password', 'workspace.forgot-password')->name('workspace.password.request');
-    Volt::route('/reset-password/{member}', 'workspace.reset-password')
-        ->middleware('signed')
-        ->name('workspace.password.reset');
-
-    Route::post('/logout', [WorkspaceController::class, 'logout'])->name('workspace.logout');
-
-    // `platform.auth:optional` RESOLVES the one session without requiring one, then the
-    // gate asks whether anybody was resolved. Both are needed and in this order, exactly
-    // as the platform section below does it: the console reads the acting person off
-    // CurrentUser, and only the first of these populates it. Without it every workspace
-    // page ran with an empty CurrentUser and had to ask a second session store instead —
-    // which is the store this change removes.
-    //
-    // Optional, not required, because the refusal is the gate's to make: it stashes the
-    // intended URL first, so an admin bounced here from a tenant's console signs in once
-    // and lands back on the handoff rather than on the account home.
-    Route::middleware(['platform.auth:optional', AuthenticateAccountMember::class])->group(function (): void {
-        // The account's Projects (IdP products) — the launchpad. Each project holds
-        // its own environments + plan; a project opens to its environments detail.
-        Volt::route('/', 'workspace.home')->name('workspace.home');
-
-        // Where a signed-in person with no membership and no operator authority lands.
-        // The door authenticates a person and asks nothing about what they hold, so this
-        // is a real outcome rather than an edge case — and until this route existed it
-        // resolved to a 403 on a layout with no rail, and therefore no sign-out control.
-        // Inside the auth tier because they ARE signed in; the component turns anyone the
-        // plane actually serves straight back around.
-        Volt::route('/no-access', 'workspace.no-access')->name('workspace.no-access');
-
-        Volt::route('/projects/new', 'workspace.projects.create')->name('workspace.projects.create');
-        Volt::route('/projects/{project}', 'workspace.projects.show')->name('workspace.projects.show');
-
-        // Open an environment → signed handoff → its own admin console (no second login).
-        Route::get('/open/{environment}', [WorkspaceController::class, 'openEnvironment'])->name('workspace.environment.open');
-
-        // The forced password change — the one route the temporary-password hold lets
-        // through, so it is reachable only by a member who owes one.
-        Volt::route('/password/change', 'workspace.change-password')->name('workspace.password.change');
-
-        Volt::route('/members', 'workspace.members')->name('workspace.members');
-        Volt::route('/activity', 'workspace.activity')->name('workspace.activity');
-        Volt::route('/security', 'workspace.security')->name('workspace.security');
-
-        // Step-up ("sudo") re-authentication for the account plane. Blocked during
-        // impersonation so an impersonator can never satisfy it.
-        Volt::route('/sudo', 'workspace.sudo')->middleware(BlockDuringImpersonation::class)->name('workspace.sudo');
-
-        // Enrolling a passkey establishes a new, persistent credential — gate it behind
-        // a fresh step-up, exactly as the subject plane gates passkey enrolment.
-        Route::post('/passkeys/register/options', [WorkspacePasskeyController::class, 'registerOptions'])
-            ->middleware([BlockDuringImpersonation::class, RequireWorkspaceSudo::class])
-            ->name('workspace.passkeys.register.options');
-        Route::post('/passkeys/register', [WorkspacePasskeyController::class, 'register'])
-            ->middleware([BlockDuringImpersonation::class, RequireWorkspaceSudo::class])
-            ->name('workspace.passkeys.register');
-        Volt::route('/api-keys', 'workspace.api-keys')->name('workspace.api-keys');
-        Volt::route('/environment-keys', 'workspace.environment-api-keys')->name('workspace.environment-keys');
-        Volt::route('/environment-domains', 'workspace.environment-domains')->name('workspace.environment-domains');
-        Volt::route('/billing', 'workspace.billing')->name('workspace.billing');
-        Volt::route('/settings', 'workspace.settings')->name('workspace.settings');
-    });
+        ->name('account.invite.accept');
 });
+
+/*
+ * Bookmarks into the retired `/workspace` prefix.
+ *
+ * Two, not thirty. Nobody is running against this yet, so a path is preserved only where
+ * a link plausibly exists OUTSIDE the browser — the console root somebody pinned, and the
+ * sign-in address that has been in mails and docs. Everything else is deleted rather than
+ * redirected: a redirect table is a second, silent statement of what the console contains,
+ * and it outlives the memory of why each line is there.
+ *
+ * No plane gate, matching the pages they point at, and they disclose nothing a `Location`
+ * header to a public sign-in does not.
+ */
+Route::redirect('/workspace', '/projects');
+Route::redirect('/workspace/login', '/login');

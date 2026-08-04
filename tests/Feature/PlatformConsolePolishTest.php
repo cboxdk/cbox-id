@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -39,50 +38,51 @@ function polishOwner(): void
 }
 
 it('offers an account-less operator no area that needs an account', function (): void {
-    // Signed in: the platform areas are asked of ConsoleScope, so without a session the
-    // rail below would be empty for a reason that has nothing to do with this test.
+    // Signed in: the section's own rail is what is being read, so without a session it
+    // would be empty for a reason that has nothing to do with this test.
     polishOperator();
 
-    // Null role IS "no membership" — see ConsoleNavigation::workspace().
-    $labels = collect(app(ConsoleNavigation::class)->workspace(null)->areas)
+    $labels = collect(app(ConsoleNavigation::class)->operator()->areas)
         ->pluck('label')->all();
 
-    // Overview › Projects explained what a project is and gated its only CTA off.
-    // Personal › Profile rendered an empty form bound to nobody.
+    // The shell this section renders in used to carry the account console's areas as
+    // well, folding the platform ones in for whoever held both. Two of those areas were
+    // dead for an operator who buys nothing: Overview › Projects explained what a project
+    // is and gated its only CTA off, and Personal › Profile rendered an empty form bound
+    // to nobody. They are pages of the ONE console now, gated on what the acting
+    // organization owns — so this shell carries the platform section and nothing else,
+    // which is a stronger statement of the same property.
     expect($labels)->not->toContain('Overview')
         ->and($labels)->not->toContain('Personal')
         ->and($labels)->toContain('Platform');
-
-    // …and a member still gets both.
-    $memberLabels = collect(app(ConsoleNavigation::class)->workspace(AccountRole::Owner)->areas)
-        ->pluck('label')->all();
-
-    expect($memberLabels)->toContain('Overview')->and($memberLabels)->toContain('Personal');
 });
 
 it('lands an account-less operator on the platform rather than on an empty Projects page', function (): void {
     polishOperator();
 
-    // Every door into the console redirects to workspace.home, so this is the landing
-    // screen for the primary operator persona.
-    $this->get(route('workspace.home'))->assertRedirect(route('platform.environments'));
+    // Projects is an Identity platform page and an operator's organization owns no IdP,
+    // so the page is not theirs — and where they go instead is the platform section,
+    // because that is where their work is, not because Projects refuses them.
+    $this->get(route('projects'))->assertRedirect(route('platform.environments'));
 });
 
-it('sends an account-less operator to their OWN security page, not to a sign-in screen', function (): void {
+it('gives an account-less operator their OWN security page, not a sign-in screen', function (): void {
     polishOperator();
 
-    // The walked bug: Personal › Profile → Enable → /workspace/sudo → correct password →
-    // /workspace/login, signed-out screen, no message, session still perfectly valid.
-    $this->get(route('workspace.security'))
-        ->assertRedirect(route('platform.security'))
+    // The walked bug: the account console's Personal › Profile → Enable → /sudo →
+    // correct password → /login, signed-out screen, no message, session still perfectly
+    // valid. That page is gone and `/account` is the one every subject has, operator
+    // included — so there is no redirect left to get wrong.
+    $this->get(route('account'))
+        ->assertOk()
         ->assertSessionMissing('errors');
 });
 
-it('names the plane in the title of every platform page', function (): void {
+it('names the section in the title of every platform page', function (): void {
     polishOperator();
 
     // `Environments · Workspace · Cbox ID` named the customer plane on a page that
-    // administers the whole install.
+    // administers the whole install, because one shell served both and hard-coded a word.
     foreach (['platform.environments', 'platform.usage', 'platform.operators'] as $route) {
         $html = (string) $this->get(route($route))->assertOk()->getContent();
 
@@ -90,10 +90,10 @@ it('names the plane in the title of every platform page', function (): void {
             ->and($html)->not->toContain(' · Workspace · ');
     }
 
-    // The account plane still says Workspace.
+    // …and a console page is not a platform page, whoever is reading it.
     polishOwner();
-    expect((string) $this->get(route('workspace.home'))->assertOk()->getContent())
-        ->toContain(' · Workspace · ');
+    expect((string) $this->get(route('projects'))->assertOk()->getContent())
+        ->not->toContain(' · Platform · ');
 });
 
 it('gives every platform page the eyebrow its rail area actually uses', function (): void {
@@ -148,7 +148,7 @@ it('says who the operator is signed in as when there is no account to name', fun
 it('shows an account owner nothing platform-shaped', function (): void {
     polishOwner();
 
-    $html = (string) $this->get(route('workspace.home'))->assertOk()->getContent();
+    $html = (string) $this->get(route('projects'))->assertOk()->getContent();
 
     expect($html)->not->toContain(route('platform.environments'))
         ->and($html)->not->toContain('Platform operator');

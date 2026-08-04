@@ -145,13 +145,13 @@ it('does not tell one account whether an email belongs to another', function ():
 
     signInAsMember($mine->member);
 
-    $probeOther = Volt::test('workspace.members')
+    $probeOther = Volt::test('console.account-members')
         ->set('inviteEmail', 'owner@rival.example')
         ->set('inviteRole', 'admin')
         ->call('invite')
         ->assertHasErrors('inviteEmail');
 
-    $probeOwn = Volt::test('workspace.members')
+    $probeOwn = Volt::test('console.account-members')
         ->set('inviteEmail', 'owner@acme.example')
         ->set('inviteRole', 'admin')
         ->call('invite')

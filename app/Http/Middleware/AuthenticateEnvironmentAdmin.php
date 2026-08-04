@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
  * host. Doing so would (a) invite account credentials onto a tenant-controlled host, and
  * (b) mint a session that lives ONLY here — so the moment the admin clicks "back to
  * account" on the root, they'd be forced to sign in again. Instead we bounce to the ROOT
- * workspace's "open environment" door: the root authenticates the account member once,
+ * console's "open environment" door: the root authenticates the account member once,
  * mints a signed single-use handoff, and SSO-redeems it back here. The root is the shadow
  * tenant that owns the one account session; every environment admin console is reached
  * THROUGH it. THIS MIDDLEWARE IS THE DOOR — there is no other.
@@ -61,7 +61,7 @@ final class AuthenticateEnvironmentAdmin
         if ($root !== null && $environment !== null) {
             // Pull flow: authenticate at the root, then handoff back to this env.
             return redirect()->away(
-                'https://'.$root.route('workspace.environment.open', $environment->environmentKey(), false)
+                'https://'.$root.route('environment.open', $environment->environmentKey(), false)
             );
         }
 

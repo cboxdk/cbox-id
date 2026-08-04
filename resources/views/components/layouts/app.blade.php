@@ -41,8 +41,16 @@
     // Role gate: a plain member sees only their overview (with the app launcher) and
     // their own account. Everything else is organization administration, shown to
     // admins/owners. Plugin areas (billing, connectors, …) are admin surfaces too.
+    //
+    // `identity-platform` is exempt, and deliberately so rather than by oversight: the
+    // membership that places an account member in their own account's organization
+    // carries MembershipRole::Member on purpose, so an account OWNER is not an org admin
+    // there and this gate would hide their own projects and billing from them. That area
+    // already gates every one of its pages on the AccountRole (see ConsoleServiceProvider),
+    // which is the authority for those capabilities — the org role has nothing to say
+    // about them.
     $isConsoleAdmin = \Cbox\Console\Kit\Facades\Console::context()->isAdmin();
-    $memberAreas = ['overview', 'account'];
+    $memberAreas = ['overview', 'account', 'identity-platform'];
 
     $areas = collect(\Cbox\Console\Kit\Facades\Console::nav()->areas())
         ->reject(fn ($area): bool => ! $isConsoleAdmin && ! in_array($area->key, $memberAreas, true))

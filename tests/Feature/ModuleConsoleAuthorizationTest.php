@@ -60,7 +60,13 @@ function moduleConsoleRoutes(): array
 {
     $hostRoutes = ['dashboard', 'usage', 'approvals', 'members', 'roles', 'connections',
         'directories', 'provisioning', 'governance', 'sod-policies', 'clients', 'webhooks',
-        'hooks', 'vault', 'audit', 'settings', 'appearance', 'account', 'get-started'];
+        'hooks', 'vault', 'audit', 'settings', 'appearance', 'account', 'get-started',
+        // The Identity platform area — host pages, not module pages, and gated on what
+        // the acting ORGANIZATION owns rather than on the membership role this file
+        // sweeps for. An org admin who owns no identity providers is correctly refused
+        // them, which is the opposite of what "admits an admin" asserts below.
+        'projects', 'account-members', 'api-keys', 'environment-keys',
+        'environment-domains', 'account-activity', 'billing', 'account-settings'];
 
     // Personal, not administrative: it lists the caller's OWN handsets and belongs to
     // every signed-in user. Pinned open by its own test below, so removing it here does

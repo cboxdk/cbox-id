@@ -25,7 +25,7 @@ use Cbox\Id\Platform\PlatformRoot;
  * other. Every check runs in the PLATFORM ROOT's scope — policies, memberships and
  * counters are environment-owned, and the account's people live there.
  *
- * The account plane also has doors that are not passwords at all — a workspace passkey, a
+ * There are doors here that are not passwords at all — an accepted invitation, a
  * magic link, an invitation, a reset link — and they were the same divergence one level
  * along: the mandate was honoured by the password and ignored by every one of them.
  * {@see admitsFactor()} is what they ask now, and it lives here rather than at each door

@@ -139,7 +139,7 @@ it('lands a root subject who belongs to no organization on something real', func
  * ordinary console, scoped to that organization.
  *
  * The root has organizations — an account's own org lives there, which is what home-realm
- * discovery on `/workspace/login` resolves against — so this is not hypothetical either.
+ * discovery on `/login` resolves against — so this is not hypothetical either.
  */
 it('serves the ordinary console to a member of an organization in the root environment', function (): void {
     rootConsoleShape();

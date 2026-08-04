@@ -92,7 +92,7 @@ it('takes the environment anchor away for the duration, and gives exactly it bac
     // unauthenticated visitor to a tenant's admin console gets.
     nextRequest();
     $this->get(route('environment.home'))
-        ->assertRedirect('https://cboxid.com'.route('workspace.environment.open', $envId, false));
+        ->assertRedirect('https://cboxid.com'.route('environment.open', $envId, false));
 
     $this->post(route('impersonation.exit'));
 

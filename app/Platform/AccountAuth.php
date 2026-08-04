@@ -17,11 +17,23 @@ use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * The account plane's view of the ONE session — the customer's buyer/admin plane, the
- * "workspace console".
+ * Which ACCOUNT the signed-in subject belongs to, and with what role.
  *
- * There is no account-member session any more, and this class is what is left once that
- * idea is removed. An account member is an ordinary subject in the platform-root
+ * There is no account-member session any more, and no account console either: the pages
+ * that were one are an area of the console, admitted by
+ * {@see Console\ConsoleScope::accountRole()}, which is the principal caller of the
+ * resolver below. This class is what is left once both ideas are removed.
+ *
+ * A DOOR IT NO LONGER IS. `attempt()` still verifies a member's credential and still
+ * consults {@see MemberCredentialGate}, and nothing in the application calls it: the one
+ * sign-in is `/login`, which authenticates the SUBJECT — the credential of record — and
+ * enforces the lockout and the SSO mandate itself. What that door does NOT yet enforce is
+ * the account-member second factor ({@see AccountMemberMfa}), which lives in tables of its
+ * own that no door now reads. Moving that factor onto the subject is the remaining half of
+ * retiring this one; until then `attempt()` is the statement of what the member gate is
+ * FOR, and its tests are the only thing holding it upright.
+ *
+ * An account member is an ordinary subject in the platform-root
  * environment ({@see docs/core-concepts/unified-account-identity.md}); the member row says
  * WHICH ACCOUNT that subject belongs to and with what {@see AccountRole}. That is a
  * lookup, not an identity, so it has no business being session state: `account_members`
@@ -33,7 +45,8 @@ use Throwable;
  * wrote a member session and the gate asked for a subject one. `attempt()` grew an
  * operator branch so somebody with no membership could get in at all. The console's gate
  * grew an operator clause to let them land. {@see Console\ConsoleScope} asked all three
- * stores in turn. None of those were separate problems.
+ * stores in turn. None of those were separate problems, and the same is true of the
+ * console that stood on top of them.
  *
  * WHAT LOGS A MEMBER OUT EVERYWHERE. It used to be `session_version` on the member row,
  * re-checked here on every resolve. That check is gone because the thing it guarded is
@@ -45,7 +58,7 @@ use Throwable;
  *
  * There is deliberately NO "current environment" session state here: environments are
  * resolved statelessly from the request host ({slug}.base_domain or a custom domain), so
- * the workspace root is a pure launchpad that links OUT to each environment's own domain.
+ * the projects page is a pure launchpad that links OUT to each environment's own domain.
  */
 final class AccountAuth
 {
@@ -60,10 +73,10 @@ final class AccountAuth
      * Per-request memo, KEYED ON THE SUBJECT ID it was resolved from — the same shape,
      * and for the same reasons, as {@see EnvironmentAdminAuth::current()}.
      *
-     * `current()` is asked by the workspace gate, by the layout, and by each component's
-     * boot(); `membershipLapsed()` asks the same question again. Every one of those was a
-     * lookup that crosses into the PLATFORM ROOT — a scope switch plus the member row
-     * plus its account — and one account-plane page paid it nine times.
+     * `current()` is asked by {@see Console\ConsoleScope}, by the rail's feature gates and
+     * by each page's own guard. Every one of those is a lookup that crosses into the
+     * PLATFORM ROOT — a scope switch plus the member row plus its account — and one page
+     * paid it nine times.
      *
      * The key is the input rather than a plain "computed once" flag, deliberately. The
      * signed-in subject can change within a request (an establish() mid-request is exactly
@@ -176,17 +189,6 @@ final class AccountAuth
     }
 
     /**
-     * The member id held pending a second factor, or null. Never grants access —
-     * only a full session, resolved by {@see current()}, does.
-     */
-    public function pendingMemberId(): ?string
-    {
-        $id = session()->get(self::PENDING_KEY);
-
-        return is_string($id) && $id !== '' ? $id : null;
-    }
-
-    /**
      * Admit a subject the account's own IDENTITY PROVIDER just vouched for.
      *
      * This is the door a mandate points AT, so it is the one door that must never consult
@@ -199,35 +201,15 @@ final class AccountAuth
     }
 
     /**
-     * Admit a subject a LOCAL sign-in just verified — today, a redeemed magic link.
-     *
-     * Same landing, opposite side of the mandate. An emailed bearer token is a
-     * password-equivalent factor with weaker binding than the password itself, and an
-     * organization that mandates SSO has said email possession is not what decides who
-     * gets in. It went straight through: the door was `adoptSubject()`, both callers used
-     * it, and the class had no way to tell an assertion from a link.
-     *
-     * Two named entry points rather than a flag, because the difference is not a detail of
-     * this method — it is which of two doors the caller IS, and that is knowable only at
-     * the call site. A default would have picked a side for every door added later, and
-     * the safe-looking default (check the mandate) is the one that breaks SSO.
-     */
-    public function adoptLocal(Session $session): AttemptOutcome
-    {
-        return $this->adopt($session, mandateApplies: true);
-    }
-
-    /**
-     * Admit an ALREADY-AUTHENTICATED platform-root subject to the workspace — the landing
-     * point for the sign-in methods the account plane inherits by being ordinary subjects.
+     * Admit an ALREADY-AUTHENTICATED platform-root subject as an account member — the
+     * landing for the sign-in methods a member inherits by being an ordinary subject.
      *
      * Takes the framework {@see Session} the redemption or assertion produced, so the
      * session this mints records how the person ACTUALLY authenticated rather than a
      * guess: `amr` travels from the door that verified them.
      *
      * Deny-by-default in both directions. A subject that carries no account membership is
-     * simply not a workspace sign-in ({@see AttemptOutcome::Invalid}), so authenticating
-     * as any tenant user never opens the account console. And a member who has enrolled a
+     * not an account sign-in ({@see AttemptOutcome::Invalid}). And a member who has enrolled a
      * second factor on this plane is still held at the challenge: a new way in must not
      * be a way AROUND the factor they added.
      *
@@ -258,8 +240,7 @@ final class AccountAuth
 
     /**
      * Whether a mandate refuses this member a session, for a door that has already proved
-     * a factor which is not a password — the workspace passkey ceremony, an accepted
-     * invitation, a redeemed reset link.
+     * a factor which is not a password — today, an accepted invitation.
      *
      * Takes a member ID because that is what those doors are holding: the passkey
      * assertion identifies a credential, and the invitation and reset links are signed for
@@ -316,9 +297,8 @@ final class AccountAuth
     }
 
     /**
-     * Establish the session for a member — the single place a workspace sign-in creates
-     * session state, so the password door, the MFA challenge, a passkey ceremony, an
-     * invitation, a reset and a magic link can never diverge.
+     * Establish the session for a member — the single place a member sign-in creates
+     * session state, so the doors that admit one can never diverge.
      *
      * It mints a SUBJECT session, through the same {@see PlatformAuth::establish()} every
      * other door uses: the multi-account set, the framework session row, session-fixation
@@ -449,33 +429,6 @@ final class AccountAuth
     }
 
     /**
-     * Whether the signed-in person holds a membership that no longer admits them.
-     *
-     * Deliberately NOT `current() === null`, which is also the answer for somebody who
-     * has no account at all — a platform operator running the deployment they do not buy.
-     * Only the first is a refusal. The second is a person whose console simply contains
-     * no account pages, and conflating the two is what used to shut operators out of the
-     * one console they are for.
-     *
-     * The standing this asks about — member suspended, account suspended — used to be
-     * asked by the console gate through the member SESSION, on every request. It still is
-     * asked on every request; it just cannot be asked of a session any more, because the
-     * session no longer knows which account it belongs to. Nothing about "a suspension
-     * takes effect on the next request rather than the next sign-in" changes.
-     */
-    public function membershipLapsed(): bool
-    {
-        if (! $this->current->check()) {
-            return false;
-        }
-
-        $member = $this->findMemberBySubject($this->current->id());
-
-        return $member !== null
-            && (! $member->isActive() || ! ($member->account?->isActive() ?? false));
-    }
-
-    /**
      * The member row for a platform-root subject.
      *
      * In the root's scope because the member's ACCOUNT and its organization are read
@@ -513,17 +466,5 @@ final class AccountAuth
     {
         $this->memoSubjectId = null;
         $this->memoMember = null;
-    }
-
-    public function logout(Request $request): void
-    {
-        session()->forget(self::PENDING_KEY);
-        $this->forgetMemo();
-
-        // Through PlatformAuth, because the session being ended is a subject session:
-        // it revokes the framework row and clears the held-account SET, neither of which
-        // forgetting a key would touch — and an account left in that set is an account
-        // the browser can switch back into without re-authenticating.
-        $this->platformAuth->logoutAll($request);
     }
 }

@@ -422,7 +422,7 @@ it('gives the identifier-first password step focus and an announcement', functio
     expect($src)->toMatch('/<input[^>]*type="password"(?:(?!>)[\s\S])*?>/');
     preg_match('/<input[^>]*type="password"(?:(?!>)[\s\S])*?>/', $src, $pw);
     expect($pw[0])->not->toContain('autofocus');
-})->with(['auth/login', 'workspace/login']);
+})->with(['auth/login']);
 
 it('gives every environment detail page a real h2 outline', function (): void {
     // 24 pages skipped h1 -> h3 because section headers were weighted <p>.

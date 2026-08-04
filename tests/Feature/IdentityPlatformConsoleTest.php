@@ -2,8 +2,18 @@
 
 declare(strict_types=1);
 
-use App\Platform\WorkspaceSudo;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
+use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -12,6 +22,7 @@ use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\Account;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Livewire\Volt\Volt;
 
@@ -56,14 +67,17 @@ if (! function_exists('provisionAccount')) {
     }
 }
 
-it('renders the workspace sign-in for guests', function (): void {
-    $this->get(route('workspace.login'))
+it('renders the console sign-in for guests', function (): void {
+    // The ONE door. There used to be a second one at `/workspace/login` that said
+    // "Sign in to your workspace"; it authenticated the same subject against the same
+    // credential and is gone.
+    $this->get(route('login'))
         ->assertOk()
-        ->assertSee('Sign in to your workspace');
+        ->assertSee('Sign in');
 });
 
-it('redirects guests away from the workspace home', function (): void {
-    $this->get(route('workspace.home'))->assertRedirect(route('workspace.login'));
+it('redirects guests away from the projects page', function (): void {
+    $this->get(route('projects'))->assertRedirect(route('login'));
 });
 
 it('remembers the intended destination when a guest hits open-environment (handoff round-trip)', function (): void {
@@ -71,9 +85,9 @@ it('remembers the intended destination when a guest hits open-environment (hando
 
     // A guest bounced here from a tenant admin console must, after signing in, land
     // back on the mint step — so the intended URL is stashed for redirect()->intended().
-    $this->get(route('workspace.environment.open', $environment->id))
-        ->assertRedirect(route('workspace.login'))
-        ->assertSessionHas('url.intended', route('workspace.environment.open', $environment->id));
+    $this->get(route('environment.open', $environment->id))
+        ->assertRedirect(route('login'))
+        ->assertSessionHas('url.intended', route('environment.open', $environment->id));
 });
 
 it('renders the workspace home with the account\'s projects', function (): void {
@@ -82,7 +96,7 @@ it('renders the workspace home with the account\'s projects', function (): void 
     // Home is the Projects launchpad — the account's default project card, with its
     // environment count.
     signInAsMember($member);
-    $this->get(route('workspace.home'))
+    $this->get(route('projects'))
         ->assertOk()
         ->assertSee('Projects')
         ->assertSee('Acme')          // the default project is named after the account
@@ -97,7 +111,7 @@ it('links each environment out to its own host-resolved URL on the project detai
     // The project detail lists each environment as a link to its own
     // {slug}.{base_domain} host — no session "current environment" is pinned.
     signInAsMember($member);
-    $this->get(route('workspace.projects.show', $project->id))
+    $this->get(route('projects.show', $project->id))
         ->assertOk()
         ->assertSee('https://acme.cboxid.com')
         ->assertSee('https://'.$staging->slug.'.cboxid.com');
@@ -107,9 +121,9 @@ it('renders the members roster with the signed-in member marked', function (): v
     ['member' => $member] = provisionAccount('dana@acme.example');
 
     signInAsMember($member);
-    $this->get(route('workspace.members'))
+    $this->get(route('account-members'))
         ->assertOk()
-        ->assertSee('Members')
+        ->assertSee('Account members')
         ->assertSee('dana@acme.example')
         ->assertSee('You');
 });
@@ -119,7 +133,7 @@ it('renders billing with the real environment allowance', function (): void {
     app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
 
     signInAsMember($member);
-    $this->get(route('workspace.billing'))
+    $this->get(route('billing'))
         ->assertOk()
         ->assertSee('Billing')
         // 2 of 2 environments used — real figures, no fabricated usage.
@@ -128,18 +142,22 @@ it('renders billing with the real environment allowance', function (): void {
 });
 
 it('guards the members and billing pages behind the account session', function (): void {
-    $this->get(route('workspace.members'))->assertRedirect(route('workspace.login'));
-    $this->get(route('workspace.billing'))->assertRedirect(route('workspace.login'));
+    $this->get(route('account-members'))->assertRedirect(route('login'));
+    $this->get(route('billing'))->assertRedirect(route('login'));
 });
 
-it('logs out a member the moment their account is suspended', function (): void {
+it('takes the Identity platform away the moment an account is suspended', function (): void {
     ['account' => $account, 'member' => $owner] = provisionAccount();
     app(Accounts::class)->suspend($account->id, $owner->id);
 
-    // A live session no longer resolves — every guarded page bounces to login.
+    // The suspension lands on the very next request, not at the next sign-in — that part
+    // is unchanged. What changed is the refusal: this used to bounce to a sign-in the
+    // person had already completed, because the account plane's gate was the only thing
+    // standing between them and a console. They are an ordinary subject of the root and
+    // still signed in; what a suspension takes away is the area, not the console.
     signInAsMember($owner);
-    $this->get(route('workspace.home'))
-        ->assertRedirect(route('workspace.login'));
+    $this->get(route('projects'))
+        ->assertRedirect(route('dashboard'));
 });
 
 it('redirects a member who cannot read billing away from it', function (): void {
@@ -148,16 +166,16 @@ it('redirects a member who cannot read billing away from it', function (): void 
     $dev = memberWithRole($account->id, AccountRole::Developer, 'dev-billing@acme.example');
 
     signInAsMember($dev);
-    $this->get(route('workspace.billing'))->assertRedirect(route('workspace.home'));
+    $this->get(route('billing'))->assertRedirect(route('projects'));
     signInAsMember($dev);
-    $this->get(route('workspace.members'))->assertRedirect(route('workspace.home'));
+    $this->get(route('account-members'))->assertRedirect(route('projects'));
 
     // A read-only Viewer, by contrast, may read both.
     $viewer = memberWithRole($account->id, AccountRole::Viewer, 'viewer-billing@acme.example');
     signInAsMember($viewer);
-    $this->get(route('workspace.billing'))->assertOk();
+    $this->get(route('billing'))->assertOk();
     signInAsMember($viewer);
-    $this->get(route('workspace.members'))->assertOk();
+    $this->get(route('account-members'))->assertOk();
 });
 
 it('shows a scoped member only the environments they are granted', function (): void {
@@ -170,11 +188,11 @@ it('shows a scoped member only the environments they are granted', function (): 
 
     // They see the project (it holds a reachable env)…
     signInAsMember($dev);
-    $this->get(route('workspace.home'))->assertOk()->assertSee('Acme');
+    $this->get(route('projects'))->assertOk()->assertSee('Acme');
 
     // …and inside it, only their granted environment — production is outside the grant.
     signInAsMember($dev);
-    $this->get(route('workspace.projects.show', $project->id))
+    $this->get(route('projects.show', $project->id))
         ->assertOk()
         ->assertSee('acme-staging.cboxid.com')
         ->assertDontSee('https://acme.cboxid.com');
@@ -183,9 +201,9 @@ it('shows a scoped member only the environments they are granted', function (): 
 it('lets a manager mint an API key and shows the plaintext once', function (): void {
     ['account' => $account, 'member' => $owner] = provisionAccount();
     signInAsMember($owner);
-    app(WorkspaceSudo::class)->confirm();
+    app(Sudo::class)->confirm();
 
-    $component = Volt::test('workspace.api-keys')
+    $component = Volt::test('console.api-keys')
         ->set('newKeyName', 'CI deploy')
         ->set('newKeyRole', 'developer')
         ->call('createKey')
@@ -202,8 +220,8 @@ it('redirects a non-manager away from API keys', function (): void {
     $dev = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
 
     signInAsMember($dev);
-    $this->get(route('workspace.api-keys'))
-        ->assertRedirect(route('workspace.home'));
+    $this->get(route('api-keys'))
+        ->assertRedirect(route('projects'));
 });
 
 it('lets an owner remove a member and transfer ownership', function (): void {
@@ -213,10 +231,10 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     signInAsMember($owner);
     $members = app(AccountMembers::class);
 
-    Volt::test('workspace.members')->call('removeMember', $dev->id);
+    Volt::test('console.account-members')->call('removeMember', $dev->id);
     expect($members->find($dev->id))->toBeNull();
 
-    Volt::test('workspace.members')->call('makeOwner', $admin->id);
+    Volt::test('console.account-members')->call('makeOwner', $admin->id);
     expect($members->find($admin->id)->role)->toBe(AccountRole::Owner)
         ->and($members->find($owner->id)->role)->toBe(AccountRole::Admin);
 });
@@ -227,7 +245,7 @@ it('scopes a member to specific environments via the access editor', function ()
     $dev = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
     signInAsMember($owner);
 
-    Volt::test('workspace.members')
+    Volt::test('console.account-members')
         ->call('manageAccess', $dev->id)
         ->assertSet('accessAll', true)
         ->set('accessAll', false)
@@ -277,7 +295,7 @@ it('404s a role change aimed at another account member', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($owner);
 
-    Volt::test('workspace.members')
+    Volt::test('console.account-members')
         ->call('changeRole', $theirs->id, AccountRole::Admin->value)
         ->assertStatus(404);
 
@@ -289,7 +307,7 @@ it('404s a member removal aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($owner);
 
-    Volt::test('workspace.members')->call('removeMember', $theirs->id)->assertStatus(404);
+    Volt::test('console.account-members')->call('removeMember', $theirs->id)->assertStatus(404);
 
     expect(app(AccountMembers::class)->find($theirs->id))->not->toBeNull();
 })->group('security');
@@ -301,7 +319,7 @@ it('404s an environment-access edit aimed at another account', function (): void
 
     // The READ half. It opened the editor on somebody else's member and disclosed which
     // environments they reach.
-    Volt::test('workspace.members')->call('manageAccess', $theirs->id)->assertStatus(404);
+    Volt::test('console.account-members')->call('manageAccess', $theirs->id)->assertStatus(404);
 })->group('security');
 
 it('404s an environment-access SAVE aimed at another account', function (): void {
@@ -312,7 +330,7 @@ it('404s an environment-access SAVE aimed at another account', function (): void
 
     // `editingAccessFor` is an ordinary public property, so the client sets it — the
     // write half never had to go through `manageAccess()` at all.
-    Volt::test('workspace.members')
+    Volt::test('console.account-members')
         ->set('editingAccessFor', $theirs->id)
         ->set('accessAll', false)
         ->set('accessEnvIds', [$mine->id])
@@ -328,7 +346,7 @@ it('404s an ownership transfer aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($owner);
 
-    Volt::test('workspace.members')->call('makeOwner', $theirs->id)->assertStatus(404);
+    Volt::test('console.account-members')->call('makeOwner', $theirs->id)->assertStatus(404);
 
     $members = app(AccountMembers::class);
     expect($members->find($theirs->id)->role)->toBe(AccountRole::Developer)
@@ -341,13 +359,13 @@ it('renames the account from settings and redirects non-managers', function (): 
     ['account' => $account, 'member' => $owner] = provisionAccount();
     signInAsMember($owner);
 
-    Volt::test('workspace.settings')->set('name', 'Renamed Co')->call('save')->assertHasNoErrors();
+    Volt::test('console.account-settings')->set('name', 'Renamed Co')->call('save')->assertHasNoErrors();
     expect(app(Accounts::class)->find($account->id)->name)->toBe('Renamed Co');
 
     // A developer can't reach settings.
     $dev = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
     signInAsMember($dev);
-    $this->get(route('workspace.settings'))->assertRedirect(route('workspace.home'));
+    $this->get(route('account-settings'))->assertRedirect(route('projects'));
 });
 
 it('shows a read-only viewer the roster but not the invite form', function (): void {
@@ -355,9 +373,9 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
     $viewer = memberWithRole($account->id, AccountRole::Viewer, 'viewer@acme.example');
 
     signInAsMember($viewer);
-    $this->get(route('workspace.members'))
+    $this->get(route('account-members'))
         ->assertOk()
-        ->assertSee('Members')
+        ->assertSee('Account members')
         ->assertDontSee('Invite a teammate');
 });
 
@@ -366,7 +384,7 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
     signInAsMember($member);
 
     // The project's limit is 2, one used → adding one succeeds.
-    Volt::test('workspace.projects.show', ['project' => $project->id])
+    Volt::test('console.projects.show', ['project' => $project->id])
         ->set('newEnvironment', 'Staging')
         ->call('addEnvironment')
         ->assertHasNoErrors();
@@ -374,7 +392,7 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
     expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 
     // The third is refused by the plan, with a friendly error rather than a throw.
-    Volt::test('workspace.projects.show', ['project' => $project->id])
+    Volt::test('console.projects.show', ['project' => $project->id])
         ->set('newEnvironment', 'Dev')
         ->call('addEnvironment')
         ->assertHasErrors('newEnvironment');
@@ -391,7 +409,7 @@ it('refuses a scoped member trying to add an environment to a project', function
     app(AccountMembers::class)->setEnvironmentAccess($dev->id, all: false, environmentIds: [$staging->id]);
     signInAsMember($dev);
 
-    Volt::test('workspace.projects.show', ['project' => $project->id])
+    Volt::test('console.projects.show', ['project' => $project->id])
         ->set('newEnvironment', 'Sneaky')
         ->call('addEnvironment')
         ->assertForbidden();
@@ -403,10 +421,10 @@ it('suspends and reactivates a project', function (): void {
     ['member' => $member, 'project' => $project] = provisionAccount();
     signInAsMember($member);
 
-    Volt::test('workspace.projects.show', ['project' => $project->id])->call('suspend');
+    Volt::test('console.projects.show', ['project' => $project->id])->call('suspend');
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('suspended');
 
-    Volt::test('workspace.projects.show', ['project' => $project->id])->call('reactivate');
+    Volt::test('console.projects.show', ['project' => $project->id])->call('reactivate');
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('active');
 });
 
@@ -414,7 +432,7 @@ it('lets a member create a second project and drills into it empty', function ()
     ['member' => $member] = provisionAccount();
     signInAsMember($member);
 
-    Volt::test('workspace.projects.create')
+    Volt::test('console.projects.create')
         ->set('name', 'Product Two')
         ->call('create')
         ->assertHasNoErrors();
@@ -423,7 +441,7 @@ it('lets a member create a second project and drills into it empty', function ()
 
     // A brand-new project starts with no environments — the member adds them there.
     signInAsMember($member);
-    $this->get(route('workspace.projects.show', $project->id))
+    $this->get(route('projects.show', $project->id))
         ->assertOk()
         ->assertSee('Product Two')
         ->assertSee('No environments yet');
@@ -439,22 +457,22 @@ it('lists every environment grouped under its project, each with an Open link', 
     $staging = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
 
     signInAsMember($member);
-    $this->get(route('workspace.home'))
+    $this->get(route('projects'))
         ->assertOk()
         ->assertSee('Acme')
         // Both environments are on the launchpad itself...
         ->assertSee('Production')
         ->assertSee('Staging')
         // ...each with its own open link, plus the project's settings entry point.
-        ->assertSee(route('workspace.environment.open', $staging->id), false)
-        ->assertSee(route('workspace.projects.show', $project->id), false);
+        ->assertSee(route('environment.open', $staging->id), false)
+        ->assertSee(route('projects.show', $project->id), false);
 });
 
 it('creates an environment inline from the launchpad', function (): void {
     ['member' => $member, 'project' => $project] = provisionAccount();
     signInAsMember($member);
 
-    Volt::test('workspace.home')
+    Volt::test('console.projects.index')
         ->call('startCreate', $project->id)
         ->set('newEnvironment', 'Staging')
         ->set('newEnvironmentType', 'sandbox')
@@ -476,7 +494,7 @@ it('refuses an inline environment create for a project on another account', func
 
     signInAsMember($member);
 
-    Volt::test('workspace.home')
+    Volt::test('console.projects.index')
         ->call('startCreate', $other->project->id)
         ->set('newEnvironment', 'Sneaky')
         ->call('addEnvironment')
@@ -484,3 +502,83 @@ it('refuses an inline environment create for a project on another account', func
 
     expect(Environment::query()->where('project_id', $other->project->id)->where('name', 'Sneaky')->exists())->toBeFalse();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Who the area is for
+|--------------------------------------------------------------------------
+|
+| The headline property of retiring `/workspace`: the pages are an AREA of the one
+| console, present exactly where the acting organization owns identity providers. Not a
+| plane, not a prefix, not a host — so these are asked of the rail the layout renders
+| from, which is the thing a person actually sees.
+*/
+
+/** @return list<string> the Identity platform routes visible to whoever is signed in */
+function identityPlatformPages(): array
+{
+    $area = collect(Console::nav()->areas())->firstWhere('key', 'identity-platform');
+
+    return collect($area?->pages() ?? [])
+        ->filter(fn ($page): bool => $page->feature === null || Console::featureActive($page->feature))
+        ->map(fn ($page): string => $page->route)
+        ->values()->all();
+}
+
+it('gives the whole area to an account owner', function (): void {
+    ['member' => $member] = provisionAccount();
+    signInAsMember($member);
+
+    expect(identityPlatformPages())->toHaveCount(8);
+});
+
+it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
+    // A subject of a TENANT environment — the shape `acme.cboxid.com` serves. They
+    // administer their own organization and own no identity providers, so there is
+    // nothing here for them: the area holds no pages and the rail drops it, by the same
+    // rule that already drops an area a module left empty.
+    [$subjectId, $organization] = actingAsRole(MembershipRole::Owner);
+
+    expect($subjectId)->not->toBe('')
+        ->and($organization->slug)->not->toBe('')
+        ->and(app(ConsoleScope::class)->accountRole())->toBeNull()
+        ->and(identityPlatformPages())->toBe([]);
+
+    // …and at the page, not only in the rail — a rail is not an authorization check. They
+    // are an OWNER of their own organization, so this is the area refusing them rather
+    // than the console.
+    Volt::test('console.billing')->assertRedirect(route('projects'));
+})->group('security');
+
+it('takes the area away when the acting organization is not the account\'s own', function (): void {
+    ['member' => $member, 'account' => $account] = provisionAccount();
+
+    // Provisioning homes the account in its own organization, which is the shape that
+    // makes this test mean anything: there IS an organization to be acting on, and the
+    // baseline is that acting on it gives the area.
+    expect($account->refresh()->organization_id)->toBeString();
+
+    signInAsMember($member);
+    expect(app(ConsoleScope::class)->accountRole())->toBe(AccountRole::Owner);
+
+    // Now act on a DIFFERENT organization the same person belongs to. Their account role
+    // has not changed and their projects have not moved; what changed is who the console
+    // says they are acting for, and offering them their own billing under another
+    // tenant's name in the chrome is the drift this predicate exists to stop.
+    $other = app(Organizations::class)->create(new NewOrganization('Somebody Else', 'somebody-else'));
+    app(Memberships::class)->add($other->id, (string) $member->subject_id, MembershipRole::Member);
+
+    // In the ROOT's scope: an account member's subject and its session rows live there,
+    // and under the suite's ambient environment the deny-by-default scope finds neither.
+    $root = app(PlatformRoot::class);
+    $subject = $root->run(fn () => app(Subjects::class)->find((string) $member->subject_id));
+    $session = $root->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
+
+    expect($subject)->not->toBeNull()->and($session)->not->toBeNull();
+
+    session()->put(PlatformAuth::ORG_KEY, $other->id);
+    app(CurrentUser::class)->set($subject, $session, app(Organizations::class)->find($other->id), MembershipRole::Member);
+
+    expect(app(ConsoleScope::class)->accountRole())->toBeNull()
+        ->and(identityPlatformPages())->toBe([]);
+})->group('security');

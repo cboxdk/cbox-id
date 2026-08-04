@@ -107,7 +107,7 @@ it('refuses the account door once an administrative password has expired', funct
     )));
 
     $auth = app(AccountAuth::class);
-    $request = Request::create('/workspace/login', 'POST');
+    $request = Request::create('/login', 'POST');
 
     // Inside its window the credential IS admitted by the gate. It does not reach a
     // session — the console holds it on the change page, which is the rule next door —
@@ -132,7 +132,7 @@ it('locks the account door out at the policy threshold', function (): void {
     );
 
     $auth = app(AccountAuth::class);
-    $request = Request::create('/workspace/login', 'POST');
+    $request = Request::create('/login', 'POST');
 
     foreach (range(1, 3) as $ignored) {
         expect($auth->attempt($request, 'owner@acme.example', 'a-wrong-guess-entirely'))
@@ -247,10 +247,10 @@ it('opens the tenant console for a member whose account mandates SSO', function 
 
     // From the door the member actually presses — "open" on the account console — so the
     // mint and the redemption are both under test, which is where the cycle lived.
-    [$response, $chain] = chainFrom($this, 'https://cboxid.com'.route('workspace.environment.open', $result->environment->id, false));
+    [$response, $chain] = chainFrom($this, 'https://cboxid.com'.route('environment.open', $result->environment->id, false));
 
     expect($response->isRedirect())->toBeFalse('the console bounced instead of opening: '.implode(' -> ', $chain))
-        ->and(collect($chain)->filter(fn (string $hop): bool => str_contains($hop, '/workspace/open/'))->count())
+        ->and(collect($chain)->filter(fn (string $hop): bool => str_contains($hop, '/open/'))->count())
         ->toBe(1, 'the chain re-entered the minting door, which is the cycle: '.implode(' -> ', $chain));
 
     $response->assertSuccessful();
@@ -279,7 +279,7 @@ it('closes an open tenant console when the account\'s policy stops admitting pas
     handoffShape($result->environment);
     signInAsMember($result->member);
 
-    [$response] = chainFrom($this, 'https://cboxid.com'.route('workspace.environment.open', $result->environment->id, false));
+    [$response] = chainFrom($this, 'https://cboxid.com'.route('environment.open', $result->environment->id, false));
     $response->assertSuccessful();
     expect(app(EnvironmentAdminAuth::class)->check())->toBeTrue();
 
@@ -294,7 +294,7 @@ it('closes an open tenant console when the account\'s policy stops admitting pas
     [$after, $chain] = chainFrom($this, 'https://cbox-id.test'.route('environment.home', [], false));
 
     expect($after->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
-        ->and(end($chain))->toBe('https://cboxid.com/workspace/login')
+        ->and(end($chain))->toBe('https://cboxid.com/login')
         ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 })->group('security');
 
@@ -336,7 +336,7 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     [$response, $chain] = chainFrom($this, 'https://cbox-id.test/admin/handoff?token='.$token);
 
     expect($response->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
-        ->and(end($chain))->toBe('https://cboxid.com/workspace/password/change')
+        ->and(end($chain))->toBe('https://cboxid.com/password/change')
         ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 
     $response->assertSuccessful();

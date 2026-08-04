@@ -13,7 +13,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
 /**
- * Accept a workspace invitation: the invitee sets a password and is signed in. The
+ * Accept an account invitation: the invitee sets a password and is signed in. The
  * page is reached only via a signed URL (route middleware), and the member id is
  * #[Locked] so it can't be swapped after that signed load — an attacker can neither
  * forge the signature nor point the action at a different member.
@@ -36,7 +36,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
 
         // Already accepted, revoked, or unknown — the link is spent.
         if ($invited === null || $invited->status !== \Cbox\Id\Platform\Enums\AccountMemberStatus::Invited) {
-            return redirect()->route('workspace.login')
+            return redirect()->route('login')
                 ->with('status', 'This invitation is no longer valid. Try signing in.');
         }
 
@@ -57,7 +57,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
         // activate() is a no-op unless the member is still 'invited', so a replayed
         // or racing accept can never reset an active member's password.
         if (! $members->activate($this->member, $this->password)) {
-            $this->redirect(route('workspace.login'), navigate: false);
+            $this->redirect(route('login'), navigate: false);
 
             return;
         }
@@ -80,13 +80,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
                 SsoRefusal::hold($subjectId, RefusedFactor::Invitation);
             }
 
-            $this->redirect(route('workspace.login'), navigate: false);
+            $this->redirect(route('login'), navigate: false);
 
             return;
         }
 
         $auth->establish($this->member, ['invitation']);
-        $this->redirect(route('workspace.home'), navigate: false);
+        $this->redirect(route('projects'), navigate: false);
     }
 }; ?>
 
@@ -94,7 +94,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
     <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Accept your invitation</h1>
     <p class="mt-2 text-sm" style="color:var(--muted)">
         Set a password to join
-        <span class="font-medium" style="color:var(--foreground)">{{ $accountName ?? 'the workspace' }}</span>
+        <span class="font-medium" style="color:var(--foreground)">{{ $accountName ?? 'the account' }}</span>
         as <span class="font-medium" style="color:var(--foreground)">{{ $email }}</span>.
     </p>
 

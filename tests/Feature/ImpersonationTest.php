@@ -241,7 +241,7 @@ it('suspends the session an operator signed in with, and puts it back', function
     // a restore that puts back an id without a live session row is a session the plane
     // refuses, and asserting the key alone would not notice.
     nextRequest();
-    $this->get(route('workspace.home'))->assertOk();
+    $this->get(route('projects'))->assertOk();
 });
 
 /*

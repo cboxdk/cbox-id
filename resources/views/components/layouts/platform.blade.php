@@ -1,35 +1,37 @@
 @props(['title' => null, 'width' => '48rem'])
 @php
-    use App\Platform\AccountAuth;
     use App\Platform\Console\ConsoleScope;
 
-    $member = app(AccountAuth::class)->current();
-    $account = $member?->account;
-
-    // WHO IS SIGNED IN. Everything identity-shaped here used to fall through $member,
-    // which is null for a platform operator who buys nothing on the deployment they run —
-    // so the topbar read "Workspace / Account", the rail foot read "Account", and the
-    // account popover read "Account" with no address under it. On a console where one
-    // click suspends a customer, nothing on screen named the session. The operator record
-    // is the fallback, and it is the same one ConsoleScope already resolved below.
+    // WHO IS SIGNED IN. Everything identity-shaped here used to fall through the account
+    // MEMBER, which is null for a platform operator who buys nothing on the deployment
+    // they run — so the topbar read "Workspace / Account", the rail foot read "Account",
+    // and the account popover read "Account" with no address under it. On a console where
+    // one click suspends a customer, nothing on screen named the session. Only the
+    // operator is asked now: the account pages this shell used to carry are pages of the
+    // one console, and the only thing left on it is the platform section.
     $operator = app(ConsoleScope::class)->operator();
-    $identityName = $member?->name ?? $member?->email ?? $operator?->name ?? $operator?->email ?? 'Account';
-    $identityEmail = $member?->email ?? $operator?->email;
+    $identityName = $operator?->name ?? $operator?->email ?? 'Platform';
+    $identityEmail = $operator?->email;
 
-    // The heading beside the initial names the ORGANISATION you are acting for. An
-    // operator acts for the install itself, so it says so rather than borrowing the
-    // customer plane's word for it.
+    // The heading beside the initial names what you are acting for. An operator acts for
+    // the install itself, so it says so rather than borrowing a customer's word for it.
     $brandName = config('cbox-id.branding.name', 'Cbox ID');
     $brandName = is_string($brandName) && $brandName !== '' ? $brandName : 'Cbox ID';
-    $contextName = $account?->name ?? ($operator !== null ? $brandName : 'Workspace');
-    $contextRole = $account !== null ? 'Account' : ($operator !== null ? 'Platform operator' : 'Account');
+    $contextName = $brandName;
+    $contextRole = 'Platform operator';
     $accountInitial = strtoupper(substr($contextName, 0, 1));
 
-    // Two-tier IA (grouped), role-aware — declared once in ConsoleNavigation so the
-    // sidebar and the eyebrow above each page title cannot disagree. The platform areas
-    // are in that same list, conditioned on operator authority, which is why there is one
-    // shell here and no longer a second one for staff.
-    $nav = app(\App\Platform\Navigation\ConsoleNavigation::class)->workspace($member?->role);
+    // The platform section's own two-tier IA, declared once in ConsoleNavigation so the
+    // sidebar and the eyebrow above each page title cannot disagree.
+    //
+    // This shell served the retired account console as well, and took its navigation from
+    // `ConsoleNavigation::workspace()` — the account areas, with the platform areas folded
+    // in for whoever ran the deployment. Those account areas are areas of the ONE console
+    // now (see ConsoleServiceProvider's `identity-platform`), so what is left here is the
+    // platform section and nothing else. Deliberately still its own shell: folding the
+    // platform pages into `layouts.app` is a reshape of the operator area, which is a
+    // later step and not one that falls out of this.
+    $nav = app(\App\Platform\Navigation\ConsoleNavigation::class)->operator();
 
     // Operator-only chrome. Operators stand above every environment, so the target
     // selector lists them all — switching just repoints reads and provisioning. Guarded
@@ -85,8 +87,9 @@
         }
     }
 @endphp
-{{-- The workspace console shell — the account-member (buyer) plane. Self-contained:
-     it assumes NO org-user or operator context (an account member has neither). --}}
+{{-- The platform section's shell — the pages that need authority over the deployment.
+     Self-contained: it assumes no tenant context, because an operator stands above every
+     one of them. --}}
 <!DOCTYPE html>
 <html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
@@ -96,10 +99,11 @@
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    {{-- The plane word comes from the nav registry, not from which layout rendered:
-         one shell serves both planes now, and a hard-coded "Workspace" put the customer
-         plane's name on every platform page's tab, history entry and bookmark. --}}
-    <title>{{ ($title ? $title.' · ' : '').app(\App\Platform\ConsoleLocation::class)->planeLabel().' · '.$brandName }}</title>
+    {{-- One word, because this shell serves one section. It used to serve the account
+         console too and read the plane out of the nav registry, so that a page about the
+         whole install did not claim to be somebody's workspace in the tab strip. There is
+         nothing left here to be mistaken for. --}}
+    <title>{{ ($title ? $title.' · ' : '').'Platform · '.$brandName }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @consoleBrandingStyle
 </head>
@@ -121,10 +125,10 @@
      @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
     {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
-    <x-console.rail :areas="$railAreas" :brand-href="route('workspace.home')" :brand-label="$contextName">
+    <x-console.rail :areas="$railAreas" :brand-href="route('platform.environments')" :brand-label="$contextName">
         <x-slot:foot>
             <x-console.account-menu :name="$identityName" :email="$identityEmail"
-                                    :initial="$accountInitial" logout-route="workspace.logout" />
+                                    :initial="$accountInitial" logout-route="logout" />
         </x-slot:foot>
     </x-console.rail>
 
@@ -195,8 +199,8 @@
     </div>
 
     <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$contextName"
-                  :subheading="$contextRole" :initial="$accountInitial" logout-route="workspace.logout"
-                  :member-name="$member?->name ?? $operator?->name" :member-email="$identityEmail" />
+                  :subheading="$contextRole" :initial="$accountInitial" logout-route="logout"
+                  :member-name="$operator?->name" :member-email="$identityEmail" />
 </div>
     <x-toast />
 </body>

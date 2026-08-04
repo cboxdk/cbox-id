@@ -292,9 +292,27 @@ function signInAsSubject(string $subjectId): void
         $subject = app(Subjects::class)->find($subjectId);
         $session = is_string($sessionId) ? app(SessionManager::class)->active($sessionId) : null;
 
-        if ($subject !== null && $session !== null) {
-            app(CurrentUser::class)->set($subject, $session, null);
+        if ($subject === null || $session === null) {
+            return;
         }
+
+        // …INCLUDING the organization, which this used to leave null. The middleware falls
+        // back to the subject's first membership and remembers it, so a real request
+        // always arrives with one resolved; a fixture that skipped it made every question
+        // keyed on the ACTING organization answer "none" — and those questions are now
+        // what decides whether a page exists at all
+        // ({@see \App\Platform\Console\ConsoleScope::accountRole()}). A component
+        // driven directly would mount, find no acting organization, and redirect, which
+        // surfaces as a mangled Livewire snapshot several frames away from the cause.
+        $membership = app(Memberships::class)->forUser($subjectId)->first();
+        $organizationId = $membership?->organization_id;
+        $organization = is_string($organizationId) ? app(Organizations::class)->find($organizationId) : null;
+
+        if ($organization !== null) {
+            session()->put(PlatformAuth::ORG_KEY, $organization->id);
+        }
+
+        app(CurrentUser::class)->set($subject, $session, $organization, $membership?->role);
     });
 }
 

@@ -43,7 +43,7 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
         ->set('email', 'dana@acme.example')
         ->set('password', 'a-strong-unbreached-passphrase')
         ->call('register')
-        ->assertRedirect(route('workspace.home'));
+        ->assertRedirect(route('projects'));
 
     // A global account + member exist (NOT a Subject in Cbox's environment)…
     $member = app(AccountMembers::class)->findByEmail('dana@acme.example');
@@ -73,7 +73,7 @@ it('refuses a second workspace for an email that already has one', function (): 
         ->set('password', 'a-strong-unbreached-passphrase')
         ->call('register');
 
-    $register()->assertRedirect(route('workspace.home'));
+    $register()->assertRedirect(route('projects'));
     $register()->assertHasErrors('email');
 
     // Only one account member ever created for the email.

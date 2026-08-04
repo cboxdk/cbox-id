@@ -57,7 +57,7 @@ it('advances the identifier-first flow when Enter is pressed, not only when Cont
 });
 
 it('advances the account door with Enter too', function (): void {
-    visit(route('workspace.login'))
+    visit(route('login'))
         ->fill('email', 'owner@acme.test')
         ->keys('#email', 'Enter')
         ->assertNoJavascriptErrors()

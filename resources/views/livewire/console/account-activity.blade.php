@@ -4,27 +4,28 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Activity — the account-plane activity log: environments created,
+ * Identity platform › Account activity — the account's activity log: environments created,
  * members invited/removed/re-roled, environment keys minted/revoked, across the
  * whole account. Sourced from the tamper-evident audit chain scoped to this account
  * ({@see AccountActivity}). Admin-only, and re-guarded in boot() so it re-runs on
  * every Livewire interaction, not just first render.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Activity'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class extends Component
 {
     public string $filter = '';
 
-    public function boot(AccountAuth $auth): void
+    public function boot(ConsoleScope $scope): void
     {
         // Account-wide activity names every actor and target — an admin view. A
         // member who cannot read members cannot read the account's activity either.
-        abort_unless($auth->current()?->role->canReadMembers() ?? false, 403);
+        abort_unless($scope->accountRole()?->canReadMembers() === true, 403);
     }
 
     /**
@@ -51,16 +52,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Activity'])] class ext
 }; ?>
 
 <div>
-    <div class="cbx-page-header mb-8 flex-wrap">
-        <div>
-            <p class="cbx-page-eyebrow">Account</p>
-            <h1 class="cbx-page-title">Activity</h1>
-            <p class="cbx-page-desc">Every change across your account — environments, members and keys — tamper-evident and hash-chained.</p>
-        </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto">
+    {{-- The console's page primitive, so the eyebrow comes from the nav registry rather
+         than from a word typed here. Hand-written it said "Account" while the rail entry
+         that reaches this page says "Identity platform" — the one label whose whole job is
+         to tell you which area you are standing in, disagreeing with the navigation. --}}
+    <x-page-header class="flex-wrap" title="Account activity"
+                   subtitle="Every change across this account — environments, members and keys — tamper-evident and hash-chained.">
+        <x-slot:actions>
             <input wire:model.live.debounce.300ms="filter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…" aria-label="Filter by action">
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">

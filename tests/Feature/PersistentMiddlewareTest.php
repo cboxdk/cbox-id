@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateAccountApi;
-use App\Http\Middleware\AuthenticateAccountMember;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOperator;
@@ -72,13 +71,17 @@ function nonPersistentByDesign(): array
 }
 
 it('re-runs every console auth guard on a Livewire action', function (): void {
-    // These five were missing, which left the environment-admin console, the account plane,
-    // the plane bulkheads, the sudo step-up and the impersonation block unenforced on
-    // /livewire/update. BlockDuringImpersonation was found by the invariant test below, not
-    // by inspection — which is the reason that test exists.
+    // These were missing, which left the environment-admin console, the plane bulkheads,
+    // the sudo step-up and the impersonation block unenforced on /livewire/update.
+    // BlockDuringImpersonation was found by the invariant test below, not by inspection —
+    // which is the reason that test exists.
+    //
+    // The account plane's own gate was on this list too. It is not missing: the pages it
+    // guarded are console pages now, behind the subject session `Authenticate` already
+    // re-runs here, and a gate with nothing left to gate was deleted rather than kept
+    // pointing at nothing.
     expect(persistentMiddleware())
         ->toContain(AuthenticateEnvironmentAdmin::class)
-        ->toContain(AuthenticateAccountMember::class)
         ->toContain(EnforcePlane::class)
         // The sixth, found the same way BlockDuringImpersonation was — by the invariant
         // test below rather than by inspection. `multi.tenant` decides whether the whole
@@ -176,12 +179,17 @@ it('guards every environment console component, so a new one cannot skip it', fu
     foreach ($components as $file) {
         $source = file_get_contents($file) ?: '';
 
-        // Either guard is the same answer: ConsoleScope::assertMayAdminister() resolves
-        // the env-admin session through EnvironmentAdminAuth on this plane, and asks the
-        // membership role on the other. What is being checked is that boot() — the only
-        // hook that re-runs per action — refuses before anything else happens.
+        // Any of the three is the same answer, because all three are ConsoleScope asking
+        // "may the person acting on this request change this": assertMayAdminister()
+        // resolves the env-admin session on one plane and the membership role on the
+        // other, and accountRole() is the same question for a page that exists only where
+        // the acting organization owns identity providers. What is being checked is that
+        // boot() — the only hook that re-runs per action — refuses before anything else
+        // happens.
         if (! str_contains($source, 'public function boot(')
-            || (! str_contains($source, 'EnvironmentAdminAuth') && ! str_contains($source, 'assertMayAdminister'))) {
+            || (! str_contains($source, 'EnvironmentAdminAuth')
+                && ! str_contains($source, 'assertMayAdminister')
+                && ! str_contains($source, 'accountRole()'))) {
             $unguarded[] = str_replace(resource_path('views/livewire/'), '', $file);
         }
     }

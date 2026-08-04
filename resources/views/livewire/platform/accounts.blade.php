@@ -35,7 +35,7 @@ use Livewire\Volt\Component;
  * lands on the account's own page (`platform.accounts.show`), where account → project →
  * environment is walkable.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '72rem'])] class extends Component
 {
     /** Re-check operator AUTHORITY on every request, including Livewire actions. */
     public function boot(ConsoleScope $scope): void

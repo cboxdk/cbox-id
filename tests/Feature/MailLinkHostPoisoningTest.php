@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Mail\AccountInviteMail;
 use App\Mail\MagicLinkMail;
-use App\Mail\WorkspacePasswordResetMail;
+use App\Mail\PasswordResetMail;
 use App\Platform\MailLinks;
 use App\Platform\TrustedHosts;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -20,14 +23,19 @@ use Livewire\Volt\Volt;
 uses(RefreshDatabase::class);
 
 /**
- * Host-header poisoning on the ACCOUNT plane.
+ * Host-header poisoning on the platform root.
  *
  * `SetEnvironment` answers an UNMAPPED host with the platform root rather than a refusal
  * (host hardening is punted to the ingress there, deliberately), so `Host: evil.example`
- * reaches every account-plane surface — including forgot-password and magic-link, both of
- * which mail an absolute URL that `route()` builds from that very header. The reset link
- * then survives replay, because Laravel's `signed` middleware recomputes the signature
- * over `$request->url()`, which is the poisoned host again.
+ * reaches every surface it serves — including forgot-password, magic-link and the account
+ * invitation, each of which mails an absolute URL that `route()` builds from that very
+ * header. The invitation then survives replay, because Laravel's `signed` middleware
+ * recomputes the signature over `$request->url()`, which is the poisoned host again.
+ *
+ * The account plane had its own copy of the first two doors and this file held both sets.
+ * There is one of each now, and it is the same one every tenant uses — so what is asserted
+ * here is that a MEMBER's mail goes through it, which is the claim the second copy was
+ * standing in for.
  *
  * Two layers answer this and they fail differently, so both are held here:
  *
@@ -43,7 +51,11 @@ uses(RefreshDatabase::class);
 function accountPlaneMember(): object
 {
     multiTenantDeployment('cboxid.com');
-    platformRootEnvironment();
+    // Stand the request IN the platform root, not merely beside it: a member's subject and
+    // its reset tokens live there, and under the suite's default environment the
+    // deny-by-default scope answers the door with "no such address" — which mails nothing
+    // and makes an assertion about a mail's origin pass for the wrong reason.
+    platformRootDeployment();
 
     return app(AccountProvisioner::class)->provision(new AccountBlueprint(
         accountName: 'Acme',
@@ -72,23 +84,23 @@ function poisonRequestHost(string $url): void
 
 it('is genuinely poisonable — route() follows the Host header', function (): void {
     accountPlaneMember();
-    poisonRequestHost('http://evil.example/workspace/forgot-password');
+    poisonRequestHost('http://evil.example/forgot-password');
 
-    expect(route('workspace.password.request'))->toContain('evil.example');
+    expect(route('password.request'))->toContain('evil.example');
 });
 
 it('never mails a reset link on a Host this deployment does not serve', function (): void {
     $account = accountPlaneMember();
     Mail::fake();
 
-    poisonRequestHost('http://evil.example/workspace/forgot-password');
+    poisonRequestHost('http://evil.example/forgot-password');
 
-    Volt::test('workspace.forgot-password')
+    Volt::test('auth.forgot-password')
         ->set('email', $account->member->email)
-        ->call('request')
+        ->call('sendResetLink')
         ->assertHasNoErrors();
 
-    Mail::assertSent(WorkspacePasswordResetMail::class, function (WorkspacePasswordResetMail $mail): bool {
+    Mail::assertSent(PasswordResetMail::class, function (PasswordResetMail $mail): bool {
         expect($mail->url)
             ->not->toContain('evil.example')
             ->and($mail->url)->toStartWith((string) config('app.url'));
@@ -101,9 +113,9 @@ it('never mails a magic link on a Host this deployment does not serve', function
     $account = accountPlaneMember();
     Mail::fake();
 
-    poisonRequestHost('http://evil.example/workspace/login');
+    poisonRequestHost('http://evil.example/login');
 
-    Volt::test('workspace.login')
+    Volt::test('auth.login')
         ->set('email', $account->member->email)
         ->call('sendMagicLink')
         ->assertHasNoErrors();
@@ -119,26 +131,39 @@ it('never mails a magic link on a Host this deployment does not serve', function
     });
 });
 
-it('refuses a signed reset link replayed with a foreign Host', function (): void {
+it('refuses a signed invitation link replayed with a foreign Host', function (): void {
     $account = accountPlaneMember();
     Mail::fake();
 
-    // Requested through the poisoned host, which is the whole attack: without MailLinks
-    // the signature would be computed over `evil.example` and the replay below would
-    // validate — that is the step the reviewer used to reach a rendered reset form.
-    poisonRequestHost('http://evil.example/workspace/forgot-password');
+    // Single-host from here on. What is under test is the ORIGIN a mailed link carries and
+    // whether its signature survives a replay — not which hosts serve which surface. Left
+    // multi-tenant, the link `MailLinks` correctly mints from `app.url` points at a host
+    // this fixture's SaaS shape does not answer on, and the 404 would read as the signature
+    // holding when nothing had been checked at all.
+    config(['cbox-id.tenancy.multi_tenant' => false]);
 
-    Volt::test('workspace.forgot-password')
-        ->set('email', $account->member->email)
-        ->call('request')
-        ->assertHasNoErrors();
+    // Minted through the poisoned host, which is the whole attack: without MailLinks the
+    // signature would be computed over `evil.example` and the replay below would validate
+    // — that is the step the reviewer used to reach a rendered form holding a credential.
+    //
+    // The invitation rather than the reset, because it is the signed mailed route that is
+    // left: the account plane's `signed` reset is gone, and the console's reset carries a
+    // token in the path rather than a signature over the URL.
+    poisonRequestHost('http://evil.example/account-members');
 
-    $url = '';
-    Mail::assertSent(WorkspacePasswordResetMail::class, function (WorkspacePasswordResetMail $mail) use (&$url): bool {
-        $url = $mail->url;
+    $invited = app(AccountMembers::class)
+        ->invite((string) $account->account->id, 'invitee@acme.example', AccountRole::Admin);
 
-        return true;
-    });
+    $url = app(MailLinks::class)->temporarySignedRoute(
+        'account.invite.accept',
+        now()->addDays(7),
+        ['member' => $invited->id],
+    );
+
+    Mail::to($invited->email)->send(new AccountInviteMail('Acme', 'Owner', $url));
+
+    expect($url)->not->toContain('evil.example')
+        ->and($url)->toStartWith((string) config('app.url'));
 
     $path = (string) parse_url($url, PHP_URL_PATH).'?'.(string) parse_url($url, PHP_URL_QUERY);
 

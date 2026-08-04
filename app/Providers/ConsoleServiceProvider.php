@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Platform\Console\ConsolePages;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Platform\Enums\AccountRole;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -23,8 +25,9 @@ use Illuminate\Support\ServiceProvider;
  * on `order` alone, so two areas sharing a number resolve by provider boot order — the
  * rail silently reorders itself when a module is enabled, disabled, or the config cache
  * is rebuilt. The console shipped two such ties (Logs/Security at 60, Settings/
- * Connectors at 70). Reserved: 10 Overview · 20 People · 30 Sign-in · 40 Access control
- * · 50 Developers · 60 Connectors · 70 Logs · 80 Settings · 90 My account.
+ * Connectors at 70). Reserved: 10 Overview · 15 Identity platform · 20 People · 30
+ * Sign-in · 40 Access control · 50 Developers · 60 Connectors · 70 Logs · 80 Settings ·
+ * 90 My account.
  */
 final class ConsoleServiceProvider extends ServiceProvider
 {
@@ -41,12 +44,34 @@ final class ConsoleServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->identityPlatformFeatures();
+
         $nav = Console::nav();
 
         $nav->area('overview', 'Overview', 'dashboard', 10)
             ->page('dashboard', 'Overview', order: 10)
             ->page('usage', 'Usage', order: 20)
             ->page('approvals', 'Agent approvals', order: 30);
+
+        // What an organization has BECAUSE IT OWNS IDENTITY PROVIDERS — the projects it
+        // runs, the environments under them, the keys and domains those need, and the bill
+        // for the lot. This was a console of its own, on its own prefix, behind its own
+        // sign-in; it is an area, and it appears for whoever the features below admit.
+        //
+        // Gated page-by-page rather than as a whole area, so the rail says the same thing
+        // an attempted click would: a member who may read billing and nothing else sees
+        // Billing alone, and an organization that owns no IdP at all — every organization
+        // on every host except the root's own accounts — has no page here, so the area
+        // vanishes by the same rule that already drops an area a module left empty.
+        $nav->area('identity-platform', 'Identity platform', 'layers', 15)
+            ->page('projects', 'Projects', feature: 'account.projects', order: 10)
+            ->page('account-members', 'Account members', feature: 'account.members', order: 20)
+            ->page('api-keys', 'API keys', feature: 'account.manage', order: 30)
+            ->page('environment-keys', 'Environment keys', feature: 'account.environments', order: 40)
+            ->page('environment-domains', 'Environment domains', feature: 'account.environments', order: 50)
+            ->page('account-activity', 'Account activity', feature: 'account.members', order: 60)
+            ->page('billing', 'Billing', feature: 'account.billing', order: 70)
+            ->page('account-settings', 'Account settings', feature: 'account.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.
@@ -95,5 +120,30 @@ final class ConsoleServiceProvider extends ServiceProvider
         // layout gates the admin-only areas above by role, this one is universal).
         $nav->area('account', 'My account', 'key', 90)
             ->page('account', 'Security', order: 10);
+    }
+
+    /**
+     * The gates on the Identity platform area, each one an ACCOUNT capability.
+     *
+     * Registered as console-kit features rather than checked in the layout because that
+     * is the hook a page already has: the rail drops a page whose feature is inactive,
+     * and an area with no pages left. Written as closures so they are evaluated per
+     * render — the answer depends on who is signed in and which organization they are
+     * acting on, neither of which is known at boot.
+     *
+     * Every one of them asks {@see ConsoleScope}, which is the console's single answer to
+     * "who is acting, on which organization, and what may they do". A page's own guard
+     * asks the same object, so the rail and the page cannot disagree about who is admitted.
+     */
+    private function identityPlatformFeatures(): void
+    {
+        $features = Console::features();
+        $role = static fn (): ?AccountRole => app(ConsoleScope::class)->accountRole();
+
+        $features->register('account.projects', static fn (): bool => $role() !== null);
+        $features->register('account.members', static fn (): bool => $role()?->canReadMembers() === true);
+        $features->register('account.manage', static fn (): bool => $role()?->canManageMembers() === true);
+        $features->register('account.environments', static fn (): bool => $role()?->canManageEnvironments() === true);
+        $features->register('account.billing', static fn (): bool => $role()?->canReadBilling() === true);
     }
 }

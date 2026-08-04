@@ -30,7 +30,7 @@ function cspDirective(string $name, string $uri = '/'): string
 it('permits a form submission to finish on the account host', function (): void {
     // Signing in is unified on the platform root, so a session that ENDS on an
     // environment host finishes on another one: POST /admin/logout redirects to
-    // /admin/login, which redirects to the root's /workspace/login. Browsers check
+    // /admin/login, which redirects to the root's /login. Browsers check
     // form-action against every hop of a submission's redirect chain, so under
     // `form-action 'self'` logout was refused outright — the most basic control in the
     // console, dead on a policy written for an app that lives on one origin.

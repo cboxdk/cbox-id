@@ -57,7 +57,7 @@ final class EnvironmentAdminController extends Controller
             // The ACCOUNT, not just the member. An account suspended in the seconds since
             // the mint — or by an operator while the tab sat open — must not still redeem
             // into a live admin console. Every other resolve path re-checks this
-            // (AccountAuth::current(), the workspace gate); this one did not.
+            // (AccountAuth::current(), the account console's gate); this one did not.
             || ! ($member->account?->isActive() ?? false)
             || ! $member->role->canManageEnvironments()
             || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {

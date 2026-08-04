@@ -64,7 +64,7 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
     ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
     signInAsMember($owner);
 
-    $page = Volt::test('workspace.environment-domains')
+    $page = Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
         ->set('newDomain', 'id.acme.com')
         ->call('request');
@@ -93,7 +93,7 @@ it('surfaces a validation error for a platform-reserved domain', function (): vo
     ['member' => $owner, 'environment' => $env] = provisionAccount();
     signInAsMember($owner);
 
-    Volt::test('workspace.environment-domains')
+    Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
         ->set('newDomain', 'acme.cboxid.com')
         ->call('request')
@@ -107,7 +107,7 @@ it('removes a verified domain, falling back to the default issuer', function ():
     $env->update(['domain' => 'id.acme.com']);
     signInAsMember($owner);
 
-    Volt::test('workspace.environment-domains')
+    Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
         ->call('remove');
 
@@ -119,8 +119,8 @@ it('refuses the domains page to a member who cannot manage environments', functi
     $viewer = memberWithRole($account->id, AccountRole::Billing, 'billing2@acme.example');
 
     signInAsMember($viewer);
-    $this->get(route('workspace.environment-domains'))
-        ->assertRedirect(route('workspace.home'));
+    $this->get(route('environment-domains'))
+        ->assertRedirect(route('projects'));
 });
 
 /**
@@ -142,7 +142,7 @@ it('does not leak another account domain challenge through the selected environm
 
     signInAsMember($mine['member']);
 
-    $component = Volt::test('workspace.environment-domains')
+    $component = Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $theirs['environment']->id);
 
     expect($component->viewData('challenge'))
@@ -151,7 +151,7 @@ it('does not leak another account domain challenge through the selected environm
     // Positive control: their own environment still resolves one.
     app(EnvironmentDomains::class)->request($mine['environment']->id, 'id.acme.example');
 
-    expect(Volt::test('workspace.environment-domains')
+    expect(Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $mine['environment']->id)
         ->viewData('challenge'))
         ->not->toBeNull('the page stopped showing a member their own challenge');

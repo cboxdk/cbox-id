@@ -40,8 +40,8 @@ final class EmailVerificationController extends Controller
             // decides where to land, not whether to admit — a wrong guess costs a
             // redundant sign-in page, never access.
             return session()->has(PlatformAuth::SESSION_KEY)
-                ? redirect()->route('workspace.home')->with('status', 'Email verified — your environment is ready.')
-                : redirect()->route('workspace.login')->with('status', 'Email verified — sign in to open your environment.');
+                ? redirect()->route('projects')->with('status', 'Email verified — your environment is ready.')
+                : redirect()->route('login')->with('status', 'Email verified — sign in to open your environment.');
         }
 
         return redirect()->route('login')->with('status', 'Your email is verified — you can sign in.');

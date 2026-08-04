@@ -89,7 +89,7 @@ it('keeps two tenants on separate Relying Parties, so neither is offered the oth
 it('keeps the account plane on the platform root, which is the half that already worked', function (): void {
     passkeyTenantEnvironment('acme');
 
-    $this->postJson('https://cboxid.com/workspace/passkeys/login/options')
+    $this->postJson('https://cboxid.com/passkeys/login/options')
         ->assertOk()
         ->assertJsonPath('rpId', 'cboxid.com');
 })->group('security');

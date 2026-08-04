@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\MagicLink;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
@@ -61,7 +63,7 @@ it('signs an account member in against their platform-root subject, not the memb
     );
 
     $auth = app(AccountAuth::class);
-    $request = Request::create('/workspace/login', 'POST');
+    $request = Request::create('/login', 'POST');
 
     expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
         ->toBe(AttemptOutcome::Invalid)
@@ -73,7 +75,7 @@ it('holds the account door to the SSO mandate on the account\'s organization', f
     ['member' => $member, 'account' => $account] = unifiedSetup();
 
     $auth = app(AccountAuth::class);
-    $request = Request::create('/workspace/login', 'POST');
+    $request = Request::create('/login', 'POST');
 
     // Baseline: the correct password signs in.
     expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
@@ -100,10 +102,12 @@ it('holds the account door to the SSO mandate on the account\'s organization', f
         ->toBe(AttemptOutcome::Invalid);
 });
 
-it('is identifier-first: the workspace door asks for an email before a password', function (): void {
+it('is identifier-first: the door asks for an email before a password', function (): void {
     platformRootEnvironment();
 
-    Volt::test('workspace.login')
+    // The ONE door. There was a second one for account members, identifier-first in its
+    // own copy of this code, and this test existed twice for the same reason.
+    Volt::test('auth.login')
         ->assertSee('Continue')
         ->assertDontSee('Forgot password?')
         ->set('email', 'owner@acme.example')
@@ -112,26 +116,49 @@ it('is identifier-first: the workspace door asks for an email before a password'
         ->assertSee('Forgot password?');
 });
 
-it('signs a member in from a workspace magic link, and nobody else', function (): void {
+it('signs a member in from a magic link, and resolves the membership from the session', function (): void {
     ['member' => $member] = unifiedSetup();
     $root = app(PlatformRoot::class);
 
-    // A subject in the platform root who is NOT an account member. Their link redeems as
-    // a valid subject — and still opens no workspace.
+    // The requests below are made AS the platform root, because that is the host an
+    // account member's link is issued on and redeemed at. Left on the suite's default
+    // environment, the redemption reads a token table it cannot see and the test measures
+    // the tenancy scope rather than the door.
+    platformRootDeployment();
+
+    // There was a SECOND magic-link door — `/workspace/magic/{token}` — whose whole job
+    // was to redeem the same token into an account session, and it refused a subject who
+    // carried no account membership because the plane it landed on served nothing else.
+    // One door, one token, one session: a stranger's link signs the stranger in, and what
+    // they hold is a question asked afterwards rather than at the door.
     $stranger = $root->run(fn () => app(Subjects::class)->create('stranger@example.test', 'Stranger', 'a-strong-unbreached-passphrase'));
     $strangerToken = $root->run(fn (): string => app(MagicLink::class)->request('stranger@example.test'));
 
-    $this->get(route('workspace.magic.redeem', $strangerToken))
-        ->assertRedirect(route('workspace.login'));
-    expect(app(AccountAuth::class)->check())->toBeFalse()
+    $this->get(route('magic.redeem', $strangerToken))
+        ->assertRedirect(route('dashboard'));
+    expect(app(AccountAuth::class)->check())
+        ->toBeFalse('a subject with no membership resolved to an account member')
         ->and($stranger->id)->not->toBeNull();
 
-    // The member's own link does sign them in.
+    // Not `nextRequest()`: it ends the request wholesale, ambient EnvironmentContext
+    // included, and the token minted below is written into an environment-owned table.
+    forgetSubjectSession();
+
+    // …and the member's own link resolves to the member, off the same one session.
     $token = $root->run(fn (): string => app(MagicLink::class)->request('owner@acme.example'));
 
-    $this->get(route('workspace.magic.redeem', $token))
-        ->assertRedirect(route('workspace.home'));
-    expect(app(AccountAuth::class)->current()?->id)->toBe($member->id);
+    $this->get(route('magic.redeem', $token))
+        ->assertRedirect(route('dashboard'));
+
+    // The session the redemption minted names the member's SUBJECT — which is the whole
+    // claim: one token, one door, one session, and "which account" is a lookup off it
+    // rather than anything the browser carries.
+    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
+
+    $sessionId = (string) session(PlatformAuth::SESSION_KEY);
+
+    expect($root->run(fn (): ?string => app(SessionManager::class)->active($sessionId)?->user_id))
+        ->toBe($member->subject_id);
 });
 
 it('kills the env-admin session when the underlying subject is deactivated', function (): void {

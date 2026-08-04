@@ -139,7 +139,7 @@ final class Authenticate
         }
 
         if ($this->mustChangePassword($request, $subject->id)) {
-            return redirect()->route($this->holdRoute($request, 'password.change'));
+            return redirect()->route('password.change');
         }
 
         // A federated identity is waiting to be attached to THIS account and nobody has
@@ -154,10 +154,10 @@ final class Authenticate
         // A tenant that requires a second factor cannot enforce it by turning people
         // away — that locks out precisely the people who still need to enrol. Hold them
         // on the security page instead, which is where enrolment lives.
-        if (! $request->routeIs('account', 'sudo', 'workspace.security', 'workspace.sudo')
+        if (! $request->routeIs('account', 'sudo')
             && $this->mfaMandate->requiresEnrolment($subject->id)
         ) {
-            return redirect()->route($this->holdRoute($request, 'account'))
+            return redirect()->route('account')
                 ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
         }
 
@@ -193,11 +193,16 @@ final class Authenticate
      * someone leaves. Holding any of them turns a requirement into a lock-in with no way
      * forward and no way out.
      *
-     * The LANDING belongs here for the same reason read from the other end. A hold sends
-     * people somewhere; the destination is free to send them on; and the last page in that
-     * chain is where somebody who can satisfy nothing comes to rest. Exempting the pages
-     * that satisfy a hold and not the page that answers a person who cannot is what turned
-     * `workspace.no-access` into a cycle rather than a landing.
+     * THE LIST IS SHORTER THAN IT WAS, and that is the point rather than a trim. It also
+     * carried the account plane's own change page, its logout, and the landing it sent a
+     * member-less person to — because that plane had a second copy of each, so a hold
+     * whose destination was itself held became a two-hop cycle: held to the security page,
+     * turned around to the landing, held again, unbounded. There are no second copies now.
+     * The MFA hold's destination is `/account`, which the mandate check above excludes by
+     * name; the temporary-password hold's is `password.change`, which is exempt here; and
+     * an Identity platform page a person cannot use sends them on to a console root that
+     * is held exactly once and then satisfied or not. Nothing in that chain is a cycle,
+     * and nothing in it needs a carve-out.
      *
      * `prompt=none` is exempt for a different reason: OIDC Core §3.1.2.6 requires the
      * CLIENT to be answered with `error=login_required` rather than a user agent being
@@ -216,51 +221,8 @@ final class Authenticate
         // was dead there entirely.
         return $request->routeIs(
             'password.change', 'link.confirm', 'logout',
-            // The account plane's own equivalents. This middleware runs ahead of the
-            // workspace gate now — the console reads the acting person off CurrentUser,
-            // which nothing else populates — so its holds apply there, and a hold whose
-            // destination is itself held is a lock-in with no way forward and no way out.
-            'workspace.password.change', 'workspace.logout',
-            // …and the account plane's landing for somebody who holds nothing, which is
-            // where BOTH workspace guards send a member-less non-operator —
-            // `workspace.security` among them. Exempting the security page and not this
-            // one made an environment-wide MFA mandate a two-hop cycle: held to the
-            // security page, turned around to the landing, held again, unbounded. Under
-            // every hold and not just that one, because nothing on this page satisfies
-            // any of them: a person with no membership cannot enrol a factor into an
-            // organization they do not belong to, and the sign-out this page offers is
-            // the only move they have left.
-            'workspace.no-access',
             'oauth.authorize', 'oauth.authorize.post',
         );
-    }
-
-    /**
-     * Where a hold sends someone: the console they are STANDING IN.
-     *
-     * Every default below is a console route. Those were withheld from the account host,
-     * so a member held for a temporary password was sent to a page that did not exist —
-     * a dead end reached by satisfying nothing, which is the one thing a hold must never
-     * be. The account plane has its own change page and its own security page, and they
-     * satisfy the same requirement against the same subject.
-     *
-     * The console is served on every host now, so the destination is no longer absent —
-     * and this fork still matters for the reason it always did on a single-host install:
-     * both routes are served there, so a member held mid-workspace must be sent to the
-     * workspace's own page rather than jumped into the tenant console from a page they
-     * were legitimately on. Keyed on the REQUEST, never on the deployment shape.
-     */
-    private function holdRoute(Request $request, string $subjectRoute): string
-    {
-        if (! $request->routeIs('workspace.*')) {
-            return $subjectRoute;
-        }
-
-        return match ($subjectRoute) {
-            'password.change' => 'workspace.password.change',
-            'account' => 'workspace.security',
-            default => $subjectRoute,
-        };
     }
 
     /**

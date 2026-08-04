@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Mail;
  * The member is passed in as a MODEL, never an address. There is no parameter here for a
  * caller to steer: the address mailed is read off the member row the session resolved,
  * so "resend to someone else" is not an input this action can be given. The throttle is
- * the caller's job, and lives at the control (see the workspace launchpad) — same shape
+ * the caller's job, and lives at the control (see the projects page) — same shape
  * as the OTP step-up resend, where the component throttles and the service acts.
  */
 final class MemberEmailVerification

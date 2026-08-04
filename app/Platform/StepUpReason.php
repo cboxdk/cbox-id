@@ -30,9 +30,9 @@ final readonly class StepUpReason
     /**
      * Record why the prompt `$key` is about to raise exists.
      *
-     * `$key` is the session prefix the plane's step-up already owns — `sudo`,
-     * `environment.sudo`, `workspace.sudo` — so the reason and the intent it belongs to
-     * cannot be spelled apart from one another.
+     * `$key` is the session prefix the step-up already owns — `sudo` for the console,
+     * `environment.sudo` for the plane above it — so the reason and the intent it belongs
+     * to cannot be spelled apart from one another.
      */
     public static function record(string $key, string $sentence, string $intended): void
     {

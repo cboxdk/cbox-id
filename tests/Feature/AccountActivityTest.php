@@ -58,7 +58,7 @@ it('records an account-scoped, hash-chained entry when a member is invited', fun
     // Livewire component (deps are auto-injected) with the owner as the actor.
     signInAsMember($owner);
 
-    Volt::test('workspace.members')
+    Volt::test('console.account-members')
         ->set('inviteEmail', 'newbie@acme.example')
         ->set('inviteName', 'New Bie')
         ->set('inviteRole', AccountRole::Admin->value)
@@ -109,9 +109,9 @@ it('renders the activity page for an admin and lists recorded actions', function
         targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
 
     signInAsMember($owner);
-    $this->get(route('workspace.activity'))
+    $this->get(route('account-activity'))
         ->assertOk()
-        ->assertSee('Activity')
+        ->assertSee('Account activity')
         ->assertSee('environment created')
         ->assertSee('Staging');
 });
@@ -121,6 +121,6 @@ it('refuses the activity page to a member who cannot read members (403)', functi
     $viewer = memberWithRole($account->id, AccountRole::Billing, 'billing@acme.example');
 
     signInAsMember($viewer);
-    $this->get(route('workspace.activity'))
+    $this->get(route('account-activity'))
         ->assertForbidden();
 });

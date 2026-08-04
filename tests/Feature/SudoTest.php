@@ -6,7 +6,6 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentSudo;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
-use App\Platform\WorkspaceSudo;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
@@ -237,7 +236,7 @@ it('stores a same-origin referer as a root-relative path', function (): void {
 |--------------------------------------------------------------------------
 | The environment plane's step-up
 |--------------------------------------------------------------------------
-| There was none. `Sudo` guarded the organization plane and `WorkspaceSudo` the
+| There was none. `Sudo` guarded the console and a second store guarded the retired
 | account plane, and the plane in between — the one whose administrator acts on
 | EVERY organization in an environment — had no step-up concept at all. The token
 | vault made it visible: identical rotate/grant/revoke actions, a fresh password
@@ -270,13 +269,14 @@ it('confirms an environment step-up against the administrator\'s platform-root p
         ->and($setup['member']->refresh()->subject_id)->not->toBeNull();
 })->group('security');
 
-it('never lets an environment step-up satisfy the organization plane', function (): void {
+it('never lets an environment step-up satisfy the console', function (): void {
     crudSetup();
 
     app(EnvironmentSudo::class)->confirm();
 
-    // Three planes, three keys. The environment administrator's confirmation must not
-    // travel to a plane whose own gate protects credential changes for one person.
-    expect(app(Sudo::class)->confirmed())->toBeFalse()
-        ->and(app(WorkspaceSudo::class)->confirmed())->toBeFalse();
+    // Two keys, and the separation that survives the merge is the one that was always
+    // about AUTHORITY rather than about which shell rendered: confirming you hold an
+    // environment — every organization in it — must not confirm you as yourself. The
+    // account plane's third key is gone with the plane; its pages raise this one.
+    expect(app(Sudo::class)->confirmed())->toBeFalse();
 })->group('security');
