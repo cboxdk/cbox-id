@@ -95,25 +95,31 @@ final class DatabasePlatformInstaller implements PlatformInstaller
     private function resolveEmpty(): bool
     {
         try {
-            // CONFINED, so that a failure here cannot take an enclosing transaction with
-            // it. This is written as "try the cheap query; if the table is not there, fall
-            // back to asking the schema". On sqlite and MySQL a failed statement is a local
-            // event and the fallback runs. PostgreSQL aborts the whole transaction instead,
-            // so every later statement — including the `Schema::hasTable()` the fallback is
-            // made of — answers SQLSTATE 25P02, and this class reports a
-            // reachable-but-un-migrated deployment as OCCUPIED. That is the one answer it
-            // exists to avoid: it 404s the first-run screen, the only page that could help.
+            // ORDER DEPENDS ON WHETHER SOMEBODY ELSE'S TRANSACTION IS OPEN.
             //
-            // WRAPPED ONLY WHEN THERE IS SOMETHING TO PROTECT. A nested transaction is a
-            // SAVEPOINT and costs nothing to speak of; a top-level one is a real
-            // BEGIN/COMMIT, and this method runs on every web request. A savepoint is only
-            // needed to keep somebody ELSE's transaction alive, so the wrap is skipped when
-            // none is open — which is every production request, and none of the tests.
-            $occupied = DB::transactionLevel() > 0
-                ? DB::transaction(fn (): bool => $this->anyOccupant())
-                : $this->anyOccupant();
+            // The fast path is "try the cheap query; if the table is not there, fall back
+            // to asking the schema", and it is written that way on purpose: this runs on
+            // every web request, and `Schema::hasTable()` is an information-schema round
+            // trip on every engine. A live deployment answers on the first query and never
+            // pays for the fallback.
+            //
+            // Inside a transaction that reasoning inverts, because the FAILURE stops being
+            // free. PostgreSQL aborts the whole transaction on a failed statement, so the
+            // fallback — which is made of `Schema::hasTable()` — cannot run either, and the
+            // class reports a reachable-but-un-migrated deployment as OCCUPIED: it 404s the
+            // first-run screen, the only page that could have helped.
+            //
+            // A savepoint was the obvious answer and is the wrong one. MySQL commits
+            // implicitly on DDL, so a test that drops a table to reach this state destroys
+            // the savepoint before anything can roll back to it — "SAVEPOINT trans2 does
+            // not exist", on the one engine PostgreSQL's problem does not exist. Asking the
+            // schema first avoids the failing statement altogether, which no engine can
+            // disagree about.
+            if (DB::transactionLevel() > 0 && $this->schema() === SchemaState::Missing) {
+                return true;
+            }
 
-            return ! $occupied;
+            return ! $this->anyOccupant();
         } catch (Throwable) {
             // Only now is it worth asking the schema. This method runs on every web
             // request, and `Schema::hasTable()` is an information-schema round trip on
@@ -127,13 +133,15 @@ final class DatabasePlatformInstaller implements PlatformInstaller
     public function occupancy(): PlatformOccupancy
     {
         try {
-            // Confined for the reason {@see resolveEmpty()} gives, and on the same terms.
-            $read = fn (): PlatformOccupancy => PlatformOccupancy::of(...array_filter(
+            // Ordered for the reason {@see resolveEmpty()} gives, and on the same terms.
+            if (DB::transactionLevel() > 0 && $this->schema() === SchemaState::Missing) {
+                return PlatformOccupancy::of();
+            }
+
+            return PlatformOccupancy::of(...array_filter(
                 PlatformOccupant::cases(),
                 fn (PlatformOccupant $occupant): bool => $this->present($occupant),
             ));
-
-            return DB::transactionLevel() > 0 ? DB::transaction($read) : $read();
         } catch (Throwable) {
             // Reachable but un-migrated is EMPTY — nothing can have claimed a deployment
             // with no tables. Unreachable is not: an installer that cannot see what is
