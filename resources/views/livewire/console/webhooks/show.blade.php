@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\WebhookEventCatalogue;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Organization\Models\Organization;
@@ -200,10 +201,31 @@ new #[Layout('components.layouts.console', ['title' => 'Webhook'])] class extend
      * The sharpest reason {@see self::endpoint()} is scoped: run against another
      * tenant's endpoint this hands over a live signing secret, with which anything can
      * be forged into their receiver.
+     *
+     * And the reason it is BEHIND A STEP-UP: scoping decides WHOSE secret this hands over,
+     * not whether the person at the keyboard is still the administrator. On the
+     * environment plane {@see mayManage()} returns an unconditional true, so the scope
+     * refuses nothing here — a hijacked or unattended session is the whole threat, and a
+     * fresh password is the only thing that answers it. On the ACTION rather than the
+     * route, because this page is also where deliveries are inspected.
      */
     public function rotateSecret(SecretBox $secretBox): void
     {
+        // Authorization first: a step-up in front of a 403 would hand somebody who may not
+        // touch this endpoint a password prompt instead of a refusal.
         $endpoint = $this->manageable();
+
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'webhooks.show',
+            'environment.webhooks.show',
+            ['webhook' => $this->endpointId],
+        );
+
+        if ($sudo !== null) {
+            $this->redirectRoute($sudo, navigate: false);
+
+            return;
+        }
 
         $secret = bin2hex(random_bytes(32));
         $endpoint->secret_encrypted = $secretBox->seal($secret, $endpoint->secretContext());

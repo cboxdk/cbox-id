@@ -33,11 +33,13 @@ use App\Platform\Install\DatabasePlatformInstaller;
 use App\Platform\Install\EnvFile;
 use App\Platform\Install\FileSetupTokens;
 use App\Platform\OpenEntitlements;
+use App\Platform\TrustedHosts;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
+use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Event;
@@ -129,6 +131,26 @@ final class PlatformServiceProvider extends ServiceProvider
         // RBAC freshness: revoke a user's refresh tokens when their roles change, so a
         // grant/downgrade takes effect on next refresh rather than riding a stale token.
         Event::listen(EventDelivered::class, RevokeTokensOnRoleChange::class);
+
+        // The trusted-Host allow-list is derived from the `environments` table and cached
+        // for the resolution TTL, and NOTHING invalidated it. The window that opened is
+        // narrow and total: the instant a tenant's custom domain verifies, that host is a
+        // real host serving a real environment — and `TrustHosts` runs ahead of routing,
+        // so until the entry lapsed every request to it answered 400. A cleared domain had
+        // the mirror problem, staying trusted after it stopped being ours.
+        //
+        // On the model rather than in the domain service, matching what the framework does
+        // for the resolution cache: every write that can change which hosts we answer on
+        // is a save or a delete of this row, so this is the one place a new call site
+        // cannot route around. `saved` covers the verification stamp, the clear, and the
+        // slug rename that moves a `{slug}.{base}` host.
+        Environment::saved(static function (): void {
+            TrustedHosts::forget();
+        });
+
+        Environment::deleted(static function (): void {
+            TrustedHosts::forget();
+        });
 
         // Livewire only re-runs *persistent* middleware on /livewire/update, so the
         // route-level auth guards must be registered here — in source, not via a

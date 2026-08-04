@@ -27,4 +27,15 @@ class InvalidCustomDomain extends RuntimeException
     {
         return new self("“{$host}” is already in use by another environment.");
     }
+
+    /**
+     * A host under one of the deployment's own base domains. Named separately from
+     * {@see taken()} because it is refused whether or not anyone holds it: those names
+     * are how every tenant's `{slug}.{base}` plane is addressed, so they are not a
+     * tenant's to claim.
+     */
+    public static function reserved(string $host): self
+    {
+        return new self("“{$host}” is reserved by this platform and cannot be used as a custom domain.");
+    }
 }

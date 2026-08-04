@@ -7,6 +7,7 @@ namespace App\Platform\Console;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Organization;
@@ -177,6 +178,16 @@ class ConsoleScope
         }
 
         session()->put(self::SELECTION_KEY, $organizationId);
+
+        // The step-up does not travel with the selection.
+        //
+        // {@see \App\Platform\PlatformAuth::switchOrganization()} drops it on the tenant
+        // plane and says why: switching tenant changes which authority the session
+        // carries, so a confirmation made against the previous one does not transfer. The
+        // same sentence is truer here, because this plane's confirmation is worth more —
+        // one password, entered once, otherwise covered rotating EVERY tenant's secrets
+        // for the rest of the 15-minute window, simply by switching between them.
+        app(EnvironmentSudo::class)->forget();
 
         // The selection has moved, so anything derived from it has to. Nothing here can
         // have changed the SET — but a memo that survives the write it belongs to is the

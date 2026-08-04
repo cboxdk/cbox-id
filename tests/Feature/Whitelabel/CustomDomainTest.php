@@ -60,3 +60,33 @@ it('refuses private, reserved and malformed hosts (SSRF guard reused, not loosen
     'bare hostname' => 'localhost',
     'empty' => '   ',
 ]);
+
+/**
+ * The reservation this had no fence for.
+ *
+ * `acme.cboxid.com` is how the `acme` environment is ADDRESSED, but it is nobody's
+ * `domain` column value, so the uniqueness check above reads it as free. Writing it here
+ * would have hijacked that tenant outright, because
+ * {@see DatabaseEnvironmentResolver::resolveForHost()} matches `domain` before it resolves
+ * a slug — so the victim's own subdomain would have started serving the claimant's
+ * environment, branding, sessions and all.
+ *
+ * Asserted through the RESOLVER as well as the exception: the refusal is only worth
+ * anything if the victim still owns the host afterwards.
+ */
+it('refuses a host under the platform\'s own base domains', function (): void {
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
+
+    $victim = EnvironmentModel::query()->create(['name' => 'Victim', 'slug' => 'victim']);
+    makeEnvironment('attacker');
+
+    expect(fn () => app(ManageCustomDomain::class)->set('victim.cboxid.com'))
+        ->toThrow(InvalidCustomDomain::class);
+
+    // The apex is reserved too — claiming it would take over the platform's own front door.
+    expect(fn () => app(ManageCustomDomain::class)->set('cboxid.com'))
+        ->toThrow(InvalidCustomDomain::class);
+
+    expect((new DatabaseEnvironmentResolver)->resolveForHost('victim.cboxid.com')?->environmentKey())
+        ->toBe($victim->id, 'a tenant subdomain was hijacked by a branding-domain write');
+})->group('security');

@@ -494,6 +494,8 @@ it('rotates and deletes an application', function (): void {
     ))->client;
     $before = Client::query()->whereKey($client->id)->value('secret_hash');
 
+    confirmConsoleStepUp();
+
     Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))->not->toBe($before);
 

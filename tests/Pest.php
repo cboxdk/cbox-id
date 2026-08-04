@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\PointAtFirstRun;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentSudo;
 use App\Platform\OperatorEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -41,7 +45,10 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
+use Livewire\Features\SupportTesting\PersistentMiddleware;
 use Livewire\Features\SupportTesting\Testable;
+use Livewire\Mechanisms\HandleRequests\HandleRequests;
 use PHPUnit\Framework\Assert as PHPUnit;
 use Tests\TestCase;
 
@@ -524,4 +531,104 @@ function impersonationMember(string $email = 'member@acme.test', MembershipRole 
     app(Memberships::class)->add($org->id, $subject->id, $role);
 
     return [$org, $subject];
+}
+
+/**
+ * Open the console step-up window for the plane the current session is on.
+ *
+ * The credential-minting console actions (rotating an app secret, a SCIM bearer token, a
+ * webhook signing secret) sit behind {@see ConsoleStepUp}, so a test that drives one is
+ * otherwise asserting the gate rather than the action. Everything up to and including
+ * the gate has its own coverage in `ConsoleStepUpTest`; this is for the tests whose
+ * subject is what happens AFTER it.
+ *
+ * Plane-aware rather than confirming both keys, deliberately. The two planes answer to
+ * different authorities and keep separate session keys precisely so a confirmation on one
+ * cannot satisfy the other — a helper that opened both would make a component reaching for
+ * the wrong plane's window invisible to every test that used it.
+ */
+function confirmConsoleStepUp(): void
+{
+    app(ConsoleScope::class)->plane() === ConsolePlane::Environment
+        ? app(EnvironmentSudo::class)->confirm()
+        : app(Sudo::class)->confirm();
+}
+
+/**
+ * Drive a component action through the REAL Livewire update endpoint.
+ *
+ * WHY THIS EXISTS. `Volt::test()` and `Livewire::test()` invoke the component directly:
+ * they never route, and {@see PersistentMiddleware}
+ * short-circuits for anything that is not the update endpoint, so NO route middleware runs
+ * — persistent or otherwise. Every write test against a `sudo`-gated page was therefore
+ * passing with the gate removed, and the suite could not tell. Nothing in this repository
+ * had ever POSTed to the endpoint, so there was no path that ran the middleware at all.
+ *
+ * @param  list<mixed>  $params
+ */
+function livewireUpdate(string $pageUrl, string $component, string $method, array $params = []): TestResponse
+{
+    $page = test()->get($pageUrl);
+    $page->assertSuccessful();
+
+    return replaySnapshot($pageUrl, snapshotFor((string) $page->getContent(), $component), $method, $params);
+}
+
+/**
+ * The wire:snapshot of ONE named component, exactly as rendered.
+ *
+ * Lifted verbatim rather than rebuilt: it carries the HMAC checksum Livewire verifies
+ * before it will hydrate anything, and a re-encoded copy of the decoded array does not
+ * survive that check. Reading the string out of the DOM is also what a browser does.
+ *
+ * By name, because a console page renders several components — the organization switcher
+ * and the rail among them — and the first is never the one under test.
+ */
+function snapshotFor(string $html, string $component): string
+{
+    preg_match_all('/wire:snapshot="([^"]*)"/', $html, $matches);
+
+    $snapshot = null;
+
+    foreach ($matches[1] as $encoded) {
+        $candidate = html_entity_decode($encoded, ENT_QUOTES);
+        $decoded = json_decode($candidate, true);
+
+        if (is_array($decoded) && (($decoded['memo']['name'] ?? null) === $component)) {
+            $snapshot = $candidate;
+        }
+    }
+
+    PHPUnit::assertNotNull($snapshot, "No `{$component}` component was rendered on that page.");
+
+    return (string) $snapshot;
+}
+
+/**
+ * POST a captured snapshot back, as the browser holding it would.
+ *
+ * Separate from {@see livewireUpdate()} so a test can capture a snapshot in one state and
+ * replay it in another — which is the shape of the threat the persistent-middleware list
+ * exists for: a page rendered while a step-up window was open must not go on acting once
+ * it has closed.
+ *
+ * @param  list<mixed>  $params
+ */
+function replaySnapshot(string $pageUrl, string $snapshot, string $method, array $params = []): TestResponse
+{
+    // Same ORIGIN as the page. The endpoint's PATH is Livewire's to choose — it is
+    // anonymised per application key, so a hardcoded `/livewire/update` simply 404s.
+    $origin = (string) preg_replace('#^(https?://[^/]+).*$#', '$1', $pageUrl);
+
+    return test()->withHeaders(['X-Livewire' => ''])->postJson(
+        $origin.app(HandleRequests::class)->getUpdateUri(),
+        [
+            '_token' => csrf_token(),
+            'components' => [[
+                'snapshot' => $snapshot,
+                'updates' => (object) [],
+                'calls' => [['path' => '', 'method' => $method, 'params' => $params]],
+            ]],
+        ],
+    );
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Rules\SecureRedirectUri;
 use Cbox\Id\AccessControl\AppManifestPuller;
 use Cbox\Id\AccessControl\Models\Role;
@@ -285,6 +286,19 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
     /**
      * Overlap-rotate the secret: mint a fresh one, persist only its hash, and reveal the
      * plaintext once. Public clients have no secret, so rotation is refused for them.
+     *
+     * BEHIND A STEP-UP. This mints a live credential for an app that already exists, and
+     * on the environment plane {@see mayManage()} returns an unconditional true — so one
+     * unattended env-admin session rotates any tenant's production app secret and puts the
+     * plaintext on screen, with no re-authentication anywhere in the path. That is the
+     * exact scenario {@see \App\Platform\EnvironmentSudo} was created for; it was applied
+     * to the token vault and to nothing else, while this reached the same class of secret
+     * through a page with no gate at all. The account plane has always demanded a fresh
+     * password for the equivalent, which was the argument for creating the gate.
+     *
+     * On the ACTION rather than the route: this page is also where an app's name and
+     * redirect URIs are read, and a password prompt to read a redirect URI is a gate
+     * people learn to route around.
      */
     public function rotateSecret(): void
     {
@@ -306,6 +320,22 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
         // hygiene.
         if ($client->jwks !== null) {
             $this->dispatch('toast', message: 'This app signs assertions with its own keys and has no secret. Rotate the key in its JWKS instead.', severity: 'error');
+
+            return;
+        }
+
+        // LAST, after authorization and after the two refusals above. Asking for a
+        // password and then answering "public apps have no secret to rotate" trains people
+        // to type it without reading, and a step-up in front of a 403 would hand somebody
+        // who may not touch this app a prompt instead of a refusal.
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'clients.show',
+            'environment.clients.show',
+            ['client' => $this->clientId],
+        );
+
+        if ($sudo !== null) {
+            $this->redirectRoute($sudo, navigate: false);
 
             return;
         }

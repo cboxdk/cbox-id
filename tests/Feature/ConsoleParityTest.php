@@ -852,6 +852,8 @@ it('runs the whole webhook lifecycle on the environment plane', function (): voi
     $endpoint = app(WebhookRegistry::class)
         ->register($orgId, 'https://hooks.example.test/events', ['user.created'])->endpoint;
 
+    confirmConsoleStepUp();
+
     Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
         ->set('editUrl', 'https://hooks.example.test/events-v2')
         ->set('editEvents', ['user.created', 'user.updated'])
@@ -888,6 +890,8 @@ it('gives the organization plane the resume, rotate, edit and delete it never ha
 
     expect($endpoint->fresh()?->url)->toBe('https://hooks.example.test/mine-v2')
         ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Paused);
+
+    confirmConsoleStepUp();
 
     Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
         ->call('resume')
@@ -1358,6 +1362,8 @@ it('gives the organization plane the edit and rotate it never had', function ():
 
     $before = Client::query()->whereKey($client->id)->value('secret_hash');
 
+    confirmConsoleStepUp();
+
     Volt::test('console.clients.show', ['client' => $client->id])
         ->set('editName', 'Support Portal (EU)')
         ->set('editRedirectUris', 'https://eu.portal.example.test/callback')
@@ -1549,6 +1555,8 @@ it('never dehydrates a revealed client secret into the wire snapshot', function 
         scopes: ['openid'],
         organizationId: app(ConsoleScope::class)->requireOrganizationId(),
     ))->client;
+
+    confirmConsoleStepUp();
 
     $component = Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
 
@@ -1757,6 +1765,8 @@ it('gives the organization plane the lifecycle it never had', function (): void 
     [, $org] = actingAsRole(MembershipRole::Owner);
     $directory = app(Directories::class)->register($org->id, 'HR')->directory;
     $originalHash = $directory->bearer_token_hash;
+
+    confirmConsoleStepUp();
 
     Volt::test('console.directories.show', ['directory' => $directory->id])
         ->set('editName', 'HR Renamed')

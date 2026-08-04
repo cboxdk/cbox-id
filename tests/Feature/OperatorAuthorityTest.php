@@ -320,13 +320,22 @@ it('refuses an operator with the wrong password', function (): void {
  * a successful sign-in meant an account-MEMBER session, and a suspended operator has no
  * member row to write one from — so "holds no authority" and "has no way in" collapsed
  * into the same answer. They are different questions. The credential is an ordinary
- * subject's and it still works; what it opens is a console with none of the platform
- * pages in it, because authority is asked of the live operator record on every request.
+ * subject's and it still works; what it opens is a page saying there is no workspace for
+ * this address, because authority is asked of the live operator record on every request.
  *
  * Refusing the credential instead would be worse than useless: it does not revoke
  * anything (the same password still signs them in on any tenant plane they belong to),
  * and it would put "is this person staff?" back inside the door — which is the coupling
  * that shut real operators out of the one console they are for.
+ *
+ * This docblock used to claim they got "a console with none of the platform pages in it",
+ * and nothing here asserted it. They did not: the workspace rail derives from the member
+ * ROLE, a null role produces zero nav areas, and both landing guards were
+ * `abort_unless(isPlatformOperator(), 403)`. The real outcome was a successful sign-in
+ * followed by a 403 on every page, an empty rail, and — because every sign-out control
+ * lives inside a layout the error page never renders — no way out but clearing cookies.
+ * Asserting the REFUSAL and never the LANDING is precisely what let that ship, so the
+ * landing is asserted below, followed to the page that finally answers.
  */
 it('signs a suspended operator in as an ordinary person, with no platform authority', function (): void {
     $root = platformRootEnvironment();
@@ -352,6 +361,21 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     $this->get('/platform')->assertNotFound();
     expect(app(ConsoleScope::class)->isPlatformOperator())
         ->toBeFalse('a suspended operator kept platform authority');
+
+    // And they LAND somewhere that serves them. Followed through the redirects to the page
+    // that answers, because asserting only where they were sent is what let a 403 pass for
+    // a landing — the redirect was always issued, and it was the arrival that refused.
+    nextRequest();
+    $this->followingRedirects()->get(route('workspace.home'))
+        ->assertSuccessful()
+        ->assertSee("there's nothing here yet", escape: false)
+        // The way out. Nothing rendered one before: the rail needs nav areas and this
+        // person has none, and the mobile sheet is `lg:hidden`.
+        ->assertSee(route('workspace.logout'), escape: false);
+
+    // The same for the one other page a signed-in person is routinely sent to.
+    nextRequest();
+    $this->followingRedirects()->get(route('workspace.security'))->assertSuccessful();
 })->group('security');
 
 /**

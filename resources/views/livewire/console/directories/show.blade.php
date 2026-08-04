@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Entitlements;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
@@ -145,12 +146,35 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
      * the plaintext once. Any token the customer's IdP already holds stops working
      * immediately. Only meaningful for a SCIM (push) directory — a pull directory
      * authenticates OUTWARD to the provider's API and has no inbound token.
+     *
+     * BEHIND A STEP-UP, for the same reason the app-secret rotation is: this reveals a
+     * live inbound credential for a tenant's directory, and on the environment plane the
+     * administrator reaches every tenant's. It is also destructive in its own right —
+     * whatever Okta or Entra currently holds stops working the moment this runs — so an
+     * unattended session could break a customer's provisioning as easily as steal from it.
+     * On the ACTION rather than the route: this page is where mappings and status are
+     * read, and gating the page would demand a password for that too.
      */
     public function regenerateToken(): void
     {
         $directory = $this->changeable();
 
         if ($directory->provider !== DirectoryProvider::Scim) {
+            return;
+        }
+
+        // LAST, after authorization and after the provider refusal: a step-up in front of
+        // a 403 hands somebody who may not touch this directory a password prompt instead
+        // of a refusal, and one in front of a no-op teaches people to type it unread.
+        $sudo = app(ConsoleStepUp::class)->challenge(
+            'directories.show',
+            'environment.directories.show',
+            ['directory' => $this->directoryId],
+        );
+
+        if ($sudo !== null) {
+            $this->redirectRoute($sudo, navigate: false);
+
             return;
         }
 

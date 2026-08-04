@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Whitelabel\CustomDomain;
 
+use App\Platform\TrustedHosts;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment as EnvironmentModel;
 use Cbox\Id\Whitelabel\CustomDomain\Exceptions\InvalidCustomDomain;
@@ -24,8 +25,20 @@ use Cbox\Ssrf\Exceptions\BlockedUrl;
  * resolver only adopts a custom domain as the OIDC `iss` / SAML entityID once DNS
  * control is proven via `EnvironmentDomainService` (which stamps `domain_verified_at`).
  * A domain set here therefore never asserts an issuer for a host the tenant has not
- * shown they control. It also cannot collide with another environment's domain —
- * that is refused up front (below) as well as by the column's unique constraint.
+ * shown they control, and — because it leaves `domain_verified_at` null — is not added
+ * to the trusted-Host allow-list either ({@see TrustedHosts}).
+ *
+ * TWO KINDS OF COLLISION, and this used to fence only one. An exact clash with another
+ * environment's `domain` is refused below and again by the column's unique constraint.
+ * A host under one of the deployment's own `base_domains` is the other kind, and it is
+ * not a clash at all in column terms: `acme.cboxid.com` is how the `acme` environment is
+ * addressed, yet it is nobody's `domain` value, so it read as free. Writing it would have
+ * taken that tenant over, because host resolution matches `domain` before it resolves a
+ * slug. It is now refused, as the verified-domain path has always refused it.
+ *
+ * NOTHING CURRENTLY CALLS THIS. It is bound and tested but has no route, controller or
+ * console page, and the reservation above is why it is fenced rather than deleted: a
+ * dormant writer to a routing-critical column should be safe before it is convenient.
  */
 class ManageCustomDomain
 {
@@ -57,6 +70,17 @@ class ManageCustomDomain
             }
         }
 
+        // A host under one of the deployment's OWN base domains is never a tenant's to
+        // claim, and the uniqueness check below does not catch it: `acme.cboxid.com` is
+        // how the `acme` environment is addressed, but it is nobody's `domain` column, so
+        // it reads as free. Writing it here would hijack that tenant outright —
+        // {@see \Cbox\Id\Organization\DatabaseEnvironmentResolver} matches `domain` BEFORE
+        // it resolves a slug, so the victim's own subdomain would start serving the
+        // claimant's environment. {@see \Cbox\Id\Organization\EnvironmentDomainService::assertUsable()}
+        // has always enforced this reservation on the verified-domain path; this one was
+        // written without it.
+        $this->assertNotReserved($host);
+
         $environment = $this->currentEnvironment();
 
         // A domain belongs to at most one environment — refuse one already taken by
@@ -69,6 +93,32 @@ class ManageCustomDomain
         $environment->forceFill(['domain' => $host])->save();
 
         return $host;
+    }
+
+    /**
+     * Refuse the apex of any configured base domain, and anything under it.
+     *
+     * @throws InvalidCustomDomain
+     */
+    private function assertNotReserved(string $host): void
+    {
+        $configured = config('cbox-id.environments.base_domains', []);
+
+        if (! is_array($configured)) {
+            return;
+        }
+
+        foreach ($configured as $base) {
+            if (! is_string($base)) {
+                continue;
+            }
+
+            $base = ltrim(mb_strtolower(trim($base)), '.');
+
+            if ($base !== '' && ($host === $base || str_ends_with($host, '.'.$base))) {
+                throw InvalidCustomDomain::reserved($host);
+            }
+        }
     }
 
     /** Remove the current environment's custom domain. */

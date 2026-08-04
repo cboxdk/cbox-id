@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ final class ImpersonationController extends Controller
      *  - A justification is mandatory (PAM): start is rejected (422) without a
      *    reason, which is stored in the marker and recorded on the audit trail.
      */
-    public function start(Request $request, string $user, ConsoleScope $scope, Memberships $memberships, Impersonation $impersonation): RedirectResponse
+    public function start(Request $request, string $user, ConsoleScope $scope, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes): RedirectResponse
     {
         // Re-asked of the session that is actually here, not of a separate operator key:
         // one sign-in, one place that answers whether this person runs the deployment.
@@ -60,7 +61,7 @@ final class ImpersonationController extends Controller
 
         $impersonation->start($request, $operatorId, $user, $orgId, $reason);
 
-        return redirect()->route('dashboard');
+        return $this->landing($planes, 'platform.organizations');
     }
 
     /**
@@ -72,7 +73,7 @@ final class ImpersonationController extends Controller
      * this environment resolves to null → 403. Owners/admins are refused, and a
      * justification is mandatory, exactly as for operator impersonation.
      */
-    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation): RedirectResponse
+    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes): RedirectResponse
     {
         $memberId = $auth->current()?->id;
         abort_if($memberId === null, 403);
@@ -91,7 +92,32 @@ final class ImpersonationController extends Controller
 
         $impersonation->startAsAccountMember($request, $memberId, $user, $orgId, $request->string('reason')->toString());
 
-        return redirect()->route('dashboard');
+        return $this->landing($planes, 'environment.home');
+    }
+
+    /**
+     * Where an impersonation drops the operator, on the host they are standing on.
+     *
+     * `dashboard` is `plane:subject`, and the Impersonate button now lives on
+     * `/platform/organizations` — the ACCOUNT-root host, which does not serve that plane.
+     * So the redirect 404'd, and the 404 page carries no chrome, so the exit control did
+     * not render either: the only way out was to POST `/impersonation/exit` by hand.
+     *
+     * Deliberately not a cross-host redirect to the tenant's own console. The session is
+     * host-scoped — {@see WorkspaceController::openEnvironment()}
+     * mints a signed handoff token precisely because a session does not travel between
+     * hosts — so bouncing there would land an operator with no session at all, which is
+     * the same dead end wearing a different hostname. They stay where they are, where the
+     * banner and its Exit button now render.
+     *
+     * The fallback is the caller's own console — the same pair {@see exit()} chooses
+     * between, for the same reason: an environment administrator has no platform pages.
+     */
+    private function landing(PlaneResolver $planes, string $fallback): RedirectResponse
+    {
+        return redirect()->route(
+            $planes->isMultiTenant() && ! $planes->onSubjectPlane() ? $fallback : 'dashboard',
+        );
     }
 
     /**

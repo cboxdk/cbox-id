@@ -96,6 +96,10 @@
     @consoleBrandingStyle
 </head>
 <body class="h-full" style="background:var(--background);color:var(--foreground)">
+{{-- The platform pages render here, and `/platform/organizations` is where impersonation
+     is STARTED — so this is a layout an operator can be holding while a marker is active,
+     and it had no banner and no exit control on it at all. --}}
+<x-impersonation-banner />
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="flex h-full" x-data="{

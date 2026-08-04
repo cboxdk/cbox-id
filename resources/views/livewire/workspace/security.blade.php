@@ -80,15 +80,21 @@ new #[Layout('components.layouts.workspace', ['title' => 'Profile & security'])]
      * Their own identity, second factor and passkeys are on Platform › Security, which
      * is where they are sent. The nav no longer offers this area to them at all; this is
      * the guard for the URL, which the nav is not.
+     *
+     * And somebody who is neither — a suspended operator, or a session that outlived its
+     * member — gets the page that says so and offers a sign-out, not a 403 on a layout
+     * with no way out of it. Same reasoning as `workspace.home`, which is where they
+     * arrive from.
      */
     public function mount(AccountAuth $auth, ConsoleScope $scope): void
     {
         $member = $auth->current();
 
         if ($member === null) {
-            abort_unless($scope->isPlatformOperator(), 403);
-
-            $this->redirectRoute('platform.security', navigate: false);
+            $this->redirectRoute(
+                $scope->isPlatformOperator() ? 'platform.security' : 'workspace.no-access',
+                navigate: false,
+            );
 
             return;
         }

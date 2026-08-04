@@ -567,7 +567,12 @@ Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(fun
         // Step-up re-authentication for this plane. Inside the env-admin group — only an
         // administrator has anything to step up FROM — but never behind `env.sudo` itself,
         // which would be a gate in front of its own key.
-        Volt::route('/sudo', 'environment.sudo')->name('environment.sudo');
+        //
+        // BlockDuringImpersonation, which both sibling step-ups carry and this one was
+        // missing: an impersonator must never be able to CLEAR the gate that protects
+        // credential changes. Clearing it here would have opened the widest of the three
+        // planes, where one confirmation covers every tenant in the environment.
+        Volt::route('/sudo', 'environment.sudo')->middleware(BlockDuringImpersonation::class)->name('environment.sudo');
 
         // Activity log — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
@@ -718,6 +723,15 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
         // The account's Projects (IdP products) — the launchpad. Each project holds
         // its own environments + plan; a project opens to its environments detail.
         Volt::route('/', 'workspace.home')->name('workspace.home');
+
+        // Where a signed-in person with no membership and no operator authority lands.
+        // The door authenticates a person and asks nothing about what they hold, so this
+        // is a real outcome rather than an edge case — and until this route existed it
+        // resolved to a 403 on a layout with no rail, and therefore no sign-out control.
+        // Inside the auth tier because they ARE signed in; the component turns anyone the
+        // plane actually serves straight back around.
+        Volt::route('/no-access', 'workspace.no-access')->name('workspace.no-access');
+
         Volt::route('/projects/new', 'workspace.projects.create')->name('workspace.projects.create');
         Volt::route('/projects/{project}', 'workspace.projects.show')->name('workspace.projects.show');
 

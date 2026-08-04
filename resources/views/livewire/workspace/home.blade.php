@@ -141,9 +141,13 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
      * landing, email verification, the passkey ceremony), so the redirect belongs here
      * rather than at six call sites that would each have to remember it.
      *
-     * Anyone else with no membership is nobody this plane serves;
-     * {@see \App\Http\Middleware\AuthenticateAccountMember} has already established they
-     * are signed in, so the only remaining reading is a session that outlived its member.
+     * Anyone else with no membership is nobody this plane serves — a suspended operator,
+     * or a session that outlived its member. That used to be a 403 here, which was the
+     * wrong answer for the LANDING page: {@see \App\Http\Middleware\AuthenticateAccountMember}
+     * has already established they are signed in, every door into the console ends here,
+     * and the 403 renders on an error layout with no rail and therefore no sign-out
+     * control. They were signed in with nowhere to go and no way out. `workspace.no-access`
+     * is that destination.
      */
     public function mount(AccountAuth $auth, ConsoleScope $scope): void
     {
@@ -151,9 +155,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
             return;
         }
 
-        abort_unless($scope->isPlatformOperator(), 403);
-
-        $this->redirectRoute('platform.environments', navigate: false);
+        $this->redirectRoute(
+            $scope->isPlatformOperator() ? 'platform.environments' : 'workspace.no-access',
+            navigate: false,
+        );
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\SetEnvironment;
+use Cbox\Id\Organization\EnvironmentIssuerResolver;
 use Cbox\Id\Organization\EnvironmentResolutionCache;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Http\Middleware\TrustHosts;
@@ -39,7 +40,33 @@ use Throwable;
  */
 final class TrustedHosts
 {
+    /**
+     * Public so the invalidating caller can name it rather than reproduce it.
+     *
+     * {@see PlatformServiceProvider} forgets this on every `Environment` write, which is
+     * the only thing that can change the answer. It shipped with no invalidation at all:
+     * the key appeared exactly once in the codebase, and `Environment::booted()` forgets
+     * the {@see EnvironmentResolutionCache} keys, which are different keys. So a tenant
+     * that verified a custom domain was UNTRUSTED — 400 on every request to the host they
+     * had just been told was live — until the TTL lapsed, and a removed domain went on
+     * being trusted for just as long.
+     */
+    public const CACHE_KEY = 'cbox-id:trusted-hosts:domains';
+
     public function __construct(private readonly PlaneResolver $planes) {}
+
+    /**
+     * Drop the cached domain list.
+     *
+     * Called from the model event rather than from the three services that write a domain
+     * ({@see EnvironmentDomainService::verify()}, `::clear()`, and the environment admin's
+     * own edit), because a fourth writer added later cannot forget what it never had to
+     * remember — the same argument `Environment::booted()` makes for the resolution cache.
+     */
+    public static function forget(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
 
     /**
      * @return list<string>
@@ -108,7 +135,7 @@ final class TrustedHosts
 
         try {
             return $ttl > 0
-                ? Cache::remember('cbox-id:trusted-hosts:domains', $ttl, $this->readCustomDomains(...))
+                ? Cache::remember(self::CACHE_KEY, $ttl, $this->readCustomDomains(...))
                 : $this->readCustomDomains();
         } catch (Throwable) {
             return [];
@@ -116,6 +143,15 @@ final class TrustedHosts
     }
 
     /**
+     * VERIFIED domains only — which is what the docblock above and `bootstrap/app.php`
+     * both already claimed, and what the query did not do.
+     *
+     * `domain` alone is a value somebody typed into a form; `domain_verified_at` is the
+     * DNS challenge answered. Trusting the unverified column makes this control derive
+     * its allow-list from unproven input, which is the shape of the bug it was written to
+     * close — and {@see EnvironmentIssuerResolver} already refuses an
+     * unverified domain as an issuer for the same reason.
+     *
      * @return list<string>
      */
     private function readCustomDomains(): array
@@ -124,6 +160,7 @@ final class TrustedHosts
             Environment::query()
                 ->whereNotNull('domain')
                 ->where('domain', '!=', '')
+                ->whereNotNull('domain_verified_at')
                 ->pluck('domain')
                 ->all(),
             is_string(...),
