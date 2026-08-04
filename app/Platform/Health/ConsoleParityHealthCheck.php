@@ -70,6 +70,12 @@ class ConsoleParityHealthCheck implements HealthCheck
         'Activity log' => ['audit', 'environment.audit'],
         'Settings' => ['settings', 'environment.settings'],
         'Appearance' => ['appearance', 'environment.appearance'],
+        // The pair whose drift was not a feature on one plane and a hole on the other: it
+        // was a whole plane missing. The environment console could write the baseline and
+        // the organization console could write nothing, while both sign-in doors enforced
+        // the per-organization policy on every attempt. Listed here so the organization
+        // half cannot quietly disappear again.
+        'Sign-in rules' => ['auth-policy', 'environment.auth-policy'],
     ];
 
     public function __construct(private readonly ConsolePages $pages) {}

@@ -86,6 +86,9 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)
+            // Between Settings and Appearance, which is where the environment rail has
+            // always put it — the two rails read in the same order on purpose.
+            ->page('auth-policy', 'Sign-in rules', order: 15)
             ->page('appearance', 'Appearance', order: 20);
 
         // Every user's own security — shown to members and admins alike (the app

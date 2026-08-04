@@ -51,9 +51,20 @@ it('refuses password sign-in for a subject whose organization mandates SSO', fun
 
     // Once the organization mandates SSO, the SAME correct password is refused — a local
     // credential must not be a way around the identity provider the tenant chose.
+    //
+    // SsoRequired, not Invalid, and the distinction is the point: the door has to be able
+    // to tell the person to use their IdP. Reported as Invalid, this refusal ended in
+    // "those credentials do not match our records" — said only ever to people whose
+    // credentials matched.
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
 
     expect($auth->attemptPassword($request, 'sso@acme.test', 'a-strong-unbreached-passphrase'))
+        ->toBe(AttemptOutcome::SsoRequired);
+
+    // And a WRONG password against the same mandated account stays indistinguishable from
+    // every other wrong password. The refusal is reached only after the credential
+    // verifies, so it can never answer "this address exists".
+    expect($auth->attemptPassword($request, 'sso@acme.test', 'not-the-passphrase'))
         ->toBe(AttemptOutcome::Invalid);
 });
 
@@ -69,7 +80,7 @@ it('lets an environment mandate SSO for every organization at once', function ()
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required));
 
     expect($auth->attemptPassword($request, 'envsso@acme.test', 'a-strong-unbreached-passphrase'))
-        ->toBe(AttemptOutcome::Invalid);
+        ->toBe(AttemptOutcome::SsoRequired);
 });
 
 // The strictest membership wins: holding a second, laxer membership must not become a
@@ -90,7 +101,7 @@ it('refuses password sign-in when ANY of the subject\'s organizations mandates S
         Request::create('/login', 'POST'),
         'multi@acme.test',
         'a-strong-unbreached-passphrase',
-    ))->toBe(AttemptOutcome::Invalid);
+    ))->toBe(AttemptOutcome::SsoRequired);
 });
 
 it('saves the environment baseline from the console and shows what each org gets', function (): void {
@@ -111,7 +122,7 @@ it('saves the environment baseline from the console and shows what each org gets
 
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-'.uniqid()));
 
-    Volt::test('environment.auth-policy')
+    Volt::test('console.auth-policy')
         ->set('minLength', 18)
         ->set('mfa', 'required')
         ->set('sso', 'preferred')
@@ -149,5 +160,5 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
 
     actAsEnvironmentAdmin($viewer, $r->environment->id);
 
-    Volt::test('environment.auth-policy')->assertForbidden();
+    Volt::test('console.auth-policy')->assertForbidden();
 });

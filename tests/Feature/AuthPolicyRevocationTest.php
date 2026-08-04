@@ -182,10 +182,20 @@ it('ends the environment\'s sessions when the sign-in rules page mandates SSO', 
     $tenantSession = aPasswordSession('tenant-user@acme.test');
     $adminSessionId = session(PlatformAuth::SESSION_KEY);
 
-    Volt::test('environment.auth-policy')
+    // TWO calls, and the first one deliberately writes nothing. The page holds a mandate
+    // that would end sessions on a confirmation step, because the alternative is a select
+    // and a Save button that sign an environment's users out with no warning that they
+    // were about to. `save()` alone must leave every session standing.
+    $page = Volt::test('console.auth-policy')
         ->set('sso', 'required')
         ->call('save')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('confirmingTightening', true)
+        ->assertSee('This will sign people out of');
+
+    expect(isLive($tenantSession))->toBeTrue();
+
+    $page->call('confirmSave')->assertHasNoErrors()->assertSet('confirmingTightening', false);
 
     expect(isLive($tenantSession))->toBeFalse();
 

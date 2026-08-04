@@ -2366,3 +2366,40 @@ it('refuses to enable a provider before an organization is chosen', function ():
         ->call('enable')
         ->assertForbidden();
 })->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Sign-in rules
+|--------------------------------------------------------------------------
+| Not a merge of two pages: the environment plane had one and the organization plane
+| had none, while both sign-in doors enforced the per-organization policy on every
+| attempt. So the merged component gives the organization plane a capability it never
+| had — its own override, and a way to give it back — and the environment plane keeps
+| the baseline and the per-organization table it always had.
+*/
+
+it('serves sign-in rules from one component on the environment plane', function (): void {
+    anEnvironmentAdminActingOn('tenant-rules');
+
+    $this->get(route('environment.auth-policy'))
+        ->assertOk()
+        ->assertSee('Sign-in rules')
+        // The environment's half: the baseline, and what each organization ends up with.
+        ->assertSee('Per organization');
+})->group('security');
+
+it('serves sign-in rules from the same component on the organization plane', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    // Driven at the component, because actingAsRole() populates CurrentUser the way the
+    // middleware would rather than minting a session cookie — an HTTP request would just
+    // bounce to sign-in and prove nothing about the page.
+    Volt::test('console.auth-policy')
+        ->assertOk()
+        ->assertSee('Sign-in rules')
+        // …and the organization's half is the override, not the environment's baseline
+        // table: a tenant admin has no business reading every other tenant's policy.
+        ->assertDontSee('Per organization');
+
+    expect(Route::has('auth-policy'))->toBeTrue();
+})->group('security');

@@ -360,6 +360,12 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
     // organization inherits — is an explicit choice on the page, offered on the
     // environment plane alone.
     Volt::route('/appearance', 'console.appearance')->name('appearance');
+    // Sign-in rules: the SAME component the environment plane serves, and the half of
+    // this pair that never existed. `AuthPolicies::setForOrganization()` had no caller
+    // anywhere in the product while both sign-in doors enforced what it writes, so a
+    // tenant could be governed by a per-organization policy that nobody — not even the
+    // operator — had a way to author.
+    Volt::route('/sign-in-rules', 'console.auth-policy')->name('auth-policy');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     // The SAME components the environment plane serves. The routable index/new/show
@@ -597,7 +603,12 @@ Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(fun
         // Settings — the merged component. The route NAME is preserved on both planes;
         // only the component behind it is now shared.
         Volt::route('/settings', 'console.settings')->name('environment.settings');
-        Volt::route('/sign-in-rules', 'environment.auth-policy')->name('environment.auth-policy');
+        // Sign-in rules — the merged component. This plane writes the BASELINE every
+        // organization inherits; the organization plane writes one organization's
+        // override. Same page, same controls, different level — which is the only
+        // difference there has ever been between the two, and until now the organization
+        // half of it had no surface at all.
+        Volt::route('/sign-in-rules', 'console.auth-policy')->name('environment.auth-policy');
         // Appearance — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
         Volt::route('/appearance', 'console.appearance')->name('environment.appearance');

@@ -72,7 +72,7 @@ it('refuses a crafted enum on the sign-in rules form instead of throwing', funct
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->member, $result->environment->id);
 
-    Volt::test('environment.auth-policy')
+    Volt::test('console.auth-policy')
         ->set('mfa', 'not-a-requirement')
         ->set('sso', 'also-not-real')
         ->call('save')

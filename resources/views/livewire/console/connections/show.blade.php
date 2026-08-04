@@ -12,6 +12,9 @@ use Cbox\Id\Federation\Exceptions\OidcDiscoveryFailed;
 use Cbox\Id\Federation\Exceptions\UnsafeFederationUrl;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\OidcDiscovery;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -257,6 +260,17 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
         $this->dispatch('toast', message: 'Connection updated.');
     }
 
+    /**
+     * Whether to put the SSO mandate in front of the administrator on this render.
+     *
+     * Set when a connection is activated and never at mount, which is the whole design: a
+     * control nobody finds is a control nobody uses, and the ONE moment somebody has
+     * demonstrably decided how their company should sign in is the moment they finish
+     * connecting the identity provider. Anywhere else it would be a switch on a settings
+     * page they have no reason to open.
+     */
+    public bool $offerMandate = false;
+
     public function activate(Connections $connections): void
     {
         $model = $this->guardEntitled();
@@ -264,7 +278,56 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
         // The service scopes the flip to the owning org, so a draft can't be activated
         // across tenants.
         $connections->activate($model->organization_id, $model->id);
+
+        // Offered, not applied. Tightening the mandate ends every password session in the
+        // organization — {@see \App\Platform\RevokingAuthPolicies::setForOrganization()}
+        // does that on the way through the contract — and the administrator who just
+        // pressed Enable is very likely holding one of them. A side effect that signs
+        // somebody out mid-task is not something to spring on them.
+        $this->offerMandate = true;
+
         $this->dispatch('toast', message: 'Connection activated.');
+    }
+
+    /**
+     * Turn the mandate on for this connection's organization.
+     *
+     * Written through the {@see AuthPolicies} contract, which is what makes the session
+     * revocation happen: it lives in a decorator around this interface, so reaching for
+     * the concrete store would refuse tomorrow's password logins and leave every session
+     * that was opened with one wide open.
+     *
+     * The new override is the organization's EXISTING policy with the mandate raised —
+     * its own override if it has one, otherwise the environment baseline. Starting from a
+     * bare {@see AuthPolicy} would write this organization's first override out of the
+     * value object's defaults, quietly restating a 12-character minimum for a tenant
+     * whose environment asked for 16.
+     */
+    public function requireSso(AuthPolicies $policies): void
+    {
+        $model = $this->guardEntitled();
+
+        $current = $policies->overrideFor($model->organization_id) ?? $policies->forEnvironment();
+
+        $policies->setForOrganization($model->organization_id, new AuthPolicy(
+            minLength: $current->minLength,
+            requireBreachCheck: $current->requireBreachCheck,
+            maxAgeDays: $current->maxAgeDays,
+            reuseHistory: $current->reuseHistory,
+            mfa: $current->mfa,
+            sso: SsoEnforcement::Required,
+            lockoutThreshold: $current->lockoutThreshold,
+        ));
+
+        $this->offerMandate = false;
+
+        $this->dispatch('toast', message: 'Single sign-on is now required.');
+    }
+
+    /** The decline — one click, and the offer does not come back until the next activation. */
+    public function keepPasswords(): void
+    {
+        $this->offerMandate = false;
     }
 
     public function disable(): void
@@ -295,7 +358,17 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
         $scope = app(ConsoleScope::class);
         $model = $this->connection();
 
+        // Re-derived rather than trusted from the flag alone. `offerMandate` is a public
+        // property and therefore client-settable, and the organization's policy can have
+        // been tightened from the Sign-in rules page in another tab since it was set —
+        // offering to turn on something already on would be the console lying about state
+        // it can simply read.
+        $passwordsStillAllowed = app(AuthPolicies::class)
+            ->resolve($model->organization_id)->sso->allowsPasswordLogin();
+
         return [
+            'offeringMandate' => $this->offerMandate && $passwordsStillAllowed && $model->isActive(),
+            'passwordsStillAllowed' => $passwordsStillAllowed,
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'connection' => $model,
@@ -368,6 +441,49 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
                            body="This connection can't be changed while the organization is off the Enterprise plan. Contact your account team to enable it." />
         </div>
     @else
+
+    {{-- The mandate, offered at the moment it makes sense to ask.
+
+         This is the only place in the console that asks. An administrator who has just
+         connected an identity provider has, by that act, said what they want sign-in to
+         be — anywhere else the question is a setting they have no reason to go looking
+         for. It is an OFFER: the consequences are on screen before the click, because the
+         click ends every password session in the organization and one of them is probably
+         theirs. --}}
+    @if ($offeringMandate)
+        <div role="alert" class="rounded-xl border p-5" style="border-color:var(--accent);background:var(--accent-soft)">
+            <h2 class="text-base font-semibold">Make {{ $connection->name }} the only way in?</h2>
+            <p class="mt-2 text-sm" style="color:var(--muted)">
+                {{ $orgName ?? 'This organization' }} can sign in with passwords or with this connection.
+                Requiring single sign-on refuses passwords outright, so an old credential cannot go around the
+                provider you just set up. Most companies that connect an IdP want this — but read what it does first.
+            </p>
+            <ul class="mt-3 space-y-1 text-sm list-disc pl-5" style="color:var(--muted)">
+                <li>Password sign-in stops working for everyone in this organization, immediately.</li>
+                <li>Every session that was opened with a password ends — <strong>including yours</strong>, if you signed in that way.</li>
+                <li>You can turn it off again on Sign-in rules; sessions that ended stay ended.</li>
+            </ul>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button type="button" wire:click="requireSso" class="btn btn-primary"
+                        wire:loading.attr="disabled" wire:target="requireSso">
+                    <span wire:loading.remove wire:target="requireSso">Require single sign-on</span>
+                    <span wire:loading wire:target="requireSso" class="inline-flex items-center gap-2"><span class="spinner"></span> Applying…</span>
+                </button>
+                <button type="button" wire:click="keepPasswords" class="btn btn-ghost">Not now — keep passwords working</button>
+            </div>
+        </div>
+    @elseif ($connection->isActive() && ! $passwordsStillAllowed)
+        {{-- The other half of the same fact, and it belongs here rather than only on the
+             rules page: somebody debugging "why can nobody sign in with a password" is
+             looking at the connection, not at a settings page they may not know exists. --}}
+        <div class="rounded-xl border p-4 flex flex-wrap items-center justify-between gap-3"
+             style="border-color:var(--border);background:var(--surface-2)">
+            <p class="text-sm" style="color:var(--muted)">
+                <strong style="color:var(--text)">Single sign-on is required</strong> for {{ $orgName ?? 'this organization' }} — password sign-in is refused.
+            </p>
+            <a href="{{ route($scopeRoute('auth-policy')) }}" class="btn btn-ghost btn-sm">Sign-in rules</a>
+        </div>
+    @endif
 
     {{-- Configuration --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">

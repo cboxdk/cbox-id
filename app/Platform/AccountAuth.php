@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\Enums\CredentialVerdict;
 use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
@@ -93,6 +94,9 @@ final class AccountAuth
      *  - 'invalid' for a wrong password or a suspended member (never authenticates),
      *  - 'mfa'     when the password is right but a confirmed second factor is
      *              required — NO session is started, only a short-lived pending marker,
+     *  - 'sso_required' when the password is right and an organization this member
+     *              belongs to mandates single sign-on — no session, and none obtainable
+     *              with a password at all,
      *  - 'ok'      when the password is right and no second factor is enrolled — the
      *              full session is established immediately.
      *
@@ -137,9 +141,17 @@ final class AccountAuth
 
         // The credential verified against the SUBJECT. The rules that govern whether a
         // verified password is still a way in live in one place both doors ask — checked
-        // AFTER the credential so a refusal reveals nothing about whether it was right.
-        if (! $this->gate->admits($member)) {
-            return AttemptOutcome::Invalid;
+        // AFTER the credential, which is what keeps the refusal from being an
+        // account-existence oracle: a wrong guess never reaches this line.
+        //
+        // An SSO mandate carries its own outcome from here, because it is the one refusal
+        // the member can do something about. Everything else stays neutral.
+        $verdict = $this->gate->admits($member);
+
+        if ($verdict !== CredentialVerdict::Admitted) {
+            return $verdict === CredentialVerdict::SsoRequired
+                ? AttemptOutcome::SsoRequired
+                : AttemptOutcome::Invalid;
         }
 
         // …and there has to be a live account to sign in TO. The console gate refuses a

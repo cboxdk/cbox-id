@@ -67,8 +67,10 @@ final class PlatformAuth
     ) {}
 
     /**
-     * Attempt a password login. Returns 'ok', 'mfa', 'otp', or 'invalid'. On 'mfa'
-     * and 'otp' the subject is held pending a second factor — no session yet.
+     * Attempt a password login. Returns 'ok', 'mfa', 'otp', 'sso_required' or 'invalid'.
+     * On 'mfa' and 'otp' the subject is held pending a second factor — no session yet;
+     * on 'sso_required' the credential verified but a tenant mandates single sign-on, so
+     * there is no second step here at all and the door has to send them to their IdP.
      *
      * `$requireStepUp` (an elevated risk assessment) forces an additional factor even
      * when the account would otherwise sign in on password alone: if the account has
@@ -113,10 +115,17 @@ final class PlatformAuth
         }
 
         // A tenant that mandates SSO means it: a local password must not be a way around
-        // the identity provider they chose. Checked AFTER the credential verifies so the
-        // refusal reveals nothing about whether the password was right.
+        // the identity provider they chose. Still checked AFTER the credential verifies,
+        // which is what keeps it from being an account-existence oracle: an address that
+        // does not exist here, and a wrong guess against one that does, both end above
+        // with Invalid and never reach this line.
+        //
+        // It is answered with its OWN outcome rather than Invalid. The population that
+        // reaches it is exactly the people who typed the right password, and telling them
+        // it was wrong is how this refusal dead-ended — see {@see AttemptOutcome::SsoRequired}
+        // for what that distinction does and does not disclose.
         if (! $this->passwordLoginAllowedFor($subject->id)) {
-            return AttemptOutcome::Invalid;
+            return AttemptOutcome::SsoRequired;
         }
 
         if ($this->mfa->hasConfirmedTotp($subject->id)) {

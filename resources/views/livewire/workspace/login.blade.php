@@ -7,6 +7,8 @@ use App\Platform\AccountAuth;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\MailLinks;
+use App\Platform\SsoMandate;
+use App\Platform\SsoMandates;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
@@ -42,6 +44,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
 
     /** Home-realm discovery: true once the email step passed with no SSO connection, revealing the password form. */
     public bool $identified = false;
+
+    /**
+     * The organization that refused this password because it mandates SSO, once one has.
+     *
+     * The same terminal state the tenant door renders, and it has to exist here too: an
+     * account member is an ordinary subject in the platform root, so the account's own
+     * organization can mandate SSO — and this door answered that with "those credentials
+     * do not match a workspace", to the owner of the workspace.
+     */
+    public ?string $ssoOrganization = null;
+
+    public ?string $ssoStartUrl = null;
 
     public bool $magicSent = false;
 
@@ -81,7 +95,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
         $this->identified = true;
     }
 
-    public function login(AccountAuth $auth): void
+    public function login(AccountAuth $auth, SsoMandates $mandates): void
     {
         $this->validate([
             'email' => 'required|email|max:190',
@@ -112,6 +126,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             RateLimiter::hit($key, 60);
             // Neutral message — never reveal whether the email is a real member.
             $this->addError('email', 'Those credentials do not match a workspace.');
+
+            return;
+        }
+
+        // A mandate, not a bad password: the credential was right and will go on being
+        // refused, so this is where the form stops and the IdP link takes over. The
+        // limiter is neither hit nor cleared — this was not a failed guess, and no
+        // session was established either.
+        if ($result === AttemptOutcome::SsoRequired) {
+            $this->showSsoMandate($mandates);
 
             return;
         }
@@ -175,6 +199,40 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     }
 
     /**
+     * Leave the mandate screen for a fresh identifier step — see the tenant door for why
+     * it returns to the EMAIL rather than to the password.
+     */
+    public function startOver(): void
+    {
+        $this->reset('ssoOrganization', 'ssoStartUrl', 'identified', 'password');
+    }
+
+    /**
+     * Turn the mandate refusal into the terminal screen.
+     *
+     * Resolved in the PLATFORM ROOT's scope, like every other lookup this door makes: the
+     * member's subject, their memberships and their organization's connection all live
+     * there, and under this host's ambient scope the memberships simply are not found —
+     * which would render the refusal with no organization named and no link at all.
+     *
+     * The password is dropped on the way, so a verified credential is not dehydrated into
+     * the wire:snapshot of the page this is about to render.
+     */
+    private function showSsoMandate(SsoMandates $mandates): void
+    {
+        $mandate = app(PlatformRoot::class)->run(function () use ($mandates): ?SsoMandate {
+            $subject = app(Subjects::class)->findByEmail($this->email);
+
+            return $subject === null ? null : $mandates->forSubject($subject->id);
+        });
+
+        $this->reset('password');
+
+        $this->ssoOrganization = $mandate === null ? 'Your organization' : $mandate->organizationName;
+        $this->ssoStartUrl = $mandate?->startUrl;
+    }
+
+    /**
      * Route the email's home realm to its IdP if it has one. Returns true when a
      * redirect was issued (the caller must stop), false to continue with the local flow
      * — keeping the "verified domain → always SSO, never local auth" invariant in one
@@ -234,6 +292,37 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
             @endif
         </div>
     @endif
+
+    {{-- The mandate refusal, and it REPLACES the form rather than sitting above it.
+         There is no password this page could accept now, so leaving the fields on screen
+         would invite the same attempt again — which is what the old wording ("those
+         credentials do not match a workspace") already did, to the workspace's owner. --}}
+    @if ($ssoOrganization !== null)
+        <div role="alert" class="mt-7 card p-5">
+            <h2 class="text-base font-semibold">{{ $ssoOrganization }} requires single sign-on</h2>
+            <p class="mt-2 text-sm" style="color:var(--muted)">
+                Your password is correct — it is just not a way into this workspace any more.
+                Sign in through your organization's identity provider instead.
+            </p>
+
+            @if ($ssoStartUrl !== null)
+                {{-- A full navigation, not wire:navigate: the destination is the identity
+                     provider's own redirect endpoint, which answers with a cross-origin
+                     302 that an SPA navigation cannot follow. --}}
+                <a href="{{ $ssoStartUrl }}" class="btn btn-primary btn-lg w-full mt-4">
+                    Continue to {{ $ssoOrganization }}
+                </a>
+            @else
+                <p class="mt-4 rounded-lg px-3.5 py-3 text-sm" style="background:var(--danger-soft);color:var(--danger-strong)">
+                    No identity provider is connected for {{ $ssoOrganization }} yet, so there is
+                    nowhere to send you. Ask an administrator to finish setting up single sign-on.
+                </p>
+            @endif
+
+            <button type="button" wire:click="startOver" class="btn btn-ghost btn-lg w-full mt-2.5"
+                    wire:loading.attr="disabled" wire:target="startOver">Use a different email</button>
+        </div>
+    @else
 
     {{-- Identifier-first: enter the email, discover its home realm, THEN reveal the
          password. A verified domain with active SSO redirects to the IdP instead. --}}
@@ -301,4 +390,5 @@ new #[Layout('components.layouts.auth', ['title' => 'Workspace sign in'])] class
     <p class="mt-8 text-sm text-center" style="color:var(--muted)">
         Don't have a workspace yet? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Create your identity platform</a>
     </p>
+    @endif
 </div>

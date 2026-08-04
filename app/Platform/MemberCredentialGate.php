@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Enums\CredentialVerdict;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\LoginAttempts;
 use Cbox\Id\Platform\Models\AccountMember;
@@ -81,14 +82,22 @@ final class MemberCredentialGate
      * tenant console forever, in a loop rather than with a reason. The whole argument is
      * in `EnvironmentAdminController::handoff()`, and it generalises: a rule that belongs
      * to a credential does not automatically belong to everything that credential opened.
+     *
+     * The two refusals are told apart because only one of them is actionable. An SSO
+     * mandate is a door the member can walk through; an expired hand-off credential is a
+     * fact about a password they were given, and naming it would tell whoever is holding
+     * that password something about the account it belongs to.
      */
-    public function admits(AccountMember $member): bool
+    public function admits(AccountMember $member): CredentialVerdict
     {
         return $this->onSubject(
             $member,
-            fn (string $id): bool => ! $this->adminPasswords->hasExpired($id)
-                && $this->platform->passwordLoginAllowedFor($id),
-        ) ?? true;
+            fn (string $id): CredentialVerdict => match (true) {
+                $this->adminPasswords->hasExpired($id) => CredentialVerdict::Refused,
+                ! $this->platform->passwordLoginAllowedFor($id) => CredentialVerdict::SsoRequired,
+                default => CredentialVerdict::Admitted,
+            },
+        ) ?? CredentialVerdict::Admitted;
     }
 
     /**
@@ -109,9 +118,17 @@ final class MemberCredentialGate
      * Run a check against the member's platform-root subject, or return null when there
      * is no subject to check (bootstrap window) or no member at all.
      *
-     * @param  callable(string): bool  $check
+     * Generic in what the check ANSWERS, because the answers stopped all being bools:
+     * {@see admits()} returns a {@see CredentialVerdict}, the counters return bools, and
+     * a shared helper that narrowed everything to bool would have quietly turned the
+     * verdict into `true`.
+     *
+     * @template TResult
+     *
+     * @param  callable(string): TResult  $check
+     * @return TResult|null
      */
-    private function onSubject(?AccountMember $member, callable $check): ?bool
+    private function onSubject(?AccountMember $member, callable $check): mixed
     {
         $subjectId = $member?->subject_id;
 
@@ -119,8 +136,6 @@ final class MemberCredentialGate
             return null;
         }
 
-        $result = $this->platformRoot->run(fn (): bool => $check($subjectId));
-
-        return is_bool($result) ? $result : null;
+        return $this->platformRoot->run(fn (): mixed => $check($subjectId));
     }
 }

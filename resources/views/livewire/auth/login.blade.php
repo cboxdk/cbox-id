@@ -9,6 +9,7 @@ use App\Platform\MailLinks;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
 use App\Platform\SignupPolicy;
+use App\Platform\SsoMandates;
 use App\Platform\SsoStart;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
@@ -52,6 +53,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     public bool $identified = false;
 
     /**
+     * The organization that refused this password because it mandates SSO, once one has.
+     *
+     * Held as state rather than shown as a flash, because it is TERMINAL: there is no
+     * password this form could accept afterwards, so the form itself goes away. The
+     * refusal used to be an error on the email field reading "those credentials do not
+     * match our records" — to the one population that had typed them correctly.
+     */
+    public ?string $ssoOrganization = null;
+
+    public ?string $ssoStartUrl = null;
+
+    /**
      * Branded, per-organization login (/o/{slug}/login) themes the page with the
      * org's colour, logo and name.
      */
@@ -93,7 +106,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         $this->identified = true;
     }
 
-    public function login(PlatformAuth $auth, RiskGuard $risk): void
+    public function login(PlatformAuth $auth, RiskGuard $risk, SsoMandates $mandates): void
     {
         $this->validate();
 
@@ -128,6 +141,16 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         if ($result === AttemptOutcome::Invalid) {
             RateLimiter::hit($key, 60);
             $this->addError('email', 'Those credentials do not match our records.');
+
+            return;
+        }
+
+        // A mandate, not a bad password: the credential was right and will go on being
+        // refused, so this is where the form stops and the IdP link takes over. The
+        // limiter is neither hit nor cleared — this was not a failed guess, and no
+        // session was established either.
+        if ($result === AttemptOutcome::SsoRequired) {
+            $this->showSsoMandate($mandates);
 
             return;
         }
@@ -223,6 +246,39 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         return true;
     }
 
+    /**
+     * Leave the mandate screen for a fresh identifier step.
+     *
+     * Back to the EMAIL step, not to the password form: the person who reaches this
+     * screen has been told their address signs in somewhere else, so the next useful
+     * thing they can do is type a different one.
+     */
+    public function startOver(): void
+    {
+        $this->reset('ssoOrganization', 'ssoStartUrl', 'identified', 'password');
+    }
+
+    /**
+     * Turn the mandate refusal into the terminal screen.
+     *
+     * The password is dropped on the way: this component is not going to authenticate
+     * with it, and a verified credential left in a public property is dehydrated into the
+     * wire:snapshot embedded in the page it is about to render.
+     */
+    private function showSsoMandate(SsoMandates $mandates): void
+    {
+        $subject = app(Subjects::class)->findByEmail($this->email);
+        $mandate = $subject === null ? null : $mandates->forSubject($subject->id);
+
+        $this->reset('password');
+
+        // Never null in practice — the door only reports SsoRequired after walking the
+        // same memberships — but the lookup is a second read, and a screen that says
+        // nothing is worse than one that names no organization.
+        $this->ssoOrganization = $mandate === null ? 'Your organization' : $mandate->organizationName;
+        $this->ssoStartUrl = $mandate?->startUrl;
+    }
+
     private function throttleKey(string $action): string
     {
         return $action.'|'.Str::lower($this->email).'|'.request()->ip();
@@ -265,6 +321,38 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             @endif
         </div>
     @endif
+
+    {{-- The mandate refusal, and it REPLACES the form rather than sitting above it.
+         There is no password this page could accept now, so leaving the fields on screen
+         would invite the same attempt again — which is what the old wording ("those
+         credentials do not match our records") already did, to people whose credentials
+         matched perfectly well. --}}
+    @if ($ssoOrganization !== null)
+        <div role="alert" class="mt-7 card p-5">
+            <h2 class="text-base font-semibold">{{ $ssoOrganization }} requires single sign-on</h2>
+            <p class="mt-2 text-sm" style="color:var(--muted)">
+                Your password is correct — it is just not a way in here any more. Sign in through
+                your organization's identity provider instead.
+            </p>
+
+            @if ($ssoStartUrl !== null)
+                {{-- A full navigation, not wire:navigate: the destination is the identity
+                     provider's own redirect endpoint, which answers with a cross-origin
+                     302 that an SPA navigation cannot follow. --}}
+                <a href="{{ $ssoStartUrl }}" class="btn btn-primary btn-lg w-full mt-4">
+                    Continue to {{ $ssoOrganization }}
+                </a>
+            @else
+                <p class="mt-4 rounded-lg px-3.5 py-3 text-sm" style="background:var(--danger-soft);color:var(--danger-strong)">
+                    No identity provider is connected for {{ $ssoOrganization }} yet, so there is
+                    nowhere to send you. Ask an administrator to finish setting up single sign-on.
+                </p>
+            @endif
+
+            <button type="button" wire:click="startOver" class="btn btn-ghost btn-lg w-full mt-2.5"
+                    wire:loading.attr="disabled" wire:target="startOver">Use a different email</button>
+        </div>
+    @else
 
     {{-- Identifier-first: enter the email, discover its home realm, THEN reveal the
          password. A verified domain with active SSO redirects to the IdP instead. --}}
@@ -342,5 +430,6 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         <p class="mt-8 text-sm text-center" style="color:var(--muted)">
             New organization? <a href="{{ route('signup') }}" class="font-medium underline underline-offset-2" style="color:var(--accent-strong)">Create one</a>
         </p>
+    @endif
     @endif
 </div>

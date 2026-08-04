@@ -82,12 +82,21 @@ it('holds the account door to the SSO mandate on the account\'s organization', f
     // The account's organization now mandates SSO. The SAME correct password must be
     // refused HERE too — otherwise "require SSO" on an account would be a suggestion
     // that the workspace door quietly ignores.
+    //
+    // SsoRequired rather than Invalid: the refusal stands, and the door can now say which
+    // organization made it and where to go instead. Reported as Invalid, this told the
+    // owner of the workspace that their own credentials did not match one.
     app(PlatformRoot::class)->run(fn () => app(AuthPolicies::class)->setForOrganization(
         (string) $account->organization_id,
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 
     expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
+        ->toBe(AttemptOutcome::SsoRequired);
+
+    // A wrong password against the same member is still just a wrong password — the
+    // mandate is asked only after the credential verifies.
+    expect($auth->attempt($request, 'owner@acme.example', 'not-the-passphrase'))
         ->toBe(AttemptOutcome::Invalid);
 });
 
