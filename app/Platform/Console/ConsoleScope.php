@@ -598,7 +598,32 @@ class ConsoleScope
      */
     public function capabilities(): ?AccountCapabilities
     {
-        $role = $this->accountRole();
+        if ($this->accountRole() === null) {
+            return null;
+        }
+
+        // THE MEMBERSHIP, not the member row — this is the flip.
+        //
+        // `accountRole()` above answers a different question and is still the right one to
+        // ask first: does the acting organization belong to an account, and is it the one
+        // this person's account owns. What it must no longer answer is what they may DO
+        // there. An account IS an organization; a person's authority over an organization
+        // is their membership of it; and keeping a second answer on the account member row
+        // is the drift this whole fold exists to remove.
+        //
+        // The two agree today by construction — `AccountRole::asMembershipRole()` is the
+        // one mapping and `DatabaseAccountMembers::setRole()` carries every change onto
+        // the membership — which is exactly what makes reading the membership safe rather
+        // than a behaviour change. The role/page matrix in `IdentityPlatformConsoleTest`
+        // is the assertion that it stayed a non-change.
+        //
+        // On the ENVIRONMENT plane there is no subject session and therefore no membership
+        // to read, so the member row's own role is mapped through the same definition. That
+        // path is an environment administrator acting via the handoff, and it folds with
+        // the rest of the identity work rather than here.
+        $role = $this->plane() === ConsolePlane::Organization
+            ? $this->subject->role()
+            : app(AccountAuth::class)->current()?->role->asMembershipRole();
 
         return $role === null ? null : AccountCapabilities::of($role);
     }

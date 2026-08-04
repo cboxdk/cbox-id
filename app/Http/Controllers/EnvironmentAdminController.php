@@ -60,7 +60,7 @@ final class EnvironmentAdminController extends Controller
             // into a live admin console. Every other resolve path re-checks this
             // (AccountAuth::current(), the account console's gate); this one did not.
             || ! ($member->account?->isActive() ?? false)
-            || ! AccountCapabilities::of($member->role)->canManageEnvironments()
+            || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()
             || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {
             return redirect()->route('admin.login');
         }

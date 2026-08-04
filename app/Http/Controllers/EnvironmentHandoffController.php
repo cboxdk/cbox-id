@@ -47,7 +47,7 @@ final class EnvironmentHandoffController extends Controller
         // be handed a live env-admin token for it (the anti-escalation gate; the
         // env-admin session guard re-checks the same capability on redemption).
         abort_unless(
-            AccountCapabilities::of($member->role)->canManageEnvironments()
+            AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()
             && in_array($environment, $members->accessibleEnvironmentIds($member), true),
             403,
         );

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:fe5af9b2-9edf-447f-b75c-dc03bb6c5b6e",
+    "serialNumber": "urn:uuid:badf267f-f97d-41a4-9301-100a68f473b0",
     "version": 1,
     "metadata": {
         "tools": [
@@ -133,11 +133,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.90.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v0.91.1",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v0.90.0",
-            "purl": "pkg:composer/cboxdk/laravel-id@v0.90.0",
+            "version": "v0.91.1",
+            "purl": "pkg:composer/cboxdk/laravel-id@v0.91.1",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -517,11 +517,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/laravel/prompts@v0.3.21",
+            "bom-ref": "pkg:composer/laravel/prompts@v0.3.22",
             "group": "laravel",
             "name": "prompts",
-            "version": "v0.3.21",
-            "purl": "pkg:composer/laravel/prompts@v0.3.21",
+            "version": "v0.3.22",
+            "purl": "pkg:composer/laravel/prompts@v0.3.22",
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
             "licenses": [
                 {

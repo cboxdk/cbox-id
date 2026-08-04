@@ -118,7 +118,12 @@ it('renders the activity page for an admin and lists recorded actions', function
 
 it('refuses the activity page to a member who cannot read members (403)', function (): void {
     ['account' => $account] = provisionAccount();
-    $viewer = memberWithRole($account->id, AccountRole::Billing, 'billing@acme.example');
+    // A DEVELOPER, not a Billing member. Billing was the role this pinned, and it is no
+    // longer assignable: an account is an organization now, the capability comes from the
+    // membership, and Billing maps to Viewer — who may read the roster. Developer is the
+    // reachable role that still refuses it, and refuses it for the reason that matters: a
+    // technical credential must not enumerate the team.
+    $viewer = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
 
     signInAsMember($viewer);
     $this->get(route('account-activity'))

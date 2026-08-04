@@ -38,7 +38,7 @@ new #[Layout('components.layouts.app', ['title' => 'New project'])] class extend
         $account = $member?->account;
 
         // Only roles that manage environments may stand up a new product.
-        if ($account === null || ! AccountCapabilities::of($member->role)->canManageEnvironments()) {
+        if ($account === null || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()) {
             abort(403);
         }
 

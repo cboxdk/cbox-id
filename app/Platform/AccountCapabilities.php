@@ -44,17 +44,30 @@ use Cbox\Id\Platform\Enums\AccountRole;
  */
 final readonly class AccountCapabilities
 {
-    private function __construct(private AccountRole $role) {}
+    private function __construct(private MembershipRole $role) {}
 
-    public static function of(AccountRole $role): self
+    public static function of(MembershipRole $role): self
     {
         return new self($role);
+    }
+
+    /**
+     * From the account plane's own vocabulary, for the paths that still resolve a member
+     * row rather than a membership — the environment-admin resolver and the two halves of
+     * the handoff, none of which run inside a console request.
+     *
+     * Goes through {@see AccountRole::asMembershipRole()} rather than reading the enum
+     * directly, so there is still exactly one definition of how the two line up.
+     */
+    public static function ofAccountRole(AccountRole $role): self
+    {
+        return new self($role->asMembershipRole());
     }
 
     /** Invite, remove, and change the role of other members. */
     public function canManageMembers(): bool
     {
-        return $this->role->canManageMembers();
+        return $this->role->canManageOrganization();
     }
 
     /**
@@ -83,10 +96,14 @@ final readonly class AccountCapabilities
         return $this->role->canReadBilling();
     }
 
-    /** Change the plan. Owner, Admin and the Billing role. */
+    /** Change the plan. */
     public function canManageBilling(): bool
     {
-        return $this->role->canManageBilling();
+        // Not representable on the organization plane, and nothing asks for it — no page,
+        // no route. Answered as the manage-the-organization question rather than invented,
+        // so the one caller left (the machine plane's capability map) keeps a defensible
+        // answer until it folds too.
+        return $this->role->canManageOrganization();
     }
 
     /**
@@ -95,7 +112,7 @@ final readonly class AccountCapabilities
      * the role a person holds. Kept narrow on purpose: a caller reaching for this to ask
      * a yes/no question is asking it in the wrong place.
      */
-    public function role(): AccountRole
+    public function role(): MembershipRole
     {
         return $this->role;
     }

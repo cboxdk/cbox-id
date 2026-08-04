@@ -85,7 +85,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
     private function assertCanManage(AccountAuth $auth): void
     {
         $member = $auth->current();
-        abort_unless($member !== null && AccountCapabilities::of($member->role)->canManageEnvironments() && $member->all_environments, 403);
+        abort_unless($member !== null && AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments() && $member->all_environments, 403);
     }
 
     public function rename(AccountAuth $auth, Projects $projects): void
@@ -172,7 +172,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
             'project' => $project,
             'environments' => $query->get(),
             // A management surface requires the capability AND full access.
-            'canManage' => $member !== null && AccountCapabilities::of($member->role)->canManageEnvironments() && $member->all_environments,
+            'canManage' => $member !== null && AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments() && $member->all_environments,
             'scoped' => $scoped,
             'remaining' => $projects->remainingEnvironments($project),
             'baseDomain' => $baseDomain,
