@@ -90,9 +90,19 @@ it('hides what an account role may not see, and drops the area when it holds not
         ->and($pages())->toContain('api-keys');
 
     // A Viewer reads the roster and the bill and changes nothing.
-    app(AccountMembers::class)->setRole($result->member->id, AccountRole::Viewer);
+    //
+    // A SECOND member, because the first is the account's only owner and demoting the last
+    // owner is refused — re-roling an owner orphans the account just as surely as deleting
+    // one, which is why it is now refused up front rather than half-written.
+    $viewer = app(AccountMembers::class)->create(
+        $result->account->id,
+        'viewer@acme.example',
+        'a-strong-unbreached-passphrase',
+        'Viewer',
+    );
+    app(AccountMembers::class)->setRole($viewer->id, AccountRole::Viewer);
     nextRequest();
-    signInAsMember($result->member->refresh());
+    signInAsMember($viewer->refresh());
 
     expect($pages())->toContain('billing')
         ->and($pages())->not->toContain('account-settings')

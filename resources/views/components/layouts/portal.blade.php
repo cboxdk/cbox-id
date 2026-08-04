@@ -1,6 +1,6 @@
 @props(['title' => null])
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

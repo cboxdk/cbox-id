@@ -27,7 +27,7 @@
     $brandLogo = $orgLogo ?? $envLogo ?? (is_array($brand) && is_string($brand['logo'] ?? null) ? $brand['logo'] : null);
 @endphp
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -493,16 +493,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v0.90.0",
+            "version": "v0.91.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "e6b2c06f822816c97ff4906ecb9b0f6c661630fe"
+                "reference": "7f07903a12a2ea9899078e808246cf35dc04e305"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/e6b2c06f822816c97ff4906ecb9b0f6c661630fe",
-                "reference": "e6b2c06f822816c97ff4906ecb9b0f6c661630fe",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/7f07903a12a2ea9899078e808246cf35dc04e305",
+                "reference": "7f07903a12a2ea9899078e808246cf35dc04e305",
                 "shasum": ""
             },
             "require": {
@@ -564,9 +564,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v0.90.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v0.91.1"
             },
-            "time": "2026-08-04T18:30:58+00:00"
+            "time": "2026-08-04T21:51:51+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",
@@ -2558,16 +2558,16 @@
         },
         {
             "name": "laravel/prompts",
-            "version": "v0.3.21",
+            "version": "v0.3.22",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/prompts.git",
-                "reference": "7753c65c281c2550c7c183f14e18062073b7d821"
+                "reference": "02b89b39e8972a998db4d5d4ad4719239dd4aee4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/prompts/zipball/7753c65c281c2550c7c183f14e18062073b7d821",
-                "reference": "7753c65c281c2550c7c183f14e18062073b7d821",
+                "url": "https://api.github.com/repos/laravel/prompts/zipball/02b89b39e8972a998db4d5d4ad4719239dd4aee4",
+                "reference": "02b89b39e8972a998db4d5d4ad4719239dd4aee4",
                 "shasum": ""
             },
             "require": {
@@ -2611,9 +2611,9 @@
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
             "support": {
                 "issues": "https://github.com/laravel/prompts/issues",
-                "source": "https://github.com/laravel/prompts/tree/v0.3.21"
+                "source": "https://github.com/laravel/prompts/tree/v0.3.22"
             },
-            "time": "2026-06-26T00:11:25+00:00"
+            "time": "2026-08-04T14:50:50+00:00"
         },
         {
             "name": "laravel/serializable-closure",

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
@@ -41,7 +42,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
 
     public function mount(ConsoleScope $scope): mixed
     {
-        if ($scope->accountRole()?->canManageMembers() !== true) {
+        if ($scope->capabilities()?->canManageMembers() !== true) {
             return redirect()->route('projects');
         }
 
@@ -56,7 +57,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
         // a member who may not mint anything a password prompt and then refused them in
         // silence once they had typed it — and taught everybody else that the prompt is
         // something you get past rather than something that means what it says.
-        if ($account === null || ! $auth->current()->role->canManageMembers()) {
+        if ($account === null || ! AccountCapabilities::ofAccountRole($auth->current()->role)->canManageMembers()) {
             return;
         }
 
@@ -84,7 +85,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
         // which is a denial of service the same session was otherwise held back from.
         $current = $auth->current();
 
-        if ($current === null || ! $current->role->canManageMembers()) {
+        if ($current === null || ! AccountCapabilities::ofAccountRole($current->role)->canManageMembers()) {
             return;
         }
 

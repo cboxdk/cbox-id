@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Facades\Console;
-use Cbox\Id\Platform\Enums\AccountRole;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -138,12 +138,16 @@ final class ConsoleServiceProvider extends ServiceProvider
     private function identityPlatformFeatures(): void
     {
         $features = Console::features();
-        $role = static fn (): ?AccountRole => app(ConsoleScope::class)->accountRole();
+        $can = static fn (): ?AccountCapabilities => app(ConsoleScope::class)->capabilities();
 
-        $features->register('account.projects', static fn (): bool => $role() !== null);
-        $features->register('account.members', static fn (): bool => $role()?->canReadMembers() === true);
-        $features->register('account.manage', static fn (): bool => $role()?->canManageMembers() === true);
-        $features->register('account.environments', static fn (): bool => $role()?->canManageEnvironments() === true);
-        $features->register('account.billing', static fn (): bool => $role()?->canReadBilling() === true);
+        // The area itself, gated on HOLDING an account role rather than on any one
+        // capability: a person who administers this account belongs in the area even if
+        // every page inside it happens to be closed to them, and `ownsIdentityProviders()`
+        // is the same question phrased for the layout.
+        $features->register('account.projects', static fn (): bool => app(ConsoleScope::class)->ownsIdentityProviders());
+        $features->register('account.members', static fn (): bool => $can()?->canReadMembers() === true);
+        $features->register('account.manage', static fn (): bool => $can()?->canManageMembers() === true);
+        $features->register('account.environments', static fn (): bool => $can()?->canManageEnvironments() === true);
+        $features->register('account.billing', static fn (): bool => $can()?->canReadBilling() === true);
     }
 }

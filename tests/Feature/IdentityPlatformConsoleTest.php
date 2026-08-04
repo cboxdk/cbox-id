@@ -607,3 +607,134 @@ it('takes the area away when the acting organization is not the account\'s own',
     expect(app(ConsoleScope::class)->accountRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 })->group('security');
+
+/**
+ * THE MATRIX, and the reason it exists.
+ *
+ * Every guard on this area now asks {@see AccountCapabilities} rather than the enum, so
+ * the whole of the account plane's authorization is decided in one file — which is what
+ * makes the Account→Organization fold a change to one file instead of thirty. The risk is
+ * exactly proportional: a wrong extension there is wrong everywhere at once.
+ *
+ * Falsifying that seam by hand — rewriting `canManageEnvironments()` as
+ * `MembershipRole::canWrite()`'s shape, which is the substitution the fold invites — turned
+ * only TWO tests red. The seam was load-bearing and the net under it was not, so this pins
+ * the whole verdict table instead: for each role, exactly which pages exist.
+ *
+ * It is written as data on purpose. The fold's acceptance criterion is that this table
+ * reads identically before and after the source of truth changes from `AccountRole` to a
+ * membership — so it must be readable as a table, not inferred from a dozen scattered
+ * assertions.
+ */
+it('shows exactly these pages to each account role', function (AccountRole $role, array $expected): void {
+    ['member' => $owner, 'account' => $account] = provisionAccount();
+
+    // THROUGH `setRole()`, not by writing the row. A `forceFill` here passed for as long
+    // as the member row was the authority, and stopped meaning anything the moment the
+    // console started reading the membership — it produced a state the product cannot:
+    // an account row saying Developer over a membership still saying Owner. Going through
+    // the contract is what makes this table describe the deployment rather than the
+    // fixture.
+    //
+    // A SECOND member, because the first is the account's only owner and demoting the last
+    // owner is refused — which is the same reason ownership transfer promotes before it
+    // demotes.
+    $subject = $role === AccountRole::Owner ? $owner : app(AccountMembers::class)->create(
+        $account->id,
+        'matrix-'.$role->value.'@acme.example',
+        'a-strong-unbreached-passphrase',
+        'Matrix',
+    );
+
+    if ($role !== AccountRole::Owner) {
+        app(AccountMembers::class)->setRole($subject->id, $role);
+    }
+
+    signInAsMember($subject->refresh());
+
+    expect(identityPlatformPages())->toBe($expected, $role->value.' sees the wrong pages');
+})->with([
+    // Everything. Ownership itself is guarded per-action, not by hiding pages.
+    'owner' => [AccountRole::Owner, [
+        'projects', 'account-members', 'api-keys', 'environment-keys',
+        'environment-domains', 'account-activity', 'billing', 'account-settings',
+    ]],
+
+    // An admin is an owner minus the ownership transfer, which is not a page.
+    'admin' => [AccountRole::Admin, [
+        'projects', 'account-members', 'api-keys', 'environment-keys',
+        'environment-domains', 'account-activity', 'billing', 'account-settings',
+    ]],
+
+    // THE ONE THE FOLD BREAKS. A developer is a technical credential: environments and
+    // their keys and domains, and NOT the member roster — `canReadMembers()` excludes them
+    // by design, because a leaked developer key must not enumerate the team — and not
+    // billing. `MembershipRole` has no read predicate at all, so a naive translation hands
+    // both back.
+    'developer' => [AccountRole::Developer, [
+        'projects', 'environment-keys', 'environment-domains',
+    ]],
+
+    // NO BILLING ROW, and its absence is the finding.
+    //
+    // It used to be `['projects', 'billing']` — the plan and nothing else, in particular
+    // not the roster. Once the capability came from the membership the same member saw
+    // `account-members` and `account-activity` too, because Billing maps to Viewer and a
+    // Viewer may read the roster. That is a widening of access to PII, and no organization
+    // role both reads the plan and refuses the roster, so the mapping cannot be made
+    // faithful.
+    //
+    // The role is therefore no longer assignable (laravel-id 0.91.1), which makes this
+    // row unreachable rather than merely wrong. `AccountAndMembershipRoleMappingTest` in
+    // the framework pins the exclusion and the reason.
+
+    // Read-only across the account: it may SEE the roster and the bill, and change
+    // neither — so no API keys, no environment keys or domains, no settings.
+    'viewer' => [AccountRole::Viewer, [
+        'projects', 'account-members', 'account-activity', 'billing',
+    ]],
+])->group('security');
+
+/**
+ * WHICH ROW DECIDES — the whole of batch 3 in one assertion.
+ *
+ * The two agree by construction: `AccountRole::asMembershipRole()` is the one mapping and
+ * `DatabaseAccountMembers::setRole()` carries every change onto the membership. That is
+ * what made the flip a non-change, and it is also what makes the flip invisible to every
+ * other test in this file — agreement proves nothing about which one is being read.
+ *
+ * So this makes them disagree, by writing the membership behind the contract's back, and
+ * asserts the console follows the MEMBERSHIP. An account is an organization; a person's
+ * authority over an organization is their membership of it; and the member row is a
+ * lookup saying which account a subject belongs to, not what they may do there.
+ */
+it('follows the membership when the member row disagrees', function (): void {
+    ['member' => $owner, 'account' => $account] = provisionAccount();
+
+    $member = app(AccountMembers::class)->create(
+        $account->id,
+        'disagreement@acme.example',
+        'a-strong-unbreached-passphrase',
+        'Disagreement',
+    );
+    app(AccountMembers::class)->setRole($member->id, AccountRole::Admin);
+
+    signInAsMember($member->refresh());
+    expect(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeTrue();
+
+    // Behind the contract's back, so the member row still says Admin. Nothing in the
+    // product does this — which is the point: it isolates the question.
+    app(PlatformRoot::class)->run(fn () => DB::table('memberships')
+        ->where('organization_id', $account->refresh()->organization_id)
+        ->where('user_id', $member->subject_id)
+        ->update(['role' => MembershipRole::Viewer->value]));
+
+    nextRequest();
+    signInAsMember($member->refresh());
+
+    expect($member->refresh()->role)->toBe(AccountRole::Admin, 'fixture: the member row must still disagree')
+        ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeFalse()
+        ->and(identityPlatformPages())->not->toContain('account-settings');
+
+    expect($owner->refresh()->role)->toBe(AccountRole::Owner);
+})->group('security');

@@ -1,26 +1,44 @@
-// Theme: honour the stored preference, else the OS. Applied to <html data-theme>.
-// Kept in bundled (same-origin) JS so a strict CSP needs no inline script.
+// Theme. The SERVER decides which one this page is painted in — see App\Platform\Theme
+// and the `cbox-theme` cookie. Nothing here runs before the first paint, and nothing here
+// needs to: this file is a bundled ES module and is therefore deferred by definition,
+// which is exactly why applying the theme from JavaScript flashed on every hard refresh
+// and silently reverted on every wire:navigate.
+//
+// So this only WRITES the preference and mirrors it onto the current document, for the
+// one navigation the user is already looking at.
 (() => {
     const root = document.documentElement;
-    const stored = localStorage.getItem('cbox-theme');
+    const YEAR = 60 * 60 * 24 * 365;
 
-    const apply = (theme) => {
-        if (theme === 'light' || theme === 'dark') {
-            root.setAttribute('data-theme', theme);
-        } else {
-            root.removeAttribute('data-theme');
-        }
+    const remember = (theme) => {
+        // Lax rather than Strict: the console is reached from mailed links (invitations,
+        // password resets) and a Strict cookie is withheld on that first cross-site
+        // navigation, which would paint the wrong theme on precisely the page somebody
+        // arrives at from their inbox. Not `secure` unconditionally, because local
+        // development is served over http on some machines and a dropped cookie there
+        // would look exactly like this bug.
+        const secure = location.protocol === 'https:' ? '; secure' : '';
+        document.cookie = `cbox-theme=${theme}; path=/; max-age=${YEAR}; samesite=lax${secure}`;
+        root.setAttribute('data-theme', theme);
     };
 
-    apply(stored);
+    // One-time move for anyone carrying the old localStorage preference. They get the
+    // server-rendered default for this one paint and their own choice from here on;
+    // leaving it would silently forget a preference somebody had already expressed.
+    const legacy = localStorage.getItem('cbox-theme');
+    if (legacy === 'light' || legacy === 'dark') {
+        localStorage.removeItem('cbox-theme');
+        if (!root.hasAttribute('data-theme')) {
+            remember(legacy);
+        }
+    }
 
     window.cboxToggleTheme = () => {
         const current =
             root.getAttribute('data-theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        const next = current === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('cbox-theme', next);
-        apply(next);
+
+        remember(current === 'dark' ? 'light' : 'dark');
     };
 
     document.addEventListener('click', (e) => {

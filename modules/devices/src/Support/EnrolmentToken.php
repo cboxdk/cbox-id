@@ -9,6 +9,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -168,8 +169,24 @@ final class EnrolmentToken
         $code->consumed_at = Carbon::now();
         $code->expires_at = Carbon::createFromTimestamp($expiresAt);
 
+        // INSIDE A NESTED TRANSACTION, which on every engine Laravel supports is a
+        // SAVEPOINT — and that savepoint is what makes the design above safe rather than
+        // merely clever.
+        //
+        // Letting the unique index arbitrate means the losing request's INSERT raises.
+        // PostgreSQL does not treat a failed statement as a local event: it aborts the
+        // whole enclosing transaction, and every later statement on that connection
+        // answers SQLSTATE 25P02 until it is rolled back. So the caller that catches
+        // `EnrolmentCodeRejected` and goes on to write an audit entry got a 500 instead of
+        // the 422 it meant to return — the refusal was correct and the response was not,
+        // and the audit record of a rejected code was silently lost with it.
+        //
+        // sqlite and MySQL are more forgiving, which is exactly why this shipped: the
+        // suite is green on both and PostgreSQL is what production runs. Rolling back to a
+        // savepoint confines the failure to this one statement on every engine, so the
+        // arbitration stays with the database and the caller keeps a usable connection.
         try {
-            $code->save();
+            DB::transaction(static fn (): bool => $code->save());
         } catch (Throwable $e) {
             throw new EnrolmentCodeRejected('That enrolment code has already been used.', previous: $e);
         }

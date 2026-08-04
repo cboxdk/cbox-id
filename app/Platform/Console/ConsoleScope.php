@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
@@ -577,6 +578,54 @@ class ConsoleScope
             : $this->organizationId();
 
         return $accountOrganizationId === $organizationId ? $member->role : null;
+    }
+
+    /**
+     * What the acting person MAY DO on the account they are administering — null when
+     * they are administering somebody else's organization, or no account at all.
+     *
+     * The capability question, separated from the role question that {@see AccountRole()}
+     * answers. Every guard, nav entry and feature closure asks this one; `accountRole()`
+     * remains for the two places that need the VALUE — the role stamped on a machine
+     * credential, and the role rendered next to a person's name.
+     *
+     * The separation is the point of the seam. While the account plane owned its own role
+     * column the two questions had the same answer, so thirty call sites asked the enum
+     * directly and nothing was lost. Once an account IS an organization they stop being
+     * the same question: the capability has to be derived from a membership plus a
+     * refinement the organization plane cannot express, and a call site that asked the
+     * enum would keep answering from the old column without ever going red.
+     */
+    public function capabilities(): ?AccountCapabilities
+    {
+        if ($this->accountRole() === null) {
+            return null;
+        }
+
+        // THE MEMBERSHIP, not the member row — this is the flip.
+        //
+        // `accountRole()` above answers a different question and is still the right one to
+        // ask first: does the acting organization belong to an account, and is it the one
+        // this person's account owns. What it must no longer answer is what they may DO
+        // there. An account IS an organization; a person's authority over an organization
+        // is their membership of it; and keeping a second answer on the account member row
+        // is the drift this whole fold exists to remove.
+        //
+        // The two agree today by construction — `AccountRole::asMembershipRole()` is the
+        // one mapping and `DatabaseAccountMembers::setRole()` carries every change onto
+        // the membership — which is exactly what makes reading the membership safe rather
+        // than a behaviour change. The role/page matrix in `IdentityPlatformConsoleTest`
+        // is the assertion that it stayed a non-change.
+        //
+        // On the ENVIRONMENT plane there is no subject session and therefore no membership
+        // to read, so the member row's own role is mapped through the same definition. That
+        // path is an environment administrator acting via the handoff, and it folds with
+        // the rest of the identity work rather than here.
+        $role = $this->plane() === ConsolePlane::Organization
+            ? $this->subject->role()
+            : app(AccountAuth::class)->current()?->role->asMembershipRole();
+
+        return $role === null ? null : AccountCapabilities::of($role);
     }
 
     /** Whether the organization being administered owns identity providers of its own. */

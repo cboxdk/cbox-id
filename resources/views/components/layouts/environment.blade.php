@@ -54,7 +54,7 @@
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
      Distinct from the org-user console (subjects) and the platform section. --}}
 <!DOCTYPE html>
-<html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
+<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

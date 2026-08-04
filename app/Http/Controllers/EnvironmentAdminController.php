@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Platform\AccountCapabilities;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\MemberCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -59,7 +60,7 @@ final class EnvironmentAdminController extends Controller
             // into a live admin console. Every other resolve path re-checks this
             // (AccountAuth::current(), the account console's gate); this one did not.
             || ! ($member->account?->isActive() ?? false)
-            || ! $member->role->canManageEnvironments()
+            || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()
             || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {
             return redirect()->route('admin.login');
         }

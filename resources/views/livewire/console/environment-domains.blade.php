@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\AccountCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
@@ -35,7 +36,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
 
         // Two questions, and both have to be asked — see environment-keys.blade.php: the
         // scope decides admission, the member row is what the page reads.
-        if ($member === null || $scope->accountRole()?->canManageEnvironments() !== true) {
+        if ($member === null || $scope->capabilities()?->canManageEnvironments() !== true) {
             $this->redirect(route('projects'));
 
             return;
@@ -114,7 +115,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
     {
         $member = $auth->current();
 
-        if ($member === null || ! $member->role->canManageEnvironments() || $this->selectedEnvironment === '') {
+        if ($member === null || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments() || $this->selectedEnvironment === '') {
             return false;
         }
 
