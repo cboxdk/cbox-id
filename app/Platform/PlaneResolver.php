@@ -4,19 +4,37 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Http\Middleware\SetEnvironment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
- * Which PLANE a request is on, decided from the host-resolved environment alone.
+ * Which SURFACES a request's host serves, decided from the host and the environment it
+ * resolved to.
  *
- * There is exactly one implementation of this question, because two would eventually
- * disagree — and the two consumers are the route gate (`plane:account`, which decides
- * whether a surface exists here at all) and the post-authentication landings (which
- * decide whether a verified identity becomes an account session or a subject one). If
- * those ever diverged, a login could be admitted onto a plane whose routes are 404 — or,
- * worse, onto one whose routes are not.
+ * There is exactly one implementation of each question, because two would eventually
+ * disagree — and the consumers are the route gate (`plane:*`, which decides whether a
+ * surface exists here at all) and the post-authentication landings (which decide whether a
+ * verified identity becomes an account session or a subject one). If those ever diverged,
+ * a login could be admitted onto a plane whose routes are 404 — or, worse, onto one whose
+ * routes are not.
+ *
+ * FOUR questions, not one. They used to be fewer, and the shortage is what made the
+ * platform root a host with no sign-in page on it:
+ *
+ *  - {@see servesConsole()} — does the console live here? Everywhere, the root included.
+ *  - {@see servesIssuer()} — does an identity PROVIDER answer here? Never on the root.
+ *  - {@see servesEnvironmentAdmin()} — is this an environment an account administers from
+ *    the outside? Never on the root.
+ *  - {@see onAccountPlane()} — is this the account plane itself? The root alone.
+ *
+ * The second and third share an answer today and are still asked separately, because they
+ * are different questions about different surfaces and a shared answer is a coincidence of
+ * this deployment shape rather than a fact about either. Collapsing two questions into one
+ * name is precisely how the console went missing from the root: "which host serves the
+ * console" and "which host is an issuer" were one predicate, so withholding the issuer
+ * surface withheld the console with it.
  */
 final class PlaneResolver
 {
@@ -35,7 +53,7 @@ final class PlaneResolver
     public function isMultiTenant(): bool
     {
         // Stated, when the deployment states it. This decides whether the host bulkheads
-        // exist at all — `onSubjectPlane()` and `onOperatorPlane()` both return true
+        // exist at all — every "does this host serve X" question below answers true
         // unconditionally in the single-tenant shape — and a security control that
         // load-bearing must not be inferred from a domain list.
         $stated = config('cbox-id.tenancy.multi_tenant');
@@ -63,17 +81,68 @@ final class PlaneResolver
      */
     public function onAccountPlane(): bool
     {
-        return $this->isMultiTenant() && $this->onPlatformRootHost();
+        return $this->isMultiTenant() && $this->contextIsPlatformRoot();
     }
 
-    /** Whether this request is on a TENANT host — the subject plane in the SaaS shape. */
-    public function onSubjectPlane(): bool
+    /**
+     * Whether the CONSOLE is served here — the sign-in door, and every subject-facing page
+     * behind it.
+     *
+     * Every host this deployment answers on, the PLATFORM ROOT INCLUDED. The root is a
+     * tenant like any other: people sign in there, hold a profile and a password there,
+     * and administer the organizations they belong to there. What makes it the root is the
+     * operator area and the account plane standing ALONGSIDE that console — not a console
+     * being absent. It was absent: `/login` and `/dashboard` both 404'd on `cboxid.com`,
+     * so the one host every account member already has an identity on was the one host
+     * they could not sign in to as themselves.
+     *
+     * Asked of the HOST rather than of the resolved context, and that is the whole of the
+     * safety here. {@see SetEnvironment} answers an UNMAPPED host with
+     * the platform root, deliberately — so "the context is the root environment" is also
+     * true of `nope.cboxid.com` and of every wildcard name pointed at us, all of which
+     * `TrustHosts` admits under `base_domains`. Serving a sign-in form on the strength of
+     * the context would put one on all of them. An exact match against the root's own host
+     * is what those cannot satisfy.
+     */
+    public function servesConsole(string $host): bool
     {
-        if (! $this->isMultiTenant()) {
-            return true;
-        }
+        return $this->onTenantEnvironment() || $this->isPlatformRootHost($host);
+    }
 
-        return $this->environments->current() !== null && ! $this->onPlatformRootHost();
+    /**
+     * Whether this host answers AS AN IDENTITY PROVIDER — OIDC discovery and JWKS, the
+     * RFC 8414 / RFC 9728 metadata, every `/oauth/*` endpoint, the SAML IdP bindings, SCIM.
+     *
+     * Every host EXCEPT the platform root, and that exclusion is not a consequence of the
+     * root being "not a tenant" — it is one: `cboxid.com` issues tokens for nobody, signs
+     * assertions for nobody and has no relying parties. It served half an IdP once —
+     * discovery answered 200 there advertising an `authorization_endpoint` that 404'd —
+     * and half an IdP is worse than none, because a conformant client can discover it and
+     * follow it into a dead end.
+     *
+     * INBOUND federation is deliberately not part of this. Answering as an issuer and
+     * consuming somebody else's assertion are opposite roles, and the account plane
+     * genuinely does the second — see the SSO callbacks in `routes/web.php`.
+     */
+    public function servesIssuer(): bool
+    {
+        return $this->onTenantEnvironment();
+    }
+
+    /**
+     * Whether the ENVIRONMENT-ADMIN door is served here — `/admin/*`, entered by redeeming
+     * the account plane's signed handoff.
+     *
+     * The same hosts {@see servesIssuer()} names, and asked separately because it is a
+     * different question that happens to share an answer. That console is how an ACCOUNT
+     * reaches INTO an environment it owns from the account plane; the account plane is not
+     * something it reaches into, and the platform root's own environment belongs to no
+     * account, so there is nobody the door could ever open for there. The operator area is
+     * how the root environment is administered.
+     */
+    public function servesEnvironmentAdmin(): bool
+    {
+        return $this->onTenantEnvironment();
     }
 
     /**
@@ -101,6 +170,20 @@ final class PlaneResolver
             return true;
         }
 
+        return $this->isPlatformRootHost($host);
+    }
+
+    /**
+     * Whether a HOST is the platform root's own host — the account plane's origin, the
+     * operator area's origin, and the one host whose console {@see servesConsole()} has to
+     * name explicitly because the context cannot distinguish it from an unmapped name.
+     *
+     * Fails closed, and the failure mode is the reason it is spelled out rather than
+     * inferred: this predicate decides whether a staff sign-in form and an account
+     * sign-in form are served under a given name.
+     */
+    public function isPlatformRootHost(string $host): bool
+    {
         // NO fallback to the default environment. `platformRootKey()` resolves through
         // `defaultEnvironment()` itself, so falling back to it here would compare a value
         // to its own source and return true for every host that maps to nothing —
@@ -241,7 +324,26 @@ final class PlaneResolver
         ), static fn (string $host): bool => $host !== ''));
     }
 
-    private function onPlatformRootHost(): bool
+    /**
+     * The predicate {@see servesIssuer()} and {@see servesEnvironmentAdmin()} are both
+     * answered from: this request resolved to an environment, and it is not the platform
+     * root's.
+     *
+     * A CONTEXT question, unlike {@see isPlatformRootHost()}, and correctly so — an
+     * unmapped host resolves to the platform root, which is exactly the "no issuer and no
+     * environment console here" this has to answer for it.
+     */
+    private function onTenantEnvironment(): bool
+    {
+        if (! $this->isMultiTenant()) {
+            return true;
+        }
+
+        return $this->environments->current() !== null && ! $this->contextIsPlatformRoot();
+    }
+
+    /** Whether the environment this request RESOLVED TO is the platform root's. */
+    private function contextIsPlatformRoot(): bool
     {
         $current = $this->environments->current()?->environmentKey();
         $root = $this->platformRootKey();

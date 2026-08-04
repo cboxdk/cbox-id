@@ -45,7 +45,7 @@ it('keeps this app winning on every key it does state', function (): void {
 it('replaces rather than appends to a list this app redefines', function (): void {
     // `api.middleware` is a sequential array. A merge that concatenated would make
     // the app unable to shrink or empty a package-supplied list.
-    expect(config('cbox-id.api.middleware'))->toBe(['plane:subject']);
+    expect(config('cbox-id.api.middleware'))->toBe(['plane:issuer']);
 });
 
 it('leaves no package config key at any depth unreachable', function (): void {

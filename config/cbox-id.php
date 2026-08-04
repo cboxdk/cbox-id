@@ -36,24 +36,26 @@ return [
      * RFC 8414 / RFC 9728 metadata, every `/oauth/*` endpoint, SAML and SCIM — is
      * confined to the SUBJECT plane.
      *
-     * The platform-root host (cboxid.com) is the ACCOUNT door: sign up, manage your
-     * account and its environments. It is NOT an issuer — the interactive
-     * `/oauth/authorize` is `plane:subject` and therefore absent there. Without this
-     * gate the root still answered discovery, advertising `issuer:
-     * https://cboxid.com` alongside an `authorization_endpoint` that 404s, so a
-     * conformant client followed the document straight into a dead end. Half an IdP
-     * is worse than none: it is discoverable.
+     * The platform root (cboxid.com) serves a console like any other host — its subjects
+     * sign in and administer their organizations there. What it is NOT is an ISSUER: it
+     * mints no tokens, signs no assertions and has no relying parties, so the interactive
+     * `/oauth/authorize` is `plane:issuer` and absent there. Without this gate the root
+     * still answered discovery, advertising `issuer: https://cboxid.com` alongside an
+     * `authorization_endpoint` that 404s, so a conformant client followed the document
+     * straight into a dead end. Half an IdP is worse than none: it is discoverable.
      *
-     * `plane:subject` is the SAME gate the interactive surfaces use, so there is one
-     * answer to "is this host a tenant IdP", not two that can drift. In the
-     * single-tenant / self-hosted shape (no `base_domains`) the gate is a no-op and
-     * the one host serves the whole surface, exactly as before.
+     * `plane:issuer` is the SAME gate the app's own `/oauth/authorize` and SAML IdP
+     * overrides use, so there is one answer to "is this host an identity provider", not
+     * two that can drift. It is deliberately NOT the gate the console uses: those were one
+     * plane once, and the console went missing from the platform root as a result. In the
+     * single-tenant / self-hosted shape the gate is a no-op and the one host serves the
+     * whole surface, exactly as before.
      *
      * `GET /up` is registered outside this group by the framework — a liveness probe
      * must answer on every host, including a kubelet hitting the pod directly.
      */
     'api' => [
-        'middleware' => ['plane:subject'],
+        'middleware' => ['plane:issuer'],
     ],
 
     /*
@@ -176,8 +178,8 @@ return [
      *
      * It used to be derived from whether `environments.base_domains` happened to be
      * non-empty, and that is a dangerous thing to infer, because the mode decides
-     * whether the host bulkheads exist at all: in single-tenant, `onSubjectPlane()` and
-     * `onOperatorPlane()` return true UNCONDITIONALLY. A deployment that had not yet
+     * whether the host bulkheads exist at all: in single-tenant, every "does this host
+     * serve X" question returns true UNCONDITIONALLY. A deployment that had not yet
      * listed its base domains was therefore serving the staff console on every host it
      * answered to, and nothing said so — the config that turned the bulkheads off was a
      * domain list nobody thought of as a security control.

@@ -40,12 +40,20 @@
     $activeEnvId = null;
     $activeEnv = null;
     $canSwitchEnv = false;
+    $lineage = [];
 
     if ($isOperator) {
         $ctx = app(\Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext::class);
         $activeEnvId = $ctx->current()?->environmentKey();
+        // `account_id` and `project_id` come along because the switcher names the OWNER,
+        // not just the plane: "Production" is a name half the customers on an install
+        // will have, and a chrome control that says only that tells an operator nothing
+        // about whose estate their next click lands in.
         $environments = $ctx->withoutScope(fn () => \Cbox\Id\Organization\Models\Environment::query()
-            ->orderBy('created_at')->get(['id', 'name', 'slug']));
+            ->orderBy('created_at')->get(['id', 'name', 'slug', 'account_id', 'project_id']));
+        // Two queries for the whole list, on a control that renders on EVERY console
+        // page — see App\Platform\Console\EnvironmentLineages.
+        $lineage = app(\App\Platform\Console\EnvironmentLineages::class)->for($environments);
         $activeEnv = $environments->firstWhere('id', $activeEnvId);
         $canSwitchEnv = $environments->count() > 1;
     }
@@ -149,7 +157,11 @@
                             <x-icon name="layers" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />
                             <span class="min-w-0 text-left">
                                 <span class="block text-[10px] font-medium uppercase tracking-wide leading-tight" style="color:var(--muted-foreground)">Target environment</span>
-                                <span class="block text-[13px] font-semibold truncate leading-tight">{{ $activeEnv?->name ?? 'None yet' }}</span>
+                                <span class="block text-[13px] font-semibold truncate leading-tight">
+                                    {{ $activeEnv !== null && isset($lineage[$activeEnv->id])
+                                        ? $lineage[$activeEnv->id]->qualify($activeEnv->name)
+                                        : ($activeEnv?->name ?? 'None yet') }}
+                                </span>
                             </span>
                             @if ($canSwitchEnv)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
                         </button>
@@ -162,7 +174,7 @@
                                         <input type="hidden" name="environment" value="{{ $environment->id }}">
                                         <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $environment->id === $activeEnvId ? 'background:var(--secondary)' : '' }}">
                                             <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" />
-                                            <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ $environment->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $environment->slug }}</span></span>
+                                            <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ isset($lineage[$environment->id]) ? $lineage[$environment->id]->qualify($environment->name) : $environment->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $environment->slug }}</span></span>
                                             @if ($environment->id === $activeEnvId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" />@endif
                                         </button>
                                     </form>

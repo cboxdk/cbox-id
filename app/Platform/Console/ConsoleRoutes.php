@@ -12,7 +12,7 @@ use Livewire\Volt\Volt;
  * How a module routes a console page — on both planes, at one component.
  *
  * A module's routes file used to spell out the middleware stack itself, and every one of
- * the six spelled out the SAME stack: `web`, `plane:subject`, the impersonation window,
+ * the six spelled out the SAME stack: `web`, the console plane, the impersonation window,
  * `platform.auth`, `console.feature:x`. That stack is the organization plane. None of
  * them wrote the environment plane's, which is a different four — `env.admin` instead of
  * a subject session, under the `/admin` prefix, with no impersonation window because an
@@ -51,11 +51,12 @@ final class ConsoleRoutes
 
         Route::middleware([
             'web',
-            // `plane:subject` for the same reason the host's own environment console
-            // carries it: the admin door lives on a TENANT host, never on the account
-            // root. The gate that follows is the env-admin session — a subject session
-            // grants nothing here.
-            'plane:subject',
+            // `plane:environment` for the same reason the host's own environment console
+            // carries it: this door is opened by an ACCOUNT reaching into an environment
+            // from the account plane, so it is absent on the account plane itself. The
+            // gate that follows is the env-admin session — a subject session grants
+            // nothing here.
+            'plane:environment',
             'env.admin',
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($environmentUri, $uri, $component, $name): void {
@@ -76,7 +77,9 @@ final class ConsoleRoutes
     {
         Route::middleware([
             'web',
-            'plane:subject',
+            // Every host, the platform root included — a console page is a console page
+            // wherever the console is served.
+            'plane:console',
             // ENFORCED rather than inherited — without it, an impersonation that outlived
             // its 30-minute box keeps reading these pages, because reads sit on the call
             // guard's allowlist and nothing else stops them.

@@ -98,26 +98,36 @@ final class ImpersonationController extends Controller
     /**
      * Where an impersonation drops the operator, on the host they are standing on.
      *
-     * `dashboard` is `plane:subject`, and the Impersonate button now lives on
-     * `/platform/organizations` — the ACCOUNT-root host, which does not serve that plane.
-     * So the redirect 404'd, and the 404 page carries no chrome, so the exit control did
-     * not render either: the only way out was to POST `/impersonation/exit` by hand.
+     * `dashboard` used to 404 on the platform root — it was `plane:subject`, and the
+     * Impersonate button lives on `/platform/organizations`, which is the root. The 404
+     * page carries no chrome, so the exit control did not render either: the only way out
+     * was to POST `/impersonation/exit` by hand.
      *
-     * Deliberately not a cross-host redirect to the tenant's own console. The session is
-     * host-scoped — {@see WorkspaceController::openEnvironment()}
-     * mints a signed handoff token precisely because a session does not travel between
-     * hosts — so bouncing there would land an operator with no session at all, which is
-     * the same dead end wearing a different hostname. They stay where they are, where the
-     * banner and its Exit button now render.
+     * The root serves `/dashboard` now, and this fork STAYS, because the reason it exists
+     * was never only that the route was absent. The dashboard renders the organization the
+     * SESSION names, and on the root the ambient environment is the root's — an operator
+     * who has pinned their console at a tenant and stepped into one of its members would
+     * be shown a console resolved against a different environment than the person they are
+     * impersonating belongs to. The caller's own console is the honest landing.
+     *
+     * Deliberately not a cross-host redirect to the tenant's own console either. The
+     * session is host-scoped — {@see WorkspaceController::openEnvironment()} mints a signed
+     * handoff token precisely because a session does not travel between hosts — so bouncing
+     * there would land an operator with no session at all, which is the same dead end
+     * wearing a different hostname. They stay where they are, where the banner and its Exit
+     * button render.
      *
      * The fallback is the caller's own console — the same pair {@see exit()} chooses
      * between, for the same reason: an environment administrator has no platform pages.
      */
     private function landing(PlaneResolver $planes, string $fallback): RedirectResponse
     {
-        return redirect()->route(
-            $planes->isMultiTenant() && ! $planes->onSubjectPlane() ? $fallback : 'dashboard',
-        );
+        // `onAccountPlane()` rather than the old `isMultiTenant() && ! onSubjectPlane()`,
+        // which is the same predicate written from the far side and differed on exactly
+        // one case: no environment resolved at all. Impersonation always starts from a
+        // console page that has one, and answering "the account plane" for a request with
+        // no environment was never the intent.
+        return redirect()->route($planes->onAccountPlane() ? $fallback : 'dashboard');
     }
 
     /**

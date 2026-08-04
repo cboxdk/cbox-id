@@ -44,11 +44,17 @@ use Livewire\Volt\Volt;
 Volt::route('/first-run', 'first-run')->name('first-run');
 
 /*
- * The root is plane-aware: on the ACCOUNT plane — the platform-root host of a
- * multi-tenant deployment — it is the account door (sign in / sign up as an account
- * member to create and manage your IdP); everywhere else it is the IdP's own
- * sign-in/dashboard, which is the single-tenant / self-hosted shape's one host and a
- * tenant's own subdomain alike.
+ * The apex is plane-aware: on the platform root it is the ACCOUNT door (sign in / sign up
+ * as an account member to create and manage your IdP); everywhere else it is the tenant's
+ * own sign-in/dashboard.
+ *
+ * Both destinations are now served on both hosts — `/login` and `/dashboard` are
+ * `plane:console`, which includes the root — so this fork is no longer about what EXISTS
+ * here. It is about what somebody arriving at the bare apex most likely came for, and on
+ * `cboxid.com` that is the account: the environments they own, their billing, their keys.
+ * A subject of the root who wants the tenant console asks for `/login` or `/dashboard` by
+ * name and gets it. (Folding the two together is a later step; this fork is deliberately
+ * still here.)
  *
  * The decision is PlaneResolver's, whole. This closure used to re-derive it, and
  * disagreed with the resolver twice over — which is exactly the failure the resolver's
@@ -58,8 +64,8 @@ Volt::route('/first-run', 'first-run')->name('first-run');
  *  - It read multi-tenancy as `base_domains !== []`, the COMPATIBILITY fallback, ignoring
  *    the stated `cbox-id.tenancy.multi_tenant`. With multi-tenancy on and every tenant on
  *    its own domain (base domains empty — a supported shape {@see PlaneResolver} describes
- *    itself), the apex fell through to `route('login')`, a `plane:subject` route that
- *    404s on the account host. The account console's front door was a 404.
+ *    itself), the apex fell through to `route('login')`, which at the time 404'd on the
+ *    account host. The account console's front door was a 404.
  *  - It resolved the platform root config-first, which is backwards: SetEnvironment
  *    returns the DB `is_default` row and falls back to config only when no environment
  *    exists at all. A deployment setting both to different environments had the apex
@@ -91,13 +97,13 @@ Route::get('/', function (PlaneResolver $planes) {
  * POST — exempted from CSRF in bootstrap/app.php, as the package documents). The
  * metadata (GET /sso/saml/idp/metadata) and SLO endpoints stay with the package.
  *
- * `plane:subject`, like every other IdP surface: the platform-root host is the account
- * door, not an identity provider, so it must not answer as one. The package's own SAML
- * routes are gated identically via `cbox-id.api.middleware`; these app overrides would
- * otherwise be the one hole left in that wall.
+ * `plane:issuer`, like every other IdP surface: the platform root serves a console like
+ * any other host, but it is an identity provider for nobody, so it must not answer as one.
+ * The package's own SAML routes are gated identically via `cbox-id.api.middleware`; these
+ * app overrides would otherwise be the one hole left in that wall.
  */
 Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
-    ->middleware('plane:subject')
+    ->middleware('plane:issuer')
     ->name('sso.saml.idp.sso');
 
 /*
@@ -113,7 +119,7 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
  * CSRF-exempt in bootstrap/app.php exactly as the package's route was.
  *
  * NOT plane-gated, unlike the IdP endpoint above — and that is the point of the split.
- * `plane:subject` gates the ISSUER surface: a host that is not an identity provider must
+ * `plane:issuer` gates the ISSUER surface: a host that is not an identity provider must
  * not advertise or answer as one. Inbound federation is the opposite role (this server as
  * the RELYING party), and the ACCOUNT plane genuinely does it: an account's organization
  * lives in the platform-root environment, so home-realm discovery on `/workspace/login`
@@ -148,10 +154,17 @@ Route::middleware(['plane:account', 'platform.guest'])->group(function (): void 
 });
 
 /*
- * Guest — the subject/tenant sign-in surface. `plane:subject` keeps it on tenant
- * subdomains in the SaaS shape; single-tenant serves it on the one host.
+ * Guest — the sign-in surface, on `plane:console` and therefore on EVERY host this
+ * deployment answers on, the platform root included.
+ *
+ * It used to be `plane:subject`, which meant "not the platform root", so `cboxid.com/login`
+ * was a 404: the one host every account member already has an identity on was the one host
+ * they could not sign in to as themselves. The root is a tenant like any other — what it
+ * has that acme.cboxid.com does not is the operator area and the account plane standing
+ * alongside this console, not the absence of one. The IdP protocol surface it must NOT
+ * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
-Route::middleware(['plane:subject', 'platform.guest'])->group(function (): void {
+Route::middleware(['plane:console', 'platform.guest'])->group(function (): void {
     Volt::route('/login', 'auth.login')->name('login');
     Volt::route('/o/{slug}/login', 'auth.login')->name('login.branded');
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
@@ -219,7 +232,7 @@ $authorize = Volt::route('/oauth/authorize', 'oauth.consent')
     // one issues the longest-lived credential of the set: a refresh token that
     // outlives both the impersonation window and the operator's session, attributed
     // to the person being impersonated.
-    ->middleware(['plane:subject', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:issuer', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize');
 
 /*
@@ -243,7 +256,7 @@ if (! is_string($consentAction) && ! is_callable($consentAction)) {
 }
 
 Route::post('/oauth/authorize', $consentAction)
-    ->middleware(['plane:subject', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:issuer', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize.post');
 
 /*
@@ -252,25 +265,31 @@ Route::post('/oauth/authorize', $consentAction)
  * in the guest area and must never be reachable via a platform session; the
  * scoped portal session (distinct key) is the only thing that unlocks /setup.
  *
- * `plane:subject` is defence in depth on top of the model's environment scope. A link
- * is minted from /connections, which itself lives on the subject plane, so its URL is
- * always generated on the tenant's own host — the very host the external IT admin
- * opens. The account-root host (cboxid.com) can therefore never mint one and has no
- * business redeeming one. In the single-tenant shape the plane gate is a no-op, so the
- * one host keeps serving the whole flow.
+ * `plane:console`, which is where the link is minted: /connections is a console page, so
+ * the URL is always generated on the host whose console minted it, and redeemed on the
+ * same one. That now includes the platform root, and correctly — the root has
+ * organizations of its own with connections of their own, and until it had a console it
+ * could mint a portal link nobody could open. The environment scope on the token's
+ * organization is the real boundary and is unchanged: a tenant's link resolves to nothing
+ * on another host, root included.
  */
-Route::middleware('plane:subject')->group(function (): void {
+Route::middleware('plane:console')->group(function (): void {
     Route::view('/setup/expired', 'portal.expired')->name('portal.expired');
     Volt::route('/setup', 'portal.setup')->middleware('portal.session')->name('portal.setup');
     Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
 });
 
 /*
- * Authenticated console — the subject/tenant plane. `plane:subject` confines it to a
- * tenant subdomain in the SaaS shape (404 on the account-root host, no bleed); in the
- * single-tenant shape the plane gate is a no-op, so the one host serves it normally.
+ * The authenticated console — every host, on `plane:console`.
+ *
+ * It used to be `plane:subject`, which meant "every host except the platform root", so a
+ * person who signed in at the root had nowhere to land: `/dashboard`, `/account`,
+ * `/settings` — the whole console — 404'd there. The root is a tenant, and its subjects
+ * get the same console every other tenant's do. What the root still does not serve is the
+ * IdP protocol surface (`plane:issuer`) and the environment-admin door
+ * (`plane:environment`); those are different questions and are now asked as such.
  */
-Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
+Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
     Volt::route('/dashboard', 'dashboard')->name('dashboard');
 
     // The guided first run. Deliberately NOT in the nav registry: it is where a fresh
@@ -450,8 +469,15 @@ Route::middleware(['plane:subject', EnforceImpersonationWindow::class, 'platform
 | account→environment handoff. There is no credential form here — signing in is
 | unified on the account plane, and a tenant-controlled host is the last place
 | account credentials should be typed.
+|
+| `plane:environment`, not `plane:console`, and the distinction is what the plane split
+| bought: this is a door an ACCOUNT opens INTO an environment from the outside, so it is
+| absent on the account plane itself. Left on `plane:console` it would have appeared on
+| the platform root when the console did — a second admin console over the root
+| environment, which is the operator area's job, reachable only through a handoff nobody
+| can mint because the root environment belongs to no account.
 */
-Route::middleware(['plane:subject', 'multi.tenant'])->prefix('admin')->group(function (): void {
+Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
     Route::get('/handoff', [EnvironmentAdminController::class, 'handoff'])->name('admin.handoff');
     Route::post('/logout', [EnvironmentAdminController::class, 'logout'])->name('admin.logout');
 
@@ -669,6 +695,14 @@ Route::prefix('platform')->group(function (): void {
         Volt::route('/usage', 'platform.usage')->name('platform.usage');
         Volt::route('/search', 'platform.search')->name('platform.search');
         Volt::route('/accounts', 'platform.accounts')->name('platform.accounts');
+
+        // `platform.accounts.show`, not `platform.account`. The console derives both the
+        // eyebrow above the page title and the lit rail entry from the route name by the
+        // same prefix rule ({@see \App\Platform\Navigation\NavPage::owns()}), so a detail
+        // page named as a CHILD of its list gets "Platform" over its heading and keeps
+        // Accounts lit in the rail without a single hand-written label. `platform.organization`
+        // predates that rule and has to pass its own eyebrow; this one does not.
+        Volt::route('/accounts/{account}', 'platform.account')->name('platform.accounts.show');
         Volt::route('/organizations', 'platform.organizations')->name('platform.organizations');
         Volt::route('/organizations/{organization}', 'platform.organization')->name('platform.organization');
         Volt::route('/operators', 'platform.operators')->name('platform.operators');
@@ -708,10 +742,11 @@ Route::middleware('plane:account')->prefix('workspace')->group(function (): void
     Route::post('/passkeys/login/options', [WorkspacePasskeyController::class, 'loginOptions'])->name('workspace.passkeys.login.options');
     Route::post('/passkeys/login', [WorkspacePasskeyController::class, 'login'])->name('workspace.passkeys.login');
 
-    // Magic-link sign-in on the ACCOUNT plane. The account plane inherits this from the
-    // subject plane for free — account members ARE subjects in the platform root — but it
-    // needs its own door: /magic/{token} is `plane:subject` and 404s on this host, and
-    // the redemption must bridge into an account session rather than a subject one.
+    // Magic-link sign-in on the ACCOUNT plane. Account members ARE subjects in the
+    // platform root, so `/magic/{token}` now answers on this host too (`plane:console`) —
+    // but it lands them in the tenant console. This door is the one that redeems the same
+    // token into an ACCOUNT session and the workspace, which is where a member who
+    // followed a workspace invitation meant to end up.
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeemForWorkspace'])->name('workspace.magic.redeem');
 
     // Invitation acceptance — guest-accessible but gated by a signed URL (the token

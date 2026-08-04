@@ -142,10 +142,17 @@ reachable `/.well-known/openid-configuration` means you're live.
 deployment where it used to return 200. This is deliberate, not an outage. Read this
 before rolling back.
 
-In a **multi-tenant** deployment the platform-root (apex) host is the *account door* —
-sign up, manage the account and its environments. It is not an issuer. The whole IdP
-protocol surface is confined to the **subject plane**: an environment's own host, i.e. a
-custom domain or `{slug}.{base_domain}`.
+In a **multi-tenant** deployment the platform-root (apex) host is not an issuer. It mints
+no tokens, signs no assertions and has no relying parties, so the whole IdP protocol
+surface is confined to the **issuer plane**: an environment's own host, i.e. a custom
+domain or `{slug}.{base_domain}`.
+
+That is a narrower claim than it used to be. The apex is also the *account door* — sign up,
+manage the account and its environments — and it was once assumed the two went together, so
+one gate answered both "is this an issuer?" and "does the console live here?". They differ
+on exactly this host: the platform root is a tenant like any other, whose subjects sign in
+and administer their organizations there. `/login` and the console are served on the apex
+(`plane:console`); the list below is what it still refuses (`plane:issuer`).
 
 ### What the apex refuses
 
@@ -180,6 +187,13 @@ environment's host:
 - The account plane itself: `/signup`, `/workspace/*` and the account-management API
   (`/api/v1/account/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
   a different thing and is served on an environment's own host.
+- **The console** — `/login`, `/dashboard`, `/account` and every page behind them. The
+  apex is a tenant, and its subjects sign in there. What it does *not* serve is the
+  environment-admin door `/admin/*` (`plane:environment`), which is how an account reaches
+  *into* an environment from the account plane and so has no meaning on the account plane
+  itself. Only under the apex's own name: an unmapped host under `base_domain` resolves to
+  the platform root, and the console gate matches the host rather than the resolved
+  environment so that a wildcard name does not get a working sign-in form.
 
 Note that despite what the surrounding config comments say, "SAML" is **not** gated as a
 whole — only the IdP-role `/sso/saml/idp/*` endpoints are.
@@ -188,7 +202,7 @@ whole — only the IdP-role `/sso/saml/idp/*` endpoints are.
 
 The apex used to serve half an IdP: discovery returned 200 advertising
 `issuer: https://<apex>` alongside `authorization_endpoint: https://<apex>/oauth/authorize`
-— a URL that 404s, because the consent screen is subject-plane only. A conformant client
+— a URL that 404s, because the consent screen is issuer-plane only. A conformant client
 discovers that document and dead-ends. Half an IdP is worse than none, because it is
 discoverable.
 
@@ -196,7 +210,7 @@ discoverable.
 
 The gate is `App\Http\Middleware\EnforcePlane` (aliased `plane` in `bootstrap/app.php`),
 applied to the framework's whole protocol route group through
-`cbox-id.api.middleware => ['plane:subject']` in `config/cbox-id.php`, and to this app's
+`cbox-id.api.middleware => ['plane:issuer']` in `config/cbox-id.php`, and to this app's
 own routes directly. It resolves the plane from the host-resolved environment and 404s
 anything asked for on the wrong one.
 

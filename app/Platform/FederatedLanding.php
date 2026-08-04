@@ -59,13 +59,19 @@ final class FederatedLanding
      * Where an inbound federated sign-in lands when it FAILS.
      *
      * The same plane fork as {@see land()}, and it lives here for that reason. Both SSO
-     * callbacks used to inline `route('login')` on their error branch — but `/login` is
-     * `plane:subject`, so on the account host every failure rendered a bare 404. That is a
-     * worse failure than a lockout: it happens AFTER a successful authentication at the
-     * IdP, so the user has every reason to believe SSO worked and no way to learn it did
-     * not. The callbacks themselves are deliberately NOT plane-gated (an account org
-     * federates on the root host), which is exactly what made the error branch reachable
-     * there while the success branch had already been taught to fork.
+     * callbacks used to inline `route('login')` on their error branch — but `/login` was
+     * withheld from the platform root, so on the account host every failure rendered a
+     * bare 404. That is a worse failure than a lockout: it happens AFTER a successful
+     * authentication at the IdP, so the user has every reason to believe SSO worked and no
+     * way to learn it did not. The callbacks themselves are deliberately NOT plane-gated
+     * (an account org federates on the root host), which is exactly what made the error
+     * branch reachable there while the success branch had already been taught to fork.
+     *
+     * `/login` is served on the root now (`plane:console`), so the fork is no longer what
+     * stands between this branch and a 404. It stays because the destination still has to
+     * be the door the person came IN by: somebody who started at `/workspace/login` and
+     * failed belongs back there, with their account context, not on the tenant sign-in of
+     * a console they were not using.
      *
      * `email` is the error-bag key on purpose: it is the field BOTH sign-in screens
      * render. The callbacks previously used `identifier`, which no view reads — so the

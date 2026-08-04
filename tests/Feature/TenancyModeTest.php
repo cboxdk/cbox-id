@@ -7,11 +7,11 @@ use App\Platform\PlaneResolver;
 /**
  * Multi-tenancy is a mode you switch on, not something inferred from a domain list.
  *
- * It decides whether the host bulkheads exist at all: in the single-tenant shape both
- * `onSubjectPlane()` and `onOperatorPlane()` return true unconditionally. A deployment
- * that had not yet listed its base domains was therefore serving the staff console on
- * every host it answered to — with the config that disabled the bulkheads being a domain
- * list nobody thought of as a security control.
+ * It decides whether the host bulkheads exist at all: in the single-tenant shape every
+ * "does this host serve X" question returns true unconditionally. A deployment that had
+ * not yet listed its base domains was therefore serving the staff console on every host it
+ * answered to — with the config that disabled the bulkheads being a domain list nobody
+ * thought of as a security control.
  */
 function planes(): PlaneResolver
 {
@@ -61,13 +61,17 @@ it('treats a non-boolean statement as unstated rather than as true', function ()
 })->group('security');
 
 it('keeps the host bulkheads on when multi-tenancy is on', function (): void {
-    // The consequence, not just the flag: with the mode on, a host that resolves to
-    // nothing is not the subject plane. With it off, every host is.
+    // The consequence, not just the flag. The suite's ambient environment IS the default
+    // one, so with the mode on this request is standing on the platform root: no issuer
+    // surface, no environment console. With it off there is no root to be on, and every
+    // host serves everything.
     config()->set('cbox-id.tenancy.multi_tenant', true);
-    expect(planes()->onSubjectPlane())->toBeFalse();
+    expect(planes()->servesIssuer())->toBeFalse()
+        ->and(planes()->servesEnvironmentAdmin())->toBeFalse();
 
     config()->set('cbox-id.tenancy.multi_tenant', false);
-    expect(planes()->onSubjectPlane())->toBeTrue();
+    expect(planes()->servesIssuer())->toBeTrue()
+        ->and(planes()->servesEnvironmentAdmin())->toBeTrue();
 })->group('security');
 
 it('serves multi-tenancy without subdomains, on per-tenant custom domains', function (): void {

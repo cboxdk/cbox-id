@@ -124,7 +124,7 @@ kind as the console's organization picker and an operator's target environment.
 
   The account session was kept distinct at first, on the reasoning that the account host
   must not mint a credential for a plane it does not serve. That reasoning was about the
-  HOST, and the host bulkheads (`plane:account` / `plane:subject`) are what enforce it —
+  HOST, and the host bulkheads (`plane:account` / `plane:issuer`) are what enforce it —
   so the distinct session bought nothing and cost every seam between the two stores: an
   operator with no membership could not sign in at all, a gate that asked the wrong store
   looped silently, and three separate places had to be asked "who is this?". There is one
@@ -137,10 +137,15 @@ kind as the console's organization picker and an operator's target environment.
   ordinary subject session plus the environment anchor above. A consequence worth having:
   revoking a person's sessions — which a password reset now does — ends their admin
   console too, which a session assembled out of a raw id never could.
-- The `plane:account` / `plane:subject` split stops being about *which credential store*
-  and becomes purely about *which host resolves to which environment*. `PlaneResolver`
-  answers that question once, for both the route gate and the post-authentication
-  landings, so the two can never disagree about where a login is allowed to land.
+- The plane split stops being about *which credential store* and becomes purely about
+  *which host serves which surface*. `PlaneResolver` answers each of those questions once,
+  for both the route gate and the post-authentication landings, so the two can never
+  disagree about where a login is allowed to land. There are four such questions, not one:
+  the account plane (`plane:account`, the root alone), the console (`plane:console`, every
+  host — the root is a tenant and its subjects sign in there), the issuer surface
+  (`plane:issuer`, never the root) and the environment-admin door (`plane:environment`,
+  never the root). The console and the issuer surface were a single plane named `subject`
+  for a while, which is why the root had no `/login` at all.
 - `AccountProvisioner` creates the account's organization in tenant 1 alongside the
   account, and the install flow bootstraps tenant 1 and the platform organization before
   the first account exists.

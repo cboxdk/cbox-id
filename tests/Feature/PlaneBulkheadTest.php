@@ -35,10 +35,19 @@ function planeGate(?string $current, ?string $default, ?string $hostResolves = n
     return new EnforcePlane(new PlaneResolver($ctx, $resolver));
 }
 
-function passesPlane(EnforcePlane $gate, string $plane): bool
+/**
+ * The HOST is a parameter, because one of the four planes is a host question.
+ *
+ * `plane:console` asks {@see PlaneResolver::servesConsole()}, which resolves the request's
+ * own Host rather than the environment context — an unmapped name resolves to the platform
+ * root, so the context cannot tell `cboxid.com` from `anything.invalid`. A helper that
+ * always sent `localhost` would have asserted the console away on every host and called it
+ * a passing bulkhead.
+ */
+function passesPlane(EnforcePlane $gate, string $plane, string $host = 'localhost'): bool
 {
     try {
-        $gate->handle(Request::create('/'), fn () => new Response('ok'), $plane);
+        $gate->handle(Request::create('https://'.$host.'/'), fn () => new Response('ok'), $plane);
 
         return true;
     } catch (NotFoundHttpException) {
@@ -49,24 +58,73 @@ function passesPlane(EnforcePlane $gate, string $plane): bool
 it('serves the account plane ONLY on the platform-root host', function (): void {
     // Root host: current env IS the default (is_default) env.
     $root = planeGate('env_prod', 'env_prod');
-
-    expect(passesPlane($root, 'account'))->toBeTrue()
-        ->and(passesPlane($root, 'subject'))->toBeFalse(); // no subject surface on the account door
-});
-
-it('serves the subject/tenant plane ONLY on a tenant subdomain host', function (): void {
-    // Subdomain host: current env is a tenant env, NOT the default.
     $tenant = planeGate('env_tenant_a', 'env_prod');
 
-    expect(passesPlane($tenant, 'subject'))->toBeTrue()
-        ->and(passesPlane($tenant, 'account'))->toBeFalse(); // account plane never on a tenant host
+    expect(passesPlane($root, 'account'))->toBeTrue()
+        ->and(passesPlane($tenant, 'account'))->toBeFalse(); // never on a tenant host
 });
 
-it('denies BOTH planes when no environment resolves (deny-by-default)', function (): void {
+/**
+ * The console is served EVERYWHERE, and the platform root is the case worth pinning.
+ *
+ * It was `plane:subject` — "every host except the root" — so `cboxid.com/login` and
+ * `cboxid.com/dashboard` were both 404. The root is a tenant: its subjects sign in and
+ * administer their organizations exactly as any other tenant's do. What it withholds is
+ * the ISSUER surface, which is now a different question and asserted as one below.
+ */
+it('serves the console plane on the platform root as well as on a tenant host', function (): void {
+    $tenant = planeGate('env_tenant_a', 'env_prod');
+
+    expect(passesPlane($tenant, 'console'))->toBeTrue();
+
+    // The root, reached by its own name. `hostResolves` is null on purpose — a root
+    // environment provisioned without a `domain` row resolves by host to nothing, which is
+    // the shape production has, so the apex has to be matched by name (base_domains
+    // derives accountHost() = cboxid.com).
+    $root = planeGate('env_prod', 'env_prod');
+
+    expect(passesPlane($root, 'console', 'cboxid.com'))
+        ->toBeTrue('the platform root has no sign-in door');
+});
+
+/**
+ * …but not under any OTHER name pointed at the deployment.
+ *
+ * `SetEnvironment` answers an unmapped host with the platform root, deliberately, and
+ * `TrustHosts` admits every wildcard name under `base_domains`. So the CONTEXT is the root
+ * environment for `nope.cboxid.com` exactly as it is for `cboxid.com`, and a console gate
+ * that read the context would have served a sign-in form on all of them. Asking the host
+ * is what makes the difference, and this is the assertion that proves it was asked.
+ */
+it('refuses the console plane on a name that is not the platform root', function (): void {
+    $unmapped = planeGate('env_prod', 'env_prod');
+
+    expect(passesPlane($unmapped, 'console', 'nope.cboxid.com'))->toBeFalse()
+        ->and(passesPlane($unmapped, 'console', 'anything.invalid'))->toBeFalse();
+});
+
+/**
+ * The half of the old `plane:subject` that still holds: the platform root is an identity
+ * provider for nobody, so the issuer surface and the environment-admin door are absent
+ * there. Separating the console from these two is the whole of this change.
+ */
+it('withholds the issuer surface and the environment console from the platform root', function (): void {
+    $root = planeGate('env_prod', 'env_prod');
+    $tenant = planeGate('env_tenant_a', 'env_prod');
+
+    expect(passesPlane($root, 'issuer', 'cboxid.com'))->toBeFalse()
+        ->and(passesPlane($root, 'environment', 'cboxid.com'))->toBeFalse()
+        ->and(passesPlane($tenant, 'issuer'))->toBeTrue()
+        ->and(passesPlane($tenant, 'environment'))->toBeTrue();
+});
+
+it('denies every plane when no environment resolves (deny-by-default)', function (): void {
     $none = planeGate(null, 'env_prod');
 
     expect(passesPlane($none, 'account'))->toBeFalse()
-        ->and(passesPlane($none, 'subject'))->toBeFalse();
+        ->and(passesPlane($none, 'console'))->toBeFalse()
+        ->and(passesPlane($none, 'issuer'))->toBeFalse()
+        ->and(passesPlane($none, 'environment'))->toBeFalse();
 });
 
 it('rejects an unknown plane name', function (): void {
@@ -178,6 +236,29 @@ it('does NOT split planes in a single-tenant / self-hosted deployment (no base_d
     $resolver->shouldReceive('defaultEnvironment')->andReturn(GenericEnvironment::of('the_only_env'));
     $gate = new EnforcePlane(new PlaneResolver($ctx, $resolver));
 
-    expect(passesPlane($gate, 'subject'))->toBeTrue()
+    expect(passesPlane($gate, 'console'))->toBeTrue()
+        ->and(passesPlane($gate, 'issuer'))->toBeTrue()
+        ->and(passesPlane($gate, 'environment'))->toBeTrue()
         ->and(passesPlane($gate, 'account'))->toBeTrue();
+});
+
+/**
+ * The plane names the single-tenant branch admits and the names the multi-tenant match
+ * arms answer are ONE list now, so they cannot drift — but a rename is exactly the moment
+ * a route can be left holding a name that no longer exists, and a plane gate that admits
+ * an unknown name is a gate that is not there.
+ */
+it('refuses a plane name that no longer exists, in both shapes', function (): void {
+    $multi = planeGate('env_tenant_a', 'env_prod');
+
+    expect(passesPlane($multi, 'subject'))->toBeFalse('`plane:subject` was split; the name must not still admit');
+
+    config(['cbox-id.tenancy.multi_tenant' => false]);
+
+    $ctx = Mockery::mock(EnvironmentContext::class);
+    $ctx->shouldReceive('current')->andReturn(GenericEnvironment::of('the_only_env'));
+    $resolver = Mockery::mock(EnvironmentResolver::class);
+    $resolver->shouldReceive('defaultEnvironment')->andReturn(GenericEnvironment::of('the_only_env'));
+
+    expect(passesPlane(new EnforcePlane(new PlaneResolver($ctx, $resolver)), 'subject'))->toBeFalse();
 });

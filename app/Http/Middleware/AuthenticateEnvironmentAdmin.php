@@ -65,7 +65,7 @@ final class AuthenticateEnvironmentAdmin
             );
         }
 
-        // Nowhere to send them. Behind `plane:subject` + `multi.tenant` the environment
+        // Nowhere to send them. Behind `plane:environment` + `multi.tenant` the environment
         // always resolves, so this is {@see PlaneResolver::misconfigured()} and nothing
         // else: multi-tenancy claimed, and no account host named anywhere. Said out loud
         // rather than answered with a local credential form — a form here would be a

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentLineage;
+use App\Platform\Console\EnvironmentLineages;
 use App\Platform\OperatorEnvironment;
 use Cbox\Id\Identity\Contracts\PasswordPolicyGuard;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -17,6 +19,7 @@ use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -27,6 +30,14 @@ use Livewire\Volt\Component;
  * and bootstrap a plane with its first organization and admin. Operators stand
  * above every environment, so switching has no identity guard — provisioning and
  * listing simply span every plane (the Environment model is not environment-owned).
+ *
+ * Every row carries its LINEAGE. This list is flat by nature — it is the whole install
+ * at once — and flat it named six planes `production`, `staging`, `acme`,
+ * `acme-staging`, `billing-portal` and `demo-co` with nothing saying which customer any
+ * of them belonged to. "Production" is a name half the customers on an install will have.
+ * Resolved through {@see EnvironmentLineages}, so the owner column costs two queries for
+ * the whole table rather than one per row, and so the two environments that legitimately
+ * have no account are NAMED rather than rendered as a blank cell.
  */
 new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width' => '72rem'])] class extends Component
 {
@@ -187,11 +198,18 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
     }
 
     /** @return array<string, mixed> */
-    public function with(EnvironmentContext $context): array
+    public function with(EnvironmentContext $context, EnvironmentLineages $lineages): array
     {
         $activeId = $context->current()?->environmentKey();
 
-        $rows = $context->withoutScope(function () {
+        $rows = $context->withoutScope(function () use ($lineages): Collection {
+            /** @var EloquentCollection<int, Environment> $environments */
+            $environments = Environment::query()->orderBy('created_at')->get();
+
+            // Batched exactly like the counts below and for the same reason: the lineage
+            // of N environments is two queries, not N.
+            $lineage = $lineages->for($environments);
+
             /** @var Collection<string, int> $orgCounts */
             $orgCounts = Organization::query()->selectRaw('environment_id, count(*) as c')
                 ->groupBy('environment_id')->pluck('c', 'environment_id');
@@ -200,7 +218,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
             $userCounts = User::query()->selectRaw('environment_id, count(*) as c')
                 ->groupBy('environment_id')->pluck('c', 'environment_id');
 
-            return Environment::query()->orderBy('created_at')->get()
+            return $environments
                 ->map(fn (Environment $e): array => [
                     'id' => $e->id,
                     'name' => $e->name,
@@ -208,7 +226,12 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
                     'domain' => $e->domain,
                     'orgs' => (int) ($orgCounts[$e->id] ?? 0),
                     'users' => (int) ($userCounts[$e->id] ?? 0),
-                ]);
+                    // Never null: the resolver answers for every environment handed to
+                    // it. The fallback is here so the view can render lineage without a
+                    // null branch, not because the key can be missing.
+                    'lineage' => $lineage[$e->id] ?? new EnvironmentLineage(environmentId: $e->id),
+                ])
+                ->values();
         });
 
         return ['environments' => $rows, 'activeId' => $activeId];
@@ -216,7 +239,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
 }; ?>
 
 <div>
-    <x-page-header title="Environments" subtitle="Isolation planes above every organization. Create one, point the console at it, and bootstrap it with an admin.">
+    <x-page-header title="Environments" subtitle="Every isolation plane on this install, and who owns it. Create one, point the console at it, and bootstrap it with an admin.">
         <x-slot:actions>
             <button wire:click="$toggle('creating')" class="btn btn-primary">
                 <x-icon name="plus" class="w-4 h-4" /> New environment
@@ -262,6 +285,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
                     <thead>
                         <tr>
                             <th scope="col">Environment</th>
+                            <th scope="col">Belongs to</th>
                             <th scope="col">Domain</th>
                             <th scope="col" class="text-right">Orgs</th>
                             <th scope="col" class="text-right">Users</th>
@@ -278,8 +302,12 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
                                             {{ strtoupper(substr($env['name'], 0, 1)) }}
                                         </span>
                                         <div class="min-w-0">
+                                            {{-- The OWNER is part of the name here. "Production" is a
+                                                 name half the customers on an install will have, so the
+                                                 row leads with "Acme / Production" and keeps the bare
+                                                 environment name for the column beside it. --}}
                                             <p class="font-semibold">
-                                                {{ $env['name'] }}
+                                                {{ $env['lineage']->qualify($env['name']) }}
                                                 @if ($env['id'] === $activeId)
                                                     <span class="cbx-pill cbx-pill--success align-middle ml-1"><span class="dot"></span>Target</span>
                                                 @endif
@@ -287,6 +315,26 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
                                             <p class="text-xs font-mono" style="color:var(--faint)">{{ $env['slug'] }}</p>
                                         </div>
                                     </div>
+                                </td>
+
+                                {{-- Never a blank cell. An environment with no account is one of
+                                     exactly two things, and both are said out loud: the platform
+                                     root, which belongs to no customer by construction, and an
+                                     unattached leftover, which an operator should be able to SEE
+                                     is unattached rather than infer from an empty column. --}}
+                                <td>
+                                    @if ($env['lineage']->belongsToAccount())
+                                        <a href="{{ route('platform.accounts.show', $env['lineage']->accountId) }}" wire:navigate class="font-medium hover:underline">
+                                            {{ $env['lineage']->accountName }}
+                                        </a>
+                                        <p class="text-xs" style="color:var(--faint)">{{ $env['lineage']->projectName ?? 'No project' }}</p>
+                                    @elseif ($env['lineage']->isPlatformRoot)
+                                        <span class="cbx-pill" title="{{ $env['lineage']->note() }}"><span class="dot"></span>Platform root</span>
+                                        <p class="text-xs" style="color:var(--faint)">This deployment's own plane</p>
+                                    @else
+                                        <span class="cbx-pill cbx-pill--warning" title="{{ $env['lineage']->note() }}"><span class="dot"></span>Unattached</span>
+                                        <p class="text-xs" style="color:var(--faint)">No project, so no account</p>
+                                    @endif
                                 </td>
 
                                 <td style="color:var(--muted)">{{ $env['domain'] ?? 'None — served on the fallback host' }}</td>
@@ -314,7 +362,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
 
                             @if ($provisioningEnvId === $env['id'])
                                 <tr wire:key="provision-{{ $env['id'] }}">
-                                    <td colspan="5" style="background:var(--surface-2)">
+                                    <td colspan="6" style="background:var(--surface-2)">
                                         <form wire:submit="provisionAdmin">
                                             <p class="text-sm font-semibold mb-3">Bootstrap {{ $env['name'] }} — first organization &amp; admin</p>
                                             <div class="grid gap-3 sm:grid-cols-2">
@@ -358,5 +406,15 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environments', 'width'
                 </table>
             </div>
         </div>
+
+        <p class="mt-4 text-xs" style="color:var(--faint)">
+            Environments nest under a project, and a project under an
+            <a href="{{ route('platform.accounts') }}" wire:navigate class="underline">account</a> — start there to see one
+            customer's whole estate. Two rows here never have an account: the
+            <strong>platform root</strong> is the plane this deployment itself runs in, where operators
+            and account members live, and an <strong>unattached</strong> environment has no project, so
+            nothing bills for it and no customer reaches it. Neither is an error to fix from this
+            screen, and nothing here reassigns either.
+        </p>
     @endif
 </div>

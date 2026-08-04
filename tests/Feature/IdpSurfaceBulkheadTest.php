@@ -15,18 +15,22 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
- * The platform-root host is the ACCOUNT door, not an identity provider.
+ * The platform-root host is not an identity provider.
  *
  * It used to serve half an IdP: `/.well-known/openid-configuration` returned 200 with
  * `issuer: https://cboxid.com` and `authorization_endpoint: https://cboxid.com/oauth/authorize`
- * — a URL that 404s, because the interactive consent screen is `plane:subject` and lives
- * only on tenant hosts. Token, userinfo, JWKS, revoke, introspect, PAR,
- * device_authorization, backchannel, logout and SCIM all answered there too. A
- * conformant client discovers that document and dead-ends; half an IdP is worse than
- * none, because it is discoverable.
+ * — a URL that 404s, because the interactive consent screen lives only on tenant hosts.
+ * Token, userinfo, JWKS, revoke, introspect, PAR, device_authorization, backchannel,
+ * logout and SCIM all answered there too. A conformant client discovers that document and
+ * dead-ends; half an IdP is worse than none, because it is discoverable.
  *
- * The whole protocol surface is now confined to the subject plane via
- * `cbox-id.api.middleware`, which the framework applies to its route group.
+ * The whole protocol surface is confined to `plane:issuer` via `cbox-id.api.middleware`,
+ * which the framework applies to its route group.
+ *
+ * `plane:issuer` is deliberately NOT the gate the console uses. The two were one plane,
+ * and one gate serving two purposes is what left the root with no `/login` at all: the
+ * root is a tenant whose subjects sign in there, it just is not an issuer. Both halves are
+ * asserted here, on the same host, because the value of the split is that they disagree.
  */
 
 /** Stand up the multi-tenant SaaS shape: a platform root plus one tenant environment. */
@@ -71,7 +75,55 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     // left in the wall.
     $this->post('http://cboxid.com/sso/saml/idp/sso')->assertNotFound();
     $this->get('http://cboxid.com/sso/saml/idp/slo')->assertNotFound();
+
+    // …and the environment-admin door, which asks the same host question for its own
+    // reason: it is how an ACCOUNT reaches into an environment from the account plane, so
+    // it does not exist on the account plane itself.
+    $this->get('http://cboxid.com/admin/single-sign-on')->assertNotFound();
 });
+
+/**
+ * The other half, and the reason the issuer question had to stop doing two jobs.
+ *
+ * `cboxid.com/login` was a 404. So was `/dashboard`, `/account`, `/settings` — the entire
+ * console. One gate answered both "is this an issuer" and "does the console live here",
+ * and the root is the one host where those answers differ: every account member already
+ * holds a subject identity in the platform-root environment, and there was nowhere on that
+ * host for them to use it.
+ *
+ * Asserted on the SAME host, in the same shape, as the refusals above — that contrast is
+ * the whole of this change, and asserting it anywhere else would be asserting something
+ * easier.
+ */
+it('serves the console on the platform-root host', function (): void {
+    saasShape();
+
+    $this->get('http://cboxid.com/login')->assertOk();
+    $this->get('http://cboxid.com/forgot-password')->assertOk();
+
+    // Authenticated console pages exist here too — a redirect to sign-in, not a 404. The
+    // distinction is the whole point: 404 means the surface is absent on this host, which
+    // is what it used to mean, and no amount of signing in would have changed it.
+    $this->get('http://cboxid.com/dashboard')->assertRedirect('http://cboxid.com/login');
+    $this->get('http://cboxid.com/account')->assertRedirect('http://cboxid.com/login');
+});
+
+/**
+ * …but only under the platform root's OWN name.
+ *
+ * `SetEnvironment` answers an unmapped host with the platform root, deliberately, and
+ * `TrustHosts` admits every wildcard name under `base_domains` — so the resolved CONTEXT
+ * is the root environment for `nope.cboxid.com` exactly as it is for `cboxid.com`. A
+ * console gate that read the context would have put a working sign-in form, with a working
+ * password-reset mailer behind it, on every name pointed at the deployment. It reads the
+ * HOST; this is what says so.
+ */
+it('refuses the console on a wildcard name that is not the platform root', function (): void {
+    saasShape();
+
+    $this->get('http://nope.cboxid.com/login')->assertNotFound();
+    $this->get('http://nope.cboxid.com/dashboard')->assertNotFound();
+})->group('security');
 
 /**
  * ...but INBOUND federation is not issuer surface, and the account plane genuinely uses it.
@@ -198,11 +250,12 @@ it('lands a rejected assertion on a sign-in page that exists on the platform-roo
     expect($error)->toContain('could not verify')
         ->and($error)->not->toContain('signature');
 
-    // The destination must be served by THIS host. `/login` — where both callbacks used
-    // to send every failure — is `plane:subject` and 404s here; that contrast is the
-    // whole point of the fork.
+    // The destination must be served by THIS host, which is what the fork was added to
+    // guarantee. `/login` used to 404 here and that 404 was the proof; the platform root
+    // serves a console now, so BOTH doors answer and the assertion becomes the stronger
+    // one — the fork has to keep choosing the right door rather than the only door.
     $this->get('http://cboxid.com/workspace/login')->assertOk();
-    $this->get('http://cboxid.com/login')->assertNotFound();
+    $this->get('http://cboxid.com/login')->assertOk();
 });
 
 it('serves the whole IdP surface on a tenant host', function (): void {

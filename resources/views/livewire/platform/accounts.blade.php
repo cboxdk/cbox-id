@@ -4,12 +4,8 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
 use Carbon\CarbonInterface;
-use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\Accounts;
-use Cbox\Id\Platform\Enums\AccountStatus;
 use Cbox\Id\Platform\Models\Account;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\Models\Project;
@@ -31,6 +27,13 @@ use Livewire\Volt\Component;
  * every query here is global and spans planes, exactly like the Environments screen.
  * Suspension is reversible on this same screen; nothing here deletes or purges, which
  * is a separate, later stage.
+ *
+ * The counts are LINKS. They used to be numbers and nothing else — this file contained
+ * no `route()` call at all — so an operator learned that Acme has three projects and
+ * three environments and had nowhere to click: the only way to find out which three was
+ * the flat environments list and prior knowledge of Acme's plane names. Every count now
+ * lands on the account's own page (`platform.accounts.show`), where account → project →
+ * environment is walkable.
  */
 new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => '72rem'])] class extends Component
 {
@@ -118,7 +121,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => 
 
 <div>
     <x-page-header title="Accounts"
-                   subtitle="Every customer workspace on this install. Suspending one signs out its members and stops every environment it owns from serving auth." />
+                   subtitle="Every customer workspace on this install. Open one to walk its projects and environments; suspending it signs out its members and stops every environment it owns from serving auth." />
 
     <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('account', count($rows)) }} found.</p>
 
@@ -149,19 +152,34 @@ new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => 
                     </thead>
                     <tbody>
                         @foreach ($rows as $row)
+                            @php $accountHref = route('platform.accounts.show', $row['id']); @endphp
                             <tr wire:key="account-{{ $row['id'] }}">
                                 <td>
                                     <p class="font-semibold">
-                                        {{ $row['name'] }}
+                                        <a href="{{ $accountHref }}" wire:navigate class="hover:underline">{{ $row['name'] }}</a>
                                         @unless ($row['active'])
                                             <span class="cbx-pill cbx-pill--destructive align-middle ml-1"><span class="dot"></span>Suspended</span>
                                         @endunless
                                     </p>
                                     <p class="text-xs font-mono" style="color:var(--faint)">{{ $row['id'] }}</p>
                                 </td>
-                                <td class="text-right tabular-nums">{{ $row['members'] }}</td>
-                                <td class="text-right tabular-nums">{{ $row['projects'] }}</td>
-                                <td class="text-right tabular-nums">{{ $row['environments'] }}</td>
+                                {{-- A count you cannot click is a fact you have to go and look for
+                                     somewhere else. Each of these is the same destination — the
+                                     account's own page — with an accessible name that says which
+                                     part of it you are asking about, because "3" repeated three
+                                     times is what a screen reader would otherwise announce. --}}
+                                <td class="text-right tabular-nums">
+                                    <a href="{{ $accountHref }}" wire:navigate class="hover:underline"
+                                       aria-label="{{ $row['members'] }} {{ \Illuminate\Support\Str::plural('member', $row['members']) }} on {{ $row['name'] }}">{{ $row['members'] }}</a>
+                                </td>
+                                <td class="text-right tabular-nums">
+                                    <a href="{{ $accountHref }}" wire:navigate class="hover:underline"
+                                       aria-label="{{ $row['projects'] }} {{ \Illuminate\Support\Str::plural('project', $row['projects']) }} on {{ $row['name'] }}">{{ $row['projects'] }}</a>
+                                </td>
+                                <td class="text-right tabular-nums">
+                                    <a href="{{ $accountHref }}" wire:navigate class="hover:underline"
+                                       aria-label="{{ $row['environments'] }} {{ \Illuminate\Support\Str::plural('environment', $row['environments']) }} on {{ $row['name'] }}">{{ $row['environments'] }}</a>
+                                </td>
                                 <td class="whitespace-nowrap text-xs" style="color:var(--faint)">{{ $row['created_at'] ?? '—' }}</td>
 
                                 {{-- A reversible two-way switch, so wire:confirm rather than the
@@ -170,6 +188,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => 
                                      which is meaningless for an account (accounts sit above every plane).
                                      The copy still names the account and its blast radius. --}}
                                 <td class="text-right whitespace-nowrap">
+                                    <a href="{{ $accountHref }}" wire:navigate class="btn btn-ghost btn-sm">Open</a>
                                     <button wire:click="toggleStatus('{{ $row['id'] }}')"
                                             class="btn {{ $row['active'] ? 'btn-ghost' : 'btn-primary' }} btn-sm"
                                             wire:loading.attr="disabled"
@@ -190,7 +209,9 @@ new #[Layout('components.layouts.workspace', ['title' => 'Accounts', 'width' => 
 
         <p class="mt-4 text-xs" style="color:var(--faint)">
             Suspension is the only lever here, and it is reversible. Nothing on this screen
-            deletes or purges an account.
+            deletes or purges an account. An install also holds environments that no account
+            owns — the platform root, and any unattached leftover; both are named for what
+            they are on <a href="{{ route('platform.environments') }}" wire:navigate class="underline">Environments</a>.
         </p>
     @endif
 </div>

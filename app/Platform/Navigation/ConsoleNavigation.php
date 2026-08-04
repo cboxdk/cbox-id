@@ -280,9 +280,19 @@ class ConsoleNavigation
     private function platformAreaList(): array
     {
         return [
+            // ROOT FIRST, then leaf. The hierarchy here is account → project →
+            // environment, and this list used to read the other way: Environments,
+            // Accounts, Organizations — the leaf, then the root, then a tenant inside
+            // the leaf. An operator opening the console was handed six planes called
+            // `production`, `staging`, `acme`, `acme-staging`, `billing-portal` and
+            // `demo-co` and no way to tell that `billing-portal` is Acme's.
+            //
+            // The account is the object at this altitude: it is the customer, and every
+            // environment on the install is a detail inside one (or, for exactly two
+            // rows, deliberately inside none — see {@see \App\Platform\Console\EnvironmentLineage}).
             new NavArea('Platform', 'layers',
-                new NavPage('platform.environments', 'Environments'),
                 new NavPage('platform.accounts', 'Accounts'),
+                new NavPage('platform.environments', 'Environments'),
                 new NavPage('platform.organizations', 'Organizations'),
             ),
             // Icons distinct at 18px, which is the only size the collapsed rail renders

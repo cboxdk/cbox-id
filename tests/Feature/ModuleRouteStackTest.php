@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Route;
  * — a session exists and the flag is on, and nothing else. Devices had the full stack and a
  * comment explaining why. The two that were missing are not decorative:
  *
- *  - `plane:subject` confines these pages to a tenant host. Without it they answer on the
- *    account root, unlike every other console route.
+ *  - `plane:console` is the gate every other console route carries. Without it these pages
+ *    answer wherever the router reaches them, including on hosts the deployment does not
+ *    claim — the console gate is a host question, not a no-op.
  *  - `EnforceImpersonationWindow` terminates an impersonation that has outlived its
  *    30-minute box. Without it, an impersonator keeps reading risk events, audit trails,
  *    analytics and connectors past the deadline — reads sit on ImpersonationCallGuard's
@@ -32,7 +33,7 @@ it('gives every module console route the host console stack', function (): void 
 
     /** @var array<string, list<string>> $required  label => the spellings that satisfy it */
     $required = [
-        'the subject plane' => ['plane:subject', 'EnforcePlane:subject'],
+        'the console plane' => ['plane:console', 'EnforcePlane:console'],
         'the impersonation window' => ['EnforceImpersonationWindow'],
     ];
 

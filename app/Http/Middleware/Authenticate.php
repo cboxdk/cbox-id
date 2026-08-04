@@ -238,17 +238,17 @@ final class Authenticate
     /**
      * Where a hold sends someone: the console they are STANDING IN.
      *
-     * Every default below is `plane:subject`. On the account host in the SaaS shape that
-     * is a 404, so a member held for a temporary password was sent to a page that does
-     * not exist — a dead end reached by satisfying nothing, which is the one thing a hold
-     * must never be. The account plane has its own change page and its own security page,
-     * and they satisfy the same requirement against the same subject.
+     * Every default below is a console route. Those were withheld from the account host,
+     * so a member held for a temporary password was sent to a page that did not exist —
+     * a dead end reached by satisfying nothing, which is the one thing a hold must never
+     * be. The account plane has its own change page and its own security page, and they
+     * satisfy the same requirement against the same subject.
      *
-     * Keyed on the REQUEST rather than on the deployment shape, which is the distinction
-     * that matters on a single-host install: both routes are served there, so asking
-     * "which plane is this host?" answers "subject" and bounces a member out of the
-     * workspace and into the tenant console — a plane jump mid-hold, from a page they
-     * were legitimately on.
+     * The console is served on every host now, so the destination is no longer absent —
+     * and this fork still matters for the reason it always did on a single-host install:
+     * both routes are served there, so a member held mid-workspace must be sent to the
+     * workspace's own page rather than jumped into the tenant console from a page they
+     * were legitimately on. Keyed on the REQUEST, never on the deployment shape.
      */
     private function holdRoute(Request $request, string $subjectRoute): string
     {

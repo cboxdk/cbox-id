@@ -72,8 +72,17 @@ new #[Layout('components.layouts.app', ['title' => 'Overview'])] class extends C
 }; ?>
 
 <div>
+    {{-- The subtitle names the organization, or says plainly that there is not one.
+         "Here's what's happening across your organization" was the fallback, and it is a
+         sentence about something the reader does not have — harmless while this page was
+         only ever reached by members, and no longer true now that the console is served on
+         the platform root, where holding no organization membership is the ordinary state
+         rather than the broken one. The page below already tells this person the truth
+         (their role, their security); the header should not be the one line that doesn't. --}}
     <x-page-header :title="'Welcome back, '.\Illuminate\Support\Str::before($me->name(), ' ')" :help="\App\Platform\Help\HelpTopic::Overview"
-                   subtitle="Here's what's happening across {{ $me->organization()?->name ?? 'your organization' }}." />
+                   :subtitle="$me->organization()?->name !== null
+                       ? 'Here\'s what\'s happening across '.$me->organization()->name.'.'
+                       : 'You\'re signed in. You don\'t belong to an organization here yet — your account and security settings are all yours.'" />
 
     @if (count($apps) > 0)
         <section class="mb-6">
