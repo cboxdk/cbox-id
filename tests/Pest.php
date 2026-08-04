@@ -157,6 +157,22 @@ function installedDeployment(): void
  * Idempotent and first-come: an environment can only own a host if no other one already
  * does, so a test that provisions several gets host resolution for the first.
  */
+/**
+ * Give this environment the suite's own host, so a request that arrives on it resolves
+ * here rather than falling back to the platform root.
+ *
+ * ADDRESS THE RESULT BY `$environment->domain`, never by a literal. The host comes from
+ * `app.url`, which is the developer's `.env` — `https://cbox-id.test` on a machine set up
+ * for Herd, `http://localhost` on CI, which copies `.env.example`. Two tests wrote
+ * `https://cbox-id.test` into the request by hand and passed for a year on the machines
+ * where those two happened to agree, then failed on every CI engine at once: the fixture
+ * answered on one host and the request arrived at another, so the redirect chain ended
+ * somewhere neither test asserted.
+ *
+ * Returns early — leaving `domain` null — when there is no host to take or another
+ * environment already holds it, so a caller that ignores the return value and assumes a
+ * domain was set is making the same mistake in a quieter way.
+ */
 function serveOnTestHost(Environment $environment): Environment
 {
     $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
@@ -292,9 +308,27 @@ function signInAsSubject(string $subjectId): void
         $subject = app(Subjects::class)->find($subjectId);
         $session = is_string($sessionId) ? app(SessionManager::class)->active($sessionId) : null;
 
-        if ($subject !== null && $session !== null) {
-            app(CurrentUser::class)->set($subject, $session, null);
+        if ($subject === null || $session === null) {
+            return;
         }
+
+        // …INCLUDING the organization, which this used to leave null. The middleware falls
+        // back to the subject's first membership and remembers it, so a real request
+        // always arrives with one resolved; a fixture that skipped it made every question
+        // keyed on the ACTING organization answer "none" — and those questions are now
+        // what decides whether a page exists at all
+        // ({@see \App\Platform\Console\ConsoleScope::accountRole()}). A component
+        // driven directly would mount, find no acting organization, and redirect, which
+        // surfaces as a mangled Livewire snapshot several frames away from the cause.
+        $membership = app(Memberships::class)->forUser($subjectId)->first();
+        $organizationId = $membership?->organization_id;
+        $organization = is_string($organizationId) ? app(Organizations::class)->find($organizationId) : null;
+
+        if ($organization !== null) {
+            session()->put(PlatformAuth::ORG_KEY, $organization->id);
+        }
+
+        app(CurrentUser::class)->set($subject, $session, $organization, $membership?->role);
     });
 }
 

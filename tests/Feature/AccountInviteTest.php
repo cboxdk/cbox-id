@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
-use App\Mail\WorkspacePasswordResetMail;
 use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Models\Environment;
@@ -51,7 +51,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
     ['member' => $owner] = provisionAccount('owner@acme.example');
     signInAsMember($owner);
 
-    Volt::test('workspace.members')
+    Volt::test('console.account-members')
         ->set('inviteEmail', 'new@acme.example')
         ->set('inviteName', 'New Person')
         ->call('invite')
@@ -69,7 +69,7 @@ it('rejects inviting an email that already belongs to a member', function (): vo
     ['member' => $owner] = provisionAccount('owner@acme.example');
     signInAsMember($owner);
 
-    Volt::test('workspace.members')
+    Volt::test('console.account-members')
         ->set('inviteEmail', 'owner@acme.example')
         ->call('invite')
         ->assertHasErrors('inviteEmail');
@@ -81,20 +81,20 @@ it('requires a valid signature to reach the accept page', function (): void {
     ['account' => $account] = provisionAccount();
     $invited = app(AccountMembers::class)->invite($account->id, 'new@acme.example', AccountRole::Developer);
 
-    $this->get('/workspace/invite/'.$invited->id.'/accept')->assertForbidden();
+    $this->get('/invite/'.$invited->id.'/accept')->assertForbidden();
 });
 
 it('accepts a signed invite, sets a password, and signs in', function (): void {
     ['account' => $account] = provisionAccount();
     $invited = app(AccountMembers::class)->invite($account->id, 'new@acme.example', AccountRole::Developer, 'New');
 
-    $url = URL::temporarySignedRoute('workspace.invite.accept', now()->addDay(), ['member' => $invited->id]);
+    $url = URL::temporarySignedRoute('account.invite.accept', now()->addDay(), ['member' => $invited->id]);
     $this->get($url)->assertOk()->assertSee('Accept your invitation');
 
-    Volt::test('workspace.accept-invite', ['member' => $invited->id])
+    Volt::test('auth.accept-account-invite', ['member' => $invited->id])
         ->set('password', 'a-strong-unbreached-passphrase')
         ->call('accept')
-        ->assertRedirect(route('workspace.home'));
+        ->assertRedirect(route('projects'));
 
     $members = app(AccountMembers::class);
     expect($members->find($invited->id)->status->value)->toBe('active')
@@ -104,76 +104,54 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
         ->and(app(AccountAuth::class)->current()?->id)->toBe($invited->id);
 });
 
-it('sends a reset link to an active member and resets on the signed page', function (): void {
+/**
+ * The account plane had its own forgot/reset pair — `/workspace/forgot-password`, a
+ * signed `/workspace/reset-password/{member}`, and a mail template of its own. They are
+ * gone, and this is the test that they were a duplicate: the console's reset writes to
+ * the SUBJECT, which is the credential of record for an account member, and it lands the
+ * same three properties the account pair was written for — the password really changes,
+ * the link is single-use, and every session that existed before the reset is dead.
+ *
+ * Kept HERE, beside the invitation, rather than folded into PasswordResetTest: what is
+ * being asserted is that a MEMBER is reachable by the ordinary flow, and that is exactly
+ * the claim that would rot silently if it were nobody's test.
+ */
+it('resets an account member through the console flow and ends their open sessions', function (): void {
     Mail::fake();
     ['member' => $owner] = provisionAccount('owner@acme.example');
-
-    Volt::test('workspace.forgot-password')
-        ->set('email', 'owner@acme.example')
-        ->call('request')
-        ->assertRedirect(route('workspace.login'));
-
-    Mail::assertSent(WorkspacePasswordResetMail::class);
-
-    $url = URL::temporarySignedRoute('workspace.password.reset', now()->addHour(), ['member' => $owner->id]);
-    $this->get($url)->assertOk()->assertSee('Set a new password');
-
-    Volt::test('workspace.reset-password', ['member' => $owner->id])
-        ->set('password', 'a-fresh-unbreached-passphrase')
-        ->call('submit')
-        ->assertRedirect(route('workspace.home'));
-
-    expect(app(AccountMembers::class)->verifyPassword($owner->id, 'a-fresh-unbreached-passphrase'))->toBeTrue()
-        ->and(app(AccountAuth::class)->current()?->id)->toBe($owner->id);
-});
-
-it('makes the reset link single-use and logs out every existing session', function (): void {
-    ['member' => $owner] = provisionAccount('owner@acme.example');
-    $members = app(AccountMembers::class);
 
     // A pre-existing session, established the way a real sign-in does.
     signInAsMember($owner);
     $sessionId = (string) session(PlatformAuth::SESSION_KEY);
-    $this->get(route('workspace.home'))->assertOk();
+    $this->get(route('projects'))->assertOk();
+    forgetSubjectSession();
 
-    // Reset via a stamp-bound link.
-    $url = URL::temporarySignedRoute('workspace.password.reset', now()->addHour(), ['member' => $owner->id, 'v' => $owner->session_version]);
-    $this->get($url)->assertOk();
-    Volt::test('workspace.reset-password', ['member' => $owner->id])
-        ->set('password', 'a-fresh-unbreached-passphrase')
-        ->call('submit')
-        ->assertRedirect(route('workspace.home'));
+    $token = app(PlatformRoot::class)->run(
+        fn (): ?string => app(PasswordReset::class)->request('owner@acme.example'),
+    );
 
-    // The SAME link is now dead (the stamp advanced) — single-use.
-    $this->get($url)->assertRedirect(route('workspace.login'));
+    expect($token)->toBeString();
 
-    // And the session that existed BEFORE the reset is dead.
-    //
-    // Asserted at the framework ROW, then at the door. The stamp on the member row used
-    // to be what killed it, and it cannot be any more: a member's browser holds an
-    // ordinary subject session, which no column on `account_members` reaches. The reset
-    // revokes the subject's sessions instead — so the old id opens nothing even when the
-    // browser is put straight back on it.
+    app(PlatformRoot::class)->run(function () use ($token): void {
+        Volt::test('auth.reset-password', ['token' => $token])
+            ->set('password', 'a-fresh-unbreached-passphrase')
+            ->set('password_confirmation', 'a-fresh-unbreached-passphrase')
+            ->call('resetPassword')
+            ->assertHasNoErrors();
+    });
+
+    expect(app(AccountMembers::class)->verifyPassword($owner->id, 'a-fresh-unbreached-passphrase'))
+        ->toBeTrue('the reset did not reach the member\'s credential');
+
+    // The session that existed BEFORE the reset is dead — asserted at the framework ROW,
+    // then at the door. A member's browser holds an ordinary subject session, which no
+    // column on `account_members` reaches; the reset revokes the subject's sessions, so
+    // the old id opens nothing even when the browser is put straight back on it.
     expect(app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active($sessionId)))
         ->toBeNull('a session opened before the reset outlived it');
 
     session()->put(PlatformAuth::SESSION_KEY, $sessionId);
-    $this->get(route('workspace.home'))->assertRedirect(route('workspace.login'));
-
-    // The stamp still advances — that is what makes the LINK single-use, which is a
-    // different job from ending a session and the one it still has.
-    expect($members->find($owner->id)->session_version)->toBe(1);
-});
-
-it('reveals nothing and sends no mail for an unknown reset email', function (): void {
-    Mail::fake();
-
-    Volt::test('workspace.forgot-password')
-        ->set('email', 'nobody@nowhere.example')
-        ->call('request')
-        ->assertRedirect(route('workspace.login'));
-
-    Mail::assertNothingSent();
+    $this->get(route('projects'))->assertRedirect(route('login'));
 });
 
 it('turns away an already-accepted invite (replayed link)', function (): void {
@@ -183,8 +161,8 @@ it('turns away an already-accepted invite (replayed link)', function (): void {
 
     // Re-opening the (still validly-signed) link after acceptance is turned away at
     // the page itself — the member is no longer 'invited'.
-    $url = URL::temporarySignedRoute('workspace.invite.accept', now()->addDay(), ['member' => $invited->id]);
-    $this->get($url)->assertRedirect(route('workspace.login'));
+    $url = URL::temporarySignedRoute('account.invite.accept', now()->addDay(), ['member' => $invited->id]);
+    $this->get($url)->assertRedirect(route('login'));
 
     // And the framework's activate() is a no-op on an active member regardless, so
     // the first password stands.
@@ -228,7 +206,11 @@ it('does not admit an invited member who has not accepted, even holding a live s
     signInAsSubject($outsider->id);
 
     expect(app(AccountAuth::class)->check())
-        ->toBeFalse('an unaccepted invitation admitted its invitee to the workspace');
+        ->toBeFalse('an unaccepted invitation admitted its invitee to the account');
 
-    $this->get(route('workspace.home'))->assertRedirect(route('workspace.login'));
+    // Signed in, and with nothing here: they are an ordinary subject of the root, so the
+    // Identity platform area simply is not theirs and the console root is where they land.
+    // This used to assert a bounce to the sign-in they had just completed, which was the
+    // account plane's gate talking rather than the invitation.
+    $this->get(route('projects'))->assertRedirect(route('dashboard'));
 })->group('security');

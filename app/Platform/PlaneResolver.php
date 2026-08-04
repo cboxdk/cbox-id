@@ -221,7 +221,7 @@ final class PlaneResolver
     }
 
     /**
-     * The account/workspace console's host on a multi-tenant deployment, or null when the
+     * The account host on a multi-tenant deployment, or null when the
      * deployment is single-host and there is no second origin to name.
      *
      * Signing in is unified there, so this is the host an environment console hands the

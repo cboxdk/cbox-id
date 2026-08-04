@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
-use App\Platform\WorkspaceSudo;
+use App\Platform\Sudo;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\AccountApiKey;
@@ -14,12 +15,12 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › API keys — issue and revoke account management-plane keys (the
+ * Identity platform › API keys — issue and revoke account management-plane keys (the
  * machine equivalent of a member's session). High-privilege: a key can carry any
  * assignable role, so only member managers (owner/admin) may mint or revoke them.
  * The plaintext is shown exactly once, right after creation.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends Component
 {
     public string $newKeyName = '';
 
@@ -38,10 +39,10 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
      */
     protected ?string $freshKey = null;
 
-    public function mount(AccountAuth $auth): mixed
+    public function mount(ConsoleScope $scope): mixed
     {
-        if (! ($auth->current()?->role->canManageMembers() ?? false)) {
-            return redirect()->route('workspace.home');
+        if ($scope->accountRole()?->canManageMembers() !== true) {
+            return redirect()->route('projects');
         }
 
         return null;
@@ -59,7 +60,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
             return;
         }
 
-        if ($this->requiresSudo('workspace.api-keys', 'An account API key acts with this role across the whole workspace, and its value is shown once.')) {
+        if ($this->requiresSudo('api-keys', 'An account API key acts with this role across the whole account, and its value is shown once.')) {
             return;
         }
 
@@ -87,7 +88,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
             return;
         }
 
-        if ($this->requiresSudo('workspace.api-keys', 'Revoking an API key stops whatever is using it, immediately.')) {
+        if ($this->requiresSudo('api-keys', 'Revoking an API key stops whatever is using it, immediately.')) {
             return;
         }
 
@@ -108,16 +109,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
      */
     private function requiresSudo(string $returnRoute, string $reason): bool
     {
-        if (app(WorkspaceSudo::class)->confirmed()) {
+        if (app(Sudo::class)->confirmed()) {
             return false;
         }
 
         $intended = route($returnRoute);
 
-        session()->put('workspace.sudo.intended', $intended);
-        StepUpReason::record('workspace.sudo', $reason, $intended);
+        session()->put('sudo.intended', $intended);
+        StepUpReason::record('sudo', $reason, $intended);
 
-        $this->redirectRoute('workspace.sudo', navigate: false);
+        $this->redirectRoute('sudo', navigate: false);
 
         return true;
     }
@@ -136,7 +137,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'API keys'])] class ext
 
 <div>
     {{-- The console's page primitive rather than a hand-rolled h1: this page and
-         Environment keys were the only two in the workspace plane rendering no eyebrow at
+         Environment keys were the only two in the account console rendering no eyebrow at
          all, so neither said which area of the rail you were standing in. --}}
     <x-page-header title="API keys"
                    subtitle="Machine credentials for the account management API — list environments, invite members, read billing. Each key carries a role.">

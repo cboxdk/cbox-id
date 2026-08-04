@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\AccountInviteMail;
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\MailLinks;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
@@ -17,11 +18,11 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Members — the account's team, roles, per-environment access, and
+ * Identity platform › Account members — the account's team, roles, per-environment access, and
  * invitations. Managing members requires a management role; everyone else sees a
  * read-only roster.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Account members'])] class extends Component
 {
     public string $inviteEmail = '';
 
@@ -37,11 +38,11 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
     /** @var list<string> */
     public array $accessEnvIds = [];
 
-    public function mount(AccountAuth $auth): mixed
+    public function mount(ConsoleScope $scope): mixed
     {
         // The roster is PII — a Developer/Billing-only role may not read it.
-        if (! ($auth->current()?->role->canReadMembers() ?? false)) {
-            return redirect()->route('workspace.home');
+        if ($scope->accountRole()?->canReadMembers() !== true) {
+            return redirect()->route('projects');
         }
 
         return null;
@@ -73,7 +74,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         // somewhere — and that is inherent to globally-unique emails, not something a
         // message can hide. Rate limiting and the audit trail are what bound it.
         if ($members->findByEmail($this->inviteEmail) !== null) {
-            $this->addError('inviteEmail', 'That email cannot be invited to this workspace.');
+            $this->addError('inviteEmail', 'That email cannot be invited to this account.');
 
             return;
         }
@@ -81,7 +82,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         $invited = $members->invite($account->id, $this->inviteEmail, AccountRole::from($this->inviteRole), trim($this->inviteName) ?: null);
         // MailLinks, not URL:: — an invitation is mailed, so its origin must come from
         // the deployment rather than from the Host header of whoever asked to send it.
-        $url = $links->temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
+        $url = $links->temporarySignedRoute('account.invite.accept', now()->addDays(7), ['member' => $invited->id]);
         Mail::to($invited->email)->send(new AccountInviteMail($account->name, $current->name ?? $current->email, $url));
 
         $activity->record($account->id, 'account.member_invited', $current->id,
@@ -262,7 +263,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 }; ?>
 
 <div>
-    <x-page-header title="Members" subtitle="People who can administer this account, their roles, and which environments they reach." />
+    <x-page-header title="Account members" subtitle="People who can administer this account, their roles, and which environments they reach." />
 
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @foreach ($members as $m)
@@ -361,7 +362,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
     @if ($canManage)
         <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
             <p class="text-sm font-medium">Invite a teammate</p>
-            <p class="mt-1 text-sm" style="color:var(--muted)">They'll get an email to set a password and join this workspace.</p>
+            <p class="mt-1 text-sm" style="color:var(--muted)">They'll get an email to set a password and join this account.</p>
             <form wire:submit="invite" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
                 <div>
                     <input wire:model="inviteEmail" type="email" class="input" placeholder="teammate@yourco.example" autocomplete="off" aria-label="Teammate email">

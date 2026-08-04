@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 use Cbox\Id\Organization\Models\Environment;
@@ -13,14 +14,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Environment domains — attach a custom domain (id.acme.com) to an
+ * Identity platform › Environment domains — attach a custom domain (id.acme.com) to an
  * environment so its issuer publishes on that host instead of the default
  * {slug}.{base_domain}. Self-serve, DNS-TXT verified via the framework's
  * EnvironmentDomains contract. Only a member who can manage environments, and only
  * for an environment they can reach. TLS for the domain is an operator/ingress
  * concern once verified (the page says so) — the app only proves control.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Environment domains'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] class extends Component
 {
     public string $selectedEnvironment = '';
 
@@ -28,15 +29,19 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment domains'])
 
     public ?string $verifyError = null;
 
-    public function mount(AccountAuth $auth, AccountMembers $members): void
+    public function mount(AccountAuth $auth, AccountMembers $members, ConsoleScope $scope): void
     {
-        if (! ($auth->current()?->role->canManageEnvironments() ?? false)) {
-            $this->redirect(route('workspace.home'));
+        $member = $auth->current();
+
+        // Two questions, and both have to be asked — see environment-keys.blade.php: the
+        // scope decides admission, the member row is what the page reads.
+        if ($member === null || $scope->accountRole()?->canManageEnvironments() !== true) {
+            $this->redirect(route('projects'));
 
             return;
         }
 
-        $ids = $members->accessibleEnvironmentIds($auth->current());
+        $ids = $members->accessibleEnvironmentIds($member);
         $first = Environment::query()->whereIn('id', $ids)->orderBy('created_at')->value('id');
         $this->selectedEnvironment = is_string($first) ? $first : '';
     }

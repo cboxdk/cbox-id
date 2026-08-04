@@ -1,7 +1,7 @@
 <x-mail.layout>
     <h1 style="margin:0 0 12px;font-size:20px;color:#14161c">You've been invited</h1>
     <p style="margin:0 0 20px;color:#5b616e;font-size:15px;line-height:1.6">
-        <b>{{ $inviter }}</b> invited you to help run the <b>{{ $account }}</b> workspace on Cbox ID —
+        <b>{{ $inviter }}</b> invited you to help run <b>{{ $account }}</b> on Cbox ID —
         the console for managing environments, members, and billing. Accept to set a password and sign in.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>

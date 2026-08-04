@@ -3,25 +3,26 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Platform\Contracts\Accounts;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Settings — account-level settings. Management-only; deletion is
+ * Identity platform › Account settings — account-level settings. Management-only; deletion is
  * deliberately not a self-serve button (it would tear down live IdPs) and is
  * handled as a support request for now.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Settings'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class extends Component
 {
     public string $name = '';
 
-    public function mount(AccountAuth $auth): mixed
+    public function mount(AccountAuth $auth, ConsoleScope $scope): mixed
     {
         $account = $auth->current()?->account;
 
-        if ($account === null || ! $auth->current()->role->canManageMembers()) {
-            return redirect()->route('workspace.home');
+        if ($account === null || $scope->accountRole()?->canManageMembers() !== true) {
+            return redirect()->route('projects');
         }
 
         $this->name = $account->name;
@@ -45,11 +46,11 @@ new #[Layout('components.layouts.workspace', ['title' => 'Settings'])] class ext
 }; ?>
 
 <div>
-    <x-page-header title="Settings" subtitle="Manage your account." />
+    <x-page-header title="Account settings" subtitle="Manage the account these identity providers belong to." />
 
     <form wire:submit="save" class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
         <label class="label" for="name">Account name</label>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Shown across your workspace console.</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Shown across the console.</p>
         <div class="mt-3 flex items-start gap-2">
             <div class="flex-1 max-w-sm">
                 <input wire:model="name" id="name" type="text" class="input" placeholder="Acme Inc.">

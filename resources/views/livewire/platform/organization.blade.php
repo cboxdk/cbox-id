@@ -34,7 +34,7 @@ use Livewire\Volt\Component;
  * through the Organizations contract exactly like the tenant list, so it is
  * attributed to the acting operator and recorded on the tenant's audit trail.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Organization', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.platform', ['title' => 'Organization', 'width' => '72rem'])] class extends Component
 {
     public string $orgId = '';
 

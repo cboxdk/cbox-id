@@ -355,7 +355,7 @@ class InstallCommand extends Command
             ? 'https://'.$plan->accountHost
             : $this->publicUrl();
 
-        $this->line('  <fg=green>✓</> Sign in at '.$base.route('workspace.login', [], false).'.');
+        $this->line('  <fg=green>✓</> Sign in at '.$base.route('login', [], false).'.');
         $this->line('     The deployment section — environments, accounts, operators — is '
             .$base.route('platform.environments', [], false).'.');
 

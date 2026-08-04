@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\Projects;
@@ -11,7 +12,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Billing — the account plane's usage rollup and per-project plans. Since
+ * Identity platform › Billing — the account's usage rollup and per-project plans. Since
  * the plan/billing anchor lives on the PROJECT (one account can own several
  * independently-billed IdP products), this page lists each project's
  * plan + environment allowance, then rolls up account-wide usage.
@@ -19,14 +20,14 @@ use Livewire\Volt\Component;
  * Every figure is queried live from the account's own environments — nothing is
  * fabricated.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Component
 {
-    public function mount(AccountAuth $auth): mixed
+    public function mount(ConsoleScope $scope): mixed
     {
         // Billing is visible to roles that can read it (owner/admin/billing + the
         // read-only viewer) — not a technical Developer role.
-        if (! ($auth->current()?->role->canReadBilling() ?? false)) {
-            return redirect()->route('workspace.home');
+        if ($scope->accountRole()?->canReadBilling() !== true) {
+            return redirect()->route('projects');
         }
 
         return null;
@@ -74,7 +75,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Billing'])] class exte
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         <div class="p-4" style="border-bottom:1px solid var(--border)"><p class="text-sm font-medium">Projects</p></div>
         @forelse ($projects as $project)
-            <a href="{{ route('workspace.projects.show', $project['id']) }}"
+            <a href="{{ route('projects.show', $project['id']) }}"
                class="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
                 <div class="min-w-0">
                     <p class="font-medium truncate">{{ $project['name'] }}</p>

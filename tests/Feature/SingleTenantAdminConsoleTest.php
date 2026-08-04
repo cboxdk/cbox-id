@@ -53,7 +53,7 @@ it('serves the admin console when the deployment is multi-tenant', function (): 
     // the destination proves both halves — the bulkhead let the request through, AND the
     // door it opens is the unified one rather than a second credential store.
     $this->get('https://tenant.cboxid.com/admin/login')
-        ->assertRedirect('https://cboxid.com/workspace/open/'.$env->id);
+        ->assertRedirect('https://cboxid.com/open/'.$env->id);
 })->group('security');
 
 it('leaves organization creation reachable on a single-tenant deployment', function (): void {

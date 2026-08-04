@@ -229,6 +229,27 @@ it('fails the doctor when a module declares both planes and routes one', functio
         ->and($results[0]->detail)->toContain('Never routed');
 })->group('security');
 
+/**
+ * The other half of the same doctor: what must be the DIFFERENCE between the planes.
+ *
+ * An account's projects, keys and billing are what the root holds IN ADDITION — that
+ * sentence is in the check's own docblock and until recently nothing measured it, so the
+ * difference could have drifted either way in silence. Routed on the environment plane it
+ * would offer a tenant administrator somebody else's bill.
+ */
+it('fails the doctor when an Identity platform page appears on the environment plane', function (): void {
+    Route::get('/environment-plane-billing', fn (): string => '')->name('environment.billing');
+    // Named routes are indexed when the table is built; one added mid-request is invisible
+    // to Route::has() until the lookup is rebuilt, and the check would pass for the wrong
+    // reason — which is the failure mode this whole file is about.
+    Route::getRoutes()->refreshNameLookups();
+
+    $results = app(ConsoleParityHealthCheck::class)->run();
+
+    expect($results[0]->status)->toBe(HealthStatus::Fail)
+        ->and($results[0]->detail)->toContain('billing');
+})->group('security');
+
 /*
 |--------------------------------------------------------------------------
 | The pages, through the environment door

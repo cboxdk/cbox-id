@@ -85,7 +85,7 @@ it('tells the owner on the workspace launchpad why there is no environment yet',
     // Without this the page shows a project with no environments and no explanation.
     // Asserted on the banner's OWN copy, not on the shared flash toast — the toast says
     // something similar and would keep this test green with the banner gone.
-    $this->get(route('workspace.home'))
+    $this->get(route('projects'))
         ->assertOk()
         ->assertSee('is created the moment you open it')
         ->assertSee('dana@acme.example');

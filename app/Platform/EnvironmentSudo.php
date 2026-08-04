@@ -11,7 +11,7 @@ namespace App\Platform;
  * possession of a live session is not enough for the crown jewels.
  *
  * WHY A THIRD ONE. There was no environment-plane step-up at all — only {@see Sudo} for
- * the organization plane and {@see WorkspaceSudo} for the account plane. The token vault
+ * the organization plane. The token vault
  * made the gap visible: the same rotate, grant and revoke actions demanded a fresh
  * password on the organization plane and none whatsoever on the environment plane, where
  * the administrator can act on EVERY organization in the environment. A hijacked or

@@ -2,7 +2,7 @@
     // Support-impersonation banner — unmissable, and the ONLY exit control there is.
     //
     // Extracted from `layouts.app` because it was only in `layouts.app`. The Impersonate
-    // button moved to `/platform/organizations`, which renders on `layouts.workspace` on
+    // button moved to `/platform/organizations`, which renders on `layouts.platform` on
     // the account-root host — so an operator who started an impersonation from where the
     // button now lives got a banner-less page and no way back out except POSTing
     // `/impersonation/exit` by hand. A control that exists on one of the two layouts a

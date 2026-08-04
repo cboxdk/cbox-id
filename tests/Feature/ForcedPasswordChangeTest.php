@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\AuthenticateAccountMember;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -135,12 +134,17 @@ it('does not redirect a prompt=none authorization request', function (): void {
 });
 
 /**
- * The account plane is a separate gate ({@see AuthenticateAccountMember}),
- * so it needs its own proof. The credential of record is the member's SUBJECT — see
- * docs/core-concepts/unified-account-identity.md — which is why the requirement is read
- * and cleared inside the platform root.
+ * An account member reaches the same hold through the same door.
+ *
+ * This used to be a separate gate, a separate change page and a separate exemption list,
+ * because the account console was a plane of its own; the hold had to be taught about it
+ * and the two lists drifted. There is one of each now, and the credential of record was
+ * always the member's SUBJECT — see docs/core-concepts/unified-account-identity.md — which
+ * is why the requirement is read and cleared inside the platform root. Kept as its own
+ * test because "a member is held too" is the claim, and it is the claim that would rot
+ * silently if nothing asserted it.
  */
-it('holds the workspace console until an account member replaces a temporary password', function (): void {
+it('holds the Identity platform until an account member replaces a temporary password', function (): void {
     platformRootEnvironment();
 
     $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
@@ -163,10 +167,10 @@ it('holds the workspace console until an account member replaces a temporary pas
 
     signInAsMember($result->member);
 
-    $this->get(route('workspace.home'))->assertRedirect(route('workspace.password.change'));
-    $this->get(route('workspace.password.change'))->assertOk();
+    $this->get(route('projects'))->assertRedirect(route('password.change'));
+    $this->get(route('password.change'))->assertOk();
 
-    Volt::test('workspace.change-password')
+    Volt::test('auth.change-password')
         ->set('password', 'a-passphrase-only-they-know')
         ->set('passwordConfirmation', 'a-passphrase-only-they-know')
         ->call('save')
@@ -174,7 +178,7 @@ it('holds the workspace console until an account member replaces a temporary pas
 
     expect($root->run(fn () => app(AdminPasswords::class)->requiresChange($subjectId)))->toBeFalse();
 
-    $this->get(route('workspace.home'))->assertOk();
+    $this->get(route('projects'))->assertOk();
 });
 
 /**

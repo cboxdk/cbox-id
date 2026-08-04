@@ -8,6 +8,7 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlatformAuth;
+use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -74,10 +75,9 @@ function anAccountOwner(string $email = 'owner@acme.example'): object
  */
 function railRoutes(): array
 {
-    $member = app(AccountAuth::class)->current();
     $routes = [];
 
-    foreach (app(ConsoleNavigation::class)->workspace($member?->role)->groups() as $area) {
+    foreach (app(ConsoleNavigation::class)->operator()->groups() as $area) {
         foreach ($area['pages'] as $page) {
             $routes[] = $page['route'];
         }
@@ -90,9 +90,14 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
     $member = anAccountOwner();
     signInAsMember($member);
 
+    // The rail is the CONSOLE's, which is assembled from the plugin registry — the
+    // platform section has a rail of its own and a shell of its own, and the gate on
+    // reaching either is the operator record rather than a nav entry.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
-        ->and(railRoutes())->not->toContain('platform.environments')
-        ->and(railRoutes())->not->toContain('platform.operators');
+        ->and(collect(Console::nav()->areas())->pluck('key')->all())
+        ->not->toContain('platform');
+
+    $this->get('/platform')->assertNotFound();
 })->group('security');
 
 /**
@@ -123,7 +128,7 @@ it('gives the platform pages to an operator, in the same rail', function (): voi
  * Administering an environment is not running the deployment.
  *
  * It is ONE session now, which makes this sharper rather than moot. An environment admin
- * arrives through the account console — `/workspace/open/{env}` hands off — and comes out
+ * arrives through the account console — `/open/{env}` hands off — and comes out
  * the other side holding the same subject session plus an ANCHOR naming the environment.
  * So the session that would answer "who runs this deployment?" is the very session the
  * admin is standing in, and a resolver that simply took the subject it found there would
@@ -219,11 +224,11 @@ it('lets an operator through the door it sent them to', function (): void {
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
     // Refused while signed out, and pointed at the account door.
-    $this->get('https://cboxid.com/platform')->assertRedirect(route('workspace.login'));
+    $this->get('https://cboxid.com/platform')->assertRedirect(route('login'));
 
     // Sign in the way that door actually does it.
     $outcome = app(AccountAuth::class)->attempt(
-        Request::create('/workspace/login', 'POST'),
+        Request::create('/login', 'POST'),
         'staff@cbox.test',
         'a-strong-unbreached-passphrase',
     );
@@ -257,7 +262,7 @@ it('points a refused visitor at the sign-in this deployment actually serves', fu
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
-    $this->get('https://cboxid.com/platform')->assertRedirect(route('workspace.login'));
+    $this->get('https://cboxid.com/platform')->assertRedirect(route('login'));
 })->group('security');
 
 /**
@@ -290,7 +295,7 @@ it('signs in an operator who has no account at all', function (): void {
     app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
 
     $outcome = app(AccountAuth::class)->attempt(
-        Request::create('/workspace/login', 'POST'),
+        Request::create('/login', 'POST'),
         'lonely@cbox.test',
         'a-strong-unbreached-passphrase',
     );
@@ -313,7 +318,7 @@ it('refuses an operator with the wrong password', function (): void {
     app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
 
     expect(app(AccountAuth::class)->attempt(
-        Request::create('/workspace/login', 'POST'),
+        Request::create('/login', 'POST'),
         'lonely@cbox.test',
         'not-the-passphrase',
     )->name)->toBe('Invalid');
@@ -354,7 +359,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     $operators->suspend($operator->id, $other->id);
 
     expect(app(AccountAuth::class)->attempt(
-        Request::create('/workspace/login', 'POST'),
+        Request::create('/login', 'POST'),
         'lonely@cbox.test',
         'a-strong-unbreached-passphrase',
     )->name)->toBe('Ok');
@@ -372,16 +377,16 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // that answers, because asserting only where they were sent is what let a 403 pass for
     // a landing — the redirect was always issued, and it was the arrival that refused.
     nextRequest();
-    $this->followingRedirects()->get(route('workspace.home'))
+    $this->followingRedirects()->get(route('projects'))
         ->assertSuccessful()
-        ->assertSee("there's nothing here yet", escape: false)
-        // The way out. Nothing rendered one before: the rail needs nav areas and this
-        // person has none, and the mobile sheet is `lg:hidden`.
-        ->assertSee(route('workspace.logout'), escape: false);
+        ->assertSee('belong to an organization here yet', escape: false)
+        // The way out. Nothing rendered one before: the account rail needed nav areas and
+        // this person had none, and the mobile sheet is `lg:hidden`.
+        ->assertSee(route('logout'), escape: false);
 
     // The same for the one other page a signed-in person is routinely sent to.
     nextRequest();
-    $this->followingRedirects()->get(route('workspace.security'))->assertSuccessful();
+    $this->followingRedirects()->get(route('account'))->assertSuccessful();
 })->group('security');
 
 /**
@@ -406,7 +411,7 @@ it('lands an account-less operator on the console they actually have', function 
 
     app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
 
-    $page = Volt::test('workspace.login')
+    $page = Volt::test('auth.login')
         ->set('email', 'lonely@cbox.test')
         ->call('continue')
         ->set('password', 'a-strong-unbreached-passphrase')
@@ -422,27 +427,44 @@ it('lands an account-less operator on the console they actually have', function 
     $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
     signInAsSubject($subjectId);
 
-    $this->followingRedirects()->get(route('workspace.home'))->assertSuccessful();
+    // On the ACCOUNT HOST this deployment names, because `plane:console` is a host
+    // question by design (an unmapped name resolves to the root, so the context cannot
+    // tell `cboxid.com` from `anything.invalid`) — and this test states the SaaS shape.
+    $this->followingRedirects()->get('https://cboxid.com/projects')->assertSuccessful();
 
     // …and it is the PLATFORM, not the account launchpad. The console root used to serve
     // this person a Projects page describing a thing they do not have, with its only
     // action gated off by a role they do not hold — a 200 that was still a dead end, which
     // is why "it answered 200" is not on its own the property worth guarding.
-    $this->get(route('workspace.home'))->assertRedirect(route('platform.environments'));
+    nextRequest();
+    $this->get('https://cboxid.com/projects')->assertRedirect(route('platform.environments'));
 })->group('security');
 
-/** And an account member still lands on their account, unchanged. */
-it('still lands an account member on their workspace', function (): void {
+/** And an account member lands in the same console, by the same door. */
+it('lands an account member in the console too', function (): void {
     $member = anAccountOwner();
     installedDeployment();
 
-    $page = Volt::test('workspace.login')
+    // The door authenticates in the environment the request is standing in, and an account
+    // member's subject lives in the platform root. On the root host those are the same
+    // environment; in a test they are only the same if the fixture says so. The account
+    // door wrapped every lookup in `PlatformRoot::run()` because it was served on ONE host
+    // and could assume which — a door served everywhere cannot, and must not.
+    platformRootDeployment();
+
+    $page = Volt::test('auth.login')
         ->set('email', $member->email)
         ->call('continue')
         ->set('password', 'a-strong-unbreached-passphrase')
         ->call('login');
 
-    expect($page->effects['redirect'] ?? '')->toBe(route('workspace.home'));
+    expect($page->effects['redirect'] ?? '')->toBe(route('dashboard'));
+
+    // …and what they OWN is what puts the Identity platform area in front of them, rather
+    // than which door they came through. There was a second door for exactly this, and it
+    // authenticated the same subject against the same credential.
+    signInAsMember($member);
+    $this->get(route('projects'))->assertOk();
 })->group('security');
 
 /**
@@ -465,7 +487,7 @@ it('does not answer for the previous identity after a sign-out', function (): vo
     $second = anAccountOwner('second@acme.example');
 
     $auth = app(AccountAuth::class);
-    $request = fn () => Request::create('/workspace/login', 'POST');
+    $request = fn () => Request::create('/login', 'POST');
 
     expect($auth->attempt($request(), 'first@acme.example', 'a-strong-unbreached-passphrase')->name)->toBe('Ok')
         ->and(app(AccountAuth::class)->current()?->email)->toBe('first@acme.example');
@@ -518,11 +540,13 @@ function arrivalWithin(TestCase $test, string $url, int $hops = 4): TestResponse
 /**
  * THE LANDING IS NOT A PAGE A HOLD MAY HOLD.
  *
- * `workspace.no-access` exists so a member-less non-operator is not stuck at a door — and
- * under an environment-wide MFA mandate it became the door. The MFA hold exempted
- * `workspace.security`, which turns this persona around to the landing, and the landing
- * was not exempt: held, sent to the security page, turned around, held again. A 403 with
- * no sign-out was the bug this page was written for; ERR_TOO_MANY_REDIRECTS is worse.
+ * The account console had a `no-access` page so a member-less non-operator was not stuck
+ * at a door — and under an environment-wide MFA mandate it became the door. The MFA hold
+ * exempted that console's security page, which turns this persona around to the landing,
+ * and the landing was not exempt: held, sent to the security page, turned around, held
+ * again. A 403 with no sign-out was the bug that page was written for;
+ * ERR_TOO_MANY_REDIRECTS is worse. The landing is `/dashboard` now — the console root
+ * every signed-in subject has — and the exemption moved with it.
  *
  * No membership is needed to reach that state. {@see DatabaseMfaMandate} starts from the
  * environment BASELINE — the `organization_id IS NULL` policy an environment admin sets
@@ -542,7 +566,7 @@ it('keeps the no-access landing reachable under an environment-wide MFA mandate'
 
     // The BASELINE this test would be worthless without: with no mandate the landing
     // answers, so a failure below is the hold and nothing else.
-    arrivalWithin($this, route('workspace.no-access'))->assertSuccessful();
+    arrivalWithin($this, route('dashboard'))->assertSuccessful();
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Required));
 
@@ -550,16 +574,22 @@ it('keeps the no-access landing reachable under an environment-wide MFA mandate'
         ->toBeTrue('fixture: the mandate does not bind this subject, so nothing is being tested');
 
     nextRequest();
-    arrivalWithin($this, route('workspace.no-access'))
+    arrivalWithin($this, route('dashboard'))
         ->assertSuccessful()
-        ->assertSee("there's nothing here yet", escape: false)
-        // The one action always available to somebody who cannot satisfy the hold.
-        ->assertSee(route('workspace.logout'), escape: false);
+        // The one action always available to somebody who cannot satisfy the hold. WHERE
+        // they come to rest is the security page — the one page the mandate leaves
+        // reachable, because it is where enrolment lives — and the property being asserted
+        // is that the chain terminates on a page that has a way out at all.
+        ->assertSee(route('logout'), escape: false);
 
-    // The console root enters the same cycle — `workspace.home` sends this persona to the
-    // landing too — so it is asserted with the same bound rather than assumed.
+    // An Identity platform page enters the same cycle — this persona owns no identity
+    // providers, so it turns them around too — and it is asserted with the same bound
+    // rather than assumed. Where they COME TO REST is the security page rather than the
+    // console root, because that is the one page the mandate leaves reachable; what
+    // matters is that the chain terminates on a page with a way out, which is the whole
+    // property the account console's `no-access` page existed for.
     nextRequest();
-    arrivalWithin($this, route('workspace.home'))
+    arrivalWithin($this, route('projects'))
         ->assertSuccessful()
-        ->assertSee("there's nothing here yet", escape: false);
+        ->assertSee(route('logout'), escape: false);
 })->group('security');

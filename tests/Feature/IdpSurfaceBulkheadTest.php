@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\FederatedLanding;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -129,7 +130,7 @@ it('refuses the console on a wildcard name that is not the platform root', funct
  * ...but INBOUND federation is not issuer surface, and the account plane genuinely uses it.
  *
  * An account's organization lives in the platform-root environment, so home-realm
- * discovery on `/workspace/login` and `/signup` — both `plane:account`, both root-host
+ * discovery on `/login` and `/signup` — both `plane:account`, both root-host
  * only — resolves the account org's connection and redirects to `/sso/.../{connection}/...`
  * on the host the member is already standing on. Gating those as issuer surface 404'd the
  * redirect, its callback, and the SP metadata the IdP admin imports to set the connection
@@ -182,12 +183,16 @@ it('serves the account-plane SSO callbacks on the platform-root host', function 
 });
 
 /**
- * {@see FederatedLanding}'s `onAccountPlane()` branch exists to land a
- * verified federated identity in the WORKSPACE. While the callbacks were gated to the
- * subject plane it was unreachable dead code — which is independent proof the callbacks
- * are meant to answer on the root host.
+ * A VERIFIED assertion lands a session on the platform-root host.
+ *
+ * This used to assert the opposite, and the opposite was a plane talking rather than a
+ * decision: {@see FederatedLanding} forked on `onAccountPlane()` and refused any subject
+ * that carried no account membership, because the root served the account console and
+ * nothing else. The root is a tenant. A subject of it who authenticates at their IdP is
+ * signed in, exactly as they would be on any other host, and what their organization
+ * OWNS decides what the console then contains.
  */
-it('reaches the account-plane branch of FederatedLanding on the platform-root host', function (): void {
+it('lands a verified assertion in the console on the platform-root host', function (): void {
     saasShape();
 
     $connection = rootSsoConnection('saml');
@@ -207,18 +212,17 @@ it('reaches the account-plane branch of FederatedLanding on the platform-root ho
 
     $response = $this->post('http://cboxid.com/sso/saml/'.$connection->id.'/acs', ['SAMLResponse' => 'x']);
 
-    // The ACCOUNT branch: the identity verified, but it carries no account membership, so
-    // it is refused at the workspace door rather than handed a subject session and the
-    // tenant dashboard (which is what the subject branch would do).
-    $response->assertRedirect(route('workspace.login'));
-    $response->assertSessionHasErrors('email');
+    $response->assertRedirect(route('dashboard'));
+    $response->assertSessionHasNoErrors();
+
+    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
 });
 
 /**
- * The same plane fork on the REJECTED branch, and pinned HERE because this file is the
- * one that resolves the plane the way production does — from the request host, through
- * SetEnvironment/ResolveEnvironment — rather than by setting the environment context
- * directly. {@see FederatedLanding::failed()} is proven per-branch in
+ * The REJECTED branch, pinned HERE because this file is the one that resolves the plane
+ * the way production does — from the request host, through SetEnvironment/
+ * ResolveEnvironment — rather than by setting the environment context directly.
+ * {@see FederatedLanding::failed()} is exercised in
  * tests/Feature/InboundSsoBrowserLoginTest.php; what is proven here is that the host
  * which serves the ACS also serves the page the ACS sends a failure to.
  *
@@ -242,7 +246,7 @@ it('lands a rejected assertion on a sign-in page that exists on the platform-roo
 
     $response = $this->post('http://cboxid.com/sso/saml/'.$connection->id.'/acs', ['SAMLResponse' => 'forged']);
 
-    $response->assertRedirect(route('workspace.login'));
+    $response->assertRedirect(route('login'));
     $response->assertSessionHasErrors('email');
 
     // Readable, and not an assertion-forgery oracle: the reason is logged, not shown.
@@ -250,11 +254,9 @@ it('lands a rejected assertion on a sign-in page that exists on the platform-roo
     expect($error)->toContain('could not verify')
         ->and($error)->not->toContain('signature');
 
-    // The destination must be served by THIS host, which is what the fork was added to
-    // guarantee. `/login` used to 404 here and that 404 was the proof; the platform root
-    // serves a console now, so BOTH doors answer and the assertion becomes the stronger
-    // one — the fork has to keep choosing the right door rather than the only door.
-    $this->get('http://cboxid.com/workspace/login')->assertOk();
+    // The destination must be served by THIS host. `/login` used to 404 here and that 404
+    // was the whole bug: it lands AFTER a successful authentication at the IdP, so the
+    // person has every reason to believe SSO worked and no way to discover it did not.
     $this->get('http://cboxid.com/login')->assertOk();
 });
 

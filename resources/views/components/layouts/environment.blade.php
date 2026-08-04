@@ -19,8 +19,8 @@
     // Falls back to the current host on a single-host deployment, where this plane and
     // the account plane share an origin and the link is simply local.
     $accountHost = app(\App\Platform\PlaneResolver::class)->accountHost() ?? request()->getHost();
-    $securityUrl = 'https://'.$accountHost.'/workspace/security';
-    $workspaceUrl = 'https://'.$accountHost.'/workspace';
+    $securityUrl = 'https://'.$accountHost.route('account', absolute: false);
+    $accountUrl = 'https://'.$accountHost.route('projects', absolute: false);
 
     // Breadcrumb + switcher context. Where this environment sits in the account
     // hierarchy (Account › Project › Environment), and the other environments this
@@ -35,7 +35,7 @@
         $accessibleIds = app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->accessibleEnvironmentIds($member);
         $switchableEnvs = Environment::query()->whereKey($accessibleIds)->orderBy('name')->get(['id', 'name', 'slug']);
     }
-    $openUrl = fn (string $id): string => 'https://'.$accountHost.route('workspace.environment.open', $id, false);
+    $openUrl = fn (string $id): string => 'https://'.$accountHost.route('environment.open', $id, false);
 
     // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
     // Every resource here is env-scoped (BelongsToEnvironment); the account-member
@@ -52,7 +52,7 @@
     $isActive = fn (string $route): bool => request()->routeIs($route) || request()->routeIs($route.'.*');
 @endphp
 {{-- Environment control plane — the ACCOUNT-member admin's view of ONE environment.
-     Distinct from the org-user console (subjects) and the account/workspace console. --}}
+     Distinct from the org-user console (subjects) and the platform section. --}}
 <!DOCTYPE html>
 <html lang="en" class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
@@ -101,7 +101,7 @@
              they are (Account › Project › Environment), and jump to another env. --}}
         <header class="hidden lg:flex cbx-topbar items-center justify-between">
             <nav class="flex items-center gap-1.5 text-[13px] min-w-0" aria-label="Breadcrumb">
-                <a href="{{ $workspaceUrl }}" class="shrink-0 font-medium hover:underline" style="color:var(--muted-foreground)">Account</a>
+                <a href="{{ $accountUrl }}" class="shrink-0 font-medium hover:underline" style="color:var(--muted-foreground)">Account</a>
                 @if ($project)
                     <span style="color:var(--faint)" aria-hidden="true">/</span>
                     <span class="shrink-0 truncate" style="color:var(--muted-foreground)">{{ $project->name }}</span>
@@ -158,7 +158,7 @@
     <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$envName" subheading="Environment admin"
                   :initial="$memberInitial" logout-route="admin.logout"
                   :member-name="$member?->name" :member-email="$member?->email" :security-url="$securityUrl">
-        <a href="{{ $workspaceUrl }}" class="nav-link w-full"><x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" aria-hidden="true" /> Back to account</a>
+        <a href="{{ $accountUrl }}" class="nav-link w-full"><x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" aria-hidden="true" /> Back to account</a>
         @if ($switchableEnvs->count() > 1)
             <p class="cbx-nav-group px-2 pt-2 pb-1">Switch environment</p>
             <div class="max-h-52 overflow-y-auto space-y-0.5">

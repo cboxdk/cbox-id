@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
-use App\Platform\WorkspaceSudo;
+use App\Platform\Sudo;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
@@ -15,7 +16,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Environment keys — issue and revoke ENVIRONMENT management-plane keys
+ * Identity platform › Environment keys — issue and revoke ENVIRONMENT management-plane keys
  * (`cbid_env_…`), the machine credential apps use to provision organizations and
  * users inside one environment. Distinct from account keys: an environment key is
  * bound to a single environment and carries fine-grained scopes, not a role.
@@ -24,7 +25,7 @@ use Livewire\Volt\Component;
  * environments may mint or revoke them, and only for an environment they can reach.
  * The plaintext is shown exactly once.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class extends Component
 {
     public string $selectedEnvironment = '';
 
@@ -52,12 +53,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
      */
     protected ?string $freshKey = null;
 
-    public function mount(AccountAuth $auth, AccountMembers $members): void
+    public function mount(AccountAuth $auth, AccountMembers $members, ConsoleScope $scope): void
     {
         $member = $auth->current();
 
-        if ($member === null || ! $member->role->canManageEnvironments()) {
-            $this->redirect(route('workspace.home'));
+        // Two questions, and both have to be asked. The scope decides ADMISSION — does the
+        // organization being administered own identity providers, and may this person
+        // manage their environments. The member row is what the page then READS, and the
+        // scope answering yes does not hand it over.
+        if ($member === null || $scope->accountRole()?->canManageEnvironments() !== true) {
+            $this->redirect(route('projects'));
 
             return;
         }
@@ -83,7 +88,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
             return;
         }
 
-        if ($this->requiresSudo('workspace.environment-keys', 'An environment API key reads and writes this environment\'s organizations and people over the API, and its value is shown once.')) {
+        if ($this->requiresSudo('environment-keys', 'An environment API key reads and writes this environment\'s organizations and people over the API, and its value is shown once.')) {
             return;
         }
 
@@ -117,7 +122,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
             return;
         }
 
-        if ($this->requiresSudo('workspace.environment-keys', 'Revoking an environment key stops whatever is using it, immediately.')) {
+        if ($this->requiresSudo('environment-keys', 'Revoking an environment key stops whatever is using it, immediately.')) {
             return;
         }
 
@@ -156,16 +161,16 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
      */
     private function requiresSudo(string $returnRoute, string $reason): bool
     {
-        if (app(WorkspaceSudo::class)->confirmed()) {
+        if (app(Sudo::class)->confirmed()) {
             return false;
         }
 
         $intended = route($returnRoute);
 
-        session()->put('workspace.sudo.intended', $intended);
-        StepUpReason::record('workspace.sudo', $reason, $intended);
+        session()->put('sudo.intended', $intended);
+        StepUpReason::record('sudo', $reason, $intended);
 
-        $this->redirectRoute('workspace.sudo', navigate: false);
+        $this->redirectRoute('sudo', navigate: false);
 
         return true;
     }
@@ -190,7 +195,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Environment keys'])] c
 }; ?>
 
 <div>
-    {{-- See api-keys.blade.php: these two were the workspace plane's only pages with a
+    {{-- See api-keys.blade.php: these two were the account console's only pages with a
          hand-rolled h1 and no eyebrow. --}}
     <x-page-header title="Environment keys"
                    subtitle="Machine credentials for the per-environment management API — provision organizations and users inside one environment. Each key carries explicit scopes.">

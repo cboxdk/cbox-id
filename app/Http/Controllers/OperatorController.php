@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
  * There is no `logout()` here any more. It used to end a session of its own and send
  * the operator to a sign-in of its own, with a message — "Signed out of the operator
  * console." — that described a thing that no longer exists. Signing out of the operator
- * console IS signing out; the one console's own logout (`workspace.logout`, or the
+ * console IS signing out; the one console's own logout (`logout`, or the
  * subject plane's `logout`) does it, and there is nothing left for a second door to end.
  * The route is gone rather than aliased: a POST endpoint is not something anyone has
  * bookmarked, and the deleted sign-in form was its only caller.

@@ -11,7 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Invites a teammate to an account's workspace console (the buyer plane). Distinct
+ * Invites a teammate to an account — the organization that owns identity providers. Distinct
  * from {@see InvitationMail}, which invites an end-user into an organization.
  */
 final class AccountInviteMail extends Mailable
@@ -29,7 +29,7 @@ final class AccountInviteMail extends Mailable
     {
         $brand = config('cbox-id.branding.name', 'Cbox ID');
 
-        return new Envelope(subject: "You've been invited to the {$this->account} workspace on ".(is_string($brand) ? $brand : 'Cbox ID'));
+        return new Envelope(subject: "You've been invited to {$this->account} on ".(is_string($brand) ? $brand : 'Cbox ID'));
     }
 
     public function content(): Content

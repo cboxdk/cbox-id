@@ -18,9 +18,7 @@ use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\NeverBreachedCheck;
-use Cbox\Id\Identity\Testing\FakeWebAuthnVerifier;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
-use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -28,8 +26,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Contracts\AccountPasskeys;
-use Cbox\Id\Platform\DatabaseAccountPasskeys;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
@@ -140,15 +136,6 @@ function doorFakePasskeys(string $subjectId): void
             return null;
         }
     });
-}
-
-/** The account-plane equivalent, on the shared verifier double. */
-function doorAccountPasskeys(string $credentialId): AccountPasskeys
-{
-    $passkeys = new DatabaseAccountPasskeys(new FakeWebAuthnVerifier(credentialId: $credentialId), new FakeAuditLog);
-    app()->instance(AccountPasskeys::class, $passkeys);
-
-    return $passkeys;
 }
 
 /**
@@ -283,18 +270,18 @@ it('lets an invitation be accepted under a mandate, and still refuses the sessio
 |--------------------------------------------------------------------------
 */
 
-it('refuses a workspace magic link while leaving the federated landing alone', function (): void {
+it('refuses an account member\'s magic link while leaving the federated landing alone', function (): void {
     [$member] = doorMandatedAccount('magic-owner@acme.example');
     $subjectId = (string) $member->refresh()->subject_id;
 
-    $this->get('/workspace/magic/'.app(MagicLink::class)->request('magic-owner@acme.example'))
-        ->assertRedirect(route('workspace.login'));
+    $this->get('/magic/'.app(MagicLink::class)->request('magic-owner@acme.example'))
+        ->assertRedirect(route('login'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
         ->and(doorHasLiveSession($subjectId))->toBeFalse();
 
     nextRequest();
-    $this->get(route('workspace.login'))
+    $this->get(route('login'))
         ->assertSee('Workspace Co requires single sign-on')
         ->assertSee('That sign-in link worked');
 
@@ -306,59 +293,23 @@ it('refuses a workspace magic link while leaving the federated landing alone', f
     expect(app(AccountAuth::class)->adoptFederated($assertion))->toBe(AttemptOutcome::Ok);
 })->group('security');
 
-it('refuses a workspace passkey sign-in', function (): void {
-    [$member] = doorMandatedAccount('passkey-owner@acme.example');
-    $passkeys = doorAccountPasskeys('cred_workspace');
-    $passkeys->register($member->id, 'chal', '{}', 'MacBook');
+/*
+ * The account plane's own passkey ceremony and its own forgot/reset pair were two more
+ * doors this file had to name. Both are gone: the ceremony enrolled a credential in a
+ * second store that nothing enforced, and the reset wrote to the same SUBJECT the
+ * console's own reset writes to. What is left is one door of each kind, covered above —
+ * which is a stronger statement than two tests, because it is one implementation.
+ */
 
-    $this->postJson(route('workspace.passkeys.login.options'))->assertOk();
-    $this->postJson(route('workspace.passkeys.login'), ['id' => 'cred_workspace'])
-        ->assertOk()
-        ->assertJsonPath('redirect', route('workspace.login'));
-
-    expect(app(AccountAuth::class)->current())->toBeNull()
-        ->and(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
-
-    nextRequest();
-    $this->get(route('workspace.login'))
-        ->assertSee('Workspace Co requires single sign-on')
-        ->assertSee('Your passkey worked');
-})->group('security');
-
-it('refuses the session a workspace password reset used to hand out', function (): void {
-    [$member] = doorMandatedAccount('reset-owner@acme.example');
-
-    // The signed link the forgot-password mail carries, stamp and all.
-    $url = URL::signedRoute('workspace.password.reset', [
-        'member' => $member->id,
-        'v' => $member->refresh()->session_version,
-    ]);
-
-    livewireUpdate($url, 'workspace.reset-password', 'submit', updates: [
-        'password' => 'a-different-strong-passphrase',
-    ])->assertOk();
-
-    // The reset HAPPENED — it also revokes the member's other sessions, which is the point
-    // of it — and the session it used to hand back did not.
-    expect(app(AccountMembers::class)->verifyPassword($member->id, 'a-different-strong-passphrase'))->toBeTrue()
-        ->and(app(AccountAuth::class)->current())->toBeNull()
-        ->and(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
-
-    nextRequest();
-    $this->get(route('workspace.login'))
-        ->assertSee('Workspace Co requires single sign-on')
-        ->assertSee('Your new password is saved');
-})->group('security');
-
-it('activates a workspace invitation under a mandate, and still refuses the session', function (): void {
+it('activates an account invitation under a mandate, and still refuses the session', function (): void {
     [$owner] = doorMandatedAccount('invite-owner@acme.example');
 
     $members = app(AccountMembers::class);
     $invited = $members->invite((string) $owner->account_id, 'workspace-invitee@acme.example', AccountRole::Admin);
 
-    $url = URL::signedRoute('workspace.invite.accept', ['member' => $invited->id]);
+    $url = URL::signedRoute('account.invite.accept', ['member' => $invited->id]);
 
-    livewireUpdate($url, 'workspace.accept-invite', 'accept', updates: [
+    livewireUpdate($url, 'auth.accept-account-invite', 'accept', updates: [
         'password' => 'a-strong-unbreached-passphrase',
     ])->assertOk();
 
@@ -368,7 +319,7 @@ it('activates a workspace invitation under a mandate, and still refuses the sess
         ->and(app(AccountAuth::class)->current())->toBeNull();
 
     nextRequest();
-    $this->get(route('workspace.login'))
+    $this->get(route('login'))
         ->assertSee('Workspace Co requires single sign-on')
         ->assertSee('Your invitation is accepted');
 })->group('security');

@@ -76,7 +76,7 @@ final class SecurityHeaders
                 //
                 // Signing in is unified on the platform root, so a session that ends on an
                 // environment host finishes on another one: POST /admin/logout redirects to
-                // /admin/login, which redirects to the root's /workspace/login. The browser
+                // /admin/login, which redirects to the root's /login. The browser
                 // checks `form-action` against EVERY hop of a submission's redirect chain,
                 // not just the address on the form — so the post was refused, and Chrome
                 // reported the original same-origin URL, which made it read as impossible.

@@ -14,7 +14,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -93,13 +92,14 @@ it('lands every nav entry on a page titled the way the entry is labelled', funct
 /**
  * The same promise, on the planes the test above cannot see.
  *
- * `Console::nav()` is the plugin registry, which is the ORGANIZATION plane only. The
- * workspace and platform planes declare themselves in {@see ConsoleNavigation}, so
- * nothing reached them and both had shipped violations: the rail said "Profile" while
- * the tab said "Security" and the heading said "Profile & security"; the rail said
- * "Domains" over a page headed "Environment domains". The organization plane does not
- * have this class of bug precisely because it has had a test since the day it was
- * written, so the guard is the durable half of the fix, not the renames.
+ * `Console::nav()` is the plugin registry, which is the ORGANIZATION console. The
+ * environment plane and the platform section declare themselves in
+ * {@see ConsoleNavigation}, so nothing reached them and both had shipped violations: the
+ * rail said "Profile" while the tab said "Security" and the heading said "Profile &
+ * security"; the rail said "Domains" over a page headed "Environment domains". The
+ * organization console does not have this class of bug precisely because it has had a
+ * test since the day it was written, so the guard is the durable half of the fix, not
+ * the renames.
  *
  * Three assertions per page, not one: nav label === <title> === <h1>. A page can satisfy
  * any two of those and still tell a person three different things.
@@ -145,7 +145,14 @@ function assertNavEntriesMatchTheirPages(ConsoleNav $nav, string $plane): int
     return $checked;
 }
 
-it('lands every workspace nav entry on a page titled and headed the way the entry is labelled', function (): void {
+/**
+ * The Identity platform area is checked by the ORGANIZATION-console loop above, not here:
+ * its pages are in `Console::nav()` like every other console page. It gets its own sign-in
+ * because that loop's fixture is an ordinary org member, for whom every one of these
+ * pages is feature-gated off and skipped as a non-200 — so without this, the area's eight
+ * pages would be "checked" by being invisible.
+ */
+it('lands every Identity platform nav entry on a page titled the way the entry is labelled', function (): void {
     platformRootDeployment();
 
     $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
@@ -157,14 +164,30 @@ it('lands every workspace nav entry on a page titled and headed the way the entr
 
     signInAsMember($result->member);
 
-    // At its widest role: the question is "does this page name itself the way the rail
-    // names it", not "may an auditor see it".
-    $checked = assertNavEntriesMatchTheirPages(
-        app(ConsoleNavigation::class)->workspace(AccountRole::Owner),
-        'workspace',
-    );
+    $area = collect(Console::nav()->areas())->firstWhere('key', 'identity-platform');
+    $checked = 0;
 
-    expect($checked)->toBeGreaterThanOrEqual(4);
+    foreach ($area?->pages() ?? [] as $page) {
+        $response = $this->get(route($page->route));
+
+        expect($response->status())->toBe(200, "identity-platform › {$page->label}: not reachable by its owner");
+
+        $html = (string) $response->getContent();
+        $label = e($page->label);
+
+        // `toContain` is variadic in Pest, so a message passed to it reads as a second
+        // needle and the failure names the wrong thing. Assert the boolean.
+        expect(str_contains($html, '<title>'.$label.' · '))->toBeTrue(
+            "identity-platform › {$page->label}: the nav entry and the <title> disagree",
+        );
+        expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+            "identity-platform › {$page->label}: the nav entry and the <h1> disagree",
+        );
+
+        $checked++;
+    }
+
+    expect($checked)->toBe(8);
 });
 
 it('lands every environment nav entry on a page titled and headed the way the entry is labelled', function (): void {

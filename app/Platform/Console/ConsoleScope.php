@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Platform\AccountAuth;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\DatabaseAccountMembers;
+use Cbox\Id\Platform\Enums\AccountRole;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -500,6 +504,85 @@ class ConsoleScope
         $subjectId = $this->subject->check() ? $this->subject->id() : '';
 
         return $subjectId === '' ? null : $subjectId;
+    }
+
+    /**
+     * What the acting person holds on the organization they are administering, WHEN that
+     * organization owns identity providers — null otherwise.
+     *
+     * This is the predicate behind the console's IdP-ownership area, and it is asked here
+     * rather than of {@see AccountAuth} directly for the reason every other question on
+     * this class is: "who is acting, on which organization, and what may they do" has one
+     * answer per request, and the layout, the nav features and each page's own guard would
+     * otherwise be three places that could disagree about it.
+     *
+     * TWO conditions, not one. Holding an account role is not enough — the acting
+     * ORGANIZATION has to be the one that account owns. On `acme.cboxid.com` the acting
+     * organization is a tenant of somebody else's IdP, so this answers null and the area is
+     * simply absent; the same is true on the root the moment an operator switches to an
+     * organization that is not their own. Without the second condition an account owner who
+     * switched organizations would be offered their own projects and billing while the
+     * chrome named a different tenant.
+     *
+     * AN UNHOMED ACCOUNT ANSWERS NULL, and the exception that used to be here is worth
+     * naming so it is not re-added. It read: when the account has no organization there is
+     * nothing to compare against, so return the role. Its premise was true — every account
+     * created before `accounts.organization_id` existed was unhomed, and the local dev
+     * database still held two — and its stated defence was that nothing is loosened
+     * because every page in the area reads by `account_id`.
+     *
+     * That defence answers the wrong question. It is about which DATA the pages show; the
+     * two-condition rule is about where the area APPEARS. Returning the role with no
+     * comparison at all put the whole identity-platform area in the rail on every
+     * organization the person could act on, tenant hosts included — precisely the "offered
+     * their own projects and billing while the chrome named a different tenant" the
+     * paragraph above exists to prevent. It is the same collapse
+     * {@see self::organizationId()} argues against: "we do not know which organization this
+     * account owns" became "all of them".
+     *
+     * The premise is now gone rather than merely overruled. `2026_08_05_000200` in the
+     * framework homes every account that predates the column, and no reachable path
+     * creates a new unhomed one — the installer stamps the platform root inside the same
+     * transaction, BEFORE it provisions the first account, and signup only ever runs on a
+     * deployment that is already installed. So an account with no organization is a broken
+     * row, not a shape to accommodate, and the honest answer to a broken row is the closed
+     * one: the area is hidden, not offered everywhere.
+     *
+     * `AccountRole` is still the predicate rather than {@see MembershipRole},
+     * because the account member row is still where account capabilities live: the
+     * membership that places a member in the account's organization carries a NEUTRAL role
+     * on purpose ({@see DatabaseAccountMembers::attachSubject()}), so
+     * asking the membership would answer "member" for the account's owner.
+     *
+     * Resolved through the container rather than the constructor, like the operator and
+     * environment lookups above: this class is constructed directly by the tests that
+     * assert the rail's invariants, and a fourth constructor dependency buys nothing here.
+     */
+    public function accountRole(): ?AccountRole
+    {
+        $member = app(AccountAuth::class)->current();
+
+        if ($member === null) {
+            return null;
+        }
+
+        $accountOrganizationId = $member->account?->organization_id;
+
+        if (! is_string($accountOrganizationId) || $accountOrganizationId === '') {
+            return null;
+        }
+
+        $organizationId = $this->plane() === ConsolePlane::Organization
+            ? $this->subject->organizationId()
+            : $this->organizationId();
+
+        return $accountOrganizationId === $organizationId ? $member->role : null;
+    }
+
+    /** Whether the organization being administered owns identity providers of its own. */
+    public function ownsIdentityProviders(): bool
+    {
+        return $this->accountRole() !== null;
     }
 
     /** @throws AuthorizationException */

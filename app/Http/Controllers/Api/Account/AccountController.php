@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * Account plane › the account itself. Returns the account and its per-project plans —
- * the programmatic view of the workspace console's billing summary. The plan/allowance
+ * the programmatic view of the console's Billing page. The plan/allowance
  * anchors on the PROJECT (one account can own several independently-billed products),
  * so the plan block is a list of projects with each one's own environment allowance —
  * never a single account-level number, which would misreport a multi-project account.

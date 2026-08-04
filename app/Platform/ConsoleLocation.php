@@ -19,45 +19,16 @@ use Cbox\Console\Kit\Facades\Console;
  * sidebar renders from makes that class of bug unrepresentable, and a plugin's page
  * gets a correct eyebrow for free.
  *
- * Two sources, because the console has two kinds of navigation. The organization plane
+ * Two sources, because the console has two kinds of navigation. The organization console
  * is assembled at runtime from the plugin registry, so it can only be read through
- * {@see Console::nav()}. The other three planes are fixed and declared in
- * {@see ConsoleNavigation}. Until both were consulted this answered null on all 41
- * workspace, environment and operator pages — every one of them rendered with no
+ * {@see Console::nav()}. The environment plane and the platform section are fixed and
+ * declared in {@see ConsoleNavigation}. Until both were consulted this answered null on
+ * all 41 account, environment and operator pages — every one of them rendered with no
  * eyebrow at all, which is why the feature looked like it only half worked.
  */
 final readonly class ConsoleLocation
 {
     public function __construct(private ConsoleNavigation $navigation) {}
-
-    /**
-     * The PLANE a route belongs to, as the word a person would use for it — the thing
-     * a browser tab, a history entry and a bookmark are named after.
-     *
-     * The one shell serves two planes now, and its <title> said "Workspace" for both:
-     * `Environments · Workspace · Cbox ID` on a page that administers the whole install
-     * and has nothing to do with anybody's workspace. A tab strip full of platform pages
-     * all claiming to be the customer plane is the one place the merge still leaked.
-     *
-     * Asked of the same registry the rail and the eyebrow read, so a page added to the
-     * platform areas is named correctly without this method knowing about it. The route
-     * NAME is the second source, and only for what the registry cannot answer: a
-     * resource detail page (`platform.organization`) has no nav entry to be found under,
-     * and the alternative — listing every detail route in the rail so it can be looked
-     * up — would put pages in the sidebar that are not sidebar pages.
-     */
-    public function planeLabel(?string $route = null): string
-    {
-        $route = $route ?? request()->route()?->getName();
-
-        if (! is_string($route) || $route === '') {
-            return 'Workspace';
-        }
-
-        return $this->navigation->operator()->areaFor($route) !== null || str_starts_with($route, 'platform.')
-            ? 'Platform'
-            : 'Workspace';
-    }
 
     /** The label of the area owning the given route (defaults to the current one). */
     public function areaLabel(?string $route = null): ?string

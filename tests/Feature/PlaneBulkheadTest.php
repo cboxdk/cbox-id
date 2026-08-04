@@ -201,7 +201,7 @@ it('denies the operator plane when the host resolves to nothing', function (): v
  * through a three-step chain that lands in every real shape. The two disagreed, and the
  * operator console is the SAME origin as the account console by design, so:
  *
- *     GET https://cboxid.com/workspace/login   200
+ *     GET https://cboxid.com/login   200
  *     GET https://cboxid.com/operator/login    404
  *
  * The staff console had no door at all on the live deployment. It went unnoticed because

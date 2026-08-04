@@ -175,7 +175,7 @@ it('bounces an unauthenticated tenant admin to the ROOT open-environment handoff
     // No credential form on the tenant host — the admin is sent to the root's
     // "open environment" door, which authenticates once and hands off back here.
     $this->get("https://{$host}/admin/organizations")
-        ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
+        ->assertRedirect('https://cboxid.com/open/'.$envId);
 });
 
 it('sends /admin/login to the root rather than serving a door of its own', function (): void {
@@ -190,7 +190,7 @@ it('sends /admin/login to the root rather than serving a door of its own', funct
     // so the bounce below comes from the middleware rather than from a mount() that had
     // to remember to duplicate it.
     $this->get("https://{$host}/admin/login")
-        ->assertRedirect('https://cboxid.com/workspace/open/'.$envId);
+        ->assertRedirect('https://cboxid.com/open/'.$envId);
 });
 
 /**
@@ -299,17 +299,22 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     $viewer = $members->invite($account->id, 'viewer-mint@acme.example', AccountRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
+    // On the ACCOUNT HOST this fixture names. The mint used to live under `/workspace`,
+    // whose gate asked the ENVIRONMENT context — which an unmapped host resolves to the
+    // platform root, so any host reached it. It is a console route now, and `plane:console`
+    // asks the HOST by design: a sign-in served under every name pointed at us is the
+    // thing that gate exists to prevent.
+    $open = 'https://cboxid.com'.route('environment.open', $envId, absolute: false);
+
     // Viewer reaches the env but is refused the mint — 403, no handoff token issued.
     signInAsMember($viewer);
-    $this->get(route('workspace.environment.open', $envId))
-        ->assertForbidden();
+    $this->get($open)->assertForbidden();
 
     // A developer is bounced to the environment host to redeem — a redirect, not a 403.
     $dev = $members->invite($account->id, 'dev-mint@acme.example', AccountRole::Developer);
     $members->activate($dev->id, 'a-strong-unbreached-passphrase');
     signInAsMember($dev);
-    $this->get(route('workspace.environment.open', $envId))
-        ->assertRedirect();
+    $this->get($open)->assertRedirect();
 });
 
 /**

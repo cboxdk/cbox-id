@@ -20,10 +20,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Livewire;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Projects — the account's launchpad.
+ * Identity platform › Projects — the account's launchpad.
  *
  * Everything the account owns is on ONE page: each project with its environments
  * listed under it. Opening an environment's console is a single click from here, and
@@ -34,7 +35,7 @@ use Livewire\Volt\Component;
  * The project row carries only what belongs to the project (settings, the plan's seat
  * count); environment work happens on the environment rows.
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends Component
 {
     /** The project whose inline "new environment" form is open, if any. */
     public ?string $creatingIn = null;
@@ -45,6 +46,27 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
 
     /** What the last resend attempt has to say, rendered inside the banner itself. */
     public string $resendNotice = '';
+
+    /**
+     * Re-asked here, because boot() is the only hook that runs on EVERY Livewire action.
+     *
+     * A mount() guard is a page-LOAD guard: the snapshot the first render hands the
+     * browser can be replayed straight at /livewire/update, and mount() never runs again.
+     *
+     * The two answers differ, and the condition is which of them is being asked for rather
+     * than a detail of transport. Arriving at this URL — a bookmark, a stale link, an
+     * account suspended since the tab was opened — deserves somewhere to go, and mount()
+     * below sends them there. A replayed ACTION deserves nothing but a refusal: there is
+     * no page to land on, only a component being driven by somebody the console has
+     * already decided this page is not for.
+     */
+    public function boot(ConsoleScope $scope): void
+    {
+        abort_if(
+            Livewire::isLivewireRequest() && $scope->accountRole() === null,
+            403,
+        );
+    }
 
     /**
      * Re-send the signup confirmation — the only way back for an owner whose email is
@@ -63,7 +85,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
         // account can otherwise pump mail at their own inbox and burn the sending
         // reputation for everyone. Keyed on the MEMBER, not the address or the IP —
         // the caller is authenticated, so there is no cheaper key to rotate.
-        $key = 'workspace-verify-resend|'.$member->id;
+        $key = 'account-verify-resend|'.$member->id;
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $this->resendNotice = 'That is a lot of emails. Try again in '.RateLimiter::availableIn($key).' seconds, or check your spam folder in the meantime.';
@@ -131,32 +153,34 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
     }
 
     /**
-     * The console root is only a launchpad for somebody who HAS an account.
+     * This page belongs to whoever's organization owns the identity providers on it.
      *
-     * A platform operator who buys nothing on the deployment they run has no membership,
-     * so this page had nothing on it for them: a paragraph explaining what a project is,
-     * and a "Create your first project" CTA gated off by a role they do not hold — as the
-     * first screen after sign-in, for the primary operator persona. Every door into the
-     * console ends at `route('workspace.home')` (the login, the magic link, the SSO
-     * landing, email verification, the passkey ceremony), so the redirect belongs here
-     * rather than at six call sites that would each have to remember it.
+     * Everybody else is sent somewhere real rather than refused, and that is not
+     * politeness — it is the whole of what `workspace.no-access` used to be for. As a
+     * PLANE's landing page this gave two answers, and both were dead ends: a 403 for a
+     * signed-in subject with no membership, rendered on an error layout with no rail and
+     * therefore no sign-out control; and, for the operator who runs the deployment and
+     * buys nothing on it, a paragraph explaining what a project is under a CTA gated off
+     * by a role they do not hold.
      *
-     * Anyone else with no membership is nobody this plane serves — a suspended operator,
-     * or a session that outlived its member. That used to be a 403 here, which was the
-     * wrong answer for the LANDING page: {@see \App\Http\Middleware\AuthenticateAccountMember}
-     * has already established they are signed in, every door into the console ends here,
-     * and the 403 renders on an error layout with no rail and therefore no sign-out
-     * control. They were signed in with nowhere to go and no way out. `workspace.no-access`
-     * is that destination.
+     * There is no dead end left to catch. This is one page inside the one console,
+     * `/dashboard` is the console root for every signed-in subject, and it has the rail —
+     * and the sign-out — the refusal screen lacked. The operator still goes to the
+     * platform pages, because that is where their work is, not because this one refuses
+     * them.
+     *
+     * The rail already hides this page from anyone {@see ConsoleScope::accountRole()}
+     * answers null for. The guard is here as well because a rail is not an authorization
+     * check, and because a bookmark outlives a nav entry.
      */
-    public function mount(AccountAuth $auth, ConsoleScope $scope): void
+    public function mount(ConsoleScope $scope): void
     {
-        if ($auth->current() !== null) {
+        if ($scope->accountRole() !== null) {
             return;
         }
 
         $this->redirectRoute(
-            $scope->isPlatformOperator() ? 'platform.environments' : 'workspace.no-access',
+            $scope->isPlatformOperator() ? 'platform.environments' : 'dashboard',
             navigate: false,
         );
     }
@@ -265,7 +289,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
     <x-page-header title="Projects" subtitle="Each project is a separate IdP product — its own environments, sign-in, and plan.">
         @if ($canManage)
             <x-slot:actions>
-                <a href="{{ route('workspace.projects.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New project</a>
+                <a href="{{ route('projects.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New project</a>
             </x-slot:actions>
         @endif
     </x-page-header>
@@ -318,7 +342,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
                     </div>
 
                     @if ($canManage)
-                        <a href="{{ route('workspace.projects.show', $project['id']) }}"
+                        <a href="{{ route('projects.show', $project['id']) }}"
                            class="btn btn-ghost btn-sm shrink-0"
                            aria-label="Project settings for {{ $project['name'] }}"
                            title="Project settings">
@@ -339,7 +363,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
                                 <p class="mt-0.5 text-xs mono truncate" style="color:var(--faint)">{{ $env['domain'] ?? $env['slug'] }}</p>
                             </div>
 
-                            <a href="{{ route('workspace.environment.open', $env['id']) }}"
+                            <a href="{{ route('environment.open', $env['id']) }}"
                                class="btn btn-secondary btn-sm shrink-0">Open</a>
                         </li>
                     @empty
@@ -380,7 +404,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Projects'])] class ext
                 <p class="font-medium">No projects yet</p>
                 <p class="mx-auto mt-1 max-w-md text-sm" style="color:var(--muted)">A <strong>project</strong> is one product's IdP. It holds isolated <strong>environments</strong> — production and sandbox — each with its own users, keys and sign-in, and is billed on its own plan.</p>
                 @if ($canManage)
-                    <a href="{{ route('workspace.projects.create') }}" class="btn btn-primary btn-sm mt-4"><x-icon name="plus" class="w-4 h-4" /> Create your first project</a>
+                    <a href="{{ route('projects.create') }}" class="btn btn-primary btn-sm mt-4"><x-icon name="plus" class="w-4 h-4" /> Create your first project</a>
                 @endif
             </div>
         @endforelse

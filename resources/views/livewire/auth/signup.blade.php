@@ -144,7 +144,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
 
             // Account-member emails are globally unique — one email, one root login.
             if ($members->findByEmail($this->email) !== null) {
-                $this->addError('email', 'A workspace with this email already exists.');
+                $this->addError('email', 'An account with this email already exists.');
 
                 return;
             }
@@ -170,7 +170,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
                     throw $e;
                 }
 
-                $this->addError('email', 'A workspace with this email already exists.');
+                $this->addError('email', 'An account with this email already exists.');
 
                 return;
             }
@@ -193,7 +193,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             // own domain. This is the account plane's single sign-in.
             app(AccountAuth::class)->establish($result->member->id);
             session()->flash('status', 'Workspace created. Confirm your email to finish setting up your first environment.');
-            $this->redirect(route('workspace.home'), navigate: false);
+            $this->redirect(route('projects'), navigate: false);
 
             return;
         }

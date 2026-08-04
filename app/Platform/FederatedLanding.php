@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use App\Platform\Enums\AttemptOutcome;
 use Cbox\Id\Identity\Models\Session;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,76 +11,53 @@ use Illuminate\Http\Request;
 /**
  * Where an inbound federated sign-in lands once the assertion has been verified.
  *
- * Both SSO callbacks (SAML ACS, OIDC) reach the same fork, and it is a plane fork rather
- * than a credential fork. Account members are ordinary subjects in the platform-root
- * environment, so an account's SSO connection is an ordinary connection on the account's
- * organization there — the protocol half needs nothing account-specific. What differs is
- * only where a verified identity is admitted:
+ * Both SSO callbacks (SAML ACS, OIDC) reach this, and it used to fork on the plane: a
+ * tenant host signed the subject into the tenant console, the account host signed an
+ * account MEMBER into the workspace, and a subject with no membership was refused there
+ * outright. The fork is gone with the plane it forked on. Account members are ordinary
+ * subjects in the platform-root environment and an account's SSO connection is an
+ * ordinary connection on the account's organization there, so the protocol half never
+ * needed anything account-specific — and now neither does the landing: one console, one
+ * destination, and what the person owns decides what is in it.
  *
- *  - On a TENANT host the assertion signs a subject into that tenant's console.
- *  - On the ACCOUNT host it signs an account MEMBER into the workspace, and does so only
- *    if the subject actually carries an account membership. A subject with no membership
- *    is refused outright rather than being handed a subject session — the account host
- *    must never mint a credential for a plane it does not serve.
+ * The refusal that went with the fork is gone for the same reason and is not a hole. It
+ * said "a subject with no account membership must not be admitted HERE", which was a
+ * statement about a plane that no longer exists; the root is a tenant, and a subject of
+ * it signing in is an ordinary sign-in. What their organization owns is asked by
+ * {@see Console\ConsoleScope::accountRole()} on every page that depends on it.
  *
  * See docs/core-concepts/unified-account-identity.md.
  */
 final class FederatedLanding
 {
-    public function __construct(
-        private readonly AccountAuth $accounts,
-        private readonly PlatformAuth $platform,
-        private readonly PlaneResolver $planes,
-    ) {}
+    public function __construct(private readonly PlatformAuth $platform) {}
 
     public function land(Request $request, Session $session): RedirectResponse
     {
-        if (! $this->planes->onAccountPlane()) {
-            // adopt() turns an already-started framework session into the browser
-            // cookie, rotating the session id against fixation.
-            $this->platform->adopt($request, $session);
+        // adopt() turns an already-started framework session into the browser cookie,
+        // rotating the session id against fixation.
+        $this->platform->adopt($request, $session);
 
-            return redirect()->intended(route('dashboard'));
-        }
-
-        // adoptFederated, not the local variant: this IS the door an SSO mandate points
-        // at, and it is the one landing that must not consult the mandate.
-        return match ($this->accounts->adoptFederated($session)) {
-            AttemptOutcome::Ok => redirect()->intended(route('workspace.home')),
-            // A second factor enrolled on the account plane still stands: federating in
-            // must not be a way around a factor the member deliberately added.
-            AttemptOutcome::Mfa => redirect()->route('workspace.login.mfa'),
-            default => $this->failed('That single sign-on identity is not a member of any workspace.'),
-        };
+        return redirect()->intended(route('dashboard'));
     }
 
     /**
      * Where an inbound federated sign-in lands when it FAILS.
      *
-     * The same plane fork as {@see land()}, and it lives here for that reason. Both SSO
-     * callbacks used to inline `route('login')` on their error branch — but `/login` was
-     * withheld from the platform root, so on the account host every failure rendered a
-     * bare 404. That is a worse failure than a lockout: it happens AFTER a successful
-     * authentication at the IdP, so the user has every reason to believe SSO worked and no
-     * way to learn it did not. The callbacks themselves are deliberately NOT plane-gated
-     * (an account org federates on the root host), which is exactly what made the error
-     * branch reachable there while the success branch had already been taught to fork.
+     * Kept beside {@see land()} rather than inlined at each callback, which is where it
+     * started: both of them wrote `route('login')` on their error branch while `/login`
+     * was withheld from the platform root, so on that host every failure rendered a bare
+     * 404. That is a worse failure than a lockout — it happens AFTER a successful
+     * authentication at the IdP, so the person has every reason to believe SSO worked and
+     * no way to learn it did not.
      *
-     * `/login` is served on the root now (`plane:console`), so the fork is no longer what
-     * stands between this branch and a 404. It stays because the destination still has to
-     * be the door the person came IN by: somebody who started at `/workspace/login` and
-     * failed belongs back there, with their account context, not on the tenant sign-in of
-     * a console they were not using.
-     *
-     * `email` is the error-bag key on purpose: it is the field BOTH sign-in screens
-     * render. The callbacks previously used `identifier`, which no view reads — so the
-     * message was silently dropped on the subject plane too, and the user was returned to
-     * a blank sign-in form with no indication of what had gone wrong.
+     * `email` is the error-bag key on purpose: it is the field the sign-in screen renders.
+     * The callbacks previously used `identifier`, which no view reads, so the message was
+     * silently dropped and the user was returned to a blank form with no indication of
+     * what had gone wrong.
      */
     public function failed(string $message): RedirectResponse
     {
-        $route = $this->planes->onAccountPlane() ? 'workspace.login' : 'login';
-
-        return redirect()->route($route)->withErrors(['email' => $message]);
+        return redirect()->route('login')->withErrors(['email' => $message]);
     }
 }

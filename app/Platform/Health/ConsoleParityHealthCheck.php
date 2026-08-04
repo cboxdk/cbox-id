@@ -15,7 +15,9 @@ use Illuminate\Support\Facades\Route;
  *
  * An administrator of the root account and an administrator of a tenant IdP are meant to
  * see the same console. The difference is what root holds IN ADDITION — provisioning
- * workspaces and IdPs, and billing — not a different product.
+ * accounts and IdPs, and billing — not a different product. Both halves of that sentence
+ * are measured here now: the pairs below say what must be the SAME, and
+ * {@see ORGANIZATION_ONLY} says what must be the difference.
  *
  * They drifted anyway, because the console was built twice: thirteen capabilities with an
  * organization-plane component and an environment-plane component each, and no way to
@@ -78,12 +80,53 @@ class ConsoleParityHealthCheck implements HealthCheck
         'Sign-in rules' => ['auth-policy', 'environment.auth-policy'],
     ];
 
+    /**
+     * The capabilities that are the difference, and must therefore exist on exactly ONE
+     * plane.
+     *
+     * The pairs above measure sameness. This measures the sentence in this class's own
+     * docblock — "the difference is what root holds IN ADDITION" — which until now nothing
+     * checked, so the difference could have drifted in either direction without a word:
+     * an Identity platform page routed on the environment plane would offer a tenant
+     * administrator somebody else's billing, and one that stopped being routed on the
+     * organization plane would take an account's own projects away with nothing saying so.
+     *
+     * Named without a prefix on purpose. These are ordinary organization-console routes —
+     * they came from a console of their own and are not one any more — and inventing a
+     * prefix for them here is how a list like this ends up describing a plane that no
+     * longer exists.
+     *
+     * @var list<string>
+     */
+    private const ORGANIZATION_ONLY = [
+        'projects',
+        'account-members',
+        'api-keys',
+        'environment-keys',
+        'environment-domains',
+        'account-activity',
+        'billing',
+        'account-settings',
+    ];
+
     public function __construct(private readonly ConsolePages $pages) {}
 
     public function run(): array
     {
         $missing = [];
         $components = $this->componentsByRouteName();
+
+        foreach (self::ORGANIZATION_ONLY as $route) {
+            if (! Route::has($route)) {
+                $missing[] = $route.' — the organization console no longer serves it';
+            }
+
+            if (Route::has('environment.'.$route)) {
+                $missing[] = $route.' — routed on the environment plane, which administers'
+                    .' ONE environment on behalf of an account and has no business offering'
+                    .' that account\'s own projects, keys or billing';
+            }
+        }
 
         foreach (self::PAIRS as $capability => [$organizationRoute, $environmentRoute]) {
             $onOrganization = Route::has($organizationRoute);
@@ -162,10 +205,11 @@ class ConsoleParityHealthCheck implements HealthCheck
             return [HealthResult::ok(
                 'Console parity',
                 sprintf(
-                    '%d capabilities and %d module pages reachable on both planes (%d declared single-plane)',
+                    '%d capabilities and %d module pages reachable on both planes (%d declared single-plane); %d Identity platform pages on the organization plane alone',
                     count(self::PAIRS),
                     $both,
                     $singlePlane,
+                    count(self::ORGANIZATION_ONLY),
                 ),
             )];
         }

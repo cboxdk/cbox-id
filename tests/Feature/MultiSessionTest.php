@@ -103,7 +103,7 @@ it('logs out of every account with logoutAll', function (): void {
 /**
  * A step-up window belongs to the identity that cleared it, and to no other.
  *
- * `Sudo` and `WorkspaceSudo` store a bare timestamp under one global session key — no
+ * `Sudo` stores a bare timestamp under one global session key — no
  * subject, no member, no session id — and `regenerate()` rotates the session id while
  * KEEPING the data. So any transition that hands the session to a different person and
  * only regenerates has, mechanically, handed over the elevation too.

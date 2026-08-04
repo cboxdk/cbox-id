@@ -63,7 +63,7 @@ final class MemberController extends Controller
         // MailLinks, not URL:: — the console invite and this one mint the SAME link, so
         // they mint it the same way (see that class); an API caller's Host is no more
         // trustworthy than a browser's.
-        $url = $links->temporarySignedRoute('workspace.invite.accept', now()->addDays(7), ['member' => $invited->id]);
+        $url = $links->temporarySignedRoute('account.invite.accept', now()->addDays(7), ['member' => $invited->id]);
         Mail::to($invited->email)->send(new AccountInviteMail(
             account: $account->name,
             inviter: $key->name,

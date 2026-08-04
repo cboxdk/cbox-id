@@ -111,7 +111,7 @@ final class ImpersonationController extends Controller
      * impersonating belongs to. The caller's own console is the honest landing.
      *
      * Deliberately not a cross-host redirect to the tenant's own console either. The
-     * session is host-scoped — {@see WorkspaceController::openEnvironment()} mints a signed
+     * session is host-scoped — {@see EnvironmentHandoffController::openEnvironment()} mints a signed
      * handoff token precisely because a session does not travel between hosts — so bouncing
      * there would land an operator with no session at all, which is the same dead end
      * wearing a different hostname. They stay where they are, where the banner and its Exit

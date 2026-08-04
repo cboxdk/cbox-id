@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\AuthenticateAccountMember;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
@@ -17,7 +16,6 @@ use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireSudo;
-use App\Http\Middleware\RequireWorkspaceSudo;
 use App\Http\Middleware\TargetEnvironment;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\AccountAuth;
@@ -68,12 +66,12 @@ final class PlatformServiceProvider extends ServiceProvider
         // it lets current() memoise instead of re-running ~3 identity queries per call.
         $this->app->scoped(EnvironmentAdminAuth::class);
 
-        // …and its sibling on the account plane, which was left out of that refactor. It
-        // is asked by the workspace gate, the layout and every component boot() exactly as
-        // the environment one is, and each ask crosses into the platform root for the
-        // member row and its account: measured at four resolutions on /workspace and nine
-        // on /workspace/activity. Without the `scoped` binding the memo it now carries
-        // would never be hit, because every app() call would build a new object.
+        // …and its sibling for account membership, which was left out of that refactor. It
+        // is asked by ConsoleScope, the rail's feature gates and every Identity platform
+        // page's own guard, and each ask crosses into the platform root for the member row
+        // and its account: measured at four resolutions on the projects page and nine on
+        // the activity one. Without the `scoped` binding the memo it now carries would
+        // never be hit, because every app() call would build a new object.
         $this->app->scoped(AccountAuth::class);
 
         // Replace the framework's deliberately-inert breach check with the real HIBP
@@ -198,12 +196,13 @@ final class PlatformServiceProvider extends ServiceProvider
             // The guest Admin Portal setup screen is Livewire too — keep its
             // scoped-session guard on every /livewire/update, not just first load.
             PortalSession::class,
-            // The environment control plane and the account plane are Livewire consoles:
-            // without these, their actions answered unauthenticated. The snapshot checksum
-            // is keyed on APP_KEY — identical on every tenant host — so a snapshot captured
-            // in one tenant could be replayed against another tenant's host.
+            // The environment control plane is a Livewire console: without this, its
+            // actions answered unauthenticated. The snapshot checksum is keyed on APP_KEY —
+            // identical on every tenant host — so a snapshot captured in one tenant could
+            // be replayed against another tenant's host. The account pages that used to
+            // need their own gate here are pages of the one console now, behind the
+            // subject session `platform.auth` already persists.
             AuthenticateEnvironmentAdmin::class,
-            AuthenticateAccountMember::class,
             // Plane bulkheads and the step-up gate must hold per action too, or a retained
             // snapshot bypasses sudo permanently once confirmed.
             EnforcePlane::class,
@@ -215,7 +214,6 @@ final class PlatformServiceProvider extends ServiceProvider
             // The env-admin session gate refuses that too — this keeps the two independent.
             RequireMultiTenant::class,
             RequireSudo::class,
-            RequireWorkspaceSudo::class,
             RequireEnvironmentSudo::class,
             // Keeps the "an impersonator cannot plant persistence" property true for
             // component actions, not just full page loads.

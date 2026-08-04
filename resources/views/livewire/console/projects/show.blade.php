@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\AccountActivity;
 use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\AccountProvisioner;
@@ -16,7 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Workspace › Project — one IdP product's detail: its environments (each opening to
+ * Identity platform › Project — one IdP product's detail: its environments (each opening to
  * its own admin console via a signed handoff) and its plan. Creating environments
  * respects THIS project's plan allowance; the project is the billing anchor, so a
  * member can run several products under one login, billed separately.
@@ -24,7 +25,7 @@ use Livewire\Volt\Component;
  * Access is re-checked here: the project must belong to the member's account, and
  * the member must be able to reach it (all-access, or at least one env in it).
  */
-new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Component
 {
     public string $projectId = '';
 
@@ -33,6 +34,18 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
     public string $newEnvironmentType = 'production';
 
     public string $editName = '';
+
+    /**
+     * Re-asked in boot(), which is the only hook that runs on EVERY Livewire action.
+     *
+     * A mount() guard is a page-load guard: the snapshot the first render hands the
+     * browser can be replayed straight at /livewire/update, and mount() never runs again.
+     * The scope is what decides this page exists at all, so it is what has to be re-asked.
+     */
+    public function boot(ConsoleScope $scope): void
+    {
+        abort_unless($scope->accountRole() !== null, 403);
+    }
 
     public function mount(string $project, AccountAuth $auth, AccountMembers $members): void
     {
@@ -168,7 +181,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
 
 <div class="space-y-6">
     <div>
-        <a href="{{ route('workspace.home') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Projects</a>
+        <a href="{{ route('projects') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Projects</a>
         <div class="mt-2 flex items-center gap-3 flex-wrap">
             <h1 class="font-semibold tracking-tight" style="font-size:1.5rem">{{ $project->name }}</h1>
             <span class="badge">{{ $project->status }}</span>
@@ -204,7 +217,7 @@ new #[Layout('components.layouts.workspace', ['title' => 'Project'])] class exte
                         </div>
                         <a href="{{ $url }}" target="_blank" rel="noopener" class="mt-1 block text-sm truncate underline underline-offset-2" style="color:var(--accent-strong)">{{ $url }}</a>
                     </div>
-                    <a href="{{ route('workspace.environment.open', $environment->id) }}" class="btn btn-primary btn-sm shrink-0">Open ↗</a>
+                    <a href="{{ route('environment.open', $environment->id) }}" class="btn btn-primary btn-sm shrink-0">Open ↗</a>
                 </div>
             @empty
                 <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No environments yet</h3><p>Create an environment below to start issuing keys and sign-ins.</p></div>

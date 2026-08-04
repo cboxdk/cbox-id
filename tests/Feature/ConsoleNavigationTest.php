@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 use App\Platform\ConsoleLocation;
 use App\Platform\Navigation\ConsoleNavigation;
+use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+
+uses(RefreshDatabase::class);
 
 /**
  * A nav entry pointing at a route that does not exist throws on EVERY page of that
@@ -44,42 +51,52 @@ it('gives every area within a plane a distinct label', function (): void {
 });
 
 /**
- * The workspace nav is the one that varies by role, and the failure it guards against
- * is not a crash: a Viewer seeing a Billing link gets a page they cannot open, and an
- * area emptied by role filtering would render a rail icon leading nowhere.
+ * The Identity platform area is the one that varies by role, and it varies through the
+ * console-kit FEATURE registry rather than through this class — the account console it
+ * came from is gone, and its pages are pages of the one console now.
+ *
+ * The failure guarded against is unchanged and is not a crash: a Viewer offered a
+ * Billing link gets a page they cannot open, and an area emptied by role filtering would
+ * render a rail icon leading nowhere. What changed is where the answer comes from, so
+ * this asks the registry the rail actually reads.
  */
-it('hides what a role may not see, and drops an area left empty', function (): void {
-    $navigation = new ConsoleNavigation;
+it('hides what an account role may not see, and drops the area when it holds nothing', function (): void {
+    platformRootDeployment();
 
-    $ownerRoutes = $navigation->workspace(AccountRole::Owner)->routes();
-    $viewerRoutes = $navigation->workspace(AccountRole::Viewer)->routes();
+    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        accountName: 'Acme',
+        ownerEmail: 'nav-owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
 
-    expect($ownerRoutes)->toContain('workspace.billing')
-        ->and($ownerRoutes)->toContain('workspace.settings')
-        ->and($viewerRoutes)->not->toContain('workspace.settings')
-        ->and($viewerRoutes)->not->toContain('workspace.api-keys');
+    $area = collect(Console::nav()->areas())->firstWhere('key', 'identity-platform');
+    $pages = fn (): array => collect($area?->pages() ?? [])
+        ->filter(fn ($page): bool => $page->feature === null || Console::featureActive($page->feature))
+        ->map(fn ($page): string => $page->route)
+        ->values()->all();
 
-    // Whatever the role, no area survives with nothing in it.
-    foreach (AccountRole::cases() as $role) {
-        foreach ($navigation->workspace($role)->areas as $area) {
-            expect($area->pages)->not->toBe([], "{$role->value} sees an empty '{$area->label}' area");
-        }
-    }
+    // NOBODY SIGNED IN is not "a member with no permissions" — it is no account at all,
+    // which is every organization on every host except the root's own. Every page here is
+    // about an account, so the area holds nothing and the rail drops it. The account
+    // console used to keep two pages in that state and both were dead ends: Projects
+    // explained what a project is and gated its only CTA off, Profile rendered a form
+    // bound to nobody.
+    expect($pages())->toBe([]);
 
-    // A NULL role is no member at all — a platform operator who buys nothing on the
-    // deployment they run. It used to keep Overview › Projects and Personal › Profile,
-    // and both were dead: Projects explained what a project is and gated its only CTA
-    // off, Profile rendered a form bound to nobody whose Enable button walked through
-    // the step-up and landed on the signed-out screen. Every area here is about an
-    // account, so with no membership there is no workspace area — the rail such a person
-    // sees is the platform one, which ConsoleScope adds above these.
-    expect($navigation->workspace(null)->routes())->toBe([]);
+    signInAsMember($result->member);
+    expect($pages())->toContain('billing')
+        ->and($pages())->toContain('account-settings')
+        ->and($pages())->toContain('api-keys');
 
-    // …and the shell must survive that rather than fataling on areas[0]. This is the
-    // whole plane's rail: a 500 here is a 500 on every page of it.
-    expect($navigation->workspace(null)->currentArea()->pages)->toBe([])
-        ->and($navigation->workspace(null)->rail())->toBe([])
-        ->and($navigation->workspace(null)->subnav())->toBe([]);
+    // A Viewer reads the roster and the bill and changes nothing.
+    app(AccountMembers::class)->setRole($result->member->id, AccountRole::Viewer);
+    nextRequest();
+    signInAsMember($result->member->refresh());
+
+    expect($pages())->toContain('billing')
+        ->and($pages())->not->toContain('account-settings')
+        ->and($pages())->not->toContain('api-keys');
 });
 
 /**
@@ -93,7 +110,7 @@ it('claims a page detail route without claiming its prefix siblings', function (
     expect($nav->areaFor('environment.audit')?->label)->toBe('Logs')
         ->and($nav->areaFor('environment.audit.show')?->label)->toBe('Logs')
         ->and($nav->areaFor('environment.users.show')?->label)->toBe('People')
-        ->and($nav->areaFor('workspace.billing'))->toBeNull();
+        ->and($nav->areaFor('billing'))->toBeNull();
 
     $audit = $nav->areaFor('environment.audit');
     $pages = array_values(array_filter($audit?->pages ?? [], fn ($page): bool => $page->owns('environment.audit-streams')));
@@ -105,15 +122,16 @@ it('claims a page detail route without claiming its prefix siblings', function (
 /**
  * The eyebrow above a page title is the one label whose entire job is telling you where
  * you are. It resolved from the organization console's plugin registry only, so on all
- * 41 workspace, environment and operator pages it answered null and the eyebrow simply
- * did not render — the orientation feature looked half-built because on three planes out
- * of four it was.
+ * 41 account, environment and operator pages it answered null and the eyebrow simply did
+ * not render — the orientation feature looked half-built because on three planes out of
+ * four it was. Both sources are asked now, which is what lets an Identity platform page
+ * (registry) and an environment page (this class) each be placed by the same call.
  */
 it('knows where every page in every plane sits', function (): void {
     $location = app(ConsoleLocation::class);
 
-    expect($location->areaLabel('workspace.billing'))->toBe('Account')
-        ->and($location->areaLabel('workspace.security'))->toBe('Personal')
+    expect($location->areaLabel('billing'))->toBe('Identity platform')
+        ->and($location->areaLabel('account'))->toBe('My account')
         ->and($location->areaLabel('environment.connections'))->toBe('Sign-in')
         ->and($location->areaLabel('environment.users.show'))->toBe('People')
         ->and($location->areaLabel('platform.usage'))->toBe('Insights')

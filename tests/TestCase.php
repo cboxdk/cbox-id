@@ -10,11 +10,13 @@ use Cbox\Risk\Contracts\MailDomainResolver;
 use Cbox\Risk\Contracts\TorExitNodes;
 use Cbox\Risk\Testing\FakeMailDomainResolver;
 use Cbox\Risk\Testing\FakeTorExitNodes;
+use Cbox\Ssrf\Contracts\Resolver;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\ApiContract;
+use Tests\Support\FixedDns;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -73,6 +75,29 @@ abstract class TestCase extends BaseTestCase
         // Keep risk-scoring DNS/Tor lookups offline and deterministic in tests.
         $this->app->instance(MailDomainResolver::class, new FakeMailDomainResolver);
         $this->app->instance(TorExitNodes::class, new FakeTorExitNodes);
+
+        // The URL guards are PINNED ON, and their DNS is answered by the suite rather
+        // than by the machine — for the same reason tenancy is pinned above, with the
+        // same history behind it.
+        //
+        // Each of these four defaults to true, and each makes the SSRF guard resolve a
+        // hostname before an outbound URL may be stored. Every host the suite invents is
+        // fictional, so the honest outcome is refusal — which is what CI reported, on all
+        // four engines, against a local run of 1479 passing. The difference was one line
+        // in a developer's `.env` turning the webhook guard off; the tests around it had
+        // been asserting nothing for as long as that line had been there.
+        //
+        // Turning the flag off in the suite would have made CI agree and kept the guard
+        // untested. Stating the flags here and binding {@see FixedDns} instead means the
+        // guard runs its real logic everywhere, against an answer a test can state.
+        config([
+            'cbox-id.webhooks.verify_url' => true,
+            'cbox-id.provisioning.verify_url' => true,
+            'cbox-id.federation.verify_url' => true,
+            'cbox-id.external_actions.verify_url' => true,
+        ]);
+
+        $this->app->instance(Resolver::class, new FixedDns);
 
         // The password policy is enforced at the credential primitive, so EVERY test
         // that creates a subject would otherwise reach out to HaveIBeenPwned — slow,
