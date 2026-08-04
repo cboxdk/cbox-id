@@ -97,9 +97,14 @@ it('will not remove another tenant provider by id', function (): void {
     [, $mine] = actingAsRole(MembershipRole::Owner);
     $theirs = enableProvider('someone-elses-org', 'github');
 
-    // byId() is not tenant-scoped on its own, so the page scopes it. Without that, an
-    // id is all it would take to switch off another organization's sign-in.
-    Volt::test('social-providers')->call('disable', $theirs);
+    // The organization is in the QUERY. `byId()` resolves on the primary key alone, so
+    // an id used to be all it would take to switch off another organization's sign-in —
+    // fenced, until this fix, only by a comparison after the fetch.
+    //
+    // 404, not 403: another tenant's provider is not a button this administrator is
+    // failing to press, it is a row they have no business learning exists. Same refusal
+    // the rest of the console gives for a deep link into somebody else's data.
+    Volt::test('social-providers')->call('disable', $theirs)->assertStatus(404);
 
     expect(app(Connections::class)->byId($theirs))->not->toBeNull()
         ->and(app(Connections::class)->catalogueProvidersFor($mine->id))->toBe([]);

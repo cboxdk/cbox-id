@@ -239,6 +239,104 @@ it('scopes a member to specific environments via the access editor', function ()
     expect($members->accessibleEnvironmentIds($members->find($dev->id)))->toBe([$staging->id]);
 });
 
+/*
+|--------------------------------------------------------------------------
+| The account fence on the roster's write actions
+|--------------------------------------------------------------------------
+|
+| `AccountMember` carries no global scope and `AccountMembers::find()` is
+| deliberately global — it is what answers "which account is this person on" at
+| the root — so every one of these actions used to resolve its target across
+| every account on the install and fence it with an `if` afterwards. The
+| comparison held, but it is the shape that shipped a cross-organization IDOR on
+| /governance/{campaign}: a page that resolves on the primary key and re-checks
+| after. The account id belongs in the query.
+|
+| Each action gets its own deep link because each is its own entry point: they
+| share a resolver TODAY, and a test per action is what notices when one of them
+| stops using it.
+*/
+
+/** An admin of Acme, and a Developer on a rival account they may not touch. */
+function aRivalAccountsMember(): AccountMember
+{
+    $rival = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        accountName: 'Rival',
+        ownerEmail: 'owner@rival.example',
+        ownerName: 'Rival Owner',
+        ownerPassword: 'another-strong-passphrase',
+    ));
+
+    // A Developer rather than the rival's owner: the owner rule would refuse this target
+    // even with the fence removed, and the test would pass for the wrong reason.
+    return memberWithRole($rival->account->id, AccountRole::Developer, 'dev@rival.example');
+}
+
+it('404s a role change aimed at another account member', function (): void {
+    ['member' => $owner] = provisionAccount();
+    $theirs = aRivalAccountsMember();
+    signInAsMember($owner);
+
+    Volt::test('workspace.members')
+        ->call('changeRole', $theirs->id, AccountRole::Admin->value)
+        ->assertStatus(404);
+
+    expect(app(AccountMembers::class)->find($theirs->id)->role)->toBe(AccountRole::Developer);
+})->group('security');
+
+it('404s a member removal aimed at another account', function (): void {
+    ['member' => $owner] = provisionAccount();
+    $theirs = aRivalAccountsMember();
+    signInAsMember($owner);
+
+    Volt::test('workspace.members')->call('removeMember', $theirs->id)->assertStatus(404);
+
+    expect(app(AccountMembers::class)->find($theirs->id))->not->toBeNull();
+})->group('security');
+
+it('404s an environment-access edit aimed at another account', function (): void {
+    ['member' => $owner] = provisionAccount();
+    $theirs = aRivalAccountsMember();
+    signInAsMember($owner);
+
+    // The READ half. It opened the editor on somebody else's member and disclosed which
+    // environments they reach.
+    Volt::test('workspace.members')->call('manageAccess', $theirs->id)->assertStatus(404);
+})->group('security');
+
+it('404s an environment-access SAVE aimed at another account', function (): void {
+    ['member' => $owner, 'project' => $project] = provisionAccount();
+    $mine = app(AccountProvisioner::class)->addEnvironment($project, 'Staging');
+    $theirs = aRivalAccountsMember();
+    signInAsMember($owner);
+
+    // `editingAccessFor` is an ordinary public property, so the client sets it — the
+    // write half never had to go through `manageAccess()` at all.
+    Volt::test('workspace.members')
+        ->set('editingAccessFor', $theirs->id)
+        ->set('accessAll', false)
+        ->set('accessEnvIds', [$mine->id])
+        ->call('saveAccess')
+        ->assertStatus(404);
+
+    $members = app(AccountMembers::class);
+    expect($members->find($theirs->id)->all_environments)->toBeTrue();
+})->group('security');
+
+it('404s an ownership transfer aimed at another account', function (): void {
+    ['account' => $account, 'member' => $owner] = provisionAccount();
+    $theirs = aRivalAccountsMember();
+    signInAsMember($owner);
+
+    Volt::test('workspace.members')->call('makeOwner', $theirs->id)->assertStatus(404);
+
+    $members = app(AccountMembers::class);
+    expect($members->find($theirs->id)->role)->toBe(AccountRole::Developer)
+        // …and this account still has the owner it started with.
+        ->and($members->find($owner->id)->role)->toBe(AccountRole::Owner)
+        ->and($members->find($theirs->id)->account_id)->not->toBe($account->id);
+})->group('security');
+
 it('renames the account from settings and redirects non-managers', function (): void {
     ['account' => $account, 'member' => $owner] = provisionAccount();
     signInAsMember($owner);

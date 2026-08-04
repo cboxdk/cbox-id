@@ -198,17 +198,22 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
         session()->flash('status', $template->name.' is now offered on your sign-in page.');
     }
 
-    public function disable(Connections $connections, string $connectionId): void
+    public function disable(string $connectionId): void
     {
         $this->authorizeAdmin();
 
-        $connection = $connections->byId($connectionId);
+        // The organization is in the QUERY, not in an `if` after it. `Connections::byId()`
+        // resolves on the primary key alone, and this used to fetch that way and compare
+        // the owner afterwards — the same shape that shipped a cross-organization IDOR on
+        // /governance/{campaign}. 404 rather than a silent return: another tenant's
+        // provider is not a button this administrator is failing to press, it is a row
+        // they have no business learning exists.
+        $connection = Connection::query()
+            ->whereKey($connectionId)
+            ->where('organization_id', $this->requireOrgId())
+            ->first();
 
-        // Scoped to the acting organization. byId() is not tenant-scoped on its own, so
-        // without this an admin could disable another tenant's provider by id.
-        if ($connection === null || $connection->organization_id !== $this->requireOrgId()) {
-            return;
-        }
+        abort_if($connection === null, 404);
 
         $name = $connection->name;
         $connection->delete();

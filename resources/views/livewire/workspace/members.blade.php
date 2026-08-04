@@ -92,36 +92,41 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
         $this->dispatch('toast', message: 'Invitation sent to '.$invited->email.'.');
     }
 
-    public function changeRole(string $memberId, string $role, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
+    public function changeRole(string $memberId, string $role, AccountAuth $auth, AccountActivity $activity, AccountMembers $members): void
     {
         $current = $auth->current();
-        $target = $this->manageableTarget($memberId, $auth, $members);
+        $target = $this->manageableTarget($memberId, $auth);
         $next = AccountRole::tryFrom($role);
 
         if ($current === null || $target === null || $next === null || ! in_array($next, AccountRole::assignable(), true)) {
             return;
         }
 
-        $members->setRole($memberId, $next);
+        // $target->id, not $memberId. Identical values today, and deliberately the
+        // resolved one: the service takes a bare id and does its own global lookup, so
+        // the only thing tying the write to this account is that the id came out of the
+        // fenced query above.
+        $members->setRole($target->id, $next);
 
         $activity->record($current->account_id, 'account.member_role_changed', $auth->id(),
-            targetType: 'account_member', targetId: $memberId,
+            targetType: 'account_member', targetId: $target->id,
             context: ['role' => $next->value], request: request());
 
         $this->dispatch('toast', message: 'Role updated.');
     }
 
-    public function removeMember(string $memberId, AccountAuth $auth, AccountMembers $members, AccountActivity $activity): void
+    public function removeMember(string $memberId, AccountAuth $auth, AccountActivity $activity, AccountMembers $members): void
     {
         $current = $auth->current();
+        $target = $this->manageableTarget($memberId, $auth);
 
-        if ($current === null || $this->manageableTarget($memberId, $auth, $members) === null) {
+        if ($current === null || $target === null) {
             return;
         }
 
-        if ($members->remove($memberId)) {
+        if ($members->remove($target->id)) {
             $activity->record($current->account_id, 'account.member_removed', $auth->id(),
-                targetType: 'account_member', targetId: $memberId, request: request());
+                targetType: 'account_member', targetId: $target->id, request: request());
 
             $this->dispatch('toast', message: 'Member removed.');
         }
@@ -136,25 +141,21 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
             return;
         }
 
-        $target = $members->find($memberId);
+        $target = $this->resolve($memberId, $current->account_id);
 
-        if ($target === null || $target->account_id !== $current->account_id) {
-            return;
-        }
-
-        $members->transferOwnership($current->account_id, $memberId);
+        $members->transferOwnership($current->account_id, $target->id);
         $this->dispatch('toast', message: 'Ownership transferred to '.($target->name ?? $target->email).'.');
     }
 
-    public function manageAccess(string $memberId, AccountAuth $auth, AccountMembers $members): void
+    public function manageAccess(string $memberId, AccountAuth $auth): void
     {
-        $target = $this->manageableTarget($memberId, $auth, $members);
+        $target = $this->manageableTarget($memberId, $auth);
 
         if ($target === null || ! $target->role->supportsEnvironmentScoping()) {
             return;
         }
 
-        $this->editingAccessFor = $memberId;
+        $this->editingAccessFor = $target->id;
         $this->accessAll = $target->all_environments;
 
         /** @var list<string> $envIds */
@@ -164,11 +165,17 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
 
     public function saveAccess(AccountAuth $auth, AccountMembers $members): void
     {
-        if ($this->editingAccessFor === null || $this->manageableTarget($this->editingAccessFor, $auth, $members) === null) {
+        if ($this->editingAccessFor === null) {
             return;
         }
 
-        $members->setEnvironmentAccess($this->editingAccessFor, $this->accessAll, $this->accessEnvIds);
+        $target = $this->manageableTarget($this->editingAccessFor, $auth);
+
+        if ($target === null) {
+            return;
+        }
+
+        $members->setEnvironmentAccess($target->id, $this->accessAll, $this->accessEnvIds);
         $this->editingAccessFor = null;
         $this->dispatch('toast', message: 'Environment access updated.');
     }
@@ -179,19 +186,54 @@ new #[Layout('components.layouts.workspace', ['title' => 'Members'])] class exte
     }
 
     /** The target member IF the current member may manage it (not self, not the owner). */
-    private function manageableTarget(string $memberId, AccountAuth $auth, AccountMembers $members): ?AccountMember
+    private function manageableTarget(string $memberId, AccountAuth $auth): ?AccountMember
     {
         $current = $auth->current();
 
+        // Asked BEFORE the account fence, and answered silently: a member who may read
+        // the roster but not manage it, or one naming themselves, is looking at a person
+        // they can genuinely see. A 404 there would deny the existence of a row rendered
+        // three lines above it on the same page.
         if ($current === null || ! $current->role->canManageMembers() || $memberId === $current->id) {
             return null;
         }
 
-        $target = $members->find($memberId);
+        $target = $this->resolve($memberId, $current->account_id);
 
-        if ($target === null || $target->account_id !== $current->account_id || $target->role === AccountRole::Owner) {
-            return null;
-        }
+        return $target->role === AccountRole::Owner ? null : $target;
+    }
+
+    /**
+     * The named member WITHIN this account, or 404.
+     *
+     * The account id is in the QUERY. `AccountMembers::find()` is deliberately global —
+     * it is what resolves "which account is this person on" at the root — so a lookup on
+     * the primary key alone spans every account on the install, and what stood between
+     * an admin of one account and a member of another was an `if` afterwards. That
+     * comparison did hold, but it is the same shape that shipped a cross-organization
+     * IDOR on /governance/{campaign}: the predicate has to be in the query, or the next
+     * caller added to the file is one that forgets to re-check.
+     *
+     * The FENCE STAYS HERE rather than moving into {@see AccountMembers}. That interface
+     * is the root's answer to "which account is this email/subject on" — a question you
+     * ask precisely because you do not have an account id yet — so an `$accountId`
+     * parameter on `setRole()`/`remove()`/`setEnvironmentAccess()` would be a second copy
+     * of this boundary in the one layer that cannot own it, and would still be taking the
+     * value from the same caller. What the service is owed instead is an id it can trust,
+     * which is why every call below passes `$target->id` and not the string off the wire.
+     *
+     * 404, not 403 — consistent with the rest of the console. A member of somebody
+     * else's account is not a permission this person lacks; it is a row they have no
+     * business learning exists.
+     */
+    private function resolve(string $memberId, string $accountId): AccountMember
+    {
+        $target = AccountMember::query()
+            ->whereKey($memberId)
+            ->where('account_id', $accountId)
+            ->first();
+
+        abort_if($target === null, 404);
 
         return $target;
     }
