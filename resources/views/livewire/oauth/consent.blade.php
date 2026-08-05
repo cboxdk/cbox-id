@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
-use Cbox\Id\Identity\Contracts\PasswordExpiry;
-use Cbox\Id\Identity\Contracts\MfaMandate;
-use Cbox\Id\Identity\Contracts\AdminPasswords;
 use App\Platform\Impersonation;
 use App\Platform\OrganizationAccess;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\MfaMandate;
+use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationCodes;
@@ -465,6 +465,14 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             // carried as a string and never filtered out as falsy.
             'max_age' => $this->maxAge !== null ? (string) $this->maxAge : null,
             'acr_values' => $this->acrValues,
+            // RFC 8707. Dropped here until now, which quietly un-did the confused-deputy
+            // fix the token endpoint documents: a code minted on the way back from the
+            // sign-in carried `resource = null`, so the binding check there — guarded on
+            // `$grant->resource !== null` — no-opped, and the client's own value at
+            // REDEMPTION time was taken instead. Every first login, `prompt=login`,
+            // `select_account` and step-up round trip took that path; only the PAR route
+            // was safe, because it re-pushes the payload intact.
+            'resource' => $this->resource,
             'reauthed' => '1',
         ], static fn (?string $v): bool => $v !== null && $v !== ''));
     }

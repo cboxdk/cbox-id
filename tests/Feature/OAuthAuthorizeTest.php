@@ -690,3 +690,49 @@ it('does not rewrite a private-use redirect onto our own host on the non-Livewir
         ->and($location)->toContain('code=')
         ->and($location)->toContain('state=xyz');
 })->group('security');
+
+/**
+ * …AND SURVIVES THE SIGN-IN ROUND TRIP, which is where it stopped surviving.
+ *
+ * The capture above only holds for a request that arrives already authenticated. Every
+ * other path — a first login, `prompt=login`, `select_account`, a `max_age` step-up —
+ * bounces through the sign-in and comes back on a URL that `resumeUrl()` rebuilds from
+ * the component's own state. That rebuild carried `client_id`, `redirect_uri`,
+ * `response_type`, `scope`, `state`, both PKCE fields, `nonce`, `max_age` and
+ * `acr_values`, and left `resource` out.
+ *
+ * The consequence was not "the resource is missing". It was worse: the code was minted
+ * with `resource = null`, so the token endpoint's binding check — guarded on
+ * `$grant->resource !== null` — no-opped, and the client's own value at REDEMPTION time
+ * was taken instead. That is exactly the confused deputy the check exists to close,
+ * reachable by any client whose user was not already signed in. Only the PAR path was
+ * safe, because it re-pushes the payload intact rather than rebuilding it.
+ *
+ * Asserted on the REBUILT URL rather than on a full redirect chain: the omission was in
+ * the rebuild, and a chain test would pass just as well against a resume that dropped it
+ * and a login that happened to preserve the original query string.
+ */
+it('carries the requested resource across the sign-in round trip', function (): void {
+    [, $org] = actingAsConsentUser();
+    $clientId = registerConsentClient($org->id);
+
+    $component = Volt::test('oauth.consent', [
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        'code_challenge_method' => 'S256',
+        'resource' => 'https://mcp.acme.example',
+        // Forces the re-authentication branch, which is the one that rebuilds the URL.
+        'prompt' => 'login',
+    ]);
+
+    // `url.intended` IS the rebuilt URL — it is what the sign-in sends the person back
+    // to, so asserting it here is asserting the production observable rather than
+    // reaching for a private method.
+    $resume = urldecode((string) session('url.intended'));
+
+    expect($resume)->toContain('/oauth/authorize')
+        ->and($resume)->toContain('resource=https://mcp.acme.example');
+})->group('security');

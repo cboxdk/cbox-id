@@ -24,6 +24,7 @@ use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\TargetEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Api\Http\Middleware\NoStore;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -78,7 +79,7 @@ Route::get('/', fn () => redirect()->route(
  * app overrides would otherwise be the one hole left in that wall.
  */
 Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
-    ->middleware('plane:issuer')
+    ->middleware(['plane:issuer', 'throttle:30,1'])
     ->name('sso.saml.idp.sso');
 
 /*
@@ -107,8 +108,19 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
  * plane: the platform root IS an environment, so a tenant's connection id resolves to
  * nothing here just as it always did.
  */
-Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)->name('sso.saml.acs');
-Route::get('/sso/oidc/{connection}/callback', OidcCallbackController::class)->name('sso.oidc.callback');
+//
+// THROTTLED AND NoStore, matching the package routes these shadow. Re-registering them
+// here to escape `plane:issuer` also escaped `ApiServiceProvider`'s middleware, and the
+// two were lost silently: `route:list` showed `web` alone. These do XML signature
+// verification and JWT validation on wholly unauthenticated input — the most expensive
+// unauthenticated work the platform does — and their responses carry a freshly minted
+// session, which no cache may keep.
+Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)
+    ->middleware(['throttle:30,1', NoStore::class])
+    ->name('sso.saml.acs');
+Route::get('/sso/oidc/{connection}/callback', OidcCallbackController::class)
+    ->middleware(['throttle:30,1', NoStore::class])
+    ->name('sso.oidc.callback');
 
 // The OAuth 2.0 pair — providers that are not OpenID Providers (GitHub, Discord,
 // Facebook). Both halves live here rather than in the framework because turning a

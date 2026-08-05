@@ -161,6 +161,82 @@ it('refuses an environment console action even with no route middleware at all',
     Volt::test('console.audit')->assertForbidden();
 });
 
+/**
+ * What `boot()` reaches: its own body, plus the body of any `$this->method()` it calls.
+ *
+ * ONE LEVEL OF INDIRECTION, deliberately. `console/connections/index` writes
+ * `boot() { $this->authorizeAdmin(); }` with the real check in that private method, and
+ * that is the BETTER shape — the guard is named once and reused by the mutating actions
+ * beside it. A check that only read `boot()`'s literal body called it unguarded, which
+ * would have taught the next author to inline the call to satisfy a test.
+ *
+ * Not recursive, and that is the honest limit: a guard two hops away is not found, and
+ * this test would report it as missing rather than silently pass. Failing towards "look
+ * again" is the right direction for a sweep whose whole job is to notice an absence.
+ */
+function bootReach(string $source): ?string
+{
+    $body = bootBody($source);
+
+    if ($body === null) {
+        return null;
+    }
+
+    preg_match_all('/\$this->([A-Za-z_]\w*)\(/', $body, $calls);
+
+    foreach (array_unique($calls[1] ?? []) as $method) {
+        $body .= methodBody($source, (string) $method) ?? '';
+    }
+
+    return $body;
+}
+
+/**
+ * The body of a component's `boot()`, or null when it has none.
+ *
+ * Brace-matched rather than regex'd: a guard is frequently followed by other statements
+ * and by nested closures, and a lazy `.*?` to the first `}` would cut the body short and
+ * miss a guard that is not on the first line.
+ */
+function bootBody(string $source): ?string
+{
+    return methodBody($source, 'boot');
+}
+
+/** The brace-matched body of one named method. */
+function methodBody(string $source, string $name): ?string
+{
+    $start = preg_match('/function\s+'.preg_quote($name, '/').'\s*\(/', $source, $m, PREG_OFFSET_CAPTURE) === 1
+        ? $m[0][1]
+        : false;
+
+    if ($start === false) {
+        return null;
+    }
+
+    $open = strpos($source, '{', $start);
+
+    if ($open === false) {
+        return null;
+    }
+
+    $depth = 0;
+
+    for ($i = $open, $len = strlen($source); $i < $len; $i++) {
+        $depth += match ($source[$i]) {
+            '{' => 1,
+            '}' => -1,
+            default => 0,
+        };
+
+        if ($depth === 0) {
+            return substr($source, $open + 1, $i - $open - 1);
+        }
+    }
+
+    return null;
+}
+
 it('guards every environment console component, so a new one cannot skip it', function (): void {
     // array_merge, NOT `+` — see PasswordScreeningTest. With `+` this checked 43 of 49
     // components, skipping all three environment/clients/* (which reveal client secrets).
@@ -179,20 +255,37 @@ it('guards every environment console component, so a new one cannot skip it', fu
     foreach ($components as $file) {
         $source = file_get_contents($file) ?: '';
 
-        // Any of the three is the same answer, because all three are ConsoleScope asking
-        // "may the person acting on this request change this": assertMayAdminister()
-        // resolves the env-admin session on one plane and the membership role on the
-        // other, and accountRole() is the same question for a page that exists only where
-        // the acting organization owns identity providers. What is being checked is that
-        // boot() — the only hook that re-runs per action — refuses before anything else
-        // happens.
-        if (! str_contains($source, 'public function boot(')
-            || (! str_contains($source, 'EnvironmentAdminAuth')
-                && ! str_contains($source, 'assertMayAdminister')
-                && ! str_contains($source, 'accountRole()'))) {
+        // MATCHED INSIDE boot(), not anywhere in the file — this is the whole difference
+        // between a guard and an import.
+        //
+        // This used to ask `str_contains($source, 'EnvironmentAdminAuth')` over the whole
+        // source, and `use App\\Platform\\EnvironmentAdminAuth;` satisfies that on its own.
+        // Emptying `boot()` in a real component while leaving the import in place kept 656
+        // tests green — so the sweep that guards 49 console components against
+        // unauthenticated Livewire actions was passing on the strength of a `use` line.
+        //
+        // Its two siblings had already learned this and were not consulted:
+        // `PasswordScreeningTest` records that a bare-name check "matched the `use`
+        // import… a vacuous test that proved nothing", and `EnvironmentOwnedModelTest`
+        // anchors its match with `preg_match('/^\s+use BelongsToEnvironment;/m')` for
+        // exactly this reason. The fix here is the same idea: isolate the body of `boot()`
+        // and require the call to appear IN it.
+        //
+        // Any of the three names is the same answer, because all three are ConsoleScope
+        // asking "may the person acting on this request change this".
+        $body = bootReach($source);
+
+        if ($body === null
+            || (! str_contains($body, 'EnvironmentAdminAuth')
+                && ! str_contains($body, 'assertMayAdminister')
+                && ! str_contains($body, 'accountRole()'))) {
             $unguarded[] = str_replace(resource_path('views/livewire/'), '', $file);
         }
     }
+
+    // A FLOOR, so a moved view directory cannot empty the sweep and report success —
+    // the sibling model test carries one for the same reason.
+    expect(count($components))->toBeGreaterThan(40, 'the component sweep found almost nothing; did the view directories move?');
 
     expect($unguarded)->toBe(
         [],
