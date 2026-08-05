@@ -67,9 +67,15 @@ use Throwable;
  * re-checked here on every resolve. That check is gone because the thing it guarded is
  * gone — the browser holds a subject session now, which a stamp on the member row cannot
  * reach. Its replacement is stronger and lives at the right altitude:
- * `DatabaseAccountMembers::resetPassword()` revokes the subject's sessions, so the next
- * request finds no session at all rather than a session it declines to honour. The stamp
- * itself stays: it is also what makes a reset LINK single-use.
+ * `PasswordResetService::reset()` calls `revokeAllForUser()` on the subject inside the
+ * same transaction that writes the new hash, so the next request finds no session at all
+ * rather than a session it declines to honour. The stamp itself stays: it is also what
+ * makes a reset LINK single-use.
+ *
+ * This used to name `DatabaseAccountMembers::resetPassword()`, an account-plane reset that
+ * no page calls — the reset form goes to the framework's `PasswordReset` contract. The
+ * property was right and the citation was not, which is the more dangerous half: a reader
+ * checking the claim finds a method that does revoke sessions and stops looking.
  *
  * There is deliberately NO "current environment" session state here: environments are
  * resolved statelessly from the request host ({slug}.base_domain or a custom domain), so
