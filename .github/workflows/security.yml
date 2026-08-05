@@ -16,7 +16,22 @@ jobs:
   # The deployed app holds tenant secrets, signing keys, and session state, so it
   # must not carry weaker supply-chain scanning than the library it embeds.
   dependencies:
-    runs-on: self-hosted
+    # UNTRUSTED CODE NEVER REACHES THE SELF-HOSTED RUNNER.
+    #
+    # This job checks out the head of a pull request and then runs `composer install`,
+    # `npm ci` and the whole suite — every one of which executes code from the branch.
+    # On a self-hosted runner that is arbitrary code execution on an internal machine,
+    # from anyone who can open a PR.
+    #
+    # `build-image.yml` already refuses PRs outright for exactly this reason, and says so:
+    # "a self-hosted runner has host access, so untrusted PR code must not reach it." The
+    # risk was known and written down in one workflow and left open in the two that
+    # actually run the foreign code.
+    #
+    # A PR therefore runs on an ephemeral GitHub-hosted runner; a push to `main` — where
+    # the code is already trusted, because it is already deployed — keeps the self-hosted
+    # one and its warm caches.
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -32,7 +47,7 @@ jobs:
   # is the worst failure mode for an identity provider.
   # TruffleHog's action is free for organizations (gitleaks-action is not).
   secrets:
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,7 +60,7 @@ jobs:
   # Static application security testing. Findings are uploaded to the Security tab
   # as SARIF rather than failing the build, so triage happens in review.
   sast:
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     permissions:
       contents: read
       security-events: write
