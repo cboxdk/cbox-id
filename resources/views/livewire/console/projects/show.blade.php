@@ -57,7 +57,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         abort_if($model === null || $member === null || $model->account_id !== $member->account_id, 404);
 
         // A scoped member must have at least one reachable environment in it.
-        if (! $member->all_environments) {
+        if (! app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member)) {
             $accessible = $members->accessibleEnvironmentIds($member);
             $inProject = Environment::query()->where('project_id', $model->id)->whereIn('id', $accessible)->exists();
             abort_unless($inProject, 403);
@@ -85,7 +85,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
     private function assertCanManage(AccountAuth $auth): void
     {
         $member = $auth->current();
-        abort_unless($member !== null && app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true && $member->all_environments, 403);
+        abort_unless($member !== null && app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true && app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member), 403);
     }
 
     public function rename(AccountAuth $auth, Projects $projects): void
@@ -148,7 +148,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         $member = $auth->current();
         $project = $this->project($auth);
         $accessibleIds = $member === null ? [] : $members->accessibleEnvironmentIds($member);
-        $scoped = $member !== null && ! $member->all_environments;
+        $scoped = $member !== null && ! app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member);
 
         // Re-validate a scoped member's reachability on every render (mount only runs
         // once), so a grant revoked mid-session stops leaking the project's metadata.
@@ -172,7 +172,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
             'project' => $project,
             'environments' => $query->get(),
             // A management surface requires the capability AND full access.
-            'canManage' => $member !== null && app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true && $member->all_environments,
+            'canManage' => $member !== null && app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true && app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member),
             'scoped' => $scoped,
             'remaining' => $projects->remainingEnvironments($project),
             'baseDomain' => $baseDomain,

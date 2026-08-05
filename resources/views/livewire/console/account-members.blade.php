@@ -158,7 +158,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
         }
 
         $this->editingAccessFor = $target->id;
-        $this->accessAll = $target->all_environments;
+        $this->accessAll = app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($target);
 
         /** @var list<string> $envIds */
         $envIds = $target->environments()->pluck('environments.id')->all();
@@ -334,7 +334,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
                 {{-- Environment-access summary + inline editor for scoped roles. --}}
                 @if ($scoped)
                     <div class="mt-2 ml-12 text-xs" style="color:var(--faint)">
-                        @if ($m->all_environments)
+                        @if (app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($m))
                             Access to all environments
                         @else
                             Access to {{ $m->environments()->count() }} of {{ $environments->count() }} environments

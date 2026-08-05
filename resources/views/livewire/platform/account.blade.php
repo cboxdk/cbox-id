@@ -335,7 +335,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
                                     </span>
                                 </td>
                                 <td class="whitespace-nowrap text-xs" style="color:var(--muted)">
-                                    {{ $member->all_environments ? 'All' : 'Selected only' }}
+                                    {{ app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member) ? 'All' : 'Selected only' }}
                                 </td>
                                 <td class="whitespace-nowrap text-xs" style="color:var(--faint)">
                                     {{ $member->last_login_at?->toDayDateTimeString() ?? 'Never' }}

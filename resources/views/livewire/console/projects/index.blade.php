@@ -193,7 +193,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     {
         $member = $auth->current();
         $account = $member?->account;
-        $allAccess = $member->all_environments ?? false;
+        $allAccess = $member !== null && app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member);
 
         // The environments this member may reach — an all-access member sees every one
         // the account owns; a scoped member only their grants.

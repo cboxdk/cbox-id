@@ -37,7 +37,7 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
-| `cboxdk/laravel-id` | `>=0.77.1 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `>=0.96 <1.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
@@ -64,7 +64,12 @@ Pulled in automatically by `composer install`:
 > `socialiteproviders/microsoft`, which are in neither `composer.json` nor
 > `composer.lock` and appear nowhere in the code; do not add them.
 
-> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.77.1 <1.0` — 0.77.0 is withdrawn: its `saml_idp_sessions` migration cannot run on MySQL or MariaDB). Minor bumps in that
+> `cboxdk/laravel-id` is pinned to a pre-1.0 series (`>=0.96 <1.0`). The floor is 0.95
+> because that release moved per-member environment grants onto the membership and stopped
+> writing `account_members.all_environments`; this app reads the new
+> `AccountMembers::hasAllEnvironments()`, and two of those reads are authorization gates,
+> so an older engine would gate on a column nothing writes. (0.77.0 remains withdrawn —
+> its `saml_idp_sessions` migration cannot run on MySQL or MariaDB.) Minor bumps in that
 > range may carry breaking changes — read its changelog before upgrading.
 
 ## Building assets

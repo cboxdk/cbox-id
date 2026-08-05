@@ -84,7 +84,12 @@ final class MemberController extends Controller
             'name' => $member->name,
             'role' => $member->role->value,
             'status' => $member->status,
-            'all_environments' => $member->all_environments,
+            // Asked of the contract, not read off the row. The grant moved to the
+            // membership and nothing writes `account_members.all_environments` any more,
+            // so the column holds whatever was true before the move — and this endpoint
+            // would have gone on reporting "all" for a member who had since been
+            // restricted.
+            'all_environments' => app(AccountMembers::class)->hasAllEnvironments($member),
         ];
     }
 }
