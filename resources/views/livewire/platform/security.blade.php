@@ -32,6 +32,16 @@ new #[Layout('components.layouts.platform', ['title' => 'Security', 'width' => '
 
     public string $disablePassword = '';
 
+    /**
+     * The same proof, for the other action that mints a durable second factor.
+     *
+     * `regenerateRecoveryCodes()` asked for nothing but a live session — and it renders
+     * ten valid single-use factors that OUTLIVE session revocation, which is the very
+     * outcome `disable()`'s password check exists to prevent. A hijacked-but-stale
+     * operator session reached the same end by the unguarded sibling.
+     */
+    public string $regeneratePassword = '';
+
     /** Re-check operator AUTHORITY on every request, including Livewire actions. */
     public function boot(ConsoleScope $scope): void
     {
@@ -90,7 +100,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Security', 'width' => '
         $this->dispatch('toast', message: 'Two-factor authentication is now enabled. Save your recovery codes below.');
     }
 
-    public function regenerateRecoveryCodes(ConsoleScope $scope, OperatorMfa $mfa): void
+    public function regenerateRecoveryCodes(ConsoleScope $scope, OperatorMfa $mfa, PlatformOperators $operators): void
     {
         $operator = $scope->operator();
 
@@ -98,8 +108,47 @@ new #[Layout('components.layouts.platform', ['title' => 'Security', 'width' => '
             return;
         }
 
+        // The password, for the same reason `disable()` asks for it: what this mints is a
+        // durable second factor that survives revoking every session. Asking only for a
+        // live session made this the cheaper route to the outcome that check was written
+        // to close.
+        if (! $this->proveOperatorPassword($operators, $operator->id, $this->regeneratePassword, 'regeneratePassword')) {
+            return;
+        }
+
         $this->recoveryCodes = $mfa->generateRecoveryCodes($operator->id);
+        $this->reset('regeneratePassword');
         $this->dispatch('toast', message: 'New recovery codes generated. Your previous codes no longer work.');
+    }
+
+    /**
+     * Verify the operator's password, throttled — the guard `confirm()` already had and
+     * the two password checks on this page did not.
+     *
+     * `verifyPassword()` is bcrypt, so unbounded guessing here is slow rather than
+     * instant; it is also therefore a free way to pin a CPU. The budget matches
+     * `confirm()`'s exactly, because it is the same question about the same identity.
+     */
+    private function proveOperatorPassword(PlatformOperators $operators, string $operatorId, string $password, string $field): bool
+    {
+        $key = 'operator-password|'.$field.'|'.$operatorId;
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError($field, 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return false;
+        }
+
+        if (! $operators->verifyPassword($operatorId, $password)) {
+            RateLimiter::hit($key, 60);
+            $this->addError($field, 'That password is incorrect.');
+
+            return false;
+        }
+
+        RateLimiter::clear($key);
+
+        return true;
     }
 
     public function disable(ConsoleScope $scope, OperatorMfa $mfa, PlatformOperators $operators): void
@@ -112,9 +161,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Security', 'width' => '
         // No operator sudo/step-up concept exists, so re-entering the operator
         // password is the guard: a hijacked-but-stale session can't silently strip
         // the second factor.
-        if (! $operators->verifyPassword($operator->id, $this->disablePassword)) {
-            $this->addError('disablePassword', 'That password is incorrect.');
-
+        if (! $this->proveOperatorPassword($operators, $operator->id, $this->disablePassword, 'disablePassword')) {
             return;
         }
 
@@ -191,6 +238,15 @@ new #[Layout('components.layouts.platform', ['title' => 'Security', 'width' => '
                     </div>
                     <p class="mt-1 text-xs" style="color:var(--destructive)">These are shown only once. Copy them now.</p>
                 @endif
+
+                <div class="mt-3 max-w-sm">
+                    <label class="label" for="regeneratePassword">Confirm your password to generate codes</label>
+                    <input wire:model="regeneratePassword" id="regeneratePassword" type="password" autocomplete="current-password"
+                           class="input mt-1" @error('regeneratePassword') aria-invalid="true" aria-describedby="regeneratePassword-error" @enderror />
+                    @error('regeneratePassword')
+                        <p id="regeneratePassword-error" role="alert" class="mt-1 text-sm" style="color:var(--destructive)">{{ $message }}</p>
+                    @enderror
+                </div>
 
                 <button wire:click="regenerateRecoveryCodes" wire:confirm="Generate new recovery codes? Your existing codes will stop working."
                         class="btn btn-ghost mt-3" wire:loading.attr="disabled">
