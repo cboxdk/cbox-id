@@ -7,6 +7,7 @@ use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\MemberCredentialGate;
+use App\Platform\PlatformAuth;
 use App\Platform\RevokingAuthPolicies;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -106,7 +107,7 @@ it('refuses the account door once an administrative password has expired', funct
         revoke: PasswordRevocationScope::Nothing,
     )));
 
-    $auth = app(AccountAuth::class);
+    $auth = app(PlatformAuth::class);
     $request = Request::create('/login', 'POST');
 
     // Inside its window the credential IS admitted by the gate. It does not reach a
@@ -114,13 +115,13 @@ it('refuses the account door once an administrative password has expired', funct
     // and that is the point of asserting on the outcome rather than on `check()`: this
     // test is about expiry, and a baseline that could not tell "expired" from "held"
     // would pass whatever happened.
-    expect($auth->attempt($request, 'owner@acme.example', 'a-handed-over-temporary-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'a-handed-over-temporary-passphrase'))
         ->toBe(AttemptOutcome::Ok);
 
     $this->travel(2)->hours();
 
     // Past its deadline the hash still matches and the door is shut.
-    expect($auth->attempt($request, 'owner@acme.example', 'a-handed-over-temporary-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'a-handed-over-temporary-passphrase'))
         ->toBe(AttemptOutcome::Invalid);
 })->group('security');
 
@@ -131,18 +132,18 @@ it('locks the account door out at the policy threshold', function (): void {
         fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(lockoutThreshold: 3)),
     );
 
-    $auth = app(AccountAuth::class);
+    $auth = app(PlatformAuth::class);
     $request = Request::create('/login', 'POST');
 
     foreach (range(1, 3) as $ignored) {
-        expect($auth->attempt($request, 'owner@acme.example', 'a-wrong-guess-entirely'))
+        expect(signInAtLogin('owner@acme.example', 'a-wrong-guess-entirely'))
             ->toBe(AttemptOutcome::Invalid);
     }
 
     // The RIGHT password is now refused too, and refused identically — the lockout is
     // asked BEFORE the credential, or a locked account still answers differently for a
     // right guess than for a wrong one.
-    expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'a-strong-unbreached-passphrase'))
         ->toBe(AttemptOutcome::Invalid);
 })->group('security');
 

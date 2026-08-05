@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
-use App\Platform\Enums\AttemptOutcome;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -31,6 +30,7 @@ use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
 uses(RefreshDatabase::class);
@@ -288,9 +288,16 @@ it('refuses an account member\'s magic link while leaving the federated landing 
     // THE CONTROL, and the one that matters most: the door a mandate points AT must not
     // consult the mandate, or requiring SSO locks an organization out of the console it
     // just secured. Same subject, same landing, opposite answer.
+    // Through `PlatformAuth::adopt()`, the landing every federated door hands its session
+    // to. It used to go through `AccountAuth::adoptFederated()`, an account-plane copy of
+    // this landing that no route reached — so the control was asserted against a door the
+    // mandate could not have locked anybody out of, while the door it could was untested.
     $assertion = app(SessionManager::class)->start($subjectId, null, ['sso']);
 
-    expect(app(AccountAuth::class)->adoptFederated($assertion))->toBe(AttemptOutcome::Ok);
+    app(PlatformAuth::class)->adopt(Request::create('/sso/callback'), $assertion);
+
+    expect(session()->get(PlatformAuth::SESSION_KEY))->toBe($assertion->id)
+        ->and(doorHasLiveSession($subjectId))->toBeTrue();
 })->group('security');
 
 /*

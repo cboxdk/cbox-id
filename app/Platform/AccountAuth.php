@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\CredentialVerdict;
 use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
-use Illuminate\Http\Request;
 use Throwable;
 
 /**
@@ -23,14 +20,25 @@ use Throwable;
  * {@see Console\ConsoleScope::accountRole()}, which is the principal caller of the
  * resolver below. This class is what is left once both ideas are removed.
  *
- * A DOOR IT NO LONGER IS. `attempt()` still verifies a member's credential and still
- * consults {@see MemberCredentialGate}, and nothing in the application calls it: the one
- * sign-in is `/login`, which authenticates the SUBJECT — the credential of record — and
- * enforces the lockout and the SSO mandate itself. `attempt()` is the statement of what
- * the member gate is FOR, and its tests are the only thing holding it upright.
+ * A DOOR IT NO LONGER IS, and no longer keeps one for the sake of the argument. `attempt()`
+ * verified a member's password and `adoptFederated()` admitted one an identity provider had
+ * vouched for; nothing in the application called either, and both are gone. The one sign-in
+ * is `/login`, which authenticates the SUBJECT — the credential of record.
+ *
+ * Keeping them was defensible while they were the only written statement of what
+ * {@see MemberCredentialGate} was for, and it stopped being defensible once every rule they
+ * enforced was checked, one at a time, against the door that is actually reachable:
+ * `PlatformAuth::attemptPassword()` asks the lockout, `AdminPasswords::hasExpired()` and the
+ * SSO mandate — the same `localSignInAllowedFor()` the gate asked — of the same subject.
+ * Not one rule was lost by deleting them. What was left was a second password door, with its
+ * own lockout counter and its own account-active check, one route registration away from
+ * being reachable, held upright by tests that could only reach it themselves.
+ *
+ * A separate door is never a boundary, and it is usually the weakest one BECAUSE it is
+ * separate: this is the same lesson the operator credential store taught, one plane along.
  *
  * THE SECOND FACTOR IS THE SUBJECT'S, and no longer has an account-plane copy. There used
- * to be one, in `account_mfa_factors` and its companions, consulted here and in `adopt()`.
+ * to be one, in `account_mfa_factors` and its companions, consulted by both of those doors.
  * It was already unenforceable before those checks were removed: `/login` serves the root,
  * so a member with an account-plane TOTP signed in there against their subject credential
  * and reached the console with a password alone. Deleting it removed the APPEARANCE of a
@@ -49,7 +57,7 @@ use Throwable;
  *
  * Three stores for one person is what this replaces, and every seam between them was a
  * bug. An operator signed in and was bounced back to the sign-in forever because the door
- * wrote a member session and the gate asked for a subject one. `attempt()` grew an
+ * wrote a member session and the gate asked for a subject one. The member door grew an
  * operator branch so somebody with no membership could get in at all. The console's gate
  * grew an operator clause to let them land. {@see Console\ConsoleScope} asked all three
  * stores in turn. None of those were separate problems, and the same is true of the
@@ -102,133 +110,6 @@ final class AccountAuth
     ) {}
 
     /**
-     * Verify credentials. Returns:
-     *  - 'invalid' for a wrong password or a suspended member (never authenticates),
-     *  - 'sso_required' when the password is right and an organization this member
-     *              belongs to mandates single sign-on — no session, and none obtainable
-     *              with a password at all,
-     *  - 'ok'      when the password is right — the full session is established
-     *              immediately.
-     *
-     * NEVER 'mfa'. A second factor is the SUBJECT's and is enforced at
-     * {@see PlatformAuth::attemptPassword()}, which is the door every member actually
-     * uses; the account-plane copy this returned for had no enrolment path left and no
-     * reader but this line.
-     *
-     * The door authenticates a PERSON. Whether they hold an account membership, operator
-     * authority, both or neither is not its business — it used to be, through an
-     * `attemptOperator()` branch that existed only because a successful sign-in wrote a
-     * MEMBER session and an operator has no member row to write. The session is the
-     * subject's either way now, so the branch has nothing left to do: a member goes
-     * through the member-specific gates below, and everyone else goes straight to the
-     * subject door, which is the same {@see PlatformAuth::attemptPassword()} the tenant
-     * plane uses.
-     */
-    public function attempt(Request $request, string $email, string $password): AttemptOutcome
-    {
-        $member = $this->members->findByEmail($email);
-
-        // Not a member of any account — a platform operator, or nobody. The subject door
-        // answers, and it pays its own constant-cost dummy verify on the miss path, so an
-        // unknown address is no faster here than a wrong password (no enumeration oracle).
-        // Run inside the platform root: this host's ambient scope is that environment only
-        // by coincidence of configuration, and the subject we are authenticating lives
-        // there by construction.
-        if ($member === null) {
-            $outcome = $this->platformRoot->run(
-                fn (): AttemptOutcome => $this->platformAuth->attemptPassword($request, $email, $password),
-            );
-
-            return $outcome ?? AttemptOutcome::Invalid;
-        }
-
-        // The lockout is asked BEFORE the credential, or a locked account still answers
-        // differently for a right guess than for a wrong one.
-        if ($this->gate->isLockedOut($member)) {
-            return AttemptOutcome::Invalid;
-        }
-
-        if (! $this->members->verifyPassword($member->id, $password)) {
-            $this->gate->recordFailure($member);
-
-            return AttemptOutcome::Invalid;
-        }
-
-        // The credential verified against the SUBJECT. The rules that govern whether a
-        // verified password is still a way in live in one place both doors ask — checked
-        // AFTER the credential, which is what keeps the refusal from being an
-        // account-existence oracle: a wrong guess never reaches this line.
-        //
-        // An SSO mandate carries its own outcome from here, because it is the one refusal
-        // the member can do something about. Everything else stays neutral.
-        $verdict = $this->gate->admits($member);
-
-        if ($verdict !== CredentialVerdict::Admitted) {
-            return $verdict === CredentialVerdict::SsoRequired
-                ? AttemptOutcome::SsoRequired
-                : AttemptOutcome::Invalid;
-        }
-
-        // …and there has to be a live account to sign in TO. The console gate refuses a
-        // suspended account on the very next request, which is what makes a suspension
-        // take effect on sessions that already exist — but a door that still admitted
-        // them would turn that into a loop: sign in, be refused, be sent back to the
-        // door, sign in again. Asked here so the refusal happens once, at the point a
-        // person can understand it.
-        if (! ($member->account?->isActive() ?? false)) {
-            return AttemptOutcome::Invalid;
-        }
-
-        $this->gate->clearFailures($member);
-
-        return $this->establish($member->id) ? AttemptOutcome::Ok : AttemptOutcome::Invalid;
-    }
-
-    /**
-     * Admit a subject the account's own IDENTITY PROVIDER just vouched for.
-     *
-     * This is the door a mandate points AT, so it is the one door that must never consult
-     * the mandate: refusing an SSO assertion because SSO is required is the loop that
-     * locks an organization out of the console it just secured.
-     */
-    public function adoptFederated(Session $session): AttemptOutcome
-    {
-        return $this->adopt($session, mandateApplies: false);
-    }
-
-    /**
-     * Admit an ALREADY-AUTHENTICATED platform-root subject as an account member — the
-     * landing for the sign-in methods a member inherits by being an ordinary subject.
-     *
-     * Takes the framework {@see Session} the redemption or assertion produced, so the
-     * session this mints records how the person ACTUALLY authenticated rather than a
-     * guess: `amr` travels from the door that verified them.
-     *
-     * Deny-by-default in both directions. A subject that carries no account membership is
-     * not an account sign-in ({@see AttemptOutcome::Invalid}). And a member who has enrolled a
-     * second factor on this plane is still held at the challenge: a new way in must not
-     * be a way AROUND the factor they added.
-     *
-     * The mandate is asked AFTER the membership is resolved and never before, which keeps
-     * it off the enumeration path for the same reason the password door's is: reaching it
-     * at all means a factor has already been proven.
-     */
-    private function adopt(Session $session, bool $mandateApplies): AttemptOutcome
-    {
-        $member = $this->findMemberBySubject($session->user_id);
-
-        if ($member === null || ! $member->isActive() || ! ($member->account?->isActive() ?? false)) {
-            return AttemptOutcome::Invalid;
-        }
-
-        if ($mandateApplies && $this->gate->admitsFactor($member) === CredentialVerdict::SsoRequired) {
-            return AttemptOutcome::SsoRequired;
-        }
-
-        return $this->establish($member->id, self::methods($session)) ? AttemptOutcome::Ok : AttemptOutcome::Invalid;
-    }
-
-    /**
      * Whether a mandate refuses this member a session, for a door that has already proved
      * a factor which is not a password — today, an accepted invitation.
      *
@@ -266,24 +147,6 @@ final class AccountAuth
         $subjectId = $this->members->find($memberId)?->subject_id;
 
         return is_string($subjectId) && $subjectId !== '' ? $subjectId : null;
-    }
-
-    /**
-     * The authentication methods recorded on a framework session, narrowed to a list.
-     *
-     * `amr` is a JSON column, so what the cast hands back is a map rather than a list —
-     * the session store is a serialization edge, and re-narrowing at it is the price of
-     * that. Nothing is guessed at: every downstream reading of `amr` treats a missing
-     * factor as absent, so a list that lost something fails closed.
-     *
-     * @return list<string>
-     */
-    private static function methods(Session $session): array
-    {
-        return array_values(array_filter(
-            $session->amr,
-            static fn (string $method): bool => $method !== '',
-        ));
     }
 
     /**
@@ -365,14 +228,26 @@ final class AccountAuth
     private function recordSignIn(AccountMember $member): void
     {
         try {
-            $this->activity->record(
-                $member->account_id,
-                'account.signed_in',
-                $member->id,
-                targetType: 'account_member',
-                targetId: $member->id,
-                request: request(),
-            );
+            // IN THE PLATFORM ROOT, because an audit entry is environment-owned and the
+            // account chain lives in exactly one environment. Written under whatever scope
+            // the caller happened to be standing in, the same account's sign-ins land in
+            // different environments depending on which door wrote them — and the console
+            // reads under one, so the page would show some of them and silently omit the
+            // rest. {@see PlatformAuth::recordAccountSignIn()} pins it the same way for
+            // the same reason; the two must agree or the split is between doors instead of
+            // between requests.
+            $this->platformRoot->run(function () use ($member): bool {
+                $this->activity->record(
+                    $member->account_id,
+                    'account.signed_in',
+                    $member->id,
+                    targetType: 'account_member',
+                    targetId: $member->id,
+                    request: request(),
+                );
+
+                return true;
+            });
         } catch (Throwable $e) {
             report($e);
         }

@@ -57,10 +57,18 @@ if (! function_exists('provisionAuditableAccount')) {
 
 function signInEntries(string $accountId): Collection
 {
-    return AuditEntry::query()
-        ->where('scope', $accountId)
-        ->where('action', 'account.signed_in')
-        ->get();
+    // IN THE PLATFORM ROOT, the way the console reads it: an audit entry is
+    // environment-owned, and the account chain lives in the root because that is the
+    // environment the account host resolves to. Read with no environment selected this
+    // returns the deny-by-default scope's empty set for every case, which is the same
+    // answer "nothing was recorded" gives — so the helper pins the scope rather than
+    // leaving each test to pass for the wrong reason.
+    return app(PlatformRoot::class)->run(
+        fn (): Collection => AuditEntry::query()
+            ->where('scope', $accountId)
+            ->where('action', 'account.signed_in')
+            ->get(),
+    );
 }
 
 it('records a sign-in on the account chain', function (): void {
@@ -80,7 +88,7 @@ it('records a sign-in on the account chain', function (): void {
 it('records a sign-in through the password door', function (): void {
     ['member' => $member, 'account' => $account] = provisionAuditableAccount('pwd@audit.example');
 
-    $outcome = app(AccountAuth::class)->attempt(request(), 'pwd@audit.example', 'a-strong-unbreached-passphrase');
+    $outcome = signInAtLogin('pwd@audit.example', 'a-strong-unbreached-passphrase');
 
     expect($outcome)->toBe(AttemptOutcome::Ok)
         ->and(signInEntries($account->id))->toHaveCount(1);
@@ -102,7 +110,7 @@ it('records nothing when the door holds the person back', function (): void {
         fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required)),
     );
 
-    $outcome = app(AccountAuth::class)->attempt(request(), 'held@audit.example', 'a-strong-unbreached-passphrase');
+    $outcome = signInAtLogin('held@audit.example', 'a-strong-unbreached-passphrase');
 
     expect($outcome)->toBe(AttemptOutcome::SsoRequired)
         ->and(signInEntries($account->id))->toHaveCount(0);
@@ -111,11 +119,13 @@ it('records nothing when the door holds the person back', function (): void {
 it('records one entry per session, not one per account', function (): void {
     ['member' => $member, 'account' => $account] = provisionAuditableAccount('repeat@audit.example');
 
-    $auth = app(AccountAuth::class);
-    $auth->establish($member->id);
-    $auth->establish($member->id);
+    // Through the door people use, twice. It used to sign in twice through
+    // `AccountAuth::establish()`, which two flows still reach — but the property being
+    // claimed is about the log being a history rather than a last-seen column, and the
+    // path that produces almost every entry is the one that has to demonstrate it.
+    signInAtLogin('repeat@audit.example', 'a-strong-unbreached-passphrase');
+    signInAtLogin('repeat@audit.example', 'a-strong-unbreached-passphrase');
 
-    // Two sessions, two entries — the log is a history, not a last-seen column.
     expect(signInEntries($account->id))->toHaveCount(2);
 });
 

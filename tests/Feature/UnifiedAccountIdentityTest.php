@@ -62,23 +62,23 @@ it('signs an account member in against their platform-root subject, not the memb
         fn () => app(Subjects::class)->setPassword((string) $member->subject_id, 'rotated-on-the-subject'),
     );
 
-    $auth = app(AccountAuth::class);
+    $auth = app(PlatformAuth::class);
     $request = Request::create('/login', 'POST');
 
-    expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'a-strong-unbreached-passphrase'))
         ->toBe(AttemptOutcome::Invalid)
-        ->and($auth->attempt($request, 'owner@acme.example', 'rotated-on-the-subject'))
+        ->and(signInAtLogin('owner@acme.example', 'rotated-on-the-subject'))
         ->toBe(AttemptOutcome::Ok);
 });
 
 it('holds the account door to the SSO mandate on the account\'s organization', function (): void {
     ['member' => $member, 'account' => $account] = unifiedSetup();
 
-    $auth = app(AccountAuth::class);
+    $auth = app(PlatformAuth::class);
     $request = Request::create('/login', 'POST');
 
     // Baseline: the correct password signs in.
-    expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'a-strong-unbreached-passphrase'))
         ->toBe(AttemptOutcome::Ok);
 
     // The account's organization now mandates SSO. The SAME correct password must be
@@ -93,12 +93,12 @@ it('holds the account door to the SSO mandate on the account\'s organization', f
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 
-    expect($auth->attempt($request, 'owner@acme.example', 'a-strong-unbreached-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'a-strong-unbreached-passphrase'))
         ->toBe(AttemptOutcome::SsoRequired);
 
     // A wrong password against the same member is still just a wrong password — the
     // mandate is asked only after the credential verifies.
-    expect($auth->attempt($request, 'owner@acme.example', 'not-the-passphrase'))
+    expect(signInAtLogin('owner@acme.example', 'not-the-passphrase'))
         ->toBe(AttemptOutcome::Invalid);
 });
 

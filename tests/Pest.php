@@ -7,6 +7,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\CurrentUser;
+use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\OperatorEnvironment;
@@ -44,6 +45,7 @@ use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Livewire\Features\SupportTesting\PersistentMiddleware;
@@ -672,5 +674,34 @@ function replaySnapshot(string $pageUrl, string $snapshot, string $method, array
                 'calls' => [['path' => '', 'method' => $method, 'params' => $params]],
             ]],
         ],
+    );
+}
+
+/**
+ * The one password door, run the way a request runs it.
+ *
+ * `/login` is served by the platform-root host, so `SetEnvironment` has already selected
+ * that environment by the time {@see PlatformAuth::attemptPassword()} looks a subject up.
+ * A test that calls it with no environment selected gets the deny-by-default scope —
+ * `WHERE 1 = 0`, no subject, and `AttemptOutcome::Invalid`.
+ *
+ * That is the SAME answer a wrong password gives, which is why this is a helper and not
+ * four inline calls: a test asserting a refusal passes identically whether the rule it
+ * names refused the credential or the scope never found anybody to refuse. Two of the
+ * tests below assert exactly that shape, and both now carry a positive baseline in the
+ * same test so the refusal has something to be different from.
+ *
+ * It replaced `AccountAuth::attempt()`, a second password door with its own copy of these
+ * rules that no route ever reached.
+ */
+function signInAtLogin(string $email, string $password, bool $stepUp = false): AttemptOutcome
+{
+    return app(PlatformRoot::class)->run(
+        fn (): AttemptOutcome => app(PlatformAuth::class)->attemptPassword(
+            Request::create('/login', 'POST'),
+            $email,
+            $password,
+            $stepUp,
+        ),
     );
 }

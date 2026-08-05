@@ -16,8 +16,11 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Otp\Contracts\OtpService;
+use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * Bridges the framework's session store to the browser. A logged-in browser
@@ -64,7 +67,63 @@ final class PlatformAuth
         private readonly AdminPasswords $adminPasswords,
         private readonly AuthPolicies $policies,
         private readonly LoginAttempts $loginAttempts,
+        private readonly PlatformRoot $platformRoot,
+        private readonly AccountMembers $members,
+        private readonly AccountActivity $activity,
     ) {}
+
+    /**
+     * Write the account chain's sign-in entry, if this subject is a member of an account.
+     *
+     * IT USED TO LIVE ON THE OTHER DOOR. `AccountAuth::establish()` recorded it, and every
+     * console sign-in reached that method — until the account door was retired and `/login`
+     * became the only one. After that, `AccountAuth::establish()` was reachable from
+     * exactly two flows, signup and an accepted invitation, so the account activity log
+     * held the two entries a member generates while joining and nothing for any visit
+     * afterwards. The page still said "Sign-ins" and still listed rows, which is the worst
+     * shape for this to fail in.
+     *
+     * What that costs is the reason the entry exists: `last_login_at` is a single
+     * overwritten column, so without a chained entry per session a takeover looks exactly
+     * like the owner's own next visit.
+     *
+     * BOTH LANDINGS CALL IT, because there are two: {@see establish()} for the doors that
+     * mint a session, and {@see adopt()} for the ones that hand over a session already
+     * started (magic-link redemption). Recording in only the first is how a door goes
+     * quiet — the same way this did.
+     *
+     * A subject that is not an account member records nothing: an ordinary tenant user has
+     * no account chain to write to, and the log is the account plane's, not the platform's.
+     *
+     * Failure is swallowed. The audit chain serialises appends on an anchor row, and a
+     * backend that is down or contended must not be able to lock every member out of a
+     * console they hold the right credential for. Observation, not gate.
+     */
+    private function recordAccountSignIn(string $subjectId): void
+    {
+        try {
+            $this->platformRoot->run(function () use ($subjectId): bool {
+                $member = $this->members->findBySubject($subjectId);
+
+                if ($member === null) {
+                    return false;
+                }
+
+                $this->activity->record(
+                    $member->account_id,
+                    'account.signed_in',
+                    $member->id,
+                    targetType: 'account_member',
+                    targetId: $member->id,
+                    request: request(),
+                );
+
+                return true;
+            });
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
 
     /**
      * Attempt a password login. Returns 'ok', 'mfa', 'otp', 'sso_required' or 'invalid'.
@@ -321,6 +380,7 @@ final class PlatformAuth
         session()->regenerate();
 
         $this->applyPendingLink($subjectId);
+        $this->recordAccountSignIn($subjectId);
     }
 
     /**
@@ -339,6 +399,7 @@ final class PlatformAuth
         session()->regenerate();
 
         $this->applyPendingLink($session->user_id);
+        $this->recordAccountSignIn($session->user_id);
     }
 
     /**

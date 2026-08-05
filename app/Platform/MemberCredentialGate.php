@@ -6,108 +6,44 @@ namespace App\Platform;
 
 use App\Platform\Enums\CredentialVerdict;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
-use Cbox\Id\Identity\Contracts\LoginAttempts;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
- * The rules that decide whether an account member's verified credential is still a way in.
+ * The rules that decide whether an account member's proven factor is still a way in.
  *
- * There are two doors that authenticate an account member by password — the account
- * console ({@see AccountAuth}) and, on a single-host deployment, the environment admin
- * console — and they had different answers. The account door checked the SSO mandate and
- * administrative password expiry; the admin door checked neither, so an environment whose
- * policy mandated SSO could still be entered with a local password there, and an expired
- * hand-off credential kept working. Neither door counted failed attempts per subject.
+ * It began as the reconciliation of two password doors that disagreed — the account
+ * console's and, on a single-host deployment, the environment admin's. The account door
+ * checked the SSO mandate and administrative password expiry; the admin door checked
+ * neither, so an environment whose policy mandated SSO could still be entered with a local
+ * password there. One class, asked by both, so a rule could not be honoured at one door
+ * and skipped at the other.
  *
- * One class, asked by both, so a rule cannot be honoured at one door and skipped at the
- * other. Every check runs in the PLATFORM ROOT's scope — policies, memberships and
- * counters are environment-owned, and the account's people live there.
+ * NEITHER OF THOSE DOORS EXISTS NOW, and this is what the argument turns into once the
+ * duplication is removed rather than merely reconciled. There is one password door —
+ * `/login`, which authenticates the SUBJECT — and it asks the same three rules directly
+ * ({@see PlatformAuth::attemptPassword()}: the lockout, `AdminPasswords::hasExpired()`,
+ * and the mandate through `localSignInAllowedFor()`). An account member is an ordinary
+ * subject, so those rules already reach them; a second copy here, keyed on the member row,
+ * would be the divergence this class was written to end, pointing the other way.
  *
- * There are doors here that are not passwords at all — an accepted invitation, a
- * magic link, an invitation, a reset link — and they were the same divergence one level
- * along: the mandate was honoured by the password and ignored by every one of them.
- * {@see admitsFactor()} is what they ask now, and it lives here rather than at each door
- * for precisely the reason this class exists.
+ * What is left is the half that is NOT about a password, and could not be folded into the
+ * subject door because the doors that ask it are not holding a subject. An accepted
+ * invitation identifies a MEMBER, not a session — {@see admitsFactor()} — and the mandate
+ * was honoured by the password and ignored by every one of those. That divergence is real
+ * and still live, which is why this class is still here and still narrow.
+ *
+ * Every check runs in the PLATFORM ROOT's scope: policies and memberships are
+ * environment-owned, and the account's people live there.
  */
 final class MemberCredentialGate
 {
     public function __construct(
         private readonly PlatformRoot $platformRoot,
         private readonly AdminPasswords $adminPasswords,
-        private readonly LoginAttempts $loginAttempts,
         private readonly PlatformAuth $platform,
     ) {}
-
-    /**
-     * Whether this member is locked out and must not be allowed to attempt a password at
-     * all. Asked BEFORE the credential is checked, or a locked account still answers
-     * differently for a right guess than a wrong one.
-     */
-    public function isLockedOut(?AccountMember $member): bool
-    {
-        return $this->onSubject($member, fn (string $id): bool => $this->loginAttempts->isLockedOut($id)) === true;
-    }
-
-    /** Count a failed attempt toward the tenant's lockout threshold. */
-    public function recordFailure(?AccountMember $member): void
-    {
-        $this->onSubject($member, function (string $id): bool {
-            $this->loginAttempts->recordFailure($id);
-
-            return true;
-        });
-    }
-
-    /** Forget the failures — the member proved who they are. */
-    public function clearFailures(?AccountMember $member): void
-    {
-        $this->onSubject($member, function (string $id): bool {
-            $this->loginAttempts->clear($id);
-
-            return true;
-        });
-    }
-
-    /**
-     * Whether a VERIFIED password is still admissible.
-     *
-     *  - An administratively-issued temporary password stops admitting anyone once its
-     *    deadline passes, even though the hash still matches — otherwise a hand-off
-     *    credential lingers as a permanent second way in.
-     *  - A tenant that mandates SSO means it. The account's organization lives in the
-     *    platform root like any other, so its policy applies here; without this, "require
-     *    SSO" could be sidestepped by picking a different door.
-     *
-     * A member with no subject is the first-install bootstrap window — nowhere for the
-     * subject to live yet, and no policy to consult, so the founder gets in.
-     *
-     * ASKED OF A PASSWORD, and only of one. The account→environment handoff briefly asked
-     * it too — of a token minted from a session that had already got past whichever door
-     * the account's policy governs — so an account mandating SSO was refused its own
-     * tenant console forever, in a loop rather than with a reason. The whole argument is
-     * in `EnvironmentAdminController::handoff()`, and it generalises: a rule that belongs
-     * to a credential does not automatically belong to everything that credential opened.
-     * The corollary is {@see admitsFactor()}: the mandate is NOT one of those rules, and
-     * the doors that prove something other than a password have to ask it too.
-     *
-     * The two refusals are told apart because only one of them is actionable. An SSO
-     * mandate is a door the member can walk through; an expired hand-off credential is a
-     * fact about a password they were given, and naming it would tell whoever is holding
-     * that password something about the account it belongs to.
-     */
-    public function admits(AccountMember $member): CredentialVerdict
-    {
-        return $this->onSubject(
-            $member,
-            fn (string $id): CredentialVerdict => match (true) {
-                $this->adminPasswords->hasExpired($id) => CredentialVerdict::Refused,
-                ! $this->platform->localSignInAllowedFor($id) => CredentialVerdict::SsoRequired,
-                default => CredentialVerdict::Admitted,
-            },
-        ) ?? CredentialVerdict::Admitted;
-    }
 
     /**
      * Whether a mandate refuses this member a session for a factor that is NOT a password

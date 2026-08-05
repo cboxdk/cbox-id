@@ -227,11 +227,7 @@ it('lets an operator through the door it sent them to', function (): void {
     $this->get('https://cboxid.com/platform')->assertRedirect(route('login'));
 
     // Sign in the way that door actually does it.
-    $outcome = app(AccountAuth::class)->attempt(
-        Request::create('/login', 'POST'),
-        'staff@cbox.test',
-        'a-strong-unbreached-passphrase',
-    );
+    $outcome = signInAtLogin('staff@cbox.test', 'a-strong-unbreached-passphrase');
 
     expect($outcome->name)->toBe('Ok', 'the account door refused an operator its own gate points at');
 
@@ -294,11 +290,7 @@ it('signs in an operator who has no account at all', function (): void {
 
     app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
 
-    $outcome = app(AccountAuth::class)->attempt(
-        Request::create('/login', 'POST'),
-        'lonely@cbox.test',
-        'a-strong-unbreached-passphrase',
-    );
+    $outcome = signInAtLogin('lonely@cbox.test', 'a-strong-unbreached-passphrase');
 
     expect($outcome->name)->toBe('Ok', 'the person who runs the deployment cannot sign in to it');
 
@@ -317,11 +309,7 @@ it('refuses an operator with the wrong password', function (): void {
     platformRootEnvironment();
     app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
 
-    expect(app(AccountAuth::class)->attempt(
-        Request::create('/login', 'POST'),
-        'lonely@cbox.test',
-        'not-the-passphrase',
-    )->name)->toBe('Invalid');
+    expect(signInAtLogin('lonely@cbox.test', 'not-the-passphrase')->name)->toBe('Invalid');
 })->group('security');
 
 /**
@@ -358,11 +346,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     $other = $operators->create('other@cbox.test', 'a-strong-unbreached-passphrase', 'Other');
     $operators->suspend($operator->id, $other->id);
 
-    expect(app(AccountAuth::class)->attempt(
-        Request::create('/login', 'POST'),
-        'lonely@cbox.test',
-        'a-strong-unbreached-passphrase',
-    )->name)->toBe('Ok');
+    expect(signInAtLogin('lonely@cbox.test', 'a-strong-unbreached-passphrase')->name)->toBe('Ok');
 
     // …and the session that produced runs the deployment not at all. 404 rather than 403,
     // because a 403 would confirm to anyone holding any account that a staff console
@@ -486,11 +470,16 @@ it('does not answer for the previous identity after a sign-out', function (): vo
     $first = anAccountOwner('first@acme.example');
     $second = anAccountOwner('second@acme.example');
 
-    $auth = app(AccountAuth::class);
-    $request = fn () => Request::create('/login', 'POST');
+    // Both halves through `signInAsSubject()`, which is what a request with somebody
+    // signed in looks like. It used to sign the first one in through the door itself, and
+    // that only worked because the door refreshed `CurrentUser` on the way past — a thing
+    // it did for this test's benefit and for nothing else, since every real caller
+    // redirects and the next request resolves the identity from the session anyway.
+    // Putting that refresh on the one door every plane now shares stamped a
+    // platform-root identity onto environment-admin sessions and 403'd that console.
+    signInAsSubject((string) $first->subject_id);
 
-    expect($auth->attempt($request(), 'first@acme.example', 'a-strong-unbreached-passphrase')->name)->toBe('Ok')
-        ->and(app(AccountAuth::class)->current()?->email)->toBe('first@acme.example');
+    expect(app(AccountAuth::class)->current()?->email)->toBe('first@acme.example');
 
     // The subject session is repointed WITHOUT AccountAuth being told — which is what an
     // account switch and an impersonation resume both do. Going through logout() instead
