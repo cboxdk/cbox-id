@@ -343,7 +343,7 @@ envelope plus `Retry-After` and the `X-RateLimit-*` headers.
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `TRUSTED_PROXIES` | Which proxies' `X-Forwarded-*` headers to trust (`*` = trust all, or a comma-separated CIDR list). Correct forwarding makes the audit trail record the real client IP, keys rate limiting on it, and gets the issuer/cookie host right. | `*` | `*` is safe **only** when the app is reachable exclusively through your ingress (e.g. a k8s pod behind Traefik/Cloudflare). If the app is directly reachable, pin this to your proxy CIDR(s). |
+| `TRUSTED_PROXIES` | Which proxies' `X-Forwarded-*` headers to trust (`*` = trust all, or a comma-separated CIDR list). Correct forwarding makes the audit trail record the real client IP, keys rate limiting on it, and gets the issuer/cookie host right. | *(empty — trust nothing)* | **Set this on any deployment behind a proxy or load balancer.** Left empty, `X-Forwarded-*` is ignored: every audit entry records the proxy's address instead of the client's, and every per-IP rate limit — signup, the API backstop — collapses into one bucket shared by the whole platform. `*` is safe **only** when the app is reachable exclusively through your ingress (a k8s pod behind Traefik/Cloudflare, or a managed platform that fronts every request). If the app is directly reachable, pin this to your proxy CIDR(s). |
 
 ## Security posture (defaults you should keep)
 
