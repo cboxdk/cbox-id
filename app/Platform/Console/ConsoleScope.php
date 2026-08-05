@@ -259,6 +259,48 @@ class ConsoleScope
     }
 
     /**
+     * The names of ONLY the organizations a page actually names.
+     *
+     * {@see availableOrganizations()} answers a different question — "which may this
+     * person switch to" — and answering it is unavoidably the size of the environment.
+     * Four list pages were calling it to label at most 25 paginated rows, so a tenant
+     * with a few thousand organizations paid a full hydration of every one of them on
+     * every render AND on every Livewire action. The query count and the HTML never
+     * changed, which is exactly why the console's query-budget test could not see it;
+     * the cost is hydration, and it grows with the customer's own success.
+     *
+     * `console/directories/index` already did it this way. This lifts that shape to the
+     * seam so the bounded form is the one that is easy to reach for.
+     *
+     * @param  iterable<mixed>  $organizationIds  ids from the rows being rendered; nulls
+     *                                            and duplicates are fine
+     * @return array<string, string>
+     */
+    public function organizationNames(iterable $organizationIds): array
+    {
+        $ids = [];
+
+        foreach ($organizationIds as $id) {
+            if (is_string($id) && $id !== '') {
+                $ids[$id] = true;
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // Environment-scoped by the model's own global scope, exactly as the unbounded
+        // read was — an id from another environment resolves to nothing rather than to a
+        // name this person may not see.
+        /** @var array<string, string> */
+        return Organization::query()
+            ->whereIn('id', array_keys($ids))
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
      * The organizations to OFFER, for a term the administrator typed — a bounded page of
      * the same set {@see availableOrganizations()} describes.
      *

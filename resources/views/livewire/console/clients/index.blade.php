@@ -120,7 +120,7 @@ new #[Layout('components.layouts.console', ['title' => 'Apps & API keys'])] clas
             // The scope's own list, not a bare Organization query: on the organization
             // plane that is the member's one organization, so naming an app's owner can
             // never enumerate the environment's other tenants.
-            'orgNames' => app(ConsoleScope::class)->availableOrganizations(),
+            'orgNames' => app(ConsoleScope::class)->organizationNames($clients->pluck('organization_id')),
             // Shown only when the whole environment is in view, where who owns a row is
             // the one thing its name does not say.
             'showsEveryOrganization' => $organizationId === null,

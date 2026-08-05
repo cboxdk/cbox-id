@@ -82,6 +82,8 @@ new #[Layout('components.layouts.console', ['title' => 'Webhooks'])] class exten
             $query->where('url', 'like', "%{$term}%");
         }
 
+        $endpoints = $query->paginate(25);
+
         return [
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
@@ -94,8 +96,8 @@ new #[Layout('components.layouts.console', ['title' => 'Webhooks'])] class exten
             // The scope's own list, not a bare Organization query: on the organization
             // plane that is the member's one organization, so naming an endpoint's owner
             // can never enumerate the environment's other tenants.
-            'orgNames' => $scope->availableOrganizations(),
-            'endpoints' => $query->paginate(25),
+            'orgNames' => $scope->organizationNames($endpoints->pluck('organization_id')),
+            'endpoints' => $endpoints,
         ];
     }
 

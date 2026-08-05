@@ -69,9 +69,12 @@ new #[Layout('components.layouts.console', ['title' => 'New stored token'])] cla
         $scope = app(ConsoleScope::class);
 
         return [
+            // `organizationName()` rather than indexing the whole map: this needs ONE
+            // name, and the map is the size of the environment. A tenant with a few
+            // thousand organizations hydrated every one of them to label a single form.
             'scopeLabel' => $scope->organizationId() === null
                 ? 'this environment'
-                : ($scope->availableOrganizations()[$scope->organizationId()] ?? 'this organization'),
+                : ($scope->organizationName() ?? 'this organization'),
         ];
     }
 }; ?>

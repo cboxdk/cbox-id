@@ -213,6 +213,8 @@ new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class
             $query->where('name', 'like', "%{$term}%");
         }
 
+        $connections = $query->paginate(25);
+
         return [
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
@@ -228,11 +230,11 @@ new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class
             // have not picked an organization sends them somewhere useless.
             'needsOrganization' => $organizationId === null,
             'entitled' => $scope->entitled('sso'),
-            'connections' => $query->paginate(25),
+            'connections' => $connections,
             // The scope's own list, not a bare Organization query: on the organization
             // plane that is the member's one organization, so naming a connection's owner
             // can never enumerate the environment's other tenants.
-            'orgNames' => $scope->availableOrganizations(),
+            'orgNames' => $scope->organizationNames($connections->pluck('organization_id')),
             // A domain belongs to ONE organization, so the whole-environment overview has
             // none to show rather than every tenant's.
             'domains' => $organizationId === null
