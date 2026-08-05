@@ -147,7 +147,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
     {
         $member = $auth->current();
 
-        if ($member === null || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments() || $this->selectedEnvironment === '') {
+        if ($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true || $this->selectedEnvironment === '') {
             return false;
         }
 

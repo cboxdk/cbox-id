@@ -738,3 +738,74 @@ it('follows the membership when the member row disagrees', function (): void {
 
     expect($owner->refresh()->role)->toBe(AccountRole::Owner);
 })->group('security');
+
+/**
+ * ONE ROSTER, and `/members` is not it.
+ *
+ * An account IS an organization in the platform root, so on that host this page and
+ * `/members` list the same people. They wrote different columns:
+ * `/account-members` writes `account_members.role` and syncs it onto the membership;
+ * `/members` writes `memberships.role` and syncs nothing back. The console reads the
+ * membership and ten write guards read the member row, so the two disagreed the moment
+ * either was used on somebody the other owned.
+ *
+ * Both directions were reachable and both were wrong:
+ *
+ *  - UP. Re-role a Developer to Admin from `/members` and they gain the member roster,
+ *    the account activity chain and billing — all three of which `AccountRole::Developer`
+ *    refuses by design, because a leaked developer credential must not enumerate the team.
+ *    Nothing recorded it on the account plane; `/account-members` still rendered them as
+ *    "Developer".
+ *  - DOWN. Re-role them to `Member` and the rail goes dark, so it looks like it worked —
+ *    while `projects/create` and the environment handoff, which read the member row, still
+ *    let them stand up an environment and open a live environment-admin session on a
+ *    tenant host. A demotion that confirms itself and demotes nothing.
+ *
+ * The fence is a refusal rather than a two-way sync, because syncing back would first
+ * require deciding what `MembershipRole::Member` and `Owner` mean on the account plane —
+ * today "nothing" and "not assignable".
+ */
+it('refuses to re-role an account member from the organization roster', function (): void {
+    ['member' => $owner, 'account' => $account] = provisionAccount();
+
+    $target = app(AccountMembers::class)->create($account->id, 'dev@acme.example', 'a-strong-unbreached-passphrase', 'Dev');
+    app(AccountMembers::class)->setRole($target->id, AccountRole::Developer);
+
+    signInAsMember($owner);
+
+    Volt::test('members')->call('setRole', (string) $target->refresh()->subject_id, MembershipRole::Admin->value);
+
+    // BOTH rows, because the whole defect was that they could disagree.
+    expect($target->refresh()->role)->toBe(AccountRole::Developer, 'the account role moved from the wrong page')
+        ->and(app(PlatformRoot::class)->run(
+            fn () => app(Memberships::class)->of((string) $account->refresh()->organization_id, (string) $target->subject_id)?->role,
+        ))->toBe(MembershipRole::Developer, 'the membership moved without the account role');
+})->group('security');
+
+it('refuses to remove an account member from the organization roster', function (): void {
+    ['member' => $owner, 'account' => $account] = provisionAccount();
+
+    $target = app(AccountMembers::class)->create($account->id, 'gone@acme.example', 'a-strong-unbreached-passphrase', 'Gone');
+
+    signInAsMember($owner);
+
+    // Asserted on the REFUSAL, not on the surviving membership.
+    //
+    // The first version checked that the membership was still there — and it passed with
+    // the fence deleted, because several other things in `remove()` can also leave it
+    // standing. A test that cannot tell "refused" from "did nothing" is not a test of a
+    // refusal. The toast is dispatched by the fence and by nothing else.
+    Volt::test('members')
+        ->call('remove', (string) $target->refresh()->subject_id)
+        ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
+            (string) ($params['message'] ?? ''),
+            'Account members',
+        ));
+
+    // …and the membership is still there, which is the outcome that matters: removing it
+    // alone would leave an account member with no place in the organization their own
+    // account owns — the exact state 2026_08_05_000200 repaired.
+    expect(app(PlatformRoot::class)->run(
+        fn () => app(Memberships::class)->of((string) $account->refresh()->organization_id, (string) $target->subject_id),
+    ))->not->toBeNull('the account member lost their place in their own account\'s organization');
+})->group('security');

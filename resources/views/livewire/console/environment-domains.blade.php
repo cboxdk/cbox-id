@@ -115,7 +115,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
     {
         $member = $auth->current();
 
-        if ($member === null || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments() || $this->selectedEnvironment === '') {
+        if ($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true || $this->selectedEnvironment === '') {
             return false;
         }
 

@@ -123,7 +123,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner, AccountActivity $activity): void
     {
         $member = $auth->current();
-        abort_if($member === null || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments(), 403);
+        abort_if($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true, 403);
 
         $project = Project::query()->whereKey($this->creatingIn)->first();
         abort_if($project === null || $project->account_id !== $member->account_id, 404);

@@ -54,7 +54,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
         $current = $auth->current();
         $account = $current?->account;
 
-        if ($account === null || ! AccountCapabilities::ofAccountRole($current->role)->canManageMembers()) {
+        if ($account === null || ! app(ConsoleScope::class)->capabilities()?->canManageMembers() === true) {
             return;
         }
 
@@ -196,7 +196,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account members'])] class ex
         // the roster but not manage it, or one naming themselves, is looking at a person
         // they can genuinely see. A 404 there would deny the existence of a row rendered
         // three lines above it on the same page.
-        if ($current === null || ! AccountCapabilities::ofAccountRole($current->role)->canManageMembers() || $memberId === $current->id) {
+        if ($current === null || ! app(ConsoleScope::class)->capabilities()?->canManageMembers() === true || $memberId === $current->id) {
             return null;
         }
 

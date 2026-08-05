@@ -35,7 +35,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class e
     {
         $account = $auth->current()?->account;
 
-        if ($account === null || ! AccountCapabilities::ofAccountRole($auth->current()->role)->canManageMembers()) {
+        if ($account === null || ! app(ConsoleScope::class)->capabilities()?->canManageMembers() === true) {
             return;
         }
 
