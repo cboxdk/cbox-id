@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
+use App\Platform\AccountCapabilities;
 use Cbox\Id\Platform\AccountProvisioner;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
 use Cbox\Id\Platform\Contracts\Projects;
@@ -173,3 +174,43 @@ it('enforces the plan limit through the API', function (): void {
         ->assertStatus(422)
         ->assertJsonPath('error', 'environment_limit_reached');
 });
+
+/**
+ * The machine plane derives capabilities the same way the console does.
+ *
+ * This middleware was the last place in the app that asked `AccountRole` directly, and it
+ * disagreed with everything else. `AccountCapabilities` maps an account role onto the
+ * organization plane before answering, and `Billing` maps to `Viewer` — so reading the
+ * enum raw gave a `role=billing` key `manage-billing` = true and `read-members` = false,
+ * while a human Billing member in the console got the exact opposite on both. One
+ * credential type saying yes where the other says no, about the same account, from the
+ * same stored role.
+ *
+ * Nobody holds the role — `AccountRole::assignable()` stopped offering it precisely
+ * because the mapping cannot be made faithful — so this pins the derivation rather than
+ * a live exposure: a legacy key that still carries `billing` gets the console's answer,
+ * not a second opinion.
+ */
+it('answers a capability question the same way the console does', function (): void {
+    // THROUGH THE MIDDLEWARE, not by asking `AccountCapabilities` what it thinks.
+    //
+    // The first version of this asserted the VO's own answers, which is a test of the VO
+    // and passes whether or not the middleware consults it — I removed the middleware's
+    // call and it stayed green. The property being claimed is that the machine plane and
+    // the console reach the same verdict from the same stored role, and the only way to
+    // see that is to make a request.
+    //
+    // A `billing` key against `read-members`. Reading the raw enum, `AccountRole::Billing`
+    // refuses it — while a human Billing member in the console is mapped to `Viewer` and
+    // may read the roster. Same account, same stored role, opposite answers depending on
+    // which credential you held.
+    //
+    // Nobody can be given the role any more (`assignable()` dropped it, because the
+    // mapping cannot be made faithful), so this is a legacy key, and a legacy key getting
+    // the console's answer rather than a second opinion is the whole point.
+    $account = apiAccount();
+
+    $this->withToken(issueKey($account, AccountRole::Billing))
+        ->getJson('/api/v1/account/members')
+        ->assertOk();
+})->group('security');

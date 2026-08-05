@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\AccountApiContext;
+use App\Platform\AccountCapabilities;
 use Cbox\Id\Platform\Contracts\AccountApiKeys;
 use Cbox\Id\Platform\Enums\AccountRole;
 use Closure;
@@ -49,14 +50,32 @@ final class AuthenticateAccountApi
         return $next($request);
     }
 
+    /**
+     * THROUGH {@see AccountCapabilities}, which is the console's derivation too — this
+     * was the last place in the app that asked `AccountRole` directly, and it disagreed.
+     *
+     * `AccountCapabilities` maps an account role onto the organization plane before
+     * answering, and `Billing` maps to `Viewer`. Reading the enum raw therefore gave a
+     * `role=billing` key `manage-billing` = true and `read-members` = false, while a human
+     * Billing member in the console got the exact opposite on both. One credential type
+     * saying yes where the other says no, about the same account, from the same stored
+     * role — that is the shape of an authorization bug even while nobody is holding the
+     * role, and `AccountRole::assignable()` no longer offers it precisely because the
+     * mapping cannot be made faithful.
+     *
+     * `default => false` stays: an unknown capability string is refused rather than
+     * admitted, so a route that names a capability nobody implemented fails closed.
+     */
     private function permits(AccountRole $role, string $capability): bool
     {
+        $can = AccountCapabilities::ofAccountRole($role);
+
         return match ($capability) {
-            'manage-environments' => $role->canManageEnvironments(),
-            'manage-members' => $role->canManageMembers(),
-            'manage-billing' => $role->canManageBilling(),
-            'read-members' => $role->canReadMembers(),
-            'read-billing' => $role->canReadBilling(),
+            'manage-environments' => $can->canManageEnvironments(),
+            'manage-members' => $can->canManageMembers(),
+            'manage-billing' => $can->canManageBilling(),
+            'read-members' => $can->canReadMembers(),
+            'read-billing' => $can->canReadBilling(),
             default => false,
         };
     }
