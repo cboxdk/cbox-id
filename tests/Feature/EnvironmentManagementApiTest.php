@@ -174,7 +174,7 @@ it('redirects a non-manager away from the environment-keys console', function ()
     // Viewer is read-only — it cannot manage environments, so it can't mint env keys.
     [$viewer, $viewerSubjectId] = addMember($result->organization->id, MembershipRole::Viewer, 'viewer@acme.example');
 
-    signInAsMember($viewer->user_id);
+    signInAsMember($viewerSubjectId);
     $this->get(route('environment-keys'))
         ->assertRedirect(route('projects'));
 });

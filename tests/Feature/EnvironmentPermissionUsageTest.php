@@ -58,7 +58,7 @@ it('counts a permission\'s usage without loading the whole platform-wide pivot',
 
     serveOnTestHost($acme['environment']);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($acme['env']));
-    actAsEnvironmentAdmin($acme['member'], $acme['env']);
+    actAsEnvironmentAdmin($acme['subjectId'], $acme['env']);
 
     $permission = Permission::query()->create([
         'client_id' => null, 'environment_id' => $acme['env'], 'name' => 'reports:read', 'tenant_assignable' => true,
@@ -134,7 +134,7 @@ it('never counts another environment\'s roles toward this one\'s permission usag
 
     serveOnTestHost($acme['environment']);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($acme['env']));
-    actAsEnvironmentAdmin($acme['member'], $acme['env']);
+    actAsEnvironmentAdmin($acme['subjectId'], $acme['env']);
 
     Volt::test('environment.permissions.index')
         ->assertOk()

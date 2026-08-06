@@ -8,6 +8,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\PlatformRoot;
 use Livewire\Volt\Volt;
 
 // Guarded so they coexist with the same helpers in the other workspace test files.
@@ -22,8 +23,8 @@ beforeEach(function (): void {
 });
 
 it('walks an admin from requesting a custom domain to a verified issuer', function (): void {
-    ['member' => $owner, 'organization' => $account, 'environment' => $env] = provisionAccount();
-    signInAsMember($owner->user_id);
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account, 'environment' => $env] = provisionAccount();
+    signInAsMember($ownerSubjectId);
 
     $page = Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -46,13 +47,13 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
     $page->call('verify');
 
     expect($env->fresh()->domain)->toBe('id.acme.com')
-        ->and(AuditEntry::query()->where('scope', $account->id)
-            ->where('action', 'organization.custom_domain_verified')->exists())->toBeTrue();
+        ->and(app(PlatformRoot::class)->run(fn (): bool => AuditEntry::query()->where('scope', $account->id)
+            ->where('action', 'organization.custom_domain_verified')->exists()))->toBeTrue();
 });
 
 it('surfaces a validation error for a platform-reserved domain', function (): void {
-    ['member' => $owner, 'environment' => $env] = provisionAccount();
-    signInAsMember($owner->user_id);
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'environment' => $env] = provisionAccount();
+    signInAsMember($ownerSubjectId);
 
     Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -64,9 +65,9 @@ it('surfaces a validation error for a platform-reserved domain', function (): vo
 });
 
 it('removes a verified domain, falling back to the default issuer', function (): void {
-    ['member' => $owner, 'environment' => $env] = provisionAccount();
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'environment' => $env] = provisionAccount();
     $env->update(['domain' => 'id.acme.com']);
-    signInAsMember($owner->user_id);
+    signInAsMember($ownerSubjectId);
 
     Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -77,9 +78,9 @@ it('removes a verified domain, falling back to the default issuer', function ():
 
 it('refuses the domains page to a member who cannot manage environments', function (): void {
     ['organization' => $account] = provisionAccount();
-    $viewer = memberWithRole($account->id, MembershipRole::Viewer, 'billing2@acme.example');
+    [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Viewer, 'billing2@acme.example');
 
-    signInAsMember($viewer->user_id);
+    signInAsMember($viewerSubjectId);
     $this->get(route('environment-domains'))
         ->assertRedirect(route('projects'));
 });
@@ -101,7 +102,7 @@ it('does not leak another account domain challenge through the selected environm
     // Their environment has a pending domain, so a challenge exists to leak.
     app(EnvironmentDomains::class)->request($theirs['environment']->id, 'id.other.example');
 
-    signInAsMember($mine['member']);
+    signInAsMember($mine['subjectId']);
 
     $component = Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $theirs['environment']->id);

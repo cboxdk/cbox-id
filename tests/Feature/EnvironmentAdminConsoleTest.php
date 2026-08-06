@@ -62,12 +62,12 @@ it('authenticates an account member as admin ONLY on their environment\'s host (
     // On the anchored environment's host → authenticated.
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
     expect($auth->subjectId())->toBe($member->user_id);
-    expect($auth->current()?->id)->toBe($member->id);
+    expect($auth->membership()?->id)->toBe($member->id);
 
     // On a DIFFERENT environment's host → nothing, even though the session cookie is
     // the same. Bound env ≠ host env ⇒ no bleed.
     app(EnvironmentContext::class)->set(GenericEnvironment::of('some_other_env'));
-    expect($auth->current())->toBeNull();
+    expect($auth->membership())->toBeNull();
 });
 
 it('refuses a member with no access to the environment', function (): void {
@@ -304,12 +304,12 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     $open = 'https://cboxid.com'.route('environment.open', $envId, absolute: false);
 
     // Viewer reaches the env but is refused the mint — 403, no handoff token issued.
-    signInAsMember($viewer->user_id);
+    signInAsMember($viewerSubjectId);
     $this->get($open)->assertForbidden();
 
     // A developer is bounced to the environment host to redeem — a redirect, not a 403.
     [$dev, $devSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev-mint@acme.example');
-    signInAsMember($dev->user_id);
+    signInAsMember($devSubjectId);
     $this->get($open)->assertRedirect();
 });
 
@@ -332,12 +332,12 @@ it('refuses a session anchored to one environment on another the same admin may 
     ['member' => $member, 'organization' => $account, 'envId' => $envId] = envAdminSetup();
 
     $second = app(TenantProvisioner::class)->addEnvironment(
-        $account->projects()->firstOrFail(),
+        app(PlatformRoot::class)->run(fn () => $account->projects()->firstOrFail()),
         'Staging',
     );
 
     // Access is NOT what refuses here — state it, or this is the old test again.
-    expect(in_array($second->id, app(Memberships::class)->accessibleEnvironmentIds($member->organization_id, $member->user_id), true))
+    expect(in_array($second->id, app(PlatformRoot::class)->run(fn (): array => app(Memberships::class)->accessibleEnvironmentIds($member->organization_id, $member->user_id)), true))
         ->toBeTrue('fixture: the admin must be entitled to BOTH, or the anchor is not what holds');
 
     actAsEnvironmentAdmin($member->user_id, $envId);
@@ -345,9 +345,9 @@ it('refuses a session anchored to one environment on another the same admin may 
     $auth = app(EnvironmentAdminAuth::class);
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    expect($auth->current()?->id)->toBe($member->id);
+    expect($auth->membership()?->id)->toBe($member->id);
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($second->id));
-    expect($auth->current())
+    expect($auth->membership())
         ->toBeNull('a session anchored to one environment administered another on the same cookie');
 })->group('security');
