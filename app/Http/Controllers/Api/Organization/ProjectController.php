@@ -6,12 +6,12 @@ namespace App\Http\Controllers\Api\Organization;
 
 use App\Http\Controllers\Controller;
 use App\Platform\OrganizationApiContext;
-use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

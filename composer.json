@@ -85,11 +85,13 @@
         ],
         "license-check": "@php bin/check-licenses.php",
         "sbom": "@php bin/generate-sbom.php",
+        "sbom-check": "@php bin/generate-sbom.php --check",
         "qa": [
             "@php vendor/bin/pint --test",
             "@analyse",
             "@test",
             "@license-check",
+            "@sbom-check",
             "@composer audit --no-dev"
         ],
         "post-autoload-dump": [

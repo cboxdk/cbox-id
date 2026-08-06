@@ -2,9 +2,9 @@
 
 use App\Http\ApiErrorRenderer;
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
+use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;

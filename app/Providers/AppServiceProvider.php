@@ -4,13 +4,13 @@ namespace App\Providers;
 
 use App\Http\ApiRateLimiters;
 use App\Listeners\SuppressSandboxMail;
-use App\Platform\OrganizationApiContext;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\OrganizationApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;

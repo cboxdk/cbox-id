@@ -9,6 +9,7 @@ declare(strict_types=1);
  * derived from content) so a committed SBOM only changes when dependencies do.
  *
  *   composer sbom              # production dependencies -> sbom.json
+ *   composer sbom-check        # fail if the committed dependency SET is stale
  *   php bin/generate-sbom.php --dev --output=sbom-dev.json
  */
 $root = dirname(__DIR__);
@@ -54,6 +55,38 @@ $bom = [
     ],
     'components' => $components,
 ];
+
+if (in_array('--check', $argv, true)) {
+    if (! is_file($output)) {
+        fwrite(STDERR, "SBOM check failed: {$output} does not exist. Run 'composer sbom'.\n");
+        exit(1);
+    }
+
+    $committed = json_decode((string) file_get_contents($output), true, 512, JSON_THROW_ON_ERROR);
+
+    $committedNames = array_column($committed['components'] ?? [], 'name', 'name');
+    $resolvedNames = array_column($components, 'name', 'name');
+    ksort($committedNames);
+    ksort($resolvedNames);
+
+    $added = array_diff_key($resolvedNames, $committedNames);
+    $removed = array_diff_key($committedNames, $resolvedNames);
+
+    if ($added !== [] || $removed !== []) {
+        fwrite(STDERR, "SBOM check failed: the dependency set has changed.\n");
+        foreach ($added as $name) {
+            fwrite(STDERR, "  + {$name}\n");
+        }
+        foreach ($removed as $name) {
+            fwrite(STDERR, "  - {$name}\n");
+        }
+        fwrite(STDERR, "Run 'composer sbom' and commit the result.\n");
+        exit(1);
+    }
+
+    printf("SBOM check passed: %d components, dependency set unchanged.\n", count($components));
+    exit(0);
+}
 
 file_put_contents(
     $output,

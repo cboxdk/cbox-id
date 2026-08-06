@@ -6,16 +6,16 @@ namespace App\Http\Controllers\Api\Organization;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AccountInviteMail;
-use App\Platform\OrganizationApiContext;
 use App\Platform\MailLinks;
+use App\Platform\OrganizationApiContext;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;

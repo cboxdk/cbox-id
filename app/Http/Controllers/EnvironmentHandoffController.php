@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\Console\ConsoleScope;
-use App\Platform\OrganizationCapabilities;
-use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
 

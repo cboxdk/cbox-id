@@ -8,6 +8,7 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\ValueObjects\ProvisionedTenant;
 
 /**
  * A self-serve customer that exists but is not yet an IdP: the organization, the owner who
@@ -22,7 +23,7 @@ use Cbox\Id\Platform\Models\Project;
  * row above the organization; the owner was a member row that carried its own password, and
  * the organization was created beside the account and pointed back at it. The owner is now a
  * subject (who they are) plus a membership (what they may do here) — the same split
- * {@see \Cbox\Id\Platform\ValueObjects\ProvisionedTenant} makes, because it is the same
+ * {@see ProvisionedTenant} makes, because it is the same
  * customer at an earlier moment.
  */
 final readonly class PendingOrganization

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Platform\OrganizationCapabilities;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Membership;
-use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
