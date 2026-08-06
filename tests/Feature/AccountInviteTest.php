@@ -8,6 +8,7 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
@@ -31,9 +32,15 @@ it('invites a teammate and emails a signed accept link', function (): void {
         ->call('invite')
         ->assertHasNoErrors();
 
-    $invited = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('new@acme.example'));
-    expect($invited)->not->toBeNull()
-        ->and($invited->status->value)->toBe('invited');
+    // NO SUBJECT YET, and that is the change worth naming: the account plane created the
+    // person up front as a member row in an `invited` state, so an invitation that was
+    // never accepted still put an identity on the install. An invitation is its own record;
+    // the subject is created when it is redeemed.
+    expect(app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('new@acme.example')))
+        ->toBeNull();
+
+    expect(app(PlatformRoot::class)->run(fn () => app(Invitations::class)->pending($owner->organization_id)))
+        ->toHaveCount(1);
 
     Mail::assertSent(AccountInviteMail::class, fn (AccountInviteMail $m): bool => $m->hasTo('new@acme.example'));
 });
@@ -53,29 +60,44 @@ it('rejects inviting an email that already belongs to a member', function (): vo
 
 it('requires a valid signature to reach the accept page', function (): void {
     ['organization' => $account] = provisionAccount();
-    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Developer, 'new@acme.example');
 
-    $this->get('/invite/'.$invited->id.'/accept')->assertForbidden();
+    $pending = app(PlatformRoot::class)->run(
+        fn () => app(Invitations::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer),
+    );
+
+    // The token alone is not enough: the link is SIGNED, and an invitation token pasted
+    // into the address bar without the signature is refused before the page runs.
+    $this->get('/invite/'.$pending->token.'/accept')->assertForbidden();
 });
 
 it('accepts a signed invite, sets a password, and signs in', function (): void {
     ['organization' => $account] = provisionAccount();
-    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Developer, 'New', 'new@acme.example');
 
-    $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['member' => $invited->id]);
+    $pending = app(PlatformRoot::class)->run(
+        fn () => app(Invitations::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer),
+    );
+
+    $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['token' => $pending->token]);
     $this->get($url)->assertOk()->assertSee('Accept your invitation');
 
-    Volt::test('auth.accept-invite', ['member' => $invited->id])
+    Volt::test('auth.accept-invite', ['token' => $pending->token])
         ->set('password', 'a-strong-unbreached-passphrase')
         ->call('accept')
         ->assertRedirect(route('projects'));
 
-    $members = app(Memberships::class);
-    expect(freshMembership($invited)->status->value)->toBe('active')
-        ->and($members->verifyPassword($invited->id, 'a-strong-unbreached-passphrase'))->toBeTrue()
-        // Signed in — asked through the resolver. The session is the subject's; the
-        // member is what it resolves to.
-        ->and(app(CurrentUser::class)->id())->toBe($invitedSubjectId);
+    // The MEMBERSHIP exists now, which it did not before acceptance — that is the whole
+    // difference between an invitation and a member. It used to be one row moving from
+    // `invited` to `active`; it is a record being redeemed into a membership.
+    $subject = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('new@acme.example'));
+
+    expect($subject)->not->toBeNull()
+        ->and(app(PlatformRoot::class)->run(
+            fn () => app(Memberships::class)->of($account->id, $subject->id)?->role,
+        ))->toBe(MembershipRole::Developer)
+        // Signed in on the subject's own session — asked at the session key rather than
+        // through CurrentUser, which the middleware populates on the NEXT request and which
+        // a component driven directly never reaches.
+        ->and(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
 });
 
 /**
@@ -114,8 +136,9 @@ it('resets an account member through the console flow and ends their open sessio
             ->assertHasNoErrors();
     });
 
-    expect(app(Memberships::class)->verifyPassword($owner->id, 'a-fresh-unbreached-passphrase'))
-        ->toBeTrue('the reset did not reach the member\'s credential');
+    expect(app(PlatformRoot::class)->run(
+        fn (): bool => app(Subjects::class)->verifyPassword($owner->user_id, 'a-fresh-unbreached-passphrase'),
+    ))->toBeTrue('the reset did not reach the person\'s credential');
 
     // The session that existed BEFORE the reset is dead — asserted at the framework ROW,
     // then at the door. A member's browser holds an ordinary subject session, which no
@@ -130,17 +153,30 @@ it('resets an account member through the console flow and ends their open sessio
 
 it('turns away an already-accepted invite (replayed link)', function (): void {
     ['organization' => $account] = provisionAccount();
-    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Developer, 'new@acme.example');
-    app(Memberships::class)->activate($invited->id, 'first-accept-passphrase');
 
-    // Re-opening the (still validly-signed) link after acceptance is turned away at
-    // the page itself — the member is no longer 'invited'.
-    $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['member' => $invited->id]);
+    $pending = app(PlatformRoot::class)->run(
+        fn () => app(Invitations::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer),
+    );
+
+    $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['token' => $pending->token]);
+
+    Volt::test('auth.accept-invite', ['token' => $pending->token])
+        ->set('password', 'first-accept-passphrase')
+        ->call('accept');
+
+    // Re-opening the (still validly-signed) link is turned away at the page itself: the
+    // TOKEN is single-use, so the second visit finds no invitation to redeem. It used to be
+    // turned away because a member row had left the `invited` state — a status check, which
+    // is the weaker of the two: a status can be written back.
     $this->get($url)->assertRedirect(route('login'));
 
-    // And the framework's activate() is a no-op on an active member regardless, so
-    // the first password stands.
-    expect(app(Memberships::class)->verifyPassword($invited->id, 'first-accept-passphrase'))->toBeTrue();
+    // …and the password chosen at the first acceptance still stands: a replayed link
+    // cannot re-set it, which is the outcome that actually matters.
+    $subject = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('new@acme.example'));
+
+    expect(app(PlatformRoot::class)->run(
+        fn (): bool => app(Subjects::class)->verifyPassword($subject->id, 'first-accept-passphrase'),
+    ))->toBeTrue();
 });
 
 /**
@@ -160,27 +196,30 @@ it('turns away an already-accepted invite (replayed link)', function (): void {
  * DEACTIVATED subject and is held out by the credential, so only the pre-existing-account
  * case reaches this.
  */
-it('does not admit an invited member who has not accepted, even holding a live session', function (): void {
+it('does not admit an invited person who has not accepted, even holding a live session', function (): void {
     ['organization' => $account] = provisionAccount('owner@acme.example');
 
-    // A person who already has a Cbox ID, quite apart from this account.
+    // A person who already has a Cbox ID, quite apart from this organization.
     $outsider = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->create(
         'outsider@elsewhere.test',
         'Outsider',
         'a-strong-unbreached-passphrase',
     ));
 
-    $members = app(Memberships::class);
-    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Admin, 'outsider@elsewhere.test');
+    // INVITED, not added. The account plane wrote a member row in an `invited` state, so an
+    // unaccepted invitation was already a row on the roster and the question was whether
+    // its status held the person out. An invitation is its own record now: until it is
+    // redeemed there is no membership at all, which is a stronger version of the same
+    // guarantee and the reason this test reads differently than it did.
+    app(PlatformRoot::class)->run(
+        fn () => app(Invitations::class)->invite($account->id, 'outsider@elsewhere.test', MembershipRole::Admin),
+    );
 
-    expect(freshMembership($invited)?->subject_id)
-        ->toBe($outsider->id, 'fixture: the invitation must reuse the existing subject, or this tests nothing');
+    expect(app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($account->id, $outsider->id)))
+        ->toBeNull('an unaccepted invitation granted a membership');
 
     // They sign in as themselves — a real, live session, established the ordinary way.
     signInAsSubject($outsider->id);
-
-    expect(app(CurrentUser::class)->check())
-        ->toBeFalse('an unaccepted invitation admitted its invitee to the account');
 
     // Signed in, and with nothing here: they are an ordinary subject of the root, so the
     // Identity platform area simply is not theirs and the console root is where they land.

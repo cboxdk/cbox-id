@@ -46,8 +46,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
 
         $invitation = $platformRoot->run(fn () => $invitations->byToken($token));
 
-        // Already accepted, revoked, expired or unknown — the link is spent.
-        if ($invitation === null) {
+        // `isPending()`, not merely "was found". byToken() resolves a REDEEMED or revoked
+        // invitation just as happily as a live one — it is a lookup by hash, not a
+        // validity check — so without this the page renders for a spent link and asks the
+        // visitor to choose a password before refusing them. A refusal that arrives after
+        // the form is the shape people learn to distrust.
+        if ($invitation === null || ! $invitation->isPending()) {
             return redirect()->route('login')
                 ->with('status', 'This invitation is no longer valid. Try signing in.');
         }
@@ -69,7 +73,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
     ): void {
         $invitation = $platformRoot->run(fn () => $invitations->byToken($this->token));
 
-        if ($invitation === null) {
+        if ($invitation === null || ! $invitation->isPending()) {
             $this->redirect(route('login'), navigate: false);
 
             return;
