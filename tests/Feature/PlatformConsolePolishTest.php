@@ -29,12 +29,12 @@ function polishOwner(): void
 {
     platformRootDeployment();
 
-    signInAsMember(app(TenantProvisioner::class)->provision(new TenantBlueprint(
+    signInAsSubject(app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
         ownerEmail: 'polish-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->membership);
+    ))->owner->id);
 }
 
 it('offers an account-less operator no area that needs an account', function (): void {

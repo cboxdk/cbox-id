@@ -40,10 +40,10 @@ if (! function_exists('throttleKey')) {
  * the Terraform/CLI/SDK traffic this API is about to carry.
  */
 it('registers a named limiter for every API plane', function (): void {
-    // Guards against the silent-failure mode of named limiters: `throttle:api-account`
+    // Guards against the silent-failure mode of named limiters: `throttle:api-organization`
     // with no registered limiter is parsed as a NUMERIC limit of zero attempts, which
     // would 429 every single request.
-    foreach (['api-account', 'api-environment', 'api-vault', 'api-apps'] as $limiter) {
+    foreach (['api-organization', 'api-environment', 'api-vault', 'api-apps'] as $limiter) {
         expect(RateLimiter::limiter($limiter))->not->toBeNull("The `{$limiter}` limiter is not registered.");
     }
 });

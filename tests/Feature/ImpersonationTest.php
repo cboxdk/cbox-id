@@ -223,7 +223,7 @@ it('suspends the session an operator signed in with, and puts it back', function
     expect($account->user_id)->toBe($op->subject_id, 'fixture: the operator and the member must be one person');
 
     // Signed in the way the account door does it.
-    signInAsMember($account);
+    signInAsMember($account->user_id);
 
     $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));

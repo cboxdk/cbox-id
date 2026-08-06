@@ -52,7 +52,7 @@ it('is claimed by anything that only an administered platform produces', functio
 })->with([
     'an operator' => ['operator', 'a platform operator exists'],
     'a subject' => ['subject', 'a user identity exists'],
-    'a tenant organization' => ['organization', 'a tenant organization exists'],
+    'an organization' => ['organization', 'an organization exists'],
     'an environment somebody owns' => ['environment', 'an environment beyond a bare default exists'],
 ]);
 
