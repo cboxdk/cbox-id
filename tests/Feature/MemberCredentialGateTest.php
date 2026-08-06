@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\EnvironmentAdminController;
-use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
@@ -46,7 +45,7 @@ uses(RefreshDatabase::class);
  *
  * Two doors are left, and both are here:
  *
- *  - the ACCOUNT password door ({@see AccountAuth::attempt()}), which is now the only
+ *  - the ACCOUNT password door (the account plane's own password door), which is now the only
  *    place an account member types a password at all, and
  *  - the HANDOFF, which is not a credential the member just proved but stands in for one.
  *

@@ -755,7 +755,7 @@ function replaySnapshot(string $pageUrl, string $snapshot, string $method, array
  * tests below assert exactly that shape, and both now carry a positive baseline in the
  * same test so the refusal has something to be different from.
  *
- * It replaced `AccountAuth::attempt()`, a second password door with its own copy of these
+ * It replaced the account plane's own password door, a second password door with its own copy of these
  * rules that no route ever reached.
  */
 function signInAtLogin(string $email, string $password, bool $stepUp = false): AttemptOutcome

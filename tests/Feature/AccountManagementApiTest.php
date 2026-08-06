@@ -200,7 +200,7 @@ it('answers a capability question the same way the console does', function (): v
     // the console reach the same verdict from the same stored role, and the only way to
     // see that is to make a request.
     //
-    // A `billing` key against `read-members`. Reading the raw enum, `MembershipRole::Billing`
+    // A `billing` key against `read-members`. Reading the raw enum, `MembershipRole::Viewer`
     // refuses it — while a human Billing member in the console is mapped to `Viewer` and
     // may read the roster. Same account, same stored role, opposite answers depending on
     // which credential you held.
@@ -210,7 +210,7 @@ it('answers a capability question the same way the console does', function (): v
     // the console's answer rather than a second opinion is the whole point.
     $account = apiAccount();
 
-    $this->withToken(issueKey($account, MembershipRole::Billing))
+    $this->withToken(issueKey($account, MembershipRole::Viewer))
         ->getJson('/api/v1/account/members')
         ->assertOk();
 })->group('security');

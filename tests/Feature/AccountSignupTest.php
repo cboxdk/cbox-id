@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Support\Facades\Http;

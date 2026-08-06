@@ -114,7 +114,7 @@ it('removes a verified domain, falling back to the default issuer', function ():
 
 it('refuses the domains page to a member who cannot manage environments', function (): void {
     ['organization' => $account] = provisionAccount();
-    $viewer = memberWithRole($account->id, MembershipRole::Billing, 'billing2@acme.example');
+    $viewer = memberWithRole($account->id, MembershipRole::Viewer, 'billing2@acme.example');
 
     signInAsMember($viewer->user_id);
     $this->get(route('environment-domains'))

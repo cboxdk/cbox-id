@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
-use App\Platform\OrganizationCapabilities;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
+use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -45,7 +45,8 @@ class ConsoleScope
     /** How many organizations the switcher offers at once before asking for a search. */
     public const SWITCHER_LIMIT = 8;
 
-    private bool $operatorResolved = false;
+    /** @see operator() — the subject the memo below was resolved FOR, or '' for nobody. */
+    private ?string $operatorKey = null;
 
     private ?PlatformOperator $operatorRecord = null;
 
@@ -484,13 +485,18 @@ class ConsoleScope
      */
     public function operator(): ?PlatformOperator
     {
-        if ($this->operatorResolved) {
+        $subjectId = $this->actingSubjectId();
+
+        // KEYED ON THE SUBJECT, not a bare "resolved once" flag. The signed-in person CAN
+        // change inside one request — an account switch, an impersonation resume, a
+        // sign-in — and a memo on an identity is the one kind that fails dangerously: it
+        // would answer with the previous person's authority under the new person's session.
+        // The same keying, for the same reason, as validatedThisRequest() above.
+        if ($this->operatorKey === ($subjectId ?? '')) {
             return $this->operatorRecord;
         }
 
-        $this->operatorResolved = true;
-
-        $subjectId = $this->actingSubjectId();
+        $this->operatorKey = $subjectId ?? '';
 
         if ($subjectId === null) {
             return $this->operatorRecord = null;
@@ -632,7 +638,7 @@ class ConsoleScope
      * What the acting person MAY DO on the account they are administering — null when
      * they are administering somebody else's organization, or no account at all.
      *
-     * The capability question, separated from the role question that {@see membershipRole()}
+     * The capability question, separated from the role question that {@see MembershipRole()}
      * answers. Every guard, nav entry and feature closure asks this one; `accountRole()`
      * remains for the two places that need the VALUE — the role stamped on a machine
      * credential, and the role rendered next to a person's name.

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
@@ -28,10 +27,19 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
 /**
- * The account plane authenticates through the SUBJECT plane now — one identity stack,
- * not two. These tests pin what that buys and what it must not cost.
+ * The management console authenticates through the SUBJECT — one identity stack.
  *
- * See docs/core-concepts/unified-account-identity.md.
+ * THIS FILE ARGUED FOR SOMETHING THAT IS NOW STRUCTURAL. It was written while there were
+ * two identity stacks and the account plane had just been re-pointed at the subject one; it
+ * pinned that the member row was not a credential store, that a password rotated on the
+ * subject reached the account door, and that the member session had gone. There is no
+ * member row, so those cannot be false any more.
+ *
+ * What survives is what the tests actually exercise, and it is worth keeping under a
+ * different premise: the console admits the SUBJECT, and the membership is a lookup made
+ * from that session rather than anything the browser carries. A regression here would be a
+ * second credential path reappearing — which is exactly how the operator store and the
+ * account door each began.
  */
 function unifiedSetup(string $password = 'a-strong-unbreached-passphrase'): array
 {
@@ -45,21 +53,22 @@ function unifiedSetup(string $password = 'a-strong-unbreached-passphrase'): arra
     ));
 
     return [
-        'member' => app(Memberships::class)->find($r->owner->id),
+        'member' => $r->membership,
+        'subject' => $r->owner,
         'organization' => $r->organization->refresh(),
         'env' => $r->environment,
     ];
 }
 
-it('signs an account member in against their platform-root subject, not the member row', function (): void {
-    ['member' => $member] = unifiedSetup();
+it('signs a member in against their platform-root subject', function (): void {
+    ['member' => $member, 'subject' => $subject] = unifiedSetup();
 
-    expect($member->subject_id)->not->toBeNull();
+    expect($member->user_id)->toBe($subject->id);
 
     // Rotate the credential on the SUBJECT alone. The account door must follow it — if
     // the member row were still a credential store, the old password would still work.
     app(PlatformRoot::class)->run(
-        fn () => app(Subjects::class)->setPassword((string) $member->subject_id, 'rotated-on-the-subject'),
+        fn () => app(Subjects::class)->setPassword($member->user_id, 'rotated-on-the-subject'),
     );
 
     $auth = app(PlatformAuth::class);
@@ -71,7 +80,7 @@ it('signs an account member in against their platform-root subject, not the memb
         ->toBe(AttemptOutcome::Ok);
 });
 
-it('holds the account door to the SSO mandate on the account\'s organization', function (): void {
+it('holds the console door to the SSO mandate on the organization', function (): void {
     ['member' => $member, 'organization' => $account] = unifiedSetup();
 
     $auth = app(PlatformAuth::class);
@@ -81,15 +90,14 @@ it('holds the account door to the SSO mandate on the account\'s organization', f
     expect(signInAtLogin('owner@acme.example', 'a-strong-unbreached-passphrase'))
         ->toBe(AttemptOutcome::Ok);
 
-    // The account's organization now mandates SSO. The SAME correct password must be
-    // refused HERE too — otherwise "require SSO" on an account would be a suggestion
-    // that the workspace door quietly ignores.
+    // The organization now mandates SSO. The SAME correct password must be refused HERE
+    // too — otherwise "require SSO" would be a suggestion the console door quietly ignores.
     //
     // SsoRequired rather than Invalid: the refusal stands, and the door can now say which
     // organization made it and where to go instead. Reported as Invalid, this told the
     // owner of the workspace that their own credentials did not match one.
     app(PlatformRoot::class)->run(fn () => app(AuthPolicies::class)->setForOrganization(
-        (string) $account->organization_id,
+        $account->id,
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 
@@ -136,8 +144,11 @@ it('signs a member in from a magic link, and resolves the membership from the se
 
     $this->get(route('magic.redeem', $strangerToken))
         ->assertRedirect(route('dashboard'));
-    expect(app(AccountAuth::class)->check())
-        ->toBeFalse('a subject with no membership resolved to an account member')
+    // Asked of the MEMBERSHIP, which is where "what do they hold here" now lives. There is
+    // no separate member session to check — that was the whole point of the fold — so the
+    // question is whether the signed-in subject holds one, and a stranger does not.
+    expect($root->run(fn () => app(Memberships::class)->forUser($stranger->id))->isEmpty())
+        ->toBeTrue('a subject with no membership resolved to one')
         ->and($stranger->id)->not->toBeNull();
 
     // Not `nextRequest()`: it ends the request wholesale, ambient EnvironmentContext
@@ -158,21 +169,21 @@ it('signs a member in from a magic link, and resolves the membership from the se
     $sessionId = (string) session(PlatformAuth::SESSION_KEY);
 
     expect($root->run(fn (): ?string => app(SessionManager::class)->active($sessionId)?->user_id))
-        ->toBe($member->subject_id);
+        ->toBe($member->user_id);
 });
 
 it('kills the env-admin session when the underlying subject is deactivated', function (): void {
     ['member' => $member, 'env' => $env] = unifiedSetup();
 
-    actAsEnvironmentAdmin($member, $env->id);
+    actAsEnvironmentAdmin($member->user_id, $env->id);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($env->id));
 
     $auth = app(EnvironmentAdminAuth::class);
-    expect($auth->current()?->id)->toBe($member->id);
+    expect($auth->membership()?->id)->toBe($member->id);
 
     // The subject is the credential of record, so deactivating it must end the admin
     // session on the very next resolve — not at the next login.
-    app(PlatformRoot::class)->run(fn () => app(Subjects::class)->deactivate((string) $member->subject_id));
+    app(PlatformRoot::class)->run(fn () => app(Subjects::class)->deactivate($member->user_id));
 
     // Resolve fresh — the guard memoises within ONE request by design, and what is being
     // pinned here is that the NEXT request finds nothing.
@@ -181,10 +192,10 @@ it('kills the env-admin session when the underlying subject is deactivated', fun
     expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
 });
 
-it('grants nothing on a session keyed on a subject with no account membership', function (): void {
+it('grants nothing on a session keyed on a subject with no membership', function (): void {
     ['env' => $env] = unifiedSetup();
 
-    // A real, active subject in the platform root — just not an account member.
+    // A real, active subject in the platform root — just not a member of anything.
     $subject = app(PlatformRoot::class)->run(
         fn () => app(Subjects::class)->create('outsider@example.test', 'Outsider', 'a-strong-unbreached-passphrase'),
     );

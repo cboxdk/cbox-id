@@ -171,7 +171,7 @@ it('does not pay per-organization queries for the signed-in subject', function (
  * Measure a request the way a reviewer with `DB::listen` would: every statement, in
  * order, so the SHAPE can be asserted and not just the total.
  *
- * `nextRequest()` first, always. ConsoleScope, AccountAuth and the environment-admin
+ * `nextRequest()` first, always. ConsoleScope, CurrentUser and the environment-admin
  * resolver are all bound `scoped` and all memoise; a real deployment drops those between
  * requests and Laravel's HTTP test helpers do not, so without it the second measurement
  * in a test reads the FIRST one's memos and every invariance assertion passes for free.

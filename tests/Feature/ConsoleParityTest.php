@@ -2344,7 +2344,7 @@ it('keeps the environment\'s own identity off the organization plane', function 
 
 it('serves social sign-in on the environment plane, not only the organization one', function (): void {
     // This capability shipped reachable from one console only — and not the one its owner
-    // uses. The account owner holds an AccountAuth session, a different store entirely, so
+    // uses. The owner holds an ordinary subject session, so
     // reaching their own feature meant impersonating one of their own users.
     $orgId = anEnvironmentAdminActingOn('tenant-social');
 

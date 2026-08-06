@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
@@ -62,7 +61,7 @@ function anAccountOwner(string $email = 'owner@acme.example'): object
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->member;
+    ))->membership;
 }
 
 /**
@@ -453,16 +452,18 @@ it('lands an account member in the console too', function (): void {
 })->group('security');
 
 /**
- * The member memo must not answer for whoever was signed in a moment ago.
+ * A per-request memo on IDENTITY must not answer for whoever was signed in a moment ago.
  *
- * `AccountAuth::current()` is memoised now — the lookup crosses into the platform root
- * and was costing four to nine reads per page. A memo on an identity is the one kind that
- * fails dangerously: answer from it after the session changed and the console renders one
- * person's account under another person's session.
+ * This was written against `AccountAuth::current()`, whose memo crossed into the platform
+ * root and was costing four to nine reads per page. That class is gone, and the property is
+ * not: {@see ConsoleScope} memoises the operator lookup for exactly the same reason — the
+ * rail asks on every render and so does every guard on a platform page — and a memo on an
+ * identity is the one kind that fails dangerously. Answer from it after the session changed
+ * and the console renders one person's authority under another person's session.
  *
- * Two accounts in one request, with a real sign-out between them, because that is the
- * shape a person actually produces — switching accounts, or signing out on a shared
- * machine and someone else signing in.
+ * Two people in one request, because that is the shape a person actually produces:
+ * switching accounts, resuming from an impersonation, or signing out on a shared machine
+ * while someone else signs in.
  */
 it('does not answer for the previous identity after a sign-out', function (): void {
     platformRootEnvironment();
@@ -478,19 +479,17 @@ it('does not answer for the previous identity after a sign-out', function (): vo
     // redirects and the next request resolves the identity from the session anyway.
     // Putting that refresh on the one door every plane now shares stamped a
     // platform-root identity onto environment-admin sessions and 403'd that console.
-    signInAsSubject((string) $first->subject_id);
+    signInAsSubject($first->user_id);
 
-    expect(app(AccountAuth::class)->current()?->email)->toBe('first@acme.example');
+    expect(app(ConsoleScope::class)->actorId())->toBe($first->user_id);
 
-    // The subject session is repointed WITHOUT AccountAuth being told — which is what an
+    // The subject session is repointed WITHOUT the scope being told — which is what an
     // account switch and an impersonation resume both do. Going through logout() instead
-    // would clear the memo and prove nothing about the key: the docblock on forgetMemo()
-    // is explicit that the key is what handles a DIFFERENT person, and the reset is only
-    // for the same person's freshly-written row. An unkeyed memo passes the logout path.
-    signInAsSubject((string) $second->subject_id);
+    // would clear everything and prove nothing about the key.
+    signInAsSubject($second->user_id);
 
-    expect(app(AccountAuth::class)->current()?->email)
-        ->toBe('second@acme.example', 'the memo answered for the account that just left');
+    expect(app(ConsoleScope::class)->actorId())
+        ->toBe($second->user_id, 'the scope answered for the identity that just left');
 })->group('security');
 
 /**

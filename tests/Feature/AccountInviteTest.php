@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
-use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -100,7 +99,7 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
         ->and($members->verifyPassword($invited->id, 'a-strong-unbreached-passphrase'))->toBeTrue()
         // Signed in — asked through the resolver. The session is the subject's; the
         // member is what it resolves to.
-        ->and(app(AccountAuth::class)->current()?->id)->toBe($invited->id);
+        ->and(app(CurrentUser::class)->id())->toBe($invitedSubjectId);
 });
 
 /**
@@ -204,7 +203,7 @@ it('does not admit an invited member who has not accepted, even holding a live s
     // They sign in as themselves — a real, live session, established the ordinary way.
     signInAsSubject($outsider->id);
 
-    expect(app(AccountAuth::class)->check())
+    expect(app(CurrentUser::class)->check())
         ->toBeFalse('an unaccepted invitation admitted its invitee to the account');
 
     // Signed in, and with nothing here: they are an ordinary subject of the root, so the

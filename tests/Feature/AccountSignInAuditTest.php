@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
  * would open to investigate one, and `last_login_at` (a single overwritten column)
  * was the only evidence a session had ever started.
  *
- * The assertion is deliberately made through {@see AccountAuth::establish()} rather
+ * The assertion is deliberately made through {@see PlatformAuth::establish()} rather
  * than through each door: establish() is the single place session state is created,
  * which is exactly why the record belongs there and cannot be forgotten by a new
  * sign-in method added later.

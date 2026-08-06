@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
@@ -153,7 +152,7 @@ it('ends the step-up window when a member session is established', function (): 
     app(Sudo::class)->confirm();
     expect(app(Sudo::class)->confirmed())->toBeTrue();
 
-    app(AccountAuth::class)->establish($memberId);
+    app(PlatformRoot::class)->run(fn () => app(PlatformAuth::class)->establish(request(), $subjectId, ['pwd']));
 
     expect(app(Sudo::class)->confirmed())
         ->toBeFalse('a passwordless account sign-in inherited an open elevation');

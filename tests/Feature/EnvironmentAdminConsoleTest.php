@@ -257,7 +257,7 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
     ['organization' => $account, 'envId' => $envId] = envAdminSetup();
     $members = app(Memberships::class);
 
-    foreach ([MembershipRole::Viewer, MembershipRole::Billing] as $role) {
+    foreach ([MembershipRole::Viewer, MembershipRole::Member] as $role) {
         [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-choke@acme.example');
 
         // Precondition: the default invite grants access to the environment.

@@ -218,7 +218,7 @@ it('suspends the session an operator signed in with, and puts it back', function
         ownerEmail: 'staff@platform.test',
         ownerName: 'Staff',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->member;
+    ))->membership;
 
     expect($account->subject_id)->toBe($op->subject_id, 'fixture: the operator and the member must be one person');
 

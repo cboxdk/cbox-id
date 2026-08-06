@@ -34,7 +34,7 @@ function polishOwner(): void
         ownerEmail: 'polish-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->member);
+    ))->membership);
 }
 
 it('offers an account-less operator no area that needs an account', function (): void {

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -160,7 +159,7 @@ function doorMandatedAccount(string $email): array
         doorMandate($organizationId);
     });
 
-    return [$provisioned->member, 'Workspace Co'];
+    return [$provisioned->membership, 'Workspace Co'];
 }
 
 /*
@@ -287,7 +286,7 @@ it('refuses an account member\'s magic link while leaving the federated landing 
     // consult the mandate, or requiring SSO locks an organization out of the console it
     // just secured. Same subject, same landing, opposite answer.
     // Through `PlatformAuth::adopt()`, the landing every federated door hands its session
-    // to. It used to go through `AccountAuth::adoptFederated()`, an account-plane copy of
+    // to. It used to go through an account-plane copy of
     // this landing that no route reached — so the control was asserted against a door the
     // mandate could not have locked anybody out of, while the door it could was untested.
     $assertion = app(SessionManager::class)->start($subjectId, null, ['sso']);
@@ -321,7 +320,7 @@ it('activates an account invitation under a mandate, and still refuses the sessi
     // Active, deliberately: an invited member is one no SSO assertion can land on, so
     // refusing the activation as well would send them to a door that cannot open.
     expect(freshMembership($invited)?->isActive())->toBeTrue()
-        ->and(app(AccountAuth::class)->current())->toBeNull();
+        ->and(app(CurrentUser::class)->check())->toBeFalse();
 
     nextRequest();
     $this->get(route('login'))
