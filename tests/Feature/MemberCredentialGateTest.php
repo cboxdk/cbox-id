@@ -160,10 +160,18 @@ it('refuses a handoff for a member whose account has been suspended', function (
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
 
     // Suspended between the mint and the redemption — the tab that sat open.
-    Organization::query()->whereKey($result->organization->id)->update(['status' => OrganizationStatus::Suspended]);
+    //
+    // IN THE PLATFORM ROOT, because that is where a customer's organization lives. Written
+    // under the suite's ambient scope this update matches no rows and suspends nothing, so
+    // every assertion below would pass or fail for reasons that have nothing to do with a
+    // suspension.
+    app(PlatformRoot::class)->run(
+        fn () => Organization::query()->whereKey($result->organization->id)
+            ->update(['status' => OrganizationStatus::Suspended]),
+    );
 
     // The OUTER wall: `DatabaseEnvironmentResolver::servable()` refuses to resolve an
-    // environment whose account is not active, so the tenant host stops resolving at all,
+    // environment whose OWNER is not active, so the tenant host stops resolving at all,
     // falls back to the platform root, and `plane:subject` 404s the whole console. The
     // redemption never reaches a controller.
     $this->get("/admin/handoff?token={$token}")->assertNotFound();

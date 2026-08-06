@@ -9,6 +9,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
@@ -57,6 +58,7 @@ final class EnvironmentAdminAuth
 
     public function __construct(
         private readonly Memberships $memberships,
+        private readonly Organizations $organizations,
         private readonly EnvironmentContext $environments,
         private readonly Subjects $subjects,
         private readonly SessionManager $sessions,
@@ -209,6 +211,20 @@ final class EnvironmentAdminAuth
         );
 
         if ($membership === null) {
+            return null;
+        }
+
+        // …AND THE ORGANIZATION IT BELONGS TO MUST STILL BE LIVE. The account plane asked
+        // this as `$member->account?->isActive()`, and re-pointing the resolver at the
+        // membership dropped it: a customer suspended in the seconds since the handoff was
+        // minted — or by an operator while the tab sat open — kept a live environment-admin
+        // session on a tenant host. The host resolver refuses a suspended owner too, but
+        // that answer is CACHED, which is exactly why this second check exists.
+        $ownerLive = $this->platformRoot->run(
+            fn (): bool => $this->organizations->find($membership->organization_id)?->status->revokesAccess() === false,
+        ) === true;
+
+        if (! $ownerLive) {
             return null;
         }
 

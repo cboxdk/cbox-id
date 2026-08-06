@@ -85,7 +85,7 @@ it('enrols a device and never returns the push token', function (): void {
 
     $device = Device::query()->firstOrFail();
 
-    expect($device->user_id)->toBe('user_alice')
+    expect($device->subject_id)->toBe('user_alice')
         ->and(app(SecretBox::class)->open((string) $device->token_encrypted, $device->secretContext()))
         ->toBe('fcm-token-abc');
 });

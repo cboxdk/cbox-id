@@ -266,7 +266,7 @@ it('confirms an environment step-up against the administrator\'s platform-root p
         // The administrator is a subject of the PLATFORM ROOT, not of the environment
         // being administered, so the verification has to cross into the root. Under the
         // tenant's ambient scope the lookup finds nothing and refuses forever.
-        ->and($setup['member']->refresh()->subject_id)->not->toBeNull();
+        ->and($setup['subjectId'])->not->toBe('');
 })->group('security');
 
 it('never lets an environment step-up satisfy the console', function (): void {
