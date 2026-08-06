@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;

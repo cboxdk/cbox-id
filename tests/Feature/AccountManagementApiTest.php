@@ -18,6 +18,10 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 if (! function_exists('apiAccount')) {
     function apiAccount(): Organization
     {
+        // Provisioning REFUSES without a platform root now, rather than producing a
+        // customer whose organization does not exist.
+        platformRootEnvironment();
+
         return app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Acme',
             ownerEmail: 'owner@acme.example',
@@ -30,6 +34,8 @@ if (! function_exists('apiAccount')) {
 if (! function_exists('apiAccount2')) {
     function apiAccount2(): Organization
     {
+        platformRootEnvironment();
+
         return app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Other',
             ownerEmail: 'owner@other.example',

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
+use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;

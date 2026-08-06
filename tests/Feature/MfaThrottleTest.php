@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;

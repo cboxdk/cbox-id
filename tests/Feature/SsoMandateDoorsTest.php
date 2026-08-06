@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;

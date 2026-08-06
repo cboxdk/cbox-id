@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\CurrentUser;
 use Carbon\CarbonInterface;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Contracts\SlotRegistry;

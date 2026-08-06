@@ -70,17 +70,28 @@ function signInEntries(string $accountId): Collection
     );
 }
 
-it('records a sign-in on the account chain', function (): void {
-    ['member' => $member, 'organization' => $account] = provisionAuditableAccount();
+it('records exactly one sign-in on the organization chain', function (): void {
+    ['member' => $member, 'subjectId' => $subjectId, 'organization' => $account] = provisionAuditableAccount();
 
-    app(AccountAuth::class)->establish($member->id);
+    app(PlatformRoot::class)->run(
+        fn () => app(PlatformAuth::class)->establish(request(), $subjectId, ['pwd']),
+    );
 
-    $entry = signInEntries($account->id)->firstOrFail();
+    // ONE entry, counted rather than taken with firstOrFail(). This used to go through a
+    // second establish() that called PlatformAuth's and then recorded again, so the chain
+    // held two identical rows for one sign-in — and `firstOrFail()` here passed either way,
+    // which is precisely why nothing caught it. Its sibling test, on the door that only
+    // ever recorded once, is where the count assertion already lived.
+    $entries = signInEntries($account->id);
 
-    // Attributed to the member, chained under the account — the same scope the
+    expect($entries)->toHaveCount(1);
+
+    $entry = $entries->firstOrFail();
+
+    // Attributed to the SUBJECT, chained under the organization — the same scope the
     // plane's other activity uses, so it lands in the one log an admin reads.
-    expect($entry->actor_id)->toBe($member->id)
-        ->and($entry->target_type)->toBe('account_member')
+    expect($entry->actor_id)->toBe($subjectId)
+        ->and($entry->target_type)->toBe('membership')
         ->and($entry->target_id)->toBe($member->id);
 });
 
@@ -118,10 +129,9 @@ it('records nothing when the door holds the person back', function (): void {
 it('records one entry per session, not one per account', function (): void {
     ['member' => $member, 'organization' => $account] = provisionAuditableAccount('repeat@audit.example');
 
-    // Through the door people use, twice. It used to sign in twice through
-    // `AccountAuth::establish()`, which two flows still reach — but the property being
-    // claimed is about the log being a history rather than a last-seen column, and the
-    // path that produces almost every entry is the one that has to demonstrate it.
+    // Through the door people use, twice. The property claimed is that the log is a
+    // HISTORY rather than a last-seen column, and the path that produces almost every
+    // entry is the one that has to demonstrate it.
     signInAtLogin('repeat@audit.example', 'a-strong-unbreached-passphrase');
     signInAtLogin('repeat@audit.example', 'a-strong-unbreached-passphrase');
 
@@ -129,14 +139,17 @@ it('records one entry per session, not one per account', function (): void {
 });
 
 it('never lets a sign-in failure break the sign-in', function (): void {
-    ['member' => $member] = provisionAuditableAccount('resilient@audit.example');
+    ['member' => $member, 'subjectId' => $subjectId] = provisionAuditableAccount('resilient@audit.example');
 
-    // Audit is an observation, not a gate: an audit backend that is down must not
-    // lock every account member out of their own console.
+    // Audit is an observation, not a gate: an audit backend that is down must not lock
+    // every member out of their own console.
     $this->mock(AuditLog::class)
         ->shouldReceive('record')->andThrow(new RuntimeException('audit down'));
 
     // Establishing still SUCCEEDS — the audit append is what failed.
-    expect(app(AccountAuth::class)->establish($member->id))->toBeTrue()
-        ->and(app(AccountAuth::class)->current()?->id)->toBe($member->id);
+    app(PlatformRoot::class)->run(
+        fn () => app(PlatformAuth::class)->establish(request(), $subjectId, ['pwd']),
+    );
+
+    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
 });

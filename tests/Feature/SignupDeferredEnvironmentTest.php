@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;

@@ -2,8 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -43,11 +48,17 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
         ->call('register')
         ->assertRedirect(route('projects'));
 
-    // A global account + member exist (NOT a Subject in Cbox's environment)…
+    // The owner is a SUBJECT in the platform root, and their organization is reached
+    // through the membership — there is no account row between the two any more.
     $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
     expect($member)->not->toBeNull();
 
-    $account = Organization::query()->whereKey($member->account_id)->first();
+    $account = app(PlatformRoot::class)->run(function () use ($member) {
+        $membership = app(Memberships::class)->forUser($member->id)->first();
+
+        return $membership === null ? null : app(Organizations::class)->find($membership->organization_id);
+    });
+
     expect($account)->not->toBeNull()
         ->and($account->name)->toBe('Acme');
 
@@ -56,9 +67,13 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
     // therefore costs a routable environment nothing.
     expect(environmentsOwnedBy($account->id)->get())->toHaveCount(0);
 
-    // The member is signed into the workspace plane immediately — on the ONE session,
-    // resolved back to the member the way every page does it.
-    expect(app(AccountAuth::class)->current()?->id)->toBe($member->id);
+    // The owner is signed in immediately — on the ONE session, whose subject is theirs.
+    // There is no second store to resolve them back out of, which is the whole of what
+    // the fold bought here.
+    expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull()
+        ->and(app(PlatformRoot::class)->run(
+            fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id,
+        ))->toBe($account->id);
 });
 
 it('refuses a second workspace for an email that already has one', function (): void {
@@ -74,6 +89,7 @@ it('refuses a second workspace for an email that already has one', function (): 
     $register()->assertRedirect(route('projects'));
     $register()->assertHasErrors('email');
 
-    // Only one account member ever created for the email.
-    expect(Organization::query()->count())->toBe(1);
+    // Only one customer ever created for the email. Counted in the ROOT, where customers
+    // live: the ambient scope would answer zero and the assertion would pass on nothing.
+    expect(app(PlatformRoot::class)->run(fn (): int => Organization::query()->count()))->toBe(1);
 });
