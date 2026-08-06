@@ -156,18 +156,27 @@ it('guards the members and billing pages behind the account session', function (
     $this->get(route('billing'))->assertRedirect(route('login'));
 });
 
-it('takes the Identity platform away the moment an account is suspended', function (): void {
+it('closes the console the moment a customer is suspended', function (): void {
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     app(PlatformRoot::class)->run(fn () => app(Organizations::class)->suspend($account->id, $ownerSubjectId));
 
-    // The suspension lands on the very next request, not at the next sign-in — that part
-    // is unchanged. What changed is the refusal: this used to bounce to a sign-in the
-    // person had already completed, because the account plane's gate was the only thing
-    // standing between them and a console. They are an ordinary subject of the root and
-    // still signed in; what a suspension takes away is the area, not the console.
+    // ON THE VERY NEXT REQUEST, not at the next sign-in — that part is unchanged, and it
+    // is the half that matters most.
+    //
+    // WHAT THE SUSPENSION TAKES DID CHANGE, and it is worth stating rather than absorbing.
+    // This used to assert that the console STAYED and only the Identity-platform area went:
+    // a suspended ACCOUNT left its organization untouched, so the middleware's
+    // suspended-organization rule never fired on the person and they landed on the
+    // dashboard as an ordinary subject of the root.
+    //
+    // A customer IS an organization now, so suspending one trips exactly that rule — the
+    // console refuses outright, with the reason. Nothing was loosened to get here and no
+    // new gate was added: a rule that already existed, and was already right, now covers a
+    // case it could not previously see. An off-switch that leaves the operator's own
+    // console open to the customer they just switched off was the weaker reading.
     signInAsMember($ownerSubjectId);
     $this->get(route('projects'))
-        ->assertRedirect(route('dashboard'));
+        ->assertForbidden();
 });
 
 it('redirects a member who cannot read billing away from it', function (): void {
@@ -264,7 +273,7 @@ it('scopes a member to specific environments via the access editor', function ()
         ->assertSet('editingAccessFor', null);
 
     $members = app(Memberships::class);
-    expect($members->accessibleEnvironmentIds($dev->organization_id, $dev->user_id))->toBe([$staging->id]);
+    expect(app(PlatformRoot::class)->run(fn (): array => $members->accessibleEnvironmentIds($dev->organization_id, $dev->user_id)))->toBe([$staging->id]);
 });
 
 /*
@@ -311,7 +320,7 @@ it('404s a role change aimed at another customer\'s member', function (): void {
         ->call('changeRole', $theirs->id, MembershipRole::Admin->value)
         ->assertStatus(404);
 
-    expect(app(Memberships::class)->find($theirs->id)->role)->toBe(MembershipRole::Developer);
+    expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer);
 })->group('security');
 
 it('404s a member removal aimed at another account', function (): void {
@@ -321,7 +330,7 @@ it('404s a member removal aimed at another account', function (): void {
 
     Volt::test('console.members')->call('removeMember', $theirs->id)->assertStatus(404);
 
-    expect(app(Memberships::class)->find($theirs->id))->not->toBeNull();
+    expect(freshMembership($theirs))->not->toBeNull();
 })->group('security');
 
 it('404s an environment-access edit aimed at another account', function (): void {
@@ -594,14 +603,12 @@ it('takes the area away from somebody who belongs to no organization', function 
     Volt::test('console.billing')->assertRedirect(route('projects'));
 })->group('security');
 
-it('takes the area away when the acting organization is not the account\'s own', function (): void {
-    ['member' => $member, 'organization' => $account] = provisionAccount();
+it('takes the area away when the acting organization is not the person\'s own', function (): void {
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'organization' => $account] = provisionAccount();
 
-    // Provisioning homes the account in its own organization, which is the shape that
-    // makes this test mean anything: there IS an organization to be acting on, and the
-    // baseline is that acting on it gives the area.
-    expect($account->refresh()->organization_id)->toBeString();
-
+    // The baseline: acting on the organization they belong to gives the area. This used to
+    // assert `accounts.organization_id` was set — the homing that made an account point at
+    // an organization. The account IS the organization, so there is nothing to home.
     signInAsMember($memberSubjectId);
     expect(app(ConsoleScope::class)->membershipRole())->toBe(MembershipRole::Owner);
 
@@ -610,12 +617,12 @@ it('takes the area away when the acting organization is not the account\'s own',
     // says they are acting for, and offering them their own billing under another
     // tenant's name in the chrome is the drift this predicate exists to stop.
     $other = app(Organizations::class)->create(new NewOrganization('Somebody Else', 'somebody-else'));
-    app(Memberships::class)->add($other->id, (string) $member->subject_id, MembershipRole::Member);
+    app(Memberships::class)->add($other->id, $memberSubjectId, MembershipRole::Member);
 
-    // In the ROOT's scope: an account member's subject and its session rows live there,
-    // and under the suite's ambient environment the deny-by-default scope finds neither.
+    // In the ROOT's scope: a member's subject and its session rows live there, and under
+    // the suite's ambient environment the deny-by-default scope finds neither.
     $root = app(PlatformRoot::class);
-    $subject = $root->run(fn () => app(Subjects::class)->find((string) $member->subject_id));
+    $subject = $root->run(fn () => app(Subjects::class)->find($memberSubjectId));
     $session = $root->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
 
     expect($subject)->not->toBeNull()->and($session)->not->toBeNull();
@@ -733,21 +740,22 @@ it('reads what a member may do from their membership', function (): void {
     signInAsMember($memberSubjectId);
     expect(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeTrue();
 
-    // Behind the contract's back, so the member row still says Admin. Nothing in the
-    // product does this — which is the point: it isolates the question.
+    // Change the role BEHIND THE CONTRACT'S BACK — nothing in the product writes this way.
+    // It isolates the question: the console must read what the membership says right now,
+    // not something it cached or derived from somewhere else.
     app(PlatformRoot::class)->run(fn () => DB::table('memberships')
-        ->where('organization_id', $account->refresh()->organization_id)
-        ->where('user_id', $member->subject_id)
+        ->where('organization_id', $account->id)
+        ->where('user_id', $memberSubjectId)
         ->update(['role' => MembershipRole::Viewer->value]));
 
     nextRequest();
     signInAsMember($memberSubjectId);
 
-    expect($member->refresh()->role)->toBe(MembershipRole::Admin, 'fixture: the member row must still disagree')
+    // A Viewer may READ the roster and may not manage it — so the capability follows the
+    // row, and the settings page (a manage-members surface) drops out of the area.
+    expect(freshMembership($member)?->role)->toBe(MembershipRole::Viewer)
         ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeFalse()
         ->and(identityPlatformPages())->not->toContain('organization-settings');
-
-    expect($owner->refresh()->role)->toBe(MembershipRole::Owner);
 })->group('security');
 
 /**
@@ -807,16 +815,15 @@ it('refuses to remove a customer\'s member from the environment roster', functio
     // standing. A test that cannot tell "refused" from "did nothing" is not a test of a
     // refusal. The toast is dispatched by the fence and by nothing else.
     Volt::test('members')
-        ->call('remove', (string) $target->refresh()->subject_id)
+        ->call('remove', $targetSubjectId)
         ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
             (string) ($params['message'] ?? ''),
             'Members',
         ));
 
     // …and the membership is still there, which is the outcome that matters: removing it
-    // alone would leave an account member with no place in the organization their own
-    // account owns — the exact state 2026_08_05_000200 repaired.
-    expect(app(PlatformRoot::class)->run(
-        fn () => app(Memberships::class)->of((string) $account->refresh()->organization_id, (string) $target->subject_id),
-    ))->not->toBeNull('the account member lost their place in their own account\'s organization');
+    // alone would take somebody off the roster of the customer they belong to, from a page
+    // whose authority is "administers this environment" and which never asked whether they
+    // may manage that customer's people.
+    expect(freshMembership($target))->not->toBeNull('the member lost their place in their own organization');
 })->group('security');

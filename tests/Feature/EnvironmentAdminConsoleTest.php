@@ -261,7 +261,7 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
         [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-choke@acme.example');
 
         // Precondition: the default invite grants access to the environment.
-        expect($members->accessibleEnvironmentIds($m->organization_id, $m->user_id))->toContain($envId);
+        expect(app(PlatformRoot::class)->run(fn (): array => app(PlatformRoot::class)->run(fn (): array => $members->accessibleEnvironmentIds($m->organization_id, $m->user_id))))->toContain($envId);
 
         actAsEnvironmentAdmin($m, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));

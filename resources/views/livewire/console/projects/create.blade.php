@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -41,7 +42,8 @@ new #[Layout('components.layouts.app', ['title' => 'New project'])] class extend
             abort(403);
         }
 
-        $organization = $organizations->find($organizationId);
+        // IN THE PLATFORM ROOT, for the same reason every other organization read is.
+        $organization = app(PlatformRoot::class)->run(fn () => $organizations->find($organizationId));
 
         if ($organization === null) {
             abort(403);

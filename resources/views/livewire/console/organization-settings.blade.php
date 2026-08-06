@@ -6,6 +6,7 @@ use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\PlatformRoot;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -42,10 +43,16 @@ new #[Layout('components.layouts.app', ['title' => 'Organization settings'])] cl
         $this->validate(['name' => ['required', 'string', 'max:120']]);
 
         // Renamed on the model rather than through a contract verb: `Organizations` has no
-        // rename(). The account plane's writer did, and it is the one verb of that
-        // interface with no counterpart here — worth naming so a future reader does not
-        // assume it was overlooked.
-        $organization->forceFill(['name' => trim($this->name)])->save();
+        // rename(). The account plane's writer did, and it is the one verb of that interface
+        // with no counterpart here — worth naming so a future reader does not assume it was
+        // overlooked.
+        //
+        // IN THE PLATFORM ROOT, because the WRITE is guarded too: `BelongsToEnvironment`
+        // refuses a cross-environment save outright, so a rename issued from any other host
+        // raises rather than silently writing nowhere.
+        app(PlatformRoot::class)->run(
+            fn () => $organization->forceFill(['name' => trim($this->name)])->save(),
+        );
 
         $this->dispatch('toast', message: 'Organization settings saved.');
     }
@@ -55,7 +62,10 @@ new #[Layout('components.layouts.app', ['title' => 'Organization settings'])] cl
     {
         $id = $scope->organizationId();
 
-        return $id === null ? null : $organizations->find($id);
+        // IN THE PLATFORM ROOT: `organizations` is environment-owned, and read from
+        // whatever host serves the console this finds nothing — so the guard below would
+        // bounce the organization's own owner off their own settings page.
+        return $id === null ? null : app(PlatformRoot::class)->run(fn () => $organizations->find($id));
     }
 }; ?>
 

@@ -21,6 +21,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
@@ -237,9 +238,8 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     {
         $this->authorizeAdmin();
 
-        // Removing the membership without removing the account member leaves an account
-        // member with no place in the organization their account owns — which is the
-        // state the 2026_08_05_000200 backfill existed to repair.
+        // A customer's roster is administered from the management console — see
+        // refuseMembership().
         if ($this->refuseMembership($userId)) {
             return;
         }
@@ -380,7 +380,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
      */
     private function governedByTheManagementConsole(): bool
     {
-        return app(OrganizationProjects::class)->forOrganization($this->orgId())->isNotEmpty();
+        return app(PlatformRoot::class)->run(
+            fn (): bool => app(OrganizationProjects::class)->forOrganization($this->orgId())->isNotEmpty(),
+        ) === true;
     }
 
     private function refuseMembership(string $userId): bool
@@ -391,7 +393,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         $this->dispatch(
             'toast',
-            message: 'This person is a member of the account that owns this organization. Manage their role under Identity platform → Account members.',
+            message: 'This organization is a customer of this platform. Manage its Members under Identity platform → Members.',
             severity: 'error',
         );
 
