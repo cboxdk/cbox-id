@@ -46,7 +46,7 @@ it('rejects a request with no key or a bogus key', function (): void {
     $this->getJson('/api/v1/organizations')->assertUnauthorized();
     $this->withToken('cbid_env_bogus')->getJson('/api/v1/organizations')->assertUnauthorized();
     // An account-plane key is not accepted on the environment plane.
-    $this->withToken('cbid_acc_wrongplane')->getJson('/api/v1/organizations')->assertUnauthorized();
+    $this->withToken('cbid_org_wrongplane')->getJson('/api/v1/organizations')->assertUnauthorized();
 });
 
 it('does not accept a key minted for a different environment', function (): void {

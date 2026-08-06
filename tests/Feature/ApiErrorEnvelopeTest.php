@@ -71,7 +71,7 @@ it('renders a validation failure in the documented envelope, on the environment 
 it('renders a validation failure in the documented envelope, on the account plane', function (): void {
     $token = envelopeAccountKey();
 
-    $this->withToken($token)->postJson('/api/v1/account/projects', [])
+    $this->withToken($token)->postJson('/api/v1/organization/projects', [])
         ->assertStatus(422)
         ->assertJsonPath('error', 'validation_failed')
         ->assertJsonStructure(['error', 'message', 'errors' => ['name']]);

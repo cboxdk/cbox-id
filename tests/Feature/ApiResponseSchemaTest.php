@@ -94,7 +94,7 @@ it('is actually looking at the specs — the operation matcher is not vacuous', 
     $reflection = new ReflectionMethod(ApiContract::class, 'operation');
 
     expect($reflection->invoke(null, '/api/v1/organizations', 'get'))->not->toBeNull()
-        ->and($reflection->invoke(null, '/api/v1/account/members', 'post'))->not->toBeNull()
+        ->and($reflection->invoke(null, '/api/v1/organization/members', 'post'))->not->toBeNull()
         ->and($reflection->invoke(null, '/api/v1/vault/secrets/{id}/lease', 'post'))->not->toBeNull()
         ->and($reflection->invoke(null, '/api/v1/not-a-route', 'get'))->toBeNull();
 });

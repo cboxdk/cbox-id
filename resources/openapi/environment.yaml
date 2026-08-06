@@ -9,9 +9,9 @@ info:
     the environment, and the request is authenticated with an environment API key
     (`cbid_env_…`).
 
-    This is distinct from the global account API (`cbid_acc_…`), which manages the
-    account, its environments and members. Credentials never cross planes — an
-    account key cannot call this API, and an environment key cannot call the account
+    This is distinct from the global organization API (`cbid_org_…`), which manages the
+    organization, its environments and members. Credentials never cross planes — an
+    organization key cannot call this API, and an environment key cannot call the organization
     API. An environment key is bound to the host it was minted for: presenting it on
     another environment's host fails authentication outright.
 
