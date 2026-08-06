@@ -148,7 +148,7 @@ it('does not carry a step-up across a session transition', function (string $tra
  * presented to THIS session at all.
  */
 it('ends the step-up window when a member session is established', function (): void {
-    $memberId = signInMember();
+    $subjectId = signInMember();
 
     app(Sudo::class)->confirm();
     expect(app(Sudo::class)->confirmed())->toBeTrue();

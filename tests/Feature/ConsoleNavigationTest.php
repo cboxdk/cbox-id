@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\ConsoleLocation;
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Console\Kit\Facades\Console;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
@@ -94,15 +93,9 @@ it('hides what an account role may not see, and drops the area when it holds not
     // A SECOND member, because the first is the account's only owner and demoting the last
     // owner is refused — re-roling an owner orphans the account just as surely as deleting
     // one, which is why it is now refused up front rather than half-written.
-    $viewer = app(Memberships::class)->create(
-        $result->organization->id,
-        'viewer@acme.example',
-        'a-strong-unbreached-passphrase',
-        'Viewer',
-    );
-    app(Memberships::class)->setRole($viewer->id, MembershipRole::Viewer);
+    [$viewer, $viewerSubjectId] = addMember($result->organization->id, MembershipRole::Viewer, 'viewer@acme.example');
     nextRequest();
-    signInAsMember($viewer->refresh());
+    signInAsMember($viewerSubjectId);
 
     expect($pages())->toContain('billing')
         ->and($pages())->not->toContain('organization-settings')

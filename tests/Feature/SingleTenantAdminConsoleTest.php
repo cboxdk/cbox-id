@@ -38,6 +38,8 @@ it('serves the admin console when the deployment is multi-tenant', function (): 
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
+    platformRootEnvironment();
+
     $env = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',

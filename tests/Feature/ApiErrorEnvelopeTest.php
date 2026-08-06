@@ -31,6 +31,8 @@ if (! function_exists('envelopeEnvKey')) {
 if (! function_exists('envelopeAccountKey')) {
     function envelopeAccountKey(): string
     {
+        platformRootEnvironment();
+
         $account = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Envelope',
             ownerEmail: 'owner@envelope.example',
