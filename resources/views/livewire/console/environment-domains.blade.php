@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\OrganizationActivity;
-use App\Platform\AccountAuth;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
@@ -30,26 +29,25 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
 
     public ?string $verifyError = null;
 
-    public function mount(AccountAuth $auth, Memberships $members, ConsoleScope $scope): void
+    public function mount(ConsoleScope $scope, Memberships $members): void
     {
-        $member = $auth->current();
-
-        // Two questions, and both have to be asked — see environment-keys.blade.php: the
-        // scope decides admission, the member row is what the page reads.
-        if ($member === null || $scope->capabilities()?->canManageEnvironments() !== true) {
+        // ONE question now, and that is the change. It used to be two — the scope decided
+        // admission and the member row was what the page read — because authority lived in
+        // two places. The scope answers both halves.
+        if ($scope->capabilities()?->canManageEnvironments() !== true) {
             $this->redirect(route('projects'));
 
             return;
         }
 
-        $ids = $members->accessibleEnvironmentIds($member);
+        $ids = $this->reachable($scope, $members);
         $first = Environment::query()->whereIn('id', $ids)->orderBy('created_at')->value('id');
         $this->selectedEnvironment = is_string($first) ? $first : '';
     }
 
-    public function request(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains): void
+    public function request(ConsoleScope $scope, Memberships $members, EnvironmentDomains $domains): void
     {
-        if (! $this->guard($auth, $members)) {
+        if (! $this->guard($scope, $members)) {
             return;
         }
 
@@ -66,9 +64,9 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
         $this->reset('newDomain', 'verifyError');
     }
 
-    public function verify(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): void
+    public function verify(ConsoleScope $scope, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): void
     {
-        if (! $this->guard($auth, $members)) {
+        if (! $this->guard($scope, $members)) {
             return;
         }
 
@@ -82,9 +80,9 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
 
         $this->verifyError = null;
 
-        $member = $auth->current();
-        if ($member !== null) {
-            $activity->record($member->account_id, 'account.custom_domain_verified', $member->id,
+        $organizationId = $scope->organizationId();
+        if ($organizationId !== null) {
+            $activity->record($organizationId, 'organization.custom_domain_verified', $scope->actorId(),
                 targetType: 'environment', targetId: $this->selectedEnvironment,
                 context: ['domain' => $result->domain], request: request());
         }
@@ -92,18 +90,18 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
         $this->dispatch('toast', message: $result->domain.' is verified and now serves this environment.');
     }
 
-    public function remove(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): void
+    public function remove(ConsoleScope $scope, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): void
     {
-        if (! $this->guard($auth, $members)) {
+        if (! $this->guard($scope, $members)) {
             return;
         }
 
         $domains->clear($this->selectedEnvironment);
         $this->reset('verifyError');
 
-        $member = $auth->current();
-        if ($member !== null) {
-            $activity->record($member->account_id, 'account.custom_domain_removed', $member->id,
+        $organizationId = $scope->organizationId();
+        if ($organizationId !== null) {
+            $activity->record($organizationId, 'organization.custom_domain_removed', $scope->actorId(),
                 targetType: 'environment', targetId: $this->selectedEnvironment, request: request());
         }
 
@@ -111,24 +109,40 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
     }
 
     /** The member manages environments AND the selected one is theirs to reach. */
-    private function guard(AccountAuth $auth, Memberships $members): bool
+    private function guard(ConsoleScope $scope, Memberships $members): bool
     {
-        $member = $auth->current();
-
-        if ($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true || $this->selectedEnvironment === '') {
+        if ($scope->capabilities()?->canManageEnvironments() !== true || $this->selectedEnvironment === '') {
             return false;
         }
 
-        return in_array($this->selectedEnvironment, $members->accessibleEnvironmentIds($member), true);
+        return in_array($this->selectedEnvironment, $this->reachable($scope, $members), true);
+    }
+
+    /**
+     * The environments this administrator may actually reach.
+     *
+     * `accessibleEnvironmentIds()` takes (organization, subject) rather than a member row,
+     * because the row that carried both is two rows now. Both halves come from the SCOPE, so
+     * a page cannot ask about one person's organization and another person's grants.
+     *
+     * @return list<string>
+     */
+    private function reachable(ConsoleScope $scope, Memberships $members): array
+    {
+        $organizationId = $scope->organizationId();
+        $actorId = $scope->actorId();
+
+        return $organizationId === null || $actorId === ''
+            ? []
+            : $members->accessibleEnvironmentIds($organizationId, $actorId);
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains): array
+    public function with(ConsoleScope $scope, Memberships $members, EnvironmentDomains $domains): array
     {
-        $member = $auth->current();
-        $ids = $member !== null ? $members->accessibleEnvironmentIds($member) : [];
+        $ids = $this->reachable($scope, $members);
 
         $environment = $this->selectedEnvironment !== ''
             ? Environment::query()->whereIn('id', $ids)->find($this->selectedEnvironment)

@@ -29,7 +29,7 @@ new #[Layout('components.layouts.app', ['title' => 'New project'])] class extend
      */
     public function boot(ConsoleScope $scope): void
     {
-        abort_unless($scope->accountRole() !== null, 403);
+        abort_unless($scope->membershipRole() !== null, 403);
     }
 
     public function create(AccountAuth $auth, TenantProvisioner $provisioner): mixed

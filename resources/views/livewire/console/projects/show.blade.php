@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\OrganizationActivity;
-use App\Platform\AccountAuth;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Enums\EnvironmentType;
@@ -45,20 +44,16 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
      */
     public function boot(ConsoleScope $scope): void
     {
-        abort_unless($scope->accountRole() !== null, 403);
+        abort_unless($scope->membershipRole() !== null, 403);
     }
 
-    public function mount(string $project, AccountAuth $auth, Memberships $members): void
+    public function mount(string $project, ConsoleScope $scope, Memberships $members): void
     {
-        $member = $auth->current();
-        $model = Project::query()->whereKey($project)->first();
-
-        // Deny-by-default: unknown project, or one this member's account doesn't own.
-        abort_if($model === null || $member === null || $model->account_id !== $member->account_id, 404);
+        $model = $this->owned($project, $scope);
 
         // A scoped member must have at least one reachable environment in it.
-        if (! $member?->all_environments === true) {
-            $accessible = $members->accessibleEnvironmentIds($member);
+        if (! $this->hasFullAccess($scope, $members)) {
+            $accessible = $this->reachable($scope, $members);
             $inProject = Environment::query()->where('project_id', $model->id)->whereIn('id', $accessible)->exists();
             abort_unless($inProject, 403);
         }
@@ -67,13 +62,55 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         $this->editName = $model->name;
     }
 
-    private function project(AccountAuth $auth): Project
+    private function project(ConsoleScope $scope): Project
     {
-        $member = $auth->current();
-        $model = Project::query()->whereKey($this->projectId)->first();
-        abort_if($model === null || $member === null || $model->account_id !== $member->account_id, 404);
+        return $this->owned($this->projectId, $scope);
+    }
+
+    /**
+     * The named project IF the acting organization owns it, or 404.
+     *
+     * The organization id is in the QUERY rather than compared afterwards — the same rule
+     * the member roster follows, and for the same reason: a comparison after the fact is
+     * one refactor away from being dropped.
+     */
+    private function owned(string $projectId, ConsoleScope $scope): Project
+    {
+        $organizationId = $scope->organizationId();
+
+        $model = $organizationId === null
+            ? null
+            : Project::query()->whereKey($projectId)->where('organization_id', $organizationId)->first();
+
+        abort_if($model === null, 404);
 
         return $model;
+    }
+
+    /** Whether the acting member reaches every environment, rather than a granted subset. */
+    private function hasFullAccess(ConsoleScope $scope, Memberships $members): bool
+    {
+        $organizationId = $scope->organizationId();
+        $actorId = $scope->actorId();
+
+        return $organizationId !== null
+            && $actorId !== ''
+            && $members->of($organizationId, $actorId)?->all_environments === true;
+    }
+
+    /**
+     * The environments this administrator may reach.
+     *
+     * @return list<string>
+     */
+    private function reachable(ConsoleScope $scope, Memberships $members): array
+    {
+        $organizationId = $scope->organizationId();
+        $actorId = $scope->actorId();
+
+        return $organizationId === null || $actorId === ''
+            ? []
+            : $members->accessibleEnvironmentIds($organizationId, $actorId);
     }
 
     /**
@@ -82,24 +119,26 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
      * to specific environments must not manage the whole project. Aborts 403 on a
      * direct call the UI would never surface for them.
      */
-    private function assertCanManage(AccountAuth $auth): void
+    private function assertCanManage(ConsoleScope $scope, Memberships $members): void
     {
-        $member = $auth->current();
-        abort_unless($member !== null && app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true && $member?->all_environments === true, 403);
+        abort_unless(
+            $scope->capabilities()?->canManageEnvironments() === true && $this->hasFullAccess($scope, $members),
+            403,
+        );
     }
 
-    public function rename(AccountAuth $auth, Projects $projects): void
+    public function rename(ConsoleScope $scope, Memberships $members, Projects $projects): void
     {
-        $this->assertCanManage($auth);
+        $this->assertCanManage($scope, $members);
 
         $this->validate(['editName' => 'required|string|max:120']);
-        $projects->rename($this->project($auth)->id, trim($this->editName));
+        $projects->rename($this->project($scope)->id, trim($this->editName));
         $this->dispatch('toast', message: 'Project renamed.');
     }
 
-    public function addEnvironment(AccountAuth $auth, TenantProvisioner $provisioner, OrganizationActivity $activity): void
+    public function addEnvironment(ConsoleScope $scope, Memberships $members, TenantProvisioner $provisioner, OrganizationActivity $activity): void
     {
-        $this->assertCanManage($auth);
+        $this->assertCanManage($scope, $members);
 
         $this->validate([
             'newEnvironment' => 'required|string|max:120',
@@ -107,16 +146,16 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         ]);
 
         try {
-            $environment = $provisioner->addEnvironment($this->project($auth), trim($this->newEnvironment), type: EnvironmentType::from($this->newEnvironmentType));
+            $environment = $provisioner->addEnvironment($this->project($scope), trim($this->newEnvironment), type: EnvironmentType::from($this->newEnvironmentType));
         } catch (EnvironmentLimitReached) {
             $this->addError('newEnvironment', 'This project is at its environment limit. Upgrade its plan to add more.');
 
             return;
         }
 
-        $member = $auth->current();
-        if ($member !== null) {
-            $activity->record($member->account_id, 'account.environment_created', $member->id,
+        $organizationId = $scope->organizationId();
+        if ($organizationId !== null) {
+            $activity->record($organizationId, 'organization.environment_created', $scope->actorId(),
                 targetType: 'environment', targetId: $environment->id,
                 context: ['name' => trim($this->newEnvironment), 'type' => $this->newEnvironmentType], request: request());
         }
@@ -126,29 +165,28 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         $this->dispatch('toast', message: 'Environment created.');
     }
 
-    public function suspend(AccountAuth $auth, Projects $projects): void
+    public function suspend(ConsoleScope $scope, Memberships $members, Projects $projects): void
     {
-        $this->assertCanManage($auth);
-        $projects->suspend($this->project($auth)->id);
+        $this->assertCanManage($scope, $members);
+        $projects->suspend($this->project($scope)->id);
         $this->dispatch('toast', message: 'Project suspended — its environments stay live but no new ones can be added until reactivated.');
     }
 
-    public function reactivate(AccountAuth $auth, Projects $projects): void
+    public function reactivate(ConsoleScope $scope, Memberships $members, Projects $projects): void
     {
-        $this->assertCanManage($auth);
-        $projects->reactivate($this->project($auth)->id);
+        $this->assertCanManage($scope, $members);
+        $projects->reactivate($this->project($scope)->id);
         $this->dispatch('toast', message: 'Project reactivated.');
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, Projects $projects, Memberships $members): array
+    public function with(ConsoleScope $scope, Projects $projects, Memberships $members): array
     {
-        $member = $auth->current();
-        $project = $this->project($auth);
-        $accessibleIds = $member === null ? [] : $members->accessibleEnvironmentIds($member);
-        $scoped = $member !== null && ! $member?->all_environments === true;
+        $project = $this->project($scope);
+        $accessibleIds = $this->reachable($scope, $members);
+        $scoped = ! $this->hasFullAccess($scope, $members);
 
         // Re-validate a scoped member's reachability on every render (mount only runs
         // once), so a grant revoked mid-session stops leaking the project's metadata.
@@ -172,7 +210,7 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
             'project' => $project,
             'environments' => $query->get(),
             // A management surface requires the capability AND full access.
-            'canManage' => $member !== null && app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true && $member?->all_environments === true,
+            'canManage' => $scope->capabilities()?->canManageEnvironments() === true && ! $scoped,
             'scoped' => $scoped,
             'remaining' => $projects->remainingEnvironments($project),
             'baseDomain' => $baseDomain,

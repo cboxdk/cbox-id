@@ -3,16 +3,16 @@
 declare(strict_types=1);
 
 use App\Platform\OrganizationActivity;
-use App\Platform\AccountAuth;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\CurrentUser;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
@@ -64,7 +64,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     public function boot(ConsoleScope $scope): void
     {
         abort_if(
-            Livewire::isLivewireRequest() && $scope->accountRole() === null,
+            Livewire::isLivewireRequest() && $scope->membershipRole() === null,
             403,
         );
     }
@@ -73,20 +73,20 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
      * Re-send the signup confirmation — the only way back for an owner whose email is
      * lost, filtered or expired, now that the environment waits on it.
      *
-     * NO ADDRESS IS ACCEPTED HERE. The action takes the member the session resolved, and
-     * mails whatever address is on that row; there is deliberately no argument an
-     * attacker (or a crafted Livewire payload) could point somewhere else.
+     * NO ADDRESS IS ACCEPTED HERE. The action takes the subject the session resolved, and
+     * mails whatever address is on that row; there is deliberately no argument an attacker
+     * (or a crafted Livewire payload) could point somewhere else.
      */
-    public function resendVerification(AccountAuth $auth, MemberEmailVerification $verification): void
+    public function resendVerification(CurrentUser $current, MemberEmailVerification $verification): void
     {
-        $member = $auth->current();
-        abort_if($member === null, 403);
+        $subject = $current->subject();
+        abort_if($subject === null, 403);
 
-        // Outbound mail is the scarce, abusable resource: anyone who got as far as an
-        // account can otherwise pump mail at their own inbox and burn the sending
-        // reputation for everyone. Keyed on the MEMBER, not the address or the IP —
-        // the caller is authenticated, so there is no cheaper key to rotate.
-        $key = 'account-verify-resend|'.$member->id;
+        // Outbound mail is the scarce, abusable resource: anyone who got this far can
+        // otherwise pump mail at their own inbox and burn the sending reputation for
+        // everyone. Keyed on the SUBJECT, not the address or the IP — the caller is
+        // authenticated, so there is no cheaper key to rotate.
+        $key = 'organization-verify-resend|'.$subject->id;
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $this->resendNotice = 'That is a lot of emails. Try again in '.RateLimiter::availableIn($key).' seconds, or check your spam folder in the meantime.';
@@ -96,7 +96,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
 
         RateLimiter::hit($key, 600);
 
-        $this->resendNotice = $verification->resend($member)->message($member->email);
+        $this->resendNotice = $verification->resend($subject)->message($subject->email ?? '');
     }
 
     public function startCreate(string $projectId): void
@@ -120,13 +120,13 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
      * path — a posted project id is honoured only if it genuinely belongs to this
      * account and this member may manage it.
      */
-    public function addEnvironment(AccountAuth $auth, TenantProvisioner $provisioner, OrganizationActivity $activity): void
+    public function addEnvironment(ConsoleScope $scope, TenantProvisioner $provisioner, OrganizationActivity $activity): void
     {
-        $member = $auth->current();
-        abort_if($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true, 403);
+        $organizationId = $scope->organizationId();
+        abort_if($organizationId === null || $scope->capabilities()?->canManageEnvironments() !== true, 403);
 
         $project = Project::query()->whereKey($this->creatingIn)->first();
-        abort_if($project === null || $project->account_id !== $member->account_id, 404);
+        abort_if($project === null || $project->organization_id !== $organizationId, 404);
 
         $this->validate([
             'newEnvironment' => 'required|string|max:120',
@@ -145,7 +145,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
             return;
         }
 
-        $activity->record($member->account_id, 'account.environment_created', $member->id,
+        $activity->record($organizationId, 'organization.environment_created', $scope->actorId(),
             targetType: 'environment', targetId: $environment->id,
             context: ['name' => trim($this->newEnvironment), 'type' => $this->newEnvironmentType], request: request());
 
@@ -176,7 +176,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
      */
     public function mount(ConsoleScope $scope): void
     {
-        if ($scope->accountRole() !== null) {
+        if ($scope->membershipRole() !== null) {
             return;
         }
 
@@ -189,20 +189,27 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, Projects $projects, Memberships $members, ConsoleScope $scope): array
+    public function with(OrganizationProjects $projects, Memberships $members, ConsoleScope $scope): array
     {
-        $member = $auth->current();
-        $account = $member?->account;
-        $allAccess = $member !== null && $member?->all_environments === true;
+        $organizationId = $scope->organizationId();
+        $actorId = $scope->actorId();
 
-        // The environments this member may reach — an all-access member sees every one
-        // the account owns; a scoped member only their grants.
-        $accessibleIds = $member === null ? [] : $members->accessibleEnvironmentIds($member);
+        $membership = $organizationId === null || $actorId === ''
+            ? null
+            : $members->of($organizationId, $actorId);
+
+        $allAccess = $membership?->all_environments === true;
+
+        // The environments this member may reach — an all-access member sees every one the
+        // organization owns; a scoped member only their grants.
+        $accessibleIds = $organizationId === null || $actorId === ''
+            ? []
+            : $members->accessibleEnvironmentIds($organizationId, $actorId);
 
         $rows = [];
 
-        if ($account !== null) {
-            $projectList = $projects->forOrganization($account->id);
+        if ($organizationId !== null) {
+            $projectList = $projects->forOrganization($organizationId);
             $projectIds = [];
             foreach ($projectList as $project) {
                 $projectIds[] = $project->id;
@@ -210,7 +217,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
 
             // One query for every environment across every project, grouped in memory.
             // This page renders the whole tree, so a per-project query would be an N+1
-            // that grows with the account.
+            // that grows with the organization.
             $environments = Environment::query()
                 ->whereIn('project_id', $projectIds)
                 ->orderBy('name')
@@ -250,8 +257,8 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
         return [
             'projects' => $rows,
             'canManage' => $scope->capabilities()?->canManageEnvironments() === true,
-            'awaitingVerification' => $this->awaitingVerification($member),
-            'verificationEmail' => $member->email ?? '',
+            'awaitingVerification' => $this->awaitingVerification($actorId, $projectIds ?? []),
+            'verificationEmail' => app(CurrentUser::class)->email() ?? '',
             // Named in the banner so "it never arrived" has somewhere to go: this is the
             // address to search the inbox for and to allow past a spam filter.
             'verificationSender' => is_string($from = config('mail.from.address')) ? $from : '',
@@ -259,24 +266,25 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     }
 
     /**
-     * True while the account's first environment is still held back pending the owner's
-     * email confirmation — otherwise the page shows a project with no environments and
-     * no explanation of why.
+     * True while the organization's first environment is still held back pending the
+     * owner's email confirmation — otherwise the page shows a project with no environments
+     * and no explanation of why.
+     *
+     * @param  list<string>  $projectIds  the organization's products, already loaded by the
+     *                                    caller so this costs no second read of them
      */
-    private function awaitingVerification(?Membership $member): bool
+    private function awaitingVerification(string $subjectId, array $projectIds): bool
     {
-        $subjectId = $member?->subject_id;
-
-        if ($member === null || ! is_string($subjectId) || $subjectId === '') {
+        if ($subjectId === '' || $projectIds === []) {
             return false;
         }
 
-        if (Environment::query()->where('account_id', $member->account_id)->exists()) {
+        if (Environment::query()->whereIn('project_id', $projectIds)->exists()) {
             return false;
         }
 
-        // Account members are subjects in the PLATFORM ROOT, so the lookup has to run in
-        // that scope — the tenancy kernel is deny-by-default and would otherwise see
+        // A customer's people are subjects in the PLATFORM ROOT, so the lookup has to run
+        // in that scope — the tenancy kernel is deny-by-default and would otherwise see
         // nothing.
         $verified = app(PlatformRoot::class)->run(
             fn (): bool => app(Subjects::class)->find($subjectId)?->emailVerified === true,

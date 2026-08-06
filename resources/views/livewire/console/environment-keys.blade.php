@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\OrganizationActivity;
-use App\Platform\AccountAuth;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
@@ -54,15 +53,13 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
      */
     protected ?string $freshKey = null;
 
-    public function mount(AccountAuth $auth, Memberships $members, ConsoleScope $scope): void
+    public function mount(ConsoleScope $scope, Memberships $members): void
     {
-        $member = $auth->current();
-
-        // Two questions, and both have to be asked. The scope decides ADMISSION — does the
-        // organization being administered own identity providers, and may this person
-        // manage their environments. The member row is what the page then READS, and the
-        // scope answering yes does not hand it over.
-        if ($member === null || $scope->capabilities()?->canManageEnvironments() !== true) {
+        // ONE question now. It used to be two — the scope decided ADMISSION (does the
+        // organization own identity providers, and may this person manage its environments)
+        // and the member row was what the page READ — because authority lived in two places
+        // and the scope answering yes did not hand the row over. The scope answers both.
+        if ($scope->capabilities()?->canManageEnvironments() !== true) {
             $this->redirect(route('projects'));
 
             return;
@@ -74,18 +71,18 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
             EnvironmentApiScope::UsersRead->value,
         ];
 
-        $ids = $members->accessibleEnvironmentIds($member);
+        $ids = $this->reachable($scope, $members);
         $first = Environment::query()->whereIn('id', $ids)->orderBy('created_at')->value('id');
         $this->selectedEnvironment = is_string($first) ? $first : '';
     }
 
-    public function createKey(AccountAuth $auth, Memberships $members, EnvironmentApiKeys $keys, OrganizationActivity $activity): void
+    public function createKey(ConsoleScope $scope, Memberships $members, EnvironmentApiKeys $keys, OrganizationActivity $activity): void
     {
         // Authorization FIRST, then the step-up. It ran the other way round, which handed
         // a member who may not mint anything a password prompt and then refused them in
         // silence once they had typed it — and taught everybody else that the prompt is
         // something you get past rather than something that means what it says.
-        if (! $this->guard($auth, $members)) {
+        if (! $this->guard($scope, $members)) {
             return;
         }
 
@@ -101,9 +98,9 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
 
         $issued = $keys->issue($this->selectedEnvironment, trim($this->newKeyName), array_values($this->newKeyScopes));
 
-        $member = $auth->current();
-        if ($member !== null) {
-            $activity->record($member->account_id, 'account.environment_key_created', $member->id,
+        $organizationId = $scope->organizationId();
+        if ($organizationId !== null) {
+            $activity->record($organizationId, 'organization.environment_key_created', $scope->actorId(),
                 targetType: 'environment', targetId: $this->selectedEnvironment,
                 context: ['name' => trim($this->newKeyName), 'scopes' => array_values($this->newKeyScopes)],
                 request: request());
@@ -113,13 +110,13 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
         $this->reset('newKeyName');
     }
 
-    public function revokeKey(string $id, AccountAuth $auth, Memberships $members, EnvironmentApiKeys $keys, OrganizationActivity $activity): void
+    public function revokeKey(string $id, ConsoleScope $scope, Memberships $members, EnvironmentApiKeys $keys, OrganizationActivity $activity): void
     {
         // Revoking is as consequential as issuing, and was not gated. A stolen but
         // non-sudo session could not MINT persistence — create requires the step-up — but
         // it could destroy the machine credentials that run provisioning and automation,
         // which is a denial of service the same session was otherwise held back from.
-        if (! $this->guard($auth, $members)) {
+        if (! $this->guard($scope, $members)) {
             return;
         }
 
@@ -131,9 +128,9 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
         if ($keys->forEnvironment($this->selectedEnvironment)->firstWhere('id', $id) !== null) {
             $keys->revoke($this->selectedEnvironment, $id);
 
-            $member = $auth->current();
-            if ($member !== null) {
-                $activity->record($member->account_id, 'account.environment_key_revoked', $member->id,
+            $organizationId = $scope->organizationId();
+            if ($organizationId !== null) {
+                $activity->record($organizationId, 'organization.environment_key_revoked', $scope->actorId(),
                     targetType: 'environment', targetId: $this->selectedEnvironment,
                     context: ['key_id' => $id], request: request());
             }
@@ -143,15 +140,32 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
     }
 
     /** The member manages environments AND the selected one is theirs to reach. */
-    private function guard(AccountAuth $auth, Memberships $members): bool
+    private function guard(ConsoleScope $scope, Memberships $members): bool
     {
-        $member = $auth->current();
-
-        if ($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true || $this->selectedEnvironment === '') {
+        if ($scope->capabilities()?->canManageEnvironments() !== true || $this->selectedEnvironment === '') {
             return false;
         }
 
-        return in_array($this->selectedEnvironment, $members->accessibleEnvironmentIds($member), true);
+        return in_array($this->selectedEnvironment, $this->reachable($scope, $members), true);
+    }
+
+    /**
+     * The environments this administrator may actually reach.
+     *
+     * `accessibleEnvironmentIds()` takes (organization, subject) rather than a member row,
+     * because the row that carried both is two rows now. Both halves come from the SCOPE, so
+     * a page cannot ask about one person's organization and another person's grants.
+     *
+     * @return list<string>
+     */
+    private function reachable(ConsoleScope $scope, Memberships $members): array
+    {
+        $organizationId = $scope->organizationId();
+        $actorId = $scope->actorId();
+
+        return $organizationId === null || $actorId === ''
+            ? []
+            : $members->accessibleEnvironmentIds($organizationId, $actorId);
     }
 
     /**
@@ -177,10 +191,9 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
     }
 
     /** @return array<string, mixed> */
-    public function with(AccountAuth $auth, Memberships $members, EnvironmentApiKeys $keys): array
+    public function with(ConsoleScope $scope, Memberships $members, EnvironmentApiKeys $keys): array
     {
-        $member = $auth->current();
-        $ids = $member === null ? [] : $members->accessibleEnvironmentIds($member);
+        $ids = $this->reachable($scope, $members);
 
         /** @var Collection<int, Environment> $environments */
         $environments = Environment::query()->whereIn('id', $ids)->orderBy('created_at')->get();

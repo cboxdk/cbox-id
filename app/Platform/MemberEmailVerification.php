@@ -10,7 +10,9 @@ use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\EmailVerificationToken;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Identity\ValueObjects\Subject;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Mail;
 
@@ -43,38 +45,61 @@ final class MemberEmailVerification
         private readonly Subjects $subjects,
         private readonly PlatformRoot $platformRoot,
         private readonly MailLinks $links,
+        private readonly Memberships $memberships,
     ) {}
 
     /**
-     * Issue a new confirmation link and mail it to the member's address, retiring every
+     * Issue a new confirmation link and mail it to this person's address, retiring every
      * link issued before it.
      *
-     * Every refusal is a quiet no-op rather than an exception: this is reachable by a
-     * button click, and a member who clicks it twice, or clicks it on an account whose
+     * TAKES THE SUBJECT, which is what it always really wanted: the token binds to a
+     * subject, the retirement query is keyed on one, and the address is the subject's. It
+     * used to take a member row and reduce it to `$member->subject_id` — with a null branch
+     * for the bootstrap window, a state that cannot occur now that provisioning refuses
+     * without a platform root.
+     *
+     * Every refusal is a quiet no-op rather than an exception: this is reachable by a button
+     * click, and somebody who clicks it twice, or clicks it on an organization whose
      * environment landed while the page was open, has done nothing wrong.
      */
-    public function resend(Membership $member): VerificationResendOutcome
+    public function resend(Subject $subject): VerificationResendOutcome
     {
-        $subjectId = $member->subject_id;
+        $subjectId = $subject->id;
+        $email = $subject->email;
 
-        // The environment is what the confirmation is FOR. Once it exists there is
-        // nothing a new link could do, and re-mailing would be pure noise — including on
-        // a replayed click after the first link already landed.
-        if (Environment::query()->where('account_id', $member->account_id)->exists()) {
-            return VerificationResendOutcome::AlreadyProvisioned;
-        }
-
-        // No subject means the first-install bootstrap window, where a token cannot be
-        // bound to anyone (see SignupProvisioner). Reported as Sent, like every other
-        // path that mails nothing, so the control never becomes an oracle.
-        if (! is_string($subjectId) || $subjectId === '') {
+        if ($email === null || $email === '') {
             return VerificationResendOutcome::Sent;
         }
 
-        // Account members are subjects in the PLATFORM ROOT, and both the subject lookup
+        // The environment is what the confirmation is FOR. Once it exists there is nothing
+        // a new link could do, and re-mailing would be pure noise — including on a replayed
+        // click after the first link already landed.
+        //
+        // ASKED THROUGH THE PROJECTS, because `environments.account_id` is gone: ownership
+        // runs environment → project → organization, and the person's membership is what
+        // names the organization.
+        $organizationId = $this->platformRoot->run(
+            fn (): ?string => $this->memberships->forUser($subjectId)->first()?->organization_id,
+        );
+
+        if (! is_string($organizationId) || $organizationId === '') {
+            return VerificationResendOutcome::Sent;
+        }
+
+        $provisioned = $this->platformRoot->run(
+            fn (): bool => Environment::query()
+                ->whereIn('project_id', Project::query()->where('organization_id', $organizationId)->pluck('id'))
+                ->exists(),
+        );
+
+        if ($provisioned === true) {
+            return VerificationResendOutcome::AlreadyProvisioned;
+        }
+
+        // A customer's people are subjects in the PLATFORM ROOT, and both the subject lookup
         // and the token table are environment-owned — a query run under a tenant's scope
         // would silently see nothing and issue a token into the wrong environment.
-        $url = $this->platformRoot->run(function () use ($subjectId, $member): ?string {
+        $url = $this->platformRoot->run(function () use ($subjectId, $email): ?string {
             // Already confirmed: send nothing. The caller still says "sent" — see
             // VerificationResendOutcome.
             if ($this->subjects->find($subjectId)?->emailVerified === true) {
@@ -94,11 +119,11 @@ final class MemberEmailVerification
 
             // MailLinks, not route(): this link is MAILED, and the confirmation token it
             // carries is a bearer credential — see that class.
-            return $this->links->route('verification.verify', $this->verification->issue($subjectId, $member->email));
+            return $this->links->route('verification.verify', $this->verification->issue($subjectId, $email));
         });
 
         if (is_string($url)) {
-            Mail::to($member->email)->send(new EmailVerificationMail($url));
+            Mail::to($email)->send(new EmailVerificationMail($url));
         }
 
         return VerificationResendOutcome::Sent;
