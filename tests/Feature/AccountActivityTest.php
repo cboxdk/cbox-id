@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountActivity;
+use App\Platform\OrganizationActivity;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Livewire\Volt\Volt;
 
 // Guarded so they coexist with the same helpers in WorkspaceConsoleTest (Pest
 // requires each test file independently — the first definition wins).
 if (! function_exists('provisionAccount')) {
     /**
-     * @return array{member: AccountMember, account: Account, project: Project, environment: Environment}
+     * @return array{member: Membership, account: Account, project: Project, environment: Environment}
      */
     function provisionAccount(string $email = 'owner@acme.example'): array
     {
@@ -29,7 +29,7 @@ if (! function_exists('provisionAccount')) {
         // them where the account host will not read them.
         platformRootDeployment();
 
-        $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
@@ -41,9 +41,9 @@ if (! function_exists('provisionAccount')) {
 }
 
 if (! function_exists('memberWithRole')) {
-    function memberWithRole(string $accountId, AccountRole $role, string $email): AccountMember
+    function memberWithRole(string $accountId, MembershipRole $role, string $email): Membership
     {
-        $members = app(AccountMembers::class);
+        $members = app(Memberships::class);
         $m = $members->invite($accountId, $email, $role);
         $members->activate($m->id, 'a-strong-unbreached-passphrase');
 
@@ -54,14 +54,14 @@ if (! function_exists('memberWithRole')) {
 it('records an account-scoped, hash-chained entry when a member is invited', function (): void {
     ['member' => $owner, 'account' => $account] = provisionAccount();
 
-    // The page action funnels through AccountActivity; drive it through the real
+    // The page action funnels through OrganizationActivity; drive it through the real
     // Livewire component (deps are auto-injected) with the owner as the actor.
     signInAsMember($owner);
 
     Volt::test('console.account-members')
         ->set('inviteEmail', 'newbie@acme.example')
         ->set('inviteName', 'New Bie')
-        ->set('inviteRole', AccountRole::Admin->value)
+        ->set('inviteRole', MembershipRole::Admin->value)
         ->call('invite');
 
     // The event chained under the ACCOUNT id as scope, isolated to this account.
@@ -76,7 +76,7 @@ it('records an account-scoped, hash-chained entry when a member is invited', fun
 
 it('records environment key mint + revoke on the account chain', function (): void {
     ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
-    $activity = app(AccountActivity::class);
+    $activity = app(OrganizationActivity::class);
 
     // Record directly via the service (the page action funnels through it).
     $activity->record($account->id, 'account.environment_key_created', $owner->id,
@@ -95,7 +95,7 @@ it('records environment key mint + revoke on the account chain', function (): vo
 it('keeps one account activity chain from leaking into another', function (): void {
     ['account' => $a, 'member' => $ownerA] = provisionAccount('a@acme.example');
     ['account' => $b] = provisionAccount('b@beta.example');
-    $activity = app(AccountActivity::class);
+    $activity = app(OrganizationActivity::class);
 
     $activity->record($a->id, 'account.environment_created', $ownerA->id, targetType: 'environment', targetId: 'e1');
 
@@ -105,7 +105,7 @@ it('keeps one account activity chain from leaking into another', function (): vo
 
 it('renders the activity page for an admin and lists recorded actions', function (): void {
     ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
-    app(AccountActivity::class)->record($account->id, 'account.environment_created', $owner->id,
+    app(OrganizationActivity::class)->record($account->id, 'account.environment_created', $owner->id,
         targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
 
     signInAsMember($owner);
@@ -123,7 +123,7 @@ it('refuses the activity page to a member who cannot read members (403)', functi
     // membership, and Billing maps to Viewer — who may read the roster. Developer is the
     // reachable role that still refuses it, and refuses it for the reason that matters: a
     // technical credential must not enumerate the team.
-    $viewer = memberWithRole($account->id, AccountRole::Developer, 'dev@acme.example');
+    $viewer = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
 
     signInAsMember($viewer);
     $this->get(route('account-activity'))

@@ -23,12 +23,10 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -141,13 +139,13 @@ function doorFakePasskeys(string $subjectId): void
 /**
  * An account whose own organization mandates SSO, on the platform root.
  *
- * @return array{0: AccountMember, 1: string} the owner, and the organization's name
+ * @return array{0: Membership, 1: string} the owner, and the organization's name
  */
 function doorMandatedAccount(string $email): array
 {
     platformRootDeployment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Workspace Co',
         ownerEmail: $email,
         ownerName: 'Owner',
@@ -311,8 +309,8 @@ it('refuses an account member\'s magic link while leaving the federated landing 
 it('activates an account invitation under a mandate, and still refuses the session', function (): void {
     [$owner] = doorMandatedAccount('invite-owner@acme.example');
 
-    $members = app(AccountMembers::class);
-    $invited = $members->invite((string) $owner->account_id, 'workspace-invitee@acme.example', AccountRole::Admin);
+    $members = app(Memberships::class);
+    $invited = $members->invite((string) $owner->account_id, 'workspace-invitee@acme.example', MembershipRole::Admin);
 
     $url = URL::signedRoute('account.invite.accept', ['member' => $invited->id]);
 

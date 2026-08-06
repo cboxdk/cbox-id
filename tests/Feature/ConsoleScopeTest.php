@@ -17,10 +17,10 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
@@ -47,7 +47,7 @@ function actAsRealEnvironmentAdmin(string $email = 'env-owner@acme.example'): vo
 {
     platformRootEnvironment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: $email,
         ownerName: 'Owner',
@@ -241,7 +241,7 @@ it('offers only the member own organization on the organization plane', function
 
 it('attributes to the subject on both planes, not to two id spaces', function (): void {
     // The two consoles disagreed. The organization plane recorded the subject id; the
-    // environment plane recorded the AccountMember row id — a different table. So an
+    // environment plane recorded the Membership row id — a different table. So an
     // access-review certification was attributed to one id space or the other depending
     // which console the reviewer used, in the one feature whose entire output is a trail
     // somebody later has to read.
@@ -255,10 +255,10 @@ it('attributes an environment admin to their subject too', function (): void {
 
     $actor = scope()->actorId();
 
-    // Specifically NOT the AccountMember row id, which is what this plane used to record
+    // Specifically NOT the Membership row id, which is what this plane used to record
     // and which lives in a different table from every id the other plane wrote.
     expect($actor)->not->toBe('')
-        ->and(AccountMember::query()->whereKey($actor)->exists())->toBeFalse();
+        ->and(Membership::query()->whereKey($actor)->exists())->toBeFalse();
 
     // It IS a real subject — of the PLATFORM ROOT, where account members live, not of the
     // environment being administered. Worth stating: an environment administrator is not

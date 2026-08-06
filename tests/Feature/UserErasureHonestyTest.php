@@ -10,8 +10,8 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Volt\Volt;
@@ -37,7 +37,7 @@ if (! function_exists('erasureConsoleSetup')) {
 
         platformRootEnvironment();
 
-        $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: 'erasure-owner@acme.example',
             ownerName: 'Owner',

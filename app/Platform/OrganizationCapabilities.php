@@ -6,31 +6,31 @@ namespace App\Platform;
 
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Platform\Enums\AccountRole;
 
 /**
- * What the acting person may do on the account they are administering.
+ * What the acting person may do on the organization they are administering.
  *
- * WHY A VALUE OBJECT AND NOT THE ENUM. Every one of these questions was asked directly
- * of {@see AccountRole} at thirty-odd call sites — a nav entry, a console-kit feature
- * closure, each page's `mount()`, and the API middleware. That was fine while the account
- * plane had its own role column and its own console. It stops being fine the moment an
- * account IS an organization: the capability then has to be derived from a
- * {@see MembershipRole} plus a refinement the organization plane cannot express, and
- * thirty call sites is thirty places to derive it differently.
+ * WHY A VALUE OBJECT AND NOT THE ENUM. Every one of these questions was asked directly of
+ * the account plane's own role enum at thirty-odd call sites — a nav entry, a console-kit
+ * feature closure, each page's `mount()`, and the API middleware. That was fine while the
+ * account plane had its own role column and its own console. It stopped being fine the
+ * moment an account became an organization: the capability is derived from a
+ * {@see MembershipRole} plus refinements the role enum does not express, and thirty call
+ * sites would have been thirty places to derive it differently.
  *
- * This is the one place. `AccountRole` becomes the input rather than the answer, and the
- * batch that flips the input changes this file instead of the console.
+ * This is the one place, and it is why the fold could be done without touching those call
+ * sites: this file was written to take `MembershipRole` a batch BEFORE the account plane
+ * was deleted, so removing the plane changed the input to this class and nothing else.
+ * `ofMembershipRole()` was the bridge for the paths that still resolved a member row; there
+ * are no member rows, so it is gone rather than left as a second way in.
  *
- * THE EXTENSIONS ARE COPIED EXACTLY, deliberately, and this batch changes no verdict —
- * that is what makes it safe to land ahead of the fold. Three of them do NOT survive a
- * naive translation to `MembershipRole`, and each is written down where it is defined so
- * the next batch cannot lose it by substitution:
+ * THREE OF THESE ARE NOT WHAT A NAIVE TRANSLATION WOULD HAVE PRODUCED, and each is written
+ * down where it is defined so a later simplification cannot lose it by substitution:
  *
  *  - {@see canManageEnvironments()} is NOT `MembershipRole::canWrite()`. That returns true
- *    for `Member`, which is the role every account member actually carries today, so the
- *    substitution grants environment administration — and a live environment-admin session
- *    on a tenant host — to everyone merely placed in the account's organization.
+ *    for `Member`, the role an ordinary person gets for merely being placed in the
+ *    organization, so the substitution grants environment administration — and a live
+ *    environment-admin session on a tenant host — to every member of every customer.
  *  - {@see canReadMembers()} and {@see canReadBilling()} have no counterpart at all, and
  *    both are FALSE for a Developer by design. Dropping them hands the member roster (PII)
  *    to a leaked developer credential.
@@ -42,26 +42,13 @@ use Cbox\Id\Platform\Enums\AccountRole;
  * "what may I do" and "what is that person" the same sentence, which is the confusion
  * {@see ConsoleScope} exists to prevent.
  */
-final readonly class AccountCapabilities
+final readonly class OrganizationCapabilities
 {
     private function __construct(private MembershipRole $role) {}
 
     public static function of(MembershipRole $role): self
     {
         return new self($role);
-    }
-
-    /**
-     * From the account plane's own vocabulary, for the paths that still resolve a member
-     * row rather than a membership — the environment-admin resolver and the two halves of
-     * the handoff, none of which run inside a console request.
-     *
-     * Goes through {@see AccountRole::asMembershipRole()} rather than reading the enum
-     * directly, so there is still exactly one definition of how the two line up.
-     */
-    public static function ofAccountRole(AccountRole $role): self
-    {
-        return new self($role->asMembershipRole());
     }
 
     /** Invite, remove, and change the role of other members. */

@@ -13,8 +13,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
@@ -38,7 +38,7 @@ function craftedOrgOwner(string $slug): string
 function craftedEnvAdmin(): void
 {
     platformRootEnvironment();
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -61,7 +61,7 @@ function craftedEnvAdmin(): void
  */
 it('refuses a crafted enum on the sign-in rules form instead of throwing', function (): void {
     platformRootEnvironment();
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -81,7 +81,7 @@ it('refuses a crafted enum on the sign-in rules form instead of throwing', funct
 
 it('refuses a crafted revocation scope on the admin set-password panel', function (): void {
     platformRootEnvironment();
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -129,14 +129,14 @@ it('refuses a crafted hook point instead of throwing', function (): void {
 it('does not tell one account whether an email belongs to another', function (): void {
     platformRootEnvironment();
 
-    $mine = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Rival',
         ownerEmail: 'owner@rival.example',
         ownerName: 'Rival Owner',

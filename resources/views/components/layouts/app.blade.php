@@ -46,7 +46,7 @@
     // membership that places an account member in their own account's organization
     // carries MembershipRole::Member on purpose, so an account OWNER is not an org admin
     // there and this gate would hide their own projects and billing from them. That area
-    // already gates every one of its pages on the AccountRole (see ConsoleServiceProvider),
+    // already gates every one of its pages on the MembershipRole (see ConsoleServiceProvider),
     // which is the authority for those capabilities — the org role has nothing to say
     // about them.
     $isConsoleAdmin = \Cbox\Console\Kit\Facades\Console::context()->isAdmin();

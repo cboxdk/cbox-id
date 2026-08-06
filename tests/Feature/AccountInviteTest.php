@@ -9,13 +9,13 @@ use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -23,7 +23,7 @@ use Livewire\Volt\Volt;
 
 if (! function_exists('provisionAccount')) {
     /**
-     * @return array{member: AccountMember, account: Account, environment: Environment}
+     * @return array{member: Membership, account: Account, environment: Environment}
      */
     function provisionAccount(string $email = 'owner@acme.example'): array
     {
@@ -32,7 +32,7 @@ if (! function_exists('provisionAccount')) {
         // with no subject has nothing to sign in.
         platformRootEnvironment();
 
-        $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
@@ -57,7 +57,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
         ->call('invite')
         ->assertHasNoErrors();
 
-    $invited = app(AccountMembers::class)->findByEmail('new@acme.example');
+    $invited = app(Memberships::class)->findByEmail('new@acme.example');
     expect($invited)->not->toBeNull()
         ->and($invited->status->value)->toBe('invited');
 
@@ -79,14 +79,14 @@ it('rejects inviting an email that already belongs to a member', function (): vo
 
 it('requires a valid signature to reach the accept page', function (): void {
     ['account' => $account] = provisionAccount();
-    $invited = app(AccountMembers::class)->invite($account->id, 'new@acme.example', AccountRole::Developer);
+    $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer);
 
     $this->get('/invite/'.$invited->id.'/accept')->assertForbidden();
 });
 
 it('accepts a signed invite, sets a password, and signs in', function (): void {
     ['account' => $account] = provisionAccount();
-    $invited = app(AccountMembers::class)->invite($account->id, 'new@acme.example', AccountRole::Developer, 'New');
+    $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer, 'New');
 
     $url = URL::temporarySignedRoute('account.invite.accept', now()->addDay(), ['member' => $invited->id]);
     $this->get($url)->assertOk()->assertSee('Accept your invitation');
@@ -96,7 +96,7 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
         ->call('accept')
         ->assertRedirect(route('projects'));
 
-    $members = app(AccountMembers::class);
+    $members = app(Memberships::class);
     expect($members->find($invited->id)->status->value)->toBe('active')
         ->and($members->verifyPassword($invited->id, 'a-strong-unbreached-passphrase'))->toBeTrue()
         // Signed in — asked through the resolver. The session is the subject's; the
@@ -140,7 +140,7 @@ it('resets an account member through the console flow and ends their open sessio
             ->assertHasNoErrors();
     });
 
-    expect(app(AccountMembers::class)->verifyPassword($owner->id, 'a-fresh-unbreached-passphrase'))
+    expect(app(Memberships::class)->verifyPassword($owner->id, 'a-fresh-unbreached-passphrase'))
         ->toBeTrue('the reset did not reach the member\'s credential');
 
     // The session that existed BEFORE the reset is dead — asserted at the framework ROW,
@@ -156,8 +156,8 @@ it('resets an account member through the console flow and ends their open sessio
 
 it('turns away an already-accepted invite (replayed link)', function (): void {
     ['account' => $account] = provisionAccount();
-    $invited = app(AccountMembers::class)->invite($account->id, 'new@acme.example', AccountRole::Developer);
-    app(AccountMembers::class)->activate($invited->id, 'first-accept-passphrase');
+    $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer);
+    app(Memberships::class)->activate($invited->id, 'first-accept-passphrase');
 
     // Re-opening the (still validly-signed) link after acceptance is turned away at
     // the page itself — the member is no longer 'invited'.
@@ -166,7 +166,7 @@ it('turns away an already-accepted invite (replayed link)', function (): void {
 
     // And the framework's activate() is a no-op on an active member regardless, so
     // the first password stands.
-    expect(app(AccountMembers::class)->verifyPassword($invited->id, 'first-accept-passphrase'))->toBeTrue();
+    expect(app(Memberships::class)->verifyPassword($invited->id, 'first-accept-passphrase'))->toBeTrue();
 });
 
 /**
@@ -196,8 +196,8 @@ it('does not admit an invited member who has not accepted, even holding a live s
         'a-strong-unbreached-passphrase',
     ));
 
-    $members = app(AccountMembers::class);
-    $invited = $members->invite($account->id, 'outsider@elsewhere.test', AccountRole::Admin);
+    $members = app(Memberships::class);
+    $invited = $members->invite($account->id, 'outsider@elsewhere.test', MembershipRole::Admin);
 
     expect($members->find($invited->id)?->subject_id)
         ->toBe($outsider->id, 'fixture: the invitation must reuse the existing subject, or this tests nothing');

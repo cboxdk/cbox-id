@@ -8,8 +8,8 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 
@@ -56,7 +56,7 @@ final class EnvironmentAdminAuth
     public const ENV_KEY = 'cbox.env_admin_env';
 
     public function __construct(
-        private readonly AccountMembers $members,
+        private readonly Memberships $memberships,
         private readonly EnvironmentContext $environments,
         private readonly Subjects $subjects,
         private readonly SessionManager $sessions,
@@ -77,7 +77,7 @@ final class EnvironmentAdminAuth
      */
     private ?string $memoKey = null;
 
-    private ?AccountMember $memoMember = null;
+    private ?Membership $memoMembership = null;
 
     /**
      * Establish an environment-admin session for a platform-root subject on a specific
@@ -108,7 +108,7 @@ final class EnvironmentAdminAuth
 
         // The session just changed under us; drop any memoised resolution.
         $this->memoKey = null;
-        $this->memoMember = null;
+        $this->memoMembership = null;
     }
 
     /**
@@ -116,7 +116,7 @@ final class EnvironmentAdminAuth
      * null. Every guard consults this, never the session state directly. Memoised per
      * request (see {@see $memoKey}).
      */
-    public function current(): ?AccountMember
+    public function membership(): ?Membership
     {
         $sessionId = session()->get(PlatformAuth::SESSION_KEY);
         $boundEnv = session()->get(self::ENV_KEY);
@@ -130,24 +130,24 @@ final class EnvironmentAdminAuth
         ]);
 
         if ($this->memoKey === $key) {
-            return $this->memoMember;
+            return $this->memoMembership;
         }
 
-        $this->memoMember = $this->resolve($sessionId, $boundEnv, $hostEnv);
+        $this->memoMembership = $this->resolve($sessionId, $boundEnv, $hostEnv);
         $this->memoKey = $key;
 
-        return $this->memoMember;
+        return $this->memoMembership;
     }
 
     /** The platform-root subject id administering here, or null. */
     public function subjectId(): ?string
     {
-        $subjectId = $this->current()?->subject_id;
+        $subjectId = $this->membership()?->user_id;
 
         return is_string($subjectId) && $subjectId !== '' ? $subjectId : null;
     }
 
-    private function resolve(mixed $sessionId, mixed $boundEnv, ?string $hostEnv): ?AccountMember
+    private function resolve(mixed $sessionId, mixed $boundEnv, ?string $hostEnv): ?Membership
     {
         // Anti-bleed: the session's anchor must be the environment this host resolves to.
         // FIRST, before any lookup: a session anchored to env A must be worth nothing on
@@ -198,39 +198,48 @@ final class EnvironmentAdminAuth
             return null;
         }
 
-        // …and it must still carry an account membership. This is the account-layer
-        // authority: AccountRole, account status, and the environment grants all hang
-        // off it, and it is re-read per request rather than trusted from the session.
-        // This is also what keeps an ordinary TENANT subject out: their session resolves
-        // in the tenant, not the root, and they hold no membership either way.
-        $member = $this->platformRoot->run(fn (): ?AccountMember => $this->members->findBySubject($subjectId));
+        // …and it must still carry a MEMBERSHIP of a customer organization. That is the
+        // management-plane authority: the role, the organization's status and the
+        // environment grants all hang off it, and it is re-read per request rather than
+        // trusted from the session. It is also what keeps an ordinary TENANT subject out:
+        // their session resolves in the tenant, not the root, and they hold no membership
+        // there either way.
+        $membership = $this->platformRoot->run(
+            fn (): ?Membership => $this->memberships->forUser($subjectId)->first(),
+        );
 
-        if ($member === null || ! $member->isActive() || ! ($member->account?->isActive() ?? false)) {
+        if ($membership === null) {
             return null;
         }
 
-        // Capability, not just reachability: administering an environment's control
-        // plane is an owner/admin/developer power (AccountRole::canManageEnvironments).
-        // A viewer or billing member may be ABLE TO REACH an environment
-        // (all_environments defaults true on invite) but must never administer it —
-        // "accessible" is not "administrable". This is the single chokepoint every
-        // guard consults, so the check holds for both the handoff and admin-login paths.
-        if (! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()) {
+        // Capability, not just reachability: administering an environment's control plane
+        // is an owner/admin/developer power. A viewer may be ABLE TO REACH an environment
+        // (all_environments defaults true) but must never administer it — "accessible" is
+        // not "administrable". This is the single chokepoint every guard consults, so the
+        // check holds for both the handoff and admin-login paths.
+        if (! OrganizationCapabilities::of($membership->role)->canManageEnvironments()) {
             return null;
         }
 
-        // Access is re-verified per request: a member whose access to THIS
-        // environment was revoked loses the admin session immediately.
-        if (! in_array($hostEnv, $this->members->accessibleEnvironmentIds($member), true)) {
+        // Access is re-verified per request: a member whose access to THIS environment was
+        // revoked loses the admin session immediately.
+        $reachable = $this->platformRoot->run(
+            fn (): array => $this->memberships->accessibleEnvironmentIds(
+                $membership->organization_id,
+                $subjectId,
+            ),
+        ) ?? [];
+
+        if (! in_array($hostEnv, $reachable, true)) {
             return null;
         }
 
-        return $member;
+        return $membership;
     }
 
     public function check(): bool
     {
-        return $this->current() !== null;
+        return $this->membership() !== null;
     }
 
     /** The environment id the current admin session is anchored to, or null. */
@@ -245,7 +254,7 @@ final class EnvironmentAdminAuth
     {
         session()->forget(self::ENV_KEY);
         $this->memoKey = null;
-        $this->memoMember = null;
+        $this->memoMembership = null;
 
         // Through PlatformAuth, because what is being ended is a subject session: it
         // revokes the framework row and clears the held-account SET, neither of which

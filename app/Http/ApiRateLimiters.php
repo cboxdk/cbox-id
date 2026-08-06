@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\RateLimiter;
  * tenant throttled all the others. That is exactly wrong for the Terraform/CLI/SDK
  * workloads this API is about to carry, whose traffic is bursty and machine-driven.
  *
- * Each plane gets its own named limiter (`api-account`, `api-environment`, `api-vault`,
+ * Each plane gets its own named limiter (`api-organization`, `api-environment`, `api-vault`,
  * `api-apps`) because the planes have genuinely different budgets, but they all key
  * the same way.
  *
@@ -42,7 +42,7 @@ use Illuminate\Support\Facades\RateLimiter;
 final class ApiRateLimiters
 {
     /** The planes, and the config key holding each one's per-minute budget. */
-    private const PLANES = ['account', 'environment', 'vault', 'apps'];
+    private const PLANES = ['organization', 'environment', 'vault', 'apps'];
 
     public static function register(): void
     {
@@ -85,7 +85,7 @@ final class ApiRateLimiters
      */
     private static function credential(Request $request): ?string
     {
-        // Read off the REQUEST, never out of the container. AccountApiContext and
+        // Read off the REQUEST, never out of the container. OrganizationApiContext and
         // EnvironmentApiContext are `scoped` bindings, and a scoped binding is only
         // reset between requests under Octane — consulting them here made the bucket
         // key flip from the fingerprint on the first request to the key id on every

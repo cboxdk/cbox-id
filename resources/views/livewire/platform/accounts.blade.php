@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use Carbon\CarbonInterface;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\Accounts;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -86,7 +86,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
         $accounts = Account::query()->orderBy('created_at')->get();
 
         /** @var Collection<string, int> $memberCounts */
-        $memberCounts = AccountMember::query()->selectRaw('account_id, count(*) as c')
+        $memberCounts = Membership::query()->selectRaw('account_id, count(*) as c')
             ->groupBy('account_id')->pluck('c', 'account_id');
 
         /** @var Collection<string, int> $projectCounts */

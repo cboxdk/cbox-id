@@ -23,7 +23,6 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
-use Cbox\Id\Platform\Models\AccountMember;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -218,7 +217,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         abort_if($next === MembershipRole::Owner && ! app(CurrentUser::class)->isOwner(), 403);
         abort_if($this->isOwner($userId, $memberships) && ! app(CurrentUser::class)->isOwner(), 403);
 
-        if ($this->refuseAccountMember($userId)) {
+        if ($this->refuseMembership($userId)) {
             return;
         }
 
@@ -240,7 +239,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // Removing the membership without removing the account member leaves an account
         // member with no place in the organization their account owns — which is the
         // state the 2026_08_05_000200 backfill existed to repair.
-        if ($this->refuseAccountMember($userId)) {
+        if ($this->refuseMembership($userId)) {
             return;
         }
 
@@ -363,7 +362,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
      * either is used on somebody the other owns:
      *
      *  - re-role a Developer to Admin here and they gain the member roster, the account
-     *    audit chain and billing — all three of which `AccountRole::Developer` refuses,
+     *    audit chain and billing — all three of which `MembershipRole::Developer` refuses,
      *    because "a leaked developer key must not enumerate the team";
      *  - re-role them to Member and the rail goes dark while `projects/create` and the
      *    environment handoff, which read the member row, still let them stand up an
@@ -378,13 +377,13 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
      */
     private function governedByAccount(string $userId): bool
     {
-        return AccountMember::query()
+        return Membership::query()
             ->where('subject_id', $userId)
             ->whereHas('account', fn ($account) => $account->where('organization_id', $this->orgId()))
             ->exists();
     }
 
-    private function refuseAccountMember(string $userId): bool
+    private function refuseMembership(string $userId): bool
     {
         if (! $this->governedByAccount($userId)) {
             return false;

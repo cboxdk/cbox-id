@@ -7,12 +7,12 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
-use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -134,7 +134,7 @@ it('lets an environment manager mint a scoped key for their environment in the c
     // with no subject has nothing to sign in.
     platformRootEnvironment();
 
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -164,15 +164,15 @@ it('redirects a non-manager away from the environment-keys console', function ()
     // with no subject has nothing to sign in.
     platformRootEnvironment();
 
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner2@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
-    $members = app(AccountMembers::class);
+    $members = app(Memberships::class);
     // Viewer is read-only — it cannot manage environments, so it can't mint env keys.
-    $viewer = $members->invite($result->account->id, 'viewer@acme.example', AccountRole::Viewer);
+    $viewer = $members->invite($result->account->id, 'viewer@acme.example', MembershipRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     signInAsMember($viewer);

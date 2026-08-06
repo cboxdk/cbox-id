@@ -14,10 +14,10 @@ use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -37,7 +37,7 @@ function unifiedSetup(string $password = 'a-strong-unbreached-passphrase'): arra
 {
     platformRootEnvironment();
 
-    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -45,7 +45,7 @@ function unifiedSetup(string $password = 'a-strong-unbreached-passphrase'): arra
     ));
 
     return [
-        'member' => app(AccountMembers::class)->find($r->member->id),
+        'member' => app(Memberships::class)->find($r->member->id),
         'account' => $r->account->refresh(),
         'env' => $r->environment,
     ];
@@ -178,7 +178,7 @@ it('kills the env-admin session when the underlying subject is deactivated', fun
     // pinned here is that the NEXT request finds nothing.
     app()->forgetInstance(EnvironmentAdminAuth::class);
 
-    expect(app(EnvironmentAdminAuth::class)->current())->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
 });
 
 it('grants nothing on a session keyed on a subject with no account membership', function (): void {
@@ -195,5 +195,5 @@ it('grants nothing on a session keyed on a subject with no account membership', 
     session()->put(EnvironmentAdminAuth::ENV_KEY, $env->id);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($env->id));
 
-    expect(app(EnvironmentAdminAuth::class)->current())->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
 });

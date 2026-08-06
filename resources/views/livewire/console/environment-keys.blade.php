@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountActivity;
+use App\Platform\OrganizationActivity;
 use App\Platform\AccountAuth;
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Illuminate\Support\Collection;
@@ -54,7 +54,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
      */
     protected ?string $freshKey = null;
 
-    public function mount(AccountAuth $auth, AccountMembers $members, ConsoleScope $scope): void
+    public function mount(AccountAuth $auth, Memberships $members, ConsoleScope $scope): void
     {
         $member = $auth->current();
 
@@ -79,7 +79,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
         $this->selectedEnvironment = is_string($first) ? $first : '';
     }
 
-    public function createKey(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
+    public function createKey(AccountAuth $auth, Memberships $members, EnvironmentApiKeys $keys, OrganizationActivity $activity): void
     {
         // Authorization FIRST, then the step-up. It ran the other way round, which handed
         // a member who may not mint anything a password prompt and then refused them in
@@ -113,7 +113,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
         $this->reset('newKeyName');
     }
 
-    public function revokeKey(string $id, AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys, AccountActivity $activity): void
+    public function revokeKey(string $id, AccountAuth $auth, Memberships $members, EnvironmentApiKeys $keys, OrganizationActivity $activity): void
     {
         // Revoking is as consequential as issuing, and was not gated. A stolen but
         // non-sudo session could not MINT persistence — create requires the step-up — but
@@ -143,7 +143,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
     }
 
     /** The member manages environments AND the selected one is theirs to reach. */
-    private function guard(AccountAuth $auth, AccountMembers $members): bool
+    private function guard(AccountAuth $auth, Memberships $members): bool
     {
         $member = $auth->current();
 
@@ -177,7 +177,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
     }
 
     /** @return array<string, mixed> */
-    public function with(AccountAuth $auth, AccountMembers $members, EnvironmentApiKeys $keys): array
+    public function with(AccountAuth $auth, Memberships $members, EnvironmentApiKeys $keys): array
     {
         $member = $auth->current();
         $ids = $member === null ? [] : $members->accessibleEnvironmentIds($member);

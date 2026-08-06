@@ -34,10 +34,10 @@ final class EnforceImpersonationWindow
         if ($marker !== null && now()->getTimestamp() - $marker->startedAt > Impersonation::MAX_MINUTES * 60) {
             // Return to whichever control plane started it (exit() restores that
             // session): the env-admin console for an account member, else operator.
-            $isAccountMember = $marker->isAccountMember();
+            $isMembership = $marker->isMembership();
             $this->impersonation->exit($request);
 
-            return redirect()->route($isAccountMember ? 'environment.home' : 'platform.organizations')
+            return redirect()->route($isMembership ? 'environment.home' : 'platform.organizations')
                 ->with('status', 'Impersonation session expired.');
         }
 

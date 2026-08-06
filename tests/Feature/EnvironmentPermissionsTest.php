@@ -5,8 +5,8 @@ declare(strict_types=1);
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -24,7 +24,7 @@ function permSetup(string $accountName = 'Acme', string $ownerEmail = 'owner@acm
     multiTenantDeployment();
 
     platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: $accountName,
         ownerEmail: $ownerEmail,
         ownerName: 'Owner',

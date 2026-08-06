@@ -21,8 +21,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
@@ -140,7 +139,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         // environment it stays a Tier-1 join, which is what keeps IdP-creation a
         // root-only capability that never recurses into a customer's environment.
         if ($this->provisionsOwnIdp(app(EnvironmentContext::class))) {
-            $members = app(AccountMembers::class);
+            $members = app(Memberships::class);
 
             // Account-member emails are globally unique — one email, one root login.
             if ($members->findByEmail($this->email) !== null) {
@@ -155,7 +154,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
                 // project — but the routable, key-bearing IdP is released only once the
                 // owner clicks the link in their inbox (see SignupProvisioner). That is
                 // what makes a bot signup worthless rather than merely inconvenient.
-                $result = app(SignupProvisioner::class)->provisionPending(new AccountBlueprint(
+                $result = app(SignupProvisioner::class)->provisionPending(new TenantBlueprint(
                     accountName: trim($this->organization),
                     ownerEmail: $this->email,
                     ownerName: trim($this->name) ?: null,

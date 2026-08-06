@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\Account\AccountController;
-use App\Http\Controllers\Api\Account\EnvironmentController;
-use App\Http\Controllers\Api\Account\MemberController;
-use App\Http\Controllers\Api\Account\ProjectController;
+use App\Http\Controllers\Api\Organization\CurrentOrganizationController;
+use App\Http\Controllers\Api\Organization\EnvironmentController;
+use App\Http\Controllers\Api\Organization\MemberController;
+use App\Http\Controllers\Api\Organization\ProjectController;
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\Environment\OrganizationController;
 use App\Http\Controllers\Api\Environment\UserController;
@@ -36,39 +36,39 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
     });
 
 /*
- * Account management plane (GLOBAL). Unlike the environment-scoped routes above,
- * these do NOT resolve an environment (ResolveEnvironment) — an account operates
- * above every environment it owns. Authenticated by a `Bearer cbid_acc_…` account API
- * key via `account.api`, with a required capability on write routes so a read-only
- * key can't mutate. Intended to be served on the platform-root host
+ * Organization management plane (GLOBAL). Unlike the environment-scoped routes above,
+ * these do NOT resolve an environment (ResolveEnvironment) — an organization operates
+ * above every environment it owns. Authenticated by a `Bearer cbid_org_…` organization
+ * API key via `organization.api`, with a required capability on write routes so a
+ * read-only key can't mutate. Intended to be served on the platform-root host
  * (e.g. api.cboxid.com); an environment-scoped credential is never accepted here.
  */
-// The account-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
+// The organization-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
 // fetch the contract without a key.
 Route::get('v1/openapi.yaml', function () {
-    $spec = @file_get_contents(resource_path('openapi/account.yaml'));
+    $spec = @file_get_contents(resource_path('openapi/organization.yaml'));
     abort_if($spec === false, 404);
 
     return response($spec, 200, ['Content-Type' => 'application/yaml']);
 })->name('api.openapi');
 
-Route::middleware('throttle:api-account')
-    ->prefix('v1/account')
+Route::middleware('throttle:api-organization')
+    ->prefix('v1/organization')
     ->group(function (): void {
         // Every route resolves the key exactly once, with the capability its data
         // requires — reads are gated too, so a leaked developer/CI key can't
         // enumerate the member roster (PII) or read billing.
-        Route::get('/', [AccountController::class, 'show'])->middleware('account.api');
+        Route::get('/', [CurrentOrganizationController::class, 'show'])->middleware('organization.api');
 
         // Projects (IdP products) — each its own billing anchor + environment allowance.
-        Route::get('projects', [ProjectController::class, 'index'])->middleware('account.api');
-        Route::post('projects', [ProjectController::class, 'store'])->middleware('account.api:manage-environments');
+        Route::get('projects', [ProjectController::class, 'index'])->middleware('organization.api');
+        Route::post('projects', [ProjectController::class, 'store'])->middleware('organization.api:manage-environments');
 
-        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('account.api');
-        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('account.api:manage-environments');
+        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('organization.api');
+        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('organization.api:manage-environments');
 
-        Route::get('members', [MemberController::class, 'index'])->middleware('account.api:read-members');
-        Route::post('members', [MemberController::class, 'store'])->middleware('account.api:manage-members');
+        Route::get('members', [MemberController::class, 'index'])->middleware('organization.api:read-members');
+        Route::post('members', [MemberController::class, 'store'])->middleware('organization.api:manage-members');
     });
 
 /*
@@ -92,7 +92,7 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
     ->group(function (): void {
         Route::get('organizations', [OrganizationController::class, 'index'])->middleware('env.api:organizations:read');
         Route::post('organizations', [OrganizationController::class, 'store'])->middleware('env.api:organizations:write');
-        Route::get('organizations/{id}', [OrganizationController::class, 'show'])->middleware('env.api:organizations:read');
+        Route::get('organizations/{id}', [CurrentOrganizationController::class, 'show'])->middleware('env.api:organizations:read');
 
         Route::get('users', [UserController::class, 'index'])->middleware('env.api:users:read');
         Route::post('users', [UserController::class, 'store'])->middleware('env.api:users:write');

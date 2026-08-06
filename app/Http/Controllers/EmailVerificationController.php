@@ -8,7 +8,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\SignupProvisioner;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Exceptions\InvalidEmailVerification;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 
 final class EmailVerificationController extends Controller
@@ -16,7 +16,7 @@ final class EmailVerificationController extends Controller
     public function verify(
         string $token,
         EmailVerification $verification,
-        AccountMembers $members,
+        Memberships $members,
         SignupProvisioner $provisioner,
     ): RedirectResponse {
         try {

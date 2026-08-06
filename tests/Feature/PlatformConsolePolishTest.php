@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\Navigation\ConsoleNavigation;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -29,7 +29,7 @@ function polishOwner(): void
 {
     platformRootDeployment();
 
-    signInAsMember(app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    signInAsMember(app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'polish-owner@acme.example',
         ownerName: 'Owner',

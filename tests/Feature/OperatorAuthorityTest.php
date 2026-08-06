@@ -17,10 +17,10 @@ use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
@@ -56,7 +56,7 @@ function anAccountOwner(string $email = 'owner@acme.example'): object
     // is what made the first run of these tests fail, and it failed for a real reason.
     platformRootEnvironment();
 
-    return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    return app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: $email,
         ownerName: 'Owner',

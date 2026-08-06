@@ -9,11 +9,11 @@ use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,7 +35,7 @@ use Illuminate\Support\Collection;
  */
 if (! function_exists('provisionAuditableAccount')) {
     /**
-     * @return array{member: AccountMember, account: Account}
+     * @return array{member: Membership, account: Account}
      */
     function provisionAuditableAccount(string $email = 'owner@audit.example'): array
     {
@@ -44,7 +44,7 @@ if (! function_exists('provisionAuditableAccount')) {
         // with no subject has nothing to sign in.
         platformRootEnvironment();
 
-        $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Audit Co',
             ownerEmail: $email,
             ownerName: 'Owner',

@@ -7,7 +7,7 @@ use App\Platform\Enums\CredentialVerdict;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
@@ -29,13 +29,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
 
     public ?string $accountName = null;
 
-    public function mount(string $member, AccountMembers $members): mixed
+    public function mount(string $member, Memberships $members): mixed
     {
         $this->member = $member;
         $invited = $members->find($member);
 
         // Already accepted, revoked, or unknown — the link is spent.
-        if ($invited === null || $invited->status !== \Cbox\Id\Platform\Enums\AccountMemberStatus::Invited) {
+        if ($invited === null || $invited->status !== \Cbox\Id\Organization\Enums\MembershipStatus::Invited) {
             return redirect()->route('login')
                 ->with('status', 'This invitation is no longer valid. Try signing in.');
         }
@@ -46,7 +46,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Accept invitation'])] class
         return null;
     }
 
-    public function accept(AccountMembers $members, AccountAuth $auth): void
+    public function accept(Memberships $members, AccountAuth $auth): void
     {
         // The invitee's subject already exists (deactivated), so its reuse history
         // applies alongside the tenant's length and breach rules.

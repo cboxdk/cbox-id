@@ -38,12 +38,12 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -199,7 +199,7 @@ function serveOnTestHost(Environment $environment): Environment
  * The member must HAVE a subject, which means a platform root existed before the account
  * was provisioned ({@see platformRootEnvironment()}).
  */
-function actAsEnvironmentAdmin(AccountMember $member, string $environmentId): void
+function actAsEnvironmentAdmin(Membership $member, string $environmentId): void
 {
     app(EnvironmentAdminAuth::class)->establish(
         (string) $member->refresh()->subject_id,
@@ -219,7 +219,7 @@ function actAsEnvironmentAdmin(AccountMember $member, string $environmentId): vo
  * Same precondition as above: the member needs a subject, so stand up the platform root
  * BEFORE provisioning the account.
  */
-function signInAsMember(AccountMember $member): void
+function signInAsMember(Membership $member): void
 {
     $subjectId = (string) $member->refresh()->subject_id;
 
@@ -491,7 +491,7 @@ function accountWithOrg(string $email): array
  * Provision an account + environment, pin the environment context and an
  * environment-admin session.
  *
- * @return array{member: AccountMember, envId: string}
+ * @return array{member: Membership, envId: string}
  */
 function crudSetup(): array
 {
@@ -503,7 +503,7 @@ function crudSetup(): array
     multiTenantDeployment();
 
     platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',

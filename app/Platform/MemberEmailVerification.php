@@ -10,7 +10,7 @@ use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\EmailVerificationToken;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Mail;
 
@@ -53,7 +53,7 @@ final class MemberEmailVerification
      * button click, and a member who clicks it twice, or clicks it on an account whose
      * environment landed while the page was open, has done nothing wrong.
      */
-    public function resend(AccountMember $member): VerificationResendOutcome
+    public function resend(Membership $member): VerificationResendOutcome
     {
         $subjectId = $member->subject_id;
 

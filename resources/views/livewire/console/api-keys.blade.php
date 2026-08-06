@@ -2,24 +2,23 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
-use Cbox\Id\Platform\Contracts\AccountApiKeys;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\AccountApiKey;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Identity platform › API keys — issue and revoke account management-plane keys (the
- * machine equivalent of a member's session). High-privilege: a key can carry any
- * assignable role, so only member managers (owner/admin) may mint or revoke them.
- * The plaintext is shown exactly once, right after creation.
+ * Identity platform › API keys — issue and revoke organization management-plane keys (the
+ * machine equivalent of a member's session). High-privilege: a key can carry any assignable
+ * role, so only member managers (owner/admin) may mint or revoke them. The plaintext is
+ * shown exactly once, right after creation.
  */
 new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends Component
 {
@@ -49,43 +48,43 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
         return null;
     }
 
-    public function createKey(AccountAuth $auth, AccountApiKeys $keys): void
+    public function createKey(ConsoleScope $scope, OrganizationApiKeys $keys): void
     {
-        $account = $auth->current()?->account;
+        $organizationId = $scope->organizationId();
 
         // Authorization FIRST, then the step-up. It ran the other way round, which handed
         // a member who may not mint anything a password prompt and then refused them in
         // silence once they had typed it — and taught everybody else that the prompt is
         // something you get past rather than something that means what it says.
-        if ($account === null || ! app(ConsoleScope::class)->capabilities()?->canManageMembers() === true) {
+        if ($organizationId === null || $scope->capabilities()?->canManageMembers() !== true) {
             return;
         }
 
-        if ($this->requiresSudo('api-keys', 'An account API key acts with this role across the whole account, and its value is shown once.')) {
+        if ($this->requiresSudo('api-keys', 'An organization API key acts with this role across the whole organization, and its value is shown once.')) {
             return;
         }
 
         $this->validate([
             'newKeyName' => ['required', 'string', 'max:120'],
-            'newKeyRole' => ['required', Rule::in(array_map(fn (AccountRole $r) => $r->value, AccountRole::assignable()))],
+            'newKeyRole' => ['required', Rule::in(array_map(fn (MembershipRole $r) => $r->value, MembershipRole::assignable()))],
         ]);
 
-        $issued = $keys->issue($account->id, trim($this->newKeyName), AccountRole::from($this->newKeyRole));
+        $issued = $keys->issue($organizationId, trim($this->newKeyName), MembershipRole::from($this->newKeyRole));
 
         $this->freshKey = $issued->plaintext;
         $this->reset('newKeyName');
         $this->newKeyRole = 'developer';
     }
 
-    public function revokeKey(string $id, AccountAuth $auth, AccountApiKeys $keys): void
+    public function revokeKey(string $id, ConsoleScope $scope, OrganizationApiKeys $keys): void
     {
         // Revoking is as consequential as issuing, and was not gated. A stolen but
         // non-sudo session could not MINT persistence — create requires the step-up — but
         // it could destroy the machine credentials that run provisioning and automation,
         // which is a denial of service the same session was otherwise held back from.
-        $current = $auth->current();
+        $organizationId = $scope->organizationId();
 
-        if ($current === null || ! app(ConsoleScope::class)->capabilities()?->canManageMembers() === true) {
+        if ($organizationId === null || $scope->capabilities()?->canManageMembers() !== true) {
             return;
         }
 
@@ -93,8 +92,8 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
             return;
         }
 
-        // Only revoke keys that belong to this account.
-        $key = $keys->forAccount($current->account_id)->firstWhere('id', $id);
+        // Only revoke keys that belong to this organization.
+        $key = $keys->forOrganization($organizationId)->firstWhere('id', $id);
 
         if ($key !== null) {
             $keys->revoke($id);
@@ -125,23 +124,23 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
     }
 
     /** @return array<string, mixed> */
-    public function with(AccountAuth $auth, AccountApiKeys $keys): array
+    public function with(ConsoleScope $scope, OrganizationApiKeys $keys): array
     {
-        $current = $auth->current();
+        $organizationId = $scope->organizationId();
 
-        /** @var Collection<int, AccountApiKey> $list */
-        $list = $current === null ? collect() : $keys->forAccount($current->account_id);
+        /** @var Collection<int, OrganizationApiKey> $list */
+        $list = $organizationId === null ? collect() : $keys->forOrganization($organizationId);
 
-        return ['keys' => $list, 'assignableRoles' => AccountRole::assignable(), 'freshKey' => $this->freshKey];
+        return ['keys' => $list, 'assignableRoles' => MembershipRole::assignable(), 'freshKey' => $this->freshKey];
     }
 }; ?>
 
 <div>
     {{-- The console's page primitive rather than a hand-rolled h1: this page and
-         Environment keys were the only two in the account console rendering no eyebrow at
+         Environment keys were the only two in the console rendering no eyebrow at
          all, so neither said which area of the rail you were standing in. --}}
     <x-page-header title="API keys"
-                   subtitle="Machine credentials for the account management API — list environments, invite members, read billing. Each key carries a role.">
+                   subtitle="Machine credentials for the organization management API — list environments, invite members, read billing. Each key carries a role.">
         <x-slot:actions>
             <a href="/api/v1/openapi.yaml" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">API reference ↗</a>
         </x-slot:actions>
@@ -180,7 +179,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
                 @endif
             </div>
         @empty
-            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div><h3>No API keys yet</h3><p>Create a key to reach the account management API from your own services.</p></div>
+            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div><h3>No API keys yet</h3><p>Create a key to reach the organization management API from your own services.</p></div>
         @endforelse
     </div>
 

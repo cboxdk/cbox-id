@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Account;
 
 use App\Http\Controllers\Controller;
-use App\Platform\AccountApiContext;
+use App\Platform\OrganizationApiContext;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -19,7 +19,7 @@ use Illuminate\Http\JsonResponse;
  */
 final class AccountController extends Controller
 {
-    public function show(AccountApiContext $context, Projects $projects): JsonResponse
+    public function show(OrganizationApiContext $context, Projects $projects): JsonResponse
     {
         $account = $context->key()?->account;
 
@@ -36,7 +36,7 @@ final class AccountController extends Controller
         // The plan/usage block is billing data — included only for a key whose role
         // may read billing (a Developer/CI key gets the account identity, not the plan).
         if ($context->role()?->canReadBilling() ?? false) {
-            $payload['projects'] = $projects->forAccount($account->id)->map(fn ($project): array => [
+            $payload['projects'] = $projects->forOrganization($account->id)->map(fn ($project): array => [
                 'id' => $project->id,
                 'name' => $project->name,
                 'status' => $project->status,

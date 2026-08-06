@@ -7,7 +7,6 @@ namespace App\Platform;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Platform\Enums\AccountRole;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
@@ -19,7 +18,7 @@ use Illuminate\Validation\Rules\Enum;
  * Developer and Viewer are technical-plane roles with no meaning on an
  * organization's member roster here, so the restriction is this host's product
  * decision — which is why it lives app-side rather than on the packaged enum, and
- * mirrors {@see AccountRole::assignable()} on the account plane.
+ * mirrors {@see MembershipRole::assignable()} on the account plane.
  *
  * A public Livewire prop is attacker-controlled: the wire request carries the whole
  * component state, so a `<select>` constrains a browser and nothing else. Every role

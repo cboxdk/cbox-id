@@ -23,8 +23,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
@@ -71,7 +71,7 @@ function moduleEnvironmentAdmin(string $slug = 'module-parity', bool $chooseOrga
 {
     platformRootEnvironment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'module-parity-'.$slug.'@acme.example',
         ownerName: 'Owner',

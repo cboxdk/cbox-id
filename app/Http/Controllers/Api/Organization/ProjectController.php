@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Account;
 
 use App\Http\Controllers\Controller;
-use App\Platform\AccountApiContext;
+use App\Platform\OrganizationApiContext;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,11 +18,11 @@ use Illuminate\Http\Request;
  * account owns — each its own billing anchor and environment allowance. This is what
  * lets an API-driven customer stand up a SECOND separately-billed product; environments
  * are then created under a chosen `project_id` via {@see EnvironmentController::store}.
- * Thin: it maps HTTP to the {@see AccountProvisioner} / {@see Projects} repo.
+ * Thin: it maps HTTP to the {@see TenantProvisioner} / {@see Projects} repo.
  */
 final class ProjectController extends Controller
 {
-    public function index(AccountApiContext $context, Projects $projects): JsonResponse
+    public function index(OrganizationApiContext $context, Projects $projects): JsonResponse
     {
         $account = $context->key()?->account;
 
@@ -31,11 +31,11 @@ final class ProjectController extends Controller
         }
 
         return response()->json([
-            'data' => $projects->forAccount($account->id)->map(fn (Project $p): array => $this->present($p))->all(),
+            'data' => $projects->forOrganization($account->id)->map(fn (Project $p): array => $this->present($p))->all(),
         ]);
     }
 
-    public function store(Request $request, AccountApiContext $context, AccountProvisioner $provisioner): JsonResponse
+    public function store(Request $request, OrganizationApiContext $context, TenantProvisioner $provisioner): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:120'],

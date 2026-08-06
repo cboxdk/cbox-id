@@ -71,7 +71,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
     }
 
     /** Whether the set-password panel is open. */
@@ -208,7 +208,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             ? now()->addHours($this->pwExpiryHours)
             : null;
 
-        $actor = app(EnvironmentAdminAuth::class)->current();
+        $actor = app(EnvironmentAdminAuth::class)->membership();
 
         $admin->assign(new AdminPasswordAssignment(
             userId: $user->id,

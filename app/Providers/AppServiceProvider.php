@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Http\ApiRateLimiters;
 use App\Listeners\SuppressSandboxMail;
-use App\Platform\AccountApiContext;
+use App\Platform\OrganizationApiContext;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
-        $this->app->scoped(AccountApiContext::class);
+        $this->app->scoped(OrganizationApiContext::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
@@ -75,7 +75,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(MessageSending::class, SuppressSandboxMail::class);
 
         // The REST management API's named rate limiters. Without these registered,
-        // `throttle:api-account` would be read as a numeric limit of 0.
+        // `throttle:api-organization` would be read as a numeric limit of 0.
         ApiRateLimiters::register();
     }
 }

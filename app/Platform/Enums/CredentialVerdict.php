@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Platform\Enums;
 
-use App\Platform\MemberCredentialGate;
+use App\Platform\SubjectCredentialGate;
 
 /**
- * What {@see MemberCredentialGate::admits()} decided about a VERIFIED password.
+ * What {@see SubjectCredentialGate::admits()} decided about a VERIFIED password.
  *
  * A bool used to be enough because both refusals ended the same way — the door said
  * "those credentials do not match a workspace" and there was nothing else to say. There

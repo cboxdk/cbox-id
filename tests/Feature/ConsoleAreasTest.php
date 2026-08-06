@@ -13,8 +13,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -155,7 +155,7 @@ function assertNavEntriesMatchTheirPages(ConsoleNav $nav, string $plane): int
 it('lands every Identity platform nav entry on a page titled the way the entry is labelled', function (): void {
     platformRootDeployment();
 
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'areas-owner@acme.example',
         ownerName: 'Owner',

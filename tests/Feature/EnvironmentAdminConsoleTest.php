@@ -7,11 +7,11 @@ use App\Platform\EnvironmentSudo;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -30,7 +30,7 @@ function envAdminSetup(): array
     multiTenantDeployment();
 
     platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -73,15 +73,15 @@ it('refuses a member with no access to the environment', function (): void {
     ['account' => $account, 'envId' => $envId] = envAdminSetup();
 
     // A viewer scoped to NO environments.
-    $members = app(AccountMembers::class);
-    $stranger = $members->invite($account->id, 'stranger@acme.example', AccountRole::Viewer);
+    $members = app(Memberships::class);
+    $stranger = $members->invite($account->id, 'stranger@acme.example', MembershipRole::Viewer);
     $members->activate($stranger->id, 'a-strong-unbreached-passphrase');
     $members->setEnvironmentAccess($stranger->id, all: false, environmentIds: []);
 
     actAsEnvironmentAdmin($stranger, $envId);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
-    expect(app(EnvironmentAdminAuth::class)->current())->toBeNull();
+    expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
 });
 
 it('redeems a signed handoff into an env-admin session', function (): void {
@@ -249,16 +249,16 @@ it('has no admin door at all on a single-host deployment', function (): void {
 |--------------------------------------------------------------------------
 | A viewer/billing account member defaults to all_environments=true on invite,
 | so they CAN reach every environment. Administering an environment's control
-| plane is an owner/admin/developer capability (AccountRole::canManageEnvironments).
+| plane is an owner/admin/developer capability (MembershipRole::canManageEnvironments).
 | The env-admin session chokepoint and the handoff-mint door must both refuse the
 | scoped roles even though the environment is reachable.
 */
 
 it('refuses a reachable-but-unprivileged member at the env-admin session chokepoint', function (): void {
     ['account' => $account, 'envId' => $envId] = envAdminSetup();
-    $members = app(AccountMembers::class);
+    $members = app(Memberships::class);
 
-    foreach ([AccountRole::Viewer, AccountRole::Billing] as $role) {
+    foreach ([MembershipRole::Viewer, MembershipRole::Billing] as $role) {
         $m = $members->invite($account->id, $role->value.'-choke@acme.example', $role);
         $members->activate($m->id, 'a-strong-unbreached-passphrase');
 
@@ -269,16 +269,16 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
         // Reachable, yet the admin session must not resolve — no control-plane power.
-        expect(app(EnvironmentAdminAuth::class)->current())->toBeNull();
+        expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
     }
 });
 
 it('admits owner, admin, and developer to the env-admin session', function (): void {
     ['account' => $account, 'member' => $owner, 'envId' => $envId] = envAdminSetup();
-    $members = app(AccountMembers::class);
+    $members = app(Memberships::class);
 
     $admit = ['owner' => $owner];
-    foreach ([AccountRole::Admin, AccountRole::Developer] as $role) {
+    foreach ([MembershipRole::Admin, MembershipRole::Developer] as $role) {
         $m = $members->invite($account->id, $role->value.'-ok@acme.example', $role);
         $members->activate($m->id, 'a-strong-unbreached-passphrase');
         $admit[$role->value] = $m;
@@ -287,16 +287,16 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
     foreach ($admit as $member) {
         actAsEnvironmentAdmin($member, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-        expect(app(EnvironmentAdminAuth::class)->current()?->id)->toBe($member->id);
+        expect(app(EnvironmentAdminAuth::class)->membership()?->id)->toBe($member->id);
     }
 });
 
 it('refuses to mint a handoff for a reachable-but-unprivileged member (fail before the credential exists)', function (): void {
     ['account' => $account, 'envId' => $envId] = envAdminSetup();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-    $members = app(AccountMembers::class);
+    $members = app(Memberships::class);
 
-    $viewer = $members->invite($account->id, 'viewer-mint@acme.example', AccountRole::Viewer);
+    $viewer = $members->invite($account->id, 'viewer-mint@acme.example', MembershipRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     // On the ACCOUNT HOST this fixture names. The mint used to live under `/workspace`,
@@ -311,7 +311,7 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     $this->get($open)->assertForbidden();
 
     // A developer is bounced to the environment host to redeem — a redirect, not a 403.
-    $dev = $members->invite($account->id, 'dev-mint@acme.example', AccountRole::Developer);
+    $dev = $members->invite($account->id, 'dev-mint@acme.example', MembershipRole::Developer);
     $members->activate($dev->id, 'a-strong-unbreached-passphrase');
     signInAsMember($dev);
     $this->get($open)->assertRedirect();
@@ -335,13 +335,13 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
 it('refuses a session anchored to one environment on another the same admin may also administer', function (): void {
     ['member' => $member, 'account' => $account, 'envId' => $envId] = envAdminSetup();
 
-    $second = app(AccountProvisioner::class)->addEnvironment(
+    $second = app(TenantProvisioner::class)->addEnvironment(
         $account->projects()->firstOrFail(),
         'Staging',
     );
 
     // Access is NOT what refuses here — state it, or this is the old test again.
-    expect(in_array($second->id, app(AccountMembers::class)->accessibleEnvironmentIds($member), true))
+    expect(in_array($second->id, app(Memberships::class)->accessibleEnvironmentIds($member), true))
         ->toBeTrue('fixture: the admin must be entitled to BOTH, or the anchor is not what holds');
 
     actAsEnvironmentAdmin($member, $envId);

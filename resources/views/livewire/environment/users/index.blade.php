@@ -26,7 +26,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Users'])] class exte
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
     }
 
     use WithPagination;

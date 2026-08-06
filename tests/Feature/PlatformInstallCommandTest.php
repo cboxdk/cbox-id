@@ -6,7 +6,7 @@ use App\Console\Commands\InstallCommand;
 use App\Platform\Install\EnvFile;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Platform\Models\Account;
+use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 

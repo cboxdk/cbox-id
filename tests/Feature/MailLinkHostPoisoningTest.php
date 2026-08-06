@@ -10,10 +10,10 @@ use App\Platform\TrustedHosts;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -57,7 +57,7 @@ function accountPlaneMember(): object
     // and makes an assertion about a mail's origin pass for the wrong reason.
     platformRootDeployment();
 
-    return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    return app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -151,8 +151,8 @@ it('refuses a signed invitation link replayed with a foreign Host', function ():
     // token in the path rather than a signature over the URL.
     poisonRequestHost('http://evil.example/account-members');
 
-    $invited = app(AccountMembers::class)
-        ->invite((string) $account->account->id, 'invitee@acme.example', AccountRole::Admin);
+    $invited = app(Memberships::class)
+        ->invite((string) $account->account->id, 'invitee@acme.example', MembershipRole::Admin);
 
     $url = app(MailLinks::class)->temporarySignedRoute(
         'account.invite.accept',

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Account;
 
 use App\Http\Controllers\Controller;
-use App\Platform\AccountApiContext;
+use App\Platform\OrganizationApiContext;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,12 +17,12 @@ use Illuminate\Validation\Rule;
 
 /**
  * Account plane › environments. Lists and provisions the environments an account
- * owns. Thin: it maps HTTP to the {@see AccountProvisioner} and the Environment
+ * owns. Thin: it maps HTTP to the {@see TenantProvisioner} and the Environment
  * model, nothing more.
  */
 final class EnvironmentController extends Controller
 {
-    public function index(Request $request, AccountApiContext $context): JsonResponse
+    public function index(Request $request, OrganizationApiContext $context): JsonResponse
     {
         $limit = min(100, max(1, $request->integer('limit', 50)));
 
@@ -43,7 +43,7 @@ final class EnvironmentController extends Controller
         ]);
     }
 
-    public function store(Request $request, AccountApiContext $context, AccountProvisioner $provisioner, Projects $projects): JsonResponse
+    public function store(Request $request, OrganizationApiContext $context, TenantProvisioner $provisioner, Projects $projects): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -61,7 +61,7 @@ final class EnvironmentController extends Controller
         // project, or fall back to the account's first project for back-compat with
         // callers that predate the project layer.
         $projectId = $request->string('project_id')->toString();
-        $project = $projectId !== '' ? $projects->find($projectId) : $projects->forAccount($account->id)->first();
+        $project = $projectId !== '' ? $projects->find($projectId) : $projects->forOrganization($account->id)->first();
 
         if ($project === null || $project->account_id !== $account->id) {
             return response()->json(['error' => 'not_found', 'message' => 'Project not found.'], 404);

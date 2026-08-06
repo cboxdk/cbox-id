@@ -2,22 +2,21 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Identity platform › Billing — the account's usage rollup and per-project plans. Since
- * the plan/billing anchor lives on the PROJECT (one account can own several
+ * Identity platform › Billing — the organization's usage rollup and per-project plans.
+ * Since the plan/billing anchor lives on the PROJECT (one organization can own several
  * independently-billed IdP products), this page lists each project's
- * plan + environment allowance, then rolls up account-wide usage.
+ * plan + environment allowance, then rolls up organization-wide usage.
  *
- * Every figure is queried live from the account's own environments — nothing is
+ * Every figure is queried live from the organization's own environments — nothing is
  * fabricated.
  */
 new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Component
@@ -36,26 +35,33 @@ new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Co
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, Projects $projects): array
+    public function with(ConsoleScope $scope, Projects $projects): array
     {
-        $account = $auth->current()?->account;
+        $organizationId = $scope->organizationId();
 
         // Per-project plan + allowance (the billing anchor is the project).
-        $projectRows = $account === null ? [] : $projects->forAccount($account->id)->map(fn ($p): array => [
+        $projectRows = $organizationId === null ? [] : $projects->forOrganization($organizationId)->map(fn ($p): array => [
             'id' => $p->id,
             'name' => $p->name,
             'used' => Environment::query()->where('project_id', $p->id)->count(),
             'limit' => $p->environment_limit,
         ])->all();
 
-        // Account-wide usage — the figures charges are based on, across every project.
-        $envIds = $account === null
+        // Organization-wide usage — the figures charges are based on, across every product.
+        //
+        // THROUGH THE PROJECTS, because `environments.account_id` is gone: it was a
+        // denormalized copy of ownership that made this a single read, and a copy of
+        // ownership is a second place for ownership to be wrong. The rows above already
+        // name every project, so this costs no extra query against them.
+        $envIds = $organizationId === null
             ? collect()
-            : Environment::query()->where('account_id', $account->id)->pluck('id');
+            : Environment::query()
+                ->whereIn('project_id', array_column($projectRows, 'id'))
+                ->pluck('id');
         $monthStart = now()->startOfMonth()->format('Y-m-d');
 
         return [
-            'account' => $account,
+            'organizationId' => $organizationId,
             'projects' => $projectRows,
             'organizations' => $envIds->isEmpty() ? 0 : DB::table('organizations')->whereIn('environment_id', $envIds)->count(),
             'connections' => $envIds->isEmpty() ? 0 : DB::table('connections')->whereIn('environment_id', $envIds)->count(),
@@ -69,7 +75,7 @@ new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Co
 }; ?>
 
 <div>
-    <x-page-header title="Billing" subtitle="Plans are per project; usage rolls up across every environment this account owns." />
+    <x-page-header title="Billing" subtitle="Plans are per project; usage rolls up across every environment this organization owns." />
 
     {{-- Per-project plans (the billing anchor is the project). --}}
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">

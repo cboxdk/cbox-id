@@ -16,7 +16,6 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Otp\Contracts\OtpService;
-use Cbox\Id\Platform\Contracts\AccountMembers;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Http\Request;
@@ -68,53 +67,58 @@ final class PlatformAuth
         private readonly AuthPolicies $policies,
         private readonly LoginAttempts $loginAttempts,
         private readonly PlatformRoot $platformRoot,
-        private readonly AccountMembers $members,
-        private readonly AccountActivity $activity,
+        private readonly OrganizationActivity $activity,
     ) {}
 
     /**
-     * Write the account chain's sign-in entry, if this subject is a member of an account.
+     * Write the organization chain's sign-in entry, if this subject belongs to one.
      *
      * IT USED TO LIVE ON THE OTHER DOOR. `AccountAuth::establish()` recorded it, and every
      * console sign-in reached that method — until the account door was retired and `/login`
-     * became the only one. After that, `AccountAuth::establish()` was reachable from
-     * exactly two flows, signup and an accepted invitation, so the account activity log
-     * held the two entries a member generates while joining and nothing for any visit
-     * afterwards. The page still said "Sign-ins" and still listed rows, which is the worst
-     * shape for this to fail in.
+     * became the only one. After that, that method was reachable from exactly two flows,
+     * signup and an accepted invitation, so the activity log held the two entries a member
+     * generates while joining and nothing for any visit afterwards. The page still said
+     * "Sign-ins" and still listed rows, which is the worst shape for this to fail in.
      *
-     * What that costs is the reason the entry exists: `last_login_at` is a single
-     * overwritten column, so without a chained entry per session a takeover looks exactly
-     * like the owner's own next visit.
+     * AND THE OLD COPY WAS NEVER REMOVED, so those same two flows then recorded TWICE —
+     * once here and once there — writing two identical rows for one sign-in. The test that
+     * covers that path takes `firstOrFail()` rather than counting, so it stayed green; its
+     * neighbour, on the door that only ever recorded once, is the one that asserts a count
+     * of exactly 1. Deleting `AccountAuth` removes the second write by construction, and
+     * this is now the only place a sign-in is recorded.
+     *
+     * What the entry costs is the reason it exists: `last_login_at` is a single overwritten
+     * column, so without a chained entry per session a takeover looks exactly like the
+     * owner's own next visit.
      *
      * BOTH LANDINGS CALL IT, because there are two: {@see establish()} for the doors that
      * mint a session, and {@see adopt()} for the ones that hand over a session already
      * started (magic-link redemption). Recording in only the first is how a door goes
      * quiet — the same way this did.
      *
-     * A subject that is not an account member records nothing: an ordinary tenant user has
-     * no account chain to write to, and the log is the account plane's, not the platform's.
+     * A subject with no membership records nothing: an ordinary tenant user has no
+     * management chain to write to.
      *
      * Failure is swallowed. The audit chain serialises appends on an anchor row, and a
      * backend that is down or contended must not be able to lock every member out of a
      * console they hold the right credential for. Observation, not gate.
      */
-    private function recordAccountSignIn(string $subjectId): void
+    private function recordOrganizationSignIn(string $subjectId): void
     {
         try {
             $this->platformRoot->run(function () use ($subjectId): bool {
-                $member = $this->members->findBySubject($subjectId);
+                $membership = $this->memberships->forUser($subjectId)->first();
 
-                if ($member === null) {
+                if ($membership === null) {
                     return false;
                 }
 
                 $this->activity->record(
-                    $member->account_id,
-                    'account.signed_in',
-                    $member->id,
-                    targetType: 'account_member',
-                    targetId: $member->id,
+                    $membership->organization_id,
+                    'organization.signed_in',
+                    $subjectId,
+                    targetType: 'membership',
+                    targetId: $membership->id,
                     request: request(),
                 );
 
@@ -380,7 +384,7 @@ final class PlatformAuth
         session()->regenerate();
 
         $this->applyPendingLink($subjectId);
-        $this->recordAccountSignIn($subjectId);
+        $this->recordOrganizationSignIn($subjectId);
     }
 
     /**
@@ -399,7 +403,7 @@ final class PlatformAuth
         session()->regenerate();
 
         $this->applyPendingLink($session->user_id);
-        $this->recordAccountSignIn($session->user_id);
+        $this->recordOrganizationSignIn($session->user_id);
     }
 
     /**

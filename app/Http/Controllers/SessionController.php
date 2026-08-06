@@ -24,7 +24,7 @@ final class SessionController extends Controller
         if ($marker !== null) {
             $impersonation->exit($request);
 
-            return redirect()->route($marker->isAccountMember() ? 'environment.home' : 'platform.organizations');
+            return redirect()->route($marker->isMembership() ? 'environment.home' : 'platform.organizations');
         }
 
         $auth->logout($request);

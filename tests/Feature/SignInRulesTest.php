@@ -21,9 +21,9 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Volt\Volt;
 
@@ -468,7 +468,7 @@ it('gives an account member the same terminal refusal', function (): void {
     // drives, aimed at a member instead of a tenant user.
     platformRootDeployment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'refused-owner@acme.example',
         ownerName: 'Owner',
@@ -505,7 +505,7 @@ it('resolves an account member\'s mandate in the platform root', function (): vo
     // nothing.
     platformRootDeployment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Scoped',
         ownerEmail: 'scoped-owner@acme.example',
         ownerName: 'Owner',

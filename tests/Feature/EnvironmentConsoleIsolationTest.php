@@ -23,8 +23,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +56,7 @@ function twoTenants(): array
 {
     platformRootEnvironment();
 
-    $victim = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $victim = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Victim Co',
         ownerEmail: 'owner@victim.example',
         ownerName: 'Victim Owner',
@@ -65,7 +65,7 @@ function twoTenants(): array
 
     platformRootEnvironment();
 
-    $attacker = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $attacker = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Attacker Co',
         ownerEmail: 'owner@attacker.example',
         ownerName: 'Attacker Owner',

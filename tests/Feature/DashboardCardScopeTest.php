@@ -17,8 +17,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -177,7 +177,7 @@ it('renders no connectors card until an environment administrator has chosen an 
 
     platformRootEnvironment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'cards@acme.example',
         ownerName: 'Owner',

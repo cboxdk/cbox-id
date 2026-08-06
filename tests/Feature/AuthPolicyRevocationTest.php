@@ -17,9 +17,9 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
@@ -163,11 +163,11 @@ it('revokes nobody when an override restates a mandate the environment already i
  * is an ACCOUNT member — a subject of the platform root — and the baseline they save here
  * governs the environment's own subjects, not their own password. Their session surviving
  * is the environment scope holding, not an exemption: the same person tightening the ROOT
- * baseline goes with everybody else (see {@see MemberCredentialGateTest}).
+ * baseline goes with everybody else (see {@see SubjectCredentialGateTest}).
  */
 it('ends the environment\'s sessions when the sign-in rules page mandates SSO', function (): void {
     platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'rules-owner@acme.example',
         ownerName: 'Owner',

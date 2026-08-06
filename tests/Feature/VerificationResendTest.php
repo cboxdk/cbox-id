@@ -7,8 +7,8 @@ use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Http;
@@ -48,7 +48,7 @@ function rootForResend(): Environment
 }
 
 /** Sign up a workspace and stay signed in as its owner (signup establishes the session). */
-function signUpForResend(string $email = 'dana@acme.example', string $organization = 'Acme'): AccountMember
+function signUpForResend(string $email = 'dana@acme.example', string $organization = 'Acme'): Membership
 {
     Volt::test('auth.signup')
         ->set('organization', $organization)
@@ -58,10 +58,10 @@ function signUpForResend(string $email = 'dana@acme.example', string $organizati
         ->call('register')
         ->assertHasNoErrors();
 
-    $member = app(AccountMembers::class)->findByEmail($email);
+    $member = app(Memberships::class)->findByEmail($email);
     expect($member)->not->toBeNull();
 
-    /** @var AccountMember $member */
+    /** @var Membership $member */
     // Re-establish through the fixture, so the ACTING ORGANIZATION is resolved. Signing up
     // mints the session and hands the browser straight to a redirect; the middleware on
     // the next request is what resolves which organization the person is acting on, and
@@ -114,7 +114,7 @@ it('takes no address argument, so a crafted call cannot steer where the mail goe
     $action = new ReflectionMethod(MemberEmailVerification::class, 'resend');
 
     expect($action->getNumberOfParameters())->toBe(1)
-        ->and((string) $action->getParameters()[0]->getType())->toBe(AccountMember::class);
+        ->and((string) $action->getParameters()[0]->getType())->toBe(Membership::class);
 
     // The Livewire control likewise takes only container-resolved services — no scalar a
     // request payload could supply.

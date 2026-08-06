@@ -7,19 +7,19 @@ use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Livewire\Volt\Volt;
 
 // Guarded so they coexist with the same helpers in the other workspace test files.
 if (! function_exists('provisionAccount')) {
     /**
-     * @return array{member: AccountMember, account: Account, project: Project, environment: Environment}
+     * @return array{member: Membership, account: Account, project: Project, environment: Environment}
      */
     function provisionAccount(string $email = 'owner@acme.example'): array
     {
@@ -28,7 +28,7 @@ if (! function_exists('provisionAccount')) {
         // with no subject has nothing to sign in.
         platformRootEnvironment();
 
-        $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
@@ -40,9 +40,9 @@ if (! function_exists('provisionAccount')) {
 }
 
 if (! function_exists('memberWithRole')) {
-    function memberWithRole(string $accountId, AccountRole $role, string $email): AccountMember
+    function memberWithRole(string $accountId, MembershipRole $role, string $email): Membership
     {
-        $members = app(AccountMembers::class);
+        $members = app(Memberships::class);
         $m = $members->invite($accountId, $email, $role);
         $members->activate($m->id, 'a-strong-unbreached-passphrase');
 
@@ -116,7 +116,7 @@ it('removes a verified domain, falling back to the default issuer', function ():
 
 it('refuses the domains page to a member who cannot manage environments', function (): void {
     ['account' => $account] = provisionAccount();
-    $viewer = memberWithRole($account->id, AccountRole::Billing, 'billing2@acme.example');
+    $viewer = memberWithRole($account->id, MembershipRole::Billing, 'billing2@acme.example');
 
     signInAsMember($viewer);
     $this->get(route('environment-domains'))

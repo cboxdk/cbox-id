@@ -10,7 +10,7 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
  * A validated, active impersonation session. The session stores a loose array (a
  * serialization boundary), but everything in the app consumes this typed marker —
  * the acting principal is an {@see ActorType} enum, not a stringly-compared
- * `actor_type` value, so a caller asks {@see isAccountMember()} rather than matching
+ * `actor_type` value, so a caller asks {@see isMembership()} rather than matching
  * a magic string. Only ever constructed by {@see Impersonation::active()} after the
  * raw session data has been validated.
  */
@@ -38,9 +38,9 @@ final readonly class ImpersonationMarker
      * Whether the acting principal is an account member (an env-admin) rather than a
      * platform operator — decides which control plane is restored on exit.
      */
-    public function isAccountMember(): bool
+    public function isMembership(): bool
     {
-        return $this->actorType === ActorType::AccountMember;
+        return $this->actorType === ActorType::OrganizationMember;
     }
 
     /**

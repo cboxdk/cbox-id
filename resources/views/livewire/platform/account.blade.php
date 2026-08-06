@@ -9,11 +9,10 @@ use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Contracts\Accounts;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Platform\Contracts\Projects;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -154,14 +153,14 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
     /** @return array<string, mixed> */
     public function with(
         Accounts $accounts,
-        AccountMembers $members,
+        Memberships $members,
         Projects $projects,
         EnvironmentContext $context,
     ): array {
         $account = $accounts->find($this->accountId);
         abort_if($account === null, 404);
 
-        $projectList = $projects->forAccount($account->id);
+        $projectList = $projects->forOrganization($account->id);
 
         // Every environment the account owns, in ONE read. Grouped by project below
         // rather than queried per project — a five-project account would otherwise cost
@@ -228,7 +227,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
         return [
             'account' => $account,
             'createdAt' => $createdAt instanceof CarbonInterface ? $createdAt->toDayDateTimeString() : null,
-            'members' => $members->forAccount($account->id),
+            'members' => $members->forOrganization($account->id),
             'projects' => $projectList,
             'environmentsByProject' => $byProject,
             'unfiledEnvironments' => $unfiled,
@@ -242,8 +241,8 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
 }; ?>
 
 @php
-    /** @var \Cbox\Id\Platform\Models\Account $account */
-    /** @var \Illuminate\Support\Collection<int, \Cbox\Id\Platform\Models\AccountMember> $members */
+    /** @var \Cbox\Id\Organization\Models\Organization $account */
+    /** @var \Illuminate\Support\Collection<int, \Cbox\Id\Organization\Models\Membership> $members */
     /** @var \Illuminate\Support\Collection<int, \Cbox\Id\Platform\Models\Project> $projects */
     $suspendConfirm = 'Suspend '.$account->name.'? Its '.$members->count().' member(s) are signed out and all '
         .$environmentTotal.' environment(s) it owns stop serving auth on the next request. You can reactivate it here.';
@@ -335,7 +334,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
                                     </span>
                                 </td>
                                 <td class="whitespace-nowrap text-xs" style="color:var(--muted)">
-                                    {{ app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member) ? 'All' : 'Selected only' }}
+                                    {{ $member?->all_environments === true ? 'All' : 'Selected only' }}
                                 </td>
                                 <td class="whitespace-nowrap text-xs" style="color:var(--faint)">
                                     {{ $member->last_login_at?->toDayDateTimeString() ?? 'Never' }}

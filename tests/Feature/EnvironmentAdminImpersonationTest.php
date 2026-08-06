@@ -12,9 +12,9 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Models\AccountMember;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -32,7 +32,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
  * environment, and the anti-bleed check that is supposed to confine them to ONE host is
  * satisfied by nothing at all. That is the property this file exists for.
  *
- * @return array{member: AccountMember, env: Environment, envId: string, orgId: string, userId: string}
+ * @return array{member: Membership, env: Environment, envId: string, orgId: string, userId: string}
  */
 function envAdminImpersonationSetup(): array
 {
@@ -40,7 +40,7 @@ function envAdminImpersonationSetup(): array
     multiTenantDeployment();
     platformRootEnvironment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',

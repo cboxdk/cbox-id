@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountActivity;
+use App\Platform\OrganizationActivity;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Platform\Enums\AccountStatus;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
@@ -29,7 +29,7 @@ beforeEach(function (): void {
 
 function suspendableAccount(string $email = 'junk@signup.example'): Account
 {
-    return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    return app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Junk Signup',
         ownerEmail: $email,
         ownerName: 'Junk',
@@ -54,17 +54,17 @@ it('suspends and reactivates an account, and the toggle is reversible', function
     $account = suspendableAccount();
 
     Volt::test('platform.accounts')->call('toggleStatus', $account->id)->assertRenderedNotRedirected();
-    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(AccountStatus::Suspended);
+    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
     Volt::test('platform.accounts')->call('toggleStatus', $account->id)->assertRenderedNotRedirected();
-    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(AccountStatus::Active);
+    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
 
 /**
  * The entries land on the SYSTEM chain, not the account's own.
  *
  * This screen used to write the audit itself, scoped to the account id — matching
- * {@see AccountActivity}, which reads `where('scope', $accountId)` so an
+ * {@see OrganizationActivity}, which reads `where('scope', $accountId)` so an
  * account's trail explains why it went dark. laravel-id v0.64.0 moved the audit inside
  * `Accounts::suspend()`, which scopes it to the system chain because an account sits
  * ABOVE the tenancy boundary — consistent with `PlatformOperators`, which does the same.
@@ -113,5 +113,5 @@ it('refuses the screen, and the toggle, without operator authority', function ()
     // too and a crafted wire request cannot reach the toggle.
     Volt::test('platform.accounts')->assertStatus(404);
 
-    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(AccountStatus::Active);
+    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
 });

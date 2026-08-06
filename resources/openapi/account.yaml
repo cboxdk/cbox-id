@@ -27,7 +27,7 @@ servers:
     variables:
       host: { default: id.example.com }
 security:
-  - AccountApiKey: []
+  - OrganizationApiKey: []
 tags:
   - name: Account
   - name: Projects
@@ -209,7 +209,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
 components:
   securitySchemes:
-    AccountApiKey:
+    OrganizationApiKey:
       type: http
       scheme: bearer
       description: An account API key, `cbid_acc_…`. Create and revoke keys in the workspace console (Owner/Admin).

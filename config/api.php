@@ -14,7 +14,7 @@ return [
      * plan/apply or an SDK sync is exactly the burst that used to collide.
      */
     'rate_limits' => [
-        'account' => (int) env('CBOX_ID_API_RATE_LIMIT_ACCOUNT', 120),
+        'organization' => (int) env('CBOX_ID_API_RATE_LIMIT_ORGANIZATION', 120),
         'environment' => (int) env('CBOX_ID_API_RATE_LIMIT_ENVIRONMENT', 240),
         'vault' => (int) env('CBOX_ID_API_RATE_LIMIT_VAULT', 120),
         'apps' => (int) env('CBOX_ID_API_RATE_LIMIT_APPS', 60),

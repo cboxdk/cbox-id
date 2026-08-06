@@ -59,7 +59,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
     }
 
     public string $orgId = '';
@@ -208,7 +208,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         $audit->record(new AuditEvent(
             action: 'organization.deleted',
-            actorType: ActorType::AccountMember,
+            actorType: ActorType::OrganizationMember,
             actorId: $this->actorId(),
             organizationId: $org->id,
             targetType: 'organization',
@@ -357,7 +357,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $pending = $invitations->invite($org->id, $this->inviteEmail, MembershipRole::from($this->inviteRole));
         Mail::to($this->inviteEmail)->send(new InvitationMail(
             organization: $org->name,
-            inviter: app(EnvironmentAdminAuth::class)->current()->name ?? 'An administrator',
+            inviter: app(EnvironmentAdminAuth::class)->membership()->name ?? 'An administrator',
             url: $links->route('invitation.accept', $pending->token),
         ));
 
@@ -456,7 +456,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
     private function actorId(): string
     {
-        return app(EnvironmentAdminAuth::class)->current()->id ?? '';
+        return app(EnvironmentAdminAuth::class)->membership()->id ?? '';
     }
 
     /**

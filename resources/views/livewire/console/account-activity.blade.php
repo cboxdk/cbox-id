@@ -2,19 +2,18 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountActivity;
-use App\Platform\AccountAuth;
+use App\Platform\OrganizationActivity;
 use App\Platform\Console\ConsoleScope;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Identity platform › Account activity — the account's activity log: environments created,
+ * Identity platform › Activity — the organization's activity log: environments created,
  * members invited/removed/re-roled, environment keys minted/revoked, across the
- * whole account. Sourced from the tamper-evident audit chain scoped to this account
- * ({@see AccountActivity}). Admin-only, and re-guarded in boot() so it re-runs on
+ * whole organization. Sourced from the tamper-evident audit chain scoped to this organization
+ * ({@see OrganizationActivity}). Admin-only, and re-guarded in boot() so it re-runs on
  * every Livewire interaction, not just first render.
  */
 new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class extends Component
@@ -24,16 +23,16 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
     public function boot(ConsoleScope $scope): void
     {
         // Account-wide activity names every actor and target — an admin view. A
-        // member who cannot read members cannot read the account's activity either.
+        // member who cannot read members cannot read the organization's activity either.
         abort_unless($scope->capabilities()?->canReadMembers() === true, 403);
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, AccountMembers $members, AccountActivity $activity): array
+    public function with(ConsoleScope $scope, OrganizationActivity $activity): array
     {
-        $accountId = $auth->current()->account_id ?? '';
+        $accountId = $scope->organizationId() ?? '';
 
         $entries = $activity->recent($accountId, 200)
             ->when(trim($this->filter) !== '', fn (Collection $rows): Collection => $rows->filter(
@@ -57,7 +56,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
          that reaches this page says "Identity platform" — the one label whose whole job is
          to tell you which area you are standing in, disagreeing with the navigation. --}}
     <x-page-header class="flex-wrap" title="Account activity"
-                   subtitle="Every change across this account — environments, members and keys — tamper-evident and hash-chained.">
+                   subtitle="Every change across this organization — environments, members and keys — tamper-evident and hash-chained.">
         <x-slot:actions>
             <input wire:model.live.debounce.300ms="filter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…" aria-label="Filter by action">
         </x-slot:actions>
@@ -77,7 +76,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
                 <tbody>
                     @forelse ($entries as $entry)
                         <tr>
-                            <td class="font-medium whitespace-nowrap">{{ str_replace(['account.', '.', '_'], ['', ' · ', ' '], $entry->action) }}</td>
+                            <td class="font-medium whitespace-nowrap">{{ str_replace(['organization.', '.', '_'], ['', ' · ', ' '], $entry->action) }}</td>
                             <td>
                                 <span class="text-sm">{{ $actors[$entry->actor_id] ?? '—' }}</span>
                             </td>
@@ -103,7 +102,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
                                 <div class="cbx-empty">
                                     <div class="cbx-empty-icon"><x-icon name="audit" class="w-5 h-5" /></div>
                                     <h3>No activity yet</h3>
-                                    <p>Changes across your account will appear here as they happen.</p>
+                                    <p>Changes across your organization will appear here as they happen.</p>
                                 </div>
                             </td>
                         </tr>

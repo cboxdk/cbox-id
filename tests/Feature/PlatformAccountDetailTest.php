@@ -9,14 +9,14 @@ use App\Platform\OperatorEnvironment;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\Accounts;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Platform\Contracts\Projects;
-use Cbox\Id\Platform\Enums\AccountStatus;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Platform\Enums\ProjectStatus;
-use Cbox\Id\Platform\Models\Account;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Models\Project;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,16 +53,16 @@ beforeEach(function (): void {
  */
 function acmeEstate(): array
 {
-    $provisioner = app(AccountProvisioner::class);
+    $provisioner = app(TenantProvisioner::class);
 
-    $result = $provisioner->provision(new AccountBlueprint(
+    $result = $provisioner->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'estate-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    $first = app(Projects::class)->forAccount($result->account->id)->firstOrFail();
+    $first = app(Projects::class)->forOrganization($result->account->id)->firstOrFail();
     $staging = $provisioner->addEnvironment($first, 'Staging', type: EnvironmentType::Sandbox);
 
     $second = $provisioner->addProject($result->account, 'Billing Portal');
@@ -194,10 +194,10 @@ it('suspends and reactivates the account from its own page, reversibly', functio
     $url = route('platform.accounts.show', $estate['account']->id);
 
     livewireUpdate($url, 'platform.account', 'toggleStatus')->assertSuccessful();
-    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(AccountStatus::Suspended);
+    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
     livewireUpdate($url, 'platform.account', 'toggleStatus')->assertSuccessful();
-    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(AccountStatus::Active);
+    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
 
 /**
@@ -230,7 +230,7 @@ it('refuses every action on a snapshot whose operator authority is gone', functi
     replaySnapshot($url, $snapshot, 'target', [$estate['portal']->id])->assertRedirect(route('login'));
     replaySnapshot($url, $snapshot, 'open', [$estate['portal']->id])->assertRedirect(route('login'));
 
-    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(AccountStatus::Active)
+    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(OrganizationStatus::Active)
         ->and(session()->get(OperatorEnvironment::SESSION_KEY))->toBeNull();
 })->group('security');
 
@@ -248,7 +248,7 @@ it('refuses an account owner who is not an operator, on the component itself', f
 
     // Provisioned BEFORE the session is dropped: nextRequest() ends the request, and with
     // it the ambient environment a subject has to be written into.
-    $outsider = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $outsider = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Other',
         ownerEmail: 'not-an-operator@other.example',
         ownerName: 'Owner',
@@ -357,7 +357,7 @@ it('does not pay a query per environment to say who owns one', function (): void
     for ($i = 0; $i < 15; $i++) {
         $account = Account::query()->create([
             'name' => 'Bulk '.$i,
-            'status' => AccountStatus::Active,
+            'status' => OrganizationStatus::Active,
             'environment_limit' => 2,
         ]);
 

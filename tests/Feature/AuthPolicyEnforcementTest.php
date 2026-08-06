@@ -17,10 +17,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Livewire\Volt\Volt;
@@ -106,8 +104,8 @@ it('refuses password sign-in when ANY of the subject\'s organizations mandates S
 
 it('saves the environment baseline from the console and shows what each org gets', function (): void {
     platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(
-        new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(
+        new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: 'policy-owner@acme.example',
             ownerName: 'Owner',
@@ -141,8 +139,8 @@ it('saves the environment baseline from the console and shows what each org gets
 
 it('refuses the sign-in rules page to a member without the env-admin capability', function (): void {
     platformRootEnvironment();
-    $r = app(AccountProvisioner::class)->provision(
-        new AccountBlueprint(
+    $r = app(TenantProvisioner::class)->provision(
+        new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: 'policy-owner2@acme.example',
             ownerName: 'Owner',
@@ -154,8 +152,8 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($r->environment->id));
 
-    $members = app(AccountMembers::class);
-    $viewer = $members->invite($r->account->id, 'policy-viewer@acme.example', AccountRole::Viewer);
+    $members = app(Memberships::class);
+    $viewer = $members->invite($r->account->id, 'policy-viewer@acme.example', MembershipRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     actAsEnvironmentAdmin($viewer, $r->environment->id);

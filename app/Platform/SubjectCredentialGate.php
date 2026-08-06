@@ -7,11 +7,10 @@ namespace App\Platform;
 use App\Platform\Enums\CredentialVerdict;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
-use Cbox\Id\Platform\Models\AccountMember;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
- * The rules that decide whether an account member's proven factor is still a way in.
+ * The rules that decide whether a proven factor is still a way in.
  *
  * It began as the reconciliation of two password doors that disagreed — the account
  * console's and, on a single-host deployment, the environment admin's. The account door
@@ -24,20 +23,26 @@ use Cbox\Id\Platform\PlatformRoot;
  * duplication is removed rather than merely reconciled. There is one password door —
  * `/login`, which authenticates the SUBJECT — and it asks the same three rules directly
  * ({@see PlatformAuth::attemptPassword()}: the lockout, `AdminPasswords::hasExpired()`,
- * and the mandate through `localSignInAllowedFor()`). An account member is an ordinary
- * subject, so those rules already reach them; a second copy here, keyed on the member row,
- * would be the divergence this class was written to end, pointing the other way.
+ * and the mandate through `localSignInAllowedFor()`). A customer's people are ordinary
+ * subjects, so those rules already reach them; a second copy here, keyed on a row beside the
+ * subject, would be the divergence this class was written to end, pointing the other way.
  *
- * What is left is the half that is NOT about a password, and could not be folded into the
- * subject door because the doors that ask it are not holding a subject. An accepted
- * invitation identifies a MEMBER, not a session — {@see admitsFactor()} — and the mandate
- * was honoured by the password and ignored by every one of those. That divergence is real
- * and still live, which is why this class is still here and still narrow.
+ * What is left is the half that is NOT about a password: the doors that ask it have proved
+ * some other factor — an accepted invitation, a redeemed magic link, a passkey ceremony —
+ * and the mandate was honoured by the password and ignored by every one of those. That
+ * divergence is real and still live, which is why this class is still here and still narrow.
+ *
+ * IT TAKES A SUBJECT ID NOW, and that is the whole of what changed when the account plane
+ * went. Every method here took an `Membership` and immediately reduced it to
+ * `$member->subject_id`, through a private helper that existed only to do the reduction and
+ * to return null when there was none. The member row was never the question — it was a
+ * detour to the subject, and it carried a null case (the bootstrap window, an account
+ * provisioned before the deployment had a platform root) that cannot happen any more.
  *
  * Every check runs in the PLATFORM ROOT's scope: policies and memberships are
- * environment-owned, and the account's people live there.
+ * environment-owned, and a customer's people live there.
  */
-final class MemberCredentialGate
+final class SubjectCredentialGate
 {
     public function __construct(
         private readonly PlatformRoot $platformRoot,
@@ -49,7 +54,7 @@ final class MemberCredentialGate
      * Whether a mandate refuses this member a session for a factor that is NOT a password
      * — a passkey ceremony, a redeemed magic link, an accepted invitation, a reset link.
      *
-     * Everything {@see admits()} checks about the credential itself drops away here, and
+     * Everything a PASSWORD door checks about the credential itself drops away here, and
      * deliberately: an administratively-issued temporary password whose deadline has
      * passed is a fact about a PASSWORD, and refusing somebody's passkey because of it
      * would be the same category error in the other direction. So this asks the one rule
@@ -68,55 +73,39 @@ final class MemberCredentialGate
      * what the console promises — not here, and not by omission.
      *
      * Only two verdicts are reachable, and it still returns the enum: this is the same
-     * question {@see admits()} answers, and a bool here would be the parallel vocabulary
+     * question the password door answers, and a bool here would be the parallel vocabulary
      * that lets one door start disagreeing with the other again.
      */
-    public function admitsFactor(AccountMember $member): CredentialVerdict
+    public function admitsFactor(string $subjectId): CredentialVerdict
     {
-        return $this->onSubject(
-            $member,
-            fn (string $id): CredentialVerdict => $this->platform->localSignInAllowedFor($id)
+        if ($subjectId === '') {
+            return CredentialVerdict::Admitted;
+        }
+
+        return $this->platformRoot->run(
+            fn (): CredentialVerdict => $this->platform->localSignInAllowedFor($subjectId)
                 ? CredentialVerdict::Admitted
                 : CredentialVerdict::SsoRequired,
         ) ?? CredentialVerdict::Admitted;
     }
 
     /**
-     * Whether the member owes a password change before this credential should open
+     * Whether this person owes a password change before the credential should open
      * anything.
      *
-     * The console planes HOLD such a member on a change page. The environment admin
-     * console refuses outright instead: it is the highest-privilege surface on a tenant,
-     * it has no page on which an account member can change an account credential, and a
-     * password the administrator who issued it also knows has no business opening it.
+     * The console HOLDS them on a change page. The environment admin console refuses
+     * outright instead: it is the highest-privilege surface on a tenant, it has no page on
+     * which the password could be changed, and a password the administrator who issued it
+     * also knows has no business opening it.
      */
-    public function owesPasswordChange(AccountMember $member): bool
+    public function owesPasswordChange(string $subjectId): bool
     {
-        return $this->onSubject($member, fn (string $id): bool => $this->adminPasswords->requiresChange($id)) === true;
-    }
-
-    /**
-     * Run a check against the member's platform-root subject, or return null when there
-     * is no subject to check (bootstrap window) or no member at all.
-     *
-     * Generic in what the check ANSWERS, because the answers stopped all being bools:
-     * {@see admits()} returns a {@see CredentialVerdict}, the counters return bools, and
-     * a shared helper that narrowed everything to bool would have quietly turned the
-     * verdict into `true`.
-     *
-     * @template TResult
-     *
-     * @param  callable(string): TResult  $check
-     * @return TResult|null
-     */
-    private function onSubject(?AccountMember $member, callable $check): mixed
-    {
-        $subjectId = $member?->subject_id;
-
-        if (! is_string($subjectId) || $subjectId === '') {
-            return null;
+        if ($subjectId === '') {
+            return false;
         }
 
-        return $this->platformRoot->run(fn (): mixed => $check($subjectId));
+        return $this->platformRoot->run(
+            fn (): bool => $this->adminPasswords->requiresChange($subjectId),
+        ) === true;
     }
 }

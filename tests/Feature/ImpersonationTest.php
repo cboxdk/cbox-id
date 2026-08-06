@@ -20,8 +20,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 
 it('lets an operator step into a member and become purely the subject, audited', function (): void {
     $audit = new FakeAuditLog;
@@ -213,7 +213,7 @@ it('suspends the session an operator signed in with, and puts it back', function
 
     // The same person, also an account member — the shape a browser is really in when
     // staff have opened the account console and signed in there.
-    $account = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $account = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Cbox',
         ownerEmail: 'staff@platform.test',
         ownerName: 'Staff',

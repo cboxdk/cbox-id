@@ -90,7 +90,7 @@ final class ImpersonationController extends Controller
 
         $request->validate(['reason' => ['required', 'string', 'max:200']]);
 
-        $impersonation->startAsAccountMember($request, $memberId, $user, $orgId, $request->string('reason')->toString());
+        $impersonation->startAsMembership($request, $memberId, $user, $orgId, $request->string('reason')->toString());
 
         return $this->landing($planes, 'environment.home');
     }
@@ -143,10 +143,10 @@ final class ImpersonationController extends Controller
         // marker means there is nothing to exit (403).
         $marker = $impersonation->active();
         abort_if($marker === null, 403);
-        $wasAccountMember = $marker->isAccountMember();
+        $wasMembership = $marker->isMembership();
 
         $impersonation->exit($request);
 
-        return redirect()->route($wasAccountMember ? 'environment.home' : 'platform.organizations');
+        return redirect()->route($wasMembership ? 'environment.home' : 'platform.organizations');
     }
 }

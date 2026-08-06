@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\AuthenticateAccountApi;
+use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOperator;
@@ -64,7 +64,7 @@ function nonPersistentByDesign(): array
         // Response-header concern only; nothing to re-enforce per action.
         SecurityHeaders::class => 'response headers, not a gate',
         // API-only guards: token/scope auth on stateless routes that never serve Livewire.
-        AuthenticateAccountApi::class => 'API routes only',
+        AuthenticateOrganizationApi::class => 'API routes only',
         AuthenticateEnvironmentApi::class => 'API routes only',
         RequireScope::class => 'API routes only',
     ];

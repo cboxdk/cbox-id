@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountActivity;
+use App\Platform\OrganizationActivity;
 use App\Platform\AccountAuth;
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
@@ -120,7 +120,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
      * path — a posted project id is honoured only if it genuinely belongs to this
      * account and this member may manage it.
      */
-    public function addEnvironment(AccountAuth $auth, AccountProvisioner $provisioner, AccountActivity $activity): void
+    public function addEnvironment(AccountAuth $auth, TenantProvisioner $provisioner, OrganizationActivity $activity): void
     {
         $member = $auth->current();
         abort_if($member === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true, 403);
@@ -189,11 +189,11 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, Projects $projects, AccountMembers $members, ConsoleScope $scope): array
+    public function with(AccountAuth $auth, Projects $projects, Memberships $members, ConsoleScope $scope): array
     {
         $member = $auth->current();
         $account = $member?->account;
-        $allAccess = $member !== null && app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->hasAllEnvironments($member);
+        $allAccess = $member !== null && $member?->all_environments === true;
 
         // The environments this member may reach — an all-access member sees every one
         // the account owns; a scoped member only their grants.
@@ -202,7 +202,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
         $rows = [];
 
         if ($account !== null) {
-            $projectList = $projects->forAccount($account->id);
+            $projectList = $projects->forOrganization($account->id);
             $projectIds = [];
             foreach ($projectList as $project) {
                 $projectIds[] = $project->id;
@@ -263,7 +263,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
      * email confirmation — otherwise the page shows a project with no environments and
      * no explanation of why.
      */
-    private function awaitingVerification(?AccountMember $member): bool
+    private function awaitingVerification(?Membership $member): bool
     {
         $subjectId = $member?->subject_id;
 

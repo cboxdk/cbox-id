@@ -23,7 +23,7 @@ use Livewire\WithPagination;
  * {@see AuthPolicies::setForOrganization()} and its clear — had no writer anywhere in the
  * product, while both read paths enforced it on every sign-in
  * ({@see \App\Platform\PlatformAuth::localSignInAllowedFor()} walks a subject's
- * memberships, and {@see \App\Platform\MemberCredentialGate::admits()} asks it for account
+ * memberships, and {@see \App\Platform\SubjectCredentialGate::admits()} asks it for account
  * members). A rule the platform enforces and nobody can set is worse than no rule: it is a
  * capability the docs describe, the API implies, and the console silently withholds.
  *

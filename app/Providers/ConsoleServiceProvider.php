@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
@@ -138,7 +138,7 @@ final class ConsoleServiceProvider extends ServiceProvider
     private function identityPlatformFeatures(): void
     {
         $features = Console::features();
-        $can = static fn (): ?AccountCapabilities => app(ConsoleScope::class)->capabilities();
+        $can = static fn (): ?OrganizationCapabilities => app(ConsoleScope::class)->capabilities();
 
         // The area itself, gated on HOLDING an account role rather than on any one
         // capability: a person who administers this account belongs in the area even if

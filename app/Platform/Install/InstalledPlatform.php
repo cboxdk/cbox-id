@@ -6,7 +6,7 @@ namespace App\Platform\Install;
 
 use App\Platform\Install\Enums\DeploymentShape;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Models\Account;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Models\PlatformOperator;
 
 /**

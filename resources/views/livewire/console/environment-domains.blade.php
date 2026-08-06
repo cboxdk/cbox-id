@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountActivity;
+use App\Platform\OrganizationActivity;
 use App\Platform\AccountAuth;
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -30,7 +30,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
 
     public ?string $verifyError = null;
 
-    public function mount(AccountAuth $auth, AccountMembers $members, ConsoleScope $scope): void
+    public function mount(AccountAuth $auth, Memberships $members, ConsoleScope $scope): void
     {
         $member = $auth->current();
 
@@ -47,7 +47,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
         $this->selectedEnvironment = is_string($first) ? $first : '';
     }
 
-    public function request(AccountAuth $auth, AccountMembers $members, EnvironmentDomains $domains): void
+    public function request(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains): void
     {
         if (! $this->guard($auth, $members)) {
             return;
@@ -66,7 +66,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
         $this->reset('newDomain', 'verifyError');
     }
 
-    public function verify(AccountAuth $auth, AccountMembers $members, EnvironmentDomains $domains, AccountActivity $activity): void
+    public function verify(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): void
     {
         if (! $this->guard($auth, $members)) {
             return;
@@ -92,7 +92,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
         $this->dispatch('toast', message: $result->domain.' is verified and now serves this environment.');
     }
 
-    public function remove(AccountAuth $auth, AccountMembers $members, EnvironmentDomains $domains, AccountActivity $activity): void
+    public function remove(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains, OrganizationActivity $activity): void
     {
         if (! $this->guard($auth, $members)) {
             return;
@@ -111,7 +111,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
     }
 
     /** The member manages environments AND the selected one is theirs to reach. */
-    private function guard(AccountAuth $auth, AccountMembers $members): bool
+    private function guard(AccountAuth $auth, Memberships $members): bool
     {
         $member = $auth->current();
 
@@ -125,7 +125,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environment domains'])] clas
     /**
      * @return array<string, mixed>
      */
-    public function with(AccountAuth $auth, AccountMembers $members, EnvironmentDomains $domains): array
+    public function with(AccountAuth $auth, Memberships $members, EnvironmentDomains $domains): array
     {
         $member = $auth->current();
         $ids = $member !== null ? $members->accessibleEnvironmentIds($member) : [];

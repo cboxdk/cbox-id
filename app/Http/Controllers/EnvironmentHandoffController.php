@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\AccountAuth;
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
 
@@ -33,7 +33,7 @@ final class EnvironmentHandoffController extends Controller
     public function openEnvironment(
         string $environment,
         AccountAuth $auth,
-        AccountMembers $members,
+        Memberships $members,
         EnvironmentAdminHandoff $handoff,
     ): RedirectResponse {
         $member = $auth->current();
@@ -47,7 +47,7 @@ final class EnvironmentHandoffController extends Controller
         // be handed a live env-admin token for it (the anti-escalation gate; the
         // env-admin session guard re-checks the same capability on redemption).
         abort_unless(
-            AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()
+            OrganizationCapabilities::ofMembershipRole($member->role)->canManageEnvironments()
             && in_array($environment, $members->accessibleEnvironmentIds($member), true),
             403,
         );

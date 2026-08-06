@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Models\Account;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 

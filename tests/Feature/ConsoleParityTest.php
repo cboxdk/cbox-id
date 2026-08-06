@@ -51,8 +51,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\Provisioning\Enums\ConnectionStatus;
@@ -89,7 +89,7 @@ function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
 
     platformRootEnvironment();
 
-    $provisioned = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'parity-'.$slug.'@acme.example',
         ownerName: 'Owner',
@@ -2275,7 +2275,7 @@ it('gives the environment plane the rename it never had', function (): void {
 
 it('attributes the rename to the subject who made it, on either plane', function (): void {
     // The two consoles recorded ids from different tables for the same act — the
-    // organization plane the subject id, the environment plane the AccountMember row's.
+    // organization plane the subject id, the environment plane the Membership row's.
     // Half the trail resolved against `users` and half against `account_members`, with
     // nothing recording which.
     $orgId = anEnvironmentAdminActingOn('tenant-settings-actor');

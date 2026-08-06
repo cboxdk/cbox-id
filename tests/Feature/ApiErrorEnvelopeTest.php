@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountApiKeys;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
-use Cbox\Id\Platform\Enums\AccountRole;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\Support\ApiContract;
@@ -31,14 +31,14 @@ if (! function_exists('envelopeEnvKey')) {
 if (! function_exists('envelopeAccountKey')) {
     function envelopeAccountKey(): string
     {
-        $account = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $account = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Envelope',
             ownerEmail: 'owner@envelope.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',
         ))->account;
 
-        return app(AccountApiKeys::class)->issue($account->id, 'envelope key', AccountRole::Admin)->plaintext;
+        return app(OrganizationApiKeys::class)->issue($account->id, 'envelope key', MembershipRole::Admin)->plaintext;
     }
 }
 

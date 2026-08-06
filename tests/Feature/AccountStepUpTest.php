@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Models\AccountApiKey;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\Models\OrganizationApiKey;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
@@ -36,7 +36,7 @@ function signInMember(): string
     // with no subject has nothing to sign in.
     platformRootEnvironment();
 
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -112,7 +112,7 @@ it('requires the step-up to revoke an account key, not just to mint one', functi
         ->call('revokeKey', $keyId)
         ->assertRedirect(route('sudo'));
 
-    expect(AccountApiKey::query()->whereKey($keyId)->value('revoked_at'))
+    expect(OrganizationApiKey::query()->whereKey($keyId)->value('revoked_at'))
         ->toBeNull('a non-sudo session revoked a machine credential');
 });
 

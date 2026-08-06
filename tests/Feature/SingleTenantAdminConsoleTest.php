@@ -1,8 +1,8 @@
 <?php
 
 declare(strict_types=1);
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function (): void {
@@ -38,7 +38,7 @@ it('serves the admin console when the deployment is multi-tenant', function (): 
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
-    $env = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $env = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',

@@ -7,8 +7,8 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
@@ -28,7 +28,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 it('shows an environment admin only their own environment\'s audit trail', function (): void {
     // Victim environment, with an entry that must never be visible elsewhere.
     platformRootEnvironment();
-    $victim = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $victim = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Victim Co',
         ownerEmail: 'owner@victim.example',
         ownerName: 'Victim Owner',
@@ -44,7 +44,7 @@ it('shows an environment admin only their own environment\'s audit trail', funct
 
     // Attacker signs up for their own environment — no special privilege.
     platformRootEnvironment();
-    $attacker = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $attacker = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Attacker Co',
         ownerEmail: 'owner@attacker.example',
         ownerName: 'Attacker Owner',

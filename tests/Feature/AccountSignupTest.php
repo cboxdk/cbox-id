@@ -5,8 +5,8 @@ declare(strict_types=1);
 use App\Platform\AccountAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Models\Account;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 
@@ -46,7 +46,7 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
         ->assertRedirect(route('projects'));
 
     // A global account + member exist (NOT a Subject in Cbox's environment)…
-    $member = app(AccountMembers::class)->findByEmail('dana@acme.example');
+    $member = app(Memberships::class)->findByEmail('dana@acme.example');
     expect($member)->not->toBeNull();
 
     $account = Account::query()->whereKey($member->account_id)->first();

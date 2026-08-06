@@ -21,8 +21,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
@@ -192,7 +192,7 @@ if (! function_exists('appearanceEnvSetup')) {
     function appearanceEnvSetup(): string
     {
         platformRootEnvironment();
-        $r = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: 'owner@acme.example',
             ownerName: 'Owner',

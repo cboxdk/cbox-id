@@ -17,12 +17,11 @@ use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Platform\DatabaseAccountMembers;
+use Cbox\Id\Platform\DatabaseMemberships;
 use Cbox\Id\Platform\DatabasePlatformOperators;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -40,7 +39,7 @@ use Throwable;
  *
  * The account owner and the operator are deliberately the SAME address: the human
  * installing a multi-tenant deployment owns both the staff console and the first
- * account, and {@see DatabaseAccountMembers::create()} reuses the
+ * account, and {@see DatabaseMemberships::create()} reuses the
  * subject that address already has rather than minting a second identity for one person.
  */
 final class DatabasePlatformInstaller implements PlatformInstaller
@@ -51,7 +50,7 @@ final class DatabasePlatformInstaller implements PlatformInstaller
     public function __construct(
         private readonly EnvironmentContext $context,
         private readonly PlatformOperators $operators,
-        private readonly AccountProvisioner $accounts,
+        private readonly TenantProvisioner $accounts,
         private readonly KeyManager $keys,
     ) {}
 
@@ -186,7 +185,7 @@ final class DatabasePlatformInstaller implements PlatformInstaller
                 // organization, same project + plan allowance, same slug seeding, same
                 // warmed signing key. A bespoke first account would be the one nobody
                 // ever re-tests.
-                $provisioned = $this->accounts->provision(new AccountBlueprint(
+                $provisioned = $this->accounts->provision(new TenantBlueprint(
                     accountName: $plan->accountName,
                     ownerEmail: $plan->operator->email,
                     ownerName: $plan->operator->name,

@@ -5,10 +5,10 @@ declare(strict_types=1);
 use App\Platform\ConsoleLocation;
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Console\Kit\Facades\Console;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -63,7 +63,7 @@ it('gives every area within a plane a distinct label', function (): void {
 it('hides what an account role may not see, and drops the area when it holds nothing', function (): void {
     platformRootDeployment();
 
-    $result = app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'nav-owner@acme.example',
         ownerName: 'Owner',
@@ -94,13 +94,13 @@ it('hides what an account role may not see, and drops the area when it holds not
     // A SECOND member, because the first is the account's only owner and demoting the last
     // owner is refused — re-roling an owner orphans the account just as surely as deleting
     // one, which is why it is now refused up front rather than half-written.
-    $viewer = app(AccountMembers::class)->create(
+    $viewer = app(Memberships::class)->create(
         $result->account->id,
         'viewer@acme.example',
         'a-strong-unbreached-passphrase',
         'Viewer',
     );
-    app(AccountMembers::class)->setRole($viewer->id, AccountRole::Viewer);
+    app(Memberships::class)->setRole($viewer->id, MembershipRole::Viewer);
     nextRequest();
     signInAsMember($viewer->refresh());
 

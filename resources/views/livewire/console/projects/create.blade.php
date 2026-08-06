@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\AccountAuth;
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -32,7 +32,7 @@ new #[Layout('components.layouts.app', ['title' => 'New project'])] class extend
         abort_unless($scope->accountRole() !== null, 403);
     }
 
-    public function create(AccountAuth $auth, AccountProvisioner $provisioner): mixed
+    public function create(AccountAuth $auth, TenantProvisioner $provisioner): mixed
     {
         $member = $auth->current();
         $account = $member?->account;

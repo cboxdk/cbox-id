@@ -32,7 +32,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New log stream'])] c
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
     }
 
     #[Validate('required|string|max:190')]

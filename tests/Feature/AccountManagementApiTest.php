@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
-use App\Platform\AccountCapabilities;
-use Cbox\Id\Platform\AccountProvisioner;
-use Cbox\Id\Platform\Contracts\AccountApiKeys;
+use App\Platform\OrganizationCapabilities;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Contracts\Projects;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\Account;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
@@ -18,7 +18,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 if (! function_exists('apiAccount')) {
     function apiAccount(): Account
     {
-        return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        return app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Acme',
             ownerEmail: 'owner@acme.example',
             ownerName: 'Owner',
@@ -30,7 +30,7 @@ if (! function_exists('apiAccount')) {
 if (! function_exists('apiAccount2')) {
     function apiAccount2(): Account
     {
-        return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+        return app(TenantProvisioner::class)->provision(new TenantBlueprint(
             accountName: 'Other',
             ownerEmail: 'owner@other.example',
             ownerName: 'Other Owner',
@@ -40,9 +40,9 @@ if (! function_exists('apiAccount2')) {
 }
 
 if (! function_exists('issueKey')) {
-    function issueKey(Account $account, AccountRole $role): string
+    function issueKey(Account $account, MembershipRole $role): string
     {
-        return app(AccountApiKeys::class)->issue($account->id, $role->label().' key', $role)->plaintext;
+        return app(OrganizationApiKeys::class)->issue($account->id, $role->label().' key', $role)->plaintext;
     }
 }
 
@@ -60,7 +60,7 @@ it('rejects requests without a valid account key', function (): void {
 
 it('returns the account and per-project plans for a valid key', function (): void {
     $account = apiAccount();
-    $token = issueKey($account, AccountRole::Viewer);
+    $token = issueKey($account, MembershipRole::Viewer);
 
     // Plans are per PROJECT now — the account block lists projects with each one's own
     // allowance, never a single account-level number.
@@ -74,8 +74,8 @@ it('returns the account and per-project plans for a valid key', function (): voi
 
 it('lists and creates projects (IdP products) through the API', function (): void {
     $account = apiAccount();
-    $admin = issueKey($account, AccountRole::Admin);
-    $viewer = issueKey($account, AccountRole::Viewer);
+    $admin = issueKey($account, MembershipRole::Admin);
+    $viewer = issueKey($account, MembershipRole::Viewer);
 
     // Any key lists projects — the default project is there.
     $this->withToken($viewer)->getJson('/api/v1/account/projects')
@@ -94,7 +94,7 @@ it('lists and creates projects (IdP products) through the API', function (): voi
 
 it('creates an environment under a chosen project and reports its project_id', function (): void {
     $account = apiAccount();
-    $admin = issueKey($account, AccountRole::Admin);
+    $admin = issueKey($account, MembershipRole::Admin);
 
     $project = $this->withToken($admin)->postJson('/api/v1/account/projects', ['name' => 'Product Two'])
         ->assertCreated()->json('data.id');
@@ -107,15 +107,15 @@ it('creates an environment under a chosen project and reports its project_id', f
 
     // A project_id from another account is refused.
     $other = apiAccount2();
-    $otherProject = app(Projects::class)->forAccount($other->id)->first();
+    $otherProject = app(Projects::class)->forOrganization($other->id)->first();
     $this->withToken($admin)->postJson('/api/v1/account/environments', ['name' => 'X', 'project_id' => $otherProject->id])
         ->assertNotFound();
 });
 
 it('lists environments for any key but creates only with a manage key', function (): void {
     $account = apiAccount();
-    $admin = issueKey($account, AccountRole::Admin);
-    $viewer = issueKey($account, AccountRole::Viewer);
+    $admin = issueKey($account, MembershipRole::Admin);
+    $viewer = issueKey($account, MembershipRole::Viewer);
 
     // Read: both roles.
     $this->withToken($viewer)->getJson('/api/v1/account/environments')
@@ -135,8 +135,8 @@ it('lists environments for any key but creates only with a manage key', function
 it('invites members only with a manage-members key', function (): void {
     Mail::fake();
     $account = apiAccount();
-    $admin = issueKey($account, AccountRole::Admin);
-    $developer = issueKey($account, AccountRole::Developer);
+    $admin = issueKey($account, MembershipRole::Admin);
+    $developer = issueKey($account, MembershipRole::Developer);
 
     $this->withToken($admin)->postJson('/api/v1/account/members', ['email' => 'new@acme.example', 'role' => 'developer'])
         ->assertCreated()
@@ -152,8 +152,8 @@ it('invites members only with a manage-members key', function (): void {
 
 it('gates the member roster and billing behind read capability', function (): void {
     $account = apiAccount();
-    $developer = issueKey($account, AccountRole::Developer);
-    $viewer = issueKey($account, AccountRole::Viewer);
+    $developer = issueKey($account, MembershipRole::Developer);
+    $viewer = issueKey($account, MembershipRole::Viewer);
 
     // A developer/CI key cannot enumerate the roster (PII) or read the plans…
     $this->withToken($developer)->getJson('/api/v1/account/members')->assertForbidden();
@@ -166,7 +166,7 @@ it('gates the member roster and billing behind read capability', function (): vo
 
 it('enforces the plan limit through the API', function (): void {
     $account = apiAccount();
-    $admin = issueKey($account, AccountRole::Admin);
+    $admin = issueKey($account, MembershipRole::Admin);
 
     // Limit 2, one used → one more allowed, then refused.
     $this->withToken($admin)->postJson('/api/v1/account/environments', ['name' => 'Staging'])->assertCreated();
@@ -178,21 +178,21 @@ it('enforces the plan limit through the API', function (): void {
 /**
  * The machine plane derives capabilities the same way the console does.
  *
- * This middleware was the last place in the app that asked `AccountRole` directly, and it
- * disagreed with everything else. `AccountCapabilities` maps an account role onto the
+ * This middleware was the last place in the app that asked `MembershipRole` directly, and it
+ * disagreed with everything else. `OrganizationCapabilities` maps an account role onto the
  * organization plane before answering, and `Billing` maps to `Viewer` — so reading the
  * enum raw gave a `role=billing` key `manage-billing` = true and `read-members` = false,
  * while a human Billing member in the console got the exact opposite on both. One
  * credential type saying yes where the other says no, about the same account, from the
  * same stored role.
  *
- * Nobody holds the role — `AccountRole::assignable()` stopped offering it precisely
+ * Nobody holds the role — `MembershipRole::assignable()` stopped offering it precisely
  * because the mapping cannot be made faithful — so this pins the derivation rather than
  * a live exposure: a legacy key that still carries `billing` gets the console's answer,
  * not a second opinion.
  */
 it('answers a capability question the same way the console does', function (): void {
-    // THROUGH THE MIDDLEWARE, not by asking `AccountCapabilities` what it thinks.
+    // THROUGH THE MIDDLEWARE, not by asking `OrganizationCapabilities` what it thinks.
     //
     // The first version of this asserted the VO's own answers, which is a test of the VO
     // and passes whether or not the middleware consults it — I removed the middleware's
@@ -200,7 +200,7 @@ it('answers a capability question the same way the console does', function (): v
     // the console reach the same verdict from the same stored role, and the only way to
     // see that is to make a request.
     //
-    // A `billing` key against `read-members`. Reading the raw enum, `AccountRole::Billing`
+    // A `billing` key against `read-members`. Reading the raw enum, `MembershipRole::Billing`
     // refuses it — while a human Billing member in the console is mapped to `Viewer` and
     // may read the roster. Same account, same stored role, opposite answers depending on
     // which credential you held.
@@ -210,7 +210,7 @@ it('answers a capability question the same way the console does', function (): v
     // the console's answer rather than a second opinion is the whole point.
     $account = apiAccount();
 
-    $this->withToken(issueKey($account, AccountRole::Billing))
+    $this->withToken(issueKey($account, MembershipRole::Billing))
         ->getJson('/api/v1/account/members')
         ->assertOk();
 })->group('security');

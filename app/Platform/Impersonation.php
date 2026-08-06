@@ -10,7 +10,7 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
@@ -61,7 +61,7 @@ final class Impersonation
         private readonly PlatformAuth $platformAuth,
         private readonly SessionManager $sessions,
         private readonly AuditLog $audit,
-        private readonly AccountMembers $members,
+        private readonly Memberships $members,
         private readonly PlatformOperators $operators,
         private readonly PlatformRoot $platformRoot,
         private readonly OperatorEnvironment $target,
@@ -126,10 +126,10 @@ final class Impersonation
      * (the subject is a real member of $orgId within the env-admin's environment)
      * and captured a justification. Here the environment BINDING is what is put aside —
      * so the /admin control plane is unreachable while impersonating — and the acting
-     * principal is recorded as an {@see ActorType::AccountMember}. That binding is what
+     * principal is recorded as an {@see ActorType::OrganizationMember}. That binding is what
      * gets restored on exit.
      */
-    public function startAsAccountMember(Request $request, string $memberId, string $subjectId, string $orgId, string $reason): void
+    public function startAsMembership(Request $request, string $memberId, string $subjectId, string $orgId, string $reason): void
     {
         // The step-up does not travel across an impersonation boundary in either
         // direction. Entering, the confirmation belongs to the operator and not to the
@@ -150,7 +150,7 @@ final class Impersonation
         $suspended = $this->suspendPrincipal($request);
 
         $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
-            actorType: ActorType::AccountMember,
+            actorType: ActorType::OrganizationMember,
             operator: $memberId,
             subject: $subjectId,
             organizationId: $orgId,
@@ -164,7 +164,7 @@ final class Impersonation
 
         $this->audit->record(new AuditEvent(
             action: 'account.impersonation_started',
-            actorType: ActorType::AccountMember,
+            actorType: ActorType::OrganizationMember,
             actorId: $memberId,
             organizationId: $orgId,
             targetType: 'user',
@@ -192,10 +192,10 @@ final class Impersonation
             return;
         }
 
-        $isAccountMember = $marker->isAccountMember();
+        $isMembership = $marker->isMembership();
 
         $this->audit->record(new AuditEvent(
-            action: $isAccountMember ? 'account.impersonation_ended' : 'platform.impersonation_ended',
+            action: $isMembership ? 'account.impersonation_ended' : 'platform.impersonation_ended',
             actorType: $marker->actorType,
             actorId: $marker->operator,
             organizationId: $marker->organizationId,
@@ -223,7 +223,7 @@ final class Impersonation
         // Restore ONLY the acting principal captured (and validated) at start, and
         // re-pin the selection it was working under — the environment an admin session is
         // anchored to, the plane an operator had the console aimed at.
-        if ($isAccountMember) {
+        if ($isMembership) {
             // The acting person is resolved FRESH from the member id captured at start,
             // never carried in the marker. A member removed (or unlinked) while the
             // impersonation was running restores nothing: they come back to the sign-in
@@ -409,8 +409,8 @@ final class Impersonation
         // the operator back to the sign-in door rather than to a guessed session.
         $suspended = SuspendedIdentity::fromSession($data['suspended'] ?? null);
         // Back-compat: a marker written before actor_type existed is an operator one.
-        $actorType = ($data['actor_type'] ?? null) === ActorType::AccountMember->value
-            ? ActorType::AccountMember
+        $actorType = ($data['actor_type'] ?? null) === ActorType::OrganizationMember->value
+            ? ActorType::OrganizationMember
             : ActorType::Operator;
 
         return new ImpersonationMarker(

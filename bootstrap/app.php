@@ -2,7 +2,7 @@
 
 use App\Http\ApiErrorRenderer;
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\AuthenticateAccountApi;
+use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\EnforcePlane;
@@ -192,7 +192,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // environment.
             'env.sudo' => RequireEnvironmentSudo::class,
             'scope' => RequireScope::class,
-            'account.api' => AuthenticateAccountApi::class,
+            'organization.api' => AuthenticateOrganizationApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,
             // Host-plane bulkheads + the environment-admin (account-layer) console gate.
             'plane' => EnforcePlane::class,

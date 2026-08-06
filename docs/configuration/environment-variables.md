@@ -324,7 +324,7 @@ tenant behind that address. Each value is requests **per minute, per credential*
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_API_RATE_LIMIT_ACCOUNT` | Budget for the account plane (`/api/v1/account/*`). | `120` | Raise for an account driving many projects/environments from CI. |
+| `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` | Budget for the organization plane (`/api/v1/organization/*`). | `120` | Raise for an organization driving many projects/environments from CI. |
 | `CBOX_ID_API_RATE_LIMIT_ENVIRONMENT` | Budget for the environment plane (`/api/v1/organizations`, `/api/v1/users`). | `240` | Raise for bulk provisioning; this is the plane a Terraform/SDK sync hammers. |
 | `CBOX_ID_API_RATE_LIMIT_VAULT` | Budget for the token-vault endpoints. | `120` | Rarely. |
 | `CBOX_ID_API_RATE_LIMIT_APPS` | Budget for the app-manifest push endpoint. | `60` | Rarely — a manifest push is a deploy-time event. |

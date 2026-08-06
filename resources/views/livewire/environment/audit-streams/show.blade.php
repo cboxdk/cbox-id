@@ -30,7 +30,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->current() === null, 403);
+        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
     }
 
     public string $streamId = '';

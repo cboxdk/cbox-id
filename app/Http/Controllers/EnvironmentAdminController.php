@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Platform\AccountCapabilities;
+use App\Platform\OrganizationCapabilities;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\MemberCredentialGate;
+use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Platform\Contracts\AccountMembers;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,9 +31,9 @@ final class EnvironmentAdminController extends Controller
         Request $request,
         EnvironmentAdminHandoff $handoff,
         EnvironmentContext $environments,
-        AccountMembers $members,
+        Memberships $members,
         EnvironmentAdminAuth $auth,
-        MemberCredentialGate $gate,
+        SubjectCredentialGate $gate,
     ): RedirectResponse {
         $token = $request->query('token');
         $grant = is_string($token) ? $handoff->verify($token) : null;
@@ -60,7 +60,7 @@ final class EnvironmentAdminController extends Controller
             // into a live admin console. Every other resolve path re-checks this
             // (AccountAuth::current(), the account console's gate); this one did not.
             || ! ($member->account?->isActive() ?? false)
-            || ! AccountCapabilities::ofAccountRole($member->role)->canManageEnvironments()
+            || ! OrganizationCapabilities::ofMembershipRole($member->role)->canManageEnvironments()
             || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {
             return redirect()->route('admin.login');
         }

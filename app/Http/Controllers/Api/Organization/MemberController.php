@@ -6,11 +6,11 @@ namespace App\Http\Controllers\Api\Account;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AccountInviteMail;
-use App\Platform\AccountApiContext;
+use App\Platform\OrganizationApiContext;
 use App\Platform\MailLinks;
-use Cbox\Id\Platform\Contracts\AccountMembers;
-use Cbox\Id\Platform\Enums\AccountRole;
-use Cbox\Id\Platform\Models\AccountMember;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Membership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -22,24 +22,24 @@ use Illuminate\Validation\Rule;
  */
 final class MemberController extends Controller
 {
-    public function index(Request $request, AccountApiContext $context, AccountMembers $members): JsonResponse
+    public function index(Request $request, OrganizationApiContext $context, Memberships $members): JsonResponse
     {
         $limit = min(100, max(1, $request->integer('limit', 50)));
-        $roster = $members->forAccount((string) $context->accountId());
+        $roster = $members->forOrganization((string) $context->accountId());
         $page = $roster->take($limit);
 
         return response()->json([
-            'data' => $page->map(fn (AccountMember $m): array => $this->present($m))->values()->all(),
+            'data' => $page->map(fn (Membership $m): array => $this->present($m))->values()->all(),
             'meta' => ['limit' => $limit, 'has_more' => $roster->count() > $limit],
         ]);
     }
 
-    public function store(Request $request, AccountApiContext $context, AccountMembers $members, MailLinks $links): JsonResponse
+    public function store(Request $request, OrganizationApiContext $context, Memberships $members, MailLinks $links): JsonResponse
     {
         $request->validate([
             'email' => ['required', 'email', 'max:190'],
             'name' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'role' => ['required', Rule::in(array_map(fn (AccountRole $r) => $r->value, AccountRole::assignable()))],
+            'role' => ['required', Rule::in(array_map(fn (MembershipRole $r) => $r->value, MembershipRole::assignable()))],
         ]);
 
         $key = $context->key();
@@ -55,7 +55,7 @@ final class MemberController extends Controller
             return response()->json(['error' => 'email_taken', 'message' => 'That email already belongs to a member.'], 422);
         }
 
-        $role = $request->enum('role', AccountRole::class) ?? AccountRole::Viewer;
+        $role = $request->enum('role', MembershipRole::class) ?? MembershipRole::Viewer;
         $name = $request->filled('name') ? $request->string('name')->toString() : null;
 
         $invited = $members->invite($account->id, $email, $role, $name);
@@ -76,7 +76,7 @@ final class MemberController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function present(AccountMember $member): array
+    private function present(Membership $member): array
     {
         return [
             'id' => $member->id,
@@ -89,7 +89,7 @@ final class MemberController extends Controller
             // so the column holds whatever was true before the move — and this endpoint
             // would have gone on reporting "all" for a member who had since been
             // restricted.
-            'all_environments' => app(AccountMembers::class)->hasAllEnvironments($member),
+            'all_environments' => $member->all_environments === true,
         ];
     }
 }

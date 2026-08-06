@@ -6,7 +6,7 @@
 
     // The env-admin is an ACCOUNT-layer identity administering THIS environment (the
     // control plane), never a subject in it.
-    $member = app(EnvironmentAdminAuth::class)->current();
+    $member = app(EnvironmentAdminAuth::class)->membership();
     $envKey = app(EnvironmentContext::class)->current()?->environmentKey();
     $environment = $envKey !== null ? Environment::query()->find($envKey) : null;
     $envName = $environment?->name ?? 'Environment';
@@ -32,7 +32,7 @@
         $projectId = $environment?->getAttribute('project_id');
         $project = is_string($projectId) ? \Cbox\Id\Platform\Models\Project::query()->find($projectId) : null;
 
-        $accessibleIds = app(\Cbox\Id\Platform\Contracts\AccountMembers::class)->accessibleEnvironmentIds($member);
+        $accessibleIds = app(\Cbox\Id\Organization\Contracts\Memberships::class)->accessibleEnvironmentIds($member);
         $switchableEnvs = Environment::query()->whereKey($accessibleIds)->orderBy('name')->get(['id', 'name', 'slug']);
     }
     $openUrl = fn (string $id): string => 'https://'.$accountHost.route('environment.open', $id, false);

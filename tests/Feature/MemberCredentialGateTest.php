@@ -6,7 +6,7 @@ use App\Http\Controllers\EnvironmentAdminController;
 use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\MemberCredentialGate;
+use App\Platform\SubjectCredentialGate;
 use App\Platform\PlatformAuth;
 use App\Platform\RevokingAuthPolicies;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -18,12 +18,12 @@ use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\AccountProvisioner;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
-use Cbox\Id\Platform\Enums\AccountStatus;
-use Cbox\Id\Platform\Models\Account;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\ValueObjects\AccountBlueprint;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,7 +33,7 @@ use Tests\TestCase;
 uses(RefreshDatabase::class);
 
 /**
- * {@see MemberCredentialGate} — the rules that decide whether an account
+ * {@see SubjectCredentialGate} — the rules that decide whether an account
  * member's verified password is still a way in, asked at every door that takes one.
  *
  * There were THREE such doors and the file this replaces was named after one of them: a
@@ -52,7 +52,7 @@ uses(RefreshDatabase::class);
  *
  * They are not asked the same question, and asking them the same question is what put an
  * SSO-mandated account into a redirect loop between the two consoles. `admits()` is the
- * password rules; {@see MemberCredentialGate::admitsHandoff()} is the standing facts a
+ * password rules; {@see SubjectCredentialGate::admitsHandoff()} is the standing facts a
  * minted token must still respect. The tests below hold each to its own.
  *
  * The gate has four rules and the other two are already held to elsewhere, on the same
@@ -63,11 +63,11 @@ uses(RefreshDatabase::class);
  * HOLD such a member on a change page rather than refusing, which is the behaviour that
  * outlived the door that refused.
  */
-function anAccountMember(): object
+function anMembership(): object
 {
     platformRootEnvironment();
 
-    return app(AccountProvisioner::class)->provision(new AccountBlueprint(
+    return app(TenantProvisioner::class)->provision(new TenantBlueprint(
         accountName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
@@ -96,7 +96,7 @@ function handoffShape(Environment $environment): void
  * the hash still matches — otherwise it lingers as a permanent second way in.
  */
 it('refuses the account door once an administrative password has expired', function (): void {
-    $result = anAccountMember();
+    $result = anMembership();
     $subjectId = (string) $result->member->refresh()->subject_id;
 
     app(PlatformRoot::class)->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
@@ -126,7 +126,7 @@ it('refuses the account door once an administrative password has expired', funct
 })->group('security');
 
 it('locks the account door out at the policy threshold', function (): void {
-    anAccountMember();
+    anMembership();
 
     app(PlatformRoot::class)->run(
         fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(lockoutThreshold: 3)),
@@ -154,14 +154,14 @@ it('locks the account door out at the policy threshold', function (): void {
  * resolve path does.
  */
 it('refuses a handoff for a member whose account has been suspended', function (): void {
-    $result = anAccountMember();
+    $result = anMembership();
     handoffShape($result->environment);
 
     $subjectId = (string) $result->member->refresh()->subject_id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
 
     // Suspended between the mint and the redemption — the tab that sat open.
-    Account::query()->whereKey($result->account->id)->update(['status' => AccountStatus::Suspended]);
+    Account::query()->whereKey($result->account->id)->update(['status' => OrganizationStatus::Suspended]);
 
     // The OUTER wall: `DatabaseEnvironmentResolver::servable()` refuses to resolve an
     // environment whose account is not active, so the tenant host stops resolving at all,
@@ -231,7 +231,7 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
  * came through, and the tenant cannot see which door that was.
  */
 it('opens the tenant console for a member whose account mandates SSO', function (): void {
-    $result = anAccountMember();
+    $result = anMembership();
     handoffShape($result->environment);
 
     // The mandate FIRST, and the sign-in under it. Written the other way round this test
@@ -276,7 +276,7 @@ it('opens the tenant console for a member whose account mandates SSO', function 
  * request, so the console closes on the next click.
  */
 it('closes an open tenant console when the account\'s policy stops admitting passwords', function (): void {
-    $result = anAccountMember();
+    $result = anMembership();
     handoffShape($result->environment);
     signInAsMember($result->member);
 
@@ -317,7 +317,7 @@ it('closes an open tenant console when the account\'s policy stops admitting pas
  * file previously asserted only the first.
  */
 it('ends an expired-password handoff on the change page rather than bouncing', function (): void {
-    $result = anAccountMember();
+    $result = anMembership();
     handoffShape($result->environment);
 
     $subjectId = (string) $result->member->refresh()->subject_id;
