@@ -162,7 +162,7 @@ it('does not make an environment administrator an operator', function (): void {
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($environment->id));
 
-    actAsEnvironmentAdmin($member->user_id, $environment->id);
+    actAsEnvironmentAdmin($member->id, $environment->id);
 
     // CurrentUser, populated with the admin's OWN subject. This is the fixture that makes
     // the test about the refusal, and it took a falsification to find out: on a tenant
@@ -172,7 +172,7 @@ it('does not make an environment administrator an operator', function (): void {
     // either way, and the assertion was about the tenancy scope rather than about
     // authority.
     $root = app(PlatformRoot::class);
-    $subject = $root->run(fn () => app(Subjects::class)->find((string) $member->user_id));
+    $subject = $root->run(fn () => app(Subjects::class)->find($member->id));
     $session = $root->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
     app(CurrentUser::class)->set($subject, $session, null);
 

@@ -31,6 +31,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
+/** The organization a provisioned owner belongs to, read in the platform root. */
+function ownerOrganizationOfSubject(string $subjectId): string
+{
+    return (string) app(PlatformRoot::class)->run(
+        fn () => app(Memberships::class)->forUser($subjectId)->first()?->organization_id,
+    );
+}
+
 uses(RefreshDatabase::class);
 
 /**
@@ -160,7 +168,7 @@ function doorMandatedAccount(string $email): array
         doorMandate($organizationId);
     });
 
-    return [$provisioned->membership, 'Workspace Co'];
+    return [$provisioned->owner, 'Workspace Co', $organizationId];
 }
 
 /*
@@ -270,7 +278,7 @@ it('lets an invitation be accepted under a mandate, and still refuses the sessio
 
 it('refuses an account member\'s magic link while leaving the federated landing alone', function (): void {
     [$member] = doorMandatedAccount('magic-owner@acme.example');
-    $subjectId = (string) $member->user_id;
+    $subjectId = $member->id;
 
     $this->get('/magic/'.app(MagicLink::class)->request('magic-owner@acme.example'))
         ->assertRedirect(route('login'));
@@ -307,20 +315,24 @@ it('refuses an account member\'s magic link while leaving the federated landing 
  */
 
 it('activates an account invitation under a mandate, and still refuses the session', function (): void {
-    [$owner] = doorMandatedAccount('invite-owner@acme.example');
+    [$owner, , $organizationId] = doorMandatedAccount('invite-owner@acme.example');
 
-    $members = app(Memberships::class);
-    [$invited, $invitedSubjectId] = addMember((string) $owner->account_id, MembershipRole::Admin, 'workspace-invitee@acme.example');
+    $pending = app(PlatformRoot::class)->run(fn () => app(Invitations::class)
+        ->invite($organizationId, 'workspace-invitee@acme.example', MembershipRole::Admin));
 
-    $url = URL::signedRoute('organization.invite.accept', ['member' => $invited->id]);
+    $url = URL::signedRoute('organization.invite.accept', ['token' => $pending->token]);
 
     livewireUpdate($url, 'auth.accept-invite', 'accept', updates: [
         'password' => 'a-strong-unbreached-passphrase',
     ])->assertOk();
 
-    // Active, deliberately: an invited member is one no SSO assertion can land on, so
-    // refusing the activation as well would send them to a door that cannot open.
-    expect(freshMembership($invited)?->isActive())->toBeTrue()
+    // ACCEPTED, deliberately: the membership is created even though the session is refused.
+    // An invitation nobody redeemed is one no SSO assertion can land on, so refusing the
+    // acceptance as well would send them to a door that cannot open.
+    $invitee = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('workspace-invitee@acme.example'));
+
+    expect(app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($organizationId, $invitee->id)))
+        ->not->toBeNull()
         ->and(app(CurrentUser::class)->check())->toBeFalse();
 
     nextRequest();

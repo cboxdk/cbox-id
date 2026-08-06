@@ -10,6 +10,7 @@ use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\PlatformRoot;
 
 /**
  * Which of a subject's organizations refused their sign-in, and where to send them.
@@ -38,6 +39,7 @@ final readonly class SsoMandates
         private Memberships $memberships,
         private AuthPolicies $policies,
         private Connections $connections,
+        private PlatformRoot $platformRoot,
     ) {}
 
     /**
@@ -49,6 +51,21 @@ final readonly class SsoMandates
      * pre-session screen would publish their affiliations to whoever reached it.
      */
     public function forSubject(string $subjectId): ?SsoMandate
+    {
+        // TWO PLACES, because this one method answers for two kinds of person. A tenant's
+        // end user holds memberships in the environment they belong to, which is the
+        // ambient one; a CUSTOMER's people hold theirs in the platform root. Memberships
+        // and auth policies are both environment-owned, so looking in only one place
+        // reports "no mandate" for everybody in the other — and no mandate fails OPEN,
+        // telling an organization that requires SSO that its people may use a password.
+        //
+        // Ambient first: it is the common case and the one that needs no scope switch.
+        return $this->mandateIn($subjectId)
+            ?? $this->platformRoot->run(fn (): ?SsoMandate => $this->mandateIn($subjectId));
+    }
+
+    /** The strictest mandate among this subject's memberships IN THE CURRENT SCOPE. */
+    private function mandateIn(string $subjectId): ?SsoMandate
     {
         foreach ($this->memberships->forUser($subjectId) as $membership) {
             $organizationId = $membership->organization_id;
