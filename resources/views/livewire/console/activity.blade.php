@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\OrganizationActivity;
 use App\Platform\Console\ConsoleScope;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -34,6 +35,8 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
     {
         $accountId = $scope->organizationId() ?? '';
 
+        // The scope is pinned inside OrganizationActivity, for both the write and this
+        // read — see that class on why it cannot be left to the caller.
         $entries = $activity->recent($accountId, 200)
             ->when(trim($this->filter) !== '', fn (Collection $rows): Collection => $rows->filter(
                 fn ($entry): bool => str_contains($entry->action, strtolower(trim($this->filter)))
@@ -55,7 +58,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
          than from a word typed here. Hand-written it said "Account" while the rail entry
          that reaches this page says "Identity platform" — the one label whose whole job is
          to tell you which area you are standing in, disagreeing with the navigation. --}}
-    <x-page-header class="flex-wrap" title="Account activity"
+    <x-page-header class="flex-wrap" title="Activity"
                    subtitle="Every change across this organization — environments, members and keys — tamper-evident and hash-chained.">
         <x-slot:actions>
             <input wire:model.live.debounce.300ms="filter" type="text" class="input w-full sm:min-w-[16rem]" placeholder="Filter by action…" aria-label="Filter by action">

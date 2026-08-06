@@ -8,6 +8,7 @@ use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -30,7 +31,10 @@ use Illuminate\Support\Collection;
  */
 final class OrganizationActivity
 {
-    public function __construct(private readonly AuditLog $audit) {}
+    public function __construct(
+        private readonly AuditLog $audit,
+        private readonly PlatformRoot $platformRoot,
+    ) {}
 
     /**
      * Record a management-plane event, attributed to the acting member.
@@ -46,7 +50,14 @@ final class OrganizationActivity
         array $context = [],
         ?Request $request = null,
     ): void {
-        $this->audit->record(new AuditEvent(
+        // IN THE PLATFORM ROOT, here rather than at each call site. An audit entry is
+        // environment-owned and this chain lives in exactly one environment; written under
+        // whatever scope the caller happened to be standing in, the same organization's
+        // entries land in different environments depending on which page wrote them — and
+        // the activity page reads under one, so it would show some and silently omit the
+        // rest. Two callers already pinned it by hand for exactly this reason; a third that
+        // forgets is the bug, so the funnel does it once.
+        $this->platformRoot->run(fn () => $this->audit->record(new AuditEvent(
             action: $action,
             actorType: ActorType::OrganizationMember,
             actorId: $actorId,
@@ -56,7 +67,7 @@ final class OrganizationActivity
             targetId: $targetId,
             context: $context,
             ip: $request?->ip(),
-        ));
+        )));
     }
 
     /**
@@ -66,10 +77,10 @@ final class OrganizationActivity
      */
     public function recent(string $organizationId, int $limit = 100): Collection
     {
-        return AuditEntry::query()
+        return $this->platformRoot->run(fn (): Collection => AuditEntry::query()
             ->where('scope', $organizationId)
             ->orderByDesc('sequence')
             ->limit(max(1, min(500, $limit)))
-            ->get();
+            ->get()) ?? new Collection;
     }
 }

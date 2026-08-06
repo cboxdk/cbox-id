@@ -16,6 +16,7 @@ use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
@@ -26,6 +27,14 @@ use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
+
+/** The organization the signed-up owner belongs to, read in the platform root. */
+function ownerOrgOf(string $subjectId): string
+{
+    return (string) app(PlatformRoot::class)->run(
+        fn () => app(Memberships::class)->forUser($subjectId)->first()?->organization_id,
+    );
+}
 
 uses(RefreshDatabase::class);
 
@@ -47,13 +56,14 @@ uses(RefreshDatabase::class);
  * These cover the rail. The middleware half — 404 for a signed-in non-operator, sign-in
  * for a visitor — lives with the middleware.
  */
+/**
+ * The OWNER'S SUBJECT, which is what every caller here actually wants: these tests are
+ * about authority carried by a session, and a session names a subject.
+ */
 function anAccountOwner(string $email = 'owner@acme.example'): object
 {
-    // The root FIRST, and that ordering is the whole fixture. An account provisioned with
-    // no platform root is in the first-install bootstrap window: its member has no subject
-    // yet, and neither does an operator created alongside it — so every assertion below
-    // would be about an unlinked row rather than about authority. Getting this backwards
-    // is what made the first run of these tests fail, and it failed for a real reason.
+    // The root FIRST, and that ordering is the whole fixture — provisioning refuses without
+    // one rather than producing a customer whose organization does not exist.
     platformRootEnvironment();
 
     return app(TenantProvisioner::class)->provision(new TenantBlueprint(
@@ -61,7 +71,7 @@ function anAccountOwner(string $email = 'owner@acme.example'): object
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->membership;
+    ))->owner;
 }
 
 /**
@@ -147,7 +157,7 @@ it('does not make an environment administrator an operator', function (): void {
     // member from the live session and compares the anchor to the host's environment — an
     // anchor alone is not an environment admin, and asserting against half a session would
     // have been asserting against a state no browser is ever in.
-    $environment = serveOnTestHost(app(PlatformRoot::class)->run(fn () => Organization::query()->findOrFail($member->organization_id)->environments()->firstOrFail()));
+    $environment = serveOnTestHost(app(PlatformRoot::class)->run(fn () => Organization::query()->findOrFail(ownerOrgOf($member->id))->environments()->firstOrFail()));
 
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($environment->id));
@@ -479,17 +489,17 @@ it('does not answer for the previous identity after a sign-out', function (): vo
     // redirects and the next request resolves the identity from the session anyway.
     // Putting that refresh on the one door every plane now shares stamped a
     // platform-root identity onto environment-admin sessions and 403'd that console.
-    signInAsSubject($first->user_id);
+    signInAsSubject($first->id);
 
-    expect(app(ConsoleScope::class)->actorId())->toBe($first->user_id);
+    expect(app(ConsoleScope::class)->actorId())->toBe($first->id);
 
     // The subject session is repointed WITHOUT the scope being told — which is what an
     // account switch and an impersonation resume both do. Going through logout() instead
     // would clear everything and prove nothing about the key.
-    signInAsSubject($second->user_id);
+    signInAsSubject($second->id);
 
     expect(app(ConsoleScope::class)->actorId())
-        ->toBe($second->user_id, 'the scope answered for the identity that just left');
+        ->toBe($second->id, 'the scope answered for the identity that just left');
 })->group('security');
 
 /**
