@@ -60,7 +60,7 @@ beforeEach(function (): void {
 });
 
 it('walks an admin from requesting a custom domain to a verified issuer', function (): void {
-    ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
+    ['member' => $owner, 'organization' => $account, 'environment' => $env] = provisionAccount();
     signInAsMember($owner);
 
     $page = Volt::test('console.environment-domains')
@@ -114,7 +114,7 @@ it('removes a verified domain, falling back to the default issuer', function ():
 });
 
 it('refuses the domains page to a member who cannot manage environments', function (): void {
-    ['account' => $account] = provisionAccount();
+    ['organization' => $account] = provisionAccount();
     $viewer = memberWithRole($account->id, MembershipRole::Billing, 'billing2@acme.example');
 
     signInAsMember($viewer);

@@ -70,7 +70,7 @@ it('authenticates an account member as admin ONLY on their environment\'s host (
 });
 
 it('refuses a member with no access to the environment', function (): void {
-    ['account' => $account, 'envId' => $envId] = envAdminSetup();
+    ['organization' => $account, 'envId' => $envId] = envAdminSetup();
 
     // A viewer scoped to NO environments.
     $members = app(Memberships::class);
@@ -255,7 +255,7 @@ it('has no admin door at all on a single-host deployment', function (): void {
 */
 
 it('refuses a reachable-but-unprivileged member at the env-admin session chokepoint', function (): void {
-    ['account' => $account, 'envId' => $envId] = envAdminSetup();
+    ['organization' => $account, 'envId' => $envId] = envAdminSetup();
     $members = app(Memberships::class);
 
     foreach ([MembershipRole::Viewer, MembershipRole::Billing] as $role) {
@@ -274,7 +274,7 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
 });
 
 it('admits owner, admin, and developer to the env-admin session', function (): void {
-    ['account' => $account, 'member' => $owner, 'envId' => $envId] = envAdminSetup();
+    ['organization' => $account, 'member' => $owner, 'envId' => $envId] = envAdminSetup();
     $members = app(Memberships::class);
 
     $admit = ['owner' => $owner];
@@ -292,7 +292,7 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
 });
 
 it('refuses to mint a handoff for a reachable-but-unprivileged member (fail before the credential exists)', function (): void {
-    ['account' => $account, 'envId' => $envId] = envAdminSetup();
+    ['organization' => $account, 'envId' => $envId] = envAdminSetup();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
     $members = app(Memberships::class);
 
@@ -333,7 +333,7 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
  * would silently open production too.
  */
 it('refuses a session anchored to one environment on another the same admin may also administer', function (): void {
-    ['member' => $member, 'account' => $account, 'envId' => $envId] = envAdminSetup();
+    ['member' => $member, 'organization' => $account, 'envId' => $envId] = envAdminSetup();
 
     $second = app(TenantProvisioner::class)->addEnvironment(
         $account->projects()->firstOrFail(),

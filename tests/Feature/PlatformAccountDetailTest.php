@@ -263,7 +263,7 @@ it('refuses an account owner who is not an operator, on the component itself', f
     // account holder that this deployment has a staff console at that address.
     $this->get($url)->assertNotFound();
 
-    Volt::test('platform.customer', ['account' => $estate['account']->id])->assertStatus(404);
+    Volt::test('platform.customer', ['organization' => $estate['account']->id])->assertStatus(404);
 })->group('security');
 
 it('gives every environment its lineage on the flat list, and names the two that have none', function (): void {

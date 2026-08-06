@@ -52,7 +52,7 @@ if (! function_exists('memberWithRole')) {
 }
 
 it('records an account-scoped, hash-chained entry when a member is invited', function (): void {
-    ['member' => $owner, 'account' => $account] = provisionAccount();
+    ['member' => $owner, 'organization' => $account] = provisionAccount();
 
     // The page action funnels through OrganizationActivity; drive it through the real
     // Livewire component (deps are auto-injected) with the owner as the actor.
@@ -75,7 +75,7 @@ it('records an account-scoped, hash-chained entry when a member is invited', fun
 });
 
 it('records environment key mint + revoke on the account chain', function (): void {
-    ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
+    ['member' => $owner, 'organization' => $account, 'environment' => $env] = provisionAccount();
     $activity = app(OrganizationActivity::class);
 
     // Record directly via the service (the page action funnels through it).
@@ -93,8 +93,8 @@ it('records environment key mint + revoke on the account chain', function (): vo
 });
 
 it('keeps one account activity chain from leaking into another', function (): void {
-    ['account' => $a, 'member' => $ownerA] = provisionAccount('a@acme.example');
-    ['account' => $b] = provisionAccount('b@beta.example');
+    ['organization' => $a, 'member' => $ownerA] = provisionAccount('a@acme.example');
+    ['organization' => $b] = provisionAccount('b@beta.example');
     $activity = app(OrganizationActivity::class);
 
     $activity->record($a->id, 'account.environment_created', $ownerA->id, targetType: 'environment', targetId: 'e1');
@@ -104,7 +104,7 @@ it('keeps one account activity chain from leaking into another', function (): vo
 });
 
 it('renders the activity page for an admin and lists recorded actions', function (): void {
-    ['member' => $owner, 'account' => $account, 'environment' => $env] = provisionAccount();
+    ['member' => $owner, 'organization' => $account, 'environment' => $env] = provisionAccount();
     app(OrganizationActivity::class)->record($account->id, 'account.environment_created', $owner->id,
         targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
 
@@ -117,7 +117,7 @@ it('renders the activity page for an admin and lists recorded actions', function
 });
 
 it('refuses the activity page to a member who cannot read members (403)', function (): void {
-    ['account' => $account] = provisionAccount();
+    ['organization' => $account] = provisionAccount();
     // A DEVELOPER, not a Billing member. Billing was the role this pinned, and it is no
     // longer assignable: an account is an organization now, the capability comes from the
     // membership, and Billing maps to Viewer — who may read the roster. Developer is the

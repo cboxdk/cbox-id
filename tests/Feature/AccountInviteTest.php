@@ -77,14 +77,14 @@ it('rejects inviting an email that already belongs to a member', function (): vo
 });
 
 it('requires a valid signature to reach the accept page', function (): void {
-    ['account' => $account] = provisionAccount();
+    ['organization' => $account] = provisionAccount();
     $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer);
 
     $this->get('/invite/'.$invited->id.'/accept')->assertForbidden();
 });
 
 it('accepts a signed invite, sets a password, and signs in', function (): void {
-    ['account' => $account] = provisionAccount();
+    ['organization' => $account] = provisionAccount();
     $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer, 'New');
 
     $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['member' => $invited->id]);
@@ -154,7 +154,7 @@ it('resets an account member through the console flow and ends their open sessio
 });
 
 it('turns away an already-accepted invite (replayed link)', function (): void {
-    ['account' => $account] = provisionAccount();
+    ['organization' => $account] = provisionAccount();
     $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer);
     app(Memberships::class)->activate($invited->id, 'first-accept-passphrase');
 
@@ -186,7 +186,7 @@ it('turns away an already-accepted invite (replayed link)', function (): void {
  * case reaches this.
  */
 it('does not admit an invited member who has not accepted, even holding a live session', function (): void {
-    ['account' => $account] = provisionAccount('owner@acme.example');
+    ['organization' => $account] = provisionAccount('owner@acme.example');
 
     // A person who already has a Cbox ID, quite apart from this account.
     $outsider = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->create(

@@ -50,7 +50,7 @@ if (! function_exists('provisionAuditableAccount')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
-        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'account' => $result->account];
+        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->account];
     }
 }
 
@@ -71,7 +71,7 @@ function signInEntries(string $accountId): Collection
 }
 
 it('records a sign-in on the account chain', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAuditableAccount();
+    ['member' => $member, 'organization' => $account] = provisionAuditableAccount();
 
     app(AccountAuth::class)->establish($member->id);
 
@@ -85,7 +85,7 @@ it('records a sign-in on the account chain', function (): void {
 });
 
 it('records a sign-in through the password door', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAuditableAccount('pwd@audit.example');
+    ['member' => $member, 'organization' => $account] = provisionAuditableAccount('pwd@audit.example');
 
     $outcome = signInAtLogin('pwd@audit.example', 'a-strong-unbreached-passphrase');
 
@@ -94,7 +94,7 @@ it('records a sign-in through the password door', function (): void {
 });
 
 it('records nothing when the door holds the person back', function (): void {
-    ['account' => $account] = provisionAuditableAccount('held@audit.example');
+    ['organization' => $account] = provisionAuditableAccount('held@audit.example');
 
     // A door that refuses establishes no session, so there is no sign-in to record — the
     // log is of sessions, not of attempts, and an entry here would report a person as
@@ -116,7 +116,7 @@ it('records nothing when the door holds the person back', function (): void {
 });
 
 it('records one entry per session, not one per account', function (): void {
-    ['member' => $member, 'account' => $account] = provisionAuditableAccount('repeat@audit.example');
+    ['member' => $member, 'organization' => $account] = provisionAuditableAccount('repeat@audit.example');
 
     // Through the door people use, twice. It used to sign in twice through
     // `AccountAuth::establish()`, which two flows still reach — but the property being

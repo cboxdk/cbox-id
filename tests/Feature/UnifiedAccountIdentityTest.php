@@ -72,7 +72,7 @@ it('signs an account member in against their platform-root subject, not the memb
 });
 
 it('holds the account door to the SSO mandate on the account\'s organization', function (): void {
-    ['member' => $member, 'account' => $account] = unifiedSetup();
+    ['member' => $member, 'organization' => $account] = unifiedSetup();
 
     $auth = app(PlatformAuth::class);
     $request = Request::create('/login', 'POST');
