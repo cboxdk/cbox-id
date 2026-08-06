@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Console\Commands\InstallCommand;
 use App\Platform\Install\EnvFile;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 
@@ -69,9 +71,10 @@ it('installs a single-tenant deployment whose operator can actually sign in', fu
 
     expect($root)->not->toBeNull()
         ->and($root?->name)->toBe('Production')
-        // Single-tenant creates no account, and the root belongs to nobody.
-        ->and($root?->account_id)->toBeNull()
-        ->and(Organization::query()->count())->toBe(0);
+        // Single-tenant creates no customer, and the root belongs to nobody: ownership runs
+        // through a PROJECT, so "belongs to nobody" is the absence of one.
+        ->and($root?->project_id)->toBeNull()
+        ->and(app(PlatformRoot::class)->run(fn (): int => Organization::query()->count()))->toBe(0);
 
     expect(app(PlatformOperators::class)->findByEmail('root@acme.example'))->not->toBeNull();
 
@@ -166,14 +169,14 @@ it('installs the multi-tenant shape with an account and its own environment', fu
         '--password' => 'a-strong-unbreached-passphrase',
         '--multi-tenant' => true,
         '--console-host' => 'cboxid.com',
-        '--account' => 'Cbox',
+        '--organization' => 'Cbox',
         '--environment' => 'Production',
     ]);
 
     expect($exit)->toBe(0);
 
     $root = Environment::query()->where('is_default', true)->firstOrFail();
-    $account = Organization::query()->first();
+    $account = app(PlatformRoot::class)->run(fn () => Organization::query()->first());
 
     expect($account)->not->toBeNull()
         ->and($account?->name)->toBe('Cbox')

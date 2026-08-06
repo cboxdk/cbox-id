@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOperator;
+use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
@@ -272,13 +272,16 @@ it('guards every environment console component, so a new one cannot skip it', fu
         // and require the call to appear IN it.
         //
         // Any of the three names is the same answer, because all three are ConsoleScope
-        // asking "may the person acting on this request change this".
+        // asking "may the person acting on this request change this". `accountRole()` was
+        // the third name until the account plane went; it is `membershipRole()` now, and a
+        // sweep that kept looking for the old name would report every component that had
+        // been correctly updated as unguarded.
         $body = bootReach($source);
 
         if ($body === null
             || (! str_contains($body, 'EnvironmentAdminAuth')
                 && ! str_contains($body, 'assertMayAdminister')
-                && ! str_contains($body, 'accountRole()'))) {
+                && ! str_contains($body, 'membershipRole()'))) {
             $unguarded[] = str_replace(resource_path('views/livewire/'), '', $file);
         }
     }

@@ -17,7 +17,7 @@ use Livewire\Volt\Component;
  * ({@see OrganizationActivity}). Admin-only, and re-guarded in boot() so it re-runs on
  * every Livewire interaction, not just first render.
  */
-new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Activity'])] class extends Component
 {
     public string $filter = '';
 
