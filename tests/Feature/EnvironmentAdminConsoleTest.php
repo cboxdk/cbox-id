@@ -10,6 +10,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,14 +54,14 @@ it('authenticates an account member as admin ONLY on their environment\'s host (
     // The session is the member's ordinary PLATFORM-ROOT SUBJECT session — the
     // credential of record — ANCHORED to exactly one environment. The anchor is what
     // this test is about; who the identity is does not change it.
-    actAsEnvironmentAdmin($member, $envId);
+    actAsEnvironmentAdmin($member->user_id, $envId);
     expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
 
     $auth = app(EnvironmentAdminAuth::class);
 
     // On the anchored environment's host → authenticated.
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    expect($auth->subjectId())->toBe($member->refresh()->subject_id);
+    expect($auth->subjectId())->toBe($member->user_id);
     expect($auth->current()?->id)->toBe($member->id);
 
     // On a DIFFERENT environment's host → nothing, even though the session cookie is
@@ -77,7 +78,7 @@ it('refuses a member with no access to the environment', function (): void {
     [$stranger, $strangerSubjectId] = addMember($account->id, MembershipRole::Viewer, 'stranger@acme.example');
     $members->setEnvironmentAccess($stranger->organization_id, $stranger->user_id, all: false, environmentIds: []);
 
-    actAsEnvironmentAdmin($stranger, $envId);
+    actAsEnvironmentAdmin($stranger->user_id, $envId);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
     expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
@@ -91,7 +92,7 @@ it('redeems a signed handoff into an env-admin session', function (): void {
 
     // The handoff carries the SUBJECT; the account membership behind it is re-resolved
     // on redemption rather than carried in the token.
-    $subjectId = $member->refresh()->subject_id;
+    $subjectId = $member->user_id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $envId);
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('environment.home'));
@@ -103,7 +104,7 @@ it('redeems a signed handoff into an env-admin session', function (): void {
 it('renders the env-admin console (overview, organizations, users) for an admin session', function (): void {
     ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
     serveOnTestHost($env);
-    actAsEnvironmentAdmin($member, $envId);
+    actAsEnvironmentAdmin($member->user_id, $envId);
 
     // The token vault is the one capability here behind a step-up, so this sweep takes it
     // once rather than dropping the two pages that would otherwise 302. Confirming it up
@@ -161,7 +162,7 @@ it('refuses a handoff minted for a different environment than the host', functio
     serveOnTestHost($env);
 
     // Token says env X, but this host resolves env `$envId` → refused.
-    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->refresh()->subject_id, 'a_different_env');
+    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, 'a_different_env');
 
     $this->get("/admin/handoff?token={$token}")->assertRedirect(route('admin.login'));
     expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
@@ -263,7 +264,7 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
         // Precondition: the default invite grants access to the environment.
         expect(app(PlatformRoot::class)->run(fn (): array => app(PlatformRoot::class)->run(fn (): array => $members->accessibleEnvironmentIds($m->organization_id, $m->user_id))))->toContain($envId);
 
-        actAsEnvironmentAdmin($m, $envId);
+        actAsEnvironmentAdmin($m->user_id, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
         // Reachable, yet the admin session must not resolve — no control-plane power.
@@ -282,7 +283,7 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
     }
 
     foreach ($admit as $member) {
-        actAsEnvironmentAdmin($member, $envId);
+        actAsEnvironmentAdmin($member->user_id, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
         expect(app(EnvironmentAdminAuth::class)->membership()?->id)->toBe($member->id);
     }
@@ -339,7 +340,7 @@ it('refuses a session anchored to one environment on another the same admin may 
     expect(in_array($second->id, app(Memberships::class)->accessibleEnvironmentIds($member->organization_id, $member->user_id), true))
         ->toBeTrue('fixture: the admin must be entitled to BOTH, or the anchor is not what holds');
 
-    actAsEnvironmentAdmin($member, $envId);
+    actAsEnvironmentAdmin($member->user_id, $envId);
 
     $auth = app(EnvironmentAdminAuth::class);
 

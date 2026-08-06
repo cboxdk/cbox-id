@@ -155,7 +155,7 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
     $members = app(Memberships::class);
     [$viewer, $viewerSubjectId] = addMember($r->organization->id, MembershipRole::Viewer, 'policy-viewer@acme.example');
 
-    actAsEnvironmentAdmin($viewer, $r->environment->id);
+    actAsEnvironmentAdmin($viewer->user_id, $r->environment->id);
 
     Volt::test('console.auth-policy')->assertForbidden();
 });

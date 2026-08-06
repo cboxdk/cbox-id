@@ -77,14 +77,14 @@ it('rejects inviting an email that already belongs to a member', function (): vo
 
 it('requires a valid signature to reach the accept page', function (): void {
     ['organization' => $account] = provisionAccount();
-    $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer);
+    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Developer, 'new@acme.example');
 
     $this->get('/invite/'.$invited->id.'/accept')->assertForbidden();
 });
 
 it('accepts a signed invite, sets a password, and signs in', function (): void {
     ['organization' => $account] = provisionAccount();
-    $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer, 'New');
+    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Developer, 'New', 'new@acme.example');
 
     $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['member' => $invited->id]);
     $this->get($url)->assertOk()->assertSee('Accept your invitation');
@@ -154,7 +154,7 @@ it('resets an account member through the console flow and ends their open sessio
 
 it('turns away an already-accepted invite (replayed link)', function (): void {
     ['organization' => $account] = provisionAccount();
-    $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer);
+    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Developer, 'new@acme.example');
     app(Memberships::class)->activate($invited->id, 'first-accept-passphrase');
 
     // Re-opening the (still validly-signed) link after acceptance is turned away at

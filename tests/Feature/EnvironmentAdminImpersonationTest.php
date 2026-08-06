@@ -74,7 +74,7 @@ it('takes the environment anchor away for the duration, and gives exactly it bac
     ['member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    actAsEnvironmentAdmin($member, $envId);
+    actAsEnvironmentAdmin($member->user_id, $envId);
 
     expect(app(EnvironmentAdminAuth::class)->check())
         ->toBeTrue('fixture: this is meant to BE an environment admin before it steps into anyone');
@@ -117,7 +117,7 @@ it('restores no anchor when the acting admin does not come back', function (): v
     ['member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    actAsEnvironmentAdmin($member, $envId);
+    actAsEnvironmentAdmin($member->user_id, $envId);
 
     $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect(route('dashboard'));

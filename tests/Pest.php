@@ -271,7 +271,7 @@ function addMember(string $organizationId, MembershipRole $role, string $email, 
  * — not a raw key a test could fabricate. A test that wrote the keys by hand would be
  * asserting against a session shape no door produces.
  *
- * TAKES THE SUBJECT ID. It used to take a member row and read `$member->subject_id` off it;
+ * TAKES THE SUBJECT ID. It used to take a member row and read `$member->user_id` off it;
  * a membership carries authority and not identity, so the subject is what the caller has
  * and what this needs. `ProvisionedTenant::$owner` is that subject.
  */
@@ -350,7 +350,7 @@ function actAsOperator(string $email = 'op@platform.test'): PlatformOperator
 
     $operator = app(PlatformOperators::class)->create($email, 'a-strong-operator-pass', 'Operator');
 
-    signInAsSubject((string) $operator->refresh()->subject_id);
+    signInAsSubject((string) $operator->subject_id);
 
     return $operator;
 }

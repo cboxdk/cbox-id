@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;

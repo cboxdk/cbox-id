@@ -187,7 +187,7 @@ it('leaves an impersonated session no way back into operator authority', functio
     // Not signed in as the operator, and not holding them aside either. Attempted with
     // the request's own container still standing (see nextRequest) — under a torn-down
     // one this refusal happens for a reason that has nothing to do with the operator.
-    expect(app(PlatformAuth::class)->switchTo(request(), (string) $op->subject_id))->toBeFalse()
+    expect(app(PlatformAuth::class)->switchTo(request(), $op->subject_id))->toBeFalse()
         ->and(session(PlatformAuth::ACTIVE_KEY))->toBe($member->id)
         ->and(array_keys((array) session(PlatformAuth::ACCOUNTS_KEY)))->toBe([$member->id]);
 
@@ -220,7 +220,7 @@ it('suspends the session an operator signed in with, and puts it back', function
         ownerPassword: 'a-strong-unbreached-passphrase',
     ))->membership;
 
-    expect($account->subject_id)->toBe($op->subject_id, 'fixture: the operator and the member must be one person');
+    expect($account->user_id)->toBe($op->subject_id, 'fixture: the operator and the member must be one person');
 
     // Signed in the way the account door does it.
     signInAsMember($account);

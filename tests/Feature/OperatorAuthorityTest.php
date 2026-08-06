@@ -152,7 +152,7 @@ it('does not make an environment administrator an operator', function (): void {
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($environment->id));
 
-    actAsEnvironmentAdmin($member, $environment->id);
+    actAsEnvironmentAdmin($member->user_id, $environment->id);
 
     // CurrentUser, populated with the admin's OWN subject. This is the fixture that makes
     // the test about the refusal, and it took a falsification to find out: on a tenant
@@ -162,7 +162,7 @@ it('does not make an environment administrator an operator', function (): void {
     // either way, and the assertion was about the tenancy scope rather than about
     // authority.
     $root = app(PlatformRoot::class);
-    $subject = $root->run(fn () => app(Subjects::class)->find((string) $member->refresh()->subject_id));
+    $subject = $root->run(fn () => app(Subjects::class)->find((string) $member->user_id));
     $session = $root->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
     app(CurrentUser::class)->set($subject, $session, null);
 
@@ -351,7 +351,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // …and the session that produced runs the deployment not at all. 404 rather than 403,
     // because a 403 would confirm to anyone holding any account that a staff console
     // exists at that address.
-    signInAsSubject((string) $operator->refresh()->subject_id);
+    signInAsSubject((string) $operator->subject_id);
 
     $this->get('/platform')->assertNotFound();
     expect(app(ConsoleScope::class)->isPlatformOperator())

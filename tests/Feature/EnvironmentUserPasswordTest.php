@@ -129,7 +129,7 @@ it('refuses a member without the environment-admin capability', function (): voi
     $members = app(Memberships::class);
     [$viewer, $viewerSubjectId] = addMember($r->organization->id, MembershipRole::Viewer, 'viewer@acme.example');
 
-    actAsEnvironmentAdmin($viewer, $r->environment->id);
+    actAsEnvironmentAdmin($viewer->user_id, $r->environment->id);
 
     $userId = app(Subjects::class)->create('target@acme.example', 'Target', 'the-original-passphrase')->id;
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 

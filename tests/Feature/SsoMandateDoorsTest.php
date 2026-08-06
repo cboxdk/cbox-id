@@ -269,7 +269,7 @@ it('lets an invitation be accepted under a mandate, and still refuses the sessio
 
 it('refuses an account member\'s magic link while leaving the federated landing alone', function (): void {
     [$member] = doorMandatedAccount('magic-owner@acme.example');
-    $subjectId = (string) $member->refresh()->subject_id;
+    $subjectId = (string) $member->user_id;
 
     $this->get('/magic/'.app(MagicLink::class)->request('magic-owner@acme.example'))
         ->assertRedirect(route('login'));
