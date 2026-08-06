@@ -71,7 +71,7 @@ it('installs a single-tenant deployment whose operator can actually sign in', fu
         ->and($root?->name)->toBe('Production')
         // Single-tenant creates no account, and the root belongs to nobody.
         ->and($root?->account_id)->toBeNull()
-        ->and(Account::query()->count())->toBe(0);
+        ->and(Organization::query()->count())->toBe(0);
 
     expect(app(PlatformOperators::class)->findByEmail('root@acme.example'))->not->toBeNull();
 
@@ -173,7 +173,7 @@ it('installs the multi-tenant shape with an account and its own environment', fu
     expect($exit)->toBe(0);
 
     $root = Environment::query()->where('is_default', true)->firstOrFail();
-    $account = Account::query()->first();
+    $account = Organization::query()->first();
 
     expect($account)->not->toBeNull()
         ->and($account?->name)->toBe('Cbox')

@@ -102,7 +102,7 @@ it('puts the account first in the platform rail, above the environments inside i
 it('walks an operator from an account down to every environment its projects own', function (): void {
     $estate = acmeEstate();
 
-    $html = (string) $this->get(route('platform.customers.show', $estate['account']->id))
+    $html = (string) $this->get(route('platform.customers.show', $estate['organization']->id))
         ->assertSuccessful()->getContent();
 
     // The heading is the customer, and both projects are named under it — including the
@@ -121,7 +121,7 @@ it('walks an operator from an account down to every environment its projects own
 it('takes its eyebrow and its lit rail entry from the nav registry, without writing either', function (): void {
     $estate = acmeEstate();
 
-    $html = (string) $this->get(route('platform.customers.show', $estate['account']->id))
+    $html = (string) $this->get(route('platform.customers.show', $estate['organization']->id))
         ->assertSuccessful()->getContent();
 
     // `platform.customers.show` is a CHILD of `platform.customers`, so NavPage::owns() finds
@@ -136,7 +136,7 @@ it('makes every count on the accounts list a link to the account it counts', fun
     $estate = acmeEstate();
 
     $html = (string) $this->get(route('platform.customers'))->assertSuccessful()->getContent();
-    $href = route('platform.customers.show', $estate['account']->id);
+    $href = route('platform.customers.show', $estate['organization']->id);
 
     // The finding in one assertion: this page computed three counts per account and had
     // no route() call in it, so all three were dead ends.
@@ -147,7 +147,7 @@ it('makes every count on the accounts list a link to the account it counts', fun
 
 it('points the console at an environment from the account page and stays on the account', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['account']->id);
+    $url = route('platform.customers.show', $estate['organization']->id);
 
     livewireUpdate($url, 'platform.customer', 'target', [$estate['portal']->id])
         ->assertSuccessful();
@@ -157,7 +157,7 @@ it('points the console at an environment from the account page and stays on the 
 
 it('opens an environment straight onto the tenants inside it', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['account']->id);
+    $url = route('platform.customers.show', $estate['organization']->id);
 
     // Two steps that were only ever available as two pages: switch on the flat list, then
     // find Organizations in the rail.
@@ -177,7 +177,7 @@ it('refuses to repoint the console at an environment this account does not own',
     $estate = acmeEstate();
     $stranger = anUnattachedEnvironment();
 
-    $url = route('platform.customers.show', $estate['account']->id);
+    $url = route('platform.customers.show', $estate['organization']->id);
 
     livewireUpdate($url, 'platform.customer', 'target', [$stranger->id])->assertNotFound();
     livewireUpdate($url, 'platform.customer', 'open', [$stranger->id])->assertNotFound();
@@ -191,13 +191,13 @@ it('refuses to repoint the console at an environment this account does not own',
 
 it('suspends and reactivates the account from its own page, reversibly', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['account']->id);
+    $url = route('platform.customers.show', $estate['organization']->id);
 
     livewireUpdate($url, 'platform.customer', 'toggleStatus')->assertSuccessful();
-    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(OrganizationStatus::Suspended);
+    expect(Organization::query()->whereKey($estate['organization']->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
     livewireUpdate($url, 'platform.customer', 'toggleStatus')->assertSuccessful();
-    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(OrganizationStatus::Active);
+    expect(Organization::query()->whereKey($estate['organization']->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
 
 /**
@@ -212,7 +212,7 @@ it('suspends and reactivates the account from its own page, reversibly', functio
  */
 it('refuses every action on a snapshot whose operator authority is gone', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['account']->id);
+    $url = route('platform.customers.show', $estate['organization']->id);
 
     $snapshot = snapshotFor(
         (string) $this->get($url)->assertSuccessful()->getContent(),
@@ -230,7 +230,7 @@ it('refuses every action on a snapshot whose operator authority is gone', functi
     replaySnapshot($url, $snapshot, 'target', [$estate['portal']->id])->assertRedirect(route('login'));
     replaySnapshot($url, $snapshot, 'open', [$estate['portal']->id])->assertRedirect(route('login'));
 
-    expect(Account::query()->whereKey($estate['account']->id)->value('status'))->toBe(OrganizationStatus::Active)
+    expect(Organization::query()->whereKey($estate['organization']->id)->value('status'))->toBe(OrganizationStatus::Active)
         ->and(session()->get(OperatorEnvironment::SESSION_KEY))->toBeNull();
 })->group('security');
 
@@ -244,7 +244,7 @@ it('refuses every action on a snapshot whose operator authority is gone', functi
  */
 it('refuses an account owner who is not an operator, on the component itself', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['account']->id);
+    $url = route('platform.customers.show', $estate['organization']->id);
 
     // Provisioned BEFORE the session is dropped: nextRequest() ends the request, and with
     // it the ambient environment a subject has to be written into.
@@ -253,17 +253,17 @@ it('refuses an account owner who is not an operator, on the component itself', f
         ownerEmail: 'not-an-operator@other.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->member;
+    ))->membership;
 
     forgetSubjectSession();
     nextRequest();
-    signInAsMember($outsider);
+    signInAsMember($outsider->user_id);
 
     // Somebody else's account, and a 404 rather than a 403: a 403 would confirm to any
     // account holder that this deployment has a staff console at that address.
     $this->get($url)->assertNotFound();
 
-    Volt::test('platform.customer', ['organization' => $estate['account']->id])->assertStatus(404);
+    Volt::test('platform.customer', ['organization' => $estate['organization']->id])->assertStatus(404);
 })->group('security');
 
 it('gives every environment its lineage on the flat list, and names the two that have none', function (): void {
@@ -283,7 +283,7 @@ it('gives every environment its lineage on the flat list, and names the two that
         ->and($html)->toContain('Unattached')
         // The account name in the column is a link into the account, so the flat list is
         // a way INTO the hierarchy rather than a place it disappears.
-        ->and($html)->toContain(route('platform.customers.show', $estate['account']->id));
+        ->and($html)->toContain(route('platform.customers.show', $estate['organization']->id));
 });
 
 it('names the owner in the target switcher, on every console page', function (): void {
@@ -319,7 +319,7 @@ it('answers lineage for the platform root and for an orphan without inventing an
 it('describes an environment with no owner rather than leaving the reader to guess', function (): void {
     $root = new EnvironmentLineage(environmentId: 'e1', isPlatformRoot: true);
     $orphan = new EnvironmentLineage(environmentId: 'e2');
-    $owned = new EnvironmentLineage(environmentId: 'e3', accountId: 'a1', organizationName: 'Acme');
+    $owned = new EnvironmentLineage(environmentId: 'e3', organizationId: 'a1', organizationName: 'Acme');
 
     expect($root->note())->not->toBeNull()
         ->and($orphan->note())->not->toBeNull()
@@ -351,18 +351,23 @@ it('does not pay a query per environment to say who owns one', function (): void
 
     $small = lineageQueryCount(route('platform.environments'));
 
-    // Fifteen more accounts, each with its own project and environment. Created straight
-    // through the models rather than the provisioner: these rows only have to EXIST for
-    // the lineage joins, and provisioning each would mint a signing key apiece.
+    // Fifteen more customers, each with its own project and environment. Created straight
+    // through the models rather than the provisioner: these rows only have to EXIST for the
+    // lineage joins, and provisioning each would mint a signing key apiece.
+    //
+    // The plan allowance lives on the PROJECT, never on the organization — an organization
+    // has no such column, because one customer can own several independently-billed
+    // products. And an environment names its project, not its owner: ownership runs through
+    // the project rather than through a column beside it.
     for ($i = 0; $i < 15; $i++) {
-        $account = Account::query()->create([
+        $account = Organization::query()->create([
             'name' => 'Bulk '.$i,
+            'slug' => 'bulk-'.$i,
             'status' => OrganizationStatus::Active,
-            'environment_limit' => 2,
         ]);
 
         $project = Project::query()->create([
-            'account_id' => $account->id,
+            'organization_id' => $account->id,
             'name' => 'Bulk project '.$i,
             'slug' => 'bulk-project-'.$i,
             'status' => ProjectStatus::Active,
@@ -370,7 +375,6 @@ it('does not pay a query per environment to say who owns one', function (): void
         ]);
 
         Environment::query()->create([
-            'account_id' => $account->id,
             'project_id' => $project->id,
             'name' => 'Production',
             'slug' => 'bulk-'.$i.'-'.Str::lower((string) Str::ulid()),

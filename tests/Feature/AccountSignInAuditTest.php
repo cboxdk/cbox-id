@@ -65,7 +65,7 @@ function signInEntries(string $accountId): Collection
     return app(PlatformRoot::class)->run(
         fn (): Collection => AuditEntry::query()
             ->where('scope', $accountId)
-            ->where('action', 'account.signed_in')
+            ->where('action', 'organization.signed_in')
             ->get(),
     );
 }

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Mail;
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
 if (! function_exists('apiAccount')) {
-    function apiAccount(): Account
+    function apiAccount(): Organization
     {
         return app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Acme',
@@ -28,7 +28,7 @@ if (! function_exists('apiAccount')) {
 }
 
 if (! function_exists('apiAccount2')) {
-    function apiAccount2(): Account
+    function apiAccount2(): Organization
     {
         return app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Other',

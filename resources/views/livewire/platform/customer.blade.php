@@ -10,7 +10,9 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -242,10 +244,28 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
         // trusting an undeclared property.
         $createdAt = $account->getAttribute('created_at');
 
+        [$roster, $people] = $platformRoot->run(function () use ($members, $account): array {
+            $roster = $members->forOrganization($account->id);
+            $people = [];
+
+            foreach ($roster as $membership) {
+                $people[$membership->user_id] = app(Subjects::class)->find($membership->user_id);
+            }
+
+            return [$roster, $people];
+        }) ?? [collect(), []];
+
         return [
             'account' => $account,
+            // Asked ONCE, in the component: an organization has no isActive() — the access
+            // decision lives on the enum, so the template must not re-derive it.
+            'accountIsActive' => ! $account->status->revokesAccess(),
             'createdAt' => $createdAt instanceof CarbonInterface ? $createdAt->toDayDateTimeString() : null,
-            'members' => $members->forOrganization($account->id),
+            // Memberships AND the people behind them. A membership carries authority, not
+            // identity, so an operator looking at a customer's roster needs both — and the
+            // subjects are hydrated in one pass rather than per row.
+            'members' => $roster,
+            'people' => $people,
             'projects' => $projectList,
             'environmentsByProject' => $byProject,
             'unfiledEnvironments' => $unfiled,
@@ -280,11 +300,11 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
     <x-page-header :title="$account->name"
                    subtitle="One customer on this install — its team, its projects, and every environment those projects own. Suspending it signs out its members and stops all of them serving auth.">
         <x-slot:actions>
-            <button wire:click="toggleStatus" class="btn {{ $account->isActive() ? 'btn-ghost' : 'btn-primary' }}"
+            <button wire:click="toggleStatus" class="btn {{ $accountIsActive ? 'btn-ghost' : 'btn-primary' }}"
                     wire:loading.attr="disabled" wire:target="toggleStatus"
-                    wire:confirm="{{ $account->isActive() ? $suspendConfirm : 'Reactivate '.$account->name.'? Its members can sign in again and its environments resume serving auth.' }}">
+                    wire:confirm="{{ $accountIsActive ? $suspendConfirm : 'Reactivate '.$account->name.'? Its members can sign in again and its environments resume serving auth.' }}">
                 <span class="spinner" wire:loading wire:target="toggleStatus" aria-hidden="true"></span>
-                {{ $account->isActive() ? 'Suspend' : 'Reactivate' }}
+                {{ $accountIsActive ? 'Suspend' : 'Reactivate' }}
             </button>
         </x-slot:actions>
     </x-page-header>
@@ -294,7 +314,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
         <div class="cbx-panel-body">
             <div class="flex flex-wrap items-center gap-2 mb-4">
                 <h2 class="text-base font-semibold">{{ $account->name }}</h2>
-                @if ($account->isActive())
+                @if ($accountIsActive)
                     <span class="cbx-pill cbx-pill--success"><span class="dot"></span>Active</span>
                 @else
                     <span class="cbx-pill cbx-pill--destructive"><span class="dot"></span>Suspended</span>
@@ -340,14 +360,14 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
                         @foreach ($members as $member)
                             <tr wire:key="member-{{ $member->id }}">
                                 <td>
-                                    <p class="font-medium">{{ $member->email }}</p>
+                                    <p class="font-medium">{{ ($people[$member->user_id] ?? null)?->email ?? '—' }}</p>
                                     @if ($member->name !== null && $member->name !== '')
                                         <p class="text-xs" style="color:var(--faint)">{{ $member->name }}</p>
                                     @endif
                                 </td>
                                 <td class="whitespace-nowrap">{{ $member->role->label() }}</td>
                                 <td class="whitespace-nowrap">
-                                    <span class="cbx-pill {{ $member->isActive() ? 'cbx-pill--success' : 'cbx-pill--warning' }}">
+                                    <span class="cbx-pill {{ $member->status === MembershipStatus::Active ? 'cbx-pill--success' : 'cbx-pill--warning' }}">
                                         <span class="dot"></span><span class="capitalize">{{ $member->status->value }}</span>
                                     </span>
                                 </td>

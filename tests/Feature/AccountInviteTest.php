@@ -48,7 +48,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 it('invites a teammate and emails a signed accept link', function (): void {
     Mail::fake();
     ['member' => $owner] = provisionAccount('owner@acme.example');
-    signInAsMember($owner);
+    signInAsMember($owner->user_id);
 
     Volt::test('console.members')
         ->set('inviteEmail', 'new@acme.example')
@@ -66,7 +66,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
 it('rejects inviting an email that already belongs to a member', function (): void {
     Mail::fake();
     ['member' => $owner] = provisionAccount('owner@acme.example');
-    signInAsMember($owner);
+    signInAsMember($owner->user_id);
 
     Volt::test('console.members')
         ->set('inviteEmail', 'owner@acme.example')
@@ -120,7 +120,7 @@ it('resets an account member through the console flow and ends their open sessio
     ['member' => $owner] = provisionAccount('owner@acme.example');
 
     // A pre-existing session, established the way a real sign-in does.
-    signInAsMember($owner);
+    signInAsMember($owner->user_id);
     $sessionId = (string) session(PlatformAuth::SESSION_KEY);
     $this->get(route('projects'))->assertOk();
     forgetSubjectSession();

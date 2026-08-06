@@ -60,7 +60,7 @@ beforeEach(function (): void {
 
 it('walks an admin from requesting a custom domain to a verified issuer', function (): void {
     ['member' => $owner, 'organization' => $account, 'environment' => $env] = provisionAccount();
-    signInAsMember($owner);
+    signInAsMember($owner->user_id);
 
     $page = Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -84,12 +84,12 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
 
     expect($env->fresh()->domain)->toBe('id.acme.com')
         ->and(AuditEntry::query()->where('scope', $account->id)
-            ->where('action', 'account.custom_domain_verified')->exists())->toBeTrue();
+            ->where('action', 'organization.custom_domain_verified')->exists())->toBeTrue();
 });
 
 it('surfaces a validation error for a platform-reserved domain', function (): void {
     ['member' => $owner, 'environment' => $env] = provisionAccount();
-    signInAsMember($owner);
+    signInAsMember($owner->user_id);
 
     Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -103,7 +103,7 @@ it('surfaces a validation error for a platform-reserved domain', function (): vo
 it('removes a verified domain, falling back to the default issuer', function (): void {
     ['member' => $owner, 'environment' => $env] = provisionAccount();
     $env->update(['domain' => 'id.acme.com']);
-    signInAsMember($owner);
+    signInAsMember($owner->user_id);
 
     Volt::test('console.environment-domains')
         ->set('selectedEnvironment', $env->id)
@@ -116,7 +116,7 @@ it('refuses the domains page to a member who cannot manage environments', functi
     ['organization' => $account] = provisionAccount();
     $viewer = memberWithRole($account->id, MembershipRole::Billing, 'billing2@acme.example');
 
-    signInAsMember($viewer);
+    signInAsMember($viewer->user_id);
     $this->get(route('environment-domains'))
         ->assertRedirect(route('projects'));
 });

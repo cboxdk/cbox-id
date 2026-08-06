@@ -303,12 +303,12 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     $open = 'https://cboxid.com'.route('environment.open', $envId, absolute: false);
 
     // Viewer reaches the env but is refused the mint — 403, no handoff token issued.
-    signInAsMember($viewer);
+    signInAsMember($viewer->user_id);
     $this->get($open)->assertForbidden();
 
     // A developer is bounced to the environment host to redeem — a redirect, not a 403.
     [$dev, $devSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev-mint@acme.example');
-    signInAsMember($dev);
+    signInAsMember($dev->user_id);
     $this->get($open)->assertRedirect();
 });
 

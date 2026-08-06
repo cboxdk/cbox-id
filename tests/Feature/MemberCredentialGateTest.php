@@ -161,7 +161,7 @@ it('refuses a handoff for a member whose account has been suspended', function (
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
 
     // Suspended between the mint and the redemption — the tab that sat open.
-    Account::query()->whereKey($result->organization->id)->update(['status' => OrganizationStatus::Suspended]);
+    Organization::query()->whereKey($result->organization->id)->update(['status' => OrganizationStatus::Suspended]);
 
     // The OUTER wall: `DatabaseEnvironmentResolver::servable()` refuses to resolve an
     // environment whose account is not active, so the tenant host stops resolving at all,

@@ -47,7 +47,7 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
     $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
     expect($member)->not->toBeNull();
 
-    $account = Account::query()->whereKey($member->account_id)->first();
+    $account = Organization::query()->whereKey($member->account_id)->first();
     expect($account)->not->toBeNull()
         ->and($account->name)->toBe('Acme');
 
@@ -75,5 +75,5 @@ it('refuses a second workspace for an email that already has one', function (): 
     $register()->assertHasErrors('email');
 
     // Only one account member ever created for the email.
-    expect(Account::query()->count())->toBe(1);
+    expect(Organization::query()->count())->toBe(1);
 });

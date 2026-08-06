@@ -6,6 +6,7 @@ use App\Platform\OrganizationActivity;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
@@ -26,7 +27,7 @@ beforeEach(function (): void {
     platformRootEnvironment();
 });
 
-function suspendableAccount(string $email = 'junk@signup.example'): Account
+function suspendableAccount(string $email = 'junk@signup.example'): Organization
 {
     return app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Junk Signup',
@@ -53,10 +54,10 @@ it('suspends and reactivates an account, and the toggle is reversible', function
     $account = suspendableAccount();
 
     Volt::test('platform.customers')->call('toggleStatus', $account->id)->assertRenderedNotRedirected();
-    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Suspended);
+    expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
     Volt::test('platform.customers')->call('toggleStatus', $account->id)->assertRenderedNotRedirected();
-    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
+    expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
 
 /**
@@ -80,22 +81,22 @@ it('records both directions on the system chain, as the operator', function (): 
     Volt::test('platform.customers')->call('toggleStatus', $account->id);
 
     $entries = AuditEntry::query()
-        ->whereIn('action', ['account.suspended', 'account.reactivated'])
+        ->whereIn('action', ['organization.suspended', 'organization.reactivated'])
         ->orderBy('sequence')
         ->get();
 
     expect($entries)->toHaveCount(2)
-        ->and($entries[0]->action)->toBe('account.suspended')
+        ->and($entries[0]->action)->toBe('organization.suspended')
         ->and($entries[0]->actor_type)->toBe(ActorType::Operator)
         ->and($entries[0]->actor_id)->toBe($this->operatorId)
         ->and($entries[0]->target_id)->toBe($account->id)
         ->and($entries[0]->context['status'] ?? null)->toBe('suspended')
-        ->and($entries[1]->action)->toBe('account.reactivated')
+        ->and($entries[1]->action)->toBe('organization.reactivated')
         ->and($entries[1]->context['status'] ?? null)->toBe('active');
 
     // The account's own chain is now empty for these actions — the gap this documents.
     expect(AuditEntry::query()->where('scope', $account->id)
-        ->whereIn('action', ['account.suspended', 'account.reactivated'])->count())->toBe(0);
+        ->whereIn('action', ['organization.suspended', 'organization.reactivated'])->count())->toBe(0);
 });
 
 it('refuses the screen, and the toggle, without operator authority', function (): void {
@@ -112,5 +113,5 @@ it('refuses the screen, and the toggle, without operator authority', function ()
     // too and a crafted wire request cannot reach the toggle.
     Volt::test('platform.customers')->assertStatus(404);
 
-    expect(Account::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
+    expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
