@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
+use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Support\ServiceProvider;
@@ -64,14 +64,14 @@ final class ConsoleServiceProvider extends ServiceProvider
         // on every host except the root's own accounts — has no page here, so the area
         // vanishes by the same rule that already drops an area a module left empty.
         $nav->area('identity-platform', 'Identity platform', 'layers', 15)
-            ->page('projects', 'Projects', feature: 'account.projects', order: 10)
-            ->page('members', 'Account members', feature: 'account.members', order: 20)
-            ->page('api-keys', 'API keys', feature: 'account.manage', order: 30)
-            ->page('environment-keys', 'Environment keys', feature: 'account.environments', order: 40)
-            ->page('environment-domains', 'Environment domains', feature: 'account.environments', order: 50)
-            ->page('activity', 'Account activity', feature: 'account.members', order: 60)
-            ->page('billing', 'Billing', feature: 'account.billing', order: 70)
-            ->page('organization-settings', 'Account settings', feature: 'account.manage', order: 80);
+            ->page('projects', 'Projects', feature: 'organization.projects', order: 10)
+            ->page('members', 'Members', feature: 'organization.members', order: 20)
+            ->page('api-keys', 'API keys', feature: 'organization.manage', order: 30)
+            ->page('environment-keys', 'Environment keys', feature: 'organization.environments', order: 40)
+            ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
+            ->page('activity', 'Activity', feature: 'organization.members', order: 60)
+            ->page('billing', 'Billing', feature: 'organization.billing', order: 70)
+            ->page('organization-settings', 'Organization settings', feature: 'organization.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.
@@ -144,10 +144,10 @@ final class ConsoleServiceProvider extends ServiceProvider
         // capability: a person who administers this account belongs in the area even if
         // every page inside it happens to be closed to them, and `ownsIdentityProviders()`
         // is the same question phrased for the layout.
-        $features->register('account.projects', static fn (): bool => app(ConsoleScope::class)->ownsIdentityProviders());
-        $features->register('account.members', static fn (): bool => $can()?->canReadMembers() === true);
-        $features->register('account.manage', static fn (): bool => $can()?->canManageMembers() === true);
-        $features->register('account.environments', static fn (): bool => $can()?->canManageEnvironments() === true);
-        $features->register('account.billing', static fn (): bool => $can()?->canReadBilling() === true);
+        $features->register('organization.projects', static fn (): bool => app(ConsoleScope::class)->ownsIdentityProviders());
+        $features->register('organization.members', static fn (): bool => $can()?->canReadMembers() === true);
+        $features->register('organization.manage', static fn (): bool => $can()?->canManageMembers() === true);
+        $features->register('organization.environments', static fn (): bool => $can()?->canManageEnvironments() === true);
+        $features->register('organization.billing', static fn (): bool => $can()?->canReadBilling() === true);
     }
 }
