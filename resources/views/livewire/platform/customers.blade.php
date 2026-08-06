@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use Carbon\CarbonInterface;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\Models\Membership;
@@ -103,9 +104,15 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
         $rows = $platformRoot->run(function (): array {
             $organizations = Organization::query()->orderBy('created_at')->get();
 
+            // TENANT SCOPE SUSPENDED. A membership is tenant-owned and the tenant scope is
+            // deny-by-default, so this roll-up across every customer counts ZERO from a
+            // request that has no tenant in context — silently, and the page would render
+            // "0 members" for organizations that have several.
             /** @var Collection<string, int> $memberCounts */
-            $memberCounts = Membership::query()->selectRaw('organization_id, count(*) as c')
-                ->groupBy('organization_id')->pluck('c', 'organization_id');
+            $memberCounts = app(TenantContext::class)->withoutScope(
+                static fn () => Membership::query()->selectRaw('organization_id, count(*) as c')
+                    ->groupBy('organization_id')->pluck('c', 'organization_id'),
+            );
 
             /** @var Collection<string, int> $projectCounts */
             $projectCounts = Project::query()->selectRaw('organization_id, count(*) as c')

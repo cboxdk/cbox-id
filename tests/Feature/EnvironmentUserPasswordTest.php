@@ -127,8 +127,7 @@ it('refuses a member without the environment-admin capability', function (): voi
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
 
     $members = app(Memberships::class);
-    $viewer = $members->invite($r->organization->id, 'viewer@acme.example', MembershipRole::Viewer);
-    $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
+    [$viewer, $viewerSubjectId] = addMember($r->organization->id, MembershipRole::Viewer, 'viewer@acme.example');
 
     actAsEnvironmentAdmin($viewer, $r->environment->id);
 

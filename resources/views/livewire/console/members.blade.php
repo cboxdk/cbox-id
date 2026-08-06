@@ -9,6 +9,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\MailLinks;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -81,20 +82,24 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // A residual signal remains — the invitation fails, so the address exists somewhere
         // — and that is inherent to globally-unique emails, not something a message can
         // hide. Rate limiting and the audit trail are what bound it.
-        $existing = $subjects->findByEmail($this->inviteEmail);
+        $existing = app(PlatformRoot::class)->run(fn () => $subjects->findByEmail($this->inviteEmail));
 
-        if ($existing !== null && app(Memberships::class)->of($organizationId, $existing->id) !== null) {
+        if ($existing !== null && app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($organizationId, $existing->id)) !== null) {
             $this->addError('inviteEmail', 'That email cannot be invited to this organization.');
 
             return;
         }
 
-        $pending = $invitations->invite(
+        $pending = app(PlatformRoot::class)->run(fn () => $invitations->invite(
             $organizationId,
             $this->inviteEmail,
             MembershipRole::from($this->inviteRole),
             $scope->actorId(),
-        );
+        ));
+
+        if ($pending === null) {
+            return;
+        }
 
         // MailLinks, not URL:: — an invitation is mailed, so its origin must come from the
         // deployment rather than from the Host header of whoever asked to send it.
@@ -122,7 +127,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         // The organization id comes from the SCOPE and the subject id from the fenced
         // lookup, so neither is the string off the wire.
-        $members->changeRole($organizationId, $target->user_id, $next);
+        app(PlatformRoot::class)->run(fn () => $members->changeRole($organizationId, $target->user_id, $next));
 
         $activity->record($organizationId, 'organization.member_role_changed', $scope->actorId(),
             targetType: 'membership', targetId: $target->id,
@@ -140,7 +145,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             return;
         }
 
-        $members->remove($organizationId, $target->user_id);
+        app(PlatformRoot::class)->run(fn () => $members->remove($organizationId, $target->user_id));
 
         $activity->record($organizationId, 'organization.member_removed', $scope->actorId(),
             targetType: 'membership', targetId: $target->id, request: request());
@@ -173,10 +178,12 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             return;
         }
 
-        $members->changeRole($organizationId, $target->user_id, MembershipRole::Owner);
-        $members->changeRole($organizationId, $actorId, MembershipRole::Admin);
+        app(PlatformRoot::class)->run(function () use ($members, $organizationId, $target, $actorId): void {
+            $members->changeRole($organizationId, $target->user_id, MembershipRole::Owner);
+            $members->changeRole($organizationId, $actorId, MembershipRole::Admin);
+        });
 
-        $subject = $subjects->find($target->user_id);
+        $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($target->user_id));
         $who = $subject === null ? 'that member' : ($subject->name ?? $subject->email ?? 'that member');
 
         $this->dispatch('toast', message: 'Ownership transferred to '.$who.'.');
@@ -193,7 +200,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 
         $this->editingAccessFor = $target->id;
         $this->accessAll = $target->all_environments === true;
-        $this->accessEnvIds = $members->accessibleEnvironmentIds($organizationId, $target->user_id);
+        $this->accessEnvIds = app(PlatformRoot::class)->run(
+            fn (): array => $members->accessibleEnvironmentIds($organizationId, $target->user_id),
+        ) ?? [];
     }
 
     public function saveAccess(ConsoleScope $scope, Memberships $members): void
@@ -210,7 +219,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
             return;
         }
 
-        $members->setEnvironmentAccess($organizationId, $target->user_id, $this->accessAll, $this->accessEnvIds);
+        app(PlatformRoot::class)->run(
+            fn () => $members->setEnvironmentAccess($organizationId, $target->user_id, $this->accessAll, $this->accessEnvIds),
+        );
         $this->editingAccessFor = null;
         $this->dispatch('toast', message: 'Environment access updated.');
     }
@@ -263,10 +274,20 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
      */
     private function resolve(string $memberId, string $organizationId): Membership
     {
-        $target = Membership::query()
-            ->whereKey($memberId)
-            ->where('organization_id', $organizationId)
-            ->first();
+        // THROUGH THE CONTRACT, not a raw query, and that is not a style preference.
+        // `memberships` is TENANT-owned as well as environment-owned, and the tenant scope
+        // is deny-by-default — a bare `Membership::query()` in a console request has no
+        // tenant in context and matches NOTHING, so every action here would 404 on a row
+        // that is right there on the page. `account_members` was not tenant-owned, which is
+        // why the query this replaces could be written by hand and why substituting the
+        // model one-for-one looked safe.
+        //
+        // `forOrganization()` runs inside the organization's tenant scope, so the fence is
+        // the call itself rather than a predicate a later caller could forget.
+        $target = app(PlatformRoot::class)->run(
+            fn (): ?Membership => app(Memberships::class)->forOrganization($organizationId)
+                ->firstWhere('id', $memberId),
+        );
 
         abort_if($target === null, 404);
 
@@ -280,8 +301,14 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     {
         $organizationId = $scope->organizationId();
 
+        // IN THE PLATFORM ROOT, like every other membership read on this page. The console
+        // is served on the console host, and whether that host resolves to the root is a
+        // deployment detail — the management plane's rows live in the root either way, so
+        // the scope is stated rather than assumed.
         /** @var Collection<int, Membership> $roster */
-        $roster = $organizationId === null ? collect() : $members->forOrganization($organizationId);
+        $roster = $organizationId === null
+            ? collect()
+            : app(PlatformRoot::class)->run(fn () => $members->forOrganization($organizationId)) ?? collect();
 
         // The people behind the memberships, keyed by subject id. Hydrated in ONE pass
         // rather than per row: a membership carries authority and not identity, so every
@@ -291,10 +318,12 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         $accessCounts = [];
 
         foreach ($roster as $membership) {
-            $people[$membership->user_id] = $subjects->find($membership->user_id);
-            $accessCounts[$membership->id] = $organizationId === null
-                ? []
-                : $members->accessibleEnvironmentIds($organizationId, $membership->user_id);
+            $people[$membership->user_id] = app(PlatformRoot::class)->run(
+                fn () => $subjects->find($membership->user_id),
+            );
+            $accessCounts[$membership->id] = $organizationId === null ? [] : (app(PlatformRoot::class)->run(
+                fn (): array => $members->accessibleEnvironmentIds($organizationId, $membership->user_id),
+            ) ?? []);
         }
 
         // THROUGH THE PROJECTS, because `environments.account_id` is gone.

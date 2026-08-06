@@ -114,7 +114,7 @@ it('renders the workspace home with the account\'s projects', function (): void 
 });
 
 it('links each environment out to its own host-resolved URL on the project detail', function (): void {
-    ['member' => $member, 'project' => $project] = provisionAccount();
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
@@ -128,18 +128,18 @@ it('links each environment out to its own host-resolved URL on the project detai
 });
 
 it('renders the members roster with the signed-in member marked', function (): void {
-    ['member' => $member] = provisionAccount('dana@acme.example');
+    ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount('dana@acme.example');
 
     signInAsMember($memberSubjectId);
     $this->get(route('members'))
         ->assertOk()
-        ->assertSee('Account members')
+        ->assertSee('Members')
         ->assertSee('dana@acme.example')
         ->assertSee('You');
 });
 
 it('renders billing with the real environment allowance', function (): void {
-    ['member' => $member, 'project' => $project] = provisionAccount();
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
     signInAsMember($memberSubjectId);
@@ -171,7 +171,7 @@ it('takes the Identity platform away the moment an account is suspended', functi
 });
 
 it('redirects a member who cannot read billing away from it', function (): void {
-    ['organization' => $account] = provisionAccount();
+    ['organization' => $account, 'subjectId' => $memberSubjectId] = provisionAccount();
     // A Developer is a technical role — no billing, no member roster.
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev-billing@acme.example');
 
@@ -189,7 +189,7 @@ it('redirects a member who cannot read billing away from it', function (): void 
 });
 
 it('shows a scoped member only the environments they are granted', function (): void {
-    ['organization' => $account, 'project' => $project] = provisionAccount();
+    ['organization' => $account, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
@@ -226,7 +226,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 });
 
 it('redirects a non-manager away from API keys', function (): void {
-    ['organization' => $account] = provisionAccount();
+    ['organization' => $account, 'subjectId' => $memberSubjectId] = provisionAccount();
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
 
     signInAsMember($devSubjectId);
@@ -242,11 +242,11 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     $members = app(Memberships::class);
 
     Volt::test('console.members')->call('removeMember', $dev->id);
-    expect($members->find($dev->id))->toBeNull();
+    expect(freshMembership($dev))->toBeNull();
 
     Volt::test('console.members')->call('makeOwner', $admin->id);
-    expect($members->find($admin->id)->role)->toBe(MembershipRole::Owner)
-        ->and($members->find($owner->id)->role)->toBe(MembershipRole::Admin);
+    expect(freshMembership($admin)->role)->toBe(MembershipRole::Owner)
+        ->and(freshMembership($owner)->role)->toBe(MembershipRole::Admin);
 });
 
 it('scopes a member to specific environments via the access editor', function (): void {
@@ -264,7 +264,7 @@ it('scopes a member to specific environments via the access editor', function ()
         ->assertSet('editingAccessFor', null);
 
     $members = app(Memberships::class);
-    expect($members->accessibleEnvironmentIds($members->find($dev->id)))->toBe([$staging->id]);
+    expect($members->accessibleEnvironmentIds($dev->organization_id, $dev->user_id))->toBe([$staging->id]);
 });
 
 /*
@@ -285,7 +285,7 @@ it('scopes a member to specific environments via the access editor', function ()
 | stops using it.
 */
 
-/** An admin of Acme, and a Developer on a rival account they may not touch. */
+/** A Developer on a RIVAL customer, whom the acting admin may not touch. */
 function aRivalAccountsMember(): Membership
 {
     $rival = app(TenantProvisioner::class)->provision(new TenantBlueprint(
@@ -297,11 +297,13 @@ function aRivalAccountsMember(): Membership
 
     // A Developer rather than the rival's owner: the owner rule would refuse this target
     // even with the fence removed, and the test would pass for the wrong reason.
-    return memberWithRole($rival->organization->id, MembershipRole::Developer, 'dev@rival.example');
+    [$membership] = memberWithRole($rival->organization->id, MembershipRole::Developer, 'dev@rival.example');
+
+    return $membership;
 }
 
-it('404s a role change aimed at another account member', function (): void {
-    ['member' => $owner] = provisionAccount();
+it('404s a role change aimed at another customer\'s member', function (): void {
+    ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
@@ -348,10 +350,10 @@ it('404s an environment-access SAVE aimed at another account', function (): void
         ->assertStatus(404);
 
     $members = app(Memberships::class);
-    expect($members->find($theirs->id)->all_environments)->toBeTrue();
+    expect(freshMembership($theirs)->all_environments)->toBeTrue();
 })->group('security');
 
-it('404s an ownership transfer aimed at another account', function (): void {
+it('404s an ownership transfer aimed at another customer', function (): void {
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
@@ -359,10 +361,10 @@ it('404s an ownership transfer aimed at another account', function (): void {
     Volt::test('console.members')->call('makeOwner', $theirs->id)->assertStatus(404);
 
     $members = app(Memberships::class);
-    expect($members->find($theirs->id)->role)->toBe(MembershipRole::Developer)
+    expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer)
         // …and this account still has the owner it started with.
-        ->and($members->find($owner->id)->role)->toBe(MembershipRole::Owner)
-        ->and($members->find($theirs->id)->account_id)->not->toBe($account->id);
+        ->and(freshMembership($owner)->role)->toBe(MembershipRole::Owner)
+        ->and($theirs->organization_id)->not->toBe($account->id);
 })->group('security');
 
 it('renames the account from settings and redirects non-managers', function (): void {
@@ -379,18 +381,18 @@ it('renames the account from settings and redirects non-managers', function (): 
 });
 
 it('shows a read-only viewer the roster but not the invite form', function (): void {
-    ['organization' => $account] = provisionAccount();
+    ['organization' => $account, 'subjectId' => $memberSubjectId] = provisionAccount();
     [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Viewer, 'viewer@acme.example');
 
     signInAsMember($viewerSubjectId);
     $this->get(route('members'))
         ->assertOk()
-        ->assertSee('Account members')
+        ->assertSee('Members')
         ->assertDontSee('Invite a teammate');
 });
 
 it('adds an environment to a project up to its plan limit, then refuses', function (): void {
-    ['member' => $member, 'project' => $project] = provisionAccount();
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
     // The project's limit is 2, one used → adding one succeeds.
@@ -411,7 +413,7 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
 });
 
 it('refuses a scoped member trying to add an environment to a project', function (): void {
-    ['organization' => $account, 'project' => $project] = provisionAccount();
+    ['organization' => $account, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     // Restrict the Developer to staging only — they can VIEW the project but must not
@@ -428,7 +430,7 @@ it('refuses a scoped member trying to add an environment to a project', function
 });
 
 it('suspends and reactivates a project', function (): void {
-    ['member' => $member, 'project' => $project] = provisionAccount();
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
     Volt::test('console.projects.show', ['project' => $project->id])->call('suspend');
@@ -463,7 +465,7 @@ it('lets a member create a second project and drills into it empty', function ()
  * a project page first.
  */
 it('lists every environment grouped under its project, each with an Open link', function (): void {
-    ['member' => $member, 'project' => $project] = provisionAccount();
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
     signInAsMember($memberSubjectId);
@@ -479,7 +481,7 @@ it('lists every environment grouped under its project, each with an Open link', 
 });
 
 it('creates an environment inline from the launchpad', function (): void {
-    ['member' => $member, 'project' => $project] = provisionAccount();
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
     Volt::test('console.projects.index')
@@ -808,7 +810,7 @@ it('refuses to remove an account member from the organization roster', function 
         ->call('remove', (string) $target->refresh()->subject_id)
         ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
             (string) ($params['message'] ?? ''),
-            'Account members',
+            'Members',
         ));
 
     // …and the membership is still there, which is the outcome that matters: removing it

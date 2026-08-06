@@ -74,9 +74,8 @@ it('refuses a member with no access to the environment', function (): void {
 
     // A viewer scoped to NO environments.
     $members = app(Memberships::class);
-    $stranger = $members->invite($account->id, 'stranger@acme.example', MembershipRole::Viewer);
-    $members->activate($stranger->id, 'a-strong-unbreached-passphrase');
-    $members->setEnvironmentAccess($stranger->id, all: false, environmentIds: []);
+    [$stranger, $strangerSubjectId] = addMember($account->id, MembershipRole::Viewer, 'stranger@acme.example');
+    $members->setEnvironmentAccess($stranger->organization_id, $stranger->user_id, all: false, environmentIds: []);
 
     actAsEnvironmentAdmin($stranger, $envId);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
@@ -259,11 +258,10 @@ it('refuses a reachable-but-unprivileged member at the env-admin session chokepo
     $members = app(Memberships::class);
 
     foreach ([MembershipRole::Viewer, MembershipRole::Billing] as $role) {
-        $m = $members->invite($account->id, $role->value.'-choke@acme.example', $role);
-        $members->activate($m->id, 'a-strong-unbreached-passphrase');
+        [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-choke@acme.example');
 
         // Precondition: the default invite grants access to the environment.
-        expect($members->accessibleEnvironmentIds($members->find($m->id)))->toContain($envId);
+        expect($members->accessibleEnvironmentIds($m->organization_id, $m->user_id))->toContain($envId);
 
         actAsEnvironmentAdmin($m, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
@@ -279,8 +277,7 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
 
     $admit = ['owner' => $owner];
     foreach ([MembershipRole::Admin, MembershipRole::Developer] as $role) {
-        $m = $members->invite($account->id, $role->value.'-ok@acme.example', $role);
-        $members->activate($m->id, 'a-strong-unbreached-passphrase');
+        [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-ok@acme.example');
         $admit[$role->value] = $m;
     }
 
@@ -296,8 +293,7 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
     $members = app(Memberships::class);
 
-    $viewer = $members->invite($account->id, 'viewer-mint@acme.example', MembershipRole::Viewer);
-    $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
+    [$viewer, $viewerSubjectId] = addMember($account->id, MembershipRole::Viewer, 'viewer-mint@acme.example');
 
     // On the ACCOUNT HOST this fixture names. The mint used to live under `/workspace`,
     // whose gate asked the ENVIRONMENT context — which an unmapped host resolves to the
@@ -311,8 +307,7 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     $this->get($open)->assertForbidden();
 
     // A developer is bounced to the environment host to redeem — a redirect, not a 403.
-    $dev = $members->invite($account->id, 'dev-mint@acme.example', MembershipRole::Developer);
-    $members->activate($dev->id, 'a-strong-unbreached-passphrase');
+    [$dev, $devSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev-mint@acme.example');
     signInAsMember($dev);
     $this->get($open)->assertRedirect();
 });
@@ -341,7 +336,7 @@ it('refuses a session anchored to one environment on another the same admin may 
     );
 
     // Access is NOT what refuses here — state it, or this is the old test again.
-    expect(in_array($second->id, app(Memberships::class)->accessibleEnvironmentIds($member), true))
+    expect(in_array($second->id, app(Memberships::class)->accessibleEnvironmentIds($member->organization_id, $member->user_id), true))
         ->toBeTrue('fixture: the admin must be entitled to BOTH, or the anchor is not what holds');
 
     actAsEnvironmentAdmin($member, $envId);

@@ -96,7 +96,7 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
         ->assertRedirect(route('projects'));
 
     $members = app(Memberships::class);
-    expect($members->find($invited->id)->status->value)->toBe('active')
+    expect(freshMembership($invited)->status->value)->toBe('active')
         ->and($members->verifyPassword($invited->id, 'a-strong-unbreached-passphrase'))->toBeTrue()
         // Signed in — asked through the resolver. The session is the subject's; the
         // member is what it resolves to.
@@ -196,9 +196,9 @@ it('does not admit an invited member who has not accepted, even holding a live s
     ));
 
     $members = app(Memberships::class);
-    $invited = $members->invite($account->id, 'outsider@elsewhere.test', MembershipRole::Admin);
+    [$invited, $invitedSubjectId] = addMember($account->id, MembershipRole::Admin, 'outsider@elsewhere.test');
 
-    expect($members->find($invited->id)?->subject_id)
+    expect(freshMembership($invited)?->subject_id)
         ->toBe($outsider->id, 'fixture: the invitation must reuse the existing subject, or this tests nothing');
 
     // They sign in as themselves — a real, live session, established the ordinary way.

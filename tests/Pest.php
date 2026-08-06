@@ -30,6 +30,7 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
@@ -186,6 +187,59 @@ function serveOnTestHost(Environment $environment): Environment
     $environment->forceFill(['domain' => $host, 'domain_verified_at' => now()])->save();
 
     return $environment;
+}
+
+/**
+ * Re-read a membership FROM THE PLATFORM ROOT.
+ *
+ * `memberships` is environment-owned, and a console test stands on whatever host it is
+ * driving — so `Memberships::of()` asked directly answers null for a membership that is
+ * perfectly alive. That matters most where the assertion is `toBeNull()`: a removal test
+ * written that way passes whether the row was removed or merely out of scope, which is the
+ * account plane's habit showing through — `account_members` sat outside tenancy, so no test
+ * that read it ever had to think about this.
+ */
+function freshMembership(Membership $membership): ?Membership
+{
+    return app(PlatformRoot::class)->run(
+        fn (): ?Membership => app(Memberships::class)->of(
+            $membership->organization_id,
+            $membership->user_id,
+        ),
+    );
+}
+
+/**
+ * Add a member to an organization — a SUBJECT who holds a MEMBERSHIP.
+ *
+ * The account plane made this one call: `invite()` wrote a member row in an `invited` state
+ * carrying the person and the role together, and `activate()` turned it real. Those are two
+ * records now, and most tests want the end state rather than the ceremony — a test that
+ * needs a viewer should not be exercising the invitation flow to get one.
+ *
+ * {@see Invitations} is still what the invitation tests
+ * drive; this is for the ones that just need somebody on the roster.
+ *
+ * Returns both halves because the caller almost always needs both: the membership to assert
+ * authority against, and the subject id to sign in as.
+ *
+ * @return array{0: Membership, 1: string} the membership, and the subject id
+ */
+function addMember(string $organizationId, MembershipRole $role, string $email, ?string $name = 'Member'): array
+{
+    $root = app(PlatformRoot::class);
+
+    $subject = $root->run(
+        fn () => app(Subjects::class)->create($email, $name, 'a-strong-unbreached-passphrase'),
+    );
+
+    expect($subject)->not->toBeNull('fixture: no platform root — call platformRootEnvironment() first');
+
+    $membership = $root->run(
+        fn () => app(Memberships::class)->add($organizationId, $subject->id, $role),
+    );
+
+    return [$membership, $subject->id];
 }
 
 /**

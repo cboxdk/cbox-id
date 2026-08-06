@@ -42,10 +42,9 @@ if (! function_exists('memberWithRole')) {
     function memberWithRole(string $accountId, MembershipRole $role, string $email): Membership
     {
         $members = app(Memberships::class);
-        $m = $members->invite($accountId, $email, $role);
-        $members->activate($m->id, 'a-strong-unbreached-passphrase');
+        [$m, $mSubjectId] = addMember($accountId, $role, $email);
 
-        return $members->find($m->id);
+        return freshMembership($m);
     }
 }
 

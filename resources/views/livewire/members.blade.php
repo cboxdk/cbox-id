@@ -379,10 +379,9 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // ONE PREDICATE NOW, not a join. It used to reach through the member row to the
         // account and compare that account's organization; a membership names the
         // organization directly, so the relation it hopped through is gone with the row.
-        return Membership::query()
-            ->where('user_id', $userId)
-            ->where('organization_id', $this->orgId())
-            ->exists();
+        // Through the contract: `memberships` is tenant-owned and the tenant scope is
+        // deny-by-default, so a bare query here answers "no membership" for everybody.
+        return app(Memberships::class)->of($this->orgId(), $userId) !== null;
     }
 
     private function refuseMembership(string $userId): bool

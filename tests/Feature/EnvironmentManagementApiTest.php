@@ -172,8 +172,7 @@ it('redirects a non-manager away from the environment-keys console', function ()
     ));
     $members = app(Memberships::class);
     // Viewer is read-only — it cannot manage environments, so it can't mint env keys.
-    $viewer = $members->invite($result->organization->id, 'viewer@acme.example', MembershipRole::Viewer);
-    $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
+    [$viewer, $viewerSubjectId] = addMember($result->organization->id, MembershipRole::Viewer, 'viewer@acme.example');
 
     signInAsMember($viewer);
     $this->get(route('environment-keys'))

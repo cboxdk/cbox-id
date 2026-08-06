@@ -310,7 +310,7 @@ it('activates an account invitation under a mandate, and still refuses the sessi
     [$owner] = doorMandatedAccount('invite-owner@acme.example');
 
     $members = app(Memberships::class);
-    $invited = $members->invite((string) $owner->account_id, 'workspace-invitee@acme.example', MembershipRole::Admin);
+    [$invited, $invitedSubjectId] = addMember((string) $owner->account_id, MembershipRole::Admin, 'workspace-invitee@acme.example');
 
     $url = URL::signedRoute('organization.invite.accept', ['member' => $invited->id]);
 
@@ -320,7 +320,7 @@ it('activates an account invitation under a mandate, and still refuses the sessi
 
     // Active, deliberately: an invited member is one no SSO assertion can land on, so
     // refusing the activation as well would send them to a door that cannot open.
-    expect($members->find($invited->id)?->isActive())->toBeTrue()
+    expect(freshMembership($invited)?->isActive())->toBeTrue()
         ->and(app(AccountAuth::class)->current())->toBeNull();
 
     nextRequest();

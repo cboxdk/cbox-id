@@ -153,8 +153,7 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
         ->set(GenericEnvironment::of($r->environment->id));
 
     $members = app(Memberships::class);
-    $viewer = $members->invite($r->organization->id, 'policy-viewer@acme.example', MembershipRole::Viewer);
-    $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
+    [$viewer, $viewerSubjectId] = addMember($r->organization->id, MembershipRole::Viewer, 'policy-viewer@acme.example');
 
     actAsEnvironmentAdmin($viewer, $r->environment->id);
 
