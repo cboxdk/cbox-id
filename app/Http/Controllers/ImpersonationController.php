@@ -75,8 +75,12 @@ final class ImpersonationController extends Controller
      */
     public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes): RedirectResponse
     {
-        $memberId = $auth->membership()?->id;
-        abort_if($memberId === null, 403);
+        // The acting administrator's SUBJECT id, not their membership's row id. The marker
+        // records who is impersonating, and on exit that identity is resolved back into a
+        // session — a row id in `memberships` names no session, so a resume keyed on one
+        // restores nothing and drops the administrator at the sign-in door.
+        $actorSubjectId = $auth->subjectId();
+        abort_if($actorSubjectId === null, 403);
 
         $orgId = $request->string('organization')->toString();
         abort_if($orgId === '', 403);
@@ -90,7 +94,7 @@ final class ImpersonationController extends Controller
 
         $request->validate(['reason' => ['required', 'string', 'max:200']]);
 
-        $impersonation->startAsMembership($request, $memberId, $user, $orgId, $request->string('reason')->toString());
+        $impersonation->startAsMembership($request, $actorSubjectId, $user, $orgId, $request->string('reason')->toString());
 
         return $this->landing($planes, 'environment.home');
     }

@@ -134,7 +134,13 @@ it('labels a directory row with its organization without loading every organizat
             && str_starts_with(strtolower(trim($statement)), 'select'),
     ));
 
+    // BOUNDED, which is what this is about — not the exact shape of the predicate. An
+    // `id in (…)` label lookup is bounded by the rows on the page; so is a `where id = ?`
+    // for the ONE acting organization, which the console chrome asks for by name. What must
+    // not appear is a read of the table with neither: that grows with the tenant count and
+    // is re-run on every Livewire action.
     foreach ($orgReads as $statement) {
-        expect($statement)->toContain('"id" in');
+        expect(str_contains($statement, '"id" in') || str_contains($statement, '"id" = ?'))
+            ->toBeTrue('an unbounded organizations read: '.$statement);
     }
 });

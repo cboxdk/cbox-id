@@ -10,6 +10,7 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
@@ -58,6 +59,7 @@ final class Impersonation
 
     public function __construct(
         private readonly PlatformAuth $platformAuth,
+        private readonly Memberships $memberships,
         private readonly SessionManager $sessions,
         private readonly AuditLog $audit,
         private readonly PlatformOperators $operators,
@@ -127,7 +129,7 @@ final class Impersonation
      * principal is recorded as an {@see ActorType::OrganizationMember}. That binding is what
      * gets restored on exit.
      */
-    public function startAsMembership(Request $request, string $memberId, string $subjectId, string $orgId, string $reason): void
+    public function startAsMembership(Request $request, string $actorSubjectId, string $subjectId, string $orgId, string $reason): void
     {
         // The step-up does not travel across an impersonation boundary in either
         // direction. Entering, the confirmation belongs to the operator and not to the
@@ -149,7 +151,7 @@ final class Impersonation
 
         $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
             actorType: ActorType::OrganizationMember,
-            operator: $memberId,
+            operator: $actorSubjectId,
             subject: $subjectId,
             organizationId: $orgId,
             environmentKey: is_string($env) && $env !== '' ? $env : null,
@@ -161,9 +163,9 @@ final class Impersonation
         $this->platformAuth->establish($request, $subjectId, ['impersonation'], $orgId);
 
         $this->audit->record(new AuditEvent(
-            action: 'account.impersonation_started',
+            action: 'organization.impersonation_started',
             actorType: ActorType::OrganizationMember,
-            actorId: $memberId,
+            actorId: $actorSubjectId,
             organizationId: $orgId,
             targetType: 'user',
             targetId: $subjectId,
@@ -193,7 +195,7 @@ final class Impersonation
         $isMembership = $marker->isMembership();
 
         $this->audit->record(new AuditEvent(
-            action: $isMembership ? 'account.impersonation_ended' : 'platform.impersonation_ended',
+            action: $isMembership ? 'organization.impersonation_ended' : 'platform.impersonation_ended',
             actorType: $marker->actorType,
             actorId: $marker->operator,
             organizationId: $marker->organizationId,
@@ -222,19 +224,26 @@ final class Impersonation
         // re-pin the selection it was working under — the environment an admin session is
         // anchored to, the plane an operator had the console aimed at.
         if ($isMembership) {
-            // The acting person is resolved FRESH from the member id captured at start,
-            // never carried in the marker. A member removed (or unlinked) while the
-            // impersonation was running restores nothing: they come back to the sign-in
-            // door, not to a live control-plane session.
-            // The marker holds the SUBJECT id directly now. It used to hold a member row
+            // The marker holds the acting person's SUBJECT id. It used to hold a member row
             // id that had to be resolved back to a subject; a membership is not an identity,
-            // so there is nothing left to resolve.
+            // so there is nothing left to resolve — the id in the marker names a session
+            // directly.
             $subjectId = $marker->operator;
 
-            // The anchor goes back only if the identity did. An anchor without a session
-            // authenticates nobody, but leaving one behind for whoever holds the browser
-            // next is exactly the sort of half-restored state this method exists to avoid.
-            if ($this->resumePrincipal($request, $marker, $subjectId) && $marker->environmentKey !== null) {
+            // …but the AUTHORITY is still re-checked, and that is the half the id change
+            // must not quietly drop. A membership removed while the impersonation was
+            // running restores nothing: they come back to the sign-in door, not to a live
+            // control-plane session. Re-read rather than trusted from the marker, because
+            // the whole window is time in which it can have gone.
+            $stillAMember = $this->platformRoot->run(
+                fn (): bool => $this->memberships->forUser($subjectId)->isNotEmpty(),
+            ) === true;
+
+            // The anchor goes back only if the identity AND the authority did. An anchor
+            // without a session authenticates nobody, but leaving one behind for whoever
+            // holds the browser next is exactly the sort of half-restored state this method
+            // exists to avoid.
+            if ($stillAMember && $this->resumePrincipal($request, $marker, $subjectId) && $marker->environmentKey !== null) {
                 $request->session()->put(EnvironmentAdminAuth::ENV_KEY, $marker->environmentKey);
             }
         } else {

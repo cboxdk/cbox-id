@@ -91,7 +91,12 @@ it('signup sends an email-verification link, and the link verifies the address',
     $subjectId = app(Subjects::class)->findByEmail('newbie@acme.test')->id;
     User::query()->whereKey($subjectId)->update(['email_verified_at' => null]);
 
-    $this->get('/verify-email/'.$raw)->assertRedirect(route('login'));
+    // …to PROJECTS, not to the sign-in page. Signup establishes the session before the mail
+    // goes out, so by the time the link is clicked there is one — and the controller lands a
+    // signed-in person where they were going. It used to land on `login` because the session
+    // it looked for was the subject's while signup wrote an account-plane one; there is one
+    // session now, so the two halves agree.
+    $this->get('/verify-email/'.$raw)->assertRedirect(route('projects'));
 
     expect(User::query()->whereKey($subjectId)->value('email_verified_at'))->not->toBeNull();
 });

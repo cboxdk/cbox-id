@@ -147,7 +147,10 @@ it('starts an env-admin impersonation of a member (redirect + marker)', function
 
     $marker = session('cbox.impersonation');
     expect($marker['subject'])->toBe($user->id)
-        ->and($marker['operator'])->toBe($member->id)
+        // The acting admin's SUBJECT id: the marker records who is impersonating, and on
+        // exit that identity is resolved back into a session — which a membership row id
+        // cannot name.
+        ->and($marker['operator'])->toBe($member->user_id)
         ->and($marker['actor_type'])->toBe('organization_member');
 });
 
