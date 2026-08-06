@@ -7,11 +7,11 @@ use App\Mail\MagicLinkMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\MailLinks;
 use App\Platform\TrustedHosts;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -151,16 +151,16 @@ it('refuses a signed invitation link replayed with a foreign Host', function ():
     // token in the path rather than a signature over the URL.
     poisonRequestHost('http://evil.example/account-members');
 
-    $invited = app(Memberships::class)
-        ->invite((string) $account->organization->id, 'invitee@acme.example', MembershipRole::Admin);
+    $invited = app(PlatformRoot::class)->run(fn () => app(Invitations::class)
+        ->invite((string) $account->organization->id, 'invitee@acme.example', MembershipRole::Admin));
 
     $url = app(MailLinks::class)->temporarySignedRoute(
         'organization.invite.accept',
         now()->addDays(7),
-        ['member' => $invited->id],
+        ['token' => $invited->token],
     );
 
-    Mail::to($invited->email)->send(new AccountInviteMail('Acme', 'Owner', $url));
+    Mail::to('invitee@acme.example')->send(new AccountInviteMail('Acme', 'Owner', $url));
 
     expect($url)->not->toContain('evil.example')
         ->and($url)->toStartWith((string) config('app.url'));

@@ -458,9 +458,19 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         return VerifiedDomain::query()->whereKey($id)->where('organization_id', $this->org()->id)->exists();
     }
 
+    /**
+     * WHO is acting — the SUBJECT id, which is the id the audit trail is keyed on.
+     *
+     * It used to be the member row's id, and after the fold it was briefly the MEMBERSHIP
+     * id: both are row ids in a table that is not `users`, so an entry written here
+     * resolved against a different id space than one written by the console. That is the
+     * exact failure {@see ConsoleScope::actorId()} was created to end — half the ids in an
+     * access-review trail resolving against one table and half against another, with
+     * nothing recording which.
+     */
     private function actorId(): string
     {
-        return app(EnvironmentAdminAuth::class)->membership()->id ?? '';
+        return app(EnvironmentAdminAuth::class)->subjectId() ?? '';
     }
 
     /**

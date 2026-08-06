@@ -122,11 +122,19 @@ it('refuses a crafted hook point instead of throwing', function (): void {
 });
 
 /**
- * Account-member emails are unique across EVERY account, so the old "that email already
- * belongs to a member" told an admin of one account whether an address belonged to
- * another. Both cases now answer identically.
+ * THE ORACLE IS GONE RATHER THAN CLOSED, and that is the honest way to record it.
+ *
+ * Account-member emails were unique across EVERY account, so "that email already belongs to
+ * a member" told an admin of one account whether an address belonged to another. The fix
+ * then was to answer identically in both cases.
+ *
+ * A person can now legitimately hold memberships in several organizations — the same human
+ * may own one and be a viewer in another — so an address belonging elsewhere is not a
+ * reason to refuse anything, and the invitation simply succeeds. There is no question for a
+ * probe to ask: the only refusal left is "already a member HERE", which is a fact the
+ * roster on the same page already shows them.
  */
-it('does not tell one account whether an email belongs to another', function (): void {
+it('refuses only an email that is already a member here, and discloses nothing else', function (): void {
     platformRootEnvironment();
 
     $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
@@ -145,22 +153,23 @@ it('does not tell one account whether an email belongs to another', function ():
 
     signInAsMember($mine->owner->id);
 
-    $probeOther = Volt::test('console.members')
+    // Somebody else's owner: a legitimate invitation, accepted without comment. Refusing
+    // it would BE the oracle — it would confirm that the address is known to the platform.
+    Volt::test('console.members')
         ->set('inviteEmail', 'owner@rival.example')
         ->set('inviteRole', 'admin')
         ->call('invite')
-        ->assertHasErrors('inviteEmail');
+        ->assertHasNoErrors();
 
+    // Somebody already on THIS roster: refused, and the refusal discloses nothing the page
+    // is not already showing.
     $probeOwn = Volt::test('console.members')
         ->set('inviteEmail', 'owner@acme.example')
         ->set('inviteRole', 'admin')
         ->call('invite')
         ->assertHasErrors('inviteEmail');
 
-    // The distinguishing detail is what mattered: identical wording either way.
-    expect($probeOther->errors()->first('inviteEmail'))
-        ->toBe($probeOwn->errors()->first('inviteEmail'))
-        ->and($probeOther->errors()->first('inviteEmail'))->not->toContain('member');
+    expect($probeOwn->errors()->first('inviteEmail'))->not->toContain('account');
 });
 
 /**
