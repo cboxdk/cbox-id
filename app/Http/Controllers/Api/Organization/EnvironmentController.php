@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api\Account;
+namespace App\Http\Controllers\Api\Organization;
 
 use App\Http\Controllers\Controller;
 use App\Platform\OrganizationApiContext;
@@ -10,13 +10,14 @@ use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Account plane › environments. Lists and provisions the environments an account
+ * Organization plane › environments. Lists and provisions the environments an organization
  * owns. Thin: it maps HTTP to the {@see TenantProvisioner} and the Environment
  * model, nothing more.
  */
@@ -27,13 +28,13 @@ final class EnvironmentController extends Controller
         $limit = min(100, max(1, $request->integer('limit', 50)));
 
         $environments = Environment::query()
-            ->where('account_id', $context->accountId())
+            ->whereIn('project_id', Project::query()->where('organization_id', (string) $context->organizationId())->pluck('id'))
             ->orderBy('created_at')
             ->limit($limit + 1)
             ->get();
 
         // A consistent envelope: data + meta on every list, with a simple
-        // has-more/next-cursor signal (account environments are plan-bounded, so a
+        // has-more/next-cursor signal (an organization's environments are plan-bounded, so a
         // limit is plenty — the shape stays uniform with the larger env-plane lists).
         $hasMore = $environments->count() > $limit;
 
@@ -43,7 +44,7 @@ final class EnvironmentController extends Controller
         ]);
     }
 
-    public function store(Request $request, OrganizationApiContext $context, TenantProvisioner $provisioner, Projects $projects): JsonResponse
+    public function store(Request $request, OrganizationApiContext $context, TenantProvisioner $provisioner, OrganizationProjects $projects): JsonResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -51,19 +52,21 @@ final class EnvironmentController extends Controller
             'project_id' => ['sometimes', 'string'],
         ]);
 
-        $account = $context->key()?->account;
+        $organizationId = $context->organizationId();
 
-        if ($account === null) {
+        if ($organizationId === null) {
             return response()->json(['error' => 'not_found', 'message' => 'Account not found.'], 404);
         }
 
         // Environments belong to a project (the billing anchor). Target the requested
-        // project, or fall back to the account's first project for back-compat with
+        // project, or fall back to the organization's first project for back-compat with
         // callers that predate the project layer.
         $projectId = $request->string('project_id')->toString();
-        $project = $projectId !== '' ? $projects->find($projectId) : $projects->forOrganization($account->id)->first();
+        $project = $projectId !== ''
+            ? $projects->forOrganization($organizationId)->firstWhere('id', $projectId)
+            : $projects->forOrganization($organizationId)->first();
 
-        if ($project === null || $project->account_id !== $account->id) {
+        if ($project === null || $project->organization_id !== $organizationId) {
             return response()->json(['error' => 'not_found', 'message' => 'Project not found.'], 404);
         }
 

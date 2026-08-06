@@ -65,13 +65,13 @@ final class ConsoleServiceProvider extends ServiceProvider
         // vanishes by the same rule that already drops an area a module left empty.
         $nav->area('identity-platform', 'Identity platform', 'layers', 15)
             ->page('projects', 'Projects', feature: 'account.projects', order: 10)
-            ->page('account-members', 'Account members', feature: 'account.members', order: 20)
+            ->page('members', 'Account members', feature: 'account.members', order: 20)
             ->page('api-keys', 'API keys', feature: 'account.manage', order: 30)
             ->page('environment-keys', 'Environment keys', feature: 'account.environments', order: 40)
             ->page('environment-domains', 'Environment domains', feature: 'account.environments', order: 50)
-            ->page('account-activity', 'Account activity', feature: 'account.members', order: 60)
+            ->page('activity', 'Account activity', feature: 'account.members', order: 60)
             ->page('billing', 'Billing', feature: 'account.billing', order: 70)
-            ->page('account-settings', 'Account settings', feature: 'account.manage', order: 80);
+            ->page('organization-settings', 'Account settings', feature: 'account.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.

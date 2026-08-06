@@ -327,13 +327,13 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Open an environment → signed handoff → its own admin console (no second login).
     Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
 
-    Volt::route('/account-members', 'console.account-members')->name('account-members');
+    Volt::route('/members', 'console.members')->name('members');
     Volt::route('/api-keys', 'console.api-keys')->name('api-keys');
     Volt::route('/environment-keys', 'console.environment-keys')->name('environment-keys');
     Volt::route('/environment-domains', 'console.environment-domains')->name('environment-domains');
-    Volt::route('/account-activity', 'console.account-activity')->name('account-activity');
+    Volt::route('/activity', 'console.activity')->name('activity');
     Volt::route('/billing', 'console.billing')->name('billing');
-    Volt::route('/account-settings', 'console.account-settings')->name('account-settings');
+    Volt::route('/organization-settings', 'console.organization-settings')->name('organization-settings');
     // Single sign-on: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — a connection
     // URL is something you send to whoever runs the identity provider — and this plane
@@ -759,10 +759,10 @@ Route::prefix('platform')->group(function (): void {
 Route::middleware('plane:console')->group(function (): void {
     // Guest-accessible but gated by a signed URL (the token IS the signature; no token
     // table needed). The invitee sets their password and is signed in. The component
-    // locks the member id so it cannot be swapped after the signed load.
-    Volt::route('/invite/{member}/accept', 'auth.accept-account-invite')
+    // locks the token so it cannot be swapped after the signed load.
+    Volt::route('/invite/{token}/accept', 'auth.accept-invite')
         ->middleware('signed')
-        ->name('account.invite.accept');
+        ->name('organization.invite.accept');
 });
 
 /*

@@ -100,13 +100,13 @@ class ConsoleParityHealthCheck implements HealthCheck
      */
     private const ORGANIZATION_ONLY = [
         'projects',
-        'account-members',
+        'members',
         'api-keys',
         'environment-keys',
         'environment-domains',
-        'account-activity',
+        'activity',
         'billing',
-        'account-settings',
+        'organization-settings',
     ];
 
     public function __construct(private readonly ConsolePages $pages) {}

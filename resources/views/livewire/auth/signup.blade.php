@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Mail\EmailVerificationMail;
-use App\Platform\AccountAuth;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
@@ -21,6 +20,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Mail;
@@ -139,23 +139,21 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         // environment it stays a Tier-1 join, which is what keeps IdP-creation a
         // root-only capability that never recurses into a customer's environment.
         if ($this->provisionsOwnIdp(app(EnvironmentContext::class))) {
-            $members = app(Memberships::class);
-
-            // Account-member emails are globally unique — one email, one root login.
-            if ($members->findByEmail($this->email) !== null) {
+            // Subject emails are globally unique in the root — one email, one login.
+            if (app(PlatformRoot::class)->run(fn () => $subjects->findByEmail($this->email)) !== null) {
                 $this->addError('email', 'An account with this email already exists.');
 
                 return;
             }
 
             try {
-                // NOTE what this does NOT create: the environment. A self-serve signup
-                // gets its account, its home organization, its owner and its first
-                // project — but the routable, key-bearing IdP is released only once the
-                // owner clicks the link in their inbox (see SignupProvisioner). That is
-                // what makes a bot signup worthless rather than merely inconvenient.
+                // NOTE what this does NOT create: the environment. A self-serve signup gets
+                // its organization, its owner and its first project — but the routable,
+                // key-bearing IdP is released only once the owner clicks the link in their
+                // inbox (see SignupProvisioner). That is what makes a bot signup worthless
+                // rather than merely inconvenient.
                 $result = app(SignupProvisioner::class)->provisionPending(new TenantBlueprint(
-                    accountName: trim($this->organization),
+                    organizationName: trim($this->organization),
                     ownerEmail: $this->email,
                     ownerName: trim($this->name) ?: null,
                     ownerPassword: $this->password,
@@ -174,23 +172,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
                 return;
             }
 
-            $subjectId = $result->member->subject_id;
+            // The owner is a subject from the moment they are provisioned — the bootstrap
+            // branch that used to live here (no platform root, so no subject to bind a
+            // token to) is gone with it: SignupProvisioner refuses without a root rather
+            // than producing half a customer.
+            $token = app(PlatformRoot::class)->run(
+                fn (): string => app(EmailVerification::class)->issue($result->owner->id, $this->email),
+            );
 
-            if (is_string($subjectId) && $subjectId !== '') {
-                $token = app(EmailVerification::class)->issue($subjectId, $this->email);
+            if (is_string($token)) {
                 Mail::to($this->email)->send(new EmailVerificationMail($links->route('verification.verify', $token)));
-            } else {
-                // No platform root yet (the first-install bootstrap window) — the member
-                // has no subject, so no verification token can be bound to them. Release
-                // the environment immediately rather than stranding the install behind a
-                // link that can never be issued.
-                app(SignupProvisioner::class)->releaseEnvironment($result->member);
             }
 
-            // The buyer administers every environment they own from the root
-            // workspace — sign them straight in there, not into an environment's
-            // own domain. This is the account plane's single sign-in.
-            app(AccountAuth::class)->establish($result->member->id);
+            // The buyer administers every environment they own from the root console —
+            // sign them straight in there, not into an environment's own domain.
+            app(PlatformRoot::class)->run(
+                fn () => app(PlatformAuth::class)->establish(request(), $result->owner->id, ['pwd']),
+            );
             session()->flash('status', 'Workspace created. Confirm your email to finish setting up your first environment.');
             $this->redirect(route('projects'), navigate: false);
 
