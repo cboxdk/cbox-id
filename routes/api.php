@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AppManifestController;
+use App\Http\Controllers\Api\Environment\OrganizationController;
+use App\Http\Controllers\Api\Environment\UserController;
 use App\Http\Controllers\Api\Organization\CurrentOrganizationController;
 use App\Http\Controllers\Api\Organization\EnvironmentController;
 use App\Http\Controllers\Api\Organization\MemberController;
 use App\Http\Controllers\Api\Organization\ProjectController;
-use App\Http\Controllers\Api\AppManifestController;
-use App\Http\Controllers\Api\Environment\OrganizationController;
-use App\Http\Controllers\Api\Environment\UserController;
 use App\Http\Controllers\Api\VaultController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Illuminate\Support\Facades\Route;
@@ -92,7 +92,7 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
     ->group(function (): void {
         Route::get('organizations', [OrganizationController::class, 'index'])->middleware('env.api:organizations:read');
         Route::post('organizations', [OrganizationController::class, 'store'])->middleware('env.api:organizations:write');
-        Route::get('organizations/{id}', [CurrentOrganizationController::class, 'show'])->middleware('env.api:organizations:read');
+        Route::get('organizations/{id}', [OrganizationController::class, 'show'])->middleware('env.api:organizations:read');
 
         Route::get('users', [UserController::class, 'index'])->middleware('env.api:users:read');
         Route::post('users', [UserController::class, 'store'])->middleware('env.api:users:write');

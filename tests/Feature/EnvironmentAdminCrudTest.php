@@ -148,7 +148,7 @@ it('starts an env-admin impersonation of a member (redirect + marker)', function
     $marker = session('cbox.impersonation');
     expect($marker['subject'])->toBe($user->id)
         ->and($marker['operator'])->toBe($member->id)
-        ->and($marker['actor_type'])->toBe('account_member');
+        ->and($marker['actor_type'])->toBe('organization_member');
 });
 
 it('expires an env-admin impersonation back to the env console (not the operator one)', function (): void {

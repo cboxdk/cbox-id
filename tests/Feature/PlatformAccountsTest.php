@@ -8,6 +8,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,9 +95,13 @@ it('records both directions on the system chain, as the operator', function (): 
         ->and($entries[1]->action)->toBe('organization.reactivated')
         ->and($entries[1]->context['status'] ?? null)->toBe('active');
 
-    // The account's own chain is now empty for these actions — the gap this documents.
-    expect(AuditEntry::query()->where('scope', $account->id)
-        ->whereIn('action', ['organization.suspended', 'organization.reactivated'])->count())->toBe(0);
+    // THE GAP THIS USED TO DOCUMENT IS CLOSED. It asserted that the ACCOUNT's own chain
+    // held none of these entries — a suspension was recorded on the operator's chain and
+    // nowhere the customer could ever read it, because an account was not an organization
+    // and the audit scope is an organization id. A customer IS an organization now, so the
+    // entries land on the chain their own console reads.
+    expect(app(PlatformRoot::class)->run(fn (): int => AuditEntry::query()->where('scope', $account->id)
+        ->whereIn('action', ['organization.suspended', 'organization.reactivated'])->count()))->toBe(2);
 });
 
 it('refuses the screen, and the toggle, without operator authority', function (): void {
