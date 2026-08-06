@@ -178,19 +178,19 @@ environment's host:
   `/sso/saml/{connection}/login`, `/sso/saml/{connection}/slo`,
   `/sso/oidc/{connection}/redirect`, `/sso/oidc/{connection}/callback`. These are the
   *opposite* role — this server as the relying party consuming someone else's assertion —
-  and the account plane genuinely uses them: an account's own organization lives in the
+  and the management plane genuinely uses them: an account's own organization lives in the
   platform-root environment, so home-realm discovery on `/workspace/login` or `/signup`
   sends the member to a connection URL **on the host they are already standing on**.
   Gating them locked an account org with enforced SSO out of its own workspace. The
   boundary here is the connection's environment scope, which holds on either plane, not
   the host.
-- The account plane itself: `/signup`, `/workspace/*` and the account-management API
-  (`/api/v1/account/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
+- The management plane itself: `/signup`, `/console/*` and the organization-management API
+  (`/api/v1/organization/*`, `/api/v1/openapi.yaml`). The environment-scoped management API is
   a different thing and is served on an environment's own host.
 - **The console** — `/login`, `/dashboard`, `/account` and every page behind them. The
   apex is a tenant, and its subjects sign in there. What it does *not* serve is the
   environment-admin door `/admin/*` (`plane:environment`), which is how an account reaches
-  *into* an environment from the account plane and so has no meaning on the account plane
+  *into* an environment from the management plane and so has no meaning on the management plane
   itself. Only under the apex's own name: an unmapped host under `base_domain` resolves to
   the platform root, and the console gate matches the host rather than the resolved
   environment so that a wildcard name does not get a working sign-in form.
@@ -228,7 +228,7 @@ your deployment.**
 2. Make sure the platform-root environment is the one flagged `is_default` in the
    database. That row — not `CBOX_ID_ENVIRONMENT_DEFAULT` — is what both the request's
    environment resolution and the plane gate read first. If the two disagree,
-   `plane:account` 404s on the host that actually is the account root.
+   `plane:console` 404s on the host that actually is the account root.
 3. Route the apex **and** the tenant hosts (a wildcard for `*.{base_domain}`, plus any
    custom domains) to the same app — the gate does the splitting, not your ingress.
 4. Make sure TLS covers the wildcard/custom hosts, and that every client is configured

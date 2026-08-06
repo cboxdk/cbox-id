@@ -139,7 +139,7 @@ it('does not redirect a prompt=none authorization request', function (): void {
  * This used to be a separate gate, a separate change page and a separate exemption list,
  * because the account console was a plane of its own; the hold had to be taught about it
  * and the two lists drifted. There is one of each now, and the credential of record was
- * always the member's SUBJECT — see docs/core-concepts/unified-account-identity.md — which
+ * always the member's SUBJECT — see docs/core-concepts/unified-identity.md — which
  * is why the requirement is read and cleared inside the platform root. Kept as its own
  * test because "a member is held too" is the claim, and it is the claim that would rot
  * silently if nothing asserted it.

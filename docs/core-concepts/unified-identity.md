@@ -1,24 +1,31 @@
 ---
-title: Unified account identity
+title: Unified identity
 weight: 30
-description: Why account members become ordinary subjects in the platform-root environment instead of a second, parallel credential store.
+description: Why a customer's people are ordinary subjects in the platform-root environment instead of a second, parallel credential store.
 ---
 
-# Unified account identity
+# Unified identity
 
-Account members stop being a separate credential store and become ordinary **subjects**
-in the platform-root environment (`is_default` — "tenant 1"). Each **account** is
-represented as an **organization** inside that environment.
+A customer's people are ordinary **subjects** in the platform-root environment
+(`is_default` — "tenant 1"), and the customer itself is an **organization** in that
+environment.
 
-The account itself does not go away: it remains the ownership and billing aggregate that
-owns projects, holds the environment allowance, and anchors the plan. What it loses is
-its own parallel way of authenticating people.
+> **This page is a design record, and its story finished.** It was written while the
+> account plane still existed and was being re-pointed at the subject stack — so it argues
+> for a change, names what it deliberately kept, and lists what had not moved yet. All of
+> it has moved: the account row, its member table, its role enum and its session are gone,
+> and a customer is an organization whose people hold memberships of it. What remains
+> worth reading is WHY, because the same argument is the reason not to grow a second
+> credential store again. Where the text below says a thing "stays" or "does not go away",
+> read it as what was true at the time; the current shape is
+> [customers, projects & the platform plane](../../../laravel-id/docs/core-concepts/customers-and-projects.md)
+> in the framework.
 
 ## The problem this solves
 
 The platform authenticated people two different ways.
 
-| | Tenant plane | Account plane (before) |
+| | Tenant plane | Account plane (as it was) |
 |---|---|---|
 | Identity | `Identity\Models\User` (subject) | `Platform\Models\AccountMember` |
 | Session bridge | `PlatformAuth` | `AccountAuth` — a full parallel implementation (later: no session of its own) |
@@ -29,7 +36,7 @@ The platform authenticated people two different ways.
 | Administrative password reset | yes | partial |
 
 Everything in the right-hand column that says "none" is a feature the left-hand column
-already has. Adding SSO to the account plane under the old model meant building
+already has. Adding SSO to the management plane under the old model meant building
 account-scoped connections, federated-identity linkage for `AccountMember`, and
 home-realm discovery over account domains — and then doing the same again for passkeys,
 MFA and the password policy. The identity stack would exist twice.
@@ -111,6 +118,7 @@ kind as the console's organization picker and an operator's target environment.
   ambiguity about which account a member belongs to.
 - **`AccountRole` stays a typed enum** on the membership rather than becoming RBAC roles.
   Five capabilities, seven call sites — the churn of dissolving it is not repaid.
+  *(It did not survive: with one row there is one role vocabulary, `MembershipRole`.)*
 - **Clean cut, no data migration.** There are no external consumers, so the platform-root
   environment and its accounts are rebuilt rather than migrated. This is the one decision
   that stops being available the moment someone else runs this software.
@@ -124,13 +132,14 @@ kind as the console's organization picker and an operator's target environment.
 
   The account session was kept distinct at first, on the reasoning that the account host
   must not mint a credential for a plane it does not serve. That reasoning was about the
-  HOST, and the host bulkheads (`plane:account` / `plane:issuer`) are what enforce it —
+  HOST, and the host bulkheads (`plane:console` / `plane:issuer`) are what enforce it —
   so the distinct session bought nothing and cost every seam between the two stores: an
   operator with no membership could not sign in at all, a gate that asked the wrong store
   looped silently, and three separate places had to be asked "who is this?". There is one
-  session. `AccountAuth` is now the account plane's *view* of it, and membership is a
-  lookup: `account_members.subject_id` is unique, so which account a session belongs to
-  has exactly one answer and the browser cannot carry a different one.
+  session. `AccountAuth` was the management plane's *view* of it, and membership a lookup
+  off it — and once the view was all that remained, it was deleted too: `CurrentUser`
+  already answered who is acting, and the middleware already refused an organization the
+  subject is not a member of.
 
 - The same collapse reaches `EnvironmentAdminAuth`. It held the administering subject's
   id under a key of its own, which was the same duplication; an admin session is now the
@@ -141,7 +150,7 @@ kind as the console's organization picker and an operator's target environment.
   *which host serves which surface*. `PlaneResolver` answers each of those questions once,
   for both the route gate and the post-authentication landings, so the two can never
   disagree about where a login is allowed to land. There are four such questions, not one:
-  the account plane (`plane:account`, the root alone), the console (`plane:console`, every
+  the management plane (`plane:console`, the root alone), the console (`plane:console`, every
   host — the root is a tenant and its subjects sign in there), the issuer surface
   (`plane:issuer`, never the root) and the environment-admin door (`plane:environment`,
   never the root). The console and the issuer surface were a single plane named `subject`

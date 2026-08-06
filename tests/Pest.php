@@ -104,7 +104,7 @@ Testable::macro('assertRenderedNotRedirected', function (): Testable {
  * test. Provision accounts AFTER calling this: an account provisioned with no root is in
  * the first-install bootstrap window, where its members have no subject yet.
  *
- * See docs/core-concepts/unified-account-identity.md.
+ * See docs/core-concepts/unified-identity.md.
  */
 function platformRootEnvironment(): Environment
 {

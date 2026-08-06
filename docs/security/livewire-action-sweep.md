@@ -54,7 +54,7 @@ version told the next reader nothing about which tree it described.
 | Auth (`livewire/auth/**`) | 1 | `CurrentUser::id()` — the multi-account switcher acts only on accounts held by this browser | scoped |
 | Shared console (`livewire/console/**`) | 11 | `ConsoleScope` decides the plane from the session and answers `requireOrganizationId()`; on the environment plane the picked org is re-validated against `availableOrganizations()` on **every** read | all scoped |
 | Environment (`livewire/environment/**`) | 16 | env-admin is the operator *of that environment*, re-checked in `boot()` so it runs on every action; `BelongsToEnvironment` is the outer boundary, org predicates inside it | all scoped |
-| Workspace / account (`livewire/workspace/**`) | 8 | `AccountAuth::current()->account_id`. **These models have no global scope** — they sit above tenancy — so the predicate has to be explicit | 5 scoped, **3 weak** |
+| Workspace / account (`livewire/workspace/**`) | 8 | `ConsoleScope::organizationId()`. **These models have no global scope** — they sit above tenancy — so the predicate has to be explicit | 5 scoped, **3 weak** |
 | Platform (`livewire/platform/**`) | 6 | deployment authority — unscoped lookups are intentional; every component's `boot()` is `abort_unless($scope->isPlatformOperator(), 404)` | by design |
 | Portal (`livewire/portal/**`) | 3 | single-use scoped session + `guardFeature()` + `ownedDomain()`; the org id comes from the portal session, never from input | all scoped |
 | Modules (`modules/*/…/livewire/**`) | 1 | `where('subject_id', CurrentUser::id())` — a device is removed by its owner or by nobody | scoped |

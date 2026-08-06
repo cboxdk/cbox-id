@@ -26,7 +26,7 @@ use Illuminate\Http\Request;
  * it signing in is an ordinary sign-in. What their organization owns is asked by
  * {@see Console\ConsoleScope::accountRole()} on every page that depends on it.
  *
- * See docs/core-concepts/unified-account-identity.md.
+ * See docs/core-concepts/unified-identity.md.
  */
 final class FederatedLanding
 {

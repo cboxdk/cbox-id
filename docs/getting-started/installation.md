@@ -87,7 +87,7 @@ problems — read the output before retrying.
 
 - **Single-tenant** (the default, and the self-hosted shape): one host, one identity
   provider, no account plane. The single environment *is* the platform root.
-- **Multi-tenant**: an account plane on its own host that provisions IdPs, with
+- **Multi-tenant**: a management plane on its own host that provisions IdPs, with
   tenant environments on their own hosts. The install creates the platform root plus
   the first account and its environment.
 
