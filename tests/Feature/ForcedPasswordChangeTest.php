@@ -148,7 +148,7 @@ it('holds the Identity platform until an account member replaces a temporary pas
     platformRootEnvironment();
 
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

@@ -75,7 +75,7 @@ final class ImpersonationController extends Controller
      */
     public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes): RedirectResponse
     {
-        $memberId = $auth->current()?->id;
+        $memberId = $auth->membership()?->id;
         abort_if($memberId === null, 403);
 
         $orgId = $request->string('organization')->toString();

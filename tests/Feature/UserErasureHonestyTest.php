@@ -38,7 +38,7 @@ if (! function_exists('erasureConsoleSetup')) {
         platformRootEnvironment();
 
         $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: 'erasure-owner@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',

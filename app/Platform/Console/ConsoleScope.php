@@ -623,7 +623,9 @@ class ConsoleScope
 
         $membership = $this->environmentAdmin->membership();
 
-        return $membership?->organization_id === $organizationId ? $membership?->role : null;
+        return $membership !== null && $membership->organization_id === $organizationId
+            ? $membership->role
+            : null;
     }
 
     /**
@@ -637,18 +639,16 @@ class ConsoleScope
      *
      * The separation is the point of the seam. While the account plane owned its own role
      * column the two questions had the same answer, so thirty call sites asked the enum
-     * directly and nothing was lost. Once an account IS an organization they stop being
-     * the same question: the capability has to be derived from a membership plus a
-     * refinement the organization plane cannot express, and a call site that asked the
-     * enum would keep answering from the old column without ever going red.
+     * directly and nothing was lost. Now that an account IS an organization they are not the
+     * same question: the capability is derived from a membership plus refinements the role
+     * enum does not express, and a call site that asked the enum would have kept answering
+     * from the old column without ever going red.
      */
     public function capabilities(): ?OrganizationCapabilities
     {
-        if ($this->membershipRole() === null) {
-            return null;
-        }
+        $role = $this->membershipRole();
 
-        return OrganizationCapabilities::of($this->membershipRole() ?? MembershipRole::Viewer);
+        return $role === null ? null : OrganizationCapabilities::of($role);
     }
 
     /** Whether the organization being administered owns identity providers of its own. */

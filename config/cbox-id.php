@@ -214,7 +214,7 @@ return [
          *
          * Unset falls back to the first base domain, so the subdomain shape needs nothing.
          */
-        'account_host' => env('CBOX_ID_ACCOUNT_HOST'),
+        'account_host' => env('CBOX_ID_CONSOLE_HOST'),
     ],
 
     'crypto' => [

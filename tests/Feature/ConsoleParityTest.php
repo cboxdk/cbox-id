@@ -90,7 +90,7 @@ function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
     platformRootEnvironment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'parity-'.$slug.'@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

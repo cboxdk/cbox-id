@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Platform\AccountAuth;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -32,38 +32,36 @@ final class EnvironmentHandoffController extends Controller
      */
     public function openEnvironment(
         string $environment,
-        AccountAuth $auth,
+        ConsoleScope $scope,
         Memberships $members,
         EnvironmentAdminHandoff $handoff,
     ): RedirectResponse {
-        $member = $auth->current();
+        $organizationId = $scope->organizationId();
+        $subjectId = $scope->actorId();
 
-        if ($member === null) {
+        if ($organizationId === null || $subjectId === '') {
             return redirect()->route('login');
         }
 
         // Fail before a credential is minted: only owner/admin/developer administer
-        // environments. A viewer/billing member can reach an environment but must not
-        // be handed a live env-admin token for it (the anti-escalation gate; the
-        // env-admin session guard re-checks the same capability on redemption).
+        // environments. A viewer can reach an environment but must not be handed a live
+        // env-admin token for it (the anti-escalation gate; the env-admin session guard
+        // re-checks the same capability on redemption).
         abort_unless(
-            OrganizationCapabilities::ofMembershipRole($member->role)->canManageEnvironments()
-            && in_array($environment, $members->accessibleEnvironmentIds($member), true),
+            $scope->capabilities()?->canManageEnvironments() === true
+            && in_array($environment, $members->accessibleEnvironmentIds($organizationId, $subjectId), true),
             403,
         );
 
-        // …and a member with no platform-root subject has no control-plane identity to
-        // hand off. That is the first-install bootstrap window only; refusing is the
-        // safe reading, because the alternative is minting a token naming an identity
-        // the target environment cannot resolve.
-        $subjectId = $member->subject_id;
-        abort_if($subjectId === null, 403);
+        // The "member with no platform-root subject" branch that used to sit here is gone
+        // with the row that made it possible. A member IS a subject: the actor id above is
+        // the subject id, so there is no second identity that might be missing.
 
         $env = Environment::query()->find($environment);
         abort_if($env === null, 404);
 
-        // The handoff carries the SUBJECT — the credential of record. The account
-        // membership behind it is re-resolved on redemption, not carried in the token.
+        // The handoff carries the SUBJECT — the credential of record. The membership behind
+        // it is re-resolved on redemption, not carried in the token.
         $token = $handoff->mint($subjectId, $env->id);
 
         return redirect()->away('https://'.$this->host($env).'/admin/handoff?token='.urlencode($token));

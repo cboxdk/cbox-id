@@ -33,7 +33,7 @@ if (! function_exists('provisionAccount')) {
         platformRootEnvironment();
 
         $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',
@@ -51,7 +51,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
     ['member' => $owner] = provisionAccount('owner@acme.example');
     signInAsMember($owner);
 
-    Volt::test('console.account-members')
+    Volt::test('console.members')
         ->set('inviteEmail', 'new@acme.example')
         ->set('inviteName', 'New Person')
         ->call('invite')
@@ -69,7 +69,7 @@ it('rejects inviting an email that already belongs to a member', function (): vo
     ['member' => $owner] = provisionAccount('owner@acme.example');
     signInAsMember($owner);
 
-    Volt::test('console.account-members')
+    Volt::test('console.members')
         ->set('inviteEmail', 'owner@acme.example')
         ->call('invite')
         ->assertHasErrors('inviteEmail');
@@ -88,10 +88,10 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
     ['account' => $account] = provisionAccount();
     $invited = app(Memberships::class)->invite($account->id, 'new@acme.example', MembershipRole::Developer, 'New');
 
-    $url = URL::temporarySignedRoute('account.invite.accept', now()->addDay(), ['member' => $invited->id]);
+    $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['member' => $invited->id]);
     $this->get($url)->assertOk()->assertSee('Accept your invitation');
 
-    Volt::test('auth.accept-account-invite', ['member' => $invited->id])
+    Volt::test('auth.accept-invite', ['member' => $invited->id])
         ->set('password', 'a-strong-unbreached-passphrase')
         ->call('accept')
         ->assertRedirect(route('projects'));
@@ -161,7 +161,7 @@ it('turns away an already-accepted invite (replayed link)', function (): void {
 
     // Re-opening the (still validly-signed) link after acceptance is turned away at
     // the page itself — the member is no longer 'invited'.
-    $url = URL::temporarySignedRoute('account.invite.accept', now()->addDay(), ['member' => $invited->id]);
+    $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['member' => $invited->id]);
     $this->get($url)->assertRedirect(route('login'));
 
     // And the framework's activate() is a no-op on an active member regardless, so

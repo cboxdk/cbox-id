@@ -39,7 +39,7 @@ function craftedEnvAdmin(): void
 {
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -62,7 +62,7 @@ function craftedEnvAdmin(): void
 it('refuses a crafted enum on the sign-in rules form instead of throwing', function (): void {
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -82,7 +82,7 @@ it('refuses a crafted enum on the sign-in rules form instead of throwing', funct
 it('refuses a crafted revocation scope on the admin set-password panel', function (): void {
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -130,14 +130,14 @@ it('does not tell one account whether an email belongs to another', function ():
     platformRootEnvironment();
 
     $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
     app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Rival',
+        organizationName: 'Rival',
         ownerEmail: 'owner@rival.example',
         ownerName: 'Rival Owner',
         ownerPassword: 'another-strong-passphrase',
@@ -145,13 +145,13 @@ it('does not tell one account whether an email belongs to another', function ():
 
     signInAsMember($mine->member);
 
-    $probeOther = Volt::test('console.account-members')
+    $probeOther = Volt::test('console.members')
         ->set('inviteEmail', 'owner@rival.example')
         ->set('inviteRole', 'admin')
         ->call('invite')
         ->assertHasErrors('inviteEmail');
 
-    $probeOwn = Volt::test('console.account-members')
+    $probeOwn = Volt::test('console.members')
         ->set('inviteEmail', 'owner@acme.example')
         ->set('inviteRole', 'admin')
         ->call('invite')

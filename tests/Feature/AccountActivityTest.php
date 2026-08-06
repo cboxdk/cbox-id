@@ -30,7 +30,7 @@ if (! function_exists('provisionAccount')) {
         platformRootDeployment();
 
         $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',
@@ -58,7 +58,7 @@ it('records an account-scoped, hash-chained entry when a member is invited', fun
     // Livewire component (deps are auto-injected) with the owner as the actor.
     signInAsMember($owner);
 
-    Volt::test('console.account-members')
+    Volt::test('console.members')
         ->set('inviteEmail', 'newbie@acme.example')
         ->set('inviteName', 'New Bie')
         ->set('inviteRole', MembershipRole::Admin->value)
@@ -109,7 +109,7 @@ it('renders the activity page for an admin and lists recorded actions', function
         targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
 
     signInAsMember($owner);
-    $this->get(route('account-activity'))
+    $this->get(route('activity'))
         ->assertOk()
         ->assertSee('Account activity')
         ->assertSee('environment created')
@@ -126,6 +126,6 @@ it('refuses the activity page to a member who cannot read members (403)', functi
     $viewer = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
 
     signInAsMember($viewer);
-    $this->get(route('account-activity'))
+    $this->get(route('activity'))
         ->assertForbidden();
 });

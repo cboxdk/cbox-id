@@ -29,7 +29,7 @@ if (! function_exists('provisionAccount')) {
         platformRootEnvironment();
 
         $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',

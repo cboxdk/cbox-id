@@ -180,24 +180,24 @@ final class DatabasePlatformInstaller implements PlatformInstaller
             $tenant = null;
 
             if ($plan->shape->isMultiTenant()) {
-                // Through the package's own provisioner, so the first account is created
-                // by exactly the code path that creates every later one — same home
+                // Through the package's own provisioner, so the first customer is created
+                // by exactly the code path that creates every later one — same
                 // organization, same project + plan allowance, same slug seeding, same
-                // warmed signing key. A bespoke first account would be the one nobody
-                // ever re-tests.
+                // warmed signing key. A bespoke first customer would be the one nobody ever
+                // re-tests.
                 $provisioned = $this->accounts->provision(new TenantBlueprint(
-                    accountName: $plan->accountName,
+                    organizationName: $plan->organizationName,
                     ownerEmail: $plan->operator->email,
                     ownerName: $plan->operator->name,
                     ownerPassword: $plan->operator->password,
                     environmentName: $plan->environmentName,
                 ));
 
-                $account = $provisioned->account;
+                $account = $provisioned->organization;
                 $tenant = $provisioned->environment;
             }
 
-            // The root issues tokens too — it is the account plane's own environment in
+            // The root issues tokens too — it is the management plane's own environment in
             // the SaaS shape, and the whole IdP in the single-tenant one — so its JWKS
             // must answer before the first request rather than on the first failure.
             $this->context->runAs($root, fn (): mixed => $this->keys->activeSigningKey());
@@ -310,17 +310,16 @@ final class DatabasePlatformInstaller implements PlatformInstaller
             // {@see occupancy()} when the database cannot be asked, and never found here.
             PlatformOccupant::Unreadable => false,
             PlatformOccupant::Operator => $this->operators->exists(),
-            PlatformOccupant::Account => Account::query()->exists(),
             PlatformOccupant::Environment => $this->context->withoutScope(
                 static fn (): bool => Environment::query()->where('is_default', false)->exists(),
             ) === true,
             PlatformOccupant::Subject => $this->context->withoutScope(
                 static fn (): bool => User::query()->exists(),
             ) === true,
-            // An organization is a TENANT, and a registered client is an application
-            // someone integrated. Neither is created by anything but an administered
-            // platform, and both outlive the identities that made them — an operator row
-            // can be deleted, a customer's organizations cannot vanish with it.
+            // An organization is either a CUSTOMER or a tenant's own, and a registered
+            // client is an application someone integrated. Neither is created by anything
+            // but an administered platform, and both outlive the identities that made them
+            // — an operator row can be deleted, organizations cannot vanish with it.
             PlatformOccupant::Organization => $this->context->withoutScope(
                 static fn (): bool => Organization::query()->exists(),
             ) === true,

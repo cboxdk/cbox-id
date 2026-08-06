@@ -55,7 +55,7 @@ if (! function_exists('provisionAccount')) {
         platformRootEnvironment();
 
         $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: $email,
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',
@@ -119,7 +119,7 @@ it('renders the members roster with the signed-in member marked', function (): v
     ['member' => $member] = provisionAccount('dana@acme.example');
 
     signInAsMember($member);
-    $this->get(route('account-members'))
+    $this->get(route('members'))
         ->assertOk()
         ->assertSee('Account members')
         ->assertSee('dana@acme.example')
@@ -140,7 +140,7 @@ it('renders billing with the real environment allowance', function (): void {
 });
 
 it('guards the members and billing pages behind the account session', function (): void {
-    $this->get(route('account-members'))->assertRedirect(route('login'));
+    $this->get(route('members'))->assertRedirect(route('login'));
     $this->get(route('billing'))->assertRedirect(route('login'));
 });
 
@@ -166,14 +166,14 @@ it('redirects a member who cannot read billing away from it', function (): void 
     signInAsMember($dev);
     $this->get(route('billing'))->assertRedirect(route('projects'));
     signInAsMember($dev);
-    $this->get(route('account-members'))->assertRedirect(route('projects'));
+    $this->get(route('members'))->assertRedirect(route('projects'));
 
     // A read-only Viewer, by contrast, may read both.
     $viewer = memberWithRole($account->id, MembershipRole::Viewer, 'viewer-billing@acme.example');
     signInAsMember($viewer);
     $this->get(route('billing'))->assertOk();
     signInAsMember($viewer);
-    $this->get(route('account-members'))->assertOk();
+    $this->get(route('members'))->assertOk();
 });
 
 it('shows a scoped member only the environments they are granted', function (): void {
@@ -229,10 +229,10 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     signInAsMember($owner);
     $members = app(Memberships::class);
 
-    Volt::test('console.account-members')->call('removeMember', $dev->id);
+    Volt::test('console.members')->call('removeMember', $dev->id);
     expect($members->find($dev->id))->toBeNull();
 
-    Volt::test('console.account-members')->call('makeOwner', $admin->id);
+    Volt::test('console.members')->call('makeOwner', $admin->id);
     expect($members->find($admin->id)->role)->toBe(MembershipRole::Owner)
         ->and($members->find($owner->id)->role)->toBe(MembershipRole::Admin);
 });
@@ -243,7 +243,7 @@ it('scopes a member to specific environments via the access editor', function ()
     $dev = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     signInAsMember($owner);
 
-    Volt::test('console.account-members')
+    Volt::test('console.members')
         ->call('manageAccess', $dev->id)
         ->assertSet('accessAll', true)
         ->set('accessAll', false)
@@ -277,7 +277,7 @@ it('scopes a member to specific environments via the access editor', function ()
 function aRivalAccountsMember(): Membership
 {
     $rival = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Rival',
+        organizationName: 'Rival',
         ownerEmail: 'owner@rival.example',
         ownerName: 'Rival Owner',
         ownerPassword: 'another-strong-passphrase',
@@ -293,7 +293,7 @@ it('404s a role change aimed at another account member', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($owner);
 
-    Volt::test('console.account-members')
+    Volt::test('console.members')
         ->call('changeRole', $theirs->id, MembershipRole::Admin->value)
         ->assertStatus(404);
 
@@ -305,7 +305,7 @@ it('404s a member removal aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($owner);
 
-    Volt::test('console.account-members')->call('removeMember', $theirs->id)->assertStatus(404);
+    Volt::test('console.members')->call('removeMember', $theirs->id)->assertStatus(404);
 
     expect(app(Memberships::class)->find($theirs->id))->not->toBeNull();
 })->group('security');
@@ -317,7 +317,7 @@ it('404s an environment-access edit aimed at another account', function (): void
 
     // The READ half. It opened the editor on somebody else's member and disclosed which
     // environments they reach.
-    Volt::test('console.account-members')->call('manageAccess', $theirs->id)->assertStatus(404);
+    Volt::test('console.members')->call('manageAccess', $theirs->id)->assertStatus(404);
 })->group('security');
 
 it('404s an environment-access SAVE aimed at another account', function (): void {
@@ -328,7 +328,7 @@ it('404s an environment-access SAVE aimed at another account', function (): void
 
     // `editingAccessFor` is an ordinary public property, so the client sets it — the
     // write half never had to go through `manageAccess()` at all.
-    Volt::test('console.account-members')
+    Volt::test('console.members')
         ->set('editingAccessFor', $theirs->id)
         ->set('accessAll', false)
         ->set('accessEnvIds', [$mine->id])
@@ -344,7 +344,7 @@ it('404s an ownership transfer aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($owner);
 
-    Volt::test('console.account-members')->call('makeOwner', $theirs->id)->assertStatus(404);
+    Volt::test('console.members')->call('makeOwner', $theirs->id)->assertStatus(404);
 
     $members = app(Memberships::class);
     expect($members->find($theirs->id)->role)->toBe(MembershipRole::Developer)
@@ -357,13 +357,13 @@ it('renames the account from settings and redirects non-managers', function (): 
     ['account' => $account, 'member' => $owner] = provisionAccount();
     signInAsMember($owner);
 
-    Volt::test('console.account-settings')->set('name', 'Renamed Co')->call('save')->assertHasNoErrors();
+    Volt::test('console.organization-settings')->set('name', 'Renamed Co')->call('save')->assertHasNoErrors();
     expect(app(Accounts::class)->find($account->id)->name)->toBe('Renamed Co');
 
     // A developer can't reach settings.
     $dev = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     signInAsMember($dev);
-    $this->get(route('account-settings'))->assertRedirect(route('projects'));
+    $this->get(route('organization-settings'))->assertRedirect(route('projects'));
 });
 
 it('shows a read-only viewer the roster but not the invite form', function (): void {
@@ -371,7 +371,7 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
     $viewer = memberWithRole($account->id, MembershipRole::Viewer, 'viewer@acme.example');
 
     signInAsMember($viewer);
-    $this->get(route('account-members'))
+    $this->get(route('members'))
         ->assertOk()
         ->assertSee('Account members')
         ->assertDontSee('Invite a teammate');
@@ -484,7 +484,7 @@ it('creates an environment inline from the launchpad', function (): void {
 it('refuses an inline environment create for a project on another account', function (): void {
     ['member' => $member] = provisionAccount();
     $other = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Rival',
+        organizationName: 'Rival',
         ownerEmail: 'owner@rival.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -539,7 +539,7 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
 
     expect($subjectId)->not->toBe('')
         ->and($organization->slug)->not->toBe('')
-        ->and(app(ConsoleScope::class)->accountRole())->toBeNull()
+        ->and(app(ConsoleScope::class)->membershipRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 
     // …and at the page, not only in the rail — a rail is not an authorization check. They
@@ -565,7 +565,7 @@ it('takes the area away from an account with no organization at all', function (
     // every organization this person could act on, tenant hosts included. "We do not know
     // which organization this account owns" is not "all of them"; a broken row fails
     // closed.
-    expect(app(ConsoleScope::class)->accountRole())->toBeNull()
+    expect(app(ConsoleScope::class)->membershipRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 
     // And at the page too, because a rail is not an authorization check.
@@ -581,7 +581,7 @@ it('takes the area away when the acting organization is not the account\'s own',
     expect($account->refresh()->organization_id)->toBeString();
 
     signInAsMember($member);
-    expect(app(ConsoleScope::class)->accountRole())->toBe(MembershipRole::Owner);
+    expect(app(ConsoleScope::class)->membershipRole())->toBe(MembershipRole::Owner);
 
     // Now act on a DIFFERENT organization the same person belongs to. Their account role
     // has not changed and their projects have not moved; what changed is who the console
@@ -601,7 +601,7 @@ it('takes the area away when the acting organization is not the account\'s own',
     session()->put(PlatformAuth::ORG_KEY, $other->id);
     app(CurrentUser::class)->set($subject, $session, app(Organizations::class)->find($other->id), MembershipRole::Member);
 
-    expect(app(ConsoleScope::class)->accountRole())->toBeNull()
+    expect(app(ConsoleScope::class)->membershipRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 })->group('security');
 
@@ -653,14 +653,14 @@ it('shows exactly these pages to each account role', function (MembershipRole $r
 })->with([
     // Everything. Ownership itself is guarded per-action, not by hiding pages.
     'owner' => [MembershipRole::Owner, [
-        'projects', 'account-members', 'api-keys', 'environment-keys',
-        'environment-domains', 'account-activity', 'billing', 'account-settings',
+        'projects', 'members', 'api-keys', 'environment-keys',
+        'environment-domains', 'activity', 'billing', 'organization-settings',
     ]],
 
     // An admin is an owner minus the ownership transfer, which is not a page.
     'admin' => [MembershipRole::Admin, [
-        'projects', 'account-members', 'api-keys', 'environment-keys',
-        'environment-domains', 'account-activity', 'billing', 'account-settings',
+        'projects', 'members', 'api-keys', 'environment-keys',
+        'environment-domains', 'activity', 'billing', 'organization-settings',
     ]],
 
     // THE ONE THE FOLD BREAKS. A developer is a technical credential: environments and
@@ -688,7 +688,7 @@ it('shows exactly these pages to each account role', function (MembershipRole $r
     // Read-only across the account: it may SEE the roster and the bill, and change
     // neither — so no API keys, no environment keys or domains, no settings.
     'viewer' => [MembershipRole::Viewer, [
-        'projects', 'account-members', 'account-activity', 'billing',
+        'projects', 'members', 'activity', 'billing',
     ]],
 ])->group('security');
 
@@ -731,7 +731,7 @@ it('follows the membership when the member row disagrees', function (): void {
 
     expect($member->refresh()->role)->toBe(MembershipRole::Admin, 'fixture: the member row must still disagree')
         ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeFalse()
-        ->and(identityPlatformPages())->not->toContain('account-settings');
+        ->and(identityPlatformPages())->not->toContain('organization-settings');
 
     expect($owner->refresh()->role)->toBe(MembershipRole::Owner);
 })->group('security');

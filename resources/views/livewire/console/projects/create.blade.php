@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Platform\AccountAuth;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Platform\TenantProvisioner;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -32,19 +32,26 @@ new #[Layout('components.layouts.app', ['title' => 'New project'])] class extend
         abort_unless($scope->membershipRole() !== null, 403);
     }
 
-    public function create(AccountAuth $auth, TenantProvisioner $provisioner): mixed
+    public function create(ConsoleScope $scope, Organizations $organizations, TenantProvisioner $provisioner): mixed
     {
-        $member = $auth->current();
-        $account = $member?->account;
+        $organizationId = $scope->organizationId();
 
         // Only roles that manage environments may stand up a new product.
-        if ($account === null || ! app(ConsoleScope::class)->capabilities()?->canManageEnvironments() === true) {
+        if ($organizationId === null || $scope->capabilities()?->canManageEnvironments() !== true) {
+            abort(403);
+        }
+
+        $organization = $organizations->find($organizationId);
+
+        if ($organization === null) {
             abort(403);
         }
 
         $this->validate(['name' => 'required|string|max:120']);
 
-        $project = $provisioner->addProject($account, trim($this->name));
+        // addProject() re-reads it under a lock and refuses a suspended customer; this is
+        // the model its signature asks for, not the authorization.
+        $project = $provisioner->addProject($organization, trim($this->name));
 
         $this->dispatch('toast', message: 'Project created — add its first environment.');
 

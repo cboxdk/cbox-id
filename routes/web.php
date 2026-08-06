@@ -709,15 +709,15 @@ Route::prefix('platform')->group(function (): void {
         Volt::route('/', 'platform.environments')->name('platform.environments');
         Volt::route('/usage', 'platform.usage')->name('platform.usage');
         Volt::route('/search', 'platform.search')->name('platform.search');
-        Volt::route('/accounts', 'platform.accounts')->name('platform.accounts');
+        Volt::route('/customers', 'platform.customers')->name('platform.customers');
 
-        // `platform.accounts.show`, not `platform.account`. The console derives both the
+        // `platform.customers.show`, not `platform.account`. The console derives both the
         // eyebrow above the page title and the lit rail entry from the route name by the
         // same prefix rule ({@see \App\Platform\Navigation\NavPage::owns()}), so a detail
         // page named as a CHILD of its list gets "Platform" over its heading and keeps
         // Accounts lit in the rail without a single hand-written label. `platform.organization`
         // predates that rule and has to pass its own eyebrow; this one does not.
-        Volt::route('/accounts/{account}', 'platform.account')->name('platform.accounts.show');
+        Volt::route('/customers/{organization}', 'platform.customer')->name('platform.customers.show');
         Volt::route('/organizations', 'platform.organizations')->name('platform.organizations');
         Volt::route('/organizations/{organization}', 'platform.organization')->name('platform.organization');
         Volt::route('/operators', 'platform.operators')->name('platform.operators');

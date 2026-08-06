@@ -21,20 +21,20 @@ final readonly class InstallPlan
         public DeploymentShape $shape,
         public OperatorIdentity $operator,
         public string $environmentName = 'Production',
-        public string $accountName = 'Cbox',
+        public string $organizationName = 'Cbox',
         /**
          * Where the account console lives, in the multi-tenant shape only. Null in the
          * single-tenant shape, where there is no second origin to name — and a
          * multi-tenant deployment WITHOUT one is {@see PlaneResolver::misconfigured()},
          * so the installer refuses that combination rather than writing it down.
          */
-        public ?string $accountHost = null,
+        public ?string $consoleHost = null,
     ) {}
 
     /** The environment lines this plan implies, for writing to (or printing beside) `.env`. */
-    public function accountHostLine(): ?string
+    public function consoleHostLine(): ?string
     {
-        return $this->accountHost === null ? null : 'CBOX_ID_ACCOUNT_HOST='.$this->accountHost;
+        return $this->consoleHost === null ? null : 'CBOX_ID_CONSOLE_HOST='.$this->consoleHost;
     }
 
     public function multiTenantLine(): string

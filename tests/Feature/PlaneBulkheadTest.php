@@ -80,7 +80,7 @@ it('serves the console plane on the platform root as well as on a tenant host', 
     // The root, reached by its own name. `hostResolves` is null on purpose — a root
     // environment provisioned without a `domain` row resolves by host to nothing, which is
     // the shape production has, so the apex has to be matched by name (base_domains
-    // derives accountHost() = cboxid.com).
+    // derives consoleHost() = cboxid.com).
     $root = planeGate('env_prod', 'env_prod');
 
     expect(passesPlane($root, 'console', 'cboxid.com'))
@@ -197,7 +197,7 @@ it('denies the operator plane when the host resolves to nothing', function (): v
  *
  * A root environment provisioned without its own `domain` row resolves by host to
  * nothing, so it reaches the fallback — which asked `platformRootHosts()`, a config key
- * with no env binding that no deployment sets. `accountHost()`, meanwhile, resolves
+ * with no env binding that no deployment sets. `consoleHost()`, meanwhile, resolves
  * through a three-step chain that lands in every real shape. The two disagreed, and the
  * operator console is the SAME origin as the account console by design, so:
  *
@@ -208,7 +208,7 @@ it('denies the operator plane when the host resolves to nothing', function (): v
  * a 404 from a plane bulkhead is indistinguishable from a route that was never there.
  */
 it('serves the operator plane on the account host when the root has no domain row', function (): void {
-    // base_domains derives accountHost() = cboxid.com; the host resolves to nothing.
+    // base_domains derives consoleHost() = cboxid.com; the host resolves to nothing.
     $gate = planeGate(null, 'env_root');
 
     $request = Request::create('https://cboxid.com/operator/login');

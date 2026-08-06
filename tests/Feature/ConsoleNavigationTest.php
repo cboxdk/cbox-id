@@ -64,7 +64,7 @@ it('hides what an account role may not see, and drops the area when it holds not
     platformRootDeployment();
 
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'nav-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -86,7 +86,7 @@ it('hides what an account role may not see, and drops the area when it holds not
 
     signInAsMember($result->member);
     expect($pages())->toContain('billing')
-        ->and($pages())->toContain('account-settings')
+        ->and($pages())->toContain('organization-settings')
         ->and($pages())->toContain('api-keys');
 
     // A Viewer reads the roster and the bill and changes nothing.
@@ -105,7 +105,7 @@ it('hides what an account role may not see, and drops the area when it holds not
     signInAsMember($viewer->refresh());
 
     expect($pages())->toContain('billing')
-        ->and($pages())->not->toContain('account-settings')
+        ->and($pages())->not->toContain('organization-settings')
         ->and($pages())->not->toContain('api-keys');
 });
 

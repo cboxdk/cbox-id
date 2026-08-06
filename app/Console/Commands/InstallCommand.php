@@ -50,13 +50,13 @@ class InstallCommand extends Command
         {--email= : Email address of the first platform operator}
         {--name= : Display name of the first platform operator}
         {--password= : Their password. Omitted, a strong one is generated and shown once}
-        {--multi-tenant : Install the SaaS shape (an account plane that provisions IdPs)}
-        {--account-host= : Host the account console lives on (required with --multi-tenant)}
+        {--multi-tenant : Install the SaaS shape (a management plane that provisions IdPs)}
+        {--console-host= : Host the console lives on (required with --multi-tenant)}
         {--environment=Production : Name of the first environment}
-        {--account= : Name of the first account (multi-tenant only)}
+        {--organization= : Name of the first organization (multi-tenant only)}
         {--issuer= : Public HTTPS URL of this platform (the token issuer). Defaults to APP_URL}';
 
-    protected $description = 'Install this Cbox ID deployment — operator, environment, and the first account';
+    protected $description = 'Install this Cbox ID deployment — operator, environment, and the first organization';
 
     public function handle(): int
     {
@@ -138,11 +138,11 @@ class InstallCommand extends Command
         }
 
         $shape = $this->shape($interactive);
-        $accountHost = $this->accountHost($shape, $interactive);
+        $consoleHost = $this->consoleHost($shape, $interactive);
 
-        if ($shape->isMultiTenant() && $accountHost === null) {
+        if ($shape->isMultiTenant() && $consoleHost === null) {
             $this->components->error(
-                'The multi-tenant shape needs --account-host: the account console has to live somewhere, '
+                'The multi-tenant shape needs --console-host: the account console has to live somewhere, '
                 .'and a deployment that claims multi-tenancy without one serves it on no host at all. '
                 .'Nothing was changed.',
             );
@@ -173,8 +173,8 @@ class InstallCommand extends Command
             shape: $shape,
             operator: new OperatorIdentity($email, $name, $secret, $generated),
             environmentName: $this->stringOption('environment') ?? 'Production',
-            accountName: $this->stringOption('account') ?? $name,
-            accountHost: $accountHost,
+            organizationName: $this->stringOption('organization') ?? $name,
+            consoleHost: $consoleHost,
         );
     }
 
@@ -212,13 +212,13 @@ class InstallCommand extends Command
         return DeploymentShape::from($choice);
     }
 
-    private function accountHost(DeploymentShape $shape, bool $interactive): ?string
+    private function consoleHost(DeploymentShape $shape, bool $interactive): ?string
     {
         if (! $shape->isMultiTenant()) {
             return null;
         }
 
-        $stated = $this->stringOption('account-host');
+        $stated = $this->stringOption('console-host');
 
         if ($stated !== null) {
             return mb_strtolower($stated);
@@ -254,14 +254,14 @@ class InstallCommand extends Command
 
         $lines = array_values(array_filter([
             $plan->multiTenantLine(),
-            $plan->accountHostLine(),
+            $plan->consoleHostLine(),
         ]));
 
         // The running process reads config, not the file it just wrote — `doctor` and
         // the health checks below both ask PlaneResolver.
         config([
             'cbox-id.tenancy.multi_tenant' => $plan->shape->isMultiTenant(),
-            'cbox-id.tenancy.account_host' => $plan->accountHost,
+            'cbox-id.tenancy.account_host' => $plan->consoleHost,
         ]);
 
         $written = true;
@@ -340,8 +340,8 @@ class InstallCommand extends Command
         $this->line('  <fg=green>✓</> Platform root environment ['.$installed->root->slug.'].');
         $this->line('  <fg=green>✓</> Platform operator '.$installed->operator->email.'.');
 
-        if ($installed->account !== null && $installed->tenant !== null) {
-            $this->line('  <fg=green>✓</> Account ['.$installed->account->name.'] with environment ['.$installed->tenant->slug.'].');
+        if ($installed->organization !== null && $installed->tenant !== null) {
+            $this->line('  <fg=green>✓</> Organization ['.$installed->organization->name.'] with environment ['.$installed->tenant->slug.'].');
         }
 
         // WHERE to present the credential this command just created. Everything above
@@ -351,8 +351,8 @@ class InstallCommand extends Command
         // is a SECTION of the one console rather than a door of its own, so the door is
         // the account plane's sign-in, and on the SaaS shape that plane lives on the
         // account host rather than on the issuer.
-        $base = $plan->shape->isMultiTenant() && $plan->accountHost !== null
-            ? 'https://'.$plan->accountHost
+        $base = $plan->shape->isMultiTenant() && $plan->consoleHost !== null
+            ? 'https://'.$plan->consoleHost
             : $this->publicUrl();
 
         $this->line('  <fg=green>✓</> Sign in at '.$base.route('login', [], false).'.');

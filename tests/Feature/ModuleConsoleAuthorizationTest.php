@@ -65,8 +65,8 @@ function moduleConsoleRoutes(): array
         // the acting ORGANIZATION owns rather than on the membership role this file
         // sweeps for. An org admin who owns no identity providers is correctly refused
         // them, which is the opposite of what "admits an admin" asserts below.
-        'projects', 'account-members', 'api-keys', 'environment-keys',
-        'environment-domains', 'account-activity', 'billing', 'account-settings'];
+        'projects', 'members', 'api-keys', 'environment-keys',
+        'environment-domains', 'activity', 'billing', 'organization-settings'];
 
     // Personal, not administrative: it lists the caller's OWN handsets and belongs to
     // every signed-in user. Pinned open by its own test below, so removing it here does

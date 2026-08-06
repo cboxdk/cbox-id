@@ -48,7 +48,7 @@ function actAsRealEnvironmentAdmin(string $email = 'env-owner@acme.example'): vo
     platformRootEnvironment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

@@ -9,6 +9,9 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,6 +35,8 @@ final class EnvironmentAdminController extends Controller
         EnvironmentAdminHandoff $handoff,
         EnvironmentContext $environments,
         Memberships $members,
+        Organizations $organizations,
+        PlatformRoot $platformRoot,
         EnvironmentAdminAuth $auth,
         SubjectCredentialGate $gate,
     ): RedirectResponse {
@@ -51,17 +56,26 @@ final class EnvironmentAdminController extends Controller
         // a minted handoff from outliving the access it implies: a membership revoked,
         // or a role downgraded, in the seconds since the mint is caught right here (and
         // again on every request, at the session chokepoint).
-        $member = $members->findBySubject($grant->subjectId);
+        // IN THE PLATFORM ROOT: memberships and organizations are environment-owned, and
+        // this request is standing on a TENANT host. Read under the ambient scope, the
+        // membership simply is not there and a legitimate administrator is bounced.
+        $membership = $platformRoot->run(
+            fn (): ?Membership => $members->forUser($grant->subjectId)->first(),
+        );
 
-        if ($member === null
-            || ! $member->isActive()
-            // The ACCOUNT, not just the member. An account suspended in the seconds since
-            // the mint — or by an operator while the tab sat open — must not still redeem
-            // into a live admin console. Every other resolve path re-checks this
-            // (AccountAuth::current(), the account console's gate); this one did not.
-            || ! ($member->account?->isActive() ?? false)
-            || ! OrganizationCapabilities::ofMembershipRole($member->role)->canManageEnvironments()
-            || ! in_array($hostEnv, $members->accessibleEnvironmentIds($member), true)) {
+        // The ORGANIZATION, not just the membership. A customer suspended in the seconds
+        // since the mint — or by an operator while the tab sat open — must not still redeem
+        // into a live admin console.
+        $organizationActive = $membership === null ? false : $platformRoot->run(
+            fn (): bool => $organizations->find($membership->organization_id)?->status->revokesAccess() === false,
+        ) === true;
+
+        if ($membership === null
+            || ! $organizationActive
+            || ! OrganizationCapabilities::of($membership->role)->canManageEnvironments()
+            || ! in_array($hostEnv, $platformRoot->run(
+                fn (): array => $members->accessibleEnvironmentIds($membership->organization_id, $grant->subjectId),
+            ) ?? [], true)) {
             return redirect()->route('admin.login');
         }
 
@@ -93,14 +107,14 @@ final class EnvironmentAdminController extends Controller
         // every session governed by a policy the moment that policy stops admitting
         // passwords, in the environment the policy was written in. An admin session is the
         // member's ordinary platform-root subject session, and
-        // {@see EnvironmentAdminAuth::current()} re-reads that row on every request, so a
+        // {@see EnvironmentAdminAuth::membership()} re-reads that row on every request, so a
         // revoked one closes this console on the next click rather than at the next mint.
         //
         // The general rule, because `admin.login` bounces back to the mint: a refusal here
         // is only a refusal if the ROOT refuses or RESOLVES it too. This one qualifies —
         // the same requirement row holds the member on the account plane's change page,
         // which is where the bounce lands and stops.
-        if ($gate->owesPasswordChange($member)) {
+        if ($gate->owesPasswordChange($grant->subjectId)) {
             return redirect()->route('admin.login');
         }
 

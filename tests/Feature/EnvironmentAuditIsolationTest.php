@@ -29,7 +29,7 @@ it('shows an environment admin only their own environment\'s audit trail', funct
     // Victim environment, with an entry that must never be visible elsewhere.
     platformRootEnvironment();
     $victim = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Victim Co',
+        organizationName: 'Victim Co',
         ownerEmail: 'owner@victim.example',
         ownerName: 'Victim Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -45,7 +45,7 @@ it('shows an environment admin only their own environment\'s audit trail', funct
     // Attacker signs up for their own environment — no special privilege.
     platformRootEnvironment();
     $attacker = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Attacker Co',
+        organizationName: 'Attacker Co',
         ownerEmail: 'owner@attacker.example',
         ownerName: 'Attacker Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

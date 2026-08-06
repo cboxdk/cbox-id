@@ -214,7 +214,7 @@ class ConsoleNavigation
             // environment on the install is a detail inside one (or, for exactly two
             // rows, deliberately inside none — see {@see \App\Platform\Console\EnvironmentLineage}).
             new NavArea('Platform', 'layers',
-                new NavPage('platform.accounts', 'Accounts'),
+                new NavPage('platform.customers', 'Accounts'),
                 new NavPage('platform.environments', 'Environments'),
                 new NavPage('platform.organizations', 'Organizations'),
             ),

@@ -44,7 +44,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account activity'])] class e
         /** @var Collection<int, string> $actorIds */
         $actorIds = $entries->pluck('actor_id')->filter()->unique();
 
-        $actors = $actorIds->mapWithKeys(fn (string $id): array => [$id => $members->find($id)->email ?? $id]);
+        $actors = $actorIds->mapWithKeys(fn (string $id): array => [$id => app(\Cbox\Id\Identity\Contracts\Subjects::class)->find($id)->email ?? $id]);
 
         return ['entries' => $entries, 'actors' => $actors];
     }

@@ -63,7 +63,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
         $model = $accounts->find($account);
         abort_if($model === null, 404);
 
-        $this->accountId = $model->id;
+        $this->organizationId = $model->id;
     }
 
     /**
@@ -78,7 +78,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
             abort(403);
         }
 
-        $account = $accounts->find($this->accountId);
+        $account = $accounts->find($this->organizationId);
 
         if ($account === null) {
             return;
@@ -111,7 +111,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
         // navigate: false — repointing changes what every subsequent read in the console
         // resolves to, and a wire:navigate hand-off would restore a cached document
         // rendered against the previous plane.
-        $this->redirect(route('platform.accounts.show', $this->accountId), navigate: false);
+        $this->redirect(route('platform.customers.show', $this->organizationId), navigate: false);
     }
 
     /**
@@ -142,7 +142,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
     {
         $environment = Environment::query()
             ->whereKey($id)
-            ->where('account_id', $this->accountId)
+            ->where('account_id', $this->organizationId)
             ->first();
 
         abort_if($environment === null, 404);
@@ -157,7 +157,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
         Projects $projects,
         EnvironmentContext $context,
     ): array {
-        $account = $accounts->find($this->accountId);
+        $account = $accounts->find($this->organizationId);
         abort_if($account === null, 404);
 
         $projectList = $projects->forOrganization($account->id);
@@ -250,13 +250,13 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
 
 <div>
     <div class="mb-5">
-        <a href="{{ route('platform.accounts') }}" wire:navigate
+        <a href="{{ route('platform.customers') }}" wire:navigate
            class="inline-flex items-center gap-1 text-sm" style="color:var(--muted)">
             <span aria-hidden="true">&larr;</span> Back to accounts
         </a>
     </div>
 
-    {{-- No hand-written eyebrow: the route is named `platform.accounts.show`, so the nav
+    {{-- No hand-written eyebrow: the route is named `platform.customers.show`, so the nav
          registry already owns it under Platform › Accounts and x-page-header reads the
          label from there. --}}
     <x-page-header :title="$account->name"

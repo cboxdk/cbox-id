@@ -5,43 +5,57 @@ declare(strict_types=1);
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Identity platform › Organization settings — organization-level settings. Management-only; deletion is
- * deliberately not a self-serve button (it would tear down live IdPs) and is
- * handled as a support request for now.
+ * Identity platform › Organization settings. Management-only; deletion is deliberately not a
+ * self-serve button (it would tear down live IdPs) and is handled as a support request for
+ * now.
  */
-new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Organization settings'])] class extends Component
 {
     public string $name = '';
 
     public function mount(ConsoleScope $scope, Organizations $organizations): mixed
     {
-        $account = ($id = $scope->organizationId()) === null ? null : $organizations->find($id);
+        $organization = $this->acting($scope, $organizations);
 
-        if ($account === null || $scope->capabilities()?->canManageMembers() !== true) {
+        if ($organization === null || $scope->capabilities()?->canManageMembers() !== true) {
             return redirect()->route('projects');
         }
 
-        $this->name = $account->name;
+        $this->name = $organization->name;
 
         return null;
     }
 
-    public function save(AccountAuth $auth, Accounts $accounts): void
+    public function save(ConsoleScope $scope, Organizations $organizations): void
     {
-        $account = $auth->current()?->account;
+        $organization = $this->acting($scope, $organizations);
 
-        if ($account === null || ! app(ConsoleScope::class)->capabilities()?->canManageMembers() === true) {
+        if ($organization === null || $scope->capabilities()?->canManageMembers() !== true) {
             return;
         }
 
         $this->validate(['name' => ['required', 'string', 'max:120']]);
 
-        $organizations->updateSettings($account->id, []) && $account->forceFill(['name' => trim($this->name)])->save();
-        $this->dispatch('toast', message: 'Account settings saved.');
+        // Renamed on the model rather than through a contract verb: `Organizations` has no
+        // rename(). The account plane's writer did, and it is the one verb of that
+        // interface with no counterpart here — worth naming so a future reader does not
+        // assume it was overlooked.
+        $organization->forceFill(['name' => trim($this->name)])->save();
+
+        $this->dispatch('toast', message: 'Organization settings saved.');
+    }
+
+    /** The organization being administered, or null when there is none to act on. */
+    private function acting(ConsoleScope $scope, Organizations $organizations): ?Organization
+    {
+        $id = $scope->organizationId();
+
+        return $id === null ? null : $organizations->find($id);
     }
 }; ?>
 

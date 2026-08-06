@@ -42,19 +42,11 @@ final readonly class EnvironmentLineages
     {
         /** @var list<Environment> $rows */
         $rows = [];
-        /** @var array<string, true> $accountIds */
-        $accountIds = [];
         /** @var array<string, true> $projectIds */
         $projectIds = [];
 
         foreach ($environments as $environment) {
             $rows[] = $environment;
-
-            $accountId = $environment->account_id;
-
-            if ($accountId !== null && $accountId !== '') {
-                $accountIds[$accountId] = true;
-            }
 
             $projectId = $this->projectIdOf($environment);
 
@@ -63,7 +55,12 @@ final readonly class EnvironmentLineages
             }
         }
 
-        $accountNames = $this->accountNames(array_keys($accountIds));
+        // OWNERSHIP RUNS THROUGH THE PROJECT. `environments.account_id` was a denormalized
+        // copy of it and is gone, so the owning organization is read from the project — one
+        // batched lookup for the whole page rather than a per-row walk, which is the same
+        // property the account column bought and the reason it was tempting.
+        $projectOwners = $this->projectOwners(array_keys($projectIds));
+        $organizationNames = $this->organizationNames(array_values(array_unique($projectOwners)));
         $projectNames = $this->projectNames(array_keys($projectIds));
 
         // Asked ONCE for the whole batch, and asked of PlatformRoot rather than read off
@@ -75,14 +72,13 @@ final readonly class EnvironmentLineages
         $lineages = [];
 
         foreach ($rows as $environment) {
-            $accountId = $environment->account_id;
-            $accountId = $accountId !== null && $accountId !== '' ? $accountId : null;
             $projectId = $this->projectIdOf($environment);
+            $organizationId = $projectId === null ? null : ($projectOwners[$projectId] ?? null);
 
             $lineages[$environment->id] = new EnvironmentLineage(
                 environmentId: $environment->id,
-                accountId: $accountId,
-                accountName: $accountId === null ? null : ($accountNames[$accountId] ?? null),
+                organizationId: $organizationId,
+                organizationName: $organizationId === null ? null : ($organizationNames[$organizationId] ?? null),
                 projectId: $projectId,
                 projectName: $projectId === null ? null : ($projectNames[$projectId] ?? null),
                 isPlatformRoot: $rootId !== null && $rootId === $environment->id,
@@ -116,7 +112,7 @@ final readonly class EnvironmentLineages
      * @param  list<string>  $ids
      * @return array<string, string>
      */
-    private function accountNames(array $ids): array
+    private function organizationNames(array $ids): array
     {
         if ($ids === []) {
             return [];
@@ -124,11 +120,34 @@ final readonly class EnvironmentLineages
 
         $names = [];
 
-        foreach (Account::query()->whereKey($ids)->get(['id', 'name']) as $account) {
-            $names[$account->id] = $account->name;
+        // IN THE PLATFORM ROOT: `organizations` is environment-owned, and this runs on
+        // pages that may be standing on any host. `accounts` sat outside tenancy, so the
+        // read this replaces needed no scope at all.
+        $organizations = $this->root->run(
+            fn () => Organization::query()->whereKey($ids)->get(['id', 'name']),
+        );
+
+        foreach ($organizations ?? [] as $organization) {
+            $names[$organization->id] = $organization->name;
         }
 
         return $names;
+    }
+
+    /**
+     * project id => owning organization id, for the whole batch at once.
+     *
+     * @param  list<string>  $ids
+     * @return array<string, string>
+     */
+    private function projectOwners(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var array<string, string> */
+        return Project::query()->whereKey($ids)->pluck('organization_id', 'id')->all();
     }
 
     /**

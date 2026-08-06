@@ -27,7 +27,7 @@ function pwUserSetup(): string
 {
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -117,7 +117,7 @@ it('requires a reason and a strong password', function (): void {
 it('refuses a member without the environment-admin capability', function (): void {
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner2@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

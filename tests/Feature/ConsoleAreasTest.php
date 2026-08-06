@@ -156,7 +156,7 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
     platformRootDeployment();
 
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'areas-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

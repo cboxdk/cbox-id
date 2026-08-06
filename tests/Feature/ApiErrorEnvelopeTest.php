@@ -32,7 +32,7 @@ if (! function_exists('envelopeAccountKey')) {
     function envelopeAccountKey(): string
     {
         $account = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Envelope',
+            organizationName: 'Envelope',
             ownerEmail: 'owner@envelope.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',

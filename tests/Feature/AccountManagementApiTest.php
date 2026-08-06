@@ -19,7 +19,7 @@ if (! function_exists('apiAccount')) {
     function apiAccount(): Account
     {
         return app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: 'owner@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'supersecret123',
@@ -31,7 +31,7 @@ if (! function_exists('apiAccount2')) {
     function apiAccount2(): Account
     {
         return app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Other',
+            organizationName: 'Other',
             ownerEmail: 'owner@other.example',
             ownerName: 'Other Owner',
             ownerPassword: 'supersecret123',

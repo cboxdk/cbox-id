@@ -57,7 +57,7 @@ function twoTenants(): array
     platformRootEnvironment();
 
     $victim = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Victim Co',
+        organizationName: 'Victim Co',
         ownerEmail: 'owner@victim.example',
         ownerName: 'Victim Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -66,7 +66,7 @@ function twoTenants(): array
     platformRootEnvironment();
 
     $attacker = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Attacker Co',
+        organizationName: 'Attacker Co',
         ownerEmail: 'owner@attacker.example',
         ownerName: 'Attacker Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

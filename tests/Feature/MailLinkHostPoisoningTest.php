@@ -58,7 +58,7 @@ function accountPlaneMember(): object
     platformRootDeployment();
 
     return app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -155,7 +155,7 @@ it('refuses a signed invitation link replayed with a foreign Host', function ():
         ->invite((string) $account->account->id, 'invitee@acme.example', MembershipRole::Admin);
 
     $url = app(MailLinks::class)->temporarySignedRoute(
-        'account.invite.accept',
+        'organization.invite.accept',
         now()->addDays(7),
         ['member' => $invited->id],
     );

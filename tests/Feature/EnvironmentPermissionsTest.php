@@ -25,7 +25,7 @@ function permSetup(string $accountName = 'Acme', string $ownerEmail = 'owner@acm
 
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: $accountName,
+        organizationName: $accountName,
         ownerEmail: $ownerEmail,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

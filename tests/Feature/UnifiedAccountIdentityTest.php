@@ -38,7 +38,7 @@ function unifiedSetup(string $password = 'a-strong-unbreached-passphrase'): arra
     platformRootEnvironment();
 
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: $password,

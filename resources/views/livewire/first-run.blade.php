@@ -130,7 +130,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
                 shape: $planes->isMultiTenant() ? DeploymentShape::MultiTenant : DeploymentShape::SingleTenant,
                 operator: new OperatorIdentity($this->email, $this->name, $this->password),
                 environmentName: $this->environmentName,
-                accountName: $this->accountName !== '' ? $this->accountName : $this->name,
+                organizationName: $this->organizationName !== '' ? $this->organizationName : $this->name,
             ));
         } finally {
             $lock->release();
@@ -171,7 +171,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
      */
     private function signIn(InstalledPlatform $installed, PlaneResolver $planes): string
     {
-        $host = $planes->accountHost();
+        $host = $planes->consoleHost();
 
         if (! $installed->shape->isMultiTenant() || $host === null || $host === request()->getHost()) {
             return route('login');
@@ -200,7 +200,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
         <div class="mt-6 rounded-lg p-4 text-sm" style="background:var(--surface-2);color:var(--muted)">
             <p style="color:var(--text)"><strong>This deployment is configured as multi-tenant but has no account host.</strong></p>
             <p class="mt-2">
-                Set <code>CBOX_ID_ACCOUNT_HOST</code> (where the account console lives), or set
+                Set <code>CBOX_ID_CONSOLE_HOST</code> (where the account console lives), or set
                 <code>CBOX_ID_MULTI_TENANT=false</code> for a single-host install — then reload this page. You can
                 also run <code>php artisan cbox-id:install</code>, which asks for both and writes them for you.
             </p>

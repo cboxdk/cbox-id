@@ -25,7 +25,7 @@ final readonly class InstalledPlatform
         public DeploymentShape $shape,
         public PlatformOperator $operator,
         public Environment $root,
-        public ?Account $account = null,
+        public ?Organization $organization = null,
         public ?Environment $tenant = null,
     ) {}
 }

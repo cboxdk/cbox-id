@@ -9,6 +9,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -32,7 +33,7 @@ use Livewire\Volt\Component;
  * no `route()` call at all — so an operator learned that Acme has three projects and
  * three environments and had nowhere to click: the only way to find out which three was
  * the flat environments list and prior knowledge of Acme's plane names. Every count now
- * lands on the account's own page (`platform.accounts.show`), where account → project →
+ * lands on the account's own page (`platform.customers.show`), where account → project →
  * environment is walkable.
  */
 new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '72rem'])] class extends Component
@@ -44,78 +45,100 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
     }
 
     /**
-     * Suspend or reactivate an account. Idempotent on the contract's side, so the
-     * current status decides the direction rather than a separate flag.
+     * Suspend or reactivate a customer. Idempotent on the contract's side, so the current
+     * status decides the direction rather than a separate flag.
      *
-     * The audit entry is written by the CONTRACT, not here. It used to be written at
-     * this call site because {@see Accounts} took no actor — unlike
-     * {@see \Cbox\Id\Organization\Contracts\Organizations::suspend()}, which has always
-     * audited internally. laravel-id v0.64.0 closed that asymmetry: both verbs now take
-     * an `$actorId` and record on the account's own chain themselves. That matters
-     * beyond tidiness — an audit written at the call site is one a second caller can
-     * silently forget, and this screen was the only caller there had ever been.
+     * The audit entry is written by the CONTRACT, not here. It used to be written at this
+     * call site because the account writer took no actor, unlike
+     * {@see Organizations::suspend()} which has always audited internally. An audit written
+     * at the call site is one a second caller can silently forget, and this screen was the
+     * only caller there had ever been.
+     *
+     * IN THE PLATFORM ROOT, both the read and the write: `organizations` is
+     * environment-owned, so a suspension issued from a tenant host would find nothing to
+     * suspend and report success. The account plane sat outside tenancy and never had to
+     * think about it, which is exactly why it is easy to lose in the fold.
      */
-    public function toggleStatus(string $id, Accounts $accounts, ConsoleScope $scope): void
+    public function toggleStatus(string $id, Organizations $organizations, ConsoleScope $scope, PlatformRoot $platformRoot): void
     {
         $actorId = $scope->operator()?->id;
         if ($actorId === null) {
             abort(403);
         }
 
-        $account = $accounts->find($id);
-        if ($account === null) {
+        $suspending = $platformRoot->run(function () use ($organizations, $id, $actorId): ?bool {
+            $organization = $organizations->find($id);
+
+            if ($organization === null) {
+                return null;
+            }
+
+            $suspending = ! $organization->status->revokesAccess();
+
+            $suspending
+                ? $organizations->suspend($id, $actorId)
+                : $organizations->reactivate($id, $actorId);
+
+            return $suspending;
+        });
+
+        if ($suspending === null) {
             return;
         }
 
-        $suspending = $account->isActive();
-
-        if ($suspending) {
-            $accounts->suspend($id, $actorId);
-        } else {
-            $accounts->reactivate($id, $actorId);
-        }
-
         $this->dispatch('toast', message: $suspending
-            ? 'Account suspended — its members can no longer sign in and its environments stop serving auth.'
-            : 'Account reactivated.');
+            ? 'Customer suspended — its members can no longer sign in and its environments stop serving auth.'
+            : 'Customer reactivated.');
     }
 
     /** @return array<string, mixed> */
-    public function with(): array
+    public function with(PlatformRoot $platformRoot): array
     {
-        $accounts = Account::query()->orderBy('created_at')->get();
+        // IN THE PLATFORM ROOT: customers ARE organizations now, and organizations are
+        // environment-owned. Read under whatever scope the request happened to carry, this
+        // page shows a tenant's own end-user organizations — or, off a tenant host, nothing
+        // at all. The account plane never had to think about it because `accounts` sat
+        // outside tenancy entirely.
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = $platformRoot->run(function (): array {
+            $organizations = Organization::query()->orderBy('created_at')->get();
 
-        /** @var Collection<string, int> $memberCounts */
-        $memberCounts = Membership::query()->selectRaw('account_id, count(*) as c')
-            ->groupBy('account_id')->pluck('c', 'account_id');
+            /** @var Collection<string, int> $memberCounts */
+            $memberCounts = Membership::query()->selectRaw('organization_id, count(*) as c')
+                ->groupBy('organization_id')->pluck('c', 'organization_id');
 
-        /** @var Collection<string, int> $projectCounts */
-        $projectCounts = Project::query()->selectRaw('account_id, count(*) as c')
-            ->groupBy('account_id')->pluck('c', 'account_id');
+            /** @var Collection<string, int> $projectCounts */
+            $projectCounts = Project::query()->selectRaw('organization_id, count(*) as c')
+                ->groupBy('organization_id')->pluck('c', 'organization_id');
 
-        /** @var Collection<string, int> $environmentCounts */
-        $environmentCounts = Environment::query()->selectRaw('account_id, count(*) as c')
-            ->whereNotNull('account_id')
-            ->groupBy('account_id')->pluck('c', 'account_id');
+            // Environments hang off PROJECTS, so the count runs through them rather than
+            // off a denormalized owner column — `environments.account_id` was that column.
+            /** @var Collection<string, int> $environmentCounts */
+            $environmentCounts = Environment::query()
+                ->join('projects', 'projects.id', '=', 'environments.project_id')
+                ->selectRaw('projects.organization_id as organization_id, count(*) as c')
+                ->groupBy('projects.organization_id')
+                ->pluck('c', 'organization_id');
 
-        return [
-            'rows' => $accounts->map(function (Account $account) use ($memberCounts, $projectCounts, $environmentCounts): array {
-                // The package's Account model does not declare the Eloquent timestamp
-                // columns as @property, so read created_at off the attribute bag and
-                // narrow it rather than trusting an undeclared property.
-                $createdAt = $account->getAttribute('created_at');
+            return $organizations->map(function (Organization $organization) use ($memberCounts, $projectCounts, $environmentCounts): array {
+                // The package's model does not declare the Eloquent timestamp columns as
+                // @property, so read created_at off the attribute bag and narrow it rather
+                // than trusting an undeclared property.
+                $createdAt = $organization->getAttribute('created_at');
 
                 return [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'active' => $account->isActive(),
-                    'members' => (int) ($memberCounts[$account->id] ?? 0),
-                    'projects' => (int) ($projectCounts[$account->id] ?? 0),
-                    'environments' => (int) ($environmentCounts[$account->id] ?? 0),
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                    'active' => ! $organization->status->revokesAccess(),
+                    'members' => (int) ($memberCounts[$organization->id] ?? 0),
+                    'projects' => (int) ($projectCounts[$organization->id] ?? 0),
+                    'environments' => (int) ($environmentCounts[$organization->id] ?? 0),
                     'created_at' => $createdAt instanceof CarbonInterface ? $createdAt->toDayDateTimeString() : null,
                 ];
-            })->all(),
-        ];
+            })->all();
+        }) ?? [];
+
+        return ['rows' => $rows];
     }
 }; ?>
 
@@ -152,7 +175,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
                     </thead>
                     <tbody>
                         @foreach ($rows as $row)
-                            @php $accountHref = route('platform.accounts.show', $row['id']); @endphp
+                            @php $accountHref = route('platform.customers.show', $row['id']); @endphp
                             <tr wire:key="account-{{ $row['id'] }}">
                                 <td>
                                     <p class="font-semibold">

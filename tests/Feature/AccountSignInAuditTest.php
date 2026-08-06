@@ -45,7 +45,7 @@ if (! function_exists('provisionAuditableAccount')) {
         platformRootEnvironment();
 
         $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            accountName: 'Audit Co',
+            organizationName: 'Audit Co',
             ownerEmail: $email,
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',

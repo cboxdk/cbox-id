@@ -14,13 +14,13 @@
 
     // The account member's own profile/MFA/passkeys live on the ACCOUNT plane (where
     // the WebAuthn origin is valid) — link out to it from here.
-    // One definition (PlaneResolver::accountHost), because the content security policy
+    // One definition (PlaneResolver::consoleHost), because the content security policy
     // names this same host — a copy that drifted would render links the policy refuses.
     // Falls back to the current host on a single-host deployment, where this plane and
     // the account plane share an origin and the link is simply local.
-    $accountHost = app(\App\Platform\PlaneResolver::class)->accountHost() ?? request()->getHost();
-    $securityUrl = 'https://'.$accountHost.route('account', absolute: false);
-    $accountUrl = 'https://'.$accountHost.route('projects', absolute: false);
+    $consoleHost = app(\App\Platform\PlaneResolver::class)->consoleHost() ?? request()->getHost();
+    $securityUrl = 'https://'.$consoleHost.route('account', absolute: false);
+    $accountUrl = 'https://'.$consoleHost.route('projects', absolute: false);
 
     // Breadcrumb + switcher context. Where this environment sits in the account
     // hierarchy (Account › Project › Environment), and the other environments this
@@ -35,7 +35,7 @@
         $accessibleIds = app(\Cbox\Id\Organization\Contracts\Memberships::class)->accessibleEnvironmentIds($member);
         $switchableEnvs = Environment::query()->whereKey($accessibleIds)->orderBy('name')->get(['id', 'name', 'slug']);
     }
-    $openUrl = fn (string $id): string => 'https://'.$accountHost.route('environment.open', $id, false);
+    $openUrl = fn (string $id): string => 'https://'.$consoleHost.route('environment.open', $id, false);
 
     // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
     // Every resource here is env-scoped (BelongsToEnvironment); the account-member

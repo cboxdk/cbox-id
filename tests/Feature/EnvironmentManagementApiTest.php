@@ -135,7 +135,7 @@ it('lets an environment manager mint a scoped key for their environment in the c
     platformRootEnvironment();
 
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -165,7 +165,7 @@ it('redirects a non-manager away from the environment-keys console', function ()
     platformRootEnvironment();
 
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner2@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

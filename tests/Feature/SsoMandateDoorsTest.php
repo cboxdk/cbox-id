@@ -146,7 +146,7 @@ function doorMandatedAccount(string $email): array
     platformRootDeployment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Workspace Co',
+        organizationName: 'Workspace Co',
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -312,9 +312,9 @@ it('activates an account invitation under a mandate, and still refuses the sessi
     $members = app(Memberships::class);
     $invited = $members->invite((string) $owner->account_id, 'workspace-invitee@acme.example', MembershipRole::Admin);
 
-    $url = URL::signedRoute('account.invite.accept', ['member' => $invited->id]);
+    $url = URL::signedRoute('organization.invite.accept', ['member' => $invited->id]);
 
-    livewireUpdate($url, 'auth.accept-account-invite', 'accept', updates: [
+    livewireUpdate($url, 'auth.accept-invite', 'accept', updates: [
         'password' => 'a-strong-unbreached-passphrase',
     ])->assertOk();
 

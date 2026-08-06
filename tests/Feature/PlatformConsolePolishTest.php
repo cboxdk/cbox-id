@@ -30,7 +30,7 @@ function polishOwner(): void
     platformRootDeployment();
 
     signInAsMember(app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'polish-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -103,7 +103,7 @@ it('gives every platform page the eyebrow its rail area actually uses', function
     // not highlight, and so did Operators and Security.
     $expected = [
         'platform.environments' => 'Platform',
-        'platform.accounts' => 'Platform',
+        'platform.customers' => 'Platform',
         'platform.organizations' => 'Platform',
         'platform.usage' => 'Insights',
         'platform.search' => 'Insights',
@@ -122,7 +122,7 @@ it('will not suspend a live tenant or a fellow operator on one unconfirmed click
 
     // Accounts already did this; Organizations and Operators sat ~8px from "View" with
     // no dialog, no undo and no toast.
-    foreach (['platform.organizations', 'platform.operators', 'platform.accounts'] as $route) {
+    foreach (['platform.organizations', 'platform.operators', 'platform.customers'] as $route) {
         $html = (string) $this->get(route($route))->assertOk()->getContent();
 
         // A page with nothing to suspend is not evidence either way.
@@ -161,9 +161,9 @@ it('renders the platform lists as tables, so a column header cannot drift off it
     polishOperator();
 
     // Header and body were two independent grids over the same `fr` tracks: measured on
-    // /platform/accounts, the data under "Created" sat 121px left of its own heading,
+    // /platform/customers, the data under "Created" sat 121px left of its own heading,
     // because the header's last cell was an empty span and the body's a button cluster.
-    foreach (['platform.environments', 'platform.accounts', 'platform.organizations'] as $route) {
+    foreach (['platform.environments', 'platform.customers', 'platform.organizations'] as $route) {
         $html = (string) $this->get(route($route))->assertOk()->getContent();
 
         // Empty in this fixture is a legitimate answer — the empty state replaces the

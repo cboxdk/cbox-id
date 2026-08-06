@@ -178,7 +178,7 @@ it('renders no connectors card until an environment administrator has chosen an 
     platformRootEnvironment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'cards@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

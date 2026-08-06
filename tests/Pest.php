@@ -409,10 +409,10 @@ function targetEnvironment(string $slug): void
  * The account host defaults to a domain that is deliberately NOT the app URL's host, so
  * a cross-plane bounce is visible as a different origin rather than as a same-host path.
  */
-function multiTenantDeployment(string $accountHost = 'cboxid.com'): void
+function multiTenantDeployment(string $consoleHost = 'cboxid.com'): void
 {
     config()->set('cbox-id.tenancy.multi_tenant', true);
-    config()->set('cbox-id.tenancy.account_host', $accountHost);
+    config()->set('cbox-id.tenancy.account_host', $consoleHost);
 }
 
 /**
@@ -504,7 +504,7 @@ function crudSetup(): array
 
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

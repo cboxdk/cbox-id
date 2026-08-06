@@ -45,7 +45,7 @@ generates one), the deployment shape, and the public issuer URL. Then it:
 1. mints `CBOX_ID_CRYPTO_KEY` if the deployment has none, and writes it to `.env`;
 2. runs migrations if the schema is not there yet;
 3. **refuses** and stops if anything already exists — naming what it found;
-4. records the shape (`CBOX_ID_MULTI_TENANT`, `CBOX_ID_ACCOUNT_HOST`) and the issuer
+4. records the shape (`CBOX_ID_MULTI_TENANT`, `CBOX_ID_CONSOLE_HOST`) and the issuer
    (`CBOX_ID_ISSUER`, plus the passkey `rp_id`/`origin` derived from it) in `.env`,
    never overwriting a value that is already there;
 5. creates the platform-root environment and stamps it `is_default`;
@@ -74,8 +74,8 @@ php artisan cbox-id:install --no-interaction \
 | `--email=` | The first platform operator. **Required** non-interactively — the command fails rather than guessing. |
 | `--name=` | Their display name. Defaults to `Operator`. |
 | `--password=` | Their password (minimum 12 characters). Omit it and a strong one is generated and printed **once**. A password you supply is never echoed. |
-| `--multi-tenant` | Install the SaaS shape. Requires `--account-host`. |
-| `--account-host=` | Where the account console lives, e.g. `cboxid.com`. |
+| `--multi-tenant` | Install the SaaS shape. Requires `--console-host`. |
+| `--console-host=` | Where the account console lives, e.g. `cboxid.com`. |
 | `--environment=` | Name of the first environment. Defaults to `Production`. |
 | `--account=` | Name of the first account (multi-tenant only). |
 | `--issuer=` | Public HTTPS URL of this platform. Defaults to `APP_URL`. |

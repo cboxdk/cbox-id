@@ -130,7 +130,7 @@ it('holds an unverified environment administrator back too', function (): void {
 
     $provisioned = app(TenantProvisioner::class)->provision(
         new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: 'gate-owner@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',

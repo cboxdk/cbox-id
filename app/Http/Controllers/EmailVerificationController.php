@@ -25,14 +25,14 @@ final class EmailVerificationController extends Controller
             return redirect()->route('login')->with('error', 'That verification link is invalid or has expired.');
         }
 
-        // An ACCOUNT owner verifying their address is the moment their first
-        // environment is finally stood up — self-serve signup deliberately defers it
-        // until here, so an unverified (bot) signup never provisions an IdP. Idempotent:
-        // a replayed link finds the environment already there and does nothing.
-        $member = $members->findBySubject($subjectId);
+        // An owner verifying their address is the moment their first environment is
+        // finally stood up — self-serve signup deliberately defers it until here, so an
+        // unverified (bot) signup never provisions an IdP. Idempotent: a replayed link
+        // finds the environment already there and does nothing.
+        $membership = $members->forUser($subjectId)->first();
 
-        if ($member !== null) {
-            $provisioner->releaseEnvironment($member);
+        if ($membership !== null) {
+            $provisioner->releaseEnvironment($membership->organization_id);
 
             // The ONE session, asked at the cookie rather than through CurrentUser: this
             // route is deliberately outside the auth middleware (the token is the proof,

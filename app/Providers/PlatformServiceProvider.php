@@ -18,7 +18,6 @@ use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\TargetEnvironment;
 use App\Listeners\RevokeTokensOnRoleChange;
-use App\Platform\AccountAuth;
 use App\Platform\BreachedPasswords;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
@@ -72,7 +71,6 @@ final class PlatformServiceProvider extends ServiceProvider
         // and its account: measured at four resolutions on the projects page and nine on
         // the activity one. Without the `scoped` binding the memo it now carries would
         // never be hit, because every app() call would build a new object.
-        $this->app->scoped(AccountAuth::class);
 
         // Replace the framework's deliberately-inert breach check with the real HIBP
         // k-anonymity lookup, so the tenant password policy's requireBreachCheck

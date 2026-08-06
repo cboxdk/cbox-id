@@ -156,7 +156,7 @@ it('refuses the multi-tenant shape with nowhere for the account console to live'
     ]);
 
     expect($exit)->toBe(1)
-        ->and($output)->toContain('--account-host')
+        ->and($output)->toContain('--console-host')
         ->and(Environment::query()->count())->toBe(0);
 });
 
@@ -166,7 +166,7 @@ it('installs the multi-tenant shape with an account and its own environment', fu
         '--name' => 'Root Operator',
         '--password' => 'a-strong-unbreached-passphrase',
         '--multi-tenant' => true,
-        '--account-host' => 'cboxid.com',
+        '--console-host' => 'cboxid.com',
         '--account' => 'Cbox',
         '--environment' => 'Production',
     ]);
@@ -188,7 +188,7 @@ it('installs the multi-tenant shape with an account and its own environment', fu
     $env = new EnvFile((string) $this->envPath);
 
     expect($env->get('CBOX_ID_MULTI_TENANT'))->toBe('true')
-        ->and($env->get('CBOX_ID_ACCOUNT_HOST'))->toBe('cboxid.com');
+        ->and($env->get('CBOX_ID_CONSOLE_HOST'))->toBe('cboxid.com');
 });
 
 it('never echoes a password it was given', function (): void {

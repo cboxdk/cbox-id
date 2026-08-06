@@ -30,7 +30,7 @@ function envApprovalsSetup(): object
 {
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

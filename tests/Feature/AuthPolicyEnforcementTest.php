@@ -106,7 +106,7 @@ it('saves the environment baseline from the console and shows what each org gets
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(
         new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: 'policy-owner@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',
@@ -141,7 +141,7 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(
         new TenantBlueprint(
-            accountName: 'Acme',
+            organizationName: 'Acme',
             ownerEmail: 'policy-owner2@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',

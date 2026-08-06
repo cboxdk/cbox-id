@@ -323,9 +323,9 @@ new #[Layout('components.layouts.platform', ['title' => 'Environments', 'width' 
                                      unattached leftover, which an operator should be able to SEE
                                      is unattached rather than infer from an empty column. --}}
                                 <td>
-                                    @if ($env['lineage']->belongsToAccount())
-                                        <a href="{{ route('platform.accounts.show', $env['lineage']->accountId) }}" wire:navigate class="font-medium hover:underline">
-                                            {{ $env['lineage']->accountName }}
+                                    @if ($env['lineage']->belongsToOrganization())
+                                        <a href="{{ route('platform.customers.show', $env['lineage']->organizationId) }}" wire:navigate class="font-medium hover:underline">
+                                            {{ $env['lineage']->organizationName }}
                                         </a>
                                         <p class="text-xs" style="color:var(--faint)">{{ $env['lineage']->projectName ?? 'No project' }}</p>
                                     @elseif ($env['lineage']->isPlatformRoot)
@@ -409,7 +409,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Environments', 'width' 
 
         <p class="mt-4 text-xs" style="color:var(--faint)">
             Environments nest under a project, and a project under an
-            <a href="{{ route('platform.accounts') }}" wire:navigate class="underline">account</a> — start there to see one
+            <a href="{{ route('platform.customers') }}" wire:navigate class="underline">account</a> — start there to see one
             customer's whole estate. Two rows here never have an account: the
             <strong>platform root</strong> is the plane this deployment itself runs in, where operators
             and account members live, and an <strong>unattached</strong> environment has no project, so

@@ -28,7 +28,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 function usageEnvironment(string $name, string $email): array
 {
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: $name,
+        organizationName: $name,
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

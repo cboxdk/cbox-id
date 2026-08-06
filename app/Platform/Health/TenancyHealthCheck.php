@@ -50,18 +50,18 @@ class TenancyHealthCheck implements HealthCheck
             return $results;
         }
 
-        $accountHost = $this->planes->accountHost();
+        $consoleHost = $this->planes->consoleHost();
 
-        if ($accountHost === null) {
+        if ($consoleHost === null) {
             $results[] = HealthResult::fail(
                 'Multi-tenant, but the account console has no host',
-                'Set CBOX_ID_ACCOUNT_HOST. Without it the environment console sends its sign-in handoff to a '
+                'Set CBOX_ID_CONSOLE_HOST. Without it the environment console sends its sign-in handoff to a '
                 .'local door instead of the account plane, and the account host is absent from the '
                 .'Content-Security-Policy form-action list, so browsers refuse cross-plane sign-out. Neither '
                 .'raises an error.',
             );
         } else {
-            $results[] = HealthResult::ok('Account console host', $accountHost);
+            $results[] = HealthResult::ok('Account console host', $consoleHost);
         }
 
         $bases = config('cbox-id.environments.base_domains', []);

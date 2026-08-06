@@ -52,7 +52,7 @@ final readonly class AuditNames
             $actorId = $entry->actor_id;
             if (is_string($actorId) && $actorId !== '') {
                 match ($entry->actor_type->value) {
-                    'user', 'operator', 'account_member' => $userIds[] = $actorId,
+                    'user', 'operator', 'organization_member' => $userIds[] = $actorId,
                     'service' => $clientIds[] = $actorId,
                     default => null,
                 };

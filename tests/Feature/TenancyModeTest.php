@@ -90,7 +90,7 @@ it('serves multi-tenancy without subdomains, on per-tenant custom domains', func
     config()->set('cbox-id.environments.platform_root_hosts', []);
 
     expect(planes()->isMultiTenant())->toBeTrue()
-        ->and(planes()->accountHost())->toBe('accounts.example')
+        ->and(planes()->consoleHost())->toBe('accounts.example')
         // The consequence that actually broke: cross-plane form posts stay permitted.
         ->and(planes()->formActionHosts())->toContain('accounts.example')
         ->and(planes()->misconfigured())->toBeFalse();
@@ -104,7 +104,7 @@ it('names a multi-tenant deployment with nowhere for the account console to live
     config()->set('cbox-id.environments.base_domains', []);
     config()->set('cbox-id.environments.platform_root_hosts', []);
 
-    expect(planes()->accountHost())->toBeNull()
+    expect(planes()->consoleHost())->toBeNull()
         ->and(planes()->misconfigured())->toBeTrue();
 })->group('security');
 
@@ -124,5 +124,5 @@ it('still derives the account host from the first base domain when nothing state
     config()->set('cbox-id.environments.platform_root_hosts', []);
     config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
 
-    expect(planes()->accountHost())->toBe('cboxid.com');
+    expect(planes()->consoleHost())->toBe('cboxid.com');
 });

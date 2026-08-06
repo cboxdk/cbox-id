@@ -202,10 +202,10 @@ final class PlaneResolver
         // A root environment provisioned without its own `domain` row does not resolve
         // by host at all, so the apex has to be named rather than inferred.
         //
-        // Named by `accountHost()`, not by `platformRootHosts()` alone. The operator
+        // Named by `consoleHost()`, not by `platformRootHosts()` alone. The operator
         // console and the account console are the SAME origin by design — both are the
         // platform root's apex — so a host that can serve one must serve the other. They
-        // did not agree: `accountHost()` resolves through a three-step chain that lands
+        // did not agree: `consoleHost()` resolves through a three-step chain that lands
         // in every real shape, while `platformRootHosts()` reads a config key with no env
         // binding that no deployment sets. So `cboxid.com` served `/workspace/login` and
         // 404'd `/operator/login`, and the staff console had no door at all in
@@ -214,7 +214,7 @@ final class PlaneResolver
         //
         // Still an exact match against ONE host, so the wildcard surface the branch above
         // exists to close stays closed: `anything.invalid` matches neither.
-        $account = $this->accountHost();
+        $account = $this->consoleHost();
 
         return ($account !== null && $host === $account)
             || in_array($host, $this->platformRootHosts(), true);
@@ -232,7 +232,7 @@ final class PlaneResolver
      * different host than the redirect actually targets fails as a blocked form, which is
      * exactly the bug this replaced.
      */
-    public function accountHost(): ?string
+    public function consoleHost(): ?string
     {
         // Stated first. It used to be read only as `base_domains[0]`, which conflated
         // two unrelated questions — "under which domains do we resolve a subdomain to an
@@ -282,7 +282,7 @@ final class PlaneResolver
      */
     public function misconfigured(): bool
     {
-        return $this->isMultiTenant() && $this->accountHost() === null;
+        return $this->isMultiTenant() && $this->consoleHost() === null;
     }
 
     /**
@@ -293,7 +293,7 @@ final class PlaneResolver
      */
     public function formActionHosts(): array
     {
-        $account = $this->accountHost();
+        $account = $this->consoleHost();
 
         return array_values(array_unique([
             ...($account === null ? [] : [$account]),

@@ -72,7 +72,7 @@ function moduleEnvironmentAdmin(string $slug = 'module-parity', bool $chooseOrga
     platformRootEnvironment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'module-parity-'.$slug.'@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

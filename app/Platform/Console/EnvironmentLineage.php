@@ -30,23 +30,23 @@ final readonly class EnvironmentLineage
 {
     public function __construct(
         public string $environmentId,
-        public ?string $accountId = null,
-        public ?string $accountName = null,
+        public ?string $organizationId = null,
+        public ?string $organizationName = null,
         public ?string $projectId = null,
         public ?string $projectName = null,
         public bool $isPlatformRoot = false,
     ) {}
 
     /** Whether a customer owns this environment. */
-    public function belongsToAccount(): bool
+    public function belongsToOrganization(): bool
     {
-        return $this->accountId !== null && $this->accountName !== null && $this->accountName !== '';
+        return $this->organizationId !== null && $this->organizationName !== null && $this->organizationName !== '';
     }
 
     /** Neither a customer's nor the platform's own — a leftover worth seeing. */
     public function isUnattached(): bool
     {
-        return ! $this->belongsToAccount() && ! $this->isPlatformRoot;
+        return ! $this->belongsToOrganization() && ! $this->isPlatformRoot;
     }
 
     /**
@@ -55,9 +55,9 @@ final readonly class EnvironmentLineage
      */
     public function owner(): string
     {
-        $accountName = $this->accountName;
+        $accountName = $this->organizationName;
 
-        if ($this->accountId !== null && $accountName !== null && $accountName !== '') {
+        if ($this->organizationId !== null && $accountName !== null && $accountName !== '') {
             return $accountName;
         }
 

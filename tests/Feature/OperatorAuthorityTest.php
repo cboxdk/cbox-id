@@ -57,7 +57,7 @@ function anAccountOwner(string $email = 'owner@acme.example'): object
     platformRootEnvironment();
 
     return app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

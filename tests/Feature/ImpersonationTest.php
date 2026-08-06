@@ -214,7 +214,7 @@ it('suspends the session an operator signed in with, and puts it back', function
     // The same person, also an account member — the shape a browser is really in when
     // staff have opened the account console and signed in there.
     $account = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Cbox',
+        organizationName: 'Cbox',
         ownerEmail: 'staff@platform.test',
         ownerName: 'Staff',
         ownerPassword: 'a-strong-unbreached-passphrase',

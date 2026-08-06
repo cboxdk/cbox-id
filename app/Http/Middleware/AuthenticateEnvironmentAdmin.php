@@ -51,7 +51,7 @@ final class AuthenticateEnvironmentAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($this->auth->current() !== null) {
+        if ($this->auth->membership() !== null) {
             return $next($request);
         }
 
@@ -78,15 +78,15 @@ final class AuthenticateEnvironmentAdmin
         // the first-run screen refuses to install into this state and
         // {@see \App\Platform\Health\TenancyHealthCheck} reports it — so it exists for the
         // one way in that is left: configuration changed after a good install.
-        abort(503, 'This deployment is configured as multi-tenant but names no account host, so there is no console to sign in at. Set CBOX_ID_ACCOUNT_HOST.');
+        abort(503, 'This deployment is configured as multi-tenant but names no account host, so there is no console to sign in at. Set CBOX_ID_CONSOLE_HOST.');
     }
 
     /**
-     * @see PlaneResolver::accountHost() — one definition, because the content security
+     * @see PlaneResolver::consoleHost() — one definition, because the content security
      * policy now has to name this same host and a second copy would drift from it.
      */
     private function rootHost(): ?string
     {
-        return $this->planes->accountHost();
+        return $this->planes->consoleHost();
     }
 }

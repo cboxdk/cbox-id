@@ -469,7 +469,7 @@ it('gives an account member the same terminal refusal', function (): void {
     platformRootDeployment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'refused-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -506,7 +506,7 @@ it('resolves an account member\'s mandate in the platform root', function (): vo
     platformRootDeployment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Scoped',
+        organizationName: 'Scoped',
         ownerEmail: 'scoped-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

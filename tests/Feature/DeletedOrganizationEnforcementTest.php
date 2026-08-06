@@ -121,7 +121,7 @@ it('records deleting an organization on that tenant’s audit trail', function (
     platformRootEnvironment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'deleted-audit-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',

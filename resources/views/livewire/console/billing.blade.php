@@ -35,7 +35,7 @@ new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Co
     /**
      * @return array<string, mixed>
      */
-    public function with(ConsoleScope $scope, Projects $projects): array
+    public function with(ConsoleScope $scope, OrganizationProjects $projects): array
     {
         $organizationId = $scope->organizationId();
 

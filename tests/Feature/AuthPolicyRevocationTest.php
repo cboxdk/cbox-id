@@ -168,7 +168,7 @@ it('revokes nobody when an override restates a mandate the environment already i
 it('ends the environment\'s sessions when the sign-in rules page mandates SSO', function (): void {
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        accountName: 'Acme',
+        organizationName: 'Acme',
         ownerEmail: 'rules-owner@acme.example',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
