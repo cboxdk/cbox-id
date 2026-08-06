@@ -13,6 +13,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
@@ -49,6 +50,11 @@ class ConsoleScope
     private ?string $operatorKey = null;
 
     private ?PlatformOperator $operatorRecord = null;
+
+    /** @see ownsProducts() — the organization the verdict below belongs to. */
+    private ?string $productsKey = null;
+
+    private bool $productsRecord = false;
 
     /** @var array<string, string>|null memo for {@see availableOrganizations()} */
     private ?array $availableRecord = null;
@@ -618,6 +624,19 @@ class ConsoleScope
             return null;
         }
 
+        // …AND THE ORGANIZATION HAS TO BE A CUSTOMER. Holding a role in it is not enough:
+        // on `acme.cboxid.com` the acting organization is a tenant's own end-user
+        // organization, and its owner owns no identity providers — the area has nothing in
+        // it for them. The account plane expressed this as "the organization this person's
+        // ACCOUNT owns"; with no account row, what makes an organization a customer is that
+        // it owns PRODUCTS.
+        //
+        // Dropping this half grants the whole Identity-platform area to every owner of
+        // every tenant organization on the install.
+        if (! $this->ownsProducts($organizationId)) {
+            return null;
+        }
+
         if ($this->plane() === ConsolePlane::Organization) {
             // CurrentUser's role is the role on CurrentUser's organization — the middleware
             // resolves the pair together and refuses an id the subject is not a member of,
@@ -632,6 +651,29 @@ class ConsoleScope
         return $membership !== null && $membership->organization_id === $organizationId
             ? $membership->role
             : null;
+    }
+
+    /**
+     * Whether an organization owns IdP products — which is what makes it a CUSTOMER rather
+     * than a tenant's own end-user organization.
+     *
+     * Memoised on the id, like every other per-request answer here: the rail asks through
+     * `membershipRole()` once per page entry, and each page's own guard asks again.
+     *
+     * Read in the PLATFORM ROOT because a customer's products are read from wherever the
+     * console happens to be served.
+     */
+    private function ownsProducts(string $organizationId): bool
+    {
+        if ($this->productsKey === $organizationId) {
+            return $this->productsRecord;
+        }
+
+        $this->productsKey = $organizationId;
+
+        return $this->productsRecord = app(PlatformRoot::class)->run(
+            fn (): bool => app(OrganizationProjects::class)->forOrganization($organizationId)->isNotEmpty(),
+        ) === true;
     }
 
     /**
