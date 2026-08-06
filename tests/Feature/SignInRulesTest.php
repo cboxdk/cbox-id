@@ -21,8 +21,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Volt\Volt;
@@ -476,12 +476,12 @@ it('gives an account member the same terminal refusal', function (): void {
     ));
 
     app(PlatformRoot::class)->run(fn () => app(AuthPolicies::class)->setForOrganization(
-        (string) $provisioned->account->organization_id,
+        (string) $provisioned->organization->id,
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 
     $organizationName = app(PlatformRoot::class)->run(
-        fn (): mixed => Organization::query()->whereKey($provisioned->account->organization_id)->value('name'),
+        fn (): mixed => Organization::query()->whereKey($provisioned->organization->id)->value('name'),
     );
 
     Volt::test('auth.login')
@@ -513,7 +513,7 @@ it('resolves an account member\'s mandate in the platform root', function (): vo
     ));
 
     app(PlatformRoot::class)->run(fn () => app(AuthPolicies::class)->setForOrganization(
-        (string) $provisioned->account->organization_id,
+        (string) $provisioned->organization->id,
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 

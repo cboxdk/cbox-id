@@ -128,7 +128,7 @@ it('records deleting an organization on that tenant’s audit trail', function (
     ));
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
     $org = app(Organizations::class)->create(new NewOrganization('Doomed', 'doomed'));
 
@@ -145,6 +145,6 @@ it('records deleting an organization on that tenant’s audit trail', function (
 
     expect($entry)->not->toBeNull()
         ->and($entry->target_id)->toBe($org->id)
-        ->and($entry->actor_id)->toBe($provisioned->member->id)
+        ->and($entry->actor_id)->toBe($provisioned->owner->id)
         ->and($entry->context['to'] ?? null)->toBe('deleted');
 });

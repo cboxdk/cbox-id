@@ -6,9 +6,9 @@ use App\Http\Controllers\EnvironmentAdminController;
 use App\Platform\AccountAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\SubjectCredentialGate;
 use App\Platform\PlatformAuth;
 use App\Platform\RevokingAuthPolicies;
+use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Enums\PasswordRevocationScope;
@@ -17,12 +17,12 @@ use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\RedirectResponse;
@@ -97,7 +97,7 @@ function handoffShape(Environment $environment): void
  */
 it('refuses the account door once an administrative password has expired', function (): void {
     $result = anMembership();
-    $subjectId = (string) $result->member->refresh()->subject_id;
+    $subjectId = (string) $result->owner->id;
 
     app(PlatformRoot::class)->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
         userId: $subjectId,
@@ -157,11 +157,11 @@ it('refuses a handoff for a member whose account has been suspended', function (
     $result = anMembership();
     handoffShape($result->environment);
 
-    $subjectId = (string) $result->member->refresh()->subject_id;
+    $subjectId = (string) $result->owner->id;
     $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
 
     // Suspended between the mint and the redemption — the tab that sat open.
-    Account::query()->whereKey($result->account->id)->update(['status' => OrganizationStatus::Suspended]);
+    Account::query()->whereKey($result->organization->id)->update(['status' => OrganizationStatus::Suspended]);
 
     // The OUTER wall: `DatabaseEnvironmentResolver::servable()` refuses to resolve an
     // environment whose account is not active, so the tenant host stops resolving at all,
@@ -244,7 +244,7 @@ it('opens the tenant console for a member whose account mandates SSO', function 
         fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required)),
     );
 
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
 
     // From the door the member actually presses — "open" on the account console — so the
     // mint and the redemption are both under test, which is where the cycle lived.
@@ -278,7 +278,7 @@ it('opens the tenant console for a member whose account mandates SSO', function 
 it('closes an open tenant console when the account\'s policy stops admitting passwords', function (): void {
     $result = anMembership();
     handoffShape($result->environment);
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
 
     [$response] = chainFrom($this, 'https://cboxid.com'.route('environment.open', $result->environment->id, false));
     $response->assertSuccessful();
@@ -320,7 +320,7 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     $result = anMembership();
     handoffShape($result->environment);
 
-    $subjectId = (string) $result->member->refresh()->subject_id;
+    $subjectId = (string) $result->owner->id;
 
     app(PlatformRoot::class)->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
         userId: $subjectId,
@@ -337,7 +337,7 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     // asked once at the door. (Signing in before travelling would only prove that a
     // two-hour-old session has expired.)
     $this->travel(2)->hours();
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
 
     // Same as above: the host the fixture serves on, not the one this file used to name.
     [$response, $chain] = chainFrom($this, 'https://'.$result->environment->domain.'/admin/handoff?token='.$token);

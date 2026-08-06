@@ -80,7 +80,7 @@ function moduleEnvironmentAdmin(string $slug = 'module-parity', bool $chooseOrga
 
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
     if (! $chooseOrganization) {
         return null;

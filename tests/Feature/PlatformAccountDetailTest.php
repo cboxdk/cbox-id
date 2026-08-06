@@ -6,16 +6,16 @@ use App\Platform\Console\EnvironmentLineage;
 use App\Platform\Console\EnvironmentLineages;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\OperatorEnvironment;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
-use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
-use Cbox\Id\Platform\Enums\ProjectStatus;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\Enums\ProjectStatus;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -62,14 +62,14 @@ function acmeEstate(): array
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    $first = app(Projects::class)->forOrganization($result->account->id)->firstOrFail();
+    $first = app(Projects::class)->forOrganization($result->organization->id)->firstOrFail();
     $staging = $provisioner->addEnvironment($first, 'Staging', type: EnvironmentType::Sandbox);
 
     $second = $provisioner->addProject($result->account, 'Billing Portal');
     $portal = $provisioner->addEnvironment($second, 'Production');
 
     return [
-        'account' => $result->account,
+        'organization' => $result->organization,
         'first' => $first,
         'second' => $second,
         'production' => $result->environment,
@@ -342,7 +342,7 @@ function lineageQueryCount(string $url): int
 }
 
 /**
- * The regression this whole resolver exists to prevent. `$environment->account->name` in
+ * The regression this whole resolver exists to prevent. `$environment->organization->name` in
  * the table would be one query per row on the page whose job is to show every plane on
  * the install — and the same again in the switcher, which renders on EVERY console page.
  */

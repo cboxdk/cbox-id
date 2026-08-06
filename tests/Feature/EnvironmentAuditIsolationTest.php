@@ -53,7 +53,7 @@ it('shows an environment admin only their own environment\'s audit trail', funct
 
     serveOnTestHost($attacker->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
-    actAsEnvironmentAdmin($attacker->member, $attacker->environment->id);
+    actAsEnvironmentAdmin($attacker->owner->id, $attacker->environment->id);
 
     $actions = fn ($component) => collect($component->viewData('entries')->items())
         ->pluck('action')

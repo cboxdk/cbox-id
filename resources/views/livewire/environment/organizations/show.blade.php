@@ -30,6 +30,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Platform\PlatformRoot;
 use Livewire\Volt\Component;
 
 /**
@@ -357,7 +359,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $pending = $invitations->invite($org->id, $this->inviteEmail, MembershipRole::from($this->inviteRole));
         Mail::to($this->inviteEmail)->send(new InvitationMail(
             organization: $org->name,
-            inviter: app(EnvironmentAdminAuth::class)->membership()->name ?? 'An administrator',
+            // The administrator's NAME comes from their subject: a membership carries
+            // authority, not identity.
+            inviter: $this->inviterName(),
             url: $links->route('invitation.accept', $pending->token),
         ));
 
@@ -503,6 +507,27 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             'assignmentsByUser' => $catalog->assignmentsByUser($org->id),
             'assignableRoles' => OrgRoles::assignable(),
         ];
+    }
+
+    /**
+     * The name to sign an invitation with.
+     *
+     * Through the SUBJECT, because a membership carries authority and not identity — the
+     * account plane's member row carried both, which is why this used to be one hop.
+     */
+    private function inviterName(): string
+    {
+        $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
+
+        $subject = $subjectId === null ? null : app(PlatformRoot::class)->run(
+            fn () => app(Subjects::class)->find($subjectId),
+        );
+
+        if ($subject === null) {
+            return 'An administrator';
+        }
+
+        return $subject->name ?? $subject->email ?? 'An administrator';
     }
 }; ?>
 

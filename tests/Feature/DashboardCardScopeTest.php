@@ -187,7 +187,7 @@ it('renders no connectors card until an environment administrator has chosen an 
     multiTenantDeployment();
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
     // `str_contains` rather than `expect()->toContain()`: Pest reads a second argument to
     // toContain() as ANOTHER NEEDLE, not as a failure message, so a negated call carrying

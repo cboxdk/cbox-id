@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Platform\ConsoleLocation;
 use App\Platform\Navigation\ConsoleNavigation;
 use Cbox\Console\Kit\Facades\Console;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -84,7 +84,7 @@ it('hides what an account role may not see, and drops the area when it holds not
     // bound to nobody.
     expect($pages())->toBe([]);
 
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
     expect($pages())->toContain('billing')
         ->and($pages())->toContain('organization-settings')
         ->and($pages())->toContain('api-keys');
@@ -95,7 +95,7 @@ it('hides what an account role may not see, and drops the area when it holds not
     // owner is refused — re-roling an owner orphans the account just as surely as deleting
     // one, which is why it is now refused up front rather than half-written.
     $viewer = app(Memberships::class)->create(
-        $result->account->id,
+        $result->organization->id,
         'viewer@acme.example',
         'a-strong-unbreached-passphrase',
         'Viewer',

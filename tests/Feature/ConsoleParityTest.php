@@ -98,7 +98,7 @@ function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
 
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
     $orgId = app(Organizations::class)->create(new NewOrganization('Tenant Co', $slug))->id;
     app(ConsoleScope::class)->chooseOrganization($orgId);

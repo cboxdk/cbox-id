@@ -8,9 +8,9 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -35,7 +35,7 @@ function pwUserSetup(): string
 
     serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    actAsEnvironmentAdmin($r->member, $r->environment->id);
+    actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
 
     return app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
 }
@@ -127,7 +127,7 @@ it('refuses a member without the environment-admin capability', function (): voi
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
 
     $members = app(Memberships::class);
-    $viewer = $members->invite($r->account->id, 'viewer@acme.example', MembershipRole::Viewer);
+    $viewer = $members->invite($r->organization->id, 'viewer@acme.example', MembershipRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     actAsEnvironmentAdmin($viewer, $r->environment->id);

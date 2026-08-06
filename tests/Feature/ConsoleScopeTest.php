@@ -15,11 +15,11 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -56,7 +56,7 @@ function actAsRealEnvironmentAdmin(string $email = 'env-owner@acme.example'): vo
 
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 }
 
 it('reads the organization from the membership on the organization plane', function (): void {

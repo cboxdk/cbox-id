@@ -9,8 +9,8 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -140,7 +140,7 @@ it('holds an unverified environment administrator back too', function (): void {
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
     $scope = app(ConsoleScope::class);
     $actorId = $scope->actorId();

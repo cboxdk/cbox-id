@@ -34,7 +34,7 @@ function usageEnvironment(string $name, string $email): array
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    return ['env' => $result->environment->id, 'member' => $result->member, 'environment' => $result->environment];
+    return ['env' => $result->environment->id, 'member' => $result->membership, 'subjectId' => $result->owner->id, 'environment' => $result->environment];
 }
 
 /** Bind a permission to a role by writing the pivot directly, as the role editor does. */

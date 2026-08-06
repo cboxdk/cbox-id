@@ -13,9 +13,11 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Models\Project;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
+use Cbox\Id\Platform\PlatformRoot;
 use Livewire\Volt\Component;
 
 /**
@@ -42,9 +44,9 @@ use Livewire\Volt\Component;
  * anything. Nothing here deletes, purges, or reassigns — the platform root and the
  * unattached environment in particular are surfaced and explained, never adopted.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '72rem'])] class extends Component
 {
-    public string $accountId = '';
+    public string $organizationId = '';
 
     /**
      * Re-check operator AUTHORITY on every request, including Livewire actions.
@@ -58,9 +60,12 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
         abort_unless($scope->isPlatformOperator(), 404);
     }
 
-    public function mount(string $account, Accounts $accounts): void
+    public function mount(string $organization, Organizations $organizations, PlatformRoot $platformRoot): void
     {
-        $model = $accounts->find($account);
+        // IN THE PLATFORM ROOT: `organizations` is environment-owned, and an operator
+        // reaches this page from whichever plane the console happens to be pointed at.
+        $model = $platformRoot->run(fn () => $organizations->find($organization));
+
         abort_if($model === null, 404);
 
         $this->organizationId = $model->id;
@@ -68,9 +73,9 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
 
     /**
      * Suspend or reactivate — the same contract call, copy and blast radius as the list.
-     * The audit entry is written by {@see Accounts::suspend()} itself, not here.
+     * The audit entry is written by {@see Organizations::suspend()} itself, not here.
      */
-    public function toggleStatus(Accounts $accounts, ConsoleScope $scope): void
+    public function toggleStatus(Organizations $organizations, ConsoleScope $scope, PlatformRoot $platformRoot): void
     {
         $actorId = $scope->operator()?->id;
 
@@ -78,27 +83,33 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
             abort(403);
         }
 
-        $account = $accounts->find($this->organizationId);
+        $suspending = $platformRoot->run(function () use ($organizations, $actorId): ?bool {
+            $organization = $organizations->find($this->organizationId);
 
-        if ($account === null) {
+            if ($organization === null) {
+                return null;
+            }
+
+            $suspending = ! $organization->status->revokesAccess();
+
+            $suspending
+                ? $organizations->suspend($organization->id, $actorId)
+                : $organizations->reactivate($organization->id, $actorId);
+
+            return $suspending;
+        });
+
+        if ($suspending === null) {
             return;
         }
 
-        $suspending = $account->isActive();
-
-        if ($suspending) {
-            $accounts->suspend($account->id, $actorId);
-        } else {
-            $accounts->reactivate($account->id, $actorId);
-        }
-
         $this->dispatch('toast', message: $suspending
-            ? 'Account suspended — its members can no longer sign in and its environments stop serving auth.'
-            : 'Account reactivated.');
+            ? 'Customer suspended — its members can no longer sign in and its environments stop serving auth.'
+            : 'Customer reactivated.');
     }
 
     /**
-     * Point the console at one of THIS account's environments and stay here, so the
+     * Point the console at one of THIS customer's environments and stay here, so the
      * operator can see which plane they are now reading from without losing the customer
      * they were looking at.
      */
@@ -129,7 +140,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
     }
 
     /**
-     * The environment named by an action, refused unless THIS account owns it.
+     * The environment named by an action, refused unless THIS customer owns it.
      *
      * Deny-by-default rather than "look it up and use it": both actions above take an id
      * straight off the wire, and without the ownership predicate either one would let a
@@ -140,9 +151,12 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
      */
     private function ownedEnvironment(string $id): Environment
     {
+        // OWNERSHIP RUNS THROUGH THE PROJECT — `environments.account_id` is gone, and the
+        // predicate stays IN the query rather than becoming a comparison afterwards. This
+        // is the one place on the page that takes an id straight off the wire.
         $environment = Environment::query()
             ->whereKey($id)
-            ->where('account_id', $this->organizationId)
+            ->whereIn('project_id', Project::query()->where('organization_id', $this->organizationId)->pluck('id'))
             ->first();
 
         abort_if($environment === null, 404);
@@ -152,21 +166,25 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
 
     /** @return array<string, mixed> */
     public function with(
-        Accounts $accounts,
+        Organizations $organizations,
         Memberships $members,
-        Projects $projects,
+        OrganizationProjects $projects,
+        Projects $projectPlans,
         EnvironmentContext $context,
+        PlatformRoot $platformRoot,
     ): array {
-        $account = $accounts->find($this->organizationId);
+        $account = $platformRoot->run(fn () => $organizations->find($this->organizationId));
         abort_if($account === null, 404);
 
         $projectList = $projects->forOrganization($account->id);
+        $projectIds = $projectList->pluck('id')->all();
 
-        // Every environment the account owns, in ONE read. Grouped by project below
-        // rather than queried per project — a five-project account would otherwise cost
-        // five reads to render the same rows.
+        // Every environment the customer owns, in ONE read, THROUGH the projects —
+        // `environments.account_id` was the shortcut and it is gone. Grouped by project
+        // below rather than queried per project: a five-product customer would otherwise
+        // cost five reads to render the same rows.
         $environments = Environment::query()
-            ->where('account_id', $account->id)
+            ->whereIn('project_id', $projectIds)
             ->orderBy('created_at')
             ->get();
 
@@ -181,7 +199,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
             if (is_string($projectId) && $projectId !== '') {
                 $byProject[$projectId][] = $environment;
             } else {
-                // An environment the account owns that sits in no project. The same
+                // An environment the customer owns that sits in no project. The same
                 // shape as the install-wide orphan, one level down, and shown for the
                 // same reason: a row that exists and is not rendered anywhere is a row
                 // nobody will ever go and look at.
@@ -193,7 +211,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
 
         // Organizations and users live INSIDE a plane, so these two are the only reads
         // on the page that need the scope escape — and they are grouped, so the page
-        // costs the same two queries whether the account owns one environment or twenty.
+        // costs the same two queries whether the customer owns one environment or twenty.
         [$orgCounts, $userCounts] = $context->withoutScope(function () use ($environmentIds): array {
             if ($environmentIds === []) {
                 return [[], []];
@@ -216,10 +234,10 @@ new #[Layout('components.layouts.platform', ['title' => 'Account', 'width' => '7
         $remaining = [];
 
         foreach ($projectList as $project) {
-            $remaining[$project->id] = $projects->remainingEnvironments($project);
+            $remaining[$project->id] = $projectPlans->remainingEnvironments($project);
         }
 
-        // The package's Account model does not declare the Eloquent timestamp columns as
+        // The package's model does not declare the Eloquent timestamp columns as
         // @property, so read created_at off the attribute bag and narrow it rather than
         // trusting an undeclared property.
         $createdAt = $account->getAttribute('created_at');

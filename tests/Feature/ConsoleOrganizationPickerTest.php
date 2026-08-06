@@ -40,7 +40,7 @@ function anEnvironmentAdmin(): void
 
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->member, $provisioned->environment->id);
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 }
 
 it('chooses an organization in this environment', function (): void {

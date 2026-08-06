@@ -46,7 +46,7 @@ if (! function_exists('erasureConsoleSetup')) {
 
         serveOnTestHost($result->environment);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-        actAsEnvironmentAdmin($result->member, $result->environment->id);
+        actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
     }
 }
 

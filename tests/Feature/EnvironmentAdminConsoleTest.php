@@ -7,10 +7,10 @@ use App\Platform\EnvironmentSudo;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -38,8 +38,8 @@ function envAdminSetup(): array
     ));
 
     return [
-        'member' => $r->member,
-        'account' => $r->account,
+        'member' => $r->membership, 'subjectId' => $r->owner->id,
+        'organization' => $r->organization,
         'env' => $r->environment,
         'envId' => $r->environment->id,
         // The env's {slug}.{base_domain} tenant host (with base_domains = ['cboxid.com']).

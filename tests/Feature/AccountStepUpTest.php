@@ -5,8 +5,8 @@ declare(strict_types=1);
 use App\Platform\AccountAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -42,9 +42,9 @@ function signInMember(): string
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
 
-    return $result->member->id;
+    return $result->owner->id;
 }
 
 it('redirects account API key minting to sudo when not recently confirmed', function (): void {

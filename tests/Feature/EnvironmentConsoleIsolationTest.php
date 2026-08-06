@@ -162,7 +162,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
 
     serveOnTestHost($attacker->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
-    actAsEnvironmentAdmin($attacker->member, $attacker->environment->id);
+    actAsEnvironmentAdmin($attacker->owner->id, $attacker->environment->id);
 
     $leaked = [];
     $rendered = [];
@@ -262,7 +262,7 @@ it('refuses a deep link to another environment\'s record', function (): void {
 
     serveOnTestHost($attacker->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
-    actAsEnvironmentAdmin($attacker->member, $attacker->environment->id);
+    actAsEnvironmentAdmin($attacker->owner->id, $attacker->environment->id);
 
     $deepLinks = [
         'environment.organizations.show' => $orgId,

@@ -11,9 +11,9 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -62,7 +62,7 @@ function envAdminImpersonationSetup(): array
     });
 
     return [
-        'member' => $provisioned->member,
+        'member' => $provisioned->membership, 'subjectId' => $provisioned->owner->id,
         'env' => $env,
         'envId' => $env->id,
         'orgId' => $orgId,

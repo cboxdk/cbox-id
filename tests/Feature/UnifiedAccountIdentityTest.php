@@ -14,9 +14,9 @@ use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -45,8 +45,8 @@ function unifiedSetup(string $password = 'a-strong-unbreached-passphrase'): arra
     ));
 
     return [
-        'member' => app(Memberships::class)->find($r->member->id),
-        'account' => $r->account->refresh(),
+        'member' => app(Memberships::class)->find($r->owner->id),
+        'organization' => $r->organization->refresh(),
         'env' => $r->environment,
     ];
 }

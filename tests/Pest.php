@@ -36,13 +36,13 @@ use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -189,44 +189,33 @@ function serveOnTestHost(Environment $environment): Environment
 }
 
 /**
- * Sign an account member in as the ADMINISTRATOR of an environment.
+ * Sign a member in as the ADMINISTRATOR of an environment.
  *
  * Through the real {@see EnvironmentAdminAuth::establish()}, because an admin session is
- * the member's ordinary PLATFORM-ROOT SUBJECT session plus an anchor naming the
- * environment — not a raw key a test could fabricate. A test that wrote the keys by hand
- * would be asserting against a session shape no door produces.
+ * the person's ordinary PLATFORM-ROOT SUBJECT session plus an anchor naming the environment
+ * — not a raw key a test could fabricate. A test that wrote the keys by hand would be
+ * asserting against a session shape no door produces.
  *
- * The member must HAVE a subject, which means a platform root existed before the account
- * was provisioned ({@see platformRootEnvironment()}).
+ * TAKES THE SUBJECT ID. It used to take a member row and read `$member->subject_id` off it;
+ * a membership carries authority and not identity, so the subject is what the caller has
+ * and what this needs. `ProvisionedTenant::$owner` is that subject.
  */
-function actAsEnvironmentAdmin(Membership $member, string $environmentId): void
+function actAsEnvironmentAdmin(string $subjectId, string $environmentId): void
 {
-    app(EnvironmentAdminAuth::class)->establish(
-        (string) $member->refresh()->subject_id,
-        $environmentId,
-    );
+    app(EnvironmentAdminAuth::class)->establish($subjectId, $environmentId);
 }
 
 /**
- * Sign the browser in AS AN ACCOUNT MEMBER.
+ * Sign the browser in AS A MEMBER.
  *
- * There is no member session any more — a member is a subject that holds a membership, so
- * this establishes the ONE session and the membership is looked up from it. Tests used to
- * write `AccountAuth::SESSION_KEY` directly, which is exactly why the shape was easy to
- * get wrong: half of them had to remember to write a security stamp beside it, and the
- * half that forgot were asserting against a session the plane would have refused.
- *
- * Same precondition as above: the member needs a subject, so stand up the platform root
- * BEFORE provisioning the account.
+ * There is no member session — a member is a subject that holds a membership, so this
+ * establishes the ONE session and the membership is looked up from it. Tests used to write
+ * a member session key directly, which is exactly why the shape was easy to get wrong: half
+ * of them had to remember a security stamp beside it, and the half that forgot were
+ * asserting against a session the plane would have refused.
  */
-function signInAsMember(Membership $member): void
+function signInAsMember(string $subjectId): void
 {
-    $subjectId = (string) $member->refresh()->subject_id;
-
-    expect($subjectId)->not->toBe(
-        '',
-        'fixture: this member has no subject — provision the account AFTER platformRootEnvironment()',
-    );
 
     signInAsSubject($subjectId);
 }
@@ -495,9 +484,9 @@ function accountWithOrg(string $email): array
  */
 function crudSetup(): array
 {
-    // The environment-admin console is a multi-tenant surface — it is gated on an account
-    // member administering one of their ACCOUNT's environments, and a single-tenant install
-    // has one environment which is the platform root and belongs to no account. So the whole
+    // The environment-admin console is a multi-tenant surface — it is gated on a member
+    // administering one of their ORGANIZATION's environments, and a single-tenant install
+    // has one environment which is the platform root and belongs to nobody. So the whole
     // `/admin` prefix 404s on that shape ({@see \App\Http\Middleware\RequireMultiTenant}),
     // and every test that drives it is stating the SaaS shape whether it says so or not.
     multiTenantDeployment();
@@ -512,9 +501,9 @@ function crudSetup(): array
 
     serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    actAsEnvironmentAdmin($r->member, $r->environment->id);
+    actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
 
-    return ['member' => $r->member, 'envId' => $r->environment->id];
+    return ['member' => $r->membership, 'subjectId' => $r->owner->id, 'envId' => $r->environment->id];
 }
 
 /**

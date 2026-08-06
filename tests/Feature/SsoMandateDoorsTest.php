@@ -22,10 +22,10 @@ use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -152,7 +152,7 @@ function doorMandatedAccount(string $email): array
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    $organizationId = (string) $provisioned->account->organization_id;
+    $organizationId = (string) $provisioned->organization->id;
 
     // In the ROOT's scope: the account's organization lives there, and a policy written
     // under this host's ambient scope would be written for a different environment.

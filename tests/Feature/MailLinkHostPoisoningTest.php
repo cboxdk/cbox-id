@@ -7,12 +7,12 @@ use App\Mail\MagicLinkMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\MailLinks;
 use App\Platform\TrustedHosts;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -96,7 +96,7 @@ it('never mails a reset link on a Host this deployment does not serve', function
     poisonRequestHost('http://evil.example/forgot-password');
 
     Volt::test('auth.forgot-password')
-        ->set('email', $account->member->email)
+        ->set('email', $account->owner->email)
         ->call('sendResetLink')
         ->assertHasNoErrors();
 
@@ -116,7 +116,7 @@ it('never mails a magic link on a Host this deployment does not serve', function
     poisonRequestHost('http://evil.example/login');
 
     Volt::test('auth.login')
-        ->set('email', $account->member->email)
+        ->set('email', $account->owner->email)
         ->call('sendMagicLink')
         ->assertHasNoErrors();
 
@@ -152,7 +152,7 @@ it('refuses a signed invitation link replayed with a foreign Host', function ():
     poisonRequestHost('http://evil.example/account-members');
 
     $invited = app(Memberships::class)
-        ->invite((string) $account->account->id, 'invitee@acme.example', MembershipRole::Admin);
+        ->invite((string) $account->organization->id, 'invitee@acme.example', MembershipRole::Admin);
 
     $url = app(MailLinks::class)->temporarySignedRoute(
         'organization.invite.accept',

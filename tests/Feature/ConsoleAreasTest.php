@@ -162,7 +162,7 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
 
     $area = collect(Console::nav()->areas())->firstWhere('key', 'identity-platform');
     $checked = 0;

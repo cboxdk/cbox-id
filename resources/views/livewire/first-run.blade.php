@@ -48,7 +48,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
 
     public string $environmentName = 'Production';
 
-    public string $accountName = '';
+    public string $organizationName = '';
 
     /** The configured shape, shown so the operator sees what they are about to create. */
     public bool $multiTenant = false;
@@ -96,7 +96,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
             'email' => 'required|email|max:190',
             'password' => 'required|string|min:12',
             'environmentName' => 'required|string|max:190',
-            'accountName' => ($planes->isMultiTenant() ? 'required' : 'nullable').'|string|max:190',
+            'organizationName' => ($planes->isMultiTenant() ? 'required' : 'nullable').'|string|max:190',
         ]);
 
         // The token is 32 random bytes, so this is not a brute-force bound — it is a

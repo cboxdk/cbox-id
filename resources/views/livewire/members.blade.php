@@ -372,14 +372,16 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
      * So this page declines, and says where the roster actually lives. That is the honest
      * statement of the fold's direction: the account roster is ONE roster, and it is not
      * this one. The alternative — syncing back — would require deciding what
-     * `MembershipRole::Member` and `Owner` mean on the account plane, which today is
-     * "nothing" and "not assignable".
+     * `MembershipRole::Member` and `Owner` mean on the management plane.
      */
     private function governedByAccount(string $userId): bool
     {
+        // ONE PREDICATE NOW, not a join. It used to reach through the member row to the
+        // account and compare that account's organization; a membership names the
+        // organization directly, so the relation it hopped through is gone with the row.
         return Membership::query()
-            ->where('subject_id', $userId)
-            ->whereHas('account', fn ($account) => $account->where('organization_id', $this->orgId()))
+            ->where('user_id', $userId)
+            ->where('organization_id', $this->orgId())
             ->exists();
     }
 

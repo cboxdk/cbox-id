@@ -116,7 +116,7 @@ it('saves the environment baseline from the console and shows what each org gets
     serveOnTestHost($r->environment);
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($r->environment->id));
-    actAsEnvironmentAdmin($r->member, $r->environment->id);
+    actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
 
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-'.uniqid()));
 
@@ -153,7 +153,7 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
         ->set(GenericEnvironment::of($r->environment->id));
 
     $members = app(Memberships::class);
-    $viewer = $members->invite($r->account->id, 'policy-viewer@acme.example', MembershipRole::Viewer);
+    $viewer = $members->invite($r->organization->id, 'policy-viewer@acme.example', MembershipRole::Viewer);
     $members->activate($viewer->id, 'a-strong-unbreached-passphrase');
 
     actAsEnvironmentAdmin($viewer, $r->environment->id);

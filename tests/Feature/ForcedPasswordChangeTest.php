@@ -19,8 +19,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -154,7 +154,7 @@ it('holds the Identity platform until an account member replaces a temporary pas
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
 
-    $subjectId = (string) $result->member->refresh()->subject_id;
+    $subjectId = (string) $result->owner->id;
     $root = app(PlatformRoot::class);
 
     $root->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
@@ -165,7 +165,7 @@ it('holds the Identity platform until an account member replaces a temporary pas
         revoke: PasswordRevocationScope::Nothing,
     )));
 
-    signInAsMember($result->member);
+    signInAsMember($result->owner->id);
 
     $this->get(route('projects'))->assertRedirect(route('password.change'));
     $this->get(route('password.change'))->assertOk();

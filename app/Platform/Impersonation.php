@@ -10,7 +10,6 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
@@ -61,7 +60,6 @@ final class Impersonation
         private readonly PlatformAuth $platformAuth,
         private readonly SessionManager $sessions,
         private readonly AuditLog $audit,
-        private readonly Memberships $members,
         private readonly PlatformOperators $operators,
         private readonly PlatformRoot $platformRoot,
         private readonly OperatorEnvironment $target,
@@ -228,7 +226,10 @@ final class Impersonation
             // never carried in the marker. A member removed (or unlinked) while the
             // impersonation was running restores nothing: they come back to the sign-in
             // door, not to a live control-plane session.
-            $subjectId = $this->members->find($marker->operator)?->subject_id;
+            // The marker holds the SUBJECT id directly now. It used to hold a member row
+            // id that had to be resolved back to a subject; a membership is not an identity,
+            // so there is nothing left to resolve.
+            $subjectId = $marker->operator;
 
             // The anchor goes back only if the identity did. An anchor without a session
             // authenticates nobody, but leaving one behind for whoever holds the browser

@@ -6,13 +6,12 @@ use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
-use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Livewire\Volt\Volt;
 
@@ -35,7 +34,7 @@ if (! function_exists('provisionAccount')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
-        return ['member' => $result->member, 'account' => $result->account, 'project' => $result->project, 'environment' => $result->environment];
+        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->organization, 'project' => $result->project, 'environment' => $result->environment];
     }
 }
 

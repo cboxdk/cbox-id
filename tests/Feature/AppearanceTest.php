@@ -201,7 +201,7 @@ if (! function_exists('appearanceEnvSetup')) {
 
         serveOnTestHost($r->environment);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-        actAsEnvironmentAdmin($r->member, $r->environment->id);
+        actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
 
         return $r->environment->id;
     }

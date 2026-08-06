@@ -47,7 +47,7 @@ function craftedEnvAdmin(): void
 
     serveOnTestHost($result->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-    actAsEnvironmentAdmin($result->member, $result->environment->id);
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 }
 
 /**
@@ -70,7 +70,7 @@ it('refuses a crafted enum on the sign-in rules form instead of throwing', funct
 
     serveOnTestHost($result->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-    actAsEnvironmentAdmin($result->member, $result->environment->id);
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 
     Volt::test('console.auth-policy')
         ->set('mfa', 'not-a-requirement')
@@ -90,7 +90,7 @@ it('refuses a crafted revocation scope on the admin set-password panel', functio
 
     serveOnTestHost($result->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-    actAsEnvironmentAdmin($result->member, $result->environment->id);
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 
     $userId = app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
 
@@ -143,7 +143,7 @@ it('does not tell one account whether an email belongs to another', function ():
         ownerPassword: 'another-strong-passphrase',
     ));
 
-    signInAsMember($mine->member);
+    signInAsMember($mine->owner->id);
 
     $probeOther = Volt::test('console.members')
         ->set('inviteEmail', 'owner@rival.example')

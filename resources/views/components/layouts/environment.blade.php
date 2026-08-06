@@ -4,42 +4,51 @@
     use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
     use Cbox\Id\Organization\Models\Environment;
 
-    // The env-admin is an ACCOUNT-layer identity administering THIS environment (the
-    // control plane), never a subject in it.
-    $member = app(EnvironmentAdminAuth::class)->membership();
+    // The env-admin is a MANAGEMENT-plane identity administering THIS environment (the
+    // control plane), never a subject in it. The membership carries the authority; the
+    // subject carries the person, so both are resolved here.
+    $adminAuth = app(EnvironmentAdminAuth::class);
+    $member = $adminAuth->membership();
+    $adminSubjectId = $adminAuth->subjectId();
+    $adminSubject = $adminSubjectId === null ? null : app(\Cbox\Id\Platform\PlatformRoot::class)->run(
+        fn () => app(\Cbox\Id\Identity\Contracts\Subjects::class)->find($adminSubjectId),
+    );
     $envKey = app(EnvironmentContext::class)->current()?->environmentKey();
     $environment = $envKey !== null ? Environment::query()->find($envKey) : null;
     $envName = $environment?->name ?? 'Environment';
-    $memberInitial = strtoupper(substr($member?->name ?? $member?->email ?? 'A', 0, 1));
+    $memberInitial = strtoupper(substr($adminSubject?->name ?? $adminSubject?->email ?? 'A', 0, 1));
 
-    // The account member's own profile/MFA/passkeys live on the ACCOUNT plane (where
-    // the WebAuthn origin is valid) — link out to it from here.
+    // The administrator's own profile/MFA/passkeys live on the CONSOLE host (where the
+    // WebAuthn origin is valid) — link out to it from here.
     // One definition (PlaneResolver::consoleHost), because the content security policy
     // names this same host — a copy that drifted would render links the policy refuses.
     // Falls back to the current host on a single-host deployment, where this plane and
-    // the account plane share an origin and the link is simply local.
+    // the console share an origin and the link is simply local.
     $consoleHost = app(\App\Platform\PlaneResolver::class)->consoleHost() ?? request()->getHost();
     $securityUrl = 'https://'.$consoleHost.route('account', absolute: false);
     $accountUrl = 'https://'.$consoleHost.route('projects', absolute: false);
 
-    // Breadcrumb + switcher context. Where this environment sits in the account
-    // hierarchy (Account › Project › Environment), and the other environments this
-    // admin can jump to. Switching opens on the ACCOUNT host, which mints a fresh
-    // signed handoff to the target env's own host — so no dead-end, and no second login.
+    // Breadcrumb + switcher context. Where this environment sits in the ownership
+    // hierarchy (Organization › Project › Environment), and the other environments this
+    // admin can jump to. Switching opens on the CONSOLE host, which mints a fresh signed
+    // handoff to the target env's own host — so no dead-end, and no second login.
     $project = null;
     $switchableEnvs = collect();
     if ($member !== null) {
         $projectId = $environment?->getAttribute('project_id');
         $project = is_string($projectId) ? \Cbox\Id\Platform\Models\Project::query()->find($projectId) : null;
 
-        $accessibleIds = app(\Cbox\Id\Organization\Contracts\Memberships::class)->accessibleEnvironmentIds($member);
+        $accessibleIds = app(\Cbox\Id\Platform\PlatformRoot::class)->run(
+            fn (): array => app(\Cbox\Id\Organization\Contracts\Memberships::class)
+                ->accessibleEnvironmentIds($member->organization_id, (string) $adminSubjectId),
+        ) ?? [];
         $switchableEnvs = Environment::query()->whereKey($accessibleIds)->orderBy('name')->get(['id', 'name', 'slug']);
     }
     $openUrl = fn (string $id): string => 'https://'.$consoleHost.route('environment.open', $id, false);
 
     // Two-tier IA mirroring the org console's plain-language grouping, at env scope.
-    // Every resource here is env-scoped (BelongsToEnvironment); the account-member
-    // admin gets full CRUD on behalf of the environment's organizations. Declared once
+    // Every resource here is env-scoped (BelongsToEnvironment); the administrator gets
+    // full CRUD on behalf of the environment's organizations. Declared once
     // in ConsoleNavigation so the sidebar and the page eyebrow read the same list.
     $nav = app(\App\Platform\Navigation\ConsoleNavigation::class)->environment();
 

@@ -9,10 +9,9 @@ use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Collection;
 
@@ -51,7 +50,7 @@ if (! function_exists('provisionAuditableAccount')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
-        return ['member' => $result->member, 'account' => $result->account];
+        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'account' => $result->account];
     }
 }
 

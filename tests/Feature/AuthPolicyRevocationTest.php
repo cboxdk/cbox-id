@@ -17,8 +17,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -176,7 +176,7 @@ it('ends the environment\'s sessions when the sign-in rules page mandates SSO', 
 
     serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
-    actAsEnvironmentAdmin($r->member, $r->environment->id);
+    actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
 
     // A tenant subject of the environment being administered.
     $tenantSession = aPasswordSession('tenant-user@acme.test');
