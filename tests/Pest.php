@@ -42,9 +42,11 @@ use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -187,6 +189,25 @@ function serveOnTestHost(Environment $environment): Environment
     $environment->forceFill(['domain' => $host, 'domain_verified_at' => now()])->save();
 
     return $environment;
+}
+
+/**
+ * The environments a customer owns, THROUGH ITS PROJECTS.
+ *
+ * `environments.account_id` was a denormalized copy of ownership and is gone, so this is a
+ * join rather than a column. It exists as a fixture because a dozen tests asked the same
+ * question of that column, and a test that reads a dropped column does not fail — Eloquent
+ * answers null and the query counts zero, which is the shape a "nothing was provisioned"
+ * assertion passes on for the wrong reason.
+ *
+ * @return Builder<Environment>
+ */
+function environmentsOwnedBy(string $organizationId): Builder
+{
+    return Environment::query()->whereIn(
+        'project_id',
+        Project::query()->where('organization_id', $organizationId)->select('id'),
+    );
 }
 
 /**

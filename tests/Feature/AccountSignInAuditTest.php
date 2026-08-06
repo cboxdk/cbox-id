@@ -50,7 +50,7 @@ if (! function_exists('provisionAuditableAccount')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
-        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->account];
+        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->organization];
     }
 }
 

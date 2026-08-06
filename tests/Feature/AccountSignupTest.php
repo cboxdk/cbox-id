@@ -5,8 +5,6 @@ declare(strict_types=1);
 use App\Platform\AccountAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 
@@ -46,7 +44,7 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
         ->assertRedirect(route('projects'));
 
     // A global account + member exist (NOT a Subject in Cbox's environment)…
-    $member = app(Memberships::class)->findByEmail('dana@acme.example');
+    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
     expect($member)->not->toBeNull();
 
     $account = Account::query()->whereKey($member->account_id)->first();
@@ -56,7 +54,7 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
     // …but NOT an environment: the IdP itself is deferred until the owner proves the
     // address (see SignupDeferredEnvironmentTest). A signup that never verifies
     // therefore costs a routable environment nothing.
-    expect(Environment::query()->where('account_id', $account->id)->get())->toHaveCount(0);
+    expect(environmentsOwnedBy($account->id)->get())->toHaveCount(0);
 
     // The member is signed into the workspace plane immediately — on the ONE session,
     // resolved back to the member the way every page does it.

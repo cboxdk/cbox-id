@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  * The environment-admin console is the case. It is gated on an ACCOUNT member
  * administering one of their account's environments — and a single-tenant install has one
  * environment, which is the platform root, which belongs to no account.
- * `accessibleEnvironmentIds()` reads `where('account_id', $member->account_id)`, so the
+ * `accessibleEnvironmentIds()` resolves ownership through the project, so the
  * platform root can never appear in anybody's list.
  *
  * So on that shape the console could be opened by nobody, ever, while still rendering a

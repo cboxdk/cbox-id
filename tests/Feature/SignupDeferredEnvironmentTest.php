@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Mail\EmailVerificationMail;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
@@ -54,10 +53,10 @@ it('provisions no environment until the owner verifies their email, then exactly
 
     signUpForWorkspace();
 
-    $member = app(Memberships::class)->findByEmail('dana@acme.example');
+    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
     expect($member)->not->toBeNull()
         // The account exists and is usable, but owns nothing routable yet.
-        ->and(Environment::query()->where('account_id', $member->account_id)->exists())->toBeFalse();
+        ->and(environmentsOwnedBy($member->account_id)->exists())->toBeFalse();
 
     // The verification link is the only way to the environment.
     $url = null;
@@ -71,7 +70,7 @@ it('provisions no environment until the owner verifies their email, then exactly
 
     $this->get($url)->assertRedirect();
 
-    $environments = Environment::query()->where('account_id', $member->account_id)->get();
+    $environments = environmentsOwnedBy($member->account_id)->get();
     expect($environments)->toHaveCount(1)
         ->and($environments->first()->name)->toBe('Production')
         ->and($environments->first()->is_default)->toBeFalse();
@@ -96,7 +95,7 @@ it('does not mint a second environment when the verification link is replayed', 
 
     signUpForWorkspace();
 
-    $member = app(Memberships::class)->findByEmail('dana@acme.example');
+    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
 
     $url = null;
     Mail::assertSent(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
@@ -108,7 +107,7 @@ it('does not mint a second environment when the verification link is replayed', 
     $this->get($url)->assertRedirect();
     $this->get($url)->assertRedirect();
 
-    expect(Environment::query()->where('account_id', $member->account_id)->count())->toBe(1);
+    expect(environmentsOwnedBy($member->account_id)->count())->toBe(1);
 });
 
 it('still homes the account in the platform root while the environment is deferred', function (): void {
@@ -116,11 +115,11 @@ it('still homes the account in the platform root while the environment is deferr
 
     signUpForWorkspace();
 
-    $member = app(Memberships::class)->findByEmail('dana@acme.example');
+    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
 
     // The member is a real subject in the platform root (the credential of record) and
     // their account has its home organization — everything except the IdP itself.
     expect($member?->subject_id)->not->toBeNull()
-        ->and($member?->account?->organization_id)->not->toBeNull()
+        ->and($member?->organization_id)->not->toBeNull()
         ->and($root->is_default)->toBeTrue();
 });

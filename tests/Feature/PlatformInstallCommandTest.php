@@ -6,7 +6,6 @@ use App\Console\Commands\InstallCommand;
 use App\Platform\Install\EnvFile;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
-use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 
@@ -182,7 +181,7 @@ it('installs the multi-tenant shape with an account and its own environment', fu
         // own staff inside a customer's tenant.
         ->and($root->account_id)->toBeNull()
         // …and the account got an environment of its own, beside the root.
-        ->and(Environment::query()->where('account_id', $account?->id)->count())->toBe(1);
+        ->and(environmentsOwnedBy($account?->id)->count())->toBe(1);
 
     // The shape is recorded where the bulkheads read it, not just applied in memory.
     $env = new EnvFile((string) $this->envPath);

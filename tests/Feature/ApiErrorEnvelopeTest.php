@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
-use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -36,7 +36,7 @@ if (! function_exists('envelopeAccountKey')) {
             ownerEmail: 'owner@envelope.example',
             ownerName: 'Owner',
             ownerPassword: 'a-strong-unbreached-passphrase',
-        ))->account;
+        ))->organization;
 
         return app(OrganizationApiKeys::class)->issue($account->id, 'envelope key', MembershipRole::Admin)->plaintext;
     }

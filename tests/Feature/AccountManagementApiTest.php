@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 use App\Mail\AccountInviteMail;
 use App\Platform\OrganizationCapabilities;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
-use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
+use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -23,7 +23,7 @@ if (! function_exists('apiAccount')) {
             ownerEmail: 'owner@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'supersecret123',
-        ))->account;
+        ))->organization;
     }
 }
 
@@ -35,7 +35,7 @@ if (! function_exists('apiAccount2')) {
             ownerEmail: 'owner@other.example',
             ownerName: 'Other Owner',
             ownerPassword: 'supersecret123',
-        ))->account;
+        ))->organization;
     }
 }
 

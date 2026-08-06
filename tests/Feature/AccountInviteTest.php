@@ -56,7 +56,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
         ->call('invite')
         ->assertHasNoErrors();
 
-    $invited = app(Memberships::class)->findByEmail('new@acme.example');
+    $invited = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('new@acme.example'));
     expect($invited)->not->toBeNull()
         ->and($invited->status->value)->toBe('invited');
 

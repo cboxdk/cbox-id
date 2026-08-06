@@ -5,9 +5,10 @@ declare(strict_types=1);
 use App\Mail\EmailVerificationMail;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Mail\Mailable;
@@ -48,7 +49,7 @@ function rootForResend(): Environment
 }
 
 /** Sign up a workspace and stay signed in as its owner (signup establishes the session). */
-function signUpForResend(string $email = 'dana@acme.example', string $organization = 'Acme'): Membership
+function signUpForResend(string $email = 'dana@acme.example', string $organization = 'Acme'): Subject
 {
     Volt::test('auth.signup')
         ->set('organization', $organization)
@@ -58,16 +59,16 @@ function signUpForResend(string $email = 'dana@acme.example', string $organizati
         ->call('register')
         ->assertHasNoErrors();
 
-    $member = app(Memberships::class)->findByEmail($email);
+    $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail($email));
     expect($member)->not->toBeNull();
 
-    /** @var Membership $member */
+    /** @var Subject $member */
     // Re-establish through the fixture, so the ACTING ORGANIZATION is resolved. Signing up
     // mints the session and hands the browser straight to a redirect; the middleware on
     // the next request is what resolves which organization the person is acting on, and
     // the Identity platform pages will not render for a request that has none. Driving a
     // component directly skips that request, so the fixture stands in for it.
-    signInAsMember($member);
+    signInAsMember($member->id);
 
     return $member;
 }
@@ -109,12 +110,18 @@ it('sends a fresh link to the signed-in member and to nobody else', function ():
 });
 
 it('takes no address argument, so a crafted call cannot steer where the mail goes', function (): void {
-    // The functional test above proves the mail lands on the member's own address; this
-    // pins WHY it cannot do otherwise — there is no address input to point elsewhere.
+    // The functional test above proves the mail lands on the signed-in person's own
+    // address; this pins WHY it cannot do otherwise — there is no address input to point
+    // elsewhere.
+    //
+    // The parameter is the SUBJECT now, and that is the stronger version of the same
+    // property rather than a weakening of it: the address is read off the subject the
+    // session resolved, so there is no second row whose address could disagree with the
+    // identity being verified.
     $action = new ReflectionMethod(MemberEmailVerification::class, 'resend');
 
     expect($action->getNumberOfParameters())->toBe(1)
-        ->and((string) $action->getParameters()[0]->getType())->toBe(Membership::class);
+        ->and((string) $action->getParameters()[0]->getType())->toBe(Subject::class);
 
     // The Livewire control likewise takes only container-resolved services — no scalar a
     // request payload could supply.
@@ -125,7 +132,7 @@ it('takes no address argument, so a crafted call cannot steer where the mail goe
     // assertion would pass by reflecting over nothing at all.
     rootForResend();
     $member = signUpForResend();
-    signInAsSubject((string) $member->subject_id);
+    signInAsSubject($member->id);
 
     $component = Volt::test('console.projects.index')->instance();
 
@@ -177,7 +184,7 @@ it('says exactly the same thing whether or not the address is already confirmed'
 
     // Confirm the address WITHOUT releasing an environment — the state a suspended or
     // at-limit account sits in, and the only place a resend could leak verification.
-    $subjectId = $member->subject_id;
+    $subjectId = $member->id;
     expect($subjectId)->toBeString();
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $subjectId, $member->email));
 
@@ -207,11 +214,11 @@ it('leaves exactly one live link: the resent one works and the earlier one does 
 
     // The superseded link is dead — it provisions nothing.
     $this->get($original)->assertRedirect(route('login'));
-    expect(Environment::query()->where('account_id', $member->account_id)->exists())->toBeFalse();
+    expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->exists())->toBeFalse();
 
     // The newest one is the one that works.
     $this->get($resent)->assertRedirect();
-    expect(Environment::query()->where('account_id', $member->account_id)->count())->toBe(1);
+    expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 });
 
 it('is a harmless no-op once the environment has been released', function (): void {
@@ -220,7 +227,7 @@ it('is a harmless no-op once the environment has been released', function (): vo
 
     [$link] = verificationLinks();
     $this->get($link)->assertRedirect();
-    expect(Environment::query()->where('account_id', $member->account_id)->count())->toBe(1);
+    expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 
     $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
 
@@ -231,5 +238,5 @@ it('is a harmless no-op once the environment has been released', function (): vo
         ->assertSee('your environment is already up and running');
 
     expect(Mail::sent(EmailVerificationMail::class))->toHaveCount($mailedSoFar)
-        ->and(Environment::query()->where('account_id', $member->account_id)->count())->toBe(1);
+        ->and(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 });

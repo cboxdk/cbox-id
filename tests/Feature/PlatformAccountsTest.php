@@ -5,10 +5,9 @@ declare(strict_types=1);
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
-use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -34,7 +33,7 @@ function suspendableAccount(string $email = 'junk@signup.example'): Account
         ownerEmail: $email,
         ownerName: 'Junk',
         ownerPassword: 'a-strong-unbreached-passphrase',
-    ))->account;
+    ))->organization;
 }
 
 it('lists every account with its members, projects and environments', function (): void {

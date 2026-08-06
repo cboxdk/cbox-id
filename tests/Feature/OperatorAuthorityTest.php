@@ -17,9 +17,10 @@ use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -88,7 +89,7 @@ function railRoutes(): array
 
 it('keeps the platform pages out of an ordinary member\'s rail', function (): void {
     $member = anAccountOwner();
-    signInAsMember($member);
+    signInAsMember($member->id);
 
     // The rail is the CONSOLE's, which is assembled from the plugin registry — the
     // platform section has a rail of its own and a shell of its own, and the gate on
@@ -117,7 +118,7 @@ it('gives the platform pages to an operator, in the same rail', function (): voi
     // for that address rather than minting a second one.
     app(PlatformOperators::class)->create('staff@cbox.test', 'a-strong-unbreached-passphrase', 'Staff');
 
-    signInAsMember($member);
+    signInAsMember($member->id);
 
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue()
         ->and(railRoutes())->toContain('platform.environments')
@@ -147,7 +148,7 @@ it('does not make an environment administrator an operator', function (): void {
     // member from the live session and compares the anchor to the host's environment — an
     // anchor alone is not an environment admin, and asserting against half a session would
     // have been asserting against a state no browser is ever in.
-    $environment = serveOnTestHost($member->account->environments()->firstOrFail());
+    $environment = serveOnTestHost(app(PlatformRoot::class)->run(fn () => Organization::query()->findOrFail($member->organization_id)->environments()->firstOrFail()));
 
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($environment->id));
@@ -190,7 +191,7 @@ it('takes the platform pages away from a suspended operator mid-session', functi
     // Two, because the platform refuses to suspend its last remaining operator.
     $other = $operators->create('other@cbox.test', 'a-strong-unbreached-passphrase', 'Other');
 
-    signInAsMember($member);
+    signInAsMember($member->id);
 
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue();
 
@@ -231,7 +232,7 @@ it('lets an operator through the door it sent them to', function (): void {
 
     expect($outcome->name)->toBe('Ok', 'the account door refused an operator its own gate points at');
 
-    signInAsMember($member);
+    signInAsMember($member->id);
     $this->get('https://cboxid.com/platform')
         ->assertSuccessful();
 })->group('security');
@@ -447,7 +448,7 @@ it('lands an account member in the console too', function (): void {
     // …and what they OWN is what puts the Identity platform area in front of them, rather
     // than which door they came through. There was a second door for exactly this, and it
     // authenticated the same subject against the same credential.
-    signInAsMember($member);
+    signInAsMember($member->id);
     $this->get(route('projects'))->assertOk();
 })->group('security');
 

@@ -65,7 +65,7 @@ function acmeEstate(): array
     $first = app(Projects::class)->forOrganization($result->organization->id)->firstOrFail();
     $staging = $provisioner->addEnvironment($first, 'Staging', type: EnvironmentType::Sandbox);
 
-    $second = $provisioner->addProject($result->account, 'Billing Portal');
+    $second = $provisioner->addProject($result->organization, 'Billing Portal');
     $portal = $provisioner->addEnvironment($second, 'Production');
 
     return [
