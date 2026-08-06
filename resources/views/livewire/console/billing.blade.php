@@ -1,0 +1,124 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Platform\Console\ConsoleScope;
+use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
+use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
+
+/**
+ * Identity platform › Billing — the organization's usage rollup and per-project plans.
+ * Since the plan/billing anchor lives on the PROJECT (one organization can own several
+ * independently-billed IdP products), this page lists each project's
+ * plan + environment allowance, then rolls up organization-wide usage.
+ *
+ * Every figure is queried live from the organization's own environments — nothing is
+ * fabricated.
+ */
+new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Component
+{
+    public function mount(ConsoleScope $scope): mixed
+    {
+        // Billing is visible to roles that can read it (owner/admin/billing + the
+        // read-only viewer) — not a technical Developer role.
+        if ($scope->capabilities()?->canReadBilling() !== true) {
+            return redirect()->route('projects');
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function with(ConsoleScope $scope, OrganizationProjects $projects): array
+    {
+        $organizationId = $scope->organizationId();
+
+        // Per-project plan + allowance (the billing anchor is the project).
+        $projectRows = $organizationId === null ? [] : $projects->forOrganization($organizationId)->map(fn ($p): array => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'used' => Environment::query()->where('project_id', $p->id)->count(),
+            'limit' => $p->environment_limit,
+        ])->all();
+
+        // Organization-wide usage — the figures charges are based on, across every product.
+        //
+        // THROUGH THE PROJECTS, because `environments.account_id` is gone: it was a
+        // denormalized copy of ownership that made this a single read, and a copy of
+        // ownership is a second place for ownership to be wrong. The rows above already
+        // name every project, so this costs no extra query against them.
+        $envIds = $organizationId === null
+            ? collect()
+            : Environment::query()
+                ->whereIn('project_id', array_column($projectRows, 'id'))
+                ->pluck('id');
+        $monthStart = now()->startOfMonth()->format('Y-m-d');
+
+        return [
+            'organizationId' => $organizationId,
+            'projects' => $projectRows,
+            'organizations' => $envIds->isEmpty() ? 0 : DB::table('organizations')->whereIn('environment_id', $envIds)->count(),
+            'connections' => $envIds->isEmpty() ? 0 : DB::table('connections')->whereIn('environment_id', $envIds)->count(),
+            'signins' => $envIds->isEmpty() ? 0 : (int) DB::table('usage_counters')
+                ->whereIn('environment_id', $envIds)
+                ->where('metric', UsageMetric::Login->value)
+                ->where('period', '>=', $monthStart)
+                ->sum('count'),
+        ];
+    }
+}; ?>
+
+<div>
+    <x-page-header title="Billing" subtitle="Plans are per project; usage rolls up across every environment this organization owns." />
+
+    {{-- Per-project plans (the billing anchor is the project). --}}
+    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+        <div class="p-4" style="border-bottom:1px solid var(--border)"><p class="text-sm font-medium">Projects</p></div>
+        @forelse ($projects as $project)
+            <a href="{{ route('projects.show', $project['id']) }}"
+               class="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-[var(--surface-2)] {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
+                <div class="min-w-0">
+                    <p class="font-medium truncate">{{ $project['name'] }}</p>
+                    <p class="text-xs" style="color:var(--faint)">Early access — free</p>
+                </div>
+                <span class="text-sm tabular-nums shrink-0" style="color:var(--muted)">{{ $project['used'] }} of {{ $project['limit'] }} {{ \Illuminate\Support\Str::plural('environment', $project['limit']) }}</span>
+            </a>
+        @empty
+            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div><h3>No projects yet</h3><p>Each project you create appears here with its plan and environment allowance.</p></div>
+        @endforelse
+    </div>
+
+    {{-- Live usage — the figures enterprise billing is based on, across all projects. --}}
+    <div class="mt-4 grid grid-cols-3 gap-3">
+        @php
+            $stats = [
+                ['label' => 'Organizations', 'value' => $organizations, 'hint' => 'tenants'],
+                ['label' => 'SSO connections', 'value' => $connections, 'hint' => 'billed'],
+                ['label' => 'Sign-ins', 'value' => $signins, 'hint' => 'this month'],
+            ];
+        @endphp
+        @foreach ($stats as $stat)
+            <div class="rounded-xl border p-4" style="border-color:var(--border)">
+                <p class="text-2xl font-semibold tabular-nums">{{ number_format($stat['value']) }}</p>
+                <p class="mt-1 text-sm font-medium">{{ $stat['label'] }}</p>
+                <p class="text-xs" style="color:var(--faint)">{{ $stat['hint'] }}</p>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="mt-4 rounded-xl border p-5" style="border-color:var(--border)">
+        <p class="font-medium">How pricing works</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">
+            Each project is billed on its own plan — usage-based on monthly active users and enterprise
+            connections (SSO &amp; SCIM) across that project's environments. Sandbox environments carry no
+            connection charge. Per-project billing arrives with general availability; every project is
+            free during early access.
+        </p>
+    </div>
+</div>

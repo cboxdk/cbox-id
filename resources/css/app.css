@@ -1,0 +1,1151 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+/* Self-hosted Cbox webfonts. Served same-origin from /fonts, so they load under the
+ * strict CSP (`font-src 'self'`) — unlike a Google Fonts @import, which the CSP
+ * (`style-src 'self'` / `font-src 'self'`) blocks. Variable fonts: one woff2 spans
+ * the whole weight axis. latin covers Danish æ/ø/å; latin-ext adds the rest. */
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/plus-jakarta-sans-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/*
+ * Cbox design system — product-app layer (Cbox · ID).
+ * Warm-neutral oklch palette shared with cbox.dk (deliberately NOT a Linear
+ * cold-grey clone); one deep-blue primary that matches the logo. system-ui for
+ * dense UI/body chrome, Plus Jakarta Sans for display/headings only, JetBrains
+ * Mono for code, IDs, timestamps and amounts. Tokens ported 1:1 from cbox-ui.
+ */
+@theme {
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, Arial, sans-serif;
+    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+:root {
+    /* ── Cbox core tokens (light) */
+    --background: oklch(0.985 0.006 85);
+    --canvas: oklch(0.964 0.012 85);
+    --foreground: oklch(0.22 0.015 75);
+    --card: oklch(0.997 0.003 90);
+    --card-foreground: oklch(0.22 0.015 75);
+    --popover: oklch(0.997 0.003 90);
+    --primary: oklch(0.45 0.16 258);
+    --primary-foreground: oklch(0.99 0.003 247);
+    --secondary: oklch(0.955 0.010 85);
+    --secondary-foreground: oklch(0.26 0.015 75);
+    --muted-color: oklch(0.955 0.010 85);
+    --muted-foreground: oklch(0.46 0.020 75);
+    --accent: oklch(0.5 0.17 258);
+    --accent-strong: oklch(0.5 0.17 258);
+    --accent-foreground: oklch(0.99 0.003 247);
+    --accent-soft: oklch(0.5 0.17 258 / 0.08);
+    --accent-edge: oklch(0.5 0.17 258 / 0.32);
+    --success: oklch(0.62 0.16 145);
+    /* Text-weight siblings for the *-soft chips. The base hues are tuned as FILLS;
+       used as text on their own 12%-alpha wash they measure ~3.1:1, under the 4.5:1
+       a pill's label needs. --warning-strong already proved the pattern. */
+    --success-strong: oklch(0.40 0.14 145);
+    /* Dark ink, not near-white: near-white on the mid-green --success fill measures
+       3.32:1, under the 4.5:1 a solid-fill label needs. This is 5.65:1, and matches
+       what --warning-foreground and the dark theme's --success-foreground already do.
+       Currently only --destructive-foreground has a consumer, so this was a latent
+       failure waiting for the first solid success banner. */
+    --success-foreground: oklch(0.16 0.04 145);
+    --success-soft: oklch(0.62 0.16 145 / 0.12);
+    --warning: oklch(0.72 0.16 70);
+    --warning-foreground: oklch(0.18 0.04 70);
+    --warning-soft: oklch(0.72 0.16 70 / 0.14);
+    /* Darker, high-contrast amber for warning TEXT on the soft fill (AA on light). */
+    --warning-strong: oklch(0.47 0.12 62);
+    --info: oklch(0.62 0.16 230);
+    --info-strong: oklch(0.40 0.14 230);
+    --info-soft: oklch(0.62 0.16 230 / 0.12);
+    --destructive: oklch(0.58 0.21 25);
+    /* Text weight on --destructive-soft: the fill hue measures 3.94:1 there, under the
+       4.5:1 a pill label or a danger-zone heading needs. (It measures 4.28:1 only if you
+       composite the 12% wash in LINEAR light; a browser composites in gamma-encoded
+       sRGB, which is where 3.94 comes from — and 3.94 is what .btn-danger:hover below
+       has always said.) */
+    --destructive-strong: oklch(0.44 0.18 25);
+    --destructive-foreground: oklch(0.99 0.003 247);
+    --destructive-soft: oklch(0.58 0.21 25 / 0.12);
+    /* DECORATIVE hairline only — card outlines, table rules, dividers, the topbar
+       underline. It measures 1.73:1 on --card and 1.67:1 on --background (1.73 / 1.94
+       in dark) and is deliberately NOT raised to 3:1: solving for 3:1 lands on ~oklch
+       0.62 light / 0.56 dark, i.e. --control-border, which would collapse the two
+       tokens into one and make every table rule read as a heavy stroke. WCAG 2.2 SC
+       1.4.11 governs boundaries that identify a CONTROL or its state; a purely
+       decorative divider is out of its scope. Anything interactive must therefore use
+       --control-border, never this. */
+    --border: oklch(0.82 0.020 85);
+    /* The ≥3:1 boundary every interactive control uses (WCAG 2.2 SC 1.4.11): inputs,
+       selects, ghost buttons, the command-palette trigger, the skip link, and the
+       option tiles in the theme editor. 3.61:1 on --card, 3.49:1 on --background.
+       --input-border is the original name, kept as an alias so nothing breaks. */
+    --control-border: oklch(0.62 0.02 85);
+    --input-border: var(--control-border);
+    /* The HOVER/emphasis boundary. It must be STRONGER than --control-border, and at
+       0.71 it was not: 2.55:1 on --card against the resting stroke's 3.61:1, so
+       hovering an input, select, ghost button or stat card silently dropped it under
+       SC 1.4.11's 3:1. 0.55 measures 4.81:1. */
+    --border-strong: oklch(0.55 0.024 85);
+    --input: oklch(0.905 0.014 85);
+    --ring: oklch(0.5 0.17 258);
+    --sidebar: oklch(0.973 0.010 85);
+    --sidebar-foreground: oklch(0.26 0.015 75);
+    --sidebar-muted: oklch(0.55 0.020 75);
+    --sidebar-accent: oklch(0.935 0.014 85);
+    --sidebar-accent-foreground: oklch(0.22 0.015 75);
+    --sidebar-border: oklch(0.82 0.020 85);
+    /* "You are here" text in the rail, the subnav and the mobile nav. It is a
+       separate token because the two themes need different blues to clear AA on the
+       --accent-soft fill those items carry: --primary is 6.28:1 on it in light, but
+       only 4.24:1 in dark, so dark brightens to --accent-strong (7.80:1). This used
+       to be a literal oklch() duplicated across two unlayered override blocks at the
+       bottom of the file. */
+    --nav-active-fg: var(--primary);
+
+    /* The scrim behind a modal or a mobile sheet. A single token because there were
+       three spellings — `--foreground 45%`, `rgb(0 0 0 / 0.5)` and `black 45%` — and the
+       first INVERTS in dark mode, where --foreground is near-white: every type-to-confirm
+       dialog dimmed the page with a 45% WHITE veil instead of darkening it. A scrim is
+       always darkness; it is not a themed colour. */
+    --overlay: color-mix(in oklch, black 55%, transparent);
+
+    /* ── Radius / shadow / motion / chrome metrics (cbox-ui BRAND.md) */
+    --radius: 0.75rem;   /* cards + dialogs (12px) */
+    --radius-md: 8px;    /* buttons + inputs */
+    --radius-sm: 6px;    /* badges + chips */
+    --shadow-card: 0 1px 2px rgba(31, 26, 18, 0.05), 0 1px 1px rgba(31, 26, 18, 0.03);
+    --shadow-popover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    /* Elevation ramp — surfaces layer instead of sitting flat. Used by cards, hover
+       lifts, popovers, modals. Dark mode gets its own (heavier) ramp below. */
+    --shadow-xs: 0 1px 2px rgba(31, 26, 18, 0.05);
+    --shadow-sm: 0 1px 3px rgba(31, 26, 18, 0.08), 0 1px 2px rgba(31, 26, 18, 0.05);
+    --shadow-md: 0 4px 12px -2px rgba(31, 26, 18, 0.10), 0 2px 6px -2px rgba(31, 26, 18, 0.07);
+    --shadow-lg: 0 12px 32px -8px rgba(31, 26, 18, 0.16), 0 4px 12px -4px rgba(31, 26, 18, 0.10);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-hover: 150ms;
+    --dur-menu: 200ms;
+    --dur-layout: 300ms;
+    --topbar-h: 56px;
+    --sidebar-w: 240px;
+    --section-gap: 24px;
+
+    /* ── Back-compat aliases: the app's existing views use these names. */
+    --bg: var(--background);
+    --surface: var(--card);
+    --surface-2: var(--secondary);
+    --text: var(--foreground);
+    --muted: var(--muted-foreground);
+    /* 0.45, not 0.52: on the near-white card/background 0.52 computes to ~4.2:1 and
+     * fails WCAG 2.2 AA (4.5:1) for the small meta text --faint is used for (ids,
+     * counts, timestamps, empty-state copy). 0.45 clears AA while staying visibly
+     * lighter than --muted-foreground. Dark-mode --faint (0.67) already passes. */
+    --faint: oklch(0.45 0.018 75);
+    --accent-fg: var(--accent-foreground);
+    --warn: var(--warning);
+    --warn-soft: var(--warning-soft);
+    --danger: var(--destructive);
+    --danger-soft: var(--destructive-soft);
+    --shadow: var(--shadow-card);
+}
+
+/* Dark — applied via [data-theme='dark'] (explicit) or the OS preference when the
+ * user has not forced light. Warm ink, à la cbox.dk. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+        --background: oklch(0.185 0.008 80);
+        --canvas: oklch(0.21 0.009 80);
+        --foreground: oklch(0.965 0.006 90);
+        --card: oklch(0.235 0.010 80);
+        --card-foreground: oklch(0.965 0.006 90);
+        --popover: oklch(0.245 0.011 80);
+        --primary: oklch(0.65 0.18 258);
+        /* Dark text on the light-blue fill: near-white measured 3.19:1, and .btn is
+           13px/500 — normal text, needing 4.5:1. This is 5.91:1. */
+        --primary-foreground: oklch(0.16 0.02 250);
+        --secondary: oklch(0.285 0.012 80);
+        --secondary-foreground: oklch(0.955 0.006 90);
+        --muted-color: oklch(0.275 0.012 80);
+        --muted-foreground: oklch(0.70 0.016 85);
+        --accent: oklch(0.65 0.18 258);
+        --accent-strong: oklch(0.82 0.12 258);
+        /* Dark ink on the light-blue fill, for the same reason --primary-foreground
+           flips (--accent and --primary are the SAME blue in dark). Near-white
+           measured 3.19:1 on it — failing ::selection text and the avatar monograms
+           in components/mobile-nav + theme-editor. This is 5.91:1. */
+        --accent-foreground: oklch(0.16 0.02 250);
+        --accent-soft: oklch(0.65 0.18 258 / 0.18);
+        --accent-edge: oklch(0.65 0.18 258 / 0.42);
+        --success: oklch(0.74 0.16 145);
+        --success-strong: oklch(0.88 0.15 145);
+        --success-foreground: oklch(0.16 0.04 145);
+        --success-soft: oklch(0.74 0.16 145 / 0.16);
+        --warning: oklch(0.78 0.16 70);
+        --warning-foreground: oklch(0.16 0.04 70);
+        --warning-soft: oklch(0.78 0.16 70 / 0.18);
+        --warning-strong: oklch(0.86 0.15 82);
+        --info: oklch(0.7 0.16 230);
+        --info-strong: oklch(0.88 0.13 230);
+        --info-soft: oklch(0.7 0.16 230 / 0.16);
+        --destructive: oklch(0.68 0.21 25);
+        --destructive-strong: oklch(0.88 0.14 25);
+        --destructive-foreground: oklch(0.16 0.01 250);
+        --destructive-soft: oklch(0.68 0.21 25 / 0.16);
+        --border: oklch(0.39 0.016 80);
+        --control-border: oklch(0.55 0.016 80);
+        --input-border: var(--control-border);
+        /* 0.50 was 2.78:1 — weaker than the 3.43:1 resting stroke it emphasises. */
+        --border-strong: oklch(0.64 0.018 80);
+        --input: oklch(0.32 0.013 80);
+        --ring: oklch(0.65 0.18 258);
+        --sidebar: oklch(0.21 0.009 80);
+        --sidebar-foreground: oklch(0.955 0.006 90);
+        --sidebar-muted: oklch(0.65 0.016 85);
+        --sidebar-accent: oklch(0.275 0.012 80);
+        --sidebar-accent-foreground: oklch(0.965 0.006 90);
+        --sidebar-border: oklch(0.39 0.016 80);
+        /* --primary on the --accent-soft fill an active nav item carries measures only
+           4.24:1 in dark. --accent-strong is 7.80:1 on the same fill. */
+        --nav-active-fg: var(--accent-strong);
+        --faint: oklch(0.67 0.016 85);
+        --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+        --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 18px 44px -12px rgba(0, 0, 0, 0.7), 0 6px 16px -6px rgba(0, 0, 0, 0.5);
+    }
+}
+
+:root[data-theme='dark'] {
+    --background: oklch(0.185 0.008 80);
+    --canvas: oklch(0.21 0.009 80);
+    --foreground: oklch(0.965 0.006 90);
+    --card: oklch(0.235 0.010 80);
+    --card-foreground: oklch(0.965 0.006 90);
+    --popover: oklch(0.245 0.011 80);
+    --primary: oklch(0.65 0.18 258);
+    --primary-foreground: oklch(0.16 0.02 250);
+    --secondary: oklch(0.285 0.012 80);
+    --secondary-foreground: oklch(0.955 0.006 90);
+    --muted-color: oklch(0.275 0.012 80);
+    --muted-foreground: oklch(0.70 0.016 85);
+    --accent: oklch(0.65 0.18 258);
+    --accent-strong: oklch(0.82 0.12 258);
+    --accent-foreground: oklch(0.16 0.02 250);
+    --accent-soft: oklch(0.65 0.18 258 / 0.18);
+    --accent-edge: oklch(0.65 0.18 258 / 0.42);
+    --success: oklch(0.74 0.16 145);
+    --success-strong: oklch(0.88 0.15 145);
+    --success-foreground: oklch(0.16 0.04 145);
+    --success-soft: oklch(0.74 0.16 145 / 0.16);
+    --warning: oklch(0.78 0.16 70);
+    --warning-foreground: oklch(0.16 0.04 70);
+    --warning-soft: oklch(0.78 0.16 70 / 0.18);
+    --warning-strong: oklch(0.86 0.15 82);
+    --info: oklch(0.7 0.16 230);
+    --info-strong: oklch(0.88 0.13 230);
+    --info-soft: oklch(0.7 0.16 230 / 0.16);
+    --destructive: oklch(0.68 0.21 25);
+    --destructive-strong: oklch(0.88 0.14 25);
+    --destructive-foreground: oklch(0.16 0.01 250);
+    --destructive-soft: oklch(0.68 0.21 25 / 0.16);
+    --border: oklch(0.39 0.016 80);
+    --control-border: oklch(0.55 0.016 80);
+    --input-border: var(--control-border);
+    /* See the @media dark block: 0.50 was weaker than the resting stroke. */
+    --border-strong: oklch(0.64 0.018 80);
+    --input: oklch(0.32 0.013 80);
+    --ring: oklch(0.65 0.18 258);
+    --sidebar: oklch(0.21 0.009 80);
+    --sidebar-foreground: oklch(0.955 0.006 90);
+    --sidebar-muted: oklch(0.65 0.016 85);
+    --sidebar-accent: oklch(0.275 0.012 80);
+    --sidebar-accent-foreground: oklch(0.965 0.006 90);
+    --sidebar-border: oklch(0.39 0.016 80);
+    /* See the @media dark block: --primary is 4.24:1 on --accent-soft here. */
+    --nav-active-fg: var(--accent-strong);
+    --faint: oklch(0.67 0.016 85);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 18px 44px -12px rgba(0, 0, 0, 0.7), 0 6px 16px -6px rgba(0, 0, 0, 0.5);
+}
+
+@layer base {
+    html {
+        background: var(--background);
+        color: var(--foreground);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+        font-family: var(--font-sans);
+    }
+
+    /* Display face only on true headings; dense body chrome stays system-ui. */
+    h1, h2, h3 {
+        font-family: var(--font-display);
+        letter-spacing: -0.01em;
+        text-wrap: balance;
+    }
+
+    a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    ::selection {
+        background: var(--accent);
+        color: var(--accent-foreground);
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/* Subtle blue-tinted radial wash on the main scroll column — every Cbox app. */
+.canvas-gradient {
+    background:
+        radial-gradient(ellipse 1200px 600px at 100% 0%, oklch(0.5 0.17 258 / 0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 800px 400px at 0% 100%, oklch(0.75 0.08 75 / 0.05) 0%, transparent 60%),
+        var(--canvas);
+}
+:root[data-theme='dark'] .canvas-gradient,
+.canvas-gradient:where([data-theme='dark'] *) {
+    background:
+        radial-gradient(ellipse 1200px 600px at 100% 0%, oklch(0.65 0.18 258 / 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 800px 400px at 0% 100%, oklch(0.75 0.08 75 / 0.06) 0%, transparent 60%),
+        var(--canvas);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .canvas-gradient {
+        background:
+            radial-gradient(ellipse 1200px 600px at 100% 0%, oklch(0.65 0.18 258 / 0.06) 0%, transparent 60%),
+            radial-gradient(ellipse 800px 400px at 0% 100%, oklch(0.75 0.08 75 / 0.06) 0%, transparent 60%),
+            var(--canvas);
+    }
+}
+
+@layer components {
+    /* ── Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1;
+        cursor: pointer;
+        white-space: nowrap;
+        border: 1px solid transparent;
+        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease), transform var(--dur-hover) var(--ease);
+    }
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    /* A subtle press — the button gives under the cursor for a tactile feel. */
+    .btn:active:not(:disabled) {
+        transform: translateY(0.5px);
+    }
+    .btn-primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        /* Lit-from-above highlight + a soft accent-tinted lift off the page. */
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 22%, transparent),
+            0 1px 2px color-mix(in oklch, var(--primary) 42%, transparent);
+    }
+    .btn-primary:hover:not(:disabled) {
+        background: var(--accent);
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 26%, transparent),
+            0 3px 10px color-mix(in oklch, var(--primary) 45%, transparent);
+    }
+    .btn-primary:active:not(:disabled) {
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 12%, transparent),
+            0 1px 2px color-mix(in oklch, var(--primary) 34%, transparent);
+    }
+    .btn-ghost {
+        background: var(--card);
+        color: var(--foreground);
+        /* --control-border, not --border: the ghost button's only visual boundary IS
+           this stroke, and --border is 1.73:1 on --card in both themes. 3.61:1 light /
+           3.43:1 dark. */
+        border-color: var(--control-border);
+    }
+    .btn-ghost:hover:not(:disabled) {
+        border-color: var(--border-strong);
+    }
+    /* Accent-tinted secondary action — a step below the solid primary, distinct
+       from the plain ghost. Without this rule the class rendered with no fill,
+       leaving e.g. the SSO sign-in CTA invisible. */
+    .btn-secondary {
+        background: var(--accent-soft);
+        /* --accent-strong, not --accent: on its own --accent-soft fill the base accent
+           measures 5.41:1 in light but 3.97:1 in dark, and .btn is 13px/500 — normal
+           text, needing 4.5:1. --accent-strong is 5.41:1 / 7.30:1 (it IS --accent in
+           light, so light is unchanged). */
+        color: var(--accent-strong);
+        /* 80%, not 30%: the fill is an 8–18% wash that is ~1.1:1 against the card, so
+           this stroke is the only thing that identifies the control. 30% measured
+           1.59:1 light / 1.56:1 dark against --card, under SC 1.4.11's 3:1. 80% is
+           4.06:1 / 3.71:1. */
+        border-color: color-mix(in oklch, var(--accent) 80%, transparent);
+    }
+    .btn-secondary:hover:not(:disabled) {
+        background: color-mix(in oklch, var(--accent) 18%, transparent);
+        border-color: var(--accent);
+    }
+    .btn-danger {
+        background: transparent;
+        color: var(--destructive);
+        /* Same reason as .btn-secondary: transparent fill, so the stroke is the whole
+           boundary. 40% was 1.89:1 / 1.85:1 on --card; 80% is 3.65:1 / 3.78:1. */
+        border-color: color-mix(in oklch, var(--destructive) 80%, transparent);
+    }
+    .btn-danger:hover:not(:disabled) {
+        background: var(--destructive-soft);
+        /* The label sits at 4.72:1 on --card but only 3.94:1 once the soft wash slides
+           under it on hover — so the colour has to move with the background. */
+        color: var(--destructive-strong);
+    }
+    .btn-lg {
+        height: 42px;
+        padding: 0 18px;
+        font-size: 14px;
+        border-radius: var(--radius-md);
+    }
+    .btn-sm {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+
+    /* ── Inputs */
+    .input {
+        width: 100%;
+        box-sizing: border-box;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--control-border);
+        background: var(--card);
+        color: var(--foreground);
+        font-size: 13px;
+        transition: border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease);
+    }
+    .input::placeholder {
+        color: var(--muted-foreground);
+    }
+    .input:hover:not(:focus) {
+        border-color: var(--border-strong);
+    }
+    .input:focus {
+        outline: none;
+        border-color: var(--ring);
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    .input-lg {
+        height: 42px;
+        padding: 0 14px;
+        font-size: 14px;
+    }
+
+    /* Native <select> styled to match inputs (custom chevron, no OS look). The
+     * design system prefers a Combobox for rich cases; this keeps simple value
+     * selects on-brand. */
+    select.input, .select {
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 30px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8.25 9l3.75 3.75L15.75 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        cursor: pointer;
+    }
+    .select {
+        height: 32px;
+        box-sizing: border-box;
+        border-radius: var(--radius-md);
+        /* A control, so the 3:1 token — .input was already moved, .select was not. */
+        border: 1px solid var(--control-border);
+        background-color: var(--card);
+        color: var(--foreground);
+        font-size: 13px;
+        padding: 0 30px 0 10px;
+        transition: border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease);
+    }
+    .select:hover:not(:focus) { border-color: var(--border-strong); }
+    /* Matches .input:focus. A select had `outline: none` plus the soft wash only, so the
+       whole console's dropdowns carried a weaker focus indicator than its text fields —
+       the same control, a different answer to "where am I". */
+    .select:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 2px var(--ring); }
+
+    .label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--foreground);
+        margin-bottom: 6px;
+    }
+
+    /* ── Card (1px border is a feature, not a hairline) */
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Badges / status pills */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 9999px;
+        border: 1px solid var(--border);
+        padding: 2px 8px;
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 500;
+        color: var(--secondary-foreground);
+        background: var(--secondary);
+    }
+    .badge-success {
+        color: var(--success-strong);
+        background: var(--success-soft);
+        border-color: color-mix(in oklch, var(--success) 20%, transparent);
+    }
+    .badge-warn {
+        color: var(--warning-strong);
+        background: var(--warning-soft);
+        border-color: color-mix(in oklch, var(--warning) 20%, transparent);
+    }
+    .badge-danger {
+        color: var(--destructive-strong);
+        background: var(--destructive-soft);
+        border-color: color-mix(in oklch, var(--destructive) 20%, transparent);
+    }
+    .badge-info {
+        color: var(--accent-strong);
+        background: color-mix(in oklch, var(--accent) 12%, transparent);
+        border-color: color-mix(in oklch, var(--accent) 22%, transparent);
+    }
+
+    /* ── Nav item — filled active state; NO left-edge accent rail (forbidden). */
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 10px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-weight: 500;
+        color: color-mix(in oklch, var(--sidebar-foreground) 82%, transparent);
+        transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+    }
+    .nav-link svg { color: var(--sidebar-muted); }
+    .nav-link:hover {
+        background: var(--sidebar-accent);
+        color: var(--foreground);
+    }
+    .nav-link[aria-current='page'] {
+        background: var(--accent-soft);
+        color: var(--nav-active-fg);
+        font-weight: 600;
+    }
+    .nav-link[aria-current='page'] svg { color: var(--nav-active-fg); }
+
+    .field-error {
+        color: var(--destructive);
+        font-size: 12px;
+        margin-top: 5px;
+    }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--muted-foreground);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+    }
+    .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .spinner {
+        width: 0.95rem;
+        height: 0.95rem;
+        border-radius: 9999px;
+        border: 2px solid color-mix(in oklch, currentColor 30%, transparent);
+        border-top-color: currentColor;
+        animation: cbox-spin 0.6s linear infinite;
+    }
+    @keyframes cbox-spin { to { transform: rotate(360deg); } }
+    /* !important is not decoration here. The blanket reduce rule in @layer base sets
+       `animation-duration: .01ms !important`, and for !important declarations the EARLIER
+       layer wins — so without a matching !important this line was dead and every loading
+       indicator in the console was a frozen ring for anyone who asked for less motion.
+       A spinner is not decoration either: it is the only thing that says the click landed,
+       so it slows down rather than stopping. */
+    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1.6s !important; } }
+
+    /* ── Table (Stripe-style: mono-caps headers, tabular nums, hairline rows) */
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .table th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--muted-foreground);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+    }
+    .table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .table tr:last-child td { border-bottom: none; }
+
+    .mono {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Screen-reader / skip link */
+    .sr-only {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .skip-link {
+        position: fixed; top: 12px; left: 12px; z-index: 100;
+        transform: translateY(-150%); transition: transform 0.15s ease;
+        background: var(--card); color: var(--foreground);
+        border: 1px solid var(--control-border); border-radius: var(--radius-md);
+        padding: 9px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-card);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    /* ── Auth surface — calm accent glow, refined split hero. */
+    .auth-shell {
+        background:
+            radial-gradient(120% 80% at 50% -10%, var(--accent-soft) 0%, transparent 60%),
+            var(--canvas);
+    }
+    /* Branded hero — a consistent DEEP blue in both light and dark, always with
+     * near-white text (never tied to --primary, which lightens in dark mode). */
+    .auth-hero {
+        position: relative;
+        isolation: isolate;
+        background:
+            radial-gradient(90% 60% at 15% 0%, color-mix(in oklch, #fff 18%, oklch(0.45 0.16 258)) 0%, transparent 55%),
+            linear-gradient(160deg, oklch(0.45 0.16 258) 0%, color-mix(in oklch, oklch(0.45 0.16 258) 62%, #05060a) 100%);
+        color: oklch(0.985 0.005 250);
+    }
+    .auth-hero::before {
+        content: ''; position: absolute; inset: 0; z-index: -1;
+        background-image: radial-gradient(currentColor 1px, transparent 1.4px);
+        background-size: 22px 22px; opacity: 0.09;
+        -webkit-mask-image: radial-gradient(80% 80% at 70% 30%, #000 0%, transparent 75%);
+        mask-image: radial-gradient(80% 80% at 70% 30%, #000 0%, transparent 75%);
+    }
+    .hero-feature { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .hero-feature span.tick {
+        display: grid; place-items: center; width: 22px; height: 22px;
+        border-radius: 9999px; flex: none;
+        background: rgb(255 255 255 / 0.14);
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
+    }
+
+    /* A top sheen + a hairline inner edge give the hero panel depth and crispness. */
+    .auth-hero::after {
+        content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+        background: radial-gradient(70% 45% at 50% 0%, rgb(255 255 255 / 0.10) 0%, transparent 70%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    }
+
+    /* Auth-surface inputs: a larger, softer focus ring reads as premium without
+     * shouting — scoped so the dense console keeps its tighter 2px ring.
+     *
+     * The soft wash ALONE was 1.12:1 against the card in light and 1.28:1 in dark, and
+     * the base rule sets `outline: none`, so the only real indicator left on the page
+     * every end user signs in on was a 1px border-colour change. The console had a
+     * measurable 2px ring the whole time. Keeping the soft look and adding a 1px
+     * --ring edge inside it restores a visible boundary at 6.08:1 / 5.08:1. */
+    .auth-shell .input:focus,
+    .auth-shell .input-lg:focus {
+        box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--ring);
+    }
+    /* The primary CTA on the auth surface sits a touch more lifted. */
+    .auth-shell .btn-primary {
+        box-shadow:
+            inset 0 1px 0 color-mix(in oklch, #fff 24%, transparent),
+            0 2px 6px color-mix(in oklch, var(--primary) 40%, transparent);
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Cbox chrome + primitives (.cbx-*) — ported 1:1 from cbox-ui tokens/components.
+ * Used by the two-tier app shell and the new page primitives.
+ * ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+    /* Panel */
+    .cbx-panel { border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); color: var(--card-foreground); box-shadow: var(--shadow-card); }
+    .cbx-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .cbx-panel-title { font-family: var(--font-display); font-size: 15px; line-height: 1; font-weight: 600; color: var(--foreground); margin: 0; }
+    .cbx-panel-desc { font-size: 14px; color: var(--muted-foreground); margin: 4px 0 0; }
+    /* Section heading inside a detail page. These were weighted <p>, so 24 pages
+       skipped h1→h3 and the 720-line users/show had a one-node outline. Promoting
+       them to real <h2> keeps the SAME dense system-ui face on purpose: at 14px in a
+       packed settings panel the display face reads as a page title, which it is not.
+       (The base h1,h2,h3 rule would otherwise switch it, hence the explicit family.) */
+    .cbx-section-title { font-family: var(--font-sans); font-size: 14px; line-height: 1.25rem; font-weight: 500; letter-spacing: normal; color: var(--foreground); margin: 0; }
+    .cbx-panel-body { padding: 16px 20px; }
+
+    /* Status pill */
+    .cbx-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid var(--border); padding: 2px 8px; font-size: 11px; line-height: 1; font-weight: 500; background: var(--secondary); color: var(--secondary-foreground); }
+    .cbx-pill .dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--muted-foreground); }
+    .cbx-pill--info { border-color: color-mix(in oklch, var(--info) 20%, transparent); background: var(--info-soft); color: var(--info-strong); }
+    .cbx-pill--info .dot { background: var(--info); }
+    .cbx-pill--success { border-color: color-mix(in oklch, var(--success) 20%, transparent); background: var(--success-soft); color: var(--success-strong); }
+    .cbx-pill--success .dot { background: var(--success); }
+    .cbx-pill--warning { border-color: color-mix(in oklch, var(--warning) 20%, transparent); background: var(--warning-soft); color: var(--warning-strong); }
+    .cbx-pill--warning .dot { background: var(--warning); }
+    .cbx-pill--destructive { border-color: color-mix(in oklch, var(--destructive) 20%, transparent); background: var(--destructive-soft); color: var(--destructive-strong); }
+    .cbx-pill--destructive .dot { background: var(--destructive); }
+
+    /* Stat tile */
+    .cbx-stat { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-sm); transition: transform var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease); }
+    .cbx-stat:hover { border-color: var(--border-strong); }
+    /* Navigational stat cards (rendered as <a>) get a tactile hover lift. */
+    a.cbx-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    /* The glyph is a 20px 1.5px-stroke icon on the tile's own *-soft wash, so it is
+       held to the 3:1 of SC 1.4.11 (not the 4.5:1 of text). The base fill hues are
+       tuned for FILLS and measured 2.92 / 2.97 / 2.24 there — amber failed even the
+       non-text floor. The *-strong siblings land 7.24 / 7.48 / 6.18. */
+    .cbx-stat-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--info-soft); color: var(--info-strong); }
+    .cbx-stat-icon--success { background: var(--success-soft); color: var(--success-strong); }
+    .cbx-stat-icon--warning { background: var(--warning-soft); color: var(--warning-strong); }
+    .cbx-stat-icon--neutral { background: var(--secondary); color: var(--foreground); }
+    .cbx-stat-value { font-size: 24px; line-height: 1; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin: 0; }
+    .cbx-stat-label { font-size: 12px; color: var(--muted-foreground); margin: 2px 0 0; }
+
+    /* Key/value */
+    .cbx-kv { display: grid; grid-template-columns: 140px 1fr; align-items: baseline; column-gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .cbx-kv:last-child { border-bottom: 0; }
+    .cbx-kv dt { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.6875rem; font-weight: 600; color: var(--muted-foreground); }
+    .cbx-kv dd { margin: 0; font-family: var(--font-mono); font-size: 13px; word-break: break-all; color: var(--foreground); }
+    .cbx-kv dd.prose { font-family: var(--font-sans); font-size: 14px; }
+
+    /* Clickable row */
+    .cbx-row { display: flex; align-items: center; gap: 16px; width: 100%; box-sizing: border-box; padding: 14px 20px; color: inherit; text-decoration: none; transition: background-color var(--dur-hover) var(--ease); }
+    .cbx-row:hover { background: color-mix(in oklch, var(--secondary) 60%, transparent); color: inherit; }
+    .cbx-row + .cbx-row { border-top: 1px solid var(--border); }
+
+    /* Page header */
+    .cbx-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    /* Below sm the title and its action cluster cannot share a row: at 375px the
+       actions crushed the title to a two-or-three-word-per-line column on ~86 pages.
+       Stack instead, actions left-aligned under the title. */
+    @media (max-width: 639px) {
+        .cbx-page-header { flex-direction: column; align-items: stretch; }
+        .cbx-page-header > * + * { justify-content: flex-start; }
+    }
+    .cbx-page-eyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 6px; }
+    .cbx-page-title { font-family: var(--font-display); font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); margin: 0; }
+    /* The heading and its help control on one line. They used to be nested, which put
+       the entire popover inside the h1's accessible name. */
+    .cbx-page-title-row { display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
+    .cbx-page-desc { font-size: 14px; color: var(--muted-foreground); margin: 6px 0 0; }
+
+    /* Setup progress — a plain track and fill. The fill animates so a step ticked on
+       the previous page reads as progress made, not as a different picture. */
+    .cbx-progress { position: relative; flex: 1; height: 6px; border-radius: 9999px; background: var(--secondary); overflow: hidden; }
+    .cbx-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width var(--dur-hover) var(--ease); }
+
+    /* Help — the "?" next to a title, and the panel it opens. The trigger stays
+       quiet until hovered: it is available on every page, so at full contrast it
+       would be the loudest thing in a header it is not the subject of. */
+    .cbx-help { position: relative; display: inline-flex; vertical-align: middle; }
+    .cbx-help-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 9999px; color: var(--muted-foreground); background: transparent; border: 0; cursor: pointer; transition: color var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease); }
+    .cbx-help-btn:hover, .cbx-help-btn[aria-expanded="true"] { color: var(--foreground); background: var(--secondary); }
+    /* 24px minimum target (WCAG 2.2 SC 2.5.8). It is a button, so the inline-text
+       exception does not apply, and at 27x18 it was under the floor on every page that
+       carries a page header. */
+    .cbx-help-link { border: 0; background: transparent; padding: 3px 0; min-height: 24px; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+    .cbx-help-panel { position: absolute; top: calc(100% + 8px); z-index: 70; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px; box-shadow: var(--shadow-popover); text-align: left; white-space: normal; }
+    .cbx-help-panel { left: 0; }
+    .cbx-help-panel.is-end { left: auto; right: 0; }
+    .cbx-help-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--foreground); }
+    .cbx-help-body { font-size: 13px; line-height: 1.55; color: var(--muted-foreground); }
+    .cbx-help-more { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .cbx-help-more:hover { text-decoration: underline; }
+
+    /* Empty state — not a shrug, a first task. The icon/title/body sit centred as
+       before; `.cbx-empty-steps` adds the numbered "what to do" list, and
+       `.cbx-empty-actions` the button row under it. */
+    .cbx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; text-align: center; }
+    .cbx-empty-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--secondary); color: var(--muted-foreground); }
+    .cbx-empty h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--foreground); font-family: var(--font-display); }
+    .cbx-empty p { margin: 4px 0 0; max-width: 384px; font-size: 14px; color: var(--muted-foreground); }
+    .cbx-empty-steps { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 0; padding: 0; max-width: 420px; text-align: left; list-style: none; counter-reset: cbx-step; }
+    .cbx-empty-steps li { position: relative; padding-left: 30px; font-size: 13px; line-height: 1.5; color: var(--muted-foreground); counter-increment: cbx-step; }
+    .cbx-empty-steps li::before { content: counter(cbx-step); position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 9999px; background: var(--secondary); color: var(--foreground); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+    .cbx-empty-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+
+    /* Avatar */
+    .cbx-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--accent-soft); color: var(--foreground); font-size: 11px; font-weight: 600; }
+
+    /* App launcher tile — the first-party "portal". A colour-branded logo per app,
+     * a tactile hover lift, and an arrow that slides in to say "this opens". */
+    .cbx-app-tile { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-card); text-decoration: none; transition: transform var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease); }
+    .cbx-app-tile:hover { transform: translateY(-2px); border-color: var(--accent-edge); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.10); }
+    .cbx-app-tile:active { transform: translateY(0); }
+    .cbx-app-logo { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; color: #fff; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.02em; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.18); }
+    .cbx-app-go { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted-foreground); opacity: 0; transform: translateX(-5px); transition: opacity var(--dur-hover) var(--ease), transform var(--dur-hover) var(--ease); }
+    .cbx-app-tile:hover .cbx-app-go { opacity: 1; transform: translateX(0); }
+
+    /* Handshake / flow explainer — a row of numbered steps with arrows between,
+     * used to show OAuth redirects visually. Wraps + arrows turn downward on narrow. */
+    .cbx-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 12px; border-radius: var(--radius); border: 1px dashed var(--border-strong); background: color-mix(in oklch, var(--secondary) 60%, transparent); }
+    .cbx-flow-step { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 170px; font-size: 12.5px; line-height: 1.35; color: var(--foreground); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 9px 11px; }
+    .cbx-flow-step b { font-weight: 600; }
+    .cbx-flow-dot { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 9999px; font-size: 11px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .cbx-flow-arrow { display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); font-size: 15px; flex-shrink: 0; }
+    @media (max-width: 640px) { .cbx-flow-arrow { transform: rotate(90deg); width: 100%; } .cbx-flow-step { min-width: 0; } }
+
+    /* Search trigger (⌘K) */
+    .cbx-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: var(--radius-md); border: 1px solid var(--control-border); background: var(--card); font-size: 12px; color: var(--muted-foreground); cursor: pointer; transition: border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-search:hover { border-color: var(--border-strong); color: var(--foreground); }
+    .cbx-search .label { flex: 1; text-align: left; }
+    .cbx-search kbd { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: -0.01em; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--secondary); padding: 2px 4px; color: var(--muted-foreground); }
+
+    /* Topbar */
+    .cbx-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: var(--topbar-h); padding: 0 16px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--background) 80%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; }
+    /* Context-switcher trigger (org/environment/target). Hover background lives here as a
+     * CSS rule rather than inline onmouseover/onmouseout handlers, which the app's own CSP
+     * (script-src without 'unsafe-inline') blocks — the handlers never fired. */
+    .cbx-switcher-item:hover { background: var(--secondary); }
+
+    /* Sidebar (two-tier tier-2 subnav column) */
+    .cbx-sidebar { display: flex; flex-direction: column; width: var(--sidebar-w); box-sizing: border-box; flex-shrink: 0; border-right: 1px solid var(--sidebar-border); background: var(--sidebar); }
+    .cbx-sidebar-brand { display: flex; align-items: center; height: var(--topbar-h); padding: 0 16px; flex-shrink: 0; border-bottom: 1px solid color-mix(in oklch, var(--sidebar-border) 70%, transparent); }
+    .cbx-nav { flex: 1; overflow-y: auto; padding: 16px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .cbx-nav-group { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 10px 4px; margin: 0; }
+    /* Pages of an area, in the mobile sheet: indented under the group heading that
+       carries the icon, rather than each repeating the same glyph. */
+    .nav-link.is-nested { padding-left: 34px; }
+
+    /* ── TIER 1: icon rail (Intercom 3-state model). Active = filled bg; NO left-edge rail. */
+    /* The rail is ALWAYS a floating inset card with identical geometry whether
+     * pinned or not — same fixed position, 6px insets, 12px radius and border BOX.
+     * Pinning changes only its WIDTH (and the flow space its spacer reserves), never
+     * its position, shape or the placement of a single icon — so there is no layout
+     * shift toggling pin, only a clean width grow. */
+    .cbx-rail { position: fixed; left: 6px; top: 6px; bottom: 6px; z-index: 70; width: 52px; display: flex; flex-direction: column; background: var(--sidebar); border: 1px solid transparent; border-radius: 12px; padding: 8px; box-sizing: border-box; transition: width 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease); overflow-x: clip; overflow-y: auto; }
+    /* overflow-x: clip rather than `hidden`, and clipping only the axis that needs it.
+       `overflow: hidden` established a clipping context in BOTH directions, so the
+       account menu — 230px wide, anchored inside a rail whose maximum is 210px — lost
+       about 36px of itself and its entire drop shadow, on all four planes. Clip keeps the
+       label truncation the rail needs without creating a scroll container. */
+    /* Header monogram is centred only in the collapsed strip; left-aligned once the
+     * rail is expanded (pinned or hover-open) — CSS-driven so it never shifts on load. */
+    .cbx-rail-hd { position: relative; display: flex; align-items: center; justify-content: center; height: 34px; margin-bottom: 8px; flex-shrink: 0; }
+    :root.cbx-nav-pinned .cbx-rail-hd, .cbx-rail.open .cbx-rail-hd { justify-content: flex-start; }
+    /* Pin lives top-right of the header — absolute so it never shifts the brand's
+     * centring in the collapsed strip; revealed only once the rail is expanded. */
+    .cbx-pin-btn { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; background: transparent; border-radius: 7px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 120ms var(--ease), background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-pin-btn:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    .cbx-rail.open .cbx-pin-btn, :root.cbx-nav-pinned .cbx-pin-btn { opacity: 1; pointer-events: auto; }
+    .cbx-rail-brand { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+    .cbx-rail-brand svg, .cbx-rail-brand img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cbx-rail a, .cbx-rail button.cbx-railitem { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 9px; border-radius: 8px; text-decoration: none; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); margin-bottom: 2px; white-space: nowrap; width: 100%; box-sizing: border-box; background: transparent; border: 0; cursor: pointer; font-size: 13px; font-family: var(--font-sans); transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-rail a svg, .cbx-rail button.cbx-railitem svg { flex-shrink: 0; color: var(--sidebar-muted); }
+    .cbx-rail a .lbl, .cbx-rail button.cbx-railitem .lbl { font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 120ms var(--ease); }
+    .cbx-rail a:hover, .cbx-rail button.cbx-railitem:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    .cbx-rail a.cbx-on { background: var(--accent-soft); color: var(--nav-active-fg); font-weight: 600; }
+    .cbx-rail a.cbx-on svg { color: var(--nav-active-fg); }
+    .cbx-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--sidebar-muted); cursor: pointer; opacity: 0; transition: opacity 120ms var(--ease); }
+    .cbx-pin:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    .cbx-pin.set { color: var(--primary); opacity: 1; }
+    /* OPEN (hover when unpinned) = floating overlay with a lifted shadow. PINNED =
+     * docked open with a calm card shadow. Both reach 210px; the pinned rule has
+     * higher specificity so its subtler shadow wins when both apply. The SSR
+     * <html class="cbx-nav-pinned"> (from the cookie) makes a pinned rail render at
+     * 210px on the very first frame, so it never animates 52→210 on a navigation. */
+    .cbx-rail.open { width: 210px; border-color: var(--border); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18); }
+    :root.cbx-nav-pinned .cbx-rail { width: 210px; border-color: var(--border); box-shadow: var(--shadow-card); }
+    .cbx-rail.open a .lbl, .cbx-rail.open button.cbx-railitem .lbl,
+    :root.cbx-nav-pinned .cbx-rail a .lbl,
+    :root.cbx-nav-pinned .cbx-rail button.cbx-railitem .lbl { opacity: 1; }
+    /* The spacer reserves flow. Unpinned reserves just the collapsed strip (64px) so
+     * the hover-expand overlays without pushing the page; pinned reserves the full
+     * rail width + its two 6px insets (222px) so content docks cleanly beside it. */
+    .cbx-rail-spacer { display: none; }
+    @media (min-width: 1024px) {
+        .cbx-rail-spacer { display: block; width: 64px; flex-shrink: 0; }
+        :root.cbx-nav-pinned .cbx-rail-spacer { width: 222px; }
+    }
+    .cbx-rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; position: relative; padding-top: 8px; }
+    /* Pin toggle — a tilted (loose) pin when unpinned, upright + accent when pinned.
+     * CSS-driven off the SSR pinned class AND the Alpine .is-pinned class so it is
+     * correct on the first frame and updates instantly on toggle. */
+    .cbx-pintoggle svg { transform: rotate(35deg); transition: transform 150ms var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-pintoggle.is-pinned svg, :root.cbx-nav-pinned .cbx-pintoggle svg { transform: rotate(0deg); color: var(--primary); }
+
+    /* ── TIER 2: contextual subnav */
+    /* 176px per the design system's app-shell guideline. The longest labels in the
+     * product ("Environment keys", "Single sign-on", "Access reviews") measure well
+     * inside the 140px of text room that leaves, so nothing wraps; nowrap + ellipsis
+     * on the label is a guard for a future longer one, not an active truncation. */
+    .cbx-subnav { width: 176px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); overflow: hidden; }
+    .cbx-subnav-hd { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; font-family: var(--font-display); font-size: 14px; font-weight: 650; letter-spacing: -0.005em; color: var(--foreground); }
+    .cbx-subnav nav { flex: 1; overflow-y: auto; padding: 0 10px 12px; }
+    .cbx-subnav nav a { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 13px; font-weight: 450; color: color-mix(in oklch, var(--sidebar-foreground) 85%, transparent); text-decoration: none; margin-bottom: 1px; white-space: nowrap; transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
+    .cbx-subnav nav a > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .cbx-subnav nav a:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    /* Active = filled --accent-soft, the same fill the rail uses. It must NOT reuse the
+     * neutral hover background: that made "where I am" and "where the pointer is"
+     * identical, and the guideline names accent-soft as the one active marker (with
+     * left-edge borders forbidden). */
+    .cbx-subnav nav a.cbx-on { background: var(--accent-soft); font-weight: 600; color: var(--nav-active-fg); }
+    .cbx-subnav nav a .cnt { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+    .cbx-subnav-group { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-foreground); padding: 14px 8px 3px; margin: 0; }
+    .cbx-subnav-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
+    .cbx-subnav-toggle:hover { background: var(--sidebar-accent); color: var(--foreground); }
+    .cbx-subnav.collapsed { width: 26px; cursor: pointer; }
+    .cbx-subnav.collapsed > *:not(.cbx-strip) { display: none; }
+    .cbx-strip { display: none; }
+    .cbx-subnav.collapsed .cbx-strip { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; padding: 10px 0; width: 100%; }
+    .cbx-strip .vlabel { writing-mode: vertical-rl; font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+}
+
+/* The dark-mode active-nav colour used to live here, as a literal oklch(0.82 0.12 258)
+ * duplicated across two UNLAYERED blocks so it could out-rank the @layer components
+ * rules. It is now the --nav-active-fg token, set per theme with the other tokens, so
+ * the value exists once and the cascade does not depend on layer ordering. */
+
+/* ── Toast ─────────────────────────────────────────────────────────────────
+   The console's confirmation surface. Severity is a data attribute so the
+   colour and the ARIA politeness are driven by ONE value — an error can never
+   be styled as success while being announced politely, which is how a failed
+   action used to render green with a checkmark. */
+@layer components {
+    .cbx-toast {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        max-width: min(28rem, calc(100vw - 2rem));
+        padding: 0.7rem 0.9rem;
+        border: 1px solid;
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-card);
+        font-size: 0.875rem;
+        line-height: 1.4;
+        background: var(--card);
+    }
+
+    .cbx-toast[data-severity='success'] {
+        border-color: color-mix(in oklch, var(--success) 35%, transparent);
+        background: var(--success-soft);
+        color: var(--success-strong);
+    }
+
+    .cbx-toast[data-severity='error'] {
+        border-color: color-mix(in oklch, var(--destructive) 40%, transparent);
+        background: var(--destructive-soft);
+        color: var(--destructive-strong, var(--destructive));
+    }
+
+    .cbx-toast-close {
+        margin-left: auto;
+        font-size: 1.1rem;
+        line-height: 1;
+        opacity: 0.65;
+        /* 24px minimum target (WCAG 2.2 SC 2.5.8). */
+        min-width: 24px;
+        min-height: 24px;
+    }
+
+    .cbx-toast-close:hover { opacity: 1; }
+}
+
+/* ── Environment badge ─────────────────────────────────────────────────────
+   Which realm am I acting in? Production is the one that must be unmistakable,
+   so it is the only variant that borrows the destructive hue — the point is
+   hesitation before a destructive click, not decoration. */
+@layer components {
+    .cbx-env-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.05rem 0.4rem;
+        border: 1px solid transparent;
+        border-radius: 0.375rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+
+    .cbx-env-badge[data-env-type='production'] {
+        background: var(--destructive-soft);
+        color: var(--destructive-strong, var(--destructive));
+        border-color: color-mix(in oklch, var(--destructive) 35%, transparent);
+    }
+
+    .cbx-env-badge[data-env-type='sandbox'] {
+        background: var(--warning-soft);
+        color: var(--warning-strong);
+        border-color: color-mix(in oklch, var(--warning) 30%, transparent);
+    }
+}
+
+/* ── Touch: a field must never zoom the page when it takes focus ────────────
+   Safari on iOS zooms the viewport whenever a focused control's text is under
+   16px, and then does not zoom back out. The sign-in field is `autofocus`, so
+   this fired on load, before anyone had touched anything: the page arrived
+   already magnified and shifted, with the form running off the right edge.
+
+   The fix people reach for first is `maximum-scale=1` on the viewport meta,
+   which works by taking pinch-zoom away from everyone permanently — a WCAG 2.2
+   1.4.4 failure, and a cruel one on a sign-in page, which is exactly where
+   someone needs to magnify a password field. Sizing the text at the threshold
+   removes the trigger instead, and costs nothing on a phone, where 13px form
+   text was too small to read comfortably in the first place.
+
+   Element selectors rather than `.input`, because the trigger is the CONTROL,
+   not our class: a bare `<input>` in a plugin view zooms just as hard. Deliberately
+   UNLAYERED — a Tailwind text utility on a control (`.input.mono.text-xs` on the
+   Google service-account textarea) sits in the utilities layer and would
+   otherwise win, re-arming the zoom on that one field.
+
+   `pointer: coarse` rather than a width breakpoint: the trigger is the touch
+   keyboard, not the viewport, so a large tablet needs this and a narrow desktop
+   window does not. */
+@media (pointer: coarse) {
+    /* `!important` because an inline `style="font-size:…"` is the one thing an unlayered
+       rule cannot outrank, and eighteen controls carry one — the SAML certificate, signing
+       key, metadata and redirect-URI fields, which are exactly the fields someone is most
+       likely to be pasting into from a phone. Sizing the text at the threshold is the whole
+       fix; a control that opts out of it re-arms the zoom for the whole page. */
+    input:not([type='checkbox']):not([type='radio']):not([type='range']),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* 16px inside a 32px box leaves 6px of breathing room top and bottom, and
+       the taller target is worth having under a thumb regardless. */
+    /* `.select` too: it is the same control class, and there are four times as many of
+       them as there are `select.input`. Leaving it out gave the majority of the console's
+       dropdowns 16px text in a 32px box — tighter than before the font bump, not looser. */
+    .input:not(.input-lg),
+    .select {
+        height: 38px;
+    }
+}
+
+/* ── Narrow screens: stop laying two things side by side that do not fit ────
+   `.cbx-panel-header` is a flex row — title block on the left, action on the right —
+   which is right on a desktop and wrong the moment the viewport is 375px. Neither
+   child wraps: the action is `shrink-0`, so the title and its description absorb the
+   entire shortfall and collapse to a column two or three words wide. The Passkeys
+   panel rendered "Sign in with Face ID, Touch" / "ID, Windows Hello, or a" / "security
+   key — no" / "password." beside a button that kept its full width.
+
+   Stacking is the fix, not shrinking: the action belongs under the text it acts on,
+   full width, where a thumb can reach it. This is one rule and it corrects every
+   panel header in the console at once — the pattern is used on around forty pages.
+
+   A width breakpoint rather than `pointer: coarse` here, unlike the zoom rule: this
+   is a question of how much room the text has, and a narrow desktop window has the
+   same problem a phone does. */
+@media (max-width: 640px) {
+    .cbx-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* A 140px label column out of 375 leaves the value 57px wide once the panel has any
+       padding — an email address rendered four characters to the line. Stack instead. */
+    .cbx-kv {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+    }
+
+    .cbx-panel-header > .btn,
+    .cbx-panel-header > form > .btn {
+        justify-content: center;
+    }
+}

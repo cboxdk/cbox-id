@@ -1,0 +1,95 @@
+<?php
+
+declare(strict_types=1);
+
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
+use Cbox\Id\Platform\Models\PlatformOperator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Volt\Volt;
+
+uses(RefreshDatabase::class);
+
+/** Swap in the assertable audit fake, then sign in as a fresh operator. */
+function fakeAuditAndSignIn(string $email = 'auditor@platform.test'): array
+{
+    $audit = new FakeAuditLog;
+    app()->instance(AuditLog::class, $audit);
+
+    $op = actAsOperator($email);
+
+    return [$audit, $op];
+}
+
+it('records an audit event when an organization is suspended via the console', function (): void {
+    [$audit, $op] = fakeAuditAndSignIn();
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-audit'));
+
+    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
+
+    expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Suspended);
+    $audit->assertRecorded('organization.suspended', fn (AuditEvent $e): bool => $e->actorId === $op->id && $e->targetId === $org->id);
+
+    // Reactivating routes through the contract too, and is likewise audited.
+    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
+    expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Active);
+    $audit->assertRecorded('organization.reactivated');
+});
+
+it('records an audit event when an operator is suspended via the console', function (): void {
+    [$audit, $me] = fakeAuditAndSignIn('me-audit@platform.test');
+    $target = app(PlatformOperators::class)->create('target-audit@platform.test', 'a-strong-operator-pass', 'Target');
+
+    Volt::test('platform.operators')->call('toggleStatus', $target->id);
+
+    expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('suspended');
+    $audit->assertRecorded('operator.suspended', fn (AuditEvent $e): bool => $e->actorId === $me->id && $e->targetId === $target->id);
+
+    Volt::test('platform.operators')->call('toggleStatus', $target->id);
+    expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('active');
+    $audit->assertRecorded('operator.reactivated');
+});
+
+it('surfaces the last-operator guard as a friendly message, not a 500', function (): void {
+    actAsOperator('solo@platform.test');
+    $target = app(PlatformOperators::class)->create('victim@platform.test', 'a-strong-operator-pass', 'Victim');
+
+    // The console's own guards make this path unreachable with a real repo, but the
+    // component must still degrade gracefully if the contract ever refuses. Stub the
+    // interface: lookups pass through to the real records, suspend() refuses.
+    $mock = Mockery::mock(PlatformOperators::class);
+    $mock->shouldReceive('find')->andReturnUsing(fn (string $id) => PlatformOperator::query()->find($id));
+    // The console asks this on every request now — it is how the acting operator is
+    // resolved from the signed-in subject, so a stub that omits it fails before the
+    // screen this test is about even mounts.
+    $mock->shouldReceive('findBySubject')->andReturnUsing(
+        fn (string $id) => PlatformOperator::query()->where('subject_id', $id)->where('status', 'active')->first(),
+    );
+    $mock->shouldReceive('suspend')->andThrow(CannotSuspendLastOperator::make($target->id));
+    app()->instance(PlatformOperators::class, $mock);
+
+    // No exception propagates (would be a 500) — the component handles it inline.
+    Volt::test('platform.operators')
+        ->call('toggleStatus', $target->id)
+        ->assertHasNoErrors();
+
+    expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('active');
+});
+
+it('refuses self-suspension without touching the audit trail', function (): void {
+    [$audit, $me] = fakeAuditAndSignIn('self@platform.test');
+
+    Volt::test('platform.operators')
+        ->call('toggleStatus', $me->id)
+        ->assertHasNoErrors();
+
+    expect(PlatformOperator::query()->whereKey($me->id)->value('status')?->value)->toBe('active');
+    $audit->assertNotRecorded('operator.suspended');
+});

@@ -1,0 +1,476 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Mail\AccountInviteMail;
+use App\Platform\OrganizationActivity;
+use App\Platform\OrganizationCapabilities;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\MailLinks;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Invitations;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Membership;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
+
+/**
+ * Identity platform › Members — the organization's team, roles, per-environment access and
+ * invitations. Managing members requires a management role; everyone else sees a read-only
+ * roster.
+ *
+ * IDENTITY AND AUTHORITY ARE TWO ROWS NOW. A member used to be one `account_members` row
+ * carrying both the person (email, name) and what they may do (role, environment grants).
+ * It is a {@see Membership} for the authority and a subject for the person, so every place
+ * that rendered `$member->email` resolves the subject instead. That is the whole reason the
+ * roster hydrates subjects alongside the memberships rather than reading names off them.
+ */
+new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Component
+{
+    public string $inviteEmail = '';
+
+    public string $inviteName = '';
+
+    public string $inviteRole = 'developer';
+
+    /** The member whose environment access is being edited, if any. */
+    public ?string $editingAccessFor = null;
+
+    public bool $accessAll = true;
+
+    /** @var list<string> */
+    public array $accessEnvIds = [];
+
+    public function mount(ConsoleScope $scope): mixed
+    {
+        // The roster is PII — a Developer/Billing-only role may not read it.
+        if ($scope->capabilities()?->canReadMembers() !== true) {
+            return redirect()->route('projects');
+        }
+
+        return null;
+    }
+
+    public function invite(ConsoleScope $scope, Invitations $invitations, Subjects $subjects, OrganizationActivity $activity, MailLinks $links): void
+    {
+        $organizationId = $scope->organizationId();
+
+        if ($organizationId === null || $scope->capabilities()?->canManageMembers() !== true) {
+            return;
+        }
+
+        $this->validate([
+            'inviteEmail' => ['required', 'email', 'max:190'],
+            'inviteName' => ['nullable', 'string', 'max:120'],
+            'inviteRole' => ['required', Rule::in(array_map(fn (MembershipRole $r) => $r->value, MembershipRole::assignable()))],
+        ]);
+
+        // The subject lookup is GLOBAL — one email, one root login — so the old message,
+        // "that email already belongs to a member", let an admin of one organization probe
+        // whether any address belonged to ANOTHER. One message for both cases closes that:
+        // a member of THIS organization is already visible on the roster below, so nothing
+        // is lost to the person entitled to know and nothing is disclosed to the person who
+        // is not.
+        //
+        // A residual signal remains — the invitation fails, so the address exists somewhere
+        // — and that is inherent to globally-unique emails, not something a message can
+        // hide. Rate limiting and the audit trail are what bound it.
+        $existing = app(PlatformRoot::class)->run(fn () => $subjects->findByEmail($this->inviteEmail));
+
+        if ($existing !== null && app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($organizationId, $existing->id)) !== null) {
+            $this->addError('inviteEmail', 'That email cannot be invited to this organization.');
+
+            return;
+        }
+
+        $pending = app(PlatformRoot::class)->run(fn () => $invitations->invite(
+            $organizationId,
+            $this->inviteEmail,
+            MembershipRole::from($this->inviteRole),
+            $scope->actorId(),
+        ));
+
+        if ($pending === null) {
+            return;
+        }
+
+        // MailLinks, not URL:: — an invitation is mailed, so its origin must come from the
+        // deployment rather than from the Host header of whoever asked to send it.
+        $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
+        Mail::to($this->inviteEmail)->send(new AccountInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
+
+        $activity->record($organizationId, 'organization.member_invited', $scope->actorId(),
+            targetType: 'invitation', targetId: $pending->invitation->id,
+            context: ['email' => $this->inviteEmail, 'role' => $this->inviteRole], request: request());
+
+        $sentTo = $this->inviteEmail;
+        $this->reset('inviteEmail', 'inviteName');
+        $this->dispatch('toast', message: 'Invitation sent to '.$sentTo.'.');
+    }
+
+    public function changeRole(string $memberId, string $role, ConsoleScope $scope, OrganizationActivity $activity, Memberships $members): void
+    {
+        $organizationId = $scope->organizationId();
+        $target = $this->manageableTarget($memberId, $scope);
+        $next = MembershipRole::tryFrom($role);
+
+        if ($organizationId === null || $target === null || $next === null || ! in_array($next, MembershipRole::assignable(), true)) {
+            return;
+        }
+
+        // The organization id comes from the SCOPE and the subject id from the fenced
+        // lookup, so neither is the string off the wire.
+        app(PlatformRoot::class)->run(fn () => $members->changeRole($organizationId, $target->user_id, $next));
+
+        $activity->record($organizationId, 'organization.member_role_changed', $scope->actorId(),
+            targetType: 'membership', targetId: $target->id,
+            context: ['role' => $next->value], request: request());
+
+        $this->dispatch('toast', message: 'Role updated.');
+    }
+
+    public function removeMember(string $memberId, ConsoleScope $scope, OrganizationActivity $activity, Memberships $members): void
+    {
+        $organizationId = $scope->organizationId();
+        $target = $this->manageableTarget($memberId, $scope);
+
+        if ($organizationId === null || $target === null) {
+            return;
+        }
+
+        app(PlatformRoot::class)->run(fn () => $members->remove($organizationId, $target->user_id));
+
+        $activity->record($organizationId, 'organization.member_removed', $scope->actorId(),
+            targetType: 'membership', targetId: $target->id, request: request());
+
+        $this->dispatch('toast', message: 'Member removed.');
+    }
+
+    /**
+     * Transfer ownership to another member — current owner only.
+     *
+     * PROMOTE FIRST, THEN DEMOTE, and the order is load-bearing rather than stylistic.
+     * `Memberships` refuses to demote the last owner, so demoting first would be refused
+     * outright; promoting first means the organization briefly has two owners and never
+     * zero. The account plane had a single `transferOwnership()` verb that did both inside
+     * one transaction; there is no such verb here, so the invariant has to be respected by
+     * the order rather than by the service.
+     */
+    public function makeOwner(string $memberId, ConsoleScope $scope, Memberships $members, Subjects $subjects): void
+    {
+        $organizationId = $scope->organizationId();
+        $actorId = $scope->actorId();
+
+        if ($organizationId === null || $scope->membershipRole() !== MembershipRole::Owner) {
+            return;
+        }
+
+        $target = $this->resolve($memberId, $organizationId);
+
+        if ($target->user_id === $actorId) {
+            return;
+        }
+
+        app(PlatformRoot::class)->run(function () use ($members, $organizationId, $target, $actorId): void {
+            $members->changeRole($organizationId, $target->user_id, MembershipRole::Owner);
+            $members->changeRole($organizationId, $actorId, MembershipRole::Admin);
+        });
+
+        $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($target->user_id));
+        $who = $subject === null ? 'that member' : ($subject->name ?? $subject->email ?? 'that member');
+
+        $this->dispatch('toast', message: 'Ownership transferred to '.$who.'.');
+    }
+
+    public function manageAccess(string $memberId, ConsoleScope $scope, Memberships $members): void
+    {
+        $organizationId = $scope->organizationId();
+        $target = $this->manageableTarget($memberId, $scope);
+
+        if ($organizationId === null || $target === null || ! $target->role->supportsEnvironmentScoping()) {
+            return;
+        }
+
+        $this->editingAccessFor = $target->id;
+        $this->accessAll = $target->all_environments === true;
+        $this->accessEnvIds = app(PlatformRoot::class)->run(
+            fn (): array => $members->accessibleEnvironmentIds($organizationId, $target->user_id),
+        ) ?? [];
+    }
+
+    public function saveAccess(ConsoleScope $scope, Memberships $members): void
+    {
+        $organizationId = $scope->organizationId();
+
+        if ($this->editingAccessFor === null || $organizationId === null) {
+            return;
+        }
+
+        $target = $this->manageableTarget($this->editingAccessFor, $scope);
+
+        if ($target === null) {
+            return;
+        }
+
+        app(PlatformRoot::class)->run(
+            fn () => $members->setEnvironmentAccess($organizationId, $target->user_id, $this->accessAll, $this->accessEnvIds),
+        );
+        $this->editingAccessFor = null;
+        $this->dispatch('toast', message: 'Environment access updated.');
+    }
+
+    public function cancelAccess(): void
+    {
+        $this->editingAccessFor = null;
+    }
+
+    /** The target member IF the acting member may manage it (not self, not the owner). */
+    private function manageableTarget(string $memberId, ConsoleScope $scope): ?Membership
+    {
+        $organizationId = $scope->organizationId();
+
+        // Asked BEFORE the organization fence, and answered silently: a member who may read
+        // the roster but not manage it, or one naming themselves, is looking at a person
+        // they can genuinely see. A 404 there would deny the existence of a row rendered
+        // three lines above it on the same page.
+        if ($organizationId === null || $scope->capabilities()?->canManageMembers() !== true) {
+            return null;
+        }
+
+        $target = $this->resolve($memberId, $organizationId);
+
+        if ($target->user_id === $scope->actorId()) {
+            return null;
+        }
+
+        return $target->role === MembershipRole::Owner ? null : $target;
+    }
+
+    /**
+     * The named membership WITHIN this organization, or 404.
+     *
+     * THE ORGANIZATION ID IS IN THE QUERY. A lookup on the primary key alone spans every
+     * organization on the install, and what would stand between an admin of one and a
+     * member of another is an `if` afterwards. That comparison does hold, but it is the
+     * same shape that shipped a cross-organization IDOR on /governance/{campaign}: the
+     * predicate has to be in the query, or the next caller added to this file is the one
+     * that forgets to re-check.
+     *
+     * The service verbs now take `(organizationId, userId)` rather than a bare membership
+     * id, so the fence and the write agree by signature. This still resolves first, because
+     * the page hands us a MEMBERSHIP id off the wire and the organization it belongs to is
+     * exactly the thing that must not be taken on trust.
+     *
+     * 404, not 403 — consistent with the rest of the console. A member of somebody else's
+     * organization is not a permission this person lacks; it is a row they have no business
+     * learning exists.
+     */
+    private function resolve(string $memberId, string $organizationId): Membership
+    {
+        // THROUGH THE CONTRACT, not a raw query, and that is not a style preference.
+        // `memberships` is TENANT-owned as well as environment-owned, and the tenant scope
+        // is deny-by-default — a bare `Membership::query()` in a console request has no
+        // tenant in context and matches NOTHING, so every action here would 404 on a row
+        // that is right there on the page. `account_members` was not tenant-owned, which is
+        // why the query this replaces could be written by hand and why substituting the
+        // model one-for-one looked safe.
+        //
+        // `forOrganization()` runs inside the organization's tenant scope, so the fence is
+        // the call itself rather than a predicate a later caller could forget.
+        $target = app(PlatformRoot::class)->run(
+            fn (): ?Membership => app(Memberships::class)->forOrganization($organizationId)
+                ->firstWhere('id', $memberId),
+        );
+
+        abort_if($target === null, 404);
+
+        return $target;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function with(Memberships $members, Subjects $subjects, ConsoleScope $scope): array
+    {
+        $organizationId = $scope->organizationId();
+
+        // IN THE PLATFORM ROOT, like every other membership read on this page. The console
+        // is served on the console host, and whether that host resolves to the root is a
+        // deployment detail — the management plane's rows live in the root either way, so
+        // the scope is stated rather than assumed.
+        /** @var Collection<int, Membership> $roster */
+        $roster = $organizationId === null
+            ? collect()
+            : app(PlatformRoot::class)->run(fn () => $members->forOrganization($organizationId)) ?? collect();
+
+        // The people behind the memberships, keyed by subject id. Hydrated in ONE pass
+        // rather than per row: a membership carries authority and not identity, so every
+        // name and address on this page is a second lookup, and doing it inside the loop
+        // is how a 25-row roster becomes 25 queries.
+        $people = [];
+        $accessCounts = [];
+
+        foreach ($roster as $membership) {
+            $people[$membership->user_id] = app(PlatformRoot::class)->run(
+                fn () => $subjects->find($membership->user_id),
+            );
+            $accessCounts[$membership->id] = $organizationId === null ? [] : (app(PlatformRoot::class)->run(
+                fn (): array => $members->accessibleEnvironmentIds($organizationId, $membership->user_id),
+            ) ?? []);
+        }
+
+        // THROUGH THE PROJECTS, because `environments.account_id` is gone.
+        $environments = $organizationId === null
+            ? collect()
+            : Environment::query()
+                ->whereIn('project_id', Project::query()->where('organization_id', $organizationId)->pluck('id'))
+                ->orderBy('created_at')
+                ->get();
+
+        return [
+            'members' => $roster,
+            'people' => $people,
+            'actorId' => $scope->actorId(),
+            'accessCounts' => $accessCounts,
+            'environments' => $environments,
+            // Asked of the SCOPE, not of the member row, so the rail, this page's own
+            // guard and the buttons it renders all answer from one place — and so a
+            // person acting on somebody else's organization is refused here too, which
+            // a bare role read on the member cannot express.
+            'canManage' => $scope->capabilities()?->canManageMembers() === true,
+            'isOwner' => $scope->membershipRole() === MembershipRole::Owner,
+            'assignableRoles' => MembershipRole::assignable(),
+        ];
+    }
+}; ?>
+
+<div>
+    <x-page-header title="Members" subtitle="People who can administer this organization, their roles, and which environments they reach." />
+
+    <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
+        @foreach ($members as $m)
+            @php
+                $person = $people[$m->user_id] ?? null;
+                $displayName = $person?->name ?? $person?->email ?? '—';
+                $displayEmail = $person?->email ?? '—';
+                $isSelf = $m->user_id === $actorId;
+                $manageable = $canManage && ! $isSelf && $m->role !== \Cbox\Id\Organization\Enums\MembershipRole::Owner;
+                $scoped = $m->role->supportsEnvironmentScoping();
+                // Built here rather than inline: a Blade `:attr` value cannot itself
+                // contain the double quote the action string needs around the id.
+                $makeOwnerAction = "makeOwner('{$m->id}')";
+                $removeMemberAction = "removeMember('{$m->id}')";
+            @endphp
+            <div wire:key="member-{{ $m->id }}" class="p-4 {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)">
+                <div class="flex items-center gap-3">
+                    <span class="grid place-items-center w-9 h-9 rounded-full text-sm font-semibold shrink-0" style="background:var(--surface-2);color:var(--muted)" aria-hidden="true">{{ strtoupper(substr($displayName, 0, 1)) }}</span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium truncate">{{ $displayName }}</span>
+                            @if ($isSelf)<span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent-strong)">You</span>@endif
+                            @if ($m->status !== \Cbox\Id\Organization\Enums\MembershipStatus::Active)<span class="badge badge-warn">{{ $m->status->value }}</span>@endif
+                        </div>
+                        <p class="text-sm truncate" style="color:var(--muted)">{{ $displayEmail }}</p>
+                    </div>
+
+                    @if ($manageable)
+                        <select class="input shrink-0" style="width:auto;padding-top:6px;padding-bottom:6px"
+                                wire:change="changeRole('{{ $m->id }}', $event.target.value)" aria-label="Role for {{ $displayEmail }}">
+                            @foreach ($assignableRoles as $role)
+                                <option value="{{ $role->value }}" @selected($m->role === $role)>{{ $role->label() }}</option>
+                            @endforeach
+                        </select>
+                        <div x-data="{ open: false }" class="relative shrink-0">
+                            <button type="button" @click="open = !open" @click.outside="open = false" class="btn btn-ghost btn-sm" aria-label="More actions">⋯</button>
+                            <div x-show="open" x-cloak class="cbx-panel" style="position:absolute;right:0;top:calc(100% + 4px);min-width:190px;z-index:20;box-shadow:var(--shadow-popover);padding:6px">
+                                @if ($scoped)
+                                    <button type="button" class="cbx-row w-full" style="padding:8px 10px;border-radius:6px;font-size:13px" wire:click="manageAccess('{{ $m->id }}')" @click="open = false">Manage environment access</button>
+                                @endif
+                                @if ($isOwner)
+                                    <x-confirm-delete
+                                        :name="$displayEmail"
+                                        :action="$makeOwnerAction"
+                                        label="Transfer ownership"
+                                        verb="Hand this account to"
+                                        trigger-class="cbx-row w-full"
+                                        trigger-style="padding:8px 10px;border-radius:6px;font-size:13px"
+                                        consequence="They become the account owner and you are demoted to admin. Only the new owner can hand it back." />
+                                @endif
+                                <x-confirm-delete
+                                    :name="$displayEmail"
+                                    :action="$removeMemberAction"
+                                    label="Remove"
+                                    verb="Remove"
+                                    trigger-class="cbx-row w-full"
+                                    trigger-style="padding:8px 10px;border-radius:6px;font-size:13px;color:var(--destructive)"
+                                    consequence="They lose access to this account and every environment under it immediately." />
+                            </div>
+                        </div>
+                    @else
+                        <span class="badge shrink-0">{{ $m->role->label() }}</span>
+                    @endif
+                </div>
+
+                {{-- Environment-access summary + inline editor for scoped roles. --}}
+                @if ($scoped)
+                    <div class="mt-2 ml-12 text-xs" style="color:var(--faint)">
+                        @if ($m?->all_environments === true)
+                            Access to all environments
+                        @else
+                            Access to {{ count($accessCounts[$m->id] ?? []) }} of {{ $environments->count() }} environments
+                        @endif
+                    </div>
+                    @if ($editingAccessFor === $m->id)
+                        <div class="mt-3 ml-12 rounded-lg border p-3" style="border-color:var(--border)">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" wire:model.live="accessAll"> All environments (including ones added later)
+                            </label>
+                            <div class="mt-2 space-y-1.5" @if ($accessAll) style="opacity:0.4;pointer-events:none" @endif>
+                                @foreach ($environments as $env)
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" value="{{ $env->id }}" wire:model="accessEnvIds" @disabled($accessAll)>
+                                        {{ $env->name }} @if ($env->isSandbox())<span style="color:var(--warning-strong)">· sandbox</span>@endif
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="mt-3 flex gap-2">
+                                <button type="button" class="btn btn-primary btn-sm" wire:click="saveAccess">Save access</button>
+                                <button type="button" class="btn btn-ghost btn-sm" wire:click="cancelAccess">Cancel</button>
+                            </div>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        @endforeach
+    </div>
+
+    @if ($canManage)
+        <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
+            <p class="text-sm font-medium">Invite a teammate</p>
+            <p class="mt-1 text-sm" style="color:var(--muted)">They'll get an email to set a password and join this account.</p>
+            <form wire:submit="invite" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
+                <div>
+                    <input wire:model="inviteEmail" type="email" class="input" placeholder="teammate@yourco.example" autocomplete="off" aria-label="Teammate email">
+                    @error('inviteEmail') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
+                <input wire:model="inviteName" type="text" class="input" placeholder="Name (optional)" autocomplete="off" aria-label="Teammate name">
+                <select wire:model="inviteRole" class="input" style="width:auto" aria-label="Role">
+                    @foreach ($assignableRoles as $role)
+                        <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                    @endforeach
+                </select>
+                <button type="submit" class="btn btn-primary shrink-0" wire:loading.attr="disabled" wire:target="invite">
+                    <span wire:loading.remove wire:target="invite">Send invite</span>
+                    <span wire:loading wire:target="invite">Sending…</span>
+                </button>
+            </form>
+        </div>
+    @endif
+</div>

@@ -1,0 +1,305 @@
+openapi: 3.1.0
+info:
+  title: Cbox ID — Organization Management API
+  version: "1.0.0"
+  description: |
+    The **global organization-management plane** — above every environment. Manage the
+    organization, its **projects** (IdP products, each a billing anchor) and their
+    environments, and its members with an organization API key.
+
+    This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
+    which is served on each environment's own host and authenticated with
+    environment-scoped credentials. Credentials never cross planes: an organization key
+    (`cbid_acc_…`) cannot call the environment API, and vice versa.
+
+    **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
+    a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
+    "<human message>" }` — including validation failures, which add a field-keyed
+    `errors` map alongside the pair.
+
+    **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
+    runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
+servers:
+  - url: https://api.cboxid.com/api/v1
+    description: Hosted (global organization plane)
+  - url: https://{host}/api/v1
+    description: Self-hosted
+    variables:
+      host: { default: id.example.com }
+security:
+  - OrganizationApiKey: []
+tags:
+  - name: Organization
+  - name: Projects
+  - name: Environments
+  - name: Members
+paths:
+  /organization:
+    get:
+      tags: [Organization]
+      summary: Get the organization
+      description: Returns the organization's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organization/projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      description: The organization's projects (IdP products). Each carries its own plan and environment allowance.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Project" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Projects]
+      summary: Create a project
+      description: Stand up another independently-billed IdP product. Requires the `manage-environments` capability (owner/admin/developer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                environment_limit: { type: integer, minimum: 1, maximum: 100, description: "This project's plan environment allowance (default 2)." }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organization/environments:
+    get:
+      tags: [Environments]
+      summary: List environments
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Environment" } }
+                  meta: { $ref: "#/components/schemas/ListMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Environments]
+      summary: Create an environment
+      description: Requires the `manage-environments` capability (owner/admin/developer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                type: { type: string, enum: [production, sandbox], default: production }
+                project_id: { type: string, description: "The project (billing anchor) to create the environment under. Defaults to the organization's first project when omitted." }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Environment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: No such project on this organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: not_found, message: "Project not found." }
+        "422":
+          description: Validation failed, or the project's plan limit is reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: environment_limit_reached, message: "Project [01J…] has reached its plan limit of 2 environment(s)." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organization/members:
+    get:
+      tags: [Members]
+      summary: List members
+      description: Requires the `read-members` capability (owner/admin/viewer). The roster is PII — a developer key is refused.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Member" } }
+                  meta: { $ref: "#/components/schemas/ListMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Members]
+      summary: Invite a member
+      description: Requires the `manage-members` capability (owner/admin). Sends a signed email invitation; the member is created in the `invited` state until they accept.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                name: { type: ["string", "null"] }
+                role: { type: string, enum: [admin, billing, developer, viewer] }
+      responses:
+        "201":
+          description: Invited
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: Validation failed, or the email already belongs to a member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: email_taken, message: "That email already belongs to a member." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+components:
+  securitySchemes:
+    OrganizationApiKey:
+      type: http
+      scheme: bearer
+      description: An organization API key, `cbid_org_…`. Create and revoke keys in the console (Owner/Admin).
+  responses:
+    Unauthorized:
+      description: Missing or invalid organization API key (or its organization is suspended)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: The key's role lacks the required capability
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: No such resource on this organization
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    UnprocessableEntity:
+      description: |
+        Validation failed (`error: validation_failed`, with a field-keyed `errors` map),
+        or the request was well-formed but refused for a domain reason — a taken email,
+        a reached plan limit.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: |
+        The key's rate limit for this plane is exhausted. The bucket is keyed on the API
+        KEY, so this reflects only your own traffic.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer }
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Organization:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        projects:
+          type: array
+          description: The organization's projects with each one's plan/allowance. Present only for billing-readers (plans are per project).
+          items: { $ref: "#/components/schemas/Project" }
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        environment_limit: { type: integer, description: This project's plan environment allowance. }
+        environments_used: { type: integer }
+    Environment:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        type: { type: string, enum: [production, sandbox] }
+        status: { type: string }
+        project_id: { type: string, description: The project (billing anchor) this environment belongs to. }
+        # OpenAPI 3.1 IS JSON Schema 2020-12, which dropped `nullable: true` — a 3.0-ism
+        # that a 3.1 parser ignores, so it silently typed this field as non-nullable
+        # while the API returns null for every environment on the platform domain.
+        domain: { type: ["string", "null"] }
+        issuer:
+          type: string
+          format: uri
+          description: The environment's own host — where its OIDC/environment API lives.
+    Member:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: ["string", "null"] }
+        role: { type: string, enum: [owner, admin, billing, developer, viewer] }
+        status: { type: string, enum: [active, invited] }
+        all_environments: { type: boolean }
+    ListMeta:
+      type: object
+      properties:
+        limit: { type: integer }
+        has_more: { type: boolean }
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, description: Stable machine code }
+        message: { type: string, description: Human-readable explanation }
+        errors:
+          type: object
+          description: |
+            Present on `validation_failed` only: the offending request fields, each
+            mapped to its messages.
+          additionalProperties:
+            type: array
+            items: { type: string }

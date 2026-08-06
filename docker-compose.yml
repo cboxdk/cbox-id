@@ -1,0 +1,147 @@
+# Local test / dev / smoke-deploy for Cbox ID — the app image + Valkey + Postgres.
+#
+#   docker compose up --build        # build from the Dockerfile and run
+#   docker compose exec app php artisan migrate --force
+#   open http://localhost:8080
+#
+# The keys below are THROWAWAY dev values — never use them anywhere real. For a
+# prod-shaped smoke test, override via a .env file or `image:` a pushed tag
+# instead of building. Valkey is a drop-in, wire-compatible Redis replacement, so
+# the app's REDIS_* config points straight at it.
+
+services:
+  app:
+    build: .
+    image: ghcr.io/cboxdk/cbox-id:dev
+    ports:
+      - "8080:80"
+    environment:
+      APP_NAME: "Cbox ID (dev)"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
+      APP_URL: http://localhost:8080
+      LOG_CHANNEL: stderr
+
+      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      CBOX_ID_ISSUER: http://localhost:8080
+      CBOX_ID_WEBAUTHN_RP_ID: localhost
+      CBOX_ID_WEBAUTHN_ORIGIN: http://localhost:8080
+
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: secret
+      SESSION_DRIVER: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+
+      MAIL_MAILER: log
+
+      # The app is the SINGLE owner of security response headers
+      # (App\Http\Middleware\SecurityHeaders). Blanking these hands ownership over so
+      # nginx stops adding a second, looser copy of each. See the Dockerfile and
+      # docs/operations/deployment.md — the same four must be set on every deployment
+      # (k8s ConfigMap included), and the image also ships an init script that strips
+      # the directives, because the base entrypoint currently re-fills empty values.
+      NGINX_HEADER_X_FRAME_OPTIONS: ""
+      NGINX_HEADER_X_CONTENT_TYPE_OPTIONS: ""
+      NGINX_HEADER_REFERRER_POLICY: ""
+      NGINX_HEADER_PERMISSIONS_POLICY: ""
+    depends_on:
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+
+  # Queue autoscaler (spawns/reaps its own queue:work children). Single instance.
+  queue:
+    image: ghcr.io/cboxdk/cbox-id:dev
+    command: ["php", "artisan", "queue:autoscale"]
+    environment:
+      APP_ENV: local
+      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
+      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: valkey
+      REDIS_PASSWORD: secret
+      QUEUE_CONNECTION: redis
+    depends_on:
+      app: { condition: service_started }
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+
+  # Scheduler. WITHOUT THIS the app is quietly half-dead: the domain-event outbox is
+  # never relayed (so no webhook fires, no usage is metered, outbound provisioning never
+  # drains and role changes never revoke tokens), webhook retries never re-drive, SIEM
+  # streams never pump, and signing keys never rotate or retire. None of it surfaces as
+  # an error — everything simply doesn't happen. Single instance; the schedule's own
+  # withoutOverlapping guards a slow pass.
+  scheduler:
+    image: ghcr.io/cboxdk/cbox-id:dev
+    command: ["php", "artisan", "schedule:work"]
+    environment:
+      APP_ENV: local
+      APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
+      CBOX_ID_CRYPTO_KEY: OBZzB6eVCWoVkPX0qya2nOa+rTKyzXPNlgeY1+ZBQIc=  # RAW base64, no base64: prefix
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: valkey
+      REDIS_PASSWORD: secret
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      app: { condition: service_started }
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: cbox_id
+      POSTGRES_USER: cbox_id
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cbox_id -d cbox_id"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--requirepass", "secret", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkeydata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "secret", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  valkeydata:

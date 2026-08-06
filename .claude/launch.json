@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cbox-id",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["artisan", "serve", "--port=8899"],
+      "port": 8899
+    }
+  ]
+}

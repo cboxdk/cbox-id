@@ -1,0 +1,142 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Platform;
+
+use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\Identity\ValueObjects\Subject;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Organization;
+
+/**
+ * Request-scoped holder for the authenticated subject, its platform session, and
+ * the active organization. Populated by the Authenticate middleware and shared
+ * with views; components read it instead of reaching for the framework directly.
+ */
+final class CurrentUser
+{
+    private ?Subject $subject = null;
+
+    private ?Session $session = null;
+
+    private ?Organization $organization = null;
+
+    private ?MembershipRole $role = null;
+
+    public function set(Subject $subject, Session $session, ?Organization $organization, ?MembershipRole $role = null): void
+    {
+        $this->subject = $subject;
+        $this->session = $session;
+        $this->organization = $organization;
+        $this->role = $role;
+    }
+
+    /**
+     * Say that nobody is signed in — the other half of {@see set()}.
+     *
+     * The middleware only ever populated this, never emptied it, which was safe only
+     * because a real deployment drops scoped instances between requests. That made
+     * "nobody is signed in" a fact this object could not state, only fail to have been
+     * told; and once the console started reading the acting person from here, a stale
+     * subject left over from earlier in the same process answered for a request whose
+     * session had been revoked. Refusing has to be something the middleware can DO.
+     */
+    public function clear(): void
+    {
+        $this->subject = null;
+        $this->session = null;
+        $this->organization = null;
+        $this->role = null;
+    }
+
+    /**
+     * Replace just the subject, when this request is the one that changed it.
+     *
+     * The middleware repopulates this on every request, so the stale copy would only
+     * live until the next one — but "until the next one" includes the render that
+     * happens immediately after a save, which is exactly when someone is looking for
+     * their change to have taken effect.
+     */
+    public function refreshSubject(Subject $subject): void
+    {
+        $this->subject = $subject;
+    }
+
+    /**
+     * Whether THIS platform has verified the signed-in person's address.
+     *
+     * Never whether a federated provider said it had. A social sign-in creates an
+     * account exactly as a signup does — usable immediately, with the address confirmed
+     * out of band — so this is false for a person who arrived through Google five
+     * minutes ago and has not yet clicked our link.
+     *
+     * Read from the subject the middleware already loaded, so a gate costs nothing. That
+     * matters more than it looks: the two places that check verification today each
+     * re-query for it, and a check with a price attached is a check that gets applied
+     * unevenly.
+     */
+    public function emailVerified(): bool
+    {
+        return $this->subject?->emailVerified === true;
+    }
+
+    public function role(): ?MembershipRole
+    {
+        return $this->role;
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === MembershipRole::Owner;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role !== null && $this->role->canManageOrganization();
+    }
+
+    public function check(): bool
+    {
+        return $this->subject !== null;
+    }
+
+    public function subject(): ?Subject
+    {
+        return $this->subject;
+    }
+
+    public function id(): string
+    {
+        return $this->subject !== null ? $this->subject->id : '';
+    }
+
+    public function name(): string
+    {
+        if ($this->subject === null) {
+            return 'Account';
+        }
+
+        return $this->subject->name ?? $this->subject->email ?? 'Account';
+    }
+
+    public function email(): ?string
+    {
+        return $this->subject?->email;
+    }
+
+    public function session(): ?Session
+    {
+        return $this->session;
+    }
+
+    public function organization(): ?Organization
+    {
+        return $this->organization;
+    }
+
+    public function organizationId(): ?string
+    {
+        return $this->organization?->id;
+    }
+}

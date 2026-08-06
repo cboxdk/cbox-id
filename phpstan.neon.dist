@@ -1,0 +1,21 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: max
+
+    paths:
+        - app
+        - config
+        - database
+        - modules
+        - routes
+        # Volt single-file components are real PHP (a `<?php` block in a
+        # `.blade.php` file, which PHPStan reads because the file extension IS
+        # `php`). 90+ of them live here and they are where the console's logic
+        # actually is — leaving them out made "level max clean" mean much less
+        # than it sounded.
+        - resources/views/livewire
+
+    # No baseline and no ignoreErrors on purpose: real findings should surface
+    # and be fixed, not papered over.

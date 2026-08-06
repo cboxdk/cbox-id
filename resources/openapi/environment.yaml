@@ -1,0 +1,866 @@
+openapi: 3.1.0
+info:
+  title: Cbox ID — Environment Management API
+  version: "1.0.0"
+  description: |
+    The **per-environment management plane** — the API apps use for day-to-day
+    provisioning of organizations and users inside ONE environment. It is served on
+    the environment's own host ({slug}.cboxid.com or a custom domain): the host pins
+    the environment, and the request is authenticated with an environment API key
+    (`cbid_env_…`).
+
+    This is distinct from the global organization API (`cbid_org_…`), which manages the
+    organization, its environments and members. Credentials never cross planes — an
+    organization key cannot call this API, and an environment key cannot call the organization
+    API. An environment key is bound to the host it was minted for: presenting it on
+    another environment's host fails authentication outright.
+
+    **Scopes.** A key carries an explicit allow-list; every endpoint requires one
+    (deny-by-default). `resource:read` never implies `resource:write`, so a
+    read-only integration key cannot mutate.
+
+    **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
+    a sibling `meta` on lists). Lists are cursor-paginated: pass `?after=<next_cursor>`
+    from the previous page's `meta`. Every error returns
+    `{ "error": "<code>", "message": "<human message>" }`; a validation failure adds a
+    field-keyed `errors` map alongside the pair.
+
+    **Token Vault** is the exception, and deliberately so: those endpoints authenticate
+    an OAuth access token, so their 401/403 are RFC 6750 bearer challenges
+    (`{ "error", "error_description" }` plus `WWW-Authenticate`) rather than this
+    envelope. Protocol conformance beats local consistency there.
+
+    **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
+    runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
+servers:
+  - url: https://{host}/api/v1
+    description: The environment's own host
+    variables:
+      host: { default: acme.cboxid.com }
+security:
+  - EnvironmentApiKey: []
+tags:
+  - name: Organizations
+  - name: Users
+  - name: Devices
+  - name: Approvals
+paths:
+  /organizations:
+    get:
+      tags: [Organizations]
+      summary: List organizations
+      description: "Requires scope `organizations:read`."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Organization" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Organizations]
+      summary: Create an organization
+      description: "Requires scope `organizations:write`."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string, maxLength: 190 }
+                slug:
+                  type: string
+                  maxLength: 190
+                  description: URL-safe; unique within the environment.
+                type:
+                  type: string
+                  # OrganizationType has exactly these two cases and the controller
+                  # validates with Rule::enum, so anything else is a hard 422. This
+                  # documented a third value, `internal`, that no enum case has ever
+                  # backed — a client that trusted the schema got a validation error
+                  # for sending what the schema told it to send.
+                  enum: [customer, reseller]
+                  default: customer
+                  description: >-
+                    `reseller` manages customer organizations beneath it in the tree;
+                    `customer` is a leaf tenant.
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}:
+    get:
+      tags: [Organizations]
+      summary: Get an organization
+      description: "Requires scope `organizations:read`."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: "Requires scope `users:read`."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/User" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Users]
+      summary: Create a user
+      description: "Requires scope `users:write`. Password is optional — omit it to create a passwordless identity the user completes via an invite/magic-link."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 190 }
+                name: { type: ["string", "null"], maxLength: 190 }
+                password: { type: ["string", "null"], minLength: 8, maxLength: 255 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get a user
+      description: "Requires scope `users:read`."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [Users]
+      summary: Deactivate a user
+      description: |
+        Requires scope `users:write`. A **soft disable** — the identity can no longer
+        authenticate, but is never hard-deleted. Returns the user in its new
+        `inactive` state.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /vault/secrets:
+    post:
+      tags: [Token Vault]
+      summary: Store a downstream credential, sealed at rest
+      description: |
+        The secret is sealed with the environment's crypto key and is never returned by
+        any read endpoint — only a `lease` reveals it, and only to a client holding a
+        live grant.
+
+        Ownership is derived from the calling token's `org` claim and CANNOT be supplied
+        in the body: the owner is the vault's tenancy boundary, and a caller-chosen owner
+        would be no boundary at all.
+      security: [{ VaultManagerToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, provider, secret]
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                  description: Unique per owner — two organizations may each hold a `github-token`.
+                provider: { type: string, maxLength: 100 }
+                secret: { type: string, description: The value to seal. Never returned by a read. }
+                expires_at: { type: ["string", "null"], format: date-time }
+      responses:
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VaultSecret' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /vault/secrets/{id}/rotate:
+    post:
+      tags: [Token Vault]
+      summary: Replace the sealed value, keeping the id and its grants
+      security: [{ VaultManagerToken: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret]
+              properties:
+                secret: { type: string }
+      responses:
+        '200':
+          description: Rotated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VaultSecret' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404':
+          description: |
+            No such secret **in the caller's organization**. A secret owned by another
+            organization is indistinguishable from one that does not exist — the lookup
+            is filtered, not fetched-then-compared, so nothing leaks about what exists
+            outside the caller's own scope. The message is a constant for the same reason.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: not_found, message: "No such secret." }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /vault/secrets/{id}:
+    delete:
+      tags: [Token Vault]
+      summary: Revoke a secret permanently
+      description: No future lease can open it. Existing leases are not recalled — they are short-lived by design.
+      security: [{ VaultManagerToken: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Revoked. }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404':
+          description: No such secret in the caller's organization.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /vault/secrets/{id}/grants:
+    post:
+      tags: [Token Vault]
+      summary: Authorize an agent client to lease this secret
+      security: [{ VaultManagerToken: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id]
+              properties:
+                client_id: { type: string, maxLength: 200 }
+                max_ttl_seconds: { type: ["integer", "null"], minimum: 1 }
+      responses:
+        '201':
+          description: Granted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret_id: { type: string }
+                  client_id: { type: string }
+                  max_ttl_seconds: { type: ["integer", "null"] }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404':
+          description: No such secret in the caller's organization.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /vault/secrets/{id}/grants/{clientId}:
+    delete:
+      tags: [Token Vault]
+      summary: Revoke an agent's authorization
+      description: Idempotent — revoking an absent grant succeeds.
+      security: [{ VaultManagerToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Revoked (or already absent). }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /vault/secrets/{id}/lease:
+    post:
+      tags: [Token Vault]
+      summary: Redeem a grant for the plaintext secret
+      description: |
+        The only endpoint that reveals a secret. Every refusal — unknown secret, revoked,
+        expired, or no live grant — is the SAME 403 with no detail, so a caller cannot
+        use it to enumerate what exists.
+      security: [{ AgentToken: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose]
+              properties:
+                purpose: { type: string, maxLength: 200, description: Recorded on the audit trail. }
+      responses:
+        '200':
+          description: Leased.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret_id, provider, secret, expires_at]
+                properties:
+                  secret_id: { type: string }
+                  provider: { type: string, description: The downstream provider the secret belongs to. }
+                  secret: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403':
+          description: |
+            Lease denied. Deliberately uniform — unknown secret, revoked, expired and
+            ungranted are ONE response, with a constant message, so it cannot be used to
+            enumerate. A token missing the `vault.lease` scope is an RFC 6750 challenge
+            instead, and is distinguishable only because it never reaches the vault.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - $ref: '#/components/schemas/BearerChallenge'
+              example: { error: lease_denied, message: "The lease was denied." }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /devices:
+    post:
+      tags: [Devices]
+      summary: Enrol a device, or re-enrol after a push-token rotation
+      description: |
+        Requires scope `devices.manage`. Idempotent on `install_id`: posting again with a
+        fresh `push_token` updates the existing enrolment and returns 200, so the app has
+        no separate rotation call to get wrong. Re-enrolling also clears circuit-breaker
+        state and revives a device that was retired by a permanent transport error.
+
+        The device is always bound to the token's own subject. Nothing in the body can
+        change whose device it is.
+      security:
+        - AuthenticatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [install_id, platform, push_token, name]
+              properties:
+                install_id:
+                  type: string
+                  minLength: 26
+                  maxLength: 26
+                  description: |
+                    A ULID the app generates on first launch and keeps in platform secure
+                    storage. Deliberately NOT a vendor device id — `identifierForVendor`
+                    and `ANDROID_ID` both reset on reinstall and are shared across one
+                    vendor's apps.
+                platform: { type: string, enum: [ios, android] }
+                push_token: { type: string, maxLength: 4096 }
+                name: { type: string, maxLength: 100, description: Shown in the console. Control characters are stripped. }
+                app_version: { type: [string, 'null'], maxLength: 32 }
+                os_version: { type: [string, 'null'], maxLength: 32 }
+                model: { type: [string, 'null'], maxLength: 64 }
+      responses:
+        '200':
+          description: The installation was already enrolled; its details were updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Device' }
+        '201':
+          description: Enrolled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Device' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '409':
+          description: |
+            This `install_id` belongs to a different user. Refused rather than reassigned:
+            silently moving it would let one user capture another's push stream by guessing
+            an install id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: install_claimed, message: 'This installation is registered to a different user.' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+    get:
+      tags: [Devices]
+      summary: List the caller's own enrolled devices
+      description: |
+        Requires scope `devices.manage`. The push token is never returned — it is a
+        capability, and nothing outside a delivery attempt needs it.
+      security:
+        - AuthenticatorToken: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Device' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /devices/{id}:
+    delete:
+      tags: [Devices]
+      summary: Deregister a device
+      description: |
+        Requires scope `devices.manage`. Another user's device answers exactly as a
+        missing one does, so this cannot be used to confirm that someone else's handset
+        exists.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204': { description: Removed. }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals:
+    get:
+      tags: [Approvals]
+      summary: List pending agent approval requests
+      description: |
+        Requires scope `approvals.read`. The same pending CIBA requests the console's
+        approvals page shows, for the signed-in subject only.
+      security:
+        - AuthenticatorToken: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Approval' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals/{id}:
+    get:
+      tags: [Approvals]
+      summary: Read one pending approval request
+      description: |
+        Requires scope `approvals.read`. This is where `binding_message` is obtained. It
+        is deliberately absent from the push payload — a lock screen is readable by
+        anyone holding the phone, and the binding message is the transaction description
+        CIBA exists to protect — so the app must call this after a notification tap and
+        render only what it returns.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Approval' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals/{id}/approve:
+    post:
+      tags: [Approvals]
+      summary: Approve a pending agent request
+      description: |
+        Requires scope `approvals.write`. The approving subject is taken from the access
+        token, never the body — that binding is the consent step, and the server refuses
+        a mismatch.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Approved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ApprovalDecision' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '409': { $ref: '#/components/responses/ApprovalNotActionable' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /approvals/{id}/deny:
+    post:
+      tags: [Approvals]
+      summary: Deny a pending agent request
+      description: Requires scope `approvals.write`.
+      security:
+        - AuthenticatorToken: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Denied.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ApprovalDecision' }
+        '401': { $ref: '#/components/responses/BearerUnauthorized' }
+        '403': { $ref: '#/components/responses/BearerForbidden' }
+        '409': { $ref: '#/components/responses/ApprovalNotActionable' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+components:
+  securitySchemes:
+    EnvironmentApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: cbid_env_
+      description: An environment API key, minted in the environment's console. Bound to that environment's host.
+    VaultManagerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An OAuth access token carrying the `vault.manage` scope. NOT an environment API
+        key: these routes are guarded by `scope:vault.manage`, which introspects an
+        access token, and a `cbid_env_` key introspects as inactive. Its `org` claim
+        selects the organization whose secrets it administers.
+    AgentToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An OAuth access token carrying the `vault.lease` scope. Its `org` claim selects
+        the organization whose secrets it may open — the vault's tenancy boundary.
+    AuthenticatorToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A DPoP-bound OAuth access token held by the Cbox ID authenticator app, obtained
+        via authorization_code + PKCE (S256) as a public client.
+
+        Because the token carries a `cnf.jkt`, every request must present it under the
+        `DPoP` auth scheme together with a matching proof — `htm`, `htu`, a fresh `jti`,
+        an `iat` within 60 seconds, and an `ath` equal to the SHA-256 of the token
+        itself. A plain `Bearer` presentation of a bound token is rejected.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    After:
+      name: after
+      in: query
+      required: false
+      description: Opaque cursor — the `meta.next_cursor` from the previous page.
+      schema: { type: string }
+  schemas:
+    Device:
+      type: object
+      required: [id, install_id, platform, name, status]
+      properties:
+        id: { type: string }
+        install_id: { type: string }
+        platform: { type: string, enum: [ios, android] }
+        name: { type: string }
+        status:
+          type: string
+          enum: [active, retired]
+          description: |
+            Operator/user INTENT, not delivery health. A device can be active and
+            currently failing, or retired and perfectly reachable.
+        app_version: { type: [string, 'null'] }
+        os_version: { type: [string, 'null'] }
+        model: { type: [string, 'null'] }
+        last_seen_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: [string, 'null'], format: date-time }
+    Approval:
+      type: object
+      required: [id, client_id, client_name, scopes]
+      properties:
+        id:
+          type: string
+          description: |
+            The INTERNAL request id. Never `auth_req_id`, which is the initiating
+            client's polling secret and is stored only as a SHA-256 hash — a client must
+            not be able to approve its own request.
+        client_id: { type: string }
+        client_name: { type: string }
+        binding_message:
+          type: [string, 'null']
+          description: |
+            The transaction description the user compares against what the requesting app
+            showed them. This is the anti-phishing primitive, and the reason approvals are
+            fetched rather than pushed.
+        scopes:
+          type: array
+          items:
+            type: object
+            required: [scope, label]
+            properties:
+              scope: { type: string }
+              label: { type: string, description: 'Human wording, identical to the console.' }
+        organization_id: { type: [string, 'null'] }
+        requested_at: { type: [string, 'null'], format: date-time }
+        expires_at: { type: [string, 'null'], format: date-time }
+    ApprovalDecision:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [approved, denied] }
+    VaultSecret:
+      type: object
+      required: [id, name, provider, revoked]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        provider: { type: string }
+        owner_type: { type: ["string", "null"], enum: [organization, user, null] }
+        owner_id: { type: ["string", "null"] }
+        expires_at: { type: ["string", "null"], format: date-time }
+        # The payload has never carried a `revoked_at` timestamp — it reports a boolean
+        # `revoked`. A client generated from the old spec read a field that is not there
+        # and concluded every secret was live.
+        revoked: { type: boolean, description: Whether the secret has been revoked. }
+    Organization:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        type: { type: string, enum: [customer, reseller] }
+        status: { type: string, enum: [active, suspended] }
+        parent_id: { type: ["string", "null"] }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: ["string", "null"] }
+        status: { type: string, enum: [active, disabled, locked] }
+        email_verified_at: { type: ["string", "null"], format: date-time }
+    PageMeta:
+      type: object
+      properties:
+        limit: { type: integer }
+        has_more: { type: boolean }
+        next_cursor: { type: ["string", "null"] }
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, description: Stable machine code }
+        message: { type: string, description: Human-readable explanation }
+        errors:
+          type: object
+          description: |
+            Present on `validation_failed` only: the offending request fields, each
+            mapped to its messages.
+          additionalProperties:
+            type: array
+            items: { type: string }
+    BearerChallenge:
+      type: object
+      required: [error, error_description]
+      description: |
+        RFC 6750 §3 error shape, used by the OAuth-token-authenticated Token Vault
+        endpoints. NOT the `{error, message}` envelope — restating the envelope here
+        would be a protocol conformance bug.
+      properties:
+        error: { type: string, enum: [invalid_request, invalid_token, insufficient_scope] }
+        error_description: { type: string }
+  responses:
+    Unauthorized:
+      description: Missing or invalid environment API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: The key is missing the scope this endpoint requires.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such resource in this environment.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableEntity:
+      description: |
+        Validation failed (`error: validation_failed`, with a field-keyed `errors` map),
+        or a uniqueness conflict (e.g. slug/email taken).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: |
+        The key's rate limit for this plane is exhausted. The bucket is keyed on the API
+        KEY, so this reflects only your own traffic.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BearerUnauthorized:
+      description: Missing, expired, or wrongly-audienced access token (RFC 6750 challenge).
+      headers:
+        WWW-Authenticate:
+          description: 'Bearer error="invalid_token", error_description="…"'
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BearerChallenge" }
+    ApprovalNotActionable:
+      description: |
+        The request is no longer pending. Deliberately uniform — unknown, expired, already
+        answered and belonging-to-another-subject are ONE response with a constant
+        message, so someone holding a stolen handset cannot learn whether a given request
+        id exists or whose it is.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: approval_not_actionable
+            message: 'This request is no longer pending. It may have expired or already been answered.'
+    BearerForbidden:
+      description: The access token does not carry the scope this endpoint requires.
+      headers:
+        WWW-Authenticate:
+          description: 'Bearer error="insufficient_scope", scope="…"'
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BearerChallenge" }

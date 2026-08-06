@@ -1,0 +1,215 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # UNTRUSTED CODE NEVER REACHES THE SELF-HOSTED RUNNER.
+    #
+    # This job checks out the head of a pull request and then runs `composer install`,
+    # `npm ci` and the whole suite — every one of which executes code from the branch.
+    # On a self-hosted runner that is arbitrary code execution on an internal machine,
+    # from anyone who can open a PR.
+    #
+    # `build-image.yml` already refuses PRs outright for exactly this reason, and says so:
+    # "a self-hosted runner has host access, so untrusted PR code must not reach it." The
+    # risk was known and written down in one workflow and left open in the two that
+    # actually run the foreign code.
+    #
+    # A PR therefore runs on an ephemeral GitHub-hosted runner; a push to `main` — where
+    # the code is already trusted, because it is already deployed — keeps the self-hosted
+    # one and its warm caches.
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Develop and CI on 8.4 AND 8.5 (cboxdk standard) so an 8.5-only regression
+        # in the deployed app is caught, not just in the library it embeds.
+        php: ['8.4', '8.5']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: sodium, openssl, pdo_sqlite
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Install Playwright browser (for Pest 4 browser tests)
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force
+
+      - name: Lint (Pint)
+        run: vendor/bin/pint --test
+
+      # --memory-limit is not optional: PHPStan's own default is 128M, which this
+      # analysis blows through. Without it the step passes only on a runner whose
+      # php.ini happens to set memory_limit=-1, and OOMs everywhere else.
+      - name: Static analysis (PHPStan/Larastan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
+
+      - name: Tests (Pest — feature, axe-core a11y, and real-browser smoke)
+        run: vendor/bin/pest
+
+      - name: License gate (permissive-only dependencies)
+        run: composer license-check
+
+      - name: Supply-chain audit (known vulnerabilities)
+        run: composer audit --no-dev
+
+      - name: SBOM not stale (CycloneDX drift check)
+        run: |
+          composer sbom
+          git diff --exit-code sbom.json
+
+  # ---------------------------------------------------------------------------
+  # SERVER ENGINES
+  #
+  # The job above runs the whole suite on sqlite :memory:, and until this job
+  # existed that was the ONLY engine this application had ever been executed
+  # against — production ran PostgreSQL and CI ran sqlite, so nothing tested what
+  # was deployed. The framework it embeds (cboxdk/laravel-id) has its own engines
+  # matrix and is green on MySQL; that proves the FRAMEWORK's migrations, not this
+  # app's own migrations, its five console modules, or 53k lines of Livewire
+  # queries.
+  #
+  # It matters because sqlite forgives what the servers do not: it accepts a
+  # literal DEFAULT on a json column (MySQL: error 1101), enforces no index-key
+  # size limit (InnoDB: 3072 bytes, and utf8mb4 charges 4 bytes a character), and
+  # has no identifier length cap (MySQL 64, PostgreSQL 63). It is also
+  # case-sensitive where MySQL's utf8mb4_unicode_ci is not.
+  #
+  # NB the suite really does follow DB_CONNECTION here: a process environment
+  # variable takes precedence over phpunit.xml's <env>, so setting it below
+  # redirects the whole run rather than silently leaving it on sqlite. Verified by
+  # pointing it at a non-existent driver and watching the suite fail to resolve it
+  # — worth re-checking if this job ever goes suspiciously green.
+  #
+  # RUNS ON GITHUB-HOSTED RUNNERS, unlike every other job here. Service containers
+  # are unreachable on the self-hosted runner: they start and report healthy, but it
+  # mounts the host's Docker socket, so the published port lands on the host while
+  # the job runs in a container that is on neither that loopback nor the service
+  # network. This job failed on `Connection refused` every time it ran — as does the
+  # equivalent job in cboxdk/laravel-id — and a database matrix that has never
+  # connected is worse than none, because the badge says otherwise.
+  # ---------------------------------------------------------------------------
+  engines:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The deployment target: Laravel Cloud runs MySQL 8.4. Floored at 8.0.13
+          # in the docs because that is where EXPRESSION column defaults landed,
+          # which is the only spelling MySQL accepts for a json default.
+          - driver: mysql
+            image: mysql:8.4
+            # Host ports differ per engine so two cells can share one self-hosted
+            # runner without fighting over the default port.
+            port: 33306
+            service_port: 3306
+            health: mysqladmin ping -h 127.0.0.1 -u root -proot
+          # Kept green for self-hosters, and because it was production until the
+          # move to Cloud — dropping it would quietly un-support it.
+          - driver: pgsql
+            image: postgres:17
+            port: 55432
+            service_port: 5432
+            health: pg_isready -U cbox_id -d cbox_id
+    name: ${{ matrix.image }}
+    services:
+      db:
+        image: ${{ matrix.image }}
+        # Both families' variables are set; each image ignores the other's.
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cbox_id
+          MYSQL_USER: cbox_id
+          MYSQL_PASSWORD: secret
+          POSTGRES_DB: cbox_id
+          POSTGRES_USER: cbox_id
+          POSTGRES_PASSWORD: secret
+        ports:
+          - ${{ matrix.port }}:${{ matrix.service_port }}
+        options: >-
+          --health-cmd "${{ matrix.health }}"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DB_CONNECTION: ${{ matrix.driver }}
+      # The documented address for a service container on a GitHub-hosted runner:
+      # the job runs on the host, so the published port is on its loopback. It is
+      # only exotic elsewhere — see the note on this job's runner choice above.
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.port }}
+      DB_DATABASE: cbox_id
+      DB_USERNAME: cbox_id
+      DB_PASSWORD: secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_pgsql, sodium, openssl
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # The Feature suite renders the console layout, which resolves the Vite
+      # manifest — without built assets those tests fail on a missing manifest
+      # rather than on anything to do with the database.
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force
+
+      # A fresh migrate on an empty database is exactly what a first deploy does,
+      # and it is where the portability rules bite — json defaults, CHAR padding,
+      # index key length, identifier length. Run it before the suite so a schema
+      # failure reads as a schema failure instead of 700 test errors.
+      - name: Migrate from empty (what a first deploy runs)
+        run: php artisan migrate --force
+
+      # Browser tests are excluded on purpose: they need Chromium and prove
+      # rendering, not persistence. This job is about the engine.
+      - name: Tests (Unit + Feature) on ${{ matrix.image }}
+        run: php -d memory_limit=1G vendor/bin/pest --testsuite=Unit,Feature

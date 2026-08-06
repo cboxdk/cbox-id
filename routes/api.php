@@ -1,0 +1,118 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Controllers\Api\AppManifestController;
+use App\Http\Controllers\Api\Environment\OrganizationController;
+use App\Http\Controllers\Api\Environment\UserController;
+use App\Http\Controllers\Api\Organization\CurrentOrganizationController;
+use App\Http\Controllers\Api\Organization\EnvironmentController;
+use App\Http\Controllers\Api\Organization\MemberController;
+use App\Http\Controllers\Api\Organization\ProjectController;
+use App\Http\Controllers\Api\VaultController;
+use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
+use Illuminate\Support\Facades\Route;
+
+/*
+ * Customer-facing REST API. Every route resolves the environment from the request
+ * host (ResolveEnvironment) so the platform's deny-by-default tenancy scope engages,
+ * and authenticates a scoped OAuth access token via the `scope:` middleware.
+ *
+ * Token Vault (v1): provision + grant downstream credentials (vault.manage), and
+ * lease them to an authorized agent client (vault.lease).
+ *
+ * Throttling is by NAMED limiter (`api-<plane>`, registered in App\Http\ApiRateLimiters),
+ * not by `throttle:<n>,<m>`: the bare form keys on the client IP, so every tenant behind
+ * one NAT — which is every hosted CI runner — shared a single bucket. The named limiters
+ * key on the CREDENTIAL. Budgets live in config/api.php.
+ */
+// App authorization manifest — the PUSH transport. An app declares its own
+// roles/permissions with an `apps.manifest`-scoped token.
+Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
+    ->prefix('v1/apps')
+    ->group(function (): void {
+        Route::post('manifest', [AppManifestController::class, 'push'])
+            ->middleware('scope:apps.manifest');
+    });
+
+/*
+ * Organization management plane (GLOBAL). Unlike the environment-scoped routes above,
+ * these do NOT resolve an environment (ResolveEnvironment) — an organization operates
+ * above every environment it owns. Authenticated by a `Bearer cbid_org_…` organization
+ * API key via `organization.api`, with a required capability on write routes so a
+ * read-only key can't mutate. Intended to be served on the platform-root host
+ * (e.g. api.cboxid.com); an environment-scoped credential is never accepted here.
+ */
+// The organization-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
+// fetch the contract without a key.
+Route::get('v1/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/organization.yaml'));
+    abort_if($spec === false, 404);
+
+    return response($spec, 200, ['Content-Type' => 'application/yaml']);
+})->name('api.openapi');
+
+Route::middleware('throttle:api-organization')
+    ->prefix('v1/organization')
+    ->group(function (): void {
+        // Every route resolves the key exactly once, with the capability its data
+        // requires — reads are gated too, so a leaked developer/CI key can't
+        // enumerate the member roster (PII) or read billing.
+        Route::get('/', [CurrentOrganizationController::class, 'show'])->middleware('organization.api');
+
+        // Projects (IdP products) — each its own billing anchor + environment allowance.
+        Route::get('projects', [ProjectController::class, 'index'])->middleware('organization.api');
+        Route::post('projects', [ProjectController::class, 'store'])->middleware('organization.api:manage-environments');
+
+        Route::get('environments', [EnvironmentController::class, 'index'])->middleware('organization.api');
+        Route::post('environments', [EnvironmentController::class, 'store'])->middleware('organization.api:manage-environments');
+
+        Route::get('members', [MemberController::class, 'index'])->middleware('organization.api:read-members');
+        Route::post('members', [MemberController::class, 'store'])->middleware('organization.api:manage-members');
+    });
+
+/*
+ * Environment management plane (SCOPED). Served on an environment's OWN host
+ * ({slug}.cboxid.com or a custom domain): ResolveEnvironment pins the environment
+ * from the host, then a `Bearer cbid_env_…` key is authenticated by `env.api` and
+ * checked against the fine-grained scope each route requires. Because the key model
+ * is hard environment-scoped, a key minted for another environment can't resolve
+ * here at all — the credential is bound to the host it was created for. This is the
+ * API apps use for day-to-day org/user provisioning.
+ */
+Route::get('v1/environment/openapi.yaml', function () {
+    $spec = @file_get_contents(resource_path('openapi/environment.yaml'));
+    abort_if($spec === false, 404);
+
+    return response($spec, 200, ['Content-Type' => 'application/yaml']);
+})->middleware(ResolveEnvironment::class)->name('api.environment.openapi');
+
+Route::middleware([ResolveEnvironment::class, 'throttle:api-environment'])
+    ->prefix('v1')
+    ->group(function (): void {
+        Route::get('organizations', [OrganizationController::class, 'index'])->middleware('env.api:organizations:read');
+        Route::post('organizations', [OrganizationController::class, 'store'])->middleware('env.api:organizations:write');
+        Route::get('organizations/{id}', [OrganizationController::class, 'show'])->middleware('env.api:organizations:read');
+
+        Route::get('users', [UserController::class, 'index'])->middleware('env.api:users:read');
+        Route::post('users', [UserController::class, 'store'])->middleware('env.api:users:write');
+        Route::get('users/{id}', [UserController::class, 'show'])->middleware('env.api:users:read');
+        Route::delete('users/{id}', [UserController::class, 'destroy'])->middleware('env.api:users:write');
+    });
+
+Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])
+    ->prefix('v1/vault')
+    ->group(function (): void {
+        Route::post('secrets', [VaultController::class, 'store'])
+            ->middleware('scope:vault.manage');
+        Route::post('secrets/{id}/rotate', [VaultController::class, 'rotate'])
+            ->middleware('scope:vault.manage');
+        Route::delete('secrets/{id}', [VaultController::class, 'revoke'])
+            ->middleware('scope:vault.manage');
+        Route::post('secrets/{id}/grants', [VaultController::class, 'grant'])
+            ->middleware('scope:vault.manage');
+        Route::delete('secrets/{id}/grants/{clientId}', [VaultController::class, 'revokeGrant'])
+            ->middleware('scope:vault.manage');
+        Route::post('secrets/{id}/lease', [VaultController::class, 'lease'])
+            ->middleware('scope:vault.lease');
+    });
