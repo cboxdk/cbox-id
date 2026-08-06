@@ -9,6 +9,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\Contracts\Projects;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 
@@ -92,6 +93,11 @@ it('has no WCAG 2.1 A/AA violations on the console pages', function (string $pat
     $subject = app(Subjects::class)->create('a11y@acme.test', 'A11y Admin', 'super-secret-1234');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    // A PRODUCT: the Identity-platform pages belong to a CUSTOMER, and an organization that
+    // owns none is refused them. Without it these pages render a redirect and the audit
+    // passes on an empty document.
+    app(Projects::class)->createForOrganization($org->id, 'Acme');
 
     // A magic-link redemption establishes the platform session for later requests.
     $this->get('/magic/'.app(MagicLink::class)->request('a11y@acme.test'));

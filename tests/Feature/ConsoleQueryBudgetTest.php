@@ -13,6 +13,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\Contracts\Projects;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -40,6 +41,12 @@ function queryBudgetAdmin(int $extraMembers = 0): array
     $subject = app(Subjects::class)->create('budget@acme.test', 'Budget Admin', 'super-secret-1234');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-budget'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    // A PRODUCT, because that is what makes an organization a CUSTOMER — the
+    // Identity-platform area is refused to an organization that owns none, which is how a
+    // tenant's own end-user organization is kept out of it. A bare organization here would
+    // measure the query budget of a redirect.
+    app(Projects::class)->createForOrganization($org->id, 'Acme');
 
     for ($i = 0; $i < $extraMembers; $i++) {
         $extra = app(Subjects::class)->create("member{$i}@acme.test", "Member {$i}", 'super-secret-1234');

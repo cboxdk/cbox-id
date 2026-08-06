@@ -660,8 +660,11 @@ class ConsoleScope
      * Memoised on the id, like every other per-request answer here: the rail asks through
      * `membershipRole()` once per page entry, and each page's own guard asks again.
      *
-     * Read in the PLATFORM ROOT because a customer's products are read from wherever the
-     * console happens to be served.
+     * NO SCOPE SWITCH, deliberately: `projects` is a platform-level table and carries no
+     * environment of its own — ownership runs the other way, from a project down to the
+     * environments it owns. Wrapping this in the platform root would make it answer FALSE on
+     * a deployment that has not been installed yet, which is the one state where being
+     * wrong closes the console on somebody who should be in it.
      */
     private function ownsProducts(string $organizationId): bool
     {
@@ -671,9 +674,9 @@ class ConsoleScope
 
         $this->productsKey = $organizationId;
 
-        return $this->productsRecord = app(PlatformRoot::class)->run(
-            fn (): bool => app(OrganizationProjects::class)->forOrganization($organizationId)->isNotEmpty(),
-        ) === true;
+        return $this->productsRecord = app(OrganizationProjects::class)
+            ->forOrganization($organizationId)
+            ->isNotEmpty();
     }
 
     /**
