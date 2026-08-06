@@ -158,7 +158,7 @@ it('guards the members and billing pages behind the account session', function (
 
 it('takes the Identity platform away the moment an account is suspended', function (): void {
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
-    app(Accounts::class)->suspend($account->id, $owner->id);
+    app(PlatformRoot::class)->run(fn () => app(Organizations::class)->suspend($account->id, $ownerSubjectId));
 
     // The suspension lands on the very next request, not at the next sign-in — that part
     // is unchanged. What changed is the refusal: this used to bounce to a sign-in the
@@ -194,7 +194,7 @@ it('shows a scoped member only the environments they are granted', function (): 
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
-    app(Memberships::class)->setEnvironmentAccess($dev->id, all: false, environmentIds: [$staging->id]);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account->id, $devSubjectId, all: false, environmentIds: [$staging->id]));
 
     // They see the project (it holds a reachable env)…
     signInAsMember($devSubjectId);
@@ -221,7 +221,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 
     // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
     // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
-    expect($component->viewData('freshKey'))->toStartWith('cbid_acc_')
+    expect($component->viewData('freshKey'))->toStartWith('cbid_org_')
         ->and(app(OrganizationApiKeys::class)->forOrganization($account->id))->toHaveCount(1);
 });
 
@@ -315,7 +315,7 @@ it('404s a role change aimed at another customer\'s member', function (): void {
 })->group('security');
 
 it('404s a member removal aimed at another account', function (): void {
-    ['member' => $owner] = provisionAccount();
+    ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
@@ -325,7 +325,7 @@ it('404s a member removal aimed at another account', function (): void {
 })->group('security');
 
 it('404s an environment-access edit aimed at another account', function (): void {
-    ['member' => $owner] = provisionAccount();
+    ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
@@ -335,7 +335,7 @@ it('404s an environment-access edit aimed at another account', function (): void
 })->group('security');
 
 it('404s an environment-access SAVE aimed at another account', function (): void {
-    ['member' => $owner, 'project' => $project] = provisionAccount();
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'project' => $project] = provisionAccount();
     $mine = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
@@ -372,7 +372,7 @@ it('renames the account from settings and redirects non-managers', function (): 
     signInAsMember($ownerSubjectId);
 
     Volt::test('console.organization-settings')->set('name', 'Renamed Co')->call('save')->assertHasNoErrors();
-    expect(app(Accounts::class)->find($account->id)->name)->toBe('Renamed Co');
+    expect(app(PlatformRoot::class)->run(fn () => app(Organizations::class)->find($account->id))->name)->toBe('Renamed Co');
 
     // A developer can't reach settings.
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
@@ -418,7 +418,7 @@ it('refuses a scoped member trying to add an environment to a project', function
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     // Restrict the Developer to staging only — they can VIEW the project but must not
     // manage it (the env-add form is hidden; the server must refuse a direct call too).
-    app(Memberships::class)->setEnvironmentAccess($dev->id, all: false, environmentIds: [$staging->id]);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account->id, $devSubjectId, all: false, environmentIds: [$staging->id]));
     signInAsMember($devSubjectId);
 
     Volt::test('console.projects.show', ['project' => $project->id])
@@ -562,23 +562,31 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
     Volt::test('console.billing')->assertRedirect(route('projects'));
 })->group('security');
 
-it('takes the area away from an account with no organization at all', function (): void {
-    ['member' => $member, 'organization' => $account] = provisionAccount();
+it('takes the area away from somebody who belongs to no organization', function (): void {
+    ['member' => $member, 'subjectId' => $memberSubjectId, 'organization' => $account] = provisionAccount();
 
-    // The state every account created before `accounts.organization_id` existed was in,
-    // and the one the framework's 2026_08_05_000200 backfill now repairs. It is reproduced
-    // by hand because no production path creates it any more: the installer stamps the
-    // platform root inside the same transaction, ahead of the first account, and signup
-    // only runs on an installed deployment.
-    DB::table('accounts')->where('id', $account->id)->update(['organization_id' => null]);
+    // THE SAME PROPERTY, REACHED THE ONLY WAY IT STILL CAN BE. This used to null out
+    // `accounts.organization_id` — an account that owned no organization, the state every
+    // row created before that column existed was in. There is no account row and no such
+    // column: a person's organization IS their membership, so "owns no organization" is
+    // now "holds no membership".
+    //
+    // A subject who was never put on a roster, rather than this owner with their membership
+    // taken away: an organization must keep at least one owner, so removing this one is
+    // refused — which is that rule doing its job.
+    //
+    // What is asserted has not moved: an ownership that cannot be produced must fail CLOSED.
+    // An earlier version returned the role here on the grounds that there was nothing to
+    // compare against, which put the area in the rail on every organization the person
+    // could act on, tenant hosts included. "We do not know which organization this person
+    // owns" is not "all of them".
+    $stranger = app(PlatformRoot::class)->run(
+        fn () => app(Subjects::class)->create('nobody@acme.example', 'Nobody', 'a-strong-unbreached-passphrase'),
+    );
 
-    signInAsMember($memberSubjectId);
+    signInAsMember($stranger->id);
 
-    // NULL, not the role. An earlier version returned the role here on the grounds that
-    // there was no organization to compare against — which put the area in the rail on
-    // every organization this person could act on, tenant hosts included. "We do not know
-    // which organization this account owns" is not "all of them"; a broken row fails
-    // closed.
+    // NULL, not the role.
     expect(app(ConsoleScope::class)->membershipRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 
@@ -637,31 +645,24 @@ it('takes the area away when the acting organization is not the account\'s own',
  * membership — so it must be readable as a table, not inferred from a dozen scattered
  * assertions.
  */
-it('shows exactly these pages to each account role', function (MembershipRole $role, array $expected): void {
-    ['member' => $owner, 'organization' => $account] = provisionAccount();
+it('shows exactly these pages to each role', function (MembershipRole $role, array $expected): void {
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account] = provisionAccount();
 
-    // THROUGH `setRole()`, not by writing the row. A `forceFill` here passed for as long
-    // as the member row was the authority, and stopped meaning anything the moment the
-    // console started reading the membership — it produced a state the product cannot:
-    // an account row saying Developer over a membership still saying Owner. Going through
-    // the contract is what makes this table describe the deployment rather than the
-    // fixture.
+    // THROUGH THE CONTRACT, not by writing a row. A `forceFill` here passed for as long as
+    // the member row was the authority, and stopped meaning anything the moment the console
+    // started reading the membership. Going through the contract is what makes this table
+    // describe the deployment rather than the fixture.
     //
-    // A SECOND member, because the first is the account's only owner and demoting the last
-    // owner is refused — which is the same reason ownership transfer promotes before it
-    // demotes.
-    $subject = $role === MembershipRole::Owner ? $owner : app(Memberships::class)->create(
-        $account->id,
-        'matrix-'.$role->value.'@acme.example',
-        'a-strong-unbreached-passphrase',
-        'Matrix',
-    );
-
-    if ($role !== MembershipRole::Owner) {
-        app(Memberships::class)->setRole($subject->id, $role);
+    // A SECOND member for every role but Owner, because the first is the organization's
+    // only owner and demoting the last owner is refused — the same reason ownership
+    // transfer promotes before it demotes.
+    if ($role === MembershipRole::Owner) {
+        $subjectId = $ownerSubjectId;
+    } else {
+        [, $subjectId] = addMember($account->id, $role, 'matrix-'.$role->value.'@acme.example');
     }
 
-    signInAsMember($subject->refresh());
+    signInAsMember($subjectId);
 
     expect(identityPlatformPages())->toBe($expected, $role->value.' sees the wrong pages');
 })->with([
@@ -719,18 +720,17 @@ it('shows exactly these pages to each account role', function (MembershipRole $r
  * authority over an organization is their membership of it; and the member row is a
  * lookup saying which account a subject belongs to, not what they may do there.
  */
-it('follows the membership when the member row disagrees', function (): void {
-    ['member' => $owner, 'organization' => $account] = provisionAccount();
+it('reads what a member may do from their membership', function (): void {
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account] = provisionAccount();
 
-    $member = app(Memberships::class)->create(
-        $account->id,
-        'disagreement@acme.example',
-        'a-strong-unbreached-passphrase',
-        'Disagreement',
-    );
-    app(Memberships::class)->setRole($member->id, MembershipRole::Admin);
+    // This was 'follows the membership when the member row disagrees', and it asserted that
+    // the console read the membership rather than the account plane's own role column while
+    // both existed. There is one row, so a disagreement is not a state the product can
+    // reach — what survives is that the membership is what every capability gate asks, and
+    // that is still worth pinning.
+    [$member, $memberSubjectId] = addMember($account->id, MembershipRole::Admin, 'disagreement@acme.example');
 
-    signInAsMember($member->refresh());
+    signInAsMember($memberSubjectId);
     expect(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeTrue();
 
     // Behind the contract's back, so the member row still says Admin. Nothing in the
@@ -741,7 +741,7 @@ it('follows the membership when the member row disagrees', function (): void {
         ->update(['role' => MembershipRole::Viewer->value]));
 
     nextRequest();
-    signInAsMember($member->refresh());
+    signInAsMember($memberSubjectId);
 
     expect($member->refresh()->role)->toBe(MembershipRole::Admin, 'fixture: the member row must still disagree')
         ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeFalse()
@@ -776,27 +776,27 @@ it('follows the membership when the member row disagrees', function (): void {
  * require deciding what `MembershipRole::Member` and `Owner` mean on the account plane —
  * today "nothing" and "not assignable".
  */
-it('refuses to re-role an account member from the organization roster', function (): void {
-    ['member' => $owner, 'organization' => $account] = provisionAccount();
+it('refuses to re-role a customer\'s member from the environment roster', function (): void {
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account] = provisionAccount();
 
-    $target = app(Memberships::class)->create($account->id, 'dev@acme.example', 'a-strong-unbreached-passphrase', 'Dev');
-    app(Memberships::class)->setRole($target->id, MembershipRole::Developer);
+    [$target, $targetSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev@acme.example');
 
     signInAsMember($ownerSubjectId);
 
-    Volt::test('members')->call('setRole', (string) $target->refresh()->subject_id, MembershipRole::Admin->value);
+    Volt::test('members')->call('setRole', $targetSubjectId, MembershipRole::Admin->value);
 
-    // BOTH rows, because the whole defect was that they could disagree.
-    expect($target->refresh()->role)->toBe(MembershipRole::Developer, 'the account role moved from the wrong page')
-        ->and(app(PlatformRoot::class)->run(
-            fn () => app(Memberships::class)->of((string) $account->refresh()->organization_id, (string) $target->subject_id)?->role,
-        ))->toBe(MembershipRole::Developer, 'the membership moved without the account role');
+    // ONE ROW, and it did not move. The older version asserted on TWO — a member row and a
+    // membership — because the defect it was written for was that they could disagree.
+    // There is one now, so what is left to assert is the boundary: a customer's roster is
+    // administered from the management console, by somebody holding an organization
+    // capability, and never from a page whose authority is "administers this environment".
+    expect(freshMembership($target)?->role)->toBe(MembershipRole::Developer);
 })->group('security');
 
-it('refuses to remove an account member from the organization roster', function (): void {
-    ['member' => $owner, 'organization' => $account] = provisionAccount();
+it('refuses to remove a customer\'s member from the environment roster', function (): void {
+    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account] = provisionAccount();
 
-    $target = app(Memberships::class)->create($account->id, 'gone@acme.example', 'a-strong-unbreached-passphrase', 'Gone');
+    [$target, $targetSubjectId] = addMember($account->id, MembershipRole::Developer, 'gone@acme.example');
 
     signInAsMember($ownerSubjectId);
 

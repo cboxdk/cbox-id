@@ -12,6 +12,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Illuminate\Support\Collection;
+use Cbox\Id\Platform\PlatformRoot;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -163,9 +164,15 @@ new #[Layout('components.layouts.app', ['title' => 'Environment keys'])] class e
         $organizationId = $scope->organizationId();
         $actorId = $scope->actorId();
 
+        // IN THE PLATFORM ROOT. `memberships` is environment-owned, and the console is
+        // served on whichever host the deployment puts it on — so asked directly this
+        // answers "no environments" for somebody who reaches several, and the page silently
+        // shows them nothing.
         return $organizationId === null || $actorId === ''
             ? []
-            : $members->accessibleEnvironmentIds($organizationId, $actorId);
+            : app(PlatformRoot::class)->run(
+                fn (): array => $members->accessibleEnvironmentIds($organizationId, $actorId),
+            ) ?? [];
     }
 
     /**

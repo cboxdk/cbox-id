@@ -20,6 +20,7 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
@@ -351,42 +352,40 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     }
 
     /**
-     * Whether this person's place in the acting organization is governed by an ACCOUNT
-     * membership rather than by this page.
+     * Whether the acting organization's roster belongs to the MANAGEMENT console rather
+     * than to this page.
      *
-     * An account IS an organization in the platform root, so on that host this page and
-     * `/account-members` list the same people — but they write different columns.
-     * `/account-members` writes `account_members.role` and syncs it onto the membership;
-     * this page writes `memberships.role` and syncs nothing back. Ten guards on the
-     * account plane still read the member row, so the two silently disagree the moment
-     * either is used on somebody the other owns:
+     * THE ORIGINAL REASON IS GONE, and the replacement is narrower — worth stating plainly
+     * so nobody restores the old one. This used to ask whether a person's place was
+     * governed by an ACCOUNT membership, because there were two writers of one person's
+     * role: the account console wrote `account_members.role` and synced it onto the
+     * membership; this page wrote `memberships.role` and synced nothing back. Ten guards
+     * read the member row, so the two disagreed the moment either was used on somebody the
+     * other owned — re-role a Developer to Admin here and they gained the member roster,
+     * the audit chain and billing, all three of which the role they appear to hold refuses.
      *
-     *  - re-role a Developer to Admin here and they gain the member roster, the account
-     *    audit chain and billing — all three of which `MembershipRole::Developer` refuses,
-     *    because "a leaked developer key must not enumerate the team";
-     *  - re-role them to Member and the rail goes dark while `projects/create` and the
-     *    environment handoff, which read the member row, still let them stand up an
-     *    environment and open a live environment-admin session on a tenant host. A
-     *    demotion that confirms itself and demotes nothing.
+     * There is ONE row now. Both consoles write `memberships.role`, so they cannot
+     * disagree, and that half of the argument retires with the plane it described.
      *
-     * So this page declines, and says where the roster actually lives. That is the honest
-     * statement of the fold's direction: the account roster is ONE roster, and it is not
-     * this one. The alternative — syncing back — would require deciding what
-     * `MembershipRole::Member` and `Owner` mean on the management plane.
+     * What remains is a boundary rather than a consistency problem: an organization that
+     * owns PRODUCTS is a customer, and a customer's roster is administered from the
+     * management console — by someone holding an organization capability — not from the
+     * environment console, whose authority is "administers this one environment". Those are
+     * different authorities over different people, and an operator who points the
+     * environment console at the platform root would otherwise be able to re-role a
+     * customer's owner from a page that never asked whether they may.
+     *
+     * Asked of the ORGANIZATION, not of the person: every member of a customer is covered,
+     * including one added after this check was written.
      */
-    private function governedByAccount(string $userId): bool
+    private function governedByTheManagementConsole(): bool
     {
-        // ONE PREDICATE NOW, not a join. It used to reach through the member row to the
-        // account and compare that account's organization; a membership names the
-        // organization directly, so the relation it hopped through is gone with the row.
-        // Through the contract: `memberships` is tenant-owned and the tenant scope is
-        // deny-by-default, so a bare query here answers "no membership" for everybody.
-        return app(Memberships::class)->of($this->orgId(), $userId) !== null;
+        return app(OrganizationProjects::class)->forOrganization($this->orgId())->isNotEmpty();
     }
 
     private function refuseMembership(string $userId): bool
     {
-        if (! $this->governedByAccount($userId)) {
+        if (! $this->governedByTheManagementConsole()) {
             return false;
         }
 

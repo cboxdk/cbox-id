@@ -13,6 +13,7 @@ use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Platform\Models\Project;
 use Illuminate\Validation\Rule;
+use Cbox\Id\Platform\PlatformRoot;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -95,7 +96,9 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
 
         return $organizationId !== null
             && $actorId !== ''
-            && $members->of($organizationId, $actorId)?->all_environments === true;
+            && app(PlatformRoot::class)->run(
+                fn () => $members->of($organizationId, $actorId),
+            )?->all_environments === true;
     }
 
     /**
@@ -108,9 +111,15 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         $organizationId = $scope->organizationId();
         $actorId = $scope->actorId();
 
+        // IN THE PLATFORM ROOT. `memberships` is environment-owned, and the console is
+        // served on whichever host the deployment puts it on — so asked directly this
+        // answers "no environments" for somebody who reaches several, and the page silently
+        // shows them nothing.
         return $organizationId === null || $actorId === ''
             ? []
-            : $members->accessibleEnvironmentIds($organizationId, $actorId);
+            : app(PlatformRoot::class)->run(
+                fn (): array => $members->accessibleEnvironmentIds($organizationId, $actorId),
+            ) ?? [];
     }
 
     /**

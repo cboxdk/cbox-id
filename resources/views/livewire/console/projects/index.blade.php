@@ -196,7 +196,7 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
 
         $membership = $organizationId === null || $actorId === ''
             ? null
-            : $members->of($organizationId, $actorId);
+            : app(PlatformRoot::class)->run(fn () => $members->of($organizationId, $actorId));
 
         $allAccess = $membership?->all_environments === true;
 
@@ -204,7 +204,9 @@ new #[Layout('components.layouts.app', ['title' => 'Projects'])] class extends C
         // organization owns; a scoped member only their grants.
         $accessibleIds = $organizationId === null || $actorId === ''
             ? []
-            : $members->accessibleEnvironmentIds($organizationId, $actorId);
+            : app(PlatformRoot::class)->run(
+                fn (): array => $members->accessibleEnvironmentIds($organizationId, $actorId),
+            ) ?? [];
 
         $rows = [];
 
