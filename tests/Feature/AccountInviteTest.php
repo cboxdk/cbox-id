@@ -9,37 +9,12 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Livewire\Volt\Volt;
-
-if (! function_exists('provisionAccount')) {
-    /**
-     * @return array{member: Membership, account: Account, environment: Environment}
-     */
-    function provisionAccount(string $email = 'owner@acme.example'): array
-    {
-        // The platform root FIRST. An account provisioned without one is in the
-        // first-install bootstrap window: its members have no subject, and a member
-        // with no subject has nothing to sign in.
-        platformRootEnvironment();
-
-        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            organizationName: 'Acme',
-            ownerEmail: $email,
-            ownerName: 'Owner',
-            ownerPassword: 'a-strong-unbreached-passphrase',
-        ));
-
-        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->organization, 'environment' => $result->environment];
-    }
-}
 
 // The accept page screens the password against HaveIBeenPwned — keep it offline.
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));

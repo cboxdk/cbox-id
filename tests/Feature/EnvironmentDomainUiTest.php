@@ -6,48 +6,11 @@ use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Organization\Models\Membership;
-use Cbox\Id\Platform\Models\Project;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Livewire\Volt\Volt;
 
 // Guarded so they coexist with the same helpers in the other workspace test files.
-if (! function_exists('provisionAccount')) {
-    /**
-     * @return array{member: Membership, account: Account, project: Project, environment: Environment}
-     */
-    function provisionAccount(string $email = 'owner@acme.example'): array
-    {
-        // The platform root FIRST. An account provisioned without one is in the
-        // first-install bootstrap window: its members have no subject, and a member
-        // with no subject has nothing to sign in.
-        platformRootEnvironment();
-
-        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            organizationName: 'Acme',
-            ownerEmail: $email,
-            ownerName: 'Owner',
-            ownerPassword: 'a-strong-unbreached-passphrase',
-        ));
-
-        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->organization, 'project' => $result->project, 'environment' => $result->environment];
-    }
-}
-
-if (! function_exists('memberWithRole')) {
-    function memberWithRole(string $accountId, MembershipRole $role, string $email): Membership
-    {
-        $members = app(Memberships::class);
-        [$m, $mSubjectId] = addMember($accountId, $role, $email);
-
-        return freshMembership($m);
-    }
-}
-
 beforeEach(function (): void {
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
 

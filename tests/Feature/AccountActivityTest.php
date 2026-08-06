@@ -4,52 +4,13 @@ declare(strict_types=1);
 
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\Models\Project;
-use Cbox\Id\Platform\TenantProvisioner;
-use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Livewire\Volt\Volt;
 
 // Guarded so they coexist with the same helpers in WorkspaceConsoleTest (Pest
 // requires each test file independently — the first definition wins).
-if (! function_exists('provisionAccount')) {
-    /**
-     * @return array{member: Membership, account: Account, project: Project, environment: Environment}
-     */
-    function provisionAccount(string $email = 'owner@acme.example'): array
-    {
-        // The platform root FIRST, and STOOD IN. An account provisioned without one is
-        // in the first-install bootstrap window, where its members have no subject and a
-        // member with no subject has nothing to sign in — and the account chain itself is
-        // environment-owned, so a test that records entries from outside the root files
-        // them where the account host will not read them.
-        platformRootDeployment();
-
-        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            organizationName: 'Acme',
-            ownerEmail: $email,
-            ownerName: 'Owner',
-            ownerPassword: 'a-strong-unbreached-passphrase',
-        ));
-
-        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->organization, 'project' => $result->project, 'environment' => $result->environment];
-    }
-}
-
-if (! function_exists('memberWithRole')) {
-    function memberWithRole(string $accountId, MembershipRole $role, string $email): Membership
-    {
-        $members = app(Memberships::class);
-        [$m, $mSubjectId] = addMember($accountId, $role, $email);
-
-        return freshMembership($m);
-    }
-}
-
 it('records an account-scoped, hash-chained entry when a member is invited', function (): void {
     ['member' => $owner, 'organization' => $account] = provisionAccount();
 

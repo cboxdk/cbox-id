@@ -40,43 +40,6 @@ beforeEach(function (): void {
  *
  * @return array{0: Membership, 1: string} the membership, and the subject id to sign in as
  */
-if (! function_exists('memberWithRole')) {
-    function memberWithRole(string $organizationId, MembershipRole $role, string $email): array
-    {
-        $subject = app(PlatformRoot::class)->run(
-            fn () => app(Subjects::class)->create($email, 'Member', 'a-strong-unbreached-passphrase'),
-        );
-
-        $membership = app(PlatformRoot::class)->run(
-            fn () => app(Memberships::class)->add($organizationId, $subject->id, $role),
-        );
-
-        return [$membership, $subject->id];
-    }
-}
-
-if (! function_exists('provisionAccount')) {
-    /**
-     * Provision a customer and return its membership/organization/project/environment.
-     *
-     * @return array{member: Membership, subjectId: string, organization: Organization, project: Project, environment: Environment}
-     */
-    function provisionAccount(string $email = 'owner@acme.example'): array
-    {
-        // The platform root FIRST — provisioning refuses without one.
-        platformRootEnvironment();
-
-        $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-            organizationName: 'Acme',
-            ownerEmail: $email,
-            ownerName: 'Owner',
-            ownerPassword: 'a-strong-unbreached-passphrase',
-        ));
-
-        return ['member' => $result->membership, 'subjectId' => $result->owner->id, 'organization' => $result->organization, 'project' => $result->project, 'environment' => $result->environment];
-    }
-}
-
 it('renders the console sign-in for guests', function (): void {
     // The ONE door. There used to be a second one at `/workspace/login` that said
     // "Sign in to your workspace"; it authenticated the same subject against the same

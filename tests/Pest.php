@@ -192,6 +192,51 @@ function serveOnTestHost(Environment $environment): Environment
 }
 
 /**
+ * Provision a customer and return every piece of it.
+ *
+ * ONE DEFINITION, HERE. Four test files each carried their own behind a `function_exists`
+ * guard, so whichever loaded first won and the other three silently ran against a fixture
+ * they had not written — with different keys, a different platform-root helper and, after
+ * the fold, a different return shape. A suite whose fixtures depend on file order is a
+ * suite whose failures depend on file order, which is exactly what made the console tests
+ * pass alone and fail together.
+ *
+ * @return array{member: Membership, subjectId: string, organization: Organization, project: Project, environment: Environment}
+ */
+function provisionAccount(string $email = 'owner@acme.example'): array
+{
+    platformRootEnvironment();
+
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: $email,
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    return [
+        'member' => $result->membership,
+        'subjectId' => $result->owner->id,
+        'organization' => $result->organization,
+        'project' => $result->project,
+        'environment' => $result->environment,
+    ];
+}
+
+/**
+ * A member with a role, ready to sign in — the same shape {@see addMember()} returns.
+ *
+ * Kept as a name of its own because a dozen tests read better for it, and because it was
+ * one of the duplicated definitions above.
+ *
+ * @return array{0: Membership, 1: string}
+ */
+function memberWithRole(string $organizationId, MembershipRole $role, string $email): array
+{
+    return addMember($organizationId, $role, $email);
+}
+
+/**
  * The environments a customer owns, THROUGH ITS PROJECTS.
  *
  * `environments.account_id` was a denormalized copy of ownership and is gone, so this is a
