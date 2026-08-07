@@ -8,6 +8,59 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-07
+
+The account plane is gone, here and in the framework. A customer **is** an organization.
+
+### Changed
+
+- **One identity.** `AccountAuth` is deleted rather than renamed: its lookup half duplicated
+  `CurrentUser`, which the `Authenticate` middleware already populates — including the guard
+  against a tampered organization id in the session. Its three responsibilities went where
+  they belong: who is acting → `CurrentUser`, the door → `PlatformAuth::establish()`, the
+  mandate → `SubjectCredentialGate` (renamed from `MemberCredentialGate`, and reduced to the
+  subject id it always really wanted).
+- **The console speaks organization.** `/members`, `/activity`, `/organization-settings`,
+  `/invite/{token}/accept`, and the operator's customer pages at `/platform/customers` —
+  not `/organizations`, which already exists on that console and means a tenant's own
+  end-user organizations.
+- **The machine plane is `/api/v1/organization`**, authenticated with `cbid_org_` keys, and
+  `resources/openapi/account.yaml` becomes `organization.yaml`. Breaking, and deliberate
+  now: after 1.0.0 the paths and the key prefix would permanently name a plane that has not
+  existed since before the first tag.
+- **`CBOX_ID_ACCOUNT_HOST` → `CBOX_ID_CONSOLE_HOST`**, which is what it always described.
+
+### Fixed
+
+- **Every member-management action on the console 404'd.** `account_members` was
+  environment-owned and nothing else, so the ownership fence could be written by hand.
+  `memberships` is TENANT-owned as well, and that scope is deny-by-default — so the
+  one-for-one model substitution produced a query that matched nothing, on a row rendered
+  three lines above it on the same page.
+- **A suspended customer kept a live environment-admin session.** The owner-active check
+  did not survive the resolver's move to memberships. The host resolver refuses a suspended
+  owner too, but that answer is cached — which is exactly why the second check exists.
+- **An SSO mandate was looked for in one scope.** A tenant's end user holds memberships in
+  the ambient environment; a customer's people hold theirs in the platform root. Looking in
+  one place reports "no mandate" for everybody in the other, and no mandate fails OPEN.
+- **The environment console audited a membership row id as the actor**, so its entries
+  resolved against a different id space than the management console's.
+- **Impersonation could not be exited.** The marker held a membership row id, which names
+  no session, so an environment admin who stepped into a user came back to the sign-in door.
+- **The accept-invite page rendered for a spent invitation** and asked for a password before
+  refusing.
+- **The environment switcher selected a dropped column** on the chrome of every operator
+  console page. sqlite answers null; PostgreSQL and MySQL raise.
+
+### Build
+
+- `composer qa` runs **`sbom-check`**, and the app's is an EXACT comparison — this is an
+  application with a committed lockfile, so a byte match is achievable and is what CI
+  already enforced. A local gate weaker than CI is a gate you can push red through.
+- `process-timeout: 0`, so the gate cannot fail on the suite's duration rather than on its
+  result.
+
+
 ### Added
 
 - **`php artisan cbox-id:install` now installs the platform, not just the schema.** A
