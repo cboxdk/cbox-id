@@ -96,10 +96,10 @@ final readonly class EnvironmentLineages
     }
 
     /**
-     * The framework's Environment model declares `account_id` but not `project_id`, so
-     * the column is read off the attribute bag and narrowed rather than reached for as a
-     * property that static analysis cannot see. Same treatment the console already gives
-     * the undeclared timestamp columns.
+     * Read off the attribute bag and narrowed rather than reached for as a property: the
+     * caller may have selected a subset of columns, and a missing attribute must answer
+     * null rather than raise. Same treatment the console gives the undeclared timestamp
+     * columns.
      */
     private function projectIdOf(Environment $environment): ?string
     {

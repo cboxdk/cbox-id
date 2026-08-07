@@ -47,12 +47,13 @@
     if ($isOperator) {
         $ctx = app(\Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext::class);
         $activeEnvId = $ctx->current()?->environmentKey();
-        // `account_id` and `project_id` come along because the switcher names the OWNER,
-        // not just the plane: "Production" is a name half the customers on an install
-        // will have, and a chrome control that says only that tells an operator nothing
-        // about whose estate their next click lands in.
+        // `project_id` comes along because the switcher names the OWNER, not just the
+        // plane: "Production" is a name half the customers on an install will have, and a
+        // chrome control that says only that tells an operator nothing about whose estate
+        // their next click lands in. The owner is reached THROUGH the project —
+        // `environments.account_id` was the shortcut, and it is gone.
         $environments = $ctx->withoutScope(fn () => \Cbox\Id\Organization\Models\Environment::query()
-            ->orderBy('created_at')->get(['id', 'name', 'slug', 'account_id', 'project_id']));
+            ->orderBy('created_at')->get(['id', 'name', 'slug', 'project_id']));
         // Two queries for the whole list, on a control that renders on EVERY console
         // page — see App\Platform\Console\EnvironmentLineages.
         $lineage = app(\App\Platform\Console\EnvironmentLineages::class)->for($environments);
