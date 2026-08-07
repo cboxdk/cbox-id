@@ -62,29 +62,29 @@ if (in_array('--check', $argv, true)) {
         exit(1);
     }
 
-    $committed = json_decode((string) file_get_contents($output), true, 512, JSON_THROW_ON_ERROR);
+    // EXACT, not a dependency-SET comparison — and the difference from the framework's
+    // check is deliberate rather than an oversight.
+    //
+    // laravel-id is a library and does not commit `composer.lock`: CI resolves fresh and
+    // will pick up any upstream patch published since the maintainer last ran the
+    // generator, so an exact match there is unwinnable and its check compares the set.
+    // This is an APPLICATION with a committed lockfile. The resolve is pinned, the output
+    // is deterministic, and CI enforces exactly this (`composer sbom && git diff
+    // --exit-code sbom.json`).
+    //
+    // A local gate weaker than CI is a gate you can push red through. That is not
+    // hypothetical: bumping the framework to v1.0.0 changed the recorded version and the
+    // serial number, the set-based check passed because no dependency was added or
+    // removed, and CI failed on the diff.
+    $current = (string) file_get_contents($output);
+    $rendered = json_encode($bom, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
 
-    $committedNames = array_column($committed['components'] ?? [], 'name', 'name');
-    $resolvedNames = array_column($components, 'name', 'name');
-    ksort($committedNames);
-    ksort($resolvedNames);
-
-    $added = array_diff_key($resolvedNames, $committedNames);
-    $removed = array_diff_key($committedNames, $resolvedNames);
-
-    if ($added !== [] || $removed !== []) {
-        fwrite(STDERR, "SBOM check failed: the dependency set has changed.\n");
-        foreach ($added as $name) {
-            fwrite(STDERR, "  + {$name}\n");
-        }
-        foreach ($removed as $name) {
-            fwrite(STDERR, "  - {$name}\n");
-        }
-        fwrite(STDERR, "Run 'composer sbom' and commit the result.\n");
+    if ($current !== $rendered) {
+        fwrite(STDERR, "SBOM check failed: {$output} is stale. Run 'composer sbom' and commit the result.\n");
         exit(1);
     }
 
-    printf("SBOM check passed: %d components, dependency set unchanged.\n", count($components));
+    printf("SBOM check passed: %d components, byte-identical.\n", count($components));
     exit(0);
 }
 
