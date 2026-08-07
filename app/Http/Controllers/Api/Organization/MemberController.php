@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Organization;
 
 use App\Http\Controllers\Controller;
-use App\Mail\AccountInviteMail;
+use App\Mail\OrganizationInviteMail;
 use App\Platform\MailLinks;
 use App\Platform\OrganizationApiContext;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -113,8 +113,8 @@ final class MemberController extends Controller
         // they mint it the same way (see that class); an API caller's Host is no more
         // trustworthy than a browser's.
         $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
-        Mail::to($email)->send(new AccountInviteMail(
-            account: $organization->name,
+        Mail::to($email)->send(new OrganizationInviteMail(
+            organization: $organization->name,
             inviter: $key->name,
             url: $url,
         ));

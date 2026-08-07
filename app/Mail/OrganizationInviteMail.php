@@ -11,16 +11,16 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Invites a teammate to an account — the organization that owns identity providers. Distinct
+ * Invites a teammate to an organization — the customer that owns identity providers. Distinct
  * from {@see InvitationMail}, which invites an end-user into an organization.
  */
-final class AccountInviteMail extends Mailable
+final class OrganizationInviteMail extends Mailable
 {
     use Queueable;
     use SerializesModels;
 
     public function __construct(
-        public string $account,
+        public string $organization,
         public string $inviter,
         public string $url,
     ) {}
@@ -29,11 +29,11 @@ final class AccountInviteMail extends Mailable
     {
         $brand = config('cbox-id.branding.name', 'Cbox ID');
 
-        return new Envelope(subject: "You've been invited to {$this->account} on ".(is_string($brand) ? $brand : 'Cbox ID'));
+        return new Envelope(subject: "You've been invited to {$this->organization} on ".(is_string($brand) ? $brand : 'Cbox ID'));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.account-invite');
+        return new Content(view: 'mail.organization-invite');
     }
 }

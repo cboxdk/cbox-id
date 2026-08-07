@@ -317,7 +317,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Environments', 'width' 
                                     </div>
                                 </td>
 
-                                {{-- Never a blank cell. An environment with no account is one of
+                                {{-- Never a blank cell. An environment with no customer is one of
                                      exactly two things, and both are said out loud: the platform
                                      root, which belongs to no customer by construction, and an
                                      unattached leftover, which an operator should be able to SEE
@@ -333,7 +333,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Environments', 'width' 
                                         <p class="text-xs" style="color:var(--faint)">This deployment's own plane</p>
                                     @else
                                         <span class="cbx-pill cbx-pill--warning" title="{{ $env['lineage']->note() }}"><span class="dot"></span>Unattached</span>
-                                        <p class="text-xs" style="color:var(--faint)">No project, so no account</p>
+                                        <p class="text-xs" style="color:var(--faint)">No project, so no customer</p>
                                     @endif
                                 </td>
 
@@ -409,10 +409,10 @@ new #[Layout('components.layouts.platform', ['title' => 'Environments', 'width' 
 
         <p class="mt-4 text-xs" style="color:var(--faint)">
             Environments nest under a project, and a project under an
-            <a href="{{ route('platform.customers') }}" wire:navigate class="underline">account</a> — start there to see one
-            customer's whole estate. Two rows here never have an account: the
+            <a href="{{ route('platform.customers') }}" wire:navigate class="underline">customer</a> — start there to see one
+            customer's whole estate. Two rows here never have a customer: the
             <strong>platform root</strong> is the plane this deployment itself runs in, where operators
-            and account members live, and an <strong>unattached</strong> environment has no project, so
+            and a customer's own people live, and an <strong>unattached</strong> environment has no project, so
             nothing bills for it and no customer reaches it. Neither is an error to fix from this
             screen, and nothing here reassigns either.
         </p>

@@ -66,7 +66,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Operators', 'width' => 
         }
 
         if ($operator->isActive()) {
-            // Self-lockout guard: never suspend the account you are signed in as.
+            // Self-lockout guard: never suspend the customer you are signed in as.
             // Checked before the contract call so it can't be reached at all.
             if ($id === $actorId) {
                 $this->dispatch('toast', message: 'You cannot suspend the operator you are currently signed in as.', severity: 'error');

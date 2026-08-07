@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Mail\AccountInviteMail;
+use App\Mail\OrganizationInviteMail;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
@@ -149,7 +149,7 @@ it('invites members only with a manage-members key', function (): void {
         ->assertJsonPath('data.status', 'invited')
         ->assertJsonPath('data.role', 'developer');
 
-    Mail::assertSent(AccountInviteMail::class);
+    Mail::assertSent(OrganizationInviteMail::class);
 
     // A developer key can't manage members.
     $this->withToken($developer)->postJson('/api/v1/organization/members', ['email' => 'x@acme.example', 'role' => 'viewer'])

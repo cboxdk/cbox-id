@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Mail\AccountInviteMail;
 use App\Mail\MagicLinkMail;
+use App\Mail\OrganizationInviteMail;
 use App\Mail\PasswordResetMail;
 use App\Platform\MailLinks;
 use App\Platform\TrustedHosts;
@@ -161,7 +161,7 @@ it('refuses a signed invitation link replayed with a foreign Host', function ():
         ['token' => $invited->token],
     );
 
-    Mail::to('invitee@acme.example')->send(new AccountInviteMail('Acme', 'Owner', $url));
+    Mail::to('invitee@acme.example')->send(new OrganizationInviteMail('Acme', 'Owner', $url));
 
     expect($url)->not->toContain('evil.example')
         ->and($url)->toStartWith((string) config('app.url'));

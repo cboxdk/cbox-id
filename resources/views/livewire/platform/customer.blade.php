@@ -33,13 +33,13 @@ use Livewire\Volt\Component;
  * walkable, and it is the reason those counts are now links.
  *
  * Everything above the tenancy boundary is read globally (accounts, projects,
- * environments and account members are not environment-owned). The two per-environment
+ * environments and the customer's members are not environment-owned). The two per-environment
  * tallies are NOT — organizations and users live inside a plane — so they are counted
  * once for the whole page inside {@see EnvironmentContext::withoutScope()}, grouped, in
  * the two queries the accounts list already uses for its own counts. A page whose job
  * is to show every environment an account owns must not pay a query per environment.
  *
- * What can be CHANGED here is deliberately narrow. Suspension of the account is the same
+ * What can be CHANGED here is deliberately narrow. Suspension of the customer is the same
  * reversible off-switch the list carries, through the same {@see Accounts} contract, so
  * it is attributed to the acting operator and recorded by the contract rather than at
  * this call site. Targeting an environment is a console preference, not a change to
@@ -290,7 +290,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
     <div class="mb-5">
         <a href="{{ route('platform.customers') }}" wire:navigate
            class="inline-flex items-center gap-1 text-sm" style="color:var(--muted)">
-            <span aria-hidden="true">&larr;</span> Back to accounts
+            <span aria-hidden="true">&larr;</span> Back to customers
         </a>
     </div>
 
@@ -322,7 +322,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
             </div>
 
             <dl>
-                <div class="cbx-kv"><dt>Account ID</dt><dd class="font-mono text-xs">{{ $account->id }}</dd></div>
+                <div class="cbx-kv"><dt>Organization ID</dt><dd class="font-mono text-xs">{{ $account->id }}</dd></div>
                 <div class="cbx-kv"><dt>Members</dt><dd>{{ $members->count() }}</dd></div>
                 <div class="cbx-kv"><dt>Projects</dt><dd>{{ $projects->count() }}</dd></div>
                 <div class="cbx-kv"><dt>Environments</dt><dd>{{ $environmentTotal }}</dd></div>
@@ -341,7 +341,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
         </div>
         @if ($members->isEmpty())
             <div class="px-5 py-8 text-center text-sm" style="color:var(--faint)">
-                Nobody is on this account — it has no owner, so nobody can sign in to administer it.
+                Nobody is on this customer — it has no owner, so nobody can sign in to administer it.
                 That is a provisioning failure worth chasing, not an empty list.
             </div>
         @else
@@ -401,8 +401,8 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
                 <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
                 <h3>No projects yet</h3>
                 <p>
-                    A project is one IdP product inside this account, and it is what environments hang off —
-                    so until the account creates one from its own workspace, there is nothing here to target or open.
+                    A project is one IdP product this customer owns, and it is what environments hang off —
+                    so until the customer creates one from its own workspace, there is nothing here to target or open.
                     Nothing on this screen creates one on the customer's behalf.
                 </p>
             </div>
@@ -509,7 +509,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Customer', 'width' => '
                     <span class="cbx-pill cbx-pill--warning"><span class="dot"></span>Unfiled</span>
                 </div>
                 <div class="px-5 pt-4 text-sm" style="color:var(--muted)">
-                    This account owns {{ count($unfiledEnvironments) }} {{ \Illuminate\Support\Str::plural('environment', count($unfiledEnvironments)) }}
+                    This customer owns {{ count($unfiledEnvironments) }} {{ \Illuminate\Support\Str::plural('environment', count($unfiledEnvironments)) }}
                     that no project holds, so nothing bills for {{ count($unfiledEnvironments) === 1 ? 'it' : 'them' }} and
                     {{ count($unfiledEnvironments) === 1 ? 'it does' : 'they do' }} not appear on the customer's own project pages.
                     Shown here rather than left invisible; nothing on this screen reassigns {{ count($unfiledEnvironments) === 1 ? 'it' : 'them' }}.

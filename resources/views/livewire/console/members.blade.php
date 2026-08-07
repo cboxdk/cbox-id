@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Mail\AccountInviteMail;
+use App\Mail\OrganizationInviteMail;
 use App\Platform\OrganizationActivity;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Console\ConsoleScope;
@@ -104,7 +104,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // MailLinks, not URL:: — an invitation is mailed, so its origin must come from the
         // deployment rather than from the Host header of whoever asked to send it.
         $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
-        Mail::to($this->inviteEmail)->send(new AccountInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
+        Mail::to($this->inviteEmail)->send(new OrganizationInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
 
         $activity->record($organizationId, 'organization.member_invited', $scope->actorId(),
             targetType: 'invitation', targetId: $pending->invitation->id,
@@ -398,10 +398,10 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                         :name="$displayEmail"
                                         :action="$makeOwnerAction"
                                         label="Transfer ownership"
-                                        verb="Hand this account to"
+                                        verb="Hand this organization to"
                                         trigger-class="cbx-row w-full"
                                         trigger-style="padding:8px 10px;border-radius:6px;font-size:13px"
-                                        consequence="They become the account owner and you are demoted to admin. Only the new owner can hand it back." />
+                                        consequence="They become the organization owner and you are demoted to admin. Only the new owner can hand it back." />
                                 @endif
                                 <x-confirm-delete
                                     :name="$displayEmail"
@@ -410,7 +410,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
                                     verb="Remove"
                                     trigger-class="cbx-row w-full"
                                     trigger-style="padding:8px 10px;border-radius:6px;font-size:13px;color:var(--destructive)"
-                                    consequence="They lose access to this account and every environment under it immediately." />
+                                    consequence="They lose access to this organization and every environment under it immediately." />
                             </div>
                         </div>
                     @else
@@ -454,7 +454,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     @if ($canManage)
         <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
             <p class="text-sm font-medium">Invite a teammate</p>
-            <p class="mt-1 text-sm" style="color:var(--muted)">They'll get an email to set a password and join this account.</p>
+            <p class="mt-1 text-sm" style="color:var(--muted)">They'll get an email to set a password and join this organization.</p>
             <form wire:submit="invite" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-start">
                 <div>
                     <input wire:model="inviteEmail" type="email" class="input" placeholder="teammate@yourco.example" autocomplete="off" aria-label="Teammate email">

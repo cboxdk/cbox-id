@@ -53,7 +53,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
     /** The configured shape, shown so the operator sees what they are about to create. */
     public bool $multiTenant = false;
 
-    /** Multi-tenant with nowhere for the account console to live — nothing safe to install. */
+    /** Multi-tenant with nowhere for the console to live — nothing safe to install. */
     public bool $misconfigured = false;
 
     /** The database is reachable but has no schema — this deployment has not migrated. */
@@ -200,7 +200,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
         <div class="mt-6 rounded-lg p-4 text-sm" style="background:var(--surface-2);color:var(--muted)">
             <p style="color:var(--text)"><strong>This deployment is configured as multi-tenant but has no account host.</strong></p>
             <p class="mt-2">
-                Set <code>CBOX_ID_CONSOLE_HOST</code> (where the account console lives), or set
+                Set <code>CBOX_ID_CONSOLE_HOST</code> (where the console lives), or set
                 <code>CBOX_ID_MULTI_TENANT=false</code> for a single-host install — then reload this page. You can
                 also run <code>php artisan cbox-id:install</code>, which asks for both and writes them for you.
             </p>

@@ -16,16 +16,16 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * The operator's account console — every customer workspace on the install, and the
+ * The operator's customer list — every customer on the install, and the
  * platform's off-switch for one.
  *
  * {@see Accounts::suspend()} has always been implemented (it also drops each owned
  * environment's resolution-cache entry, so the environments stop serving auth on the
  * NEXT request rather than at a TTL) but had no caller anywhere: operators got
  * environments, organizations, operators, security, usage and search, and no way to
- * reach an account at all. A junk or abusive signup could not be turned off.
+ * reach a customer at all. A junk or abusive signup could not be turned off.
  *
- * Accounts sit ABOVE the tenancy — like operators, they are not environment-owned — so
+ * A customer is an organization in the platform root, so these reads pin that scope —
  * every query here is global and spans planes, exactly like the Environments screen.
  * Suspension is reversible on this same screen; nothing here deletes or purges, which
  * is a separate, later stage.
@@ -34,10 +34,10 @@ use Livewire\Volt\Component;
  * no `route()` call at all — so an operator learned that Acme has three projects and
  * three environments and had nowhere to click: the only way to find out which three was
  * the flat environments list and prior knowledge of Acme's plane names. Every count now
- * lands on the account's own page (`platform.customers.show`), where account → project →
+ * lands on the customer's own page (`platform.customers.show`), where organization → project →
  * environment is walkable.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.platform', ['title' => 'Customers', 'width' => '72rem'])] class extends Component
 {
     /** Re-check operator AUTHORITY on every request, including Livewire actions. */
     public function boot(ConsoleScope $scope): void
@@ -50,7 +50,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
      * status decides the direction rather than a separate flag.
      *
      * The audit entry is written by the CONTRACT, not here. It used to be written at this
-     * call site because the account writer took no actor, unlike
+     * call site because the customer writer took no actor, unlike
      * {@see Organizations::suspend()} which has always audited internally. An audit written
      * at the call site is one a second caller can silently forget, and this screen was the
      * only caller there had ever been.
@@ -150,10 +150,10 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
 }; ?>
 
 <div>
-    <x-page-header title="Accounts"
-                   subtitle="Every customer workspace on this install. Open one to walk its projects and environments; suspending it signs out its members and stops every environment it owns from serving auth." />
+    <x-page-header title="Customers"
+                   subtitle="Every customer on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth." />
 
-    <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('account', count($rows)) }} found.</p>
+    <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('customer', count($rows)) }} found.</p>
 
     {{-- A real table, not a div grid with matching grid-template-columns. The two rows
          resolved their `fr` tracks against different content — the header's last cell was
@@ -163,8 +163,8 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
     @if ($rows === [])
         <div class="cbx-empty mt-8">
             <div class="cbx-empty-icon"><x-icon name="settings" class="w-5 h-5" /></div>
-            <h3>No accounts yet</h3>
-            <p>An account appears here the moment somebody signs up for a workspace. Nothing to do until then.</p>
+            <h3>No customers yet</h3>
+            <p>A customer appears here the moment somebody signs up. Nothing to do until then.</p>
         </div>
     @else
         <div class="cbx-panel overflow-hidden mt-8">
@@ -172,7 +172,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
                 <table class="table">
                     <thead>
                         <tr>
-                            <th scope="col">Account</th>
+                            <th scope="col">Customer</th>
                             <th scope="col" class="text-right">Members</th>
                             <th scope="col" class="text-right">Projects</th>
                             <th scope="col" class="text-right">Environments</th>
@@ -216,7 +216,7 @@ new #[Layout('components.layouts.platform', ['title' => 'Accounts', 'width' => '
                                      type-to-confirm dialog: that component exists for actions with no way
                                      back, and it stamps the operator's pinned ENVIRONMENT into the dialog,
                                      which is meaningless for an account (accounts sit above every plane).
-                                     The copy still names the account and its blast radius. --}}
+                                     The copy still names the customer and its blast radius. --}}
                                 <td class="text-right whitespace-nowrap">
                                     <a href="{{ $accountHref }}" wire:navigate class="btn btn-ghost btn-sm">Open</a>
                                     <button wire:click="toggleStatus('{{ $row['id'] }}')"

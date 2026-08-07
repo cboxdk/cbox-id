@@ -90,13 +90,15 @@ function anUnattachedEnvironment(): Environment
     ]);
 }
 
-it('puts the account first in the platform rail, above the environments inside it', function (): void {
+it('puts the customer first in the platform rail, above the environments inside it', function (): void {
     $platform = collect(app(ConsoleNavigation::class)->operator()->areas)
         ->firstOrFail(fn ($area): bool => $area->label === 'Platform');
 
-    // Root → leaf. The list used to read Environments, Accounts, Organizations.
+    // Root → leaf. The list used to read Environments, Accounts, Organizations — and the
+    // first entry is 'Customers' now, because a customer is not an account and the rail was
+    // the last place still saying so while the URL beneath it already said /customers.
     expect(collect($platform->pages)->pluck('label')->all())
-        ->toBe(['Accounts', 'Environments', 'Organizations']);
+        ->toBe(['Customers', 'Environments', 'Organizations']);
 });
 
 it('walks an operator from an account down to every environment its projects own', function (): void {

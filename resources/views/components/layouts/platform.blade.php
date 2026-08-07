@@ -5,9 +5,9 @@
     // WHO IS SIGNED IN. Everything identity-shaped here used to fall through the account
     // MEMBER, which is null for a platform operator who buys nothing on the deployment
     // they run — so the topbar read "Workspace / Account", the rail foot read "Account",
-    // and the account popover read "Account" with no address under it. On a console where
+    // and the customer popover read "Account" with no address under it. On a console where
     // one click suspends a customer, nothing on screen named the session. Only the
-    // operator is asked now: the account pages this shell used to carry are pages of the
+    // operator is asked now: the customer pages this shell used to carry are pages of the
     // one console, and the only thing left on it is the platform section.
     $operator = app(ConsoleScope::class)->operator();
     $identityName = $operator?->name ?? $operator?->email ?? 'Platform';
@@ -25,7 +25,7 @@
     // sidebar and the eyebrow above each page title cannot disagree.
     //
     // This shell served the retired account console as well, and took its navigation from
-    // `ConsoleNavigation::workspace()` — the account areas, with the platform areas folded
+    // `ConsoleNavigation::workspace()` — the customer areas, with the platform areas folded
     // in for whoever ran the deployment. Those account areas are areas of the ONE console
     // now (see ConsoleServiceProvider's `identity-platform`), so what is left here is the
     // platform section and nothing else. Deliberately still its own shell: folding the
@@ -139,7 +139,7 @@
     @endif
 
     <div class="flex flex-col min-w-0 flex-1">
-        {{-- Slim top bar — the account name the sidebar header used to carry. Without
+        {{-- Slim top bar — the customer name the sidebar header used to carry. Without
              it a single-page area (Projects) would name the plane nowhere on desktop. --}}
         <header class="hidden lg:flex cbx-topbar items-center justify-between">
             <div class="flex items-center gap-2 min-w-0">
@@ -150,7 +150,7 @@
                 </span>
 
                 {{-- Target environment. Present only for whoever runs the deployment, and
-                     only ever beside the account it belongs to — an operator acting on a
+                     only ever beside the customer it belongs to — an operator acting on a
                      tenant should be able to see, without leaving the page, which tenant
                      that is. The old staff console said "Operator" here instead, which
                      read as a different product rather than as a wider permission. --}}

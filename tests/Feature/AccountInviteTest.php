@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Mail\AccountInviteMail;
+use App\Mail\OrganizationInviteMail;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\PasswordReset;
@@ -42,7 +42,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
     expect(app(PlatformRoot::class)->run(fn () => app(Invitations::class)->pending($owner->organization_id)))
         ->toHaveCount(1);
 
-    Mail::assertSent(AccountInviteMail::class, fn (AccountInviteMail $m): bool => $m->hasTo('new@acme.example'));
+    Mail::assertSent(OrganizationInviteMail::class, fn (OrganizationInviteMail $m): bool => $m->hasTo('new@acme.example'));
 });
 
 it('rejects inviting an email that already belongs to a member', function (): void {

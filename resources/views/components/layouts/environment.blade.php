@@ -26,7 +26,7 @@
     // the console share an origin and the link is simply local.
     $consoleHost = app(\App\Platform\PlaneResolver::class)->consoleHost() ?? request()->getHost();
     $securityUrl = 'https://'.$consoleHost.route('account', absolute: false);
-    $accountUrl = 'https://'.$consoleHost.route('projects', absolute: false);
+    $consoleUrl = 'https://'.$consoleHost.route('projects', absolute: false);
 
     // Breadcrumb + switcher context. Where this environment sits in the ownership
     // hierarchy (Organization › Project › Environment), and the other environments this
@@ -110,7 +110,7 @@
              they are (Account › Project › Environment), and jump to another env. --}}
         <header class="hidden lg:flex cbx-topbar items-center justify-between">
             <nav class="flex items-center gap-1.5 text-[13px] min-w-0" aria-label="Breadcrumb">
-                <a href="{{ $accountUrl }}" class="shrink-0 font-medium hover:underline" style="color:var(--muted-foreground)">Account</a>
+                <a href="{{ $consoleUrl }}" class="shrink-0 font-medium hover:underline" style="color:var(--muted-foreground)">Console</a>
                 @if ($project)
                     <span style="color:var(--faint)" aria-hidden="true">/</span>
                     <span class="shrink-0 truncate" style="color:var(--muted-foreground)">{{ $project->name }}</span>
@@ -167,7 +167,7 @@
     <x-mobile-nav :groups="$groups" :is-active="$isActive" :heading="$envName" subheading="Environment admin"
                   :initial="$memberInitial" logout-route="admin.logout"
                   :member-name="$member?->name" :member-email="$member?->email" :security-url="$securityUrl">
-        <a href="{{ $accountUrl }}" class="nav-link w-full"><x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" aria-hidden="true" /> Back to account</a>
+        <a href="{{ $consoleUrl }}" class="nav-link w-full"><x-icon name="chevron" class="w-4 h-4" style="transform:rotate(90deg)" aria-hidden="true" /> Back to account</a>
         @if ($switchableEnvs->count() > 1)
             <p class="cbx-nav-group px-2 pt-2 pb-1">Switch environment</p>
             <div class="max-h-52 overflow-y-auto space-y-0.5">
