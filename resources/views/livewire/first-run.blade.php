@@ -250,13 +250,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Set up Cbox ID'])] class ex
 
             @if ($multiTenant)
                 <div>
-                    <label class="label" for="accountName">Account name</label>
-                    <input wire:model="accountName" id="accountName" type="text" class="input input-lg" placeholder="Your company">
+                    <label class="label" for="organizationName">Organization name</label>
+                    <input wire:model="organizationName" id="organizationName" type="text" class="input input-lg" placeholder="Your company">
                     <p class="mt-1 text-xs" style="color:var(--faint)">
-                        This deployment is configured as multi-tenant, so the install also creates the first account —
-                        the organization that owns environments and billing.
+                        This deployment is configured as multi-tenant, so the install also creates the first
+                        organization — the customer that owns environments and billing.
                     </p>
-                    @error('accountName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                    @error('organizationName') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
             @endif
 
