@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Platform\Console\EnvironmentLineage;
 use App\Platform\Console\EnvironmentLineages;
-use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\OperatorEnvironment;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
@@ -91,13 +90,17 @@ function anUnattachedEnvironment(): Environment
 }
 
 it('puts the customer first in the platform rail, above the environments inside it', function (): void {
-    $platform = collect(app(ConsoleNavigation::class)->operator()->areas)
-        ->firstOrFail(fn ($area): bool => $area->label === 'Platform');
+    // Read from the registry: the platform section is an area of the one console now, and
+    // its ordering is the area's `order` numbers rather than argument order in a
+    // constructor. Which means this test is checking something it could not check before —
+    // that the numbers say what the old positional list said.
+    $platform = collect(Console::nav()->areas())
+        ->firstOrFail(fn ($area): bool => $area->key === 'platform');
 
     // Root → leaf. The list used to read Environments, Accounts, Organizations — and the
     // first entry is 'Customers' now, because a customer is not an account and the rail was
     // the last place still saying so while the URL beneath it already said /customers.
-    expect(collect($platform->pages)->pluck('label')->all())
+    expect(collect($platform->pages())->pluck('label')->all())
         ->toBe(['Customers', 'Environments', 'Organizations']);
 });
 

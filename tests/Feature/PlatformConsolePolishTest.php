@@ -42,19 +42,28 @@ it('offers an account-less operator no area that needs an account', function ():
     // would be empty for a reason that has nothing to do with this test.
     polishOperator();
 
-    $labels = collect(app(ConsoleNavigation::class)->operator()->areas)
-        ->pluck('label')->all();
+    // THE RENDERED RAIL, not a nav tree. This read `ConsoleNavigation::operator()` and
+    // asserted that the platform section's own areas were not the account console's — which
+    // was true by construction and therefore proved nothing. There is one rail now, and
+    // whether it offers an operator a dead area is a live question rather than a structural
+    // guarantee, so it has to be asked of the HTML.
+    $html = (string) $this->get(route('platform.environments'))->assertOk()->getContent();
 
-    // The shell this section renders in used to carry the account console's areas as
-    // well, folding the platform ones in for whoever held both. Two of those areas were
-    // dead for an operator who buys nothing: Overview › Projects explained what a project
-    // is and gated its only CTA off, and Personal › Profile rendered an empty form bound
-    // to nobody. They are pages of the ONE console now, gated on what the acting
-    // organization owns — so this shell carries the platform section and nothing else,
-    // which is a stronger statement of the same property.
-    expect($labels)->not->toContain('Overview')
-        ->and($labels)->not->toContain('Personal')
-        ->and($labels)->toContain('Platform');
+    // The areas that were dead for an operator who buys nothing: Overview › Projects
+    // explained what a project is and gated its only CTA off, and Personal › Profile
+    // rendered an empty form bound to nobody. Both are pages of the ONE console now, gated
+    // on what the acting organization owns — an operator's organization owns no identity
+    // provider, so the `identity-platform` feature gates empty the area and the layout
+    // drops an area with no pages left.
+    expect($html)->not->toContain(route('projects'))
+        ->and($html)->not->toContain(route('billing'))
+        ->and($html)->not->toContain(route('organization-settings'))
+        // …and the platform section IS there, or the assertions above pass on an empty page.
+        ->and($html)->toContain(route('platform.customers'))
+        ->and($html)->toContain(route('platform.operators'))
+        // Their own security page survives, and should: it is the one area that belongs to
+        // every signed-in person rather than to an organization.
+        ->and($html)->toContain(route('account'));
 });
 
 it('lands an account-less operator on the platform rather than on an empty Projects page', function (): void {

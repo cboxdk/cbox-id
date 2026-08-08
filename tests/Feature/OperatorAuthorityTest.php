@@ -5,8 +5,8 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlatformAuth;
+use App\Providers\ConsoleServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\MfaMandate;
@@ -75,11 +75,20 @@ function anAccountOwner(string $email = 'owner@acme.example'): object
 }
 
 /**
- * Route names of every page in the rail, flattened.
+ * Route names of every page the rail would actually DRAW, flattened.
  *
- * Read through `groups()` — the same projection the layout consumes — rather than off the
- * value objects. A rail that is correct in the model and wrong in the projection is still
- * a rail nobody can use, and the projection is where the layout gets its answer.
+ * Read from the registry with the layout's own feature filter applied, because that is
+ * where the answer now comes from: the platform section is three areas of the one console
+ * ({@see ConsoleServiceProvider}), not a separate tree in a separate shell,
+ * and its pages are gated by the `platform.operator` feature exactly as Billing is gated
+ * by `organization.billing`.
+ *
+ * THE FILTER IS THE POINT, and reading `areas()` raw is what makes this test lie. Every
+ * platform page is present in the registry for every visitor — an area is a declaration,
+ * not a grant — so an assertion against the unfiltered registry says "the platform section
+ * exists", which is true for a member and for an operator alike. Mirrors the reject in
+ * `layouts/app.blade.php`; a rail correct in the model and wrong in the projection is
+ * still a rail nobody can use.
  *
  * @return list<string>
  */
@@ -87,9 +96,13 @@ function railRoutes(): array
 {
     $routes = [];
 
-    foreach (app(ConsoleNavigation::class)->operator()->groups() as $area) {
-        foreach ($area['pages'] as $page) {
-            $routes[] = $page['route'];
+    foreach (Console::nav()->areas() as $area) {
+        foreach ($area->pages() as $page) {
+            if ($page->feature !== null && ! Console::featureActive($page->feature)) {
+                continue;
+            }
+
+            $routes[] = $page->route;
         }
     }
 
@@ -100,12 +113,19 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
     $member = anAccountOwner();
     signInAsMember($member->id);
 
-    // The rail is the CONSOLE's, which is assembled from the plugin registry — the
-    // platform section has a rail of its own and a shell of its own, and the gate on
-    // reaching either is the operator record rather than a nav entry.
+    // Three refusals, and they are not the same refusal. The feature is what empties the
+    // areas; the rendered console is what proves the layout honours it (an area whose
+    // pages are all dropped is dropped whole, so a member's rail names no platform page);
+    // and the 404 is what proves the rail is not the authorization — a member who types
+    // the URL is turned away by AuthenticateOperator whatever the nav says.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
-        ->and(collect(Console::nav()->areas())->pluck('key')->all())
-        ->not->toContain('platform');
+        ->and(railRoutes())->not->toContain('platform.customers')
+        ->and(railRoutes())->not->toContain('platform.environments')
+        ->and(railRoutes())->not->toContain('platform.operators');
+
+    $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
+
+    expect($html)->not->toContain('/platform/');
 
     $this->get('/platform')->assertNotFound();
 })->group('security');
@@ -129,9 +149,19 @@ it('gives the platform pages to an operator, in the same rail', function (): voi
 
     signInAsMember($member->id);
 
+    // IN THE SAME RAIL, which is what the test's name has always claimed and what it could
+    // not check while the platform section had a rail of its own: the assertion is that
+    // one rendered console page carries BOTH a customer area and the platform areas, so an
+    // operator moves between them without changing shells.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeTrue()
         ->and(railRoutes())->toContain('platform.environments')
         ->and(railRoutes())->toContain('platform.operators');
+
+    $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
+
+    expect($html)->toContain(route('platform.customers'))
+        ->and($html)->toContain(route('platform.operators'))
+        ->and($html)->toContain(route('dashboard'));
 })->group('security');
 
 /**

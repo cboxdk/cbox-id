@@ -185,62 +185,15 @@ class ConsoleNavigation
     }
 
     /**
-     * The platform section — whoever runs this deployment, above every account.
-     *
-     * These were a console of their own — separate prefix, separate layout, separate
-     * sign-in — and the separation was never a security boundary. It was a consequence of
-     * `platform_operators` being a second credential store: with no way to ask "is this
-     * session staff", the only way to gate the pages was to put a different door in front
-     * of them. The operator is a subject now, so the question has an answer.
-     *
-     * This used to be folded into the account console's rail as well, for a person who
-     * held both. There is no account console: those pages are an area of the ONE console
-     * ({@see ConsoleServiceProvider}'s `identity-platform`), gated on what
-     * the acting organization owns rather than on which shell rendered them. What is left
-     * here is one section, in one shell, and it is the only thing this class still
-     * describes besides the environment plane.
-     */
-    public function operator(): ConsoleNav
-    {
-        return new ConsoleNav(
-            // ROOT FIRST, then leaf. The hierarchy here is account → project →
-            // environment, and this list used to read the other way: Environments,
-            // Customers, Organizations — the leaf, then the root, then a tenant inside
-            // the leaf. An operator opening the console was handed six planes called
-            // `production`, `staging`, `acme`, `acme-staging`, `billing-portal` and
-            // `demo-co` and no way to tell that `billing-portal` is Acme's.
-            //
-            // The account is the object at this altitude: it is the customer, and every
-            // environment on the install is a detail inside one (or, for exactly two
-            // rows, deliberately inside none — see {@see \App\Platform\Console\EnvironmentLineage}).
-            new NavArea('Platform', 'layers',
-                new NavPage('platform.customers', 'Customers'),
-                new NavPage('platform.environments', 'Environments'),
-                new NavPage('platform.organizations', 'Organizations'),
-            ),
-            // Icons distinct at 18px, which is the only size the collapsed rail renders
-            // them at. Insights and Platform were both `dashboard` and `layers` when
-            // these three stood beside the account areas in one rail, which is two pairs
-            // of near-identical glyphs in a control whose entire job is to be told apart
-            // at a glance. Insights takes `chart` and Administration takes `lock`.
-            new NavArea('Insights', 'chart',
-                new NavPage('platform.usage', 'Usage'),
-                new NavPage('platform.search', 'Search'),
-            ),
-            new NavArea('Administration', 'lock',
-                new NavPage('platform.operators', 'Operators'),
-                new NavPage('platform.security', 'Security'),
-            ),
-        );
-    }
-
-    /**
      * Every navigation this class describes, for the code that has only a route name and
      * needs to find which area owns it.
      *
-     * The organization plane is deliberately absent and always was: it is assembled from
-     * the plugin registry, so {@see ConsoleLocation} reads it through `Console::nav()` and
-     * consults this only for what the registry cannot answer.
+     * ONE ENTRY, and the class is now a hair from being a single method. Both the
+     * organization plane and the platform section are assembled from the plugin registry
+     * ({@see ConsoleServiceProvider}), so {@see ConsoleLocation} reads
+     * them through `Console::nav()` and consults this only for what the registry cannot
+     * answer — which is the environment plane, whose rail is declared statically because
+     * it renders on tenant hosts where the registry's organization areas do not apply.
      *
      * @return list<ConsoleNav>
      */
@@ -248,7 +201,6 @@ class ConsoleNavigation
     {
         return [
             $this->environment(),
-            $this->operator(),
         ];
     }
 }

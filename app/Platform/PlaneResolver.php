@@ -7,6 +7,7 @@ namespace App\Platform;
 use App\Http\Middleware\SetEnvironment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
@@ -127,6 +128,71 @@ final class PlaneResolver
     public function servesIssuer(): bool
     {
         return $this->onTenantEnvironment();
+    }
+
+    /**
+     * Whether the FIRST-PARTY token endpoints are served here — `/oauth/authorize`,
+     * `/oauth/token`, `/oauth/revoke`, and only for a client the platform itself owns.
+     *
+     * THE PLATFORM ROOT HAS SUBJECTS, and that is what makes this necessary. The root is
+     * not an identity provider for anybody's app and {@see servesIssuer()} is the wall
+     * that says so — no discovery document, no JWKS, no dynamic registration, no SCIM, no
+     * SAML bindings. But the fold made the root a tenant whose people sign in: every
+     * customer's owner and every operator is an ordinary subject there. The console we
+     * serve them offers trusted devices at `/account/devices`, and enrolling one is an
+     * authorization-code flow against the host they are standing on.
+     *
+     * So the deployment was promising a feature on the root and 404ing the endpoints it
+     * needs. `BootstrapController` advertised `issuer: https://cboxid.com` with a real
+     * client_id, and every URL that document implies was absent — two components
+     * disagreeing about whether the root is an issuer, with the customer-facing half
+     * telling the truth about what the console offers.
+     *
+     * NARROW ON PURPOSE, and the narrowness is the security property rather than an
+     * economy. Opening the issuer plane on the root would open it for every client in the
+     * root ENVIRONMENT — and an organization admin signed in at the root can create OAuth
+     * clients there from Developers › Apps, which are environment-owned. That would let a
+     * customer turn the buyer host into an identity provider for their own app, and phish
+     * every other customer's owner on the one host they all trust. A first-party check is
+     * what keeps this a door for the binary we ship rather than a hole in the wall.
+     *
+     * On a tenant host this is simply {@see servesIssuer()}: those hosts are issuers for
+     * every client they hold, and asking for a first-party flag there would refuse the
+     * ordinary third-party flows that are the entire point of the plane.
+     */
+    public function servesFirstPartyIssuer(string $clientId): bool
+    {
+        if ($this->servesIssuer()) {
+            return true;
+        }
+
+        $root = $this->platformRootKey();
+
+        if (! $this->contextIsPlatformRoot() || $clientId === '' || $root === null) {
+            return false;
+        }
+
+        // PLATFORM-OWNED as well as first-party. `first_party` alone is a trust flag that
+        // can sit on a client scoped to one organization — the consent-skip rule in
+        // {@see Client} draws exactly this distinction — and an org-scoped client on the
+        // root is the case this method exists to refuse. A null organization_id means the
+        // platform minted it, which for the root environment is only ever us.
+        //
+        // THE ENVIRONMENT IS NAMED, not inherited. `clients` is environment-owned and the
+        // scope is deny-by-default, so reading it through the ambient scope makes this
+        // answer depend on whether some middleware upstream has run yet — and a gate that
+        // answers "no such client" because it was asked too early is a gate that fails
+        // CLOSED for our own binary and stays closed for everybody, which reads as the
+        // very 404 this exists to fix. The root's key is the only environment whose
+        // clients could be admitted here anyway; asking for it outright says so.
+        return $this->environments->withoutScope(
+            fn (): bool => Client::query()
+                ->where('environment_id', $root)
+                ->where('client_id', $clientId)
+                ->where('first_party', true)
+                ->whereNull('organization_id')
+                ->exists(),
+        ) === true;
     }
 
     /**

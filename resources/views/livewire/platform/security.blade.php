@@ -15,7 +15,7 @@ use Livewire\Volt\Component;
  * keyed on the operator identity (a separate plane from tenant subjects). Auth is
  * re-checked in boot() on every request, like the other operator components.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Security', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends Component
 {
     public ?string $secret = null;
 

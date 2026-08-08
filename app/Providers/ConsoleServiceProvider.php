@@ -9,6 +9,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Contracts\CurrentContext;
+use Cbox\Console\Kit\Contracts\NavRegistry;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Support\ServiceProvider;
 
@@ -27,7 +28,7 @@ use Illuminate\Support\ServiceProvider;
  * is rebuilt. The console shipped two such ties (Logs/Security at 60, Settings/
  * Connectors at 70). Reserved: 10 Overview · 15 Identity platform · 20 People · 30
  * Sign-in · 40 Access control · 50 Developers · 60 Connectors · 70 Logs · 80 Settings ·
- * 90 My account.
+ * 90 My account · 100 Platform · 110 Insights · 120 Administration.
  */
 final class ConsoleServiceProvider extends ServiceProvider
 {
@@ -70,7 +71,10 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('environment-keys', 'Environment keys', feature: 'organization.environments', order: 40)
             ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
             ->page('activity', 'Activity', feature: 'organization.members', order: 60)
-            ->page('billing', 'Billing', feature: 'organization.billing', order: 70)
+            // 70 is the BILLING module's, added by its own provider — see modules/billing.
+            // Left as a gap rather than closed up: the orders in this area are unique
+            // across modules by contract, and renumbering to fill it would collide with a
+            // module the host cannot see.
             ->page('organization-settings', 'Organization settings', feature: 'organization.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
@@ -120,6 +124,56 @@ final class ConsoleServiceProvider extends ServiceProvider
         // layout gates the admin-only areas above by role, this one is universal).
         $nav->area('account', 'My account', 'key', 90)
             ->page('account', 'Security', order: 10);
+
+        $this->platformAreas($nav);
+    }
+
+    /**
+     * THE PLATFORM SECTION — whoever runs this deployment, standing above every customer.
+     *
+     * These pages had a console of their own: their own prefix, their own layout
+     * (`layouts/platform`), their own navigation tree, built by hand in
+     * `ConsoleNavigation::operator()`. Signing in at the root host and clicking through to
+     * `/platform` read as arriving somewhere else — a second product — when it is the same
+     * person, the same session, and the same rail with three more areas on it.
+     *
+     * So they are areas here, seeded into the same registry as everything above, and the
+     * one console renders them exactly the way it renders Billing or Webhooks. What made
+     * that possible is that the operator is a SUBJECT: `platform_operators` used to be a
+     * second credential store, and with no way to ask "is this session staff" the only way
+     * to gate these pages was to put a different door — and therefore a different shell —
+     * in front of them. The question has an answer now, so the gate is a feature like any
+     * other and the shell is the shell everybody else gets.
+     *
+     * ORDERED LAST, BELOW `My account`, because that is what they are: extra items for the
+     * few people who administer the install, appended to the console every customer sees.
+     *
+     * ROOT FIRST, THEN LEAF, inside the Platform area. The hierarchy is customer → project
+     * → environment, and this list used to read the other way (Environments, Customers,
+     * Organizations — the leaf, then the root, then a tenant inside the leaf). An operator
+     * was handed six planes called `production`, `staging`, `acme`, `acme-staging`,
+     * `billing-portal` and `demo-co` with no way to tell that `billing-portal` is Acme's.
+     */
+    private function platformAreas(NavRegistry $nav): void
+    {
+        // ICONS DISTINCT AT 18px, which is the only size the collapsed rail draws them at
+        // — and the reason `rocket` rather than the `layers` this area carried in its own
+        // shell. It never shared a rail with `identity-platform` before, and that area is
+        // `layers` too: side by side they are one glyph appearing twice in a control whose
+        // whole job is to be told apart at a glance. Insights takes `chart` and
+        // Administration `lock`, both unused by the areas above.
+        $nav->area('platform', 'Platform', 'rocket', 100)
+            ->page('platform.customers', 'Customers', feature: 'platform.operator', order: 10)
+            ->page('platform.environments', 'Environments', feature: 'platform.operator', order: 20)
+            ->page('platform.organizations', 'Organizations', feature: 'platform.operator', order: 30);
+
+        $nav->area('platform-insights', 'Insights', 'chart', 110)
+            ->page('platform.usage', 'Usage', feature: 'platform.operator', order: 10)
+            ->page('platform.search', 'Search', feature: 'platform.operator', order: 20);
+
+        $nav->area('platform-admin', 'Administration', 'lock', 120)
+            ->page('platform.operators', 'Operators', feature: 'platform.operator', order: 10)
+            ->page('platform.security', 'Security', feature: 'platform.operator', order: 20);
     }
 
     /**
@@ -148,6 +202,17 @@ final class ConsoleServiceProvider extends ServiceProvider
         $features->register('organization.members', static fn (): bool => $can()?->canReadMembers() === true);
         $features->register('organization.manage', static fn (): bool => $can()?->canManageMembers() === true);
         $features->register('organization.environments', static fn (): bool => $can()?->canManageEnvironments() === true);
-        $features->register('organization.billing', static fn (): bool => $can()?->canReadBilling() === true);
+        // THE PLATFORM SECTION'S GATE, and the only thing standing between an ordinary
+        // customer and the pages that suspend customers. It is deliberately the same
+        // mechanism as every gate above rather than a stronger-looking one: a feature that
+        // is false drops the page, and an area with no pages left is dropped whole, so a
+        // non-operator's rail does not render the areas at all.
+        //
+        // THE RAIL IS NOT THE AUTHORIZATION. Each of these pages calls
+        // {@see ConsoleScope::assertPlatformOperator()} in its own `boot()`, which is what
+        // actually refuses the request; this only decides whether the rail offers a link
+        // to a page the visitor would be turned away from. Both ask the same ConsoleScope,
+        // which is why they cannot disagree about who is staff.
+        $features->register('platform.operator', static fn (): bool => app(ConsoleScope::class)->isPlatformOperator());
     }
 }

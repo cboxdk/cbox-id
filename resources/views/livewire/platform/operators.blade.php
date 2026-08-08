@@ -14,7 +14,7 @@ use Livewire\Volt\Component;
  * Manage platform operators — the identities above every environment. Operators
  * are never environment-owned, so this list is global (no scope to suspend).
  */
-new #[Layout('components.layouts.platform', ['title' => 'Operators', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Operators'])] class extends Component
 {
     public bool $creating = false;
 

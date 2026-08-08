@@ -73,9 +73,29 @@ function moduleConsoleRoutes(): array
     // not quietly drop it from coverage.
     $personal = ['devices.mine'];
 
+    // THE PLATFORM SECTION, which refuses a plain member HARDER than this sweep asserts
+    // and so cannot be swept by it. `AuthenticateOperator` answers 404 rather than 403 on
+    // purpose: 403 confirms the page exists, and a staff surface a stranger can enumerate
+    // is a disclosure. Asserting 403 over these would be asserting the weaker refusal.
+    //
+    // They are here at all because they are areas of the one console now — the registry
+    // this sweep reads is the same registry the platform rail renders from — so the
+    // exclusion is by AREA rather than by route name: a page added to the platform
+    // section later is excluded for the same reason without anybody remembering to
+    // extend a list.
+    //
+    // Not dropped from coverage. OperatorAuthorityTest proves both halves on the same
+    // pages — a non-operator gets 404 and sees no platform entry in their rail, an
+    // operator gets the pages and the rail — which is strictly more than this asserts.
+    $platformAreas = ['platform', 'platform-insights', 'platform-admin'];
+
     $routes = [];
 
     foreach (Console::nav()->areas() as $area) {
+        if (in_array($area->key, $platformAreas, true)) {
+            continue;
+        }
+
         foreach ($area->pages() as $page) {
             if (! in_array($page->route, $hostRoutes, true)
                 && ! in_array($page->route, $personal, true)

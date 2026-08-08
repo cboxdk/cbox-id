@@ -56,6 +56,30 @@ return [
      */
     'api' => [
         'middleware' => ['plane:issuer'],
+
+        /*
+         * The TOKEN endpoints (`/oauth/token`, `/oauth/revoke`) sit one notch wider than
+         * the rest of the surface, and only on the platform root.
+         *
+         * The root is not an identity provider and everything above stays absent there.
+         * But it IS a tenant whose people sign in — every customer's owner and every
+         * operator is an ordinary subject of it — and the console it serves them offers
+         * trusted devices at `/account/devices`. Enrolling one is an authorization-code
+         * flow against the host they are standing on, so the root has to be able to issue
+         * that one client its tokens.
+         *
+         * `plane:first-party` is `plane:issuer` plus exactly that: on the root it admits a
+         * PLATFORM-OWNED first-party client and refuses every other, which matters because
+         * an organization admin signed in at the root can create OAuth clients there from
+         * Developers › Apps. Without the first-party test this key would let a customer
+         * turn the buyer host into an identity provider for their own app.
+         *
+         * It was a live 404: `.well-known/cbox-authenticator` advertised
+         * `issuer: https://cboxid.com` with a real client_id while every endpoint that
+         * document implies was absent on that host — so scanning the enrolment QR worked
+         * on a tenant subdomain and failed on the root.
+         */
+        'first_party_middleware' => ['plane:first-party'],
     ],
 
     /*

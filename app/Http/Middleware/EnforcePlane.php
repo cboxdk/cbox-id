@@ -23,6 +23,12 @@ use Symfony\Component\HttpFoundation\Response;
  *  - `plane:issuer` — the identity-provider protocol surface: discovery, JWKS,
  *    `/oauth/*`, the SAML IdP bindings, SCIM. Served on every host EXCEPT the platform
  *    root, which is an issuer for nobody.
+ *  - `plane:first-party` — the three token endpoints (`/oauth/authorize`, `/oauth/token`,
+ *    `/oauth/revoke`), which is `issuer` plus one narrow exception: on the platform root
+ *    they are served for a PLATFORM-OWNED first-party client and refused for every other.
+ *    The root holds subjects who sign in and enrol authenticators, so it must be able to
+ *    issue them tokens for the binary we ship — without becoming an issuer for the OAuth
+ *    clients an organization admin can create there.
  *  - `plane:environment` — the environment-admin console under `/admin`, reached by
  *    redeeming the account plane's signed handoff. Never on the account plane itself.
  *
@@ -49,7 +55,17 @@ final class EnforcePlane
      *
      * @var list<string>
      */
-    private const PLANES = ['account', 'console', 'issuer', 'environment', 'operator'];
+    private const PLANES = ['account', 'console', 'issuer', 'first-party', 'environment', 'operator'];
+
+    /**
+     * Where a client identifier is found on the endpoints carrying `plane:first-party`.
+     *
+     * `/oauth/authorize` takes it in the query string; `/oauth/token` and `/oauth/revoke`
+     * take it in the form body — the authenticator is a PUBLIC client, so it never
+     * authenticates with a Basic header and `client_id` is always stated outright.
+     * `$request->input()` reads both, which is why this is one lookup rather than three.
+     */
+    private const CLIENT_ID = 'client_id';
 
     public function __construct(
         private readonly PlaneResolver $planes,
@@ -84,6 +100,12 @@ final class EnforcePlane
             // so — the app's own /oauth/authorize and SAML IdP overrides included, or
             // they would be the holes left in it.
             'issuer' => $this->planes->servesIssuer(),
+            // The token endpoints, which the platform root serves for the binary we ship
+            // and for nothing else. See PlaneResolver::servesFirstPartyIssuer() for why
+            // the root needs them at all and why the wall above stays exactly where it is.
+            'first-party' => $this->planes->servesFirstPartyIssuer(
+                is_string($id = $request->input(self::CLIENT_ID)) ? $id : '',
+            ),
             // The environment-admin console. Asked as its own question rather than
             // borrowed from `issuer`: same answer today, different reason, and a shared
             // name is how two surfaces end up moving together when only one should.

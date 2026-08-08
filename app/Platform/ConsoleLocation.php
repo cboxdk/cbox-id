@@ -19,12 +19,14 @@ use Cbox\Console\Kit\Facades\Console;
  * sidebar renders from makes that class of bug unrepresentable, and a plugin's page
  * gets a correct eyebrow for free.
  *
- * Two sources, because the console has two kinds of navigation. The organization console
- * is assembled at runtime from the plugin registry, so it can only be read through
- * {@see Console::nav()}. The environment plane and the platform section are fixed and
- * declared in {@see ConsoleNavigation}. Until both were consulted this answered null on
- * all 41 account, environment and operator pages — every one of them rendered with no
- * eyebrow at all, which is why the feature looked like it only half worked.
+ * Two sources, because the console has two kinds of navigation. Everything the ONE console
+ * renders — the organization areas and the platform section alike — is assembled at
+ * runtime from the plugin registry, so it can only be read through {@see Console::nav()}.
+ * The environment plane is fixed and declared in {@see ConsoleNavigation}, because it
+ * renders on tenant hosts where those registry areas do not apply. Until both were
+ * consulted this answered null on all 41 account, environment and operator pages — every
+ * one of them rendered with no eyebrow at all, which is why the feature looked like it
+ * only half worked.
  */
 final readonly class ConsoleLocation
 {

@@ -20,6 +20,7 @@ use App\Platform\TrustedHosts;
 use App\Providers\ConsoleServiceProvider;
 use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Analytics\AnalyticsServiceProvider;
+use Cbox\Id\Billing\BillingServiceProvider;
 use Cbox\Id\Compliance\ComplianceServiceProvider;
 use Cbox\Id\Connectors\ConnectorsServiceProvider;
 use Cbox\Id\Devices\DevicesServiceProvider;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Each still registers its own nav, routes, views, migrations and feature
         // gate through the same console-kit sockets a third-party plugin would use.
         AnalyticsServiceProvider::class,
+        BillingServiceProvider::class,
         ComplianceServiceProvider::class,
         ConnectorsServiceProvider::class,
         DevicesServiceProvider::class,

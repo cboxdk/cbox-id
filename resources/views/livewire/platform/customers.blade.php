@@ -2,16 +2,25 @@
 
 declare(strict_types=1);
 
+use App\Mail\PasswordResetMail;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\MailLinks;
 use Carbon\CarbonInterface;
+use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -37,12 +46,122 @@ use Livewire\Volt\Component;
  * lands on the customer's own page (`platform.customers.show`), where organization → project →
  * environment is walkable.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Customers', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends Component
 {
     /** Re-check operator AUTHORITY on every request, including Livewire actions. */
     public function boot(ConsoleScope $scope): void
     {
         abort_unless($scope->isPlatformOperator(), 404);
+    }
+
+    /** Whether the new-customer form is open. */
+    public bool $creating = false;
+
+    public string $newName = '';
+
+    public string $newOwnerEmail = '';
+
+    public string $newOwnerName = '';
+
+    public int $newEnvironmentLimit = 2;
+
+    /** @return array<string, mixed> */
+    public function rules(): array
+    {
+        return [
+            'newName' => ['required', 'string', 'min:2', 'max:120'],
+            // Not unique: one person can own several customers, and
+            // TenantProvisioner reuses the subject that address already has rather than
+            // minting a second identity for them.
+            //
+            // `email` rather than `email:rfc,dns`, matching signup. The `dns` check is a
+            // live MX lookup on the request path, and refusing an address because its
+            // domain has no mail record YET is wrong on exactly this form: an operator
+            // onboards a customer before their DNS is cut over more often than after.
+            'newOwnerEmail' => ['required', 'email', 'max:255'],
+            'newOwnerName' => ['required', 'string', 'min:2', 'max:120'],
+            'newEnvironmentLimit' => ['required', 'integer', Rule::in([1, 2, 3, 5, 10, 25])],
+        ];
+    }
+
+    /**
+     * Stand up a whole customer — the organization, its owner, its first IdP product and
+     * that product's first environment.
+     *
+     * THERE WAS NO WAY TO DO THIS. `TenantProvisioner::provision()` is the package's own
+     * entry point, exercised by the installer, by signup and by tests, and the operator
+     * console — the one surface whose entire job is running the deployment — had no caller
+     * for it anywhere. An operator could suspend a customer, walk their estate and
+     * impersonate their people, and could not create one. Onboarding a customer who had
+     * not self-served meant tinker on a production console.
+     *
+     * NO PASSWORD IS CHOSEN FOR THE OWNER, and that is the whole shape of this method.
+     * The blueprint requires one, so it gets a throwaway that is generated here, never
+     * rendered, never logged and never returned — the owner is then sent a reset link and
+     * picks their own. An operator who typed a password for somebody else would be an
+     * operator who knows a customer's credential, which is precisely the authority the
+     * platform is not supposed to have over its customers' identities. If the address
+     * already holds a Cbox ID the provisioner attaches to it and the existing password
+     * stands untouched.
+     *
+     * `provision()` is one transaction, so a failure leaves no half-born customer. The
+     * mail is sent AFTER it returns for the same reason: a reset link for an organization
+     * that rolled back is a link to nowhere.
+     */
+    public function create(
+        TenantProvisioner $provisioner,
+        PasswordReset $resets,
+        MailLinks $links,
+        ConsoleScope $scope,
+    ): void {
+        abort_unless($scope->isPlatformOperator(), 404);
+
+        $this->validate();
+
+        // Normalized ONCE and reused for the mail, rather than read back off the created
+        // subject: `Subject::$email` is nullable, and the honest way to satisfy that is to
+        // send to the address that was actually provisioned rather than to assert the
+        // model cannot have lost it.
+        $ownerEmail = mb_strtolower(trim($this->newOwnerEmail));
+
+        try {
+            $tenant = $provisioner->provision(new TenantBlueprint(
+                organizationName: trim($this->newName),
+                ownerEmail: $ownerEmail,
+                ownerName: trim($this->newOwnerName),
+                // 64 random characters, discarded on the next line. It exists only because
+                // the blueprint's contract requires a credential; nothing here can read it
+                // back and nobody is ever told it.
+                ownerPassword: Str::random(64),
+                environmentLimit: $this->newEnvironmentLimit,
+            ));
+        } catch (EnvironmentLimitReached|\InvalidArgumentException $e) {
+            // The two refusals a valid form can still hit: a domain already in use, and a
+            // deployment with no platform root. Both are sentences worth showing rather
+            // than a 500 — the second in particular means "run the installer", which an
+            // operator can act on.
+            $this->addError('newName', $e->getMessage());
+
+            return;
+        }
+
+        // The owner's way in. `request()` returns null only for an address with no
+        // account, which cannot happen here — provisioning just guaranteed one — so a null
+        // means something changed underneath and the operator should be told the customer
+        // exists but the invitation did not go.
+        $token = $resets->request($ownerEmail);
+
+        if ($token === null) {
+            $this->dispatch('toast', message: 'Customer created, but the owner could not be sent a link. Ask them to use "Forgot password".');
+        } else {
+            Mail::to($ownerEmail)->send(new PasswordResetMail($links->route('password.reset', $token)));
+
+            $this->dispatch('toast', message: 'Customer created. '.$ownerEmail.' has been emailed a link to set their password.');
+        }
+
+        $this->reset(['creating', 'newName', 'newOwnerEmail', 'newOwnerName', 'newEnvironmentLimit']);
+
+        $this->redirectRoute('platform.customers.show', $tenant->organization->id, navigate: true);
     }
 
     /**
@@ -151,7 +270,71 @@ new #[Layout('components.layouts.platform', ['title' => 'Customers', 'width' => 
 
 <div>
     <x-page-header title="Customers"
-                   subtitle="Every customer on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth." />
+                   subtitle="Every customer on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth.">
+        <x-slot:actions>
+            <button type="button" wire:click="$toggle('creating')" class="btn btn-primary"
+                    :aria-expanded="@js($creating)">
+                <x-icon name="plus" class="w-4 h-4" aria-hidden="true" /> New customer
+            </button>
+        </x-slot:actions>
+    </x-page-header>
+
+    {{-- Onboarding a customer who did not self-serve. This page could suspend a customer,
+         walk their estate and impersonate their people, and could not create one — so the
+         only way to stand one up was tinker on a production console. --}}
+    @if ($creating)
+        <form wire:submit="create" class="cbx-panel mt-6 p-6">
+            <h2 class="text-base font-semibold">New customer</h2>
+            <p class="mt-1 text-sm" style="color:var(--muted-foreground)">
+                Creates the organization, its owner, its first product and that product's production environment.
+                The owner is emailed a link to set their own password — you do not choose one for them.
+            </p>
+
+            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label for="new-name" class="label">Customer name</label>
+                    <input id="new-name" type="text" wire:model="newName" class="input" autocomplete="organization" required>
+                    @error('newName')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
+                    <label for="new-owner-name" class="label">Owner name</label>
+                    <input id="new-owner-name" type="text" wire:model="newOwnerName" class="input" autocomplete="name" required>
+                    @error('newOwnerName')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
+                    <label for="new-owner-email" class="label">Owner email</label>
+                    <input id="new-owner-email" type="email" wire:model="newOwnerEmail" class="input" autocomplete="email" required>
+                    @error('newOwnerEmail')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+                    <p class="mt-1 text-xs" style="color:var(--muted-foreground)">
+                        If this address already holds a Cbox ID, it is reused — they will own both.
+                    </p>
+                </div>
+
+                <div>
+                    <label for="new-env-limit" class="label">Environment allowance</label>
+                    <select id="new-env-limit" wire:model="newEnvironmentLimit" class="input">
+                        @foreach ([1, 2, 3, 5, 10, 25] as $limit)
+                            <option value="{{ $limit }}">{{ $limit }}</option>
+                        @endforeach
+                    </select>
+                    @error('newEnvironmentLimit')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+                    <p class="mt-1 text-xs" style="color:var(--muted-foreground)">
+                        The plan allowance on their first product. Billing hangs off the product, not the customer.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex items-center gap-3">
+                <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">
+                    <span wire:loading.remove wire:target="create">Create customer</span>
+                    <span wire:loading wire:target="create">Creating…</span>
+                </button>
+                <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
+            </div>
+        </form>
+    @endif
 
     <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('customer', count($rows)) }} found.</p>
 

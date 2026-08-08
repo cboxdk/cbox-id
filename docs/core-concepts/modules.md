@@ -1,23 +1,28 @@
 ---
 title: Console modules
 weight: 3
-description: The six in-tree console modules — analytics, compliance, connectors, devices, risk-plus and whitelabel — what each does, and why they are vendored rather than installed.
+description: The seven in-tree console modules — analytics, billing, compliance, connectors, devices, risk-plus and whitelabel — what each does, and why they are vendored rather than installed.
 ---
 
 # Console modules
 
-Six capability areas live under `modules/` rather than in `app/`:
+Seven capability areas live under `modules/` rather than in `app/`:
 
 | Module | Console area | What it adds |
 | --- | --- | --- |
 | `analytics` | Analytics | Authentication activity dashboards over a pluggable event store. See [Analytics storage](../operations/analytics.md). |
+| `billing` | Identity platform → Billing | The organization's usage rollup and its per-project plan allowances. Off switches the page and its route off entirely — a deployment that does not bill carries no billing surface. Set `CBOX_BILLING_ENABLED=false`. |
 | `compliance` | Compliance | Audit-trail export to a JSONL bundle or a SIEM endpoint, chain verification, retention, and a data-subject export. |
 | `connectors` | Connectors | One catalog and connections view over outbound SCIM provisioning, webhooks, inbound directory sync and upstream IdP federation. |
 | `devices` | Sign-in → Devices | A phone as an authenticator: approval pushes on the CIBA path, security alerts, and the REST surface the app talks to. Off by default. See [Trusted devices](../guides/trusted-devices.md). |
 | `risk-plus` | Security | Adaptive-risk signals (impossible travel, new device) plugged into the risk engine, and a console to review elevated events. |
 | `whitelabel` | Settings → Branding | Per-tenant branding: palette, logo, favicon, app name, custom domain and email sender. |
 
-**All six are always present.** There is nothing to license, unlock or install.
+**All seven are always present.** There is nothing to license, unlock or install — but
+several can be switched off, and off means *absent*: no route, no nav entry, no page. A
+member who may not read billing is redirected to Projects by the page itself; a
+deployment with `billing` switched off has no `/billing` to redirect from. Those are
+different questions and the module asks both.
 
 ## Why they are modules and not just `app/` code
 

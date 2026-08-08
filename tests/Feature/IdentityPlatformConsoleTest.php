@@ -531,7 +531,7 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
     // …and at the page, not only in the rail — a rail is not an authorization check. They
     // are an OWNER of their own organization, so this is the area refusing them rather
     // than the console.
-    Volt::test('console.billing')->assertRedirect(route('projects'));
+    Volt::test('billing')->assertRedirect(route('projects'));
 })->group('security');
 
 it('takes the area away from somebody who belongs to no organization', function (): void {
@@ -563,7 +563,7 @@ it('takes the area away from somebody who belongs to no organization', function 
         ->and(identityPlatformPages())->toBe([]);
 
     // And at the page too, because a rail is not an authorization check.
-    Volt::test('console.billing')->assertRedirect(route('projects'));
+    Volt::test('billing')->assertRedirect(route('projects'));
 })->group('security');
 
 it('takes the area away when the acting organization is not the person\'s own', function (): void {

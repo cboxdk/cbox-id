@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "cboxdk/cbox-id",
     "type": "project",
-    "description": "Cbox ID — the hosted, self-hostable identity platform app (admin console + hosted cloud) built on cboxdk/laravel-id.",
+    "description": "Cbox ID \u2014 the hosted, self-hostable identity platform app (admin console + hosted cloud) built on cboxdk/laravel-id.",
     "keywords": [
         "cbox",
         "identity",
@@ -18,7 +18,7 @@
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^0.1.0",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^1.0",
+        "cboxdk/laravel-id": "^1.1",
         "cboxdk/laravel-postal": "^0.1.1",
         "cboxdk/laravel-queue-autoscale": "^3.0",
         "cboxdk/laravel-queue-metrics": "^3.2",
@@ -48,6 +48,7 @@
         "psr-4": {
             "App\\": "app/",
             "Cbox\\Id\\Analytics\\": "modules/analytics/src/",
+            "Cbox\\Id\\Billing\\": "modules/billing/src/",
             "Cbox\\Id\\Compliance\\": "modules/compliance/src/",
             "Cbox\\Id\\Connectors\\": "modules/connectors/src/",
             "Cbox\\Id\\Devices\\": "modules/devices/src/",

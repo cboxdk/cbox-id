@@ -22,7 +22,7 @@ use Livewire\Volt\Component;
  * sub-unit, arbitrary depth). Queries are naturally scoped to the pinned
  * environment, so this is the whole plane and never another's.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Organizations', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Organizations'])] class extends Component
 {
     public bool $creating = false;
 

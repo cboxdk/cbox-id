@@ -28,7 +28,7 @@ use Livewire\Volt\Component;
  * "View" hands off to a small controller jump that re-points the console at the
  * result's OWN plane first, so the plane-scoped detail page then resolves.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Search', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Search'])] class extends Component
 {
     /** The query string, bound to the URL so a search is shareable/bookmarkable. */
     #[Url]

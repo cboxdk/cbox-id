@@ -39,7 +39,7 @@ use Livewire\Volt\Component;
  * the whole table rather than one per row, and so the two environments that legitimately
  * have no account are NAMED rather than rendered as a blank cell.
  */
-new #[Layout('components.layouts.platform', ['title' => 'Environments', 'width' => '72rem'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Environments'])] class extends Component
 {
     public bool $creating = false;
 

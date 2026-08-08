@@ -217,7 +217,7 @@ $authorize = Volt::route('/oauth/authorize', 'oauth.consent')
     // one issues the longest-lived credential of the set: a refresh token that
     // outlives both the impersonation window and the operator's session, attributed
     // to the person being impersonated.
-    ->middleware(['plane:issuer', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize');
 
 /*
@@ -241,7 +241,7 @@ if (! is_string($consentAction) && ! is_callable($consentAction)) {
 }
 
 Route::post('/oauth/authorize', $consentAction)
-    ->middleware(['plane:issuer', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize.post');
 
 /*
@@ -332,7 +332,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Volt::route('/environment-keys', 'console.environment-keys')->name('environment-keys');
     Volt::route('/environment-domains', 'console.environment-domains')->name('environment-domains');
     Volt::route('/activity', 'console.activity')->name('activity');
-    Volt::route('/billing', 'console.billing')->name('billing');
+    // `/billing` is NOT here. It is the billing module's route, registered by
+    // {@see \Cbox\Id\Billing\BillingServiceProvider} through the same ConsoleRoutes
+    // socket a third-party plugin would use — so a deployment that does not bill, or an
+    // operator who turns the module off, has no route rather than a route that 404s
+    // somewhere deeper. See modules/billing.
     Volt::route('/organization-settings', 'console.organization-settings')->name('organization-settings');
     // Single sign-on: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — a connection

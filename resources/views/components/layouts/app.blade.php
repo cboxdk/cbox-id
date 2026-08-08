@@ -1,29 +1,4 @@
 @props(['title' => null])
-<!DOCTYPE html>
-<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {{-- Root paths, not /brand/*. Icon harvesters — password managers, link
-         unfurlers, browsers restoring a tab before the HTML parses — probe
-         /favicon.ico and /apple-touch-icon.png directly and never read these tags.
-         Laravel's skeleton ships an EMPTY favicon.ico, so that probe returned a
-         perfectly valid 200 with zero bytes for the life of the project. --}}
-    <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
-    <title>{{ $title ? $title.' · '.config('cbox-id.branding.name', 'Cbox ID') : config('cbox-id.branding.name', 'Cbox ID') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    {{-- Per-tenant console branding when the whitelabel plugin is installed; inert otherwise. --}}
-    @consoleBrandingStyle
-</head>
-<body class="h-full" style="background:var(--background);color:var(--foreground)">
-<x-sandbox-banner />
-<x-impersonation-banner />
-
 @php
     // ── Two-tier navigation IA. TIER 1 = areas; TIER 2 = an area's pages (shown
     // only when the area has more than one page). The nav is sourced from the shared
@@ -49,8 +24,16 @@
     // already gates every one of its pages on the MembershipRole (see ConsoleServiceProvider),
     // which is the authority for those capabilities — the org role has nothing to say
     // about them.
+    // The platform areas are exempt for the opposite reason to `identity-platform`: this
+    // gate asks whether you administer the ORGANIZATION you are currently acting for, and
+    // an operator's authority has nothing to do with that. The person who runs the install
+    // is routinely a plain member of the customer they happen to be looking at — the
+    // operator running cboxid.com is a member of Cbox's own organization and nothing more —
+    // so leaving them to this gate hides the platform section from exactly the people it
+    // exists for. Their own `platform.operator` feature is the stronger gate and it has
+    // already run: an area survives to here only if its pages did.
     $isConsoleAdmin = \Cbox\Console\Kit\Facades\Console::context()->isAdmin();
-    $memberAreas = ['overview', 'account', 'identity-platform'];
+    $memberAreas = ['overview', 'account', 'identity-platform', 'platform', 'platform-insights', 'platform-admin'];
 
     $areas = collect(\Cbox\Console\Kit\Facades\Console::nav()->areas())
         ->reject(fn ($area): bool => ! $isConsoleAdmin && ! in_array($area->key, $memberAreas, true))
@@ -110,22 +93,98 @@
                 ->filter(fn ($o) => $o->name !== null)->values();
         }
     }
+    // WHICH SECTION THE TAB IS SHOWING, and null for the customer-facing console.
+    //
+    // An operator works with many tabs open, and half the platform pages share a name with
+    // a page about the operator's OWN organization: "Usage" is this install's traffic in
+    // one and one customer's bill in the other, "Members" is the staff list in one and a
+    // team in the other. The platform section had its own shell, and that shell put the
+    // word in the title; folding it into the one console dropped it, and the tab strip
+    // stopped distinguishing the whole install from one customer on it.
+    //
+    // Keyed on the AREA rather than on the route name, so a page added to the section
+    // inherits it. One word for all three areas on purpose: "Insights" or "Administration"
+    // in a tab title says nothing about whose data is behind it, which is the entire
+    // question being answered here.
+    $platformAreas = ['platform', 'platform-insights', 'platform-admin'];
+    $section = in_array($activeArea['key'], $platformAreas, true) ? 'Platform' : null;
+
     $activeOrgId = $me->organization()?->id;
     $canSwitch = $myOrgs->count() > 1;
     $orgInitial = strtoupper(substr($me->organization()?->name ?? 'C', 0, 1));
     $userInitial = strtoupper(substr($me->name(), 0, 1));
+
+    // ── Operator chrome. The target-environment selector came in with the platform
+    // section and belongs to it: operators stand above every environment, and switching
+    // just repoints where the platform pages read and provision.
+    //
+    // Guarded on the SCOPE, never on which layout rendered. The platform shell used to BE
+    // the guard — the control existed only in a file only operators reached — and a shell
+    // is not an authorization check. Now that there is one shell it could not be anyway.
+    //
+    // Two queries for the whole list even though this renders on EVERY console page: the
+    // work is skipped outright for the overwhelming majority of sessions (nobody is an
+    // operator), and for the few that aren't, the owner names come from one batched
+    // lineage lookup rather than a query per environment.
+    $isOperator = app(\App\Platform\Console\ConsoleScope::class)->isPlatformOperator();
+    $environments = collect();
+    $activeEnvId = null;
+    $activeEnv = null;
+    $canSwitchEnv = false;
+    $lineage = [];
+
+    if ($isOperator) {
+        $ctx = app(\Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext::class);
+        $activeEnvId = $ctx->current()?->environmentKey();
+        // `project_id` comes along because the switcher names the OWNER, not just the
+        // stage: "Production" is a name half the customers on an install will have, and a
+        // control that says only that tells an operator nothing about whose estate their
+        // next click lands in. The owner is reached THROUGH the project —
+        // `environments.account_id` was the shortcut, and it is gone.
+        $environments = $ctx->withoutScope(fn () => \Cbox\Id\Organization\Models\Environment::query()
+            ->orderBy('created_at')->get(['id', 'name', 'slug', 'project_id']));
+        $lineage = app(\App\Platform\Console\EnvironmentLineages::class)->for($environments);
+        $activeEnv = $environments->firstWhere('id', $activeEnvId);
+        $canSwitchEnv = $environments->count() > 1;
+    }
 @endphp
+
+<!DOCTYPE html>
+<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- Root paths, not /brand/*. Icon harvesters — password managers, link
+         unfurlers, browsers restoring a tab before the HTML parses — probe
+         /favicon.ico and /apple-touch-icon.png directly and never read these tags.
+         Laravel's skeleton ships an EMPTY favicon.ico, so that probe returned a
+         perfectly valid 200 with zero bytes for the life of the project. --}}
+    <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
+    <title>{{ ($title ? $title.' · ' : '').($section ? $section.' · ' : '').config('cbox-id.branding.name', 'Cbox ID') }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Per-tenant console branding when the whitelabel plugin is installed; inert otherwise. --}}
+    @consoleBrandingStyle
+</head>
+<body class="h-full" style="background:var(--background);color:var(--foreground)">
+<x-sandbox-banner />
+<x-impersonation-banner />
+
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="flex h-full" x-data="{
         pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
         subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
-        mobile: false, account: false, org: false, hover: false,
+        mobile: false, account: false, org: false, env: false, hover: false,
         togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; },
         toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
      }"
-     @keydown.escape.window="mobile=false;account=false;org=false"
+     @keydown.escape.window="mobile=false;account=false;org=false;env=false"
      @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
     {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
@@ -246,9 +305,68 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- Target environment. Only for whoever runs the deployment, and only ever
+                     beside the organization it belongs to — an operator acting on a tenant
+                     should be able to see, without leaving the page, which tenant that is.
+                     The retired staff console said "Operator" here instead, which read as a
+                     different product rather than as a wider permission. --}}
+                @if ($isOperator)
+                    <span style="color:var(--faint)" aria-hidden="true">/</span>
+                    <div class="relative min-w-0">
+                        <button type="button" class="cbx-switcher-item flex items-center gap-2 rounded-lg px-2 py-1.5 {{ $canSwitchEnv ? '' : 'pointer-events-none' }}"
+                                style="transition:background-color var(--dur-hover) var(--ease)" @if ($canSwitchEnv) @click="env=!env" :aria-expanded="env" aria-haspopup="true" @endif>
+                            <x-icon name="layers" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />
+                            <span class="min-w-0 text-left hidden sm:block">
+                                <span class="block text-[10px] font-medium uppercase tracking-wide leading-tight" style="color:var(--muted-foreground)">Target environment</span>
+                                <span class="block text-[13px] font-semibold truncate leading-tight">
+                                    {{ $activeEnv !== null && isset($lineage[$activeEnv->id])
+                                        ? $lineage[$activeEnv->id]->qualify($activeEnv->name)
+                                        : ($activeEnv?->name ?? 'None yet') }}
+                                </span>
+                            </span>
+                            @if ($canSwitchEnv)<x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />@endif
+                        </button>
+                        @if ($canSwitchEnv)
+                            <div x-show="env" x-transition.opacity.duration.150ms @click.outside="env=false" x-cloak
+                                 class="cbx-panel" style="position:absolute;top:calc(100% + 6px);left:0;min-width:260px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
+                                <p class="cbx-nav-group" style="padding:6px 10px 4px">Switch target</p>
+                                @foreach ($environments as $environment)
+                                    <form method="POST" action="{{ route('platform.environment.switch') }}">@csrf
+                                        <input type="hidden" name="environment" value="{{ $environment->id }}">
+                                        <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $environment->id === $activeEnvId ? 'background:var(--secondary)' : '' }}">
+                                            <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" />
+                                            <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ isset($lineage[$environment->id]) ? $lineage[$environment->id]->qualify($environment->name) : $environment->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $environment->slug }}</span></span>
+                                            @if ($environment->id === $activeEnvId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" />@endif
+                                        </button>
+                                    </form>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             <div class="flex items-center gap-2">
+                {{-- WHAT AUTHORITY YOU ARE HOLDING. The retired platform shell said
+                     "Platform operator" under the brand, and it was the only thing on
+                     screen that did — on a console where one click suspends a customer.
+                     Folding the section into the one console dropped it: the topbar names
+                     the ORGANIZATION you act for, which for an operator is their own
+                     employer and says nothing about the authority they are wielding over
+                     everybody else's.
+
+                     Shown on every console page, not only the platform ones, and that is
+                     the point — the authority does not lapse when an operator navigates to
+                     a customer-facing page, so neither should the reminder that they have
+                     it. --}}
+                @if ($isOperator)
+                    <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full"
+                          style="padding:3px 10px;background:var(--accent-soft);color:var(--primary);font-size:11px;font-weight:600;letter-spacing:0.01em">
+                        <x-icon name="lock" class="w-3 h-3" aria-hidden="true" />
+                        Platform operator
+                    </span>
+                @endif
                 {{-- No global command palette ships yet — a non-functional ⌘K search
                      box was removed rather than left as a dead affordance. --}}
                 <button type="button" data-theme-toggle class="cbx-subnav-toggle" aria-label="Toggle theme" title="Toggle theme"><x-icon name="sun" class="w-[18px] h-[18px]" /></button>

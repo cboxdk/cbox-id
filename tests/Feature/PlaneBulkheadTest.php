@@ -9,6 +9,8 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** Build the middleware with a fixed current + default environment (multi-tenant SaaS). */
@@ -24,6 +26,14 @@ function planeGate(?string $current, ?string $default, ?string $hostResolves = n
 
     $ctx = Mockery::mock(EnvironmentContext::class);
     $ctx->shouldReceive('current')->andReturn($current !== null ? GenericEnvironment::of($current) : null);
+    // The first-party gate names the environment it reads rather than inheriting one, so
+    // it lifts the deny-by-default scope for that one query. DELEGATED TO THE REAL
+    // CONTEXT rather than run straight: this mock stands in for host resolution, and
+    // lifting the scope is the database's business, not host resolution's. A stub that
+    // merely invoked the callback left the deny-by-default scope in place, so the gate
+    // found no client and the test failed for a reason the production path does not have.
+    $realContext = app(EnvironmentContext::class);
+    $ctx->shouldReceive('withoutScope')->andReturnUsing(fn (callable $callback) => $realContext->withoutScope($callback));
 
     $resolver = Mockery::mock(EnvironmentResolver::class);
     $resolver->shouldReceive('defaultEnvironment')->andReturn($default !== null ? GenericEnvironment::of($default) : null);
@@ -44,15 +54,49 @@ function planeGate(?string $current, ?string $default, ?string $hostResolves = n
  * always sent `localhost` would have asserted the console away on every host and called it
  * a passing bulkhead.
  */
-function passesPlane(EnforcePlane $gate, string $plane, string $host = 'localhost'): bool
+function passesPlane(EnforcePlane $gate, string $plane, string $host = 'localhost', ?string $clientId = null): bool
 {
+    // `client_id` as a query parameter, which is where `/oauth/authorize` carries it.
+    // `$request->input()` reads the body too, so the token endpoints' form-encoded
+    // parameter reaches the same gate by the same name.
+    $uri = 'https://'.$host.'/'.($clientId !== null ? '?client_id='.urlencode($clientId) : '');
+
     try {
-        $gate->handle(Request::create('https://'.$host.'/'), fn () => new Response('ok'), $plane);
+        $gate->handle(Request::create($uri), fn () => new Response('ok'), $plane);
 
         return true;
     } catch (NotFoundHttpException) {
         return false;
     }
+}
+
+/**
+ * A client row in the environment the gate will be asked about, returning its client_id.
+ *
+ * Written straight to the table rather than through the registry service: the two flags
+ * being distinguished here are the whole subject of the assertions, and a factory that
+ * defaulted either of them would decide the test's outcome instead of the test.
+ */
+function firstPartyClient(bool $firstParty, ?string $organizationId): string
+{
+    $clientId = 'cid_'.Str::lower(Str::random(20));
+
+    DB::table('oauth_clients')->insert([
+        'id' => (string) Str::ulid(),
+        'environment_id' => 'env_prod',
+        'client_id' => $clientId,
+        'name' => 'Probe '.$clientId,
+        'type' => 'public',
+        'redirect_uris' => json_encode(['https://example.test/cb']),
+        'grant_types' => json_encode(['authorization_code']),
+        'scopes' => json_encode(['openid']),
+        'first_party' => $firstParty,
+        'organization_id' => $organizationId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return $clientId;
 }
 
 it('serves the account plane ONLY on the platform-root host', function (): void {
@@ -116,6 +160,64 @@ it('withholds the issuer surface and the environment console from the platform r
         ->and(passesPlane($root, 'environment', 'cboxid.com'))->toBeFalse()
         ->and(passesPlane($tenant, 'issuer'))->toBeTrue()
         ->and(passesPlane($tenant, 'environment'))->toBeTrue();
+});
+
+/**
+ * The token endpoints, which the platform root serves for the binary we ship and for
+ * nothing else.
+ *
+ * THE 404 THIS PINS WAS LIVE. `.well-known/cbox-authenticator` advertised
+ * `issuer: https://cboxid.com` with a real client_id, while `plane:issuer` made every
+ * endpoint that document implies absent on that host — so scanning the enrolment QR from
+ * `/account/devices` worked on a tenant subdomain and failed on the root. The root has
+ * subjects (every customer owner, every operator) and the console offers them trusted
+ * devices, so the promise was the truthful half and the wall was the half that had to
+ * move — but only this far.
+ *
+ * The refusals are the point. An organization admin signed in at the root can create
+ * OAuth clients from Developers › Apps, and those are environment-owned, so they live in
+ * the root environment beside ours. Admitting them would let a customer turn the buyer
+ * host into an identity provider for their own app and phish every other customer's owner
+ * on the one host they all trust.
+ */
+it('serves the token endpoints on the platform root for a platform-owned first-party client only', function (): void {
+    $root = planeGate('env_prod', 'env_prod');
+
+    $ours = firstPartyClient(firstParty: true, organizationId: null);
+    $flaggedButOwned = firstPartyClient(firstParty: true, organizationId: 'org_acme');
+    $theirs = firstPartyClient(firstParty: false, organizationId: 'org_acme');
+
+    expect(passesPlane($root, 'first-party', 'cboxid.com', $ours))->toBeTrue()
+        // First-party alone is not enough: the flag can sit on a client scoped to one
+        // organization, and an org-scoped client on the root is exactly the case being
+        // refused. Platform-owned (`organization_id` null) is the second half.
+        ->and(passesPlane($root, 'first-party', 'cboxid.com', $flaggedButOwned))->toBeFalse()
+        ->and(passesPlane($root, 'first-party', 'cboxid.com', $theirs))->toBeFalse()
+        // No client named at all — a bare probe of the endpoint — is refused like any
+        // other non-first-party caller rather than falling open.
+        ->and(passesPlane($root, 'first-party', 'cboxid.com'))->toBeFalse();
+})->group('security');
+
+it('leaves the rest of the issuer surface absent on the platform root', function (): void {
+    $root = planeGate('env_prod', 'env_prod');
+    $ours = firstPartyClient(firstParty: true, organizationId: null);
+
+    // The carve-out is three endpoints, not a door into the plane. Naming our own client
+    // must not buy discovery, JWKS, dynamic registration, SCIM or the SAML bindings — all
+    // of which ride `plane:issuer` and stay refused with the very client_id that opens
+    // the token endpoints.
+    expect(passesPlane($root, 'issuer', 'cboxid.com', $ours))->toBeFalse()
+        ->and(passesPlane($root, 'environment', 'cboxid.com', $ours))->toBeFalse();
+})->group('security');
+
+it('serves the token endpoints on a tenant host for any client, first-party or not', function (): void {
+    $tenant = planeGate('env_tenant_a', 'env_prod');
+
+    // A tenant host IS an issuer, for every client it holds — asking for a first-party
+    // flag there would refuse the ordinary third-party flows that are the point of the
+    // plane. No client row is created: on this path the question is never asked.
+    expect(passesPlane($tenant, 'first-party', 'acme.cboxid.com', 'cid_anything'))->toBeTrue()
+        ->and(passesPlane($tenant, 'first-party', 'acme.cboxid.com'))->toBeTrue();
 });
 
 it('denies every plane when no environment resolves (deny-by-default)', function (): void {

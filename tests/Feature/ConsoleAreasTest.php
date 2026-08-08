@@ -106,40 +106,63 @@ it('lands every nav entry on a page titled the way the entry is labelled', funct
  */
 function assertNavEntriesMatchTheirPages(ConsoleNav $nav, string $plane): int
 {
-    $checked = 0;
+    $entries = [];
 
     foreach ($nav->areas as $area) {
         foreach ($area->pages as $page) {
-            if (! Route::has($page->route)) {
-                continue;
-            }
-
-            $response = test()->get(route($page->route));
-
-            // Gated off in this environment (inactive module, missing entitlement, a
-            // shape this deployment does not have) is not a naming failure.
-            if ($response->status() !== 200) {
-                continue;
-            }
-
-            $html = (string) $response->getContent();
-            $label = e($page->label);
-
-            // `toContain` is variadic in Pest, so a message passed to it reads as a
-            // second needle and the failure names the wrong thing. Assert the boolean.
-            expect(str_contains($html, '<title>'.$label.' · '))->toBeTrue(
-                "{$plane} › {$area->label} › {$page->label}: the nav entry and the <title> disagree",
-            );
-
-            // The h1 carries classes and whitespace, so match on its text rather than on
-            // a whole tag: this has to hold for a heading rendered by x-page-header and
-            // for one a page still writes itself.
-            expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
-                "{$plane} › {$area->label} › {$page->label}: the nav entry and the <h1> disagree",
-            );
-
-            $checked++;
+            $entries[] = [$area->label, $page->label, $page->route];
         }
+    }
+
+    return assertNavEntryLabelsMatchTheirPages($entries, $plane);
+}
+
+/**
+ * The same check, over entries taken from the console-kit REGISTRY rather than off a
+ * statically-declared {@see ConsoleNav}.
+ *
+ * Two sources because the console has two kinds of navigation and only one of them is a
+ * value object: the environment plane declares its rail statically, while everything the
+ * one console renders — the organization areas and the platform section alike — is
+ * assembled at runtime from the registry. The promise being checked is identical either
+ * way, so the loop is, and only the flattening differs.
+ *
+ * @param  list<array{0: string, 1: string, 2: string}>  $entries  [area label, page label, route]
+ */
+function assertNavEntryLabelsMatchTheirPages(array $entries, string $plane): int
+{
+    $checked = 0;
+
+    foreach ($entries as [$areaLabel, $pageLabel, $route]) {
+        if (! Route::has($route)) {
+            continue;
+        }
+
+        $response = test()->get(route($route));
+
+        // Gated off in this environment (inactive module, missing entitlement, a
+        // shape this deployment does not have) is not a naming failure.
+        if ($response->status() !== 200) {
+            continue;
+        }
+
+        $html = (string) $response->getContent();
+        $label = e($pageLabel);
+
+        // `toContain` is variadic in Pest, so a message passed to it reads as a
+        // second needle and the failure names the wrong thing. Assert the boolean.
+        expect(str_contains($html, '<title>'.$label.' · '))->toBeTrue(
+            "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <title> disagree",
+        );
+
+        // The h1 carries classes and whitespace, so match on its text rather than on
+        // a whole tag: this has to hold for a heading rendered by x-page-header and
+        // for one a page still writes itself.
+        expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+            "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <h1> disagree",
+        );
+
+        $checked++;
     }
 
     return $checked;
@@ -208,10 +231,24 @@ it('lands every environment nav entry on a page titled and headed the way the en
 it('lands every platform nav entry on a page titled and headed the way the entry is labelled', function (): void {
     actAsOperator();
 
-    $checked = assertNavEntriesMatchTheirPages(
-        app(ConsoleNavigation::class)->operator(),
-        'platform',
-    );
+    // From the REGISTRY, because the platform section is three areas of the one console
+    // now rather than a nav tree of its own. Filtered to the platform areas by key: the
+    // organization areas beside them are covered by their own loop above, with a fixture
+    // that admits them.
+    $platformAreas = ['platform', 'platform-insights', 'platform-admin'];
+    $entries = [];
+
+    foreach (Console::nav()->areas() as $area) {
+        if (! in_array($area->key, $platformAreas, true)) {
+            continue;
+        }
+
+        foreach ($area->pages() as $page) {
+            $entries[] = [$area->label, $page->label, $page->route];
+        }
+    }
+
+    $checked = assertNavEntryLabelsMatchTheirPages($entries, 'platform');
 
     // Seven pages across three areas; anything less means the session stopped resolving
     // and the loop is asserting nothing.

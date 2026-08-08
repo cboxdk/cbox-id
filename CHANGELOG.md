@@ -8,6 +8,88 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-08
+
+One console. The `/platform` pages were still a second one — their own layout, their own
+navigation tree — and this finishes the fold that 1.0.0 started.
+
+### Changed
+
+- **The platform section is three areas of the one console, not a console of its own.**
+  `layouts/platform` is deleted; the nine operator pages render in `layouts/app` like every
+  other page, and Platform / Insights / Administration are seeded into the same nav registry
+  as Billing and Webhooks, gated on a `platform.operator` feature.
+  `ConsoleNavigation::operator()` is gone with it — the class now describes the environment
+  plane and nothing else.
+
+  Signing in and clicking through to `/platform` read as arriving at a different product. It
+  is the same person, the same session, and the same rail with three more areas on it. What
+  made the separation possible to remove is that the operator is a subject: with
+  `platform_operators` as a second credential store there was no way to ask "is this session
+  staff", so the only way to gate the pages was a different door, and therefore a different
+  shell.
+
+- **Two things the retired shell carried are now carried by the one console.** The browser
+  title says `· Platform ·` on a platform page — half those pages share a name with a page
+  about the operator's own organization, and "Usage" in a tab strip is either this install's
+  traffic or one customer's bill. And a **Platform operator** marker sits in the topbar on
+  every console page: the topbar names the organization you are acting for, which for an
+  operator is their own employer and says nothing about the authority they hold over
+  everybody else's. It does not lapse when they navigate to a customer-facing page, so
+  neither does the marker.
+
+- **The target-environment switcher is guarded on the scope, not on the shell.** It used to
+  exist only in a file only operators reached, and a shell is not an authorization check.
+
+### Added
+
+- **An operator can create a customer.** `TenantProvisioner::provision()` is the package's
+  own entry point and the operator console had no caller for it anywhere: an operator could
+  suspend a customer, walk their estate and impersonate their people, and could not create
+  one. Onboarding anybody who had not self-served meant tinker on a production console.
+
+  **The form has no password field.** The blueprint requires a credential, so it gets 64
+  random characters that are never rendered, never logged and never returned; the owner is
+  emailed a link and chooses their own. An operator who typed a password for a customer
+  would be an operator who knows that customer's credential, which is precisely the
+  authority the platform must not hold over its customers' identities. An address that
+  already holds a Cbox ID is reused and its password left untouched.
+
+- **Billing is a module.** `modules/billing/` registers its own nav entry, route, view and
+  gates through the same console-kit sockets the other six modules use. It was a hardcoded
+  nav line and a hardcoded route behind a capability check — invisible to a member who may
+  not read it, and present in every deployment whether or not the deployment bills anybody.
+  `CBOX_BILLING_ENABLED=false` now means absent: no route, no nav entry, no page.
+
+  Two gates, because they are two questions. `billing` is whether this deployment bills and
+  gates the route; `organization.billing` is whether this person may see the figures and
+  gates the nav entry. The route deliberately does not ask the second — a member who may
+  not read billing is redirected to Projects by the page itself, and gating the route on the
+  capability turned that redirect into a 404.
+
+### Fixed
+
+- **Enrolling an authenticator on the platform root returned 404.**
+  `.well-known/cbox-authenticator` advertised `issuer: https://cboxid.com` with a real
+  `client_id`, while `plane:issuer` made every endpoint that document implies absent on that
+  host — so scanning the QR from `/account/devices` worked on a tenant subdomain and failed
+  on the root. Two components disagreed about whether the root is an issuer, and the console
+  offering the feature was the half telling the truth: the fold made the root a tenant whose
+  people sign in, and every customer owner and operator is an ordinary subject there.
+
+  The wall is not opened. A new `plane:first-party` covers `/oauth/authorize`,
+  `/oauth/token` and `/oauth/revoke`, and on the root it admits a **platform-owned**
+  first-party client and refuses every other. Both halves matter: `first_party` alone is a
+  flag that can sit on a client scoped to one organization, and an organization admin signed
+  in at the root can create OAuth clients there from Developers › Apps. Without the
+  platform-owned test this would let a customer turn the buyer host into an identity
+  provider for their own app. Discovery, JWKS, dynamic registration, SCIM and the SAML
+  bindings stay absent on the root — including for the very client that opens the token
+  endpoints.
+
+  Requires `cboxdk/laravel-id` 1.1.0, whose `cbox-id.api.first_party_middleware` is what
+  lets the token endpoints take a different wall from the rest of the surface.
+
 ## [1.0.0] - 2026-08-07
 
 The account plane is gone, here and in the framework. A customer **is** an organization.
