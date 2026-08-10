@@ -389,6 +389,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // somewhere to land that is not the form you just submitted. This plane gains editing
     // an app's details and rotating its secret with it; the other gains the roles manifest.
     Volt::route('/clients', 'console.clients.index')->name('clients');
+    // Publishable keys — the ones a browser holds. Beside Apps & API keys because that is
+    // where somebody goes looking for "how does my frontend talk to this", and the two
+    // answer opposite halves of it: one is the secret a server holds, one is the public
+    // key a page holds.
+    Volt::route('/frontend-keys', 'console.frontend-keys')->name('frontend-keys');
     Volt::route('/clients/new', 'console.clients.create')->name('clients.create');
     Volt::route('/clients/{client}', 'console.clients.show')->name('clients.show');
     // Webhooks: the SAME components the environment plane serves. The routable
@@ -606,6 +611,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // bookmarks still resolve; the route names are what the two planes disagree on,
         // and both are preserved.
         Volt::route('/applications', 'console.clients.index')->name('environment.clients');
+        Volt::route('/frontend-keys', 'console.frontend-keys')->name('environment.frontend-keys');
         Volt::route('/applications/new', 'console.clients.create')->name('environment.clients.create');
         Volt::route('/applications/{client}', 'console.clients.show')->name('environment.clients.show');
 

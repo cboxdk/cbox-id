@@ -22,6 +22,7 @@ use App\Platform\BreachedPasswords;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\FrontendApi\AppearanceConfig;
 use App\Platform\ImpersonationAwareAuditLog;
 use App\Platform\ImpersonationCallGuard;
 use App\Platform\Install\Contracts\PlatformInstaller;
@@ -32,6 +33,7 @@ use App\Platform\Install\FileSetupTokens;
 use App\Platform\OpenEntitlements;
 use App\Platform\RevokingAuthPolicies;
 use App\Platform\TrustedHosts;
+use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -55,6 +57,13 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
+
+        // The customer's theme, on the Frontend API's public config document. Tagged
+        // rather than referenced by the package: the framework owns the channel and
+        // deliberately does not know what branding is. Without it a page can learn where
+        // to POST and then renders the form in our colours, which is the tell that gives
+        // away an embedded widget as somebody else's.
+        $this->app->tag(AppearanceConfig::class, FrontendConfigContributor::class);
 
         // Read once per request: three view components label themselves with the current
         // environment, and one of them renders per deletable row.

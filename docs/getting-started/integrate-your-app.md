@@ -88,6 +88,64 @@ export const cbox = createCboxId({
 });
 ```
 
+## 6. Talking to Cbox ID from the browser
+
+Everything above gives your **server** a client secret. A page cannot hold one, which is
+why an embedded sign-in form has historically needed your backend to sit in the middle
+and proxy the details it wanted to render.
+
+A **publishable key** removes that middle step. It is public on purpose — it goes in your
+JS bundle, it is visible in devtools, and it is safe there because it only works from the
+origins you register.
+
+Create one under **Developers → Frontend keys**. Add every origin your app is served
+from, one per line:
+
+```
+https://acme.com
+https://www.acme.com
+http://localhost:3000
+```
+
+Exact matches only. `https://acme.com` does **not** cover `https://www.acme.com` — that
+is deliberate, because every looser comparison anyone has written for this has been
+somebody's vulnerability. Plain `http` is refused except on localhost, where a browser
+treats it as trustworthy anyway.
+
+Then, in your frontend:
+
+```ts
+import { CboxIdFrontend } from '@cboxdk/id-js'
+
+const frontend = new CboxIdFrontend({
+  issuer: 'https://acme.cboxid.com',
+  publishableKey: 'pk_live_…',
+})
+
+const config = await frontend.config()
+// → endpoints, social buttons, and this environment's theme
+```
+
+That document is everything needed to *draw* a sign-in box and nothing that identifies
+anybody: no emails, no counts, no ids. It is the same information a person can already
+read by viewing source on the hosted sign-in page — what changes is who can render it.
+
+**The key grants nothing on its own.** To find out who is signed in, the access token
+your app already holds is the authority:
+
+```ts
+const { user } = await frontend.session(accessToken)  // { id, email, name } or null
+```
+
+Signed out answers `{ user: null }` with a 200 rather than an error, so a component that
+renders on every page does not have to treat a rejection as a state.
+
+**If it does not work,** the answer is almost always the origin list. A refused request
+deliberately carries no CORS headers — the browser shows a CORS failure rather than a
+readable error, because a page has no business reading the body of a rejection it was not
+authorized to make. Check the exact origin in your browser's network tab against the list
+on the key.
+
 ## When it does not work
 
 The token endpoint returns an RFC-shaped `error`, and for most failures an
