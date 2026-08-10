@@ -17,9 +17,13 @@ that missing step. It takes about two minutes.
 
 ## 1. Sign in to the environment console
 
-Open your environment's host — `https://<your-environment>/admin` — and sign in as an
+Open your environment's host — `https://<tenant>.cboxid.com/admin` — and sign in as an
 account member with admin access. If you have not created an environment yet, see
 [Quickstart](../quickstart.md) first.
+
+Hosted environments live under `cboxid.com`, one subdomain per tenant. If you run Cbox
+ID yourself, substitute your own host everywhere this page writes
+`<tenant>.cboxid.com`; nothing else on the page changes.
 
 The badge beside the environment name tells you which realm you are in. **Register test
 integrations in a sandbox environment**, not production: an environment is a hard
@@ -60,7 +64,7 @@ Your issuer is your environment's own base URL. Confirm it — and everything el
 needs — from the discovery document:
 
 ```bash
-curl https://<your-environment>/.well-known/openid-configuration
+curl https://<tenant>.cboxid.com/.well-known/openid-configuration
 ```
 
 The `issuer` value in that response is exactly what you pass to the SDK. Use it verbatim:
