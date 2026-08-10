@@ -29,8 +29,17 @@ final class AppearanceCss
         $dark = self::modeVars($appearance->dark);
 
         // Radius + font are mode-independent — declared once on :root.
+        //
+        // THE WHOLE SCALE, not just `--radius`. The stylesheet dresses cards from
+        // `--radius`, buttons and inputs from `--radius-md`, badges and chips from
+        // `--radius-sm`; overriding the first alone squared the cards and left everything
+        // else rounded, so the corner control read as broken. See ThemeRadius::scale().
+        $radius = $appearance->radius->scale();
+
         $root = $light
-            .'--radius:'.$appearance->radius->value.';'
+            .'--radius:'.$radius['radius'].';'
+            .'--radius-md:'.$radius['md'].';'
+            .'--radius-sm:'.$radius['sm'].';'
             .'--font-sans:'.$appearance->fontStack().';';
 
         $css = ":root{{$root}}"

@@ -177,3 +177,44 @@ it('stacks the panel header instead of squeezing it on a narrow screen', functio
     expect(str_contains($declarations, 'flex-direction: column'))
         ->toBeTrue('stacking is the fix — shrinking the text is the bug');
 });
+
+/**
+ * `hidden` is not overridden by every responsive display utility, and the ones it beats
+ * fail silently: the element is in the DOM at every width and drawn at none of them.
+ *
+ * Found by looking at a page rather than by any assertion. The trusted-devices card
+ * offered a deep link to whoever was reading it on the phone itself, marked
+ * `hidden sm:inline` — present in the markup, present in the compiled CSS, and
+ * `display:none` at 1280px, because `.hidden` lands after the `sm:inline` rule at equal
+ * specificity. Every test passed. Nothing renders a page and asks whether a control can
+ * actually be seen, so nothing could have caught it.
+ *
+ * MEASURED, NOT REASONED, in a browser against the compiled stylesheet:
+ *
+ *   hidden sm:block        → block        ✓
+ *   hidden sm:flex         → flex         ✓
+ *   hidden sm:inline-flex  → inline-flex  ✓
+ *   hidden sm:inline       → none         ✗
+ *   hidden sm:inline-block → none         ✗
+ *   hidden md:inline       → none         ✗
+ *
+ * So the two that lose are `inline` and `inline-block`, at any breakpoint. This refuses
+ * them by name rather than trying to model Tailwind's emission order — if the ordering
+ * ever changes, the honest response is to re-measure and rewrite this list, not to trust
+ * a rule inferred from one observation.
+ */
+it('never hides a control behind a responsive display utility that cannot win', function (): void {
+    $offenders = [];
+
+    $root = __DIR__.'/../../';
+
+    foreach (Finder::create()->files()->in([$root.'resources/views', $root.'modules'])->name('*.blade.php') as $file) {
+        $contents = (string) file_get_contents($file->getRealPath());
+
+        if (preg_match_all('/hidden\s+(?:sm|md|lg|xl|2xl):inline(?:-block)?(?=["\s])/', $contents, $matches) > 0) {
+            $offenders[] = str_replace(realpath($root).'/', '', (string) $file->getRealPath()).': '.implode(', ', $matches[0]);
+        }
+    }
+
+    expect($offenders)->toBe([], "these render as display:none at every width — use :block, :flex or :inline-flex instead:\n".implode("\n", $offenders));
+});

@@ -250,9 +250,25 @@ new #[Layout('components.layouts.console', ['title' => 'Branding'])] class exten
                 @foreach (\Cbox\Id\Whitelabel\Support\PaletteTokens::TOKENS as $token)
                     <div>
                         <label class="label" for="tok-{{ $token }}">{{ ucfirst($token) }}</label>
-                        <input id="tok-{{ $token }}" wire:model="palette.{{ $token }}" type="text"
-                               class="input mono" placeholder="#0a2540 or oklch(…)"
-                               @error('palette.'.$token) aria-invalid="true" @enderror>
+                        {{-- A SWATCH YOU CAN CLICK, not a hex field alone. The same control
+                             the Appearance editor already uses: a native colour input laid
+                             invisibly over the swatch, with the text field beside it so a
+                             brand hex can still be pasted — and so `oklch(…)`, which the
+                             normalizer accepts and no native picker can express, stays
+                             typeable. Choosing a colour by typing its coordinates is a
+                             thing only the person who wrote the parser enjoys. --}}
+                        <div class="flex items-center gap-2">
+                            <span class="relative w-8 h-8 rounded-lg shrink-0 overflow-hidden" style="border:1px solid var(--border)">
+                                <span class="absolute inset-0" style="background:{{ $palette[$token] !== '' ? $palette[$token] : 'var(--secondary)' }}"></span>
+                                <input type="color" value="{{ \Illuminate\Support\Str::startsWith($palette[$token] ?? '', '#') ? $palette[$token] : '#000000' }}"
+                                       wire:model.live="palette.{{ $token }}"
+                                       class="absolute inset-0 opacity-0 cursor-pointer"
+                                       aria-label="Pick {{ $token }} colour">
+                            </span>
+                            <input id="tok-{{ $token }}" wire:model="palette.{{ $token }}" type="text"
+                                   class="input mono min-w-0 flex-1" placeholder="#0a2540 or oklch(…)"
+                                   @error('palette.'.$token) aria-invalid="true" @enderror>
+                        </div>
                         @error('palette.'.$token) <p class="field-error">{{ $message }}</p> @enderror
                     </div>
                 @endforeach

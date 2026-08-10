@@ -450,6 +450,19 @@ document.addEventListener('alpine:init', () => {
 
         fontStack(f) { return this.fonts[f] || this.fonts.system; },
         fontLabel(f) { return { system: 'System', geometric: 'Geometric', serif: 'Serif' }[f] || f; },
+        /**
+         * Mirrors App\Platform\Appearance\ThemeRadius::scale(). Two-thirds and a half of
+         * the chosen radius, which is the ratio the hand-tuned defaults used (12/8/6).
+         * If you change one side, change the other — the preview's whole job is to agree
+         * with what the server will emit.
+         */
+        radiusScale(r) {
+            const rem = parseFloat(r) || 0;
+            const trim = (n) => `${parseFloat(n.toFixed(4))}rem`;
+
+            return { '--radius': r, '--radius-md': trim(rem * 2 / 3), '--radius-sm': trim(rem / 2) };
+        },
+
         radiusLabel(r) { return { '0rem': 'Square', '0.25rem': 'XS', '0.375rem': 'S', '0.5rem': 'M', '0.75rem': 'L', '1rem': 'XL' }[r] || r; },
 
         // WCAG maths — mirrors App\Platform\Appearance\Color.
@@ -504,7 +517,13 @@ document.addEventListener('alpine:init', () => {
                 '--muted-foreground': m.muted, '--faint': `color-mix(in srgb, ${m.muted} 65%, ${m.background})`,
                 '--border': `color-mix(in srgb, ${m.foreground} 14%, ${m.background})`,
                 '--input': `color-mix(in srgb, ${m.foreground} 22%, ${m.background})`,
-                '--radius': this.draft.radius, '--font-sans': this.fontStack(this.draft.font),
+                // THE WHOLE SCALE, mirroring ThemeRadius::scale() on the server. The
+                // preview set `--radius` alone, exactly as the server used to, so a person
+                // choosing Square saw squared cards beside still-rounded buttons — and
+                // then shipped it, because the preview agreed with the result. Both halves
+                // were wrong in the same way, which is why nobody could see it.
+                ...this.radiusScale(this.draft.radius),
+                '--font-sans': this.fontStack(this.draft.font),
                 background: m.background, color: m.foreground,
             };
         },
