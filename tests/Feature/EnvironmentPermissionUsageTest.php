@@ -86,7 +86,7 @@ it('counts a permission\'s usage without loading the whole platform-wide pivot',
         }
     });
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->assertOk()
         ->assertSee('reports:read')
         ->assertSee('in 2 roles');
@@ -136,7 +136,7 @@ it('never counts another environment\'s roles toward this one\'s permission usag
     app(EnvironmentContext::class)->set(GenericEnvironment::of($acme['env']));
     actAsEnvironmentAdmin($acme['subjectId'], $acme['env']);
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->assertOk()
         ->assertSee('reports:read')
         ->assertSee('in 1 role')

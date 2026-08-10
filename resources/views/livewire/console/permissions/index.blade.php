@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -23,18 +24,35 @@ use Livewire\Volt\Component;
  * Only manual permissions can be edited or removed. Both kinds are assignable into
  * roles from the Roles editor.
  */
-new #[Layout('components.layouts.environment', ['title' => 'Permissions'])] class extends Component
+/**
+ * ONE COMPONENT, BOTH PLANES — `layouts.console` delegates to the right chrome.
+ *
+ * This page lived under `livewire/environment/` and declared the environment layout
+ * outright, which is what made it a page of the SECOND console: an organization
+ * administrator had no permissions screen at all, though permissions are the vocabulary
+ * their roles are written in. Nothing in it was environment-specific — it reads the
+ * environment from `EnvironmentContext`, which both planes set.
+ */
+new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class extends Component
 {
     /**
-     * Second layer. The route's `env.admin` middleware is the primary gate and IS
-     * re-run on Livewire actions (PersistentMiddlewareTest holds that), but this
-     * console previously had NO in-component authorization at all — so when that
-     * middleware was missing from the persistent list, every action here answered
-     * unauthenticated. boot() rather than mount(): only boot() runs on each action.
+     * Second layer, and PLANE-AGNOSTIC — the same gate every shared page uses.
+     *
+     * It asked `EnvironmentAdminAuth::membership()` outright, which is an environment-plane
+     * identity and null everywhere else, so the page answered 403 the moment it was
+     * offered on the organization plane. `ConsoleScope::assertMayAdminister()` asks the
+     * question the page actually means — may this caller administer HERE — and each plane
+     * answers it in its own terms. See console/roles, which does the same for the roles
+     * these permissions are assembled into.
+     *
+     * boot() rather than mount(): only boot() runs on each Livewire action, and this
+     * console once had no in-component authorization at all — so when the route's
+     * middleware went missing from the persistent list, every action answered
+     * unauthenticated.
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     public string $name = '';

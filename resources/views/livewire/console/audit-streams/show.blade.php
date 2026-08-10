@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Contracts\LogStreams;
@@ -19,7 +20,7 @@ use Livewire\Volt\Component;
  * ciphertext and never decrypted for display; only a freshly minted secret (handed off
  * from the create page) is shown, exactly once, and never re-echoed afterwards.
  */
-new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Log stream'])] class extends Component
 {
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
@@ -30,7 +31,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Log stream'])] class
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        // PLANE-AGNOSTIC. `EnvironmentAdminAuth::membership()` is an environment-plane
+        // identity and null everywhere else, so this answered 403 the moment the page was
+        // offered on the organization plane — the plane that actually carries the
+        // compliance obligation this page serves. ConsoleScope asks the question the page
+        // means (may this caller administer HERE) and each plane answers in its own terms.
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     public string $streamId = '';

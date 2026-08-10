@@ -303,7 +303,17 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Volt::route('/account', 'account')->name('account');
 
     Volt::route('/usage', 'usage')->name('usage');
-    Volt::route('/members', 'members')->name('members');
+    // THE TENANT DIRECTORY — everyone who can sign in to this organization, plus the
+    // invitations nobody has accepted. Its own URI, because it is not the same page as
+    // the administrator roster below.
+    //
+    // Both were registered on `/members` with the name `members`. Laravel keys the route
+    // collection on `method|domain|uri`, so the second registration REPLACED this one:
+    // the router held one route, this 600-line component was unreachable from any URL,
+    // and — because two nav pages then named the same route — clicking "People" in the
+    // rail lit up "Identity platform" instead, with an eyebrow to match and "Roles"
+    // missing from the sub-nav.
+    Volt::route('/directory/members', 'members')->name('directory.members');
 
     /*
      * IDENTITY PLATFORM — what an organization has because it OWNS identity providers.
@@ -367,6 +377,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // send to whoever owns the access — and this plane gains rename, delete and permission
     // editing with it, none of which a tenant admin could do to their own roles before.
     Volt::route('/roles', 'console.roles.index')->name('roles');
+    // The same component the environment plane routes at `environment.permissions`. It
+    // was environment-only, so an organization administrator could assign roles without
+    // ever seeing the permissions those roles are made of.
+    Volt::route('/permissions', 'console.permissions.index')->name('permissions');
     Volt::route('/roles/new', 'console.roles.create')->name('roles.create');
     Volt::route('/roles/{role}', 'console.roles.show')->name('roles.show');
     // Apps & API keys (OAuth clients): the SAME components the environment plane serves.
@@ -389,6 +403,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
     Volt::route('/audit', 'console.audit')->name('audit');
+    // Log streaming was environment-plane-only. It ships an environment's audit trail to
+    // a SIEM, which is a compliance obligation the organization carries — so the plane
+    // that answers for compliance could not see, let alone configure, the shipping.
+    Volt::route('/log-streaming', 'console.audit-streams.index')->name('audit-streams');
+    Volt::route('/log-streaming/new', 'console.audit-streams.create')->middleware('sudo')->name('audit-streams.create');
+    Volt::route('/log-streaming/{stream}', 'console.audit-streams.show')->name('audit-streams.show');
     // Settings: the SAME component the environment plane serves. The organization's own
     // record is on both planes, bounded by whichever organization the scope resolves; the
     // environment's identity is on the environment plane alone.
@@ -569,7 +589,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Permissions — the catalog roles draw from. App-declared permissions arrive
         // via an app's manifest (SDK/API); manual ones are authored here for orgs that
         // don't run an SDK integration.
-        Volt::route('/permissions', 'environment.permissions.index')->name('environment.permissions');
+        Volt::route('/permissions', 'console.permissions.index')->name('environment.permissions');
 
         // Access reviews (certification campaigns) — routable list → create → detail.
         Volt::route('/access-reviews', 'console.governance.index')->name('environment.governance');
@@ -640,10 +660,13 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // the session, which answers "organization" for a browser that happens to hold a
         // subject session on this host. Naming the plane here is the only way to be sure
         // the widest of the three windows is the one that has to be open.
-        Volt::route('/log-streaming', 'environment.audit-streams.index')->name('environment.audit-streams');
-        Volt::route('/log-streaming/new', 'environment.audit-streams.create')->middleware('env.sudo')->name('environment.audit-streams.create');
-        Volt::route('/log-streaming/{stream}', 'environment.audit-streams.show')->name('environment.audit-streams.show');
-        Volt::route('/analytics', 'environment.analytics')->name('environment.analytics');
+        Volt::route('/log-streaming', 'console.audit-streams.index')->name('environment.audit-streams');
+        Volt::route('/log-streaming/new', 'console.audit-streams.create')->middleware('env.sudo')->name('environment.audit-streams.create');
+        Volt::route('/log-streaming/{stream}', 'console.audit-streams.show')->name('environment.audit-streams.show');
+        // The SHARED usage page — `environment.analytics` was the primitive version of it
+        // over the same counters. Route name kept so existing links and the rail entry
+        // keep working; only the component behind it changes.
+        Volt::route('/analytics', 'usage')->name('environment.analytics');
         Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');
         // Settings — the merged component. The route NAME is preserved on both planes;
         // only the component behind it is now shared.
@@ -725,7 +748,11 @@ Route::prefix('platform')->group(function (): void {
         Volt::route('/organizations', 'platform.organizations')->name('platform.organizations');
         Volt::route('/organizations/{organization}', 'platform.organization')->name('platform.organization');
         Volt::route('/operators', 'platform.operators')->name('platform.operators');
-        Volt::route('/security', 'platform.security')->name('platform.security');
+        // Retired: it enrolled an operator TOTP factor nothing verified. A permanent
+        // redirect rather than a deletion, because operators have this bookmarked and the
+        // honest destination exists — their own account security, which the sign-in path
+        // actually checks. See the note in ConsoleServiceProvider.
+        Route::permanentRedirect('/security', '/account')->name('platform.security');
         Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
 
         // Support impersonation — step into a tenant member's session. Authorized by

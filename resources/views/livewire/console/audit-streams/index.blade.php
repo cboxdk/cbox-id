@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Livewire\Attributes\Layout;
@@ -18,7 +19,7 @@ use Livewire\Volt\Component;
  * query only ever returns streams within THIS environment — an id minted in another
  * plane never appears, closing cross-tenant leakage (deny-by-default).
  */
-new #[Layout('components.layouts.environment', ['title' => 'Log streaming'])] class extends Component
+new #[Layout('components.layouts.console', ['title' => 'Log streaming'])] class extends Component
 {
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
@@ -29,7 +30,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Log streaming'])] cl
      */
     public function boot(): void
     {
-        abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
+        // PLANE-AGNOSTIC. `EnvironmentAdminAuth::membership()` is an environment-plane
+        // identity and null everywhere else, so this answered 403 the moment the page was
+        // offered on the organization plane — the plane that actually carries the
+        // compliance obligation this page serves. ConsoleScope asks the question the page
+        // means (may this caller administer HERE) and each plane answers in its own terms.
+        app(ConsoleScope::class)->assertMayAdminister();
     }
 
     #[Url(as: 'q')]

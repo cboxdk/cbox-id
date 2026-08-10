@@ -55,7 +55,7 @@ it('renders the permissions page with both sources distinguished', function (): 
 it('creates a manual permission (client_id null, source = manual)', function (): void {
     permSetup();
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->set('name', 'invoices:create')
         ->set('description', 'Create invoices')
         ->set('tenantAssignable', true)
@@ -73,14 +73,14 @@ it('creates a manual permission (client_id null, source = manual)', function ():
 it('rejects a bad key format and a duplicate manual key', function (): void {
     $env = permSetup();
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->set('name', 'not a key')
         ->call('create')
         ->assertHasErrors('name');
 
     Permission::query()->create(['client_id' => null, 'environment_id' => $env, 'name' => 'reports:read', 'tenant_assignable' => true]);
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->set('name', 'reports:read')
         ->call('create')
         ->assertHasErrors('name');
@@ -91,7 +91,7 @@ it('edits and deletes a manual permission, cascading its role links', function (
     $perm = Permission::query()->create(['client_id' => null, 'environment_id' => $env, 'name' => 'billing:manage', 'tenant_assignable' => true]);
     DB::table('role_permission')->insert(['role_id' => 'role_x', 'permission_id' => $perm->id]);
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->call('startEdit', $perm->id)
         ->set('editDescription', 'Manage billing')
         ->set('editTenantAssignable', false)
@@ -101,7 +101,7 @@ it('edits and deletes a manual permission, cascading its role links', function (
     $perm->refresh();
     expect($perm->description)->toBe('Manage billing')->and($perm->tenant_assignable)->toBeFalse();
 
-    Volt::test('environment.permissions.index')->call('delete', $perm->id);
+    Volt::test('console.permissions.index')->call('delete', $perm->id);
 
     expect(Permission::query()->whereKey($perm->id)->exists())->toBeFalse()
         ->and(DB::table('role_permission')->where('permission_id', $perm->id)->exists())->toBeFalse();
@@ -111,11 +111,11 @@ it('refuses to edit or delete an APP-declared permission (the app owns it)', fun
     permSetup();
     $app = Permission::query()->create(['client_id' => 'client_app_1', 'name' => 'app:action', 'tenant_assignable' => true]);
 
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->call('startEdit', $app->id)
         ->assertSet('editingId', null);
 
-    Volt::test('environment.permissions.index')->call('delete', $app->id);
+    Volt::test('console.permissions.index')->call('delete', $app->id);
 
     expect(Permission::query()->whereKey($app->id)->exists())->toBeTrue();
 });
@@ -138,14 +138,14 @@ it('isolates manual permissions to their authoring environment', function (): vo
     permSetup('Beta', 'owner@beta.example');
 
     // B's console lists neither A's env-scoped permission nor the operator-global one.
-    Volt::test('environment.permissions.index')
+    Volt::test('console.permissions.index')
         ->assertDontSee('secrets:rotate')
         ->assertDontSee('legacy:global');
 
     // And B can neither edit nor delete either — the resolver is environment-scoped.
-    Volt::test('environment.permissions.index')->call('startEdit', $permA->id)->assertSet('editingId', null);
-    Volt::test('environment.permissions.index')->call('delete', $permA->id);
-    Volt::test('environment.permissions.index')->call('delete', $legacy->id);
+    Volt::test('console.permissions.index')->call('startEdit', $permA->id)->assertSet('editingId', null);
+    Volt::test('console.permissions.index')->call('delete', $permA->id);
+    Volt::test('console.permissions.index')->call('delete', $legacy->id);
 
     // Both permissions — and A's role link — survive B's attempt untouched.
     expect(Permission::query()->withoutGlobalScopes()->whereKey($permA->id)->exists())->toBeTrue()

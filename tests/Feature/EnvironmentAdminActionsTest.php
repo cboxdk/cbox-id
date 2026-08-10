@@ -317,12 +317,12 @@ it('exercises the audit-stream detail mutating actions (disable, resume, delete)
         SiemAuthScheme::Bearer,
     )->stream;
 
-    Volt::test('environment.audit-streams.show', ['stream' => $stream->id])
+    Volt::test('console.audit-streams.show', ['stream' => $stream->id])
         ->call('disable')
         ->call('resume')
         ->assertHasNoErrors();
 
-    Volt::test('environment.audit-streams.show', ['stream' => $stream->id])
+    Volt::test('console.audit-streams.show', ['stream' => $stream->id])
         ->call('deleteStream');
     expect(AuditStream::query()->whereKey($stream->id)->exists())->toBeFalse();
 });

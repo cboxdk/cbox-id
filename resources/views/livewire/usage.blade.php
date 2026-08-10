@@ -3,12 +3,26 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Usage\Contracts\UsageMeter;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Component
+/**
+ * ONE USAGE PAGE FOR BOTH PLANES.
+ *
+ * The environment plane had its own — `environment.analytics` — over the SAME counters,
+ * and it was the primitive version of this one: raw `auth.*` metric keys with no label
+ * table, no time window, no series. So the same numbers were called "Usage" on one plane
+ * and "Analytics" on the other, and only one of them was legible.
+ *
+ * The scope is the only real difference, and the meter already had it: `snapshot()` takes
+ * a nullable organization id, where null totals the metric across the WHOLE environment.
+ * `ConsoleScope::organizationId()` answers null on the environment plane for exactly that
+ * reason, so the page asks one question and each plane answers it in its own terms.
+ */
+new #[Layout('components.layouts.console', ['title' => 'Usage'])] class extends Component
 {
     /** Human labels for the shared auth.* metric keys. */
     private const LABELS = [
@@ -37,18 +51,24 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
     /** @return array<string, mixed> */
     public function with(): array
     {
-        $me = app(CurrentUser::class);
-        $orgId = $me->organizationId();
+        $scope = app(ConsoleScope::class);
+        $scope->assertMayAdminister();
+
+        // Null on the environment plane — which the meter reads as "the whole
+        // environment", not as "no data". That is the entire difference between this page
+        // and the analytics page it replaces.
+        $orgId = $scope->organizationId();
+        $environmentWide = $orgId === null;
         $meter = app(UsageMeter::class);
 
         $until = now();
         $since = $until->copy()->subDays(29)->startOfDay();
 
-        $snapshot = $orgId !== null ? $meter->snapshot($orgId, $since, $until) : [];
+        $snapshot = $meter->snapshot($orgId, $since, $until);
         arsort($snapshot);
 
         // A 30-day dense series for sign-ins, zero-filled for the sparkline/bars.
-        $rawSeries = $orgId !== null ? $meter->series('auth.login', $orgId, $since, $until) : [];
+        $rawSeries = $meter->series('auth.login', $orgId, $since, $until);
         $series = [];
         for ($day = $since->copy(); $day <= $until; $day->addDay()) {
             $key = $day->format('Y-m-d');
@@ -56,7 +76,8 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
         }
 
         return [
-            'org' => $me->organization(),
+            'org' => $environmentWide ? null : app(CurrentUser::class)->organization(),
+            'environmentWide' => $environmentWide,
             'labels' => self::LABELS,
             'snapshot' => $snapshot,
             'series' => $series,
@@ -69,7 +90,7 @@ new #[Layout('components.layouts.app', ['title' => 'Usage'])] class extends Comp
 
 <div>
     <x-page-header title="Usage" :help="\App\Platform\Help\HelpTopic::Usage"
-                   subtitle="Activity across {{ $org?->name ?? 'your organization' }} — last 30 days. This is analytics; the SaaS bills separately." />
+                   subtitle="Activity across {{ $environmentWide ? 'this environment' : ($org?->name ?? 'your organization') }} — last 30 days. This is analytics; the SaaS bills separately." />
 
     @if ($snapshot === [])
         <div class="card p-10 text-center">

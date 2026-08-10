@@ -66,7 +66,11 @@ final class ConsoleServiceProvider extends ServiceProvider
         // vanishes by the same rule that already drops an area a module left empty.
         $nav->area('identity-platform', 'Identity platform', 'layers', 15)
             ->page('projects', 'Projects', feature: 'organization.projects', order: 10)
-            ->page('members', 'Members', feature: 'organization.members', order: 20)
+            // ADMINISTRATORS, not "Members". Two areas carried a page labelled "Members"
+            // pointing at two different components, which is how they came to share a
+            // route without anyone noticing. A label is a promise: this one is the people
+            // who ADMINISTER the organization, and the page's own heading says so.
+            ->page('members', 'Administrators', feature: 'organization.members', order: 20)
             ->page('api-keys', 'API keys', feature: 'organization.manage', order: 30)
             ->page('environment-keys', 'Environment keys', feature: 'organization.environments', order: 40)
             ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
@@ -86,8 +90,12 @@ final class ConsoleServiceProvider extends ServiceProvider
         // shipped six such mismatches, and they read as the product being confusing
         // rather than merely inconsistent. Rename in both places, or in neither.
         $nav->area('directory', 'People', 'members', 20)
-            ->page('members', 'Members', order: 10)
-            ->page('roles', 'Roles', order: 20);
+            ->page('directory.members', 'Members', order: 10)
+            ->page('roles', 'Roles', order: 20)
+            // Roles are made OF permissions, so a plane that offers one and hides the
+            // other asks an administrator to assign a thing they cannot inspect. It was
+            // environment-plane-only — the same component, reachable from one console.
+            ->page('permissions', 'Permissions', order: 30);
 
         // "Sync users in" / "Sync users out" — the two SCIM directions are a pair, and
         // are only comprehensible as one. "User sync" beside "Outbound sync" gave no
@@ -111,7 +119,11 @@ final class ConsoleServiceProvider extends ServiceProvider
         // 60 is left to the connectors module; the compliance and risk modules append
         // their pages to this area rather than minting their own (see below).
         $nav->area('audit', 'Logs', 'audit', 70)
-            ->page('audit', 'Activity log', order: 10);
+            ->page('audit', 'Activity log', order: 10)
+            // Environment-plane-only until now. Shipping the audit trail to a SIEM is an
+            // obligation the ORGANIZATION carries, so hiding it from the organization
+            // plane meant the party answerable for it could not see whether it ran.
+            ->page('audit-streams', 'Log streaming', order: 20);
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)
@@ -171,9 +183,19 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('platform.usage', 'Usage', feature: 'platform.operator', order: 10)
             ->page('platform.search', 'Search', feature: 'platform.operator', order: 20);
 
+        // "Security" is gone, and its absence is the fix. It enrolled a SEPARATE operator
+        // TOTP factor that nothing ever verified: the operator sign-in door was retired
+        // when operators became ordinary subjects, so `OperatorMfa` had no reader left
+        // anywhere in the app or the framework — grep it and only the enrolment screen and
+        // its own implementation come back. An operator scanned a QR code, saw "enabled",
+        // pocketed recovery codes, and was protected by nothing, on the most privileged
+        // account on the deployment. The page even said so in its subtitle: "the second
+        // factor that protects everything on the Platform rail."
+        //
+        // The real factor is the subject's own, on `/account`, which `PlatformAuth`
+        // actually checks at sign-in. One person, one identity, one second factor.
         $nav->area('platform-admin', 'Administration', 'lock', 120)
-            ->page('platform.operators', 'Operators', feature: 'platform.operator', order: 10)
-            ->page('platform.security', 'Security', feature: 'platform.operator', order: 20);
+            ->page('platform.operators', 'Operators', feature: 'platform.operator', order: 10);
     }
 
     /**

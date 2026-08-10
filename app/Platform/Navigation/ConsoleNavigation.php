@@ -39,7 +39,7 @@ class ConsoleNavigation
         return new ConsoleNav(...$this->withModulePages([
             new NavArea('Overview', 'dashboard',
                 new NavPage('environment.home', 'Overview'),
-                new NavPage('environment.analytics', 'Analytics'),
+                new NavPage('environment.analytics', 'Usage'),
                 new NavPage('environment.approvals', 'Agent approvals'),
             ),
             new NavArea('Tenants', 'layers',

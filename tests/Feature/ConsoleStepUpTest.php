@@ -337,7 +337,7 @@ it('refuses to register a log stream with no step-up, and registers with one', f
 
     app(EnvironmentSudo::class)->confirm();
     $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'environment.audit-streams.create');
+    $snapshot = snapshotFor((string) $page->getContent(), 'console.audit-streams.create');
     app(EnvironmentSudo::class)->forget();
 
     replaySnapshot($url, $snapshot, 'create', [], $form)

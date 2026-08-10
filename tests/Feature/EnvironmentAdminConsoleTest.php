@@ -149,7 +149,10 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         // Likewise: the page is headed "Activity log" on both planes.
         '/admin/audit' => 'Activity log',
         '/admin/log-streaming' => 'Log streaming',
-        '/admin/analytics' => 'Analytics',
+        // "Usage" on BOTH planes now. It was "Analytics" here and "Usage" on the
+        // organization plane, over the same `auth.*` counters — and this plane's version
+        // was the primitive one: raw metric keys, no labels, no time window.
+        '/admin/analytics' => 'Usage',
         '/admin/approvals' => 'Agent approvals',
         '/admin/settings' => 'Integration',
     ] as $path => $needle) {
