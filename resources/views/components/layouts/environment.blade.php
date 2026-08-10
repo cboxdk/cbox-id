@@ -158,7 +158,12 @@
         </header>
 
         <main id="main-content" class="flex-1 min-w-0 overflow-y-auto canvas-gradient pb-16 lg:pb-0">
-            <div class="mx-auto w-full max-w-5xl px-5 py-8">
+            {{-- IDENTICAL to the organization shell's container, and it must stay that way:
+                 the pages inside are the SAME COMPONENTS now, so a different width here
+                 means one page with two layouts. It was max-w-5xl (64rem) with px-5 py-8
+                 against 72rem with p-6 lg:p-8 — eight rem narrower, so a shared table had
+                 one column count on one plane and another on the other. --}}
+            <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:72rem">
                 {{ $slot }}
             </div>
         </main>

@@ -93,7 +93,15 @@
                         {{-- wire:navigate — see x-console.rail. On mobile the whole
                              shell is re-parsed on every tap without it. --}}
                         <a href="{{ route($page['route']) }}" wire:navigate @click="nav=false" class="nav-link {{ $isActive($page['route']) ? 'is-active' : '' }}"
-                           @if ($isActive($page['route'])) aria-current="page" @endif>{{ $page['label'] }}</a>
+                           @if ($isActive($page['route'])) aria-current="page" @endif>
+                            {{ $page['label'] }}
+                            {{-- The organization plane badges entitlement-gated pages. It
+                                 carried that in a drawer of its own; the badge moved here
+                                 with it rather than being dropped in the merge. --}}
+                            @if (($page['badge'] ?? null) !== null)
+                                <span class="ml-auto" style="font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--primary)">{{ $page['badge'] }}</span>
+                            @endif
+                        </a>
                     @endforeach
                 </div>
             @endforeach

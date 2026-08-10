@@ -47,6 +47,10 @@
                     'route' => $p->route,
                     'label' => $p->label,
                     'feature' => $entitlementFeature[$p->route] ?? null,
+                    // Precomputed here rather than in the view: the shared mobile nav
+                    // renders whatever badge it is handed and asks no questions about
+                    // entitlements, which is what lets both shells use it.
+                    'badge' => null,
                 ])->values()->all(),
         ])
         ->reject(fn (array $a): bool => $a['pages'] === [])
@@ -180,11 +184,11 @@
 <div class="flex h-full" x-data="{
         pinned: {{ request()->cookie('cbox-nav-pinned') === '1' ? 'true' : 'false' }},
         subnav: localStorage.getItem('cbox-subnav-collapsed') === '1',
-        mobile: false, account: false, org: false, env: false, hover: false,
+        nav: false, account: false, org: false, env: false, hover: false,
         togglePin() { this.pinned = !this.pinned; document.documentElement.classList.toggle('cbx-nav-pinned', this.pinned); document.cookie = 'cbox-nav-pinned=' + (this.pinned ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax'; },
         toggleSubnav() { this.subnav = !this.subnav; localStorage.setItem('cbox-subnav-collapsed', this.subnav ? '1' : '0'); }
      }"
-     @keydown.escape.window="mobile=false;account=false;org=false;env=false"
+     @keydown.escape.window="nav=false;account=false;org=false;env=false"
      @keydown.window.cmd.period.prevent="toggleSubnav()" @keydown.window.ctrl.period.prevent="toggleSubnav()">
 
     {{-- ═══ TIER 1 — icon rail (desktop) ═══ --}}
@@ -206,76 +210,45 @@
         <x-console.subnav :label="$activeArea['label']" :pages="$subnavPages" />
     @endif
 
-    {{-- ═══ Mobile drawer ═══ --}}
-    <div class="lg:hidden" x-cloak>
-        <div x-show="mobile" x-transition.opacity class="fixed inset-0 z-40" style="background:var(--overlay)" @click="mobile=false" aria-hidden="true"></div>
-        {{-- Self-contained focus trap (the Alpine Focus plugin / x-trap is NOT loaded in
-             this app, so the same hand-rolled pattern as components/mobile-nav.blade.php and
-             components/confirm-delete.blade.php is used): on open, save the active element,
-             move focus into the drawer and lock background scroll; cycle Tab within the panel;
-             restore focus + unlock scroll on close. Esc is handled by the shell's window
-             listener, which flips `mobile` and so triggers onClose() through x-effect. --}}
-        <div x-show="mobile"
-             x-data="{
-                prevFocus: null,
-                onOpen() { this.prevFocus = document.activeElement; document.documentElement.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.closeBtn && this.$refs.closeBtn.focus()); },
-                onClose() { document.documentElement.style.overflow = ''; if (this.prevFocus) { this.prevFocus.focus && this.prevFocus.focus(); this.prevFocus = null; } },
-                trap(e) {
-                    if (e.key !== 'Tab') return;
-                    const f = Array.from(this.$el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex=\'-1\'])')).filter(el => el.offsetParent !== null);
-                    if (!f.length) return;
-                    const first = f[0], last = f[f.length - 1];
-                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-                }
-             }"
-             x-effect="mobile ? onOpen() : onClose()"
-             @keydown.tab="trap($event)"
-             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
-             class="fixed inset-y-0 left-0 z-50 w-72 max-w-[85%] flex flex-col" style="background:var(--sidebar);border-right:1px solid var(--sidebar-border)"
-             role="dialog" aria-modal="true" aria-label="Navigation">
-            <div class="cbx-sidebar-brand" style="justify-content:space-between">
-                <a href="{{ route('dashboard') }}"><x-brand /></a>
-                <button type="button" x-ref="closeBtn" @click="mobile=false" class="cbx-subnav-toggle" aria-label="Close navigation"><x-icon name="close" class="w-[18px] h-[18px]" /></button>
-            </div>
-            <nav class="cbx-nav" aria-label="Primary">
-                @foreach ($areas as $area)
-                    <p class="cbx-nav-group">
-                        <x-icon :name="$area['icon']" class="w-[0.95rem] h-[0.95rem]" aria-hidden="true" />
-                        {{ $area['label'] }}
-                    </p>
-                    @foreach ($area['pages'] as $page)
-                        {{-- wire:navigate — see x-console.rail.
+    {{-- ═══ Mobile navigation ═══
 
-                             The icon sits on the GROUP, not on every page under it: an
-                             area's icon is the same glyph for all of its pages, so
-                             repeating it three times below one heading was three
-                             identical marks that distinguished nothing and ate the
-                             width the labels needed on a 375px screen. --}}
-                        <a href="{{ route($page['route']) }}" wire:navigate class="nav-link is-nested" @click="mobile=false" @if ($routeActive($page['route'])) aria-current="page" @endif>
-                            {{ $page['label'] }}
-                            @if ($isLocked($page))<span class="ml-auto" style="font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--primary)">Enterprise</span>@endif
-                        </a>
-                    @endforeach
+         THE SHARED COMPONENT, not a drawer of this shell's own. It hand-rolled a
+         hamburger-and-slide-in-from-the-left panel while `components/mobile-nav` — whose
+         own docblock calls it "shared by every console shell" — was used by the
+         environment shell alone. So the two planes had two mobile interaction models over
+         what are now the SAME page components, and the thumb-zone pattern the shared one
+         implements is the house pattern.
+
+         The entitlement badge this shell's drawer carried moved into the component with
+         it; the organization switcher stays here, in the slot, because it is genuinely
+         this plane's. --}}
+    <x-mobile-nav :groups="$areas" :is-active="$routeActive" :heading="$me->organization()?->name ?? 'Console'"
+                  :initial="$userInitial" logout-route="logout"
+                  :member-name="$me->name()" :member-email="$me->email()">
+        @if ($myOrgs->count() > 1)
+            <p class="cbx-nav-group px-2 pt-2 pb-1">Switch organization</p>
+            <div class="max-h-52 overflow-y-auto space-y-0.5">
+                @foreach ($myOrgs as $o)
+                    <form method="POST" action="{{ route('organization.switch') }}">
+                        @csrf
+                        <input type="hidden" name="organization" value="{{ $o->id }}">
+                        <button type="submit" class="cbx-row w-full" style="padding:8px 10px;border-radius:8px;gap:10px;{{ $o->id === $me->organizationId() ? 'background:var(--secondary)' : '' }}">
+                            <span class="grid place-items-center rounded-md text-[10px] font-bold shrink-0" style="width:24px;height:24px;background:var(--accent-soft);color:var(--primary)">{{ strtoupper(substr($o->name, 0, 1)) }}</span>
+                            <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ $o->name }}</span></span>
+                            @if ($o->id === $me->organizationId())<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />@endif
+                        </button>
+                    </form>
                 @endforeach
-            </nav>
-            <div class="p-3" style="border-top:1px solid var(--sidebar-border)">
-                <div class="flex items-center gap-2.5 px-1 mb-2">
-                    <span class="cbx-avatar" style="width:2rem;height:2rem" aria-hidden="true">{{ $userInitial }}</span>
-                    <div class="min-w-0"><p class="text-sm font-medium truncate leading-tight">{{ $me->name() }}</p><p class="text-xs truncate" style="color:var(--muted-foreground)">{{ $me->email() }}</p></div>
-                </div>
-                <button type="button" data-theme-toggle class="nav-link w-full"><x-icon name="moon" class="w-[1.15rem] h-[1.15rem]" /> Toggle theme</button>
-                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="nav-link w-full"><x-icon name="logout" class="w-[1.15rem] h-[1.15rem]" /> Sign out</button></form>
             </div>
-        </div>
-    </div>
+        @endif
+    </x-mobile-nav>
+
 
     {{-- ═══ Main column ═══ --}}
     <div class="flex flex-col min-w-0 flex-1">
         <header class="cbx-topbar">
             <div class="flex items-center gap-2 min-w-0">
-                <button type="button" @click="mobile=true" class="cbx-subnav-toggle lg:hidden" aria-label="Open navigation"><x-icon name="menu" class="w-[18px] h-[18px]" /></button>
+                <button type="button" @click="nav=true" class="cbx-subnav-toggle lg:hidden" aria-label="Open navigation"><x-icon name="menu" class="w-[18px] h-[18px]" /></button>
 
                 {{-- Org context crumb + switcher (Linear/Notion style). --}}
                 <div class="relative">
@@ -330,16 +303,42 @@
                         @if ($canSwitchEnv)
                             <div x-show="env" x-transition.opacity.duration.150ms @click.outside="env=false" x-cloak
                                  class="cbx-panel" style="position:absolute;top:calc(100% + 6px);left:0;min-width:260px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
+                                {{-- TWO DIFFERENT OPERATIONS, and the menu offered only one.
+
+                                     Selecting a row RE-POINTS this console at that
+                                     environment while you stay on the operator host, with
+                                     operator authority — which is what the platform pages
+                                     need, since Customers and Organizations are read
+                                     through the pointed environment.
+
+                                     What it did NOT offer is the thing the label most
+                                     looks like it means: opening that environment's own
+                                     console. That path already existed —
+                                     `environment.open` mints a signed handoff to
+                                     `{slug}.{base_domain}/admin/handoff`, no second login
+                                     — but it was reachable only from Projects, so the
+                                     control that reads "switch target" could not go
+                                     there and the one that could was on another page.
+                                     Both are here now, and each says which it is. --}}
                                 <p class="cbx-nav-group" style="padding:6px 10px 4px">Switch target</p>
                                 @foreach ($environments as $environment)
-                                    <form method="POST" action="{{ route('platform.environment.switch') }}">@csrf
-                                        <input type="hidden" name="environment" value="{{ $environment->id }}">
-                                        <button type="submit" class="cbx-row" style="padding:8px 10px;border-radius:6px;gap:10px;{{ $environment->id === $activeEnvId ? 'background:var(--secondary)' : '' }}">
-                                            <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" />
-                                            <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ isset($lineage[$environment->id]) ? $lineage[$environment->id]->qualify($environment->name) : $environment->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $environment->slug }}</span></span>
-                                            @if ($environment->id === $activeEnvId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" />@endif
-                                        </button>
-                                    </form>
+                                    <div class="flex items-center gap-1" style="{{ $environment->id === $activeEnvId ? 'background:var(--secondary);border-radius:6px' : '' }}">
+                                        <form method="POST" action="{{ route('platform.environment.switch') }}" class="min-w-0 flex-1">@csrf
+                                            <input type="hidden" name="environment" value="{{ $environment->id }}">
+                                            <button type="submit" class="cbx-row w-full" style="padding:8px 10px;border-radius:6px;gap:10px">
+                                                <x-icon name="layers" class="w-3.5 h-3.5 shrink-0" style="color:var(--muted-foreground)" />
+                                                <span class="min-w-0 flex-1 text-left"><span class="block text-[13px] truncate">{{ isset($lineage[$environment->id]) ? $lineage[$environment->id]->qualify($environment->name) : $environment->name }}</span><span class="block text-[11px] mono truncate" style="color:var(--muted-foreground)">{{ $environment->slug }}</span></span>
+                                                @if ($environment->id === $activeEnvId)<x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" />@endif
+                                            </button>
+                                        </form>
+                                        {{-- Leaves this host for the tenant's own console. Titled rather
+                                             than labelled inline: the row is already two lines deep and a
+                                             third word would wrap on a narrow window. --}}
+                                        <a href="{{ route('environment.open', $environment->id) }}"
+                                           class="btn btn-ghost btn-sm shrink-0" style="padding:6px 8px"
+                                           title="Open {{ $environment->name }}'s own console"
+                                           aria-label="Open {{ $environment->name }}'s own console">↗</a>
+                                    </div>
                                 @endforeach
                             </div>
                         @endif
@@ -374,6 +373,8 @@
         </header>
 
         <main id="main-content" class="flex-1 overflow-y-auto canvas-gradient">
+            {{-- Kept identical to the environment shell's container — see the note there.
+                 One number, two files, and the pages between them are shared. --}}
             <div class="p-6 lg:p-8 mx-auto w-full" style="max-width:72rem">{{ $slot }}</div>
         </main>
     </div>
