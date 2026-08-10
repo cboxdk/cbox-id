@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\GrantAccessRole;
 use App\Platform\MailLinks;
@@ -36,6 +37,7 @@ use Livewire\WithPagination;
 new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Component
 {
     use WithPagination;
+
 
     #[Validate('required|email|max:190')]
     public string $inviteEmail = '';

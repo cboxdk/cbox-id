@@ -359,7 +359,12 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
     signInAsMember($viewerSubjectId);
     $this->get(route('members'))
         ->assertOk()
-        ->assertSee('Members')
+        // "Administrators" since the People area's tenant directory and this page stopped
+        // sharing both a route and a label. This assertion is only confirming the page
+        // rendered at all — the property under test is the pair below it: a Viewer reads
+        // the roster and is offered no way to change it.
+        ->assertSee('Administrators')
+        ->assertSee($viewer->email ?? 'viewer@acme.example')
         ->assertDontSee('Invite a teammate');
 });
 

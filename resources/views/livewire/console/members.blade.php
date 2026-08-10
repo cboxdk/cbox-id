@@ -32,7 +32,7 @@ use Livewire\Volt\Component;
  * that rendered `$member->email` resolves the subject instead. That is the whole reason the
  * roster hydrates subjects alongside the memberships rather than reading names off them.
  */
-new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class extends Component
 {
     public string $inviteEmail = '';
 
@@ -352,7 +352,7 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
 }; ?>
 
 <div>
-    <x-page-header title="Members" subtitle="People who can administer this organization, their roles, and which environments they reach." />
+    <x-page-header title="Administrators" subtitle="People who can administer this organization, their roles, and which environments they reach." />
 
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @foreach ($members as $m)

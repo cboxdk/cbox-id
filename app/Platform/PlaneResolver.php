@@ -131,6 +131,31 @@ final class PlaneResolver
     }
 
     /**
+     * Whether the PUBLIC VERIFICATION KEYS are served here — `/.well-known/jwks.json`.
+     *
+     * Anywhere this deployment issues tokens, because a host that mints a signature and
+     * refuses to publish the key to check it has shipped half an identity provider — the
+     * same defect as advertising an endpoint that 404s, pointing the other way.
+     *
+     * THE PLATFORM ROOT NOW ISSUES. {@see servesFirstPartyIssuer()} opened `/oauth/token`
+     * there for the authenticator we ship, and this was left behind: the root minted
+     * tokens signed with keys it would not hand out, so nothing could verify them. Found
+     * from the app side — an authenticator built to check the enrolment code against the
+     * host's JWKS worked on a tenant subdomain and could never work on the root.
+     *
+     * SAFE, AND NOT A WEAKENING OF THE WALL. A JWK set is public key material; disclosing
+     * it is its entire purpose. What keeps the root from becoming an identity provider for
+     * a customer's own app is the first-party client check on `/oauth/authorize` — an
+     * organization admin can create OAuth clients on the root from Developers › Apps, and
+     * that check is what refuses them. Discovery, dynamic registration, SCIM and the SAML
+     * bindings stay absent, because those INVITE third-party federation. Keys do not.
+     */
+    public function servesVerificationKeys(): bool
+    {
+        return $this->servesIssuer() || $this->contextIsPlatformRoot();
+    }
+
+    /**
      * Whether the FIRST-PARTY token endpoints are served here — `/oauth/authorize`,
      * `/oauth/token`, `/oauth/revoke`, and only for a client the platform itself owns.
      *

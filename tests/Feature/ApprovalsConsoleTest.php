@@ -55,6 +55,35 @@ it('lets a user approve a pending agent request', function (): void {
     expect(BackchannelAuthRequest::query()->whereKey($requestId)->value('status'))->toBe(GrantPollStatus::Approved);
 });
 
+/**
+ * WHAT THE PERSON SEES MUST COVER WHAT THE AGENT GETS.
+ *
+ * The token minted on approval carries the scopes fixed at REQUEST time —
+ * `CibaAuthenticationService::approve()` writes only status, org and timestamp, and never
+ * touches them. So the page is the whole of the consent: whatever it fails to show is
+ * authority granted unseen.
+ *
+ * The page renders `$labels[$scope] ?? $scope`, so a scope nobody has written a friendly
+ * label for still appears as its raw string. That fallback is the safety property, and it
+ * is one refactor away from being an `array_filter` that quietly drops the unknown ones —
+ * which would read as a tidier list and be a consent screen that lies.
+ */
+it('shows every requested scope, including one it has no label for', function (): void {
+    [$subjectId] = approvalsMember();
+
+    $client = app(ClientRegistry::class)->register(
+        new NewClient('Agent', ClientType::Confidential, scopes: ['openid', 'deploy:production'])
+    )->client;
+
+    app(BackchannelAuthentication::class)->request($client, ['openid', 'deploy:production'], $subjectId);
+
+    Volt::test('approvals')
+        // The labelled one, rendered as its human phrase…
+        ->assertSee('Verify your identity')
+        // …and the unlabelled one, rendered as itself rather than omitted.
+        ->assertSee('deploy:production');
+})->group('security');
+
 it('lets a user deny a pending agent request', function (): void {
     [$subjectId] = approvalsMember();
 

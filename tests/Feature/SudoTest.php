@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentSudo;
 use App\Platform\PlatformAuth;
@@ -279,4 +281,39 @@ it('never lets an environment step-up satisfy the console', function (): void {
     // environment — every organization in it — must not confirm you as yourself. The
     // account plane's third key is gone with the plane; its pages raise this one.
     expect(app(Sudo::class)->confirmed())->toBeFalse();
+})->group('security');
+
+/**
+ * THE ORGANIZATION PLANE NEVER READS THE ENVIRONMENT PLANE'S SELECTION — and that is what
+ * keeps a console step-up from travelling.
+ *
+ * `Sudo::SESSION_KEY`'s docblock names "switching organization" as a transition that must
+ * forget it. Two paths switch. `PlatformAuth::switchOrganization()` drops both step-ups;
+ * `ConsoleScope::chooseOrganization()` drops only the environment one. That looks like a
+ * hole — `sudo` gates the Token Vault, which is organization-scoped — and it is not one,
+ * because `chooseOrganization()` writes `SELECTION_KEY`, which `organizationId()` reads
+ * ONLY on the environment plane. On the organization plane the org comes from the session,
+ * so an environment administrator's choice cannot move which organization the vault routes
+ * (`plane:console`) act for.
+ *
+ * So the safety rests on plane separation, not on the step-up being dropped — two distant
+ * decisions that happen to agree. This pins the one actually carrying it, because if the
+ * organization plane ever started honouring the selection, the retained confirmation would
+ * become exactly the hole it looks like, and nothing else would notice.
+ */
+it('never lets the environment plane\'s organization selection reach the organization plane', function (): void {
+    $subjectId = signIn();
+
+    $second = app(Organizations::class)->create(new NewOrganization('Beta', 'beta-sudo'));
+    app(Memberships::class)->add($second->id, $subjectId, MembershipRole::Owner);
+
+    // The environment plane's key, planted directly — no plane guard to satisfy, and the
+    // point is what the ORGANIZATION plane does with it.
+    session()->put(ConsoleScope::SELECTION_KEY, $second->id);
+
+    $scope = app(ConsoleScope::class);
+
+    expect($scope->plane())->toBe(ConsolePlane::Organization)
+        // The session's organization, never the planted selection.
+        ->and($scope->organizationId())->not->toBe($second->id);
 })->group('security');

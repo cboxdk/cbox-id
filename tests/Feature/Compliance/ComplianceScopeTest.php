@@ -45,7 +45,17 @@ it('shows an admin only their own organization\'s trail, whatever they send', fu
         // Expected: there is nothing to set.
     }
 
-    expect($actions())->not->toContain('theirs.event', 'the compliance audit page read another tenant\'s chain');
+    // NO MESSAGE ARGUMENT. `toContain` is variadic and takes no message, so a string
+    // passed second is read as a SECOND NEEDLE — and `not->toContain` passes the moment
+    // any needle is absent. The message never appears in the haystack, so the assertion
+    // was unconditionally green and this half of the test proved nothing. Verified:
+    // `expect('contains the needle')->not->toContain('needle', 'a message')` passes.
+    //
+    // A positive control beside it, because "does not contain another tenant's event" is
+    // also satisfied by a page that rendered nothing at all — which is how a broken read
+    // path would look identical to a correctly-scoped one.
+    expect($actions())->not->toContain('theirs.event')
+        ->and($actions())->toContain('mine.event');
 });
 
 /**

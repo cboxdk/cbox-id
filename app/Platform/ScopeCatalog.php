@@ -38,6 +38,12 @@ final class ScopeCatalog
             // through the undiscoverable custom-scope box, and never at all for a
             // self-registering client.
             ['key' => 'organizations', 'label' => 'Their organizations', 'description' => 'The organizations this person belongs to, so the app can offer a workspace switcher.', 'category' => self::SIGN_IN, 'recommended' => false],
+            // Same story as `organizations` above, one release later: `groups` was added to
+            // discovery and to the token issuer and to neither list that can grant it. It
+            // puts this app's RBAC roles on the ID TOKEN, which is what a relying party
+            // that authenticates the id_token rather than the access token — Kubernetes,
+            // Grafana, Vault — needs in order to bind any policy to the person at all.
+            ['key' => 'groups', 'label' => 'Their roles in this app', 'description' => "This app's own roles for the person, on the ID token — for services like Kubernetes or Grafana that authorize from it.", 'category' => self::SIGN_IN, 'recommended' => false],
             ['key' => 'vault.manage', 'label' => 'Manage stored secrets', 'description' => 'Create, rotate and revoke downstream credentials in the Token Vault.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'vault.lease', 'label' => 'Use stored secrets', 'description' => 'Fetch a stored credential to call a downstream service.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'apps.manifest', 'label' => 'Publish its own manifest', 'description' => 'Let this app push its own roles &amp; permissions manifest to Cbox ID.', 'category' => self::PLATFORM_API, 'recommended' => false],

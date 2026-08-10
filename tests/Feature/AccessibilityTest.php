@@ -470,7 +470,10 @@ it('keeps the help popover out of the page heading', function (): void {
 
     $between = (string) preg_replace('/^.*<h1 class="cbx-page-title">|<\/h1>.*$/s', '', $header);
 
-    expect($between)->not->toContain('x-help', 'the help control is nested inside the page heading');
+    // No message argument: `toContain` is variadic, so a second string is another
+    // needle and `not->toContain` passes as soon as one is missing. The `toMatch` above
+    // carries the real assertion, but a guard that cannot fail is worse than none.
+    expect($between)->not->toContain('x-help');
 });
 
 /**

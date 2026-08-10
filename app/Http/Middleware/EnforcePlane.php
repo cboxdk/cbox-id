@@ -23,6 +23,9 @@ use Symfony\Component\HttpFoundation\Response;
  *  - `plane:issuer` — the identity-provider protocol surface: discovery, JWKS,
  *    `/oauth/*`, the SAML IdP bindings, SCIM. Served on every host EXCEPT the platform
  *    root, which is an issuer for nobody.
+ *  - `plane:keys` — `/.well-known/jwks.json`. Served wherever tokens are issued, which
+ *    includes the platform root: a host that signs a token and withholds the key to
+ *    verify it has shipped half an IdP. Public key material discloses nothing.
  *  - `plane:first-party` — the three token endpoints (`/oauth/authorize`, `/oauth/token`,
  *    `/oauth/revoke`), which is `issuer` plus one narrow exception: on the platform root
  *    they are served for a PLATFORM-OWNED first-party client and refused for every other.
@@ -55,7 +58,7 @@ final class EnforcePlane
      *
      * @var list<string>
      */
-    private const PLANES = ['account', 'console', 'issuer', 'first-party', 'environment', 'operator'];
+    private const PLANES = ['account', 'console', 'issuer', 'first-party', 'keys', 'environment', 'operator'];
 
     /**
      * Where a client identifier is found on the endpoints carrying `plane:first-party`.
@@ -103,6 +106,9 @@ final class EnforcePlane
             // The token endpoints, which the platform root serves for the binary we ship
             // and for nothing else. See PlaneResolver::servesFirstPartyIssuer() for why
             // the root needs them at all and why the wall above stays exactly where it is.
+            // Public verification keys, served wherever this deployment issues tokens —
+            // which now includes the platform root. See servesVerificationKeys().
+            'keys' => $this->planes->servesVerificationKeys(),
             'first-party' => $this->planes->servesFirstPartyIssuer(
                 is_string($id = $request->input(self::CLIENT_ID)) ? $id : '',
             ),
