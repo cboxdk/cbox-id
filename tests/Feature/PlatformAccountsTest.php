@@ -41,7 +41,9 @@ function suspendableAccount(string $email = 'junk@signup.example'): Organization
 it('lists every account with its members, projects and environments', function (): void {
     $account = suspendableAccount();
 
-    $rows = collect(Volt::test('platform.customers')->viewData('rows'))->keyBy('id');
+    // `items()`, not the paginator itself: the customer list is paged now, and
+    // `collect($paginator)` wraps the paginator object rather than its rows.
+    $rows = collect(Volt::test('platform.customers')->viewData('rows')->items())->keyBy('id');
 
     expect($rows)->toHaveKey($account->id)
         ->and($rows[$account->id]['name'])->toBe('Junk Signup')

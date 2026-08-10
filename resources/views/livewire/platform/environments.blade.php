@@ -23,7 +23,9 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * The operator's environment console: create planes, point the console at one,
@@ -41,6 +43,8 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Environments'])] class extends Component
 {
+    use WithPagination;
+
     public bool $creating = false;
 
     public string $name = '';
@@ -197,29 +201,64 @@ new #[Layout('components.layouts.app', ['title' => 'Environments'])] class exten
         return $slug;
     }
 
+    /**
+     * SEARCH AND PAGING. This list is every environment on the deployment — the least
+     * bounded set in the product — and it had neither, while thirteen tenant-facing
+     * console pages had both.
+     */
+    #[Url(as: 'q')]
+    public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     /** @return array<string, mixed> */
     public function with(EnvironmentContext $context, EnvironmentLineages $lineages): array
     {
         $activeId = $context->current()?->environmentKey();
 
-        $rows = $context->withoutScope(function () use ($lineages): Collection {
-            /** @var EloquentCollection<int, Environment> $environments */
-            $environments = Environment::query()->orderBy('created_at')->get();
+        $rows = $context->withoutScope(function () use ($lineages) {
+            // `id` as a tiebreak: rows created in the same second tie on `created_at`, and
+            // an engine may order a tie differently per query — which under paging shows
+            // the same environment on two pages, or on neither.
+            $query = Environment::query()->orderBy('created_at')->orderBy('id');
+
+            // Grouped, so the scope's own predicate cannot be stranded behind the OR if
+            // this block ever moves out from under `withoutScope()`.
+            $term = trim($this->search);
+
+            if ($term !== '') {
+                $query->where(function ($q) use ($term): void {
+                    $q->where('name', 'like', "%{$term}%")
+                        ->orWhere('slug', 'like', "%{$term}%")
+                        ->orWhere('domain', 'like', "%{$term}%");
+                });
+            }
+
+            $environments = $query->simplePaginate(25);
 
             // Batched exactly like the counts below and for the same reason: the lineage
             // of N environments is two queries, not N.
-            $lineage = $lineages->for($environments);
+            $lineage = $lineages->for($environments->getCollection());
+
+            // Scoped to the page's ids: these grouped counts used to run across every
+            // environment on the install to render twenty-five rows.
+            $ids = $environments->getCollection()->map(fn (Environment $e): string => $e->id)->all();
 
             /** @var Collection<string, int> $orgCounts */
             $orgCounts = Organization::query()->selectRaw('environment_id, count(*) as c')
+                ->whereIn('environment_id', $ids)
                 ->groupBy('environment_id')->pluck('c', 'environment_id');
 
             /** @var Collection<string, int> $userCounts */
             $userCounts = User::query()->selectRaw('environment_id, count(*) as c')
+                ->whereIn('environment_id', $ids)
                 ->groupBy('environment_id')->pluck('c', 'environment_id');
 
             return $environments
-                ->map(fn (Environment $e): array => [
+                ->through(fn (Environment $e): array => [
                     'id' => $e->id,
                     'name' => $e->name,
                     'slug' => $e->slug,
@@ -230,8 +269,7 @@ new #[Layout('components.layouts.app', ['title' => 'Environments'])] class exten
                     // it. The fallback is here so the view can render lineage without a
                     // null branch, not because the key can be missing.
                     'lineage' => $lineage[$e->id] ?? new EnvironmentLineage(environmentId: $e->id),
-                ])
-                ->values();
+                ]);
         });
 
         return ['environments' => $rows, 'activeId' => $activeId];
@@ -247,7 +285,12 @@ new #[Layout('components.layouts.app', ['title' => 'Environments'])] class exten
         </x-slot:actions>
     </x-page-header>
 
-    <p role="status" aria-live="polite" class="sr-only">{{ $environments->count() }} {{ \Illuminate\Support\Str::plural('environment', $environments->count()) }} found.</p>
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem"
+               placeholder="Search by name, slug or domain" aria-label="Search environments">
+    </div>
+
+    <p role="status" aria-live="polite" class="sr-only">{{ $environments->count() }} {{ \Illuminate\Support\Str::plural('environment', $environments->count()) }} on this page.</p>
 
     @if ($creating)
         <form wire:submit="create" class="card p-4 mb-5 mt-8 flex flex-wrap items-end gap-3">
@@ -272,7 +315,13 @@ new #[Layout('components.layouts.app', ['title' => 'Environments'])] class exten
         </form>
     @endif
 
-    @if ($environments->isEmpty())
+    @if ($environments->isEmpty() && trim($search) !== '')
+        <div class="cbx-empty mt-8">
+            <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+            <h3>No environments match “{{ trim($search) }}”</h3>
+            <p>Try part of the name, the routing slug, or a custom domain.</p>
+        </div>
+    @elseif ($environments->isEmpty())
         <div class="cbx-empty mt-8">
             <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
             <h3>No environments yet</h3>
@@ -411,6 +460,9 @@ new #[Layout('components.layouts.app', ['title' => 'Environments'])] class exten
             Environments nest under a project, and a project under an
             <a href="{{ route('platform.customers') }}" wire:navigate class="underline">customer</a> — start there to see one
             customer's whole estate. Two rows here never have a customer: the
+        <div class="mt-4 max-w-full overflow-x-auto">{{ $environments->links() }}</div>
+
+        <p class="mt-4 text-xs" style="color:var(--faint)">
             <strong>platform root</strong> is the plane this deployment itself runs in, where operators
             and a customer's own people live, and an <strong>unattached</strong> environment has no project, so
             nothing bills for it and no customer reaches it. Neither is an error to fix from this

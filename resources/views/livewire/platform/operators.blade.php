@@ -8,7 +8,9 @@ use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Manage platform operators — the identities above every environment. Operators
@@ -16,6 +18,16 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Operators'])] class extends Component
 {
+    use WithPagination;
+
+    /**
+     * Search, but no paging: the operator roster is the people who run the deployment —
+     * a handful, not a population — so page links would be chrome over a single page. The
+     * search earns its place because an operator looks somebody up by name or address.
+     */
+    #[Url(as: 'q')]
+    public string $search = '';
+
     public bool $creating = false;
 
     public string $name = '';
@@ -96,7 +108,16 @@ new #[Layout('components.layouts.app', ['title' => 'Operators'])] class extends 
     {
         return [
             'currentId' => $scope->operator()?->id,
-            'operators' => PlatformOperator::query()->orderBy('created_at')->get()
+            'operators' => PlatformOperator::query()
+                ->when(trim($this->search) !== '', function ($q): void {
+                    $term = trim($this->search);
+
+                    // Grouped, so the predicate cannot be stranded behind the OR.
+                    $q->where(function ($inner) use ($term): void {
+                        $inner->where('name', 'like', "%{$term}%")->orWhere('email', 'like', "%{$term}%");
+                    });
+                })
+                ->orderBy('created_at')->orderBy('id')->get()
                 ->map(fn (PlatformOperator $o): array => [
                     'id' => $o->id,
                     'name' => $o->name,
@@ -116,6 +137,11 @@ new #[Layout('components.layouts.app', ['title' => 'Operators'])] class extends 
             </button>
         </x-slot:actions>
     </x-page-header>
+
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem"
+               placeholder="Search by name or email" aria-label="Search operators">
+    </div>
 
     <p role="status" aria-live="polite" class="sr-only">{{ $operators->count() }} {{ \Illuminate\Support\Str::plural('operator', $operators->count()) }} found.</p>
 

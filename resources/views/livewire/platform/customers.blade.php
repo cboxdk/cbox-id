@@ -22,7 +22,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * The operator's customer list — every customer on the install, and the
@@ -48,6 +50,26 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends Component
 {
+    use WithPagination;
+
+    /**
+     * SEARCH AND PAGING, on the one plane that grows without bound.
+     *
+     * The tenant-facing console has had both on thirteen pages for a while; the platform
+     * section had them nowhere — which is backwards, because a console list is bounded by
+     * one customer's size while this one is every customer on the deployment.
+     *
+     * `#[Url]` so a filtered view is a link an operator can send to a colleague, which is
+     * most of what this page is for during an incident.
+     */
+    #[Url(as: 'q')]
+    public string $search = '';
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     /** Re-check operator AUTHORITY on every request, including Livewire actions. */
     public function boot(ConsoleScope $scope): void
     {
@@ -219,9 +241,37 @@ new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends 
         // page shows a tenant's own end-user organizations — or, off a tenant host, nothing
         // at all. The account plane never had to think about it because `accounts` sat
         // outside tenancy entirely.
-        /** @var array<int, array<string, mixed>> $rows */
-        $rows = $platformRoot->run(function (): array {
-            $organizations = Organization::query()->orderBy('created_at')->get();
+        $customers = $platformRoot->run(function () {
+            // ORDERED BY id AS A TIEBREAK, because paging over a non-deterministic sort
+            // is not merely untidy: rows created in the same second tie on `created_at`,
+            // and the engine is free to order a tie differently per query — so the same
+            // customer can appear on two pages, or on neither. ULIDs are monotonic, so
+            // this is the same chronological order with the ambiguity removed.
+            $query = Organization::query()->orderBy('created_at')->orderBy('id');
+
+            // GROUPED, not chained. `EnvironmentScope` emits its predicate as a top-level
+            // `where`, so an ungrouped `->where(...)->orWhere(...)` would compile to
+            // `env = X AND name LIKE ? OR slug LIKE ?` — and the scope would stop binding
+            // past the OR. Harmless inside this platform-root block; a closure regardless,
+            // because the safety must not depend on where the block happens to sit.
+            $term = trim($this->search);
+
+            if ($term !== '') {
+                $query->where(function ($q) use ($term): void {
+                    $q->where('name', 'like', "%{$term}%")->orWhere('slug', 'like', "%{$term}%");
+                });
+            }
+
+            // simplePaginate rather than paginate: a `COUNT(*)` over a leading-wildcard
+            // LIKE is a full scan no index can serve, re-run on every debounced keystroke,
+            // and it buys only page numbers.
+            $organizations = $query->simplePaginate(25);
+
+            // THE COUNTS ARE NOW SCOPED TO THE PAGE. They used to group over every
+            // organization on the install to render 25 rows — three full aggregates per
+            // request, growing with the estate. `whereIn` over the page's ids is the same
+            // three queries bounded by the page size.
+            $ids = $organizations->getCollection()->map(fn (Organization $o): string => $o->id)->all();
 
             // TENANT SCOPE SUSPENDED. A membership is tenant-owned and the tenant scope is
             // deny-by-default, so this roll-up across every customer counts ZERO from a
@@ -229,12 +279,14 @@ new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends 
             // "0 members" for organizations that have several.
             /** @var Collection<string, int> $memberCounts */
             $memberCounts = app(TenantContext::class)->withoutScope(
-                static fn () => Membership::query()->selectRaw('organization_id, count(*) as c')
+                fn () => Membership::query()->selectRaw('organization_id, count(*) as c')
+                    ->whereIn('organization_id', $ids)
                     ->groupBy('organization_id')->pluck('c', 'organization_id'),
             );
 
             /** @var Collection<string, int> $projectCounts */
             $projectCounts = Project::query()->selectRaw('organization_id, count(*) as c')
+                ->whereIn('organization_id', $ids)
                 ->groupBy('organization_id')->pluck('c', 'organization_id');
 
             // Environments hang off PROJECTS, so the count runs through them rather than
@@ -243,10 +295,13 @@ new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends 
             $environmentCounts = Environment::query()
                 ->join('projects', 'projects.id', '=', 'environments.project_id')
                 ->selectRaw('projects.organization_id as organization_id, count(*) as c')
+                ->whereIn('projects.organization_id', $ids)
                 ->groupBy('projects.organization_id')
                 ->pluck('c', 'organization_id');
 
-            return $organizations->map(function (Organization $organization) use ($memberCounts, $projectCounts, $environmentCounts): array {
+            // `through()` maps the items and hands the PAGINATOR back, so one object
+            // carries both the rows and the links.
+            return $organizations->through(function (Organization $organization) use ($memberCounts, $projectCounts, $environmentCounts): array {
                 // The package's model does not declare the Eloquent timestamp columns as
                 // @property, so read created_at off the attribute bag and narrow it rather
                 // than trusting an undeclared property.
@@ -261,10 +316,10 @@ new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends 
                     'environments' => (int) ($environmentCounts[$organization->id] ?? 0),
                     'created_at' => $createdAt instanceof CarbonInterface ? $createdAt->toDayDateTimeString() : null,
                 ];
-            })->all();
-        }) ?? [];
+            });
+        });
 
-        return ['rows' => $rows];
+        return ['rows' => $customers];
     }
 }; ?>
 
@@ -336,18 +391,36 @@ new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends 
         </form>
     @endif
 
-    <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('customer', count($rows)) }} found.</p>
+    {{-- The search sits above the count, so the live region announces the RESULT of what
+         was just typed. `.live.debounce.300ms` matches every other search in the console —
+         a second interaction model for the same control is the drift the design system
+         exists to prevent. --}}
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem"
+               placeholder="Search by name or slug" aria-label="Search customers">
+    </div>
+
+    <p role="status" aria-live="polite" class="sr-only">{{ $rows->count() }} {{ \Illuminate\Support\Str::plural('customer', $rows->count()) }} on this page.</p>
 
     {{-- A real table, not a div grid with matching grid-template-columns. The two rows
          resolved their `fr` tracks against different content — the header's last cell was
          an empty span, the body's a button — so by "Created" the data sat 121px left of
          its own heading. A table cannot disagree with itself, and it is what the rest of
          the console uses, so a screen reader gets the column association too. --}}
-    @if ($rows === [])
+    {{-- TWO EMPTY STATES, because they mean opposite things. "Nothing here yet" tells a
+         new operator the install is working and there is nothing to do; shown after a
+         search that missed, it reads as "your customers are gone." --}}
+    @if ($rows->isEmpty() && trim($search) !== '')
+        <div class="cbx-empty mt-8">
+            <div class="cbx-empty-icon"><x-icon name="search" class="w-5 h-5" /></div>
+            <h3>No customers match “{{ trim($search) }}”</h3>
+            <p>Try part of the organization name, or its slug.</p>
+        </div>
+    @elseif ($rows->isEmpty())
         <div class="cbx-empty mt-8">
             <div class="cbx-empty-icon"><x-icon name="settings" class="w-5 h-5" /></div>
             <h3>No customers yet</h3>
-            <p>A customer appears here the moment somebody signs up. Nothing to do until then.</p>
+            <p>A customer appears here the moment somebody signs up — or use <strong>New customer</strong> above to onboard one yourself.</p>
         </div>
     @else
         <div class="cbx-panel overflow-hidden mt-8">
@@ -419,6 +492,10 @@ new #[Layout('components.layouts.app', ['title' => 'Customers'])] class extends 
                 </table>
             </div>
         </div>
+
+        {{-- Wrapped in its own overflow container: the paginator's page links are the one
+             element on this page that has no narrow-screen fallback of its own. --}}
+        <div class="mt-4 max-w-full overflow-x-auto">{{ $rows->links() }}</div>
 
         <p class="mt-4 text-xs" style="color:var(--faint)">
             Suspension is the only lever here, and it is reversible. Nothing on this screen

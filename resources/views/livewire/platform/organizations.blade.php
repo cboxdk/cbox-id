@@ -14,6 +14,7 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
@@ -24,6 +25,21 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Organizations'])] class extends Component
 {
+    /**
+     * SEARCH, AND DELIBERATELY NO PAGING.
+     *
+     * This list is a management TREE, flattened depth-first so the table reads as the
+     * hierarchy. Paging the flattened rows would cut the tree at an arbitrary depth — a
+     * child on page two with its parent on page one reads as a root, which is worse than
+     * a long page. Narrowing by name or slug is the operation an operator actually wants
+     * here, and it keeps whatever matches intact.
+     *
+     * If the estate ever outgrows one page, the answer is paging the ROOTS and rendering
+     * each subtree whole, not paging these rows.
+     */
+    #[Url(as: 'q')]
+    public string $search = '';
+
     public bool $creating = false;
 
     public string $name = '';
@@ -111,7 +127,16 @@ new #[Layout('components.layouts.app', ['title' => 'Organizations'])] class exte
     /** @return array<string, mixed> */
     public function with(): array
     {
+        $term = trim($this->search);
+
         $orgs = Organization::query()->orderBy('name')
+            ->when($term !== '', function ($q) use ($term): void {
+                // Grouped, so the environment scope's own predicate is not stranded
+                // behind the OR.
+                $q->where(function ($inner) use ($term): void {
+                    $inner->where('name', 'like', "%{$term}%")->orWhere('slug', 'like', "%{$term}%");
+                });
+            })
             ->get(['id', 'name', 'slug', 'type', 'status', 'parent_id']);
 
         /** @var Collection<string, int> $memberCounts */
@@ -119,8 +144,23 @@ new #[Layout('components.layouts.app', ['title' => 'Organizations'])] class exte
             ->groupBy('organization_id')->pluck('c', 'organization_id');
 
         // Depth-first flatten so the table reads as the management tree.
+        //
+        // A FILTERED SET HAS ORPHANS, and they must not vanish. The walk starts at the
+        // roots — the '' bucket — so an organization whose parent did not match the search
+        // would be grouped under a parent key nothing ever visits, and a match would
+        // silently not be listed. A search that hides matches is worse than no search.
+        //
+        // So a row whose parent is absent from the result set is treated as a root for
+        // display. It renders at depth 0 rather than under a parent that is not on screen,
+        // which is the honest thing to show: this is a filtered view, not the tree.
+        $present = $orgs->keyBy(fn (Organization $o): string => $o->id);
+
         /** @var Collection<string, Collection<int, Organization>> $byParent */
-        $byParent = $orgs->groupBy(fn (Organization $o): string => $o->parent_id ?? '');
+        $byParent = $orgs->groupBy(function (Organization $o) use ($present): string {
+            $parent = $o->parent_id;
+
+            return $parent !== null && $present->has($parent) ? $parent : '';
+        });
         $rows = [];
         $walk = function (string $parentKey, int $depth) use (&$walk, $byParent, $memberCounts, &$rows): void {
             /** @var Collection<int, Organization> $children */
@@ -158,6 +198,11 @@ new #[Layout('components.layouts.app', ['title' => 'Organizations'])] class exte
             </button>
         </x-slot:actions>
     </x-page-header>
+
+    <div class="mt-6">
+        <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem"
+               placeholder="Search by name or slug" aria-label="Search organizations">
+    </div>
 
     <p role="status" aria-live="polite" class="sr-only">{{ count($rows) }} {{ \Illuminate\Support\Str::plural('organization', count($rows)) }} found.</p>
 
