@@ -117,7 +117,6 @@ it('gives every platform page the eyebrow its rail area actually uses', function
         'platform.usage' => 'Insights',
         'platform.search' => 'Insights',
         'platform.operators' => 'Administration',
-        'platform.security' => 'Administration',
     ];
 
     foreach ($expected as $route => $area) {

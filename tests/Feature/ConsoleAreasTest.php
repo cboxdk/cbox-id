@@ -250,7 +250,61 @@ it('lands every platform nav entry on a page titled and headed the way the entry
 
     $checked = assertNavEntryLabelsMatchTheirPages($entries, 'platform');
 
-    // Seven pages across three areas; anything less means the session stopped resolving
-    // and the loop is asserting nothing.
-    expect($checked)->toBe(7);
+    // Six pages across three areas; anything less means the session stopped resolving
+    // and the loop is asserting nothing. It was seven until the operator "Security" page
+    // was retired — it enrolled a second factor nothing verified, so the screen promised
+    // a protection that did not exist. The count is deliberately exact for the reason in
+    // the comment above: a shrinking number must be a decision, not a silent no-op.
+    expect($checked)->toBe(6);
+});
+
+/**
+ * TWO REGISTRATIONS ON ONE URI SILENTLY DELETE A PAGE, and two nav entries on one route
+ * silently send a click to the wrong area.
+ *
+ * `/members` was registered twice with the name `members`. Laravel keys the route
+ * collection on `method|domain|uri`, so the second replaced the first: a 600-line
+ * component became unreachable from any URL, and because two areas then named the same
+ * route, clicking "People" lit up "Identity platform" — with a matching eyebrow, and
+ * "Roles" gone from the sub-nav — because the layout picks the FIRST area containing the
+ * active route and `identity-platform` sorts lower.
+ *
+ * Nothing could see it. The suite already asserts unique area orders and unique labels;
+ * neither is violated by two pages sharing a route, and no HTTP test fails when the URL
+ * still answers 200 — with the other component.
+ */
+it('registers no route twice and points no two nav entries at one route', function (): void {
+    $seen = [];
+    $duplicates = [];
+
+    foreach (Route::getRoutes()->getRoutes() as $route) {
+        foreach ($route->methods() as $method) {
+            $key = $method.'|'.($route->getDomain() ?? '').'|'.$route->uri();
+
+            if (isset($seen[$key])) {
+                $duplicates[] = $key;
+            }
+
+            $seen[$key] = true;
+        }
+    }
+
+    expect($duplicates)->toBe([], 'these URIs are registered more than once, so all but the last are dead: '.implode(', ', $duplicates));
+
+    // And the nav half: an area is chosen by first-match on the active route, so two
+    // entries naming one route make the rail's answer depend on area order.
+    $routes = [];
+    $shared = [];
+
+    foreach (Console::nav()->areas() as $area) {
+        foreach ($area->pages() as $page) {
+            if (isset($routes[$page->route])) {
+                $shared[] = $page->route.' ('.$routes[$page->route].' and '.$area->key.')';
+            }
+
+            $routes[$page->route] = $area->key;
+        }
+    }
+
+    expect($shared)->toBe([], 'these routes are claimed by two areas, so the rail lights the wrong one: '.implode(', ', $shared));
 });
