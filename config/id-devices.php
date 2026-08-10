@@ -55,6 +55,17 @@ return [
      * token that FCM has told us is dead will not become alive again in eleven hours
      * of retries.
      */
+    /*
+     * Where somebody gets the authenticator app, linked from the enrolment card when the
+     * page is opened on the phone being enrolled.
+     *
+     * UNSET BY DEFAULT AND UNSET MEANS ABSENT. A self-hosted deployment ships its own
+     * build under its own bundle id, and a hardcoded link to ours would send their people
+     * to the wrong app — which on this page is a dead end they cannot diagnose. No link is
+     * better than a confidently wrong one, so the card simply omits the line.
+     */
+    'app_store_url' => env('CBOX_ID_DEVICES_APP_STORE_URL'),
+
     'max_attempts' => (int) env('CBOX_ID_DEVICES_MAX_ATTEMPTS', 12),
 
     /*

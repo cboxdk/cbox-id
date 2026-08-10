@@ -89,16 +89,90 @@ it('never mints a second client on later views', function (): void {
         ->and(AuthenticatorClient::find()?->client_id)->toBe($first);
 });
 
-it('puts nothing secret in the enrolment code', function (): void {
+/**
+ * THIS TEST USED TO ASSERT THE OPPOSITE, and it was green while being wrong.
+ *
+ * It was called "puts nothing secret in the enrolment code" and reasoned: "Host only. A
+ * code carrying a token would have to be short-lived and single-use, and could not be left
+ * on a screen." Every clause of that stopped being true when the code started carrying an
+ * identity — the URI is `…?host=…&t=<JWT>` and the JWT is a subject-bound bearer
+ * credential. The assertion survived the change because it greps for the literal string
+ * `token` and the query parameter is named `t`.
+ *
+ * So the property is restated as what the code actually is, and the protections are named
+ * where they live: the token is short-lived, single-use and bound to one subject, and all
+ * three are proved in EnrolmentCodeTest. What must NOT be in the URI is a durable
+ * credential — a client secret or an access token — because those would survive being
+ * screenshotted.
+ */
+it('carries a subject-bound single-use token and no durable credential', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-secret@acme.test');
 
     $uri = Volt::test('devices.mine')->instance()->enrolmentUri();
 
-    // Host only. A code carrying a token would have to be short-lived and single-use,
-    // and could not be left on a screen — which is the whole point of showing one.
     expect($uri)->toContain('connect?host=')
-        ->and($uri)->not->toContain('token')
-        ->and($uri)->not->toContain('cid_');
+        // The credential it DOES carry, stated rather than denied.
+        ->and($uri)->toContain('&t=')
+        // …and the ones it must never carry. A client id or secret in a QR code on a
+        // screen is a credential with no expiry standing in a photograph.
+        ->and($uri)->not->toContain('cid_')
+        ->and($uri)->not->toContain('client_secret');
+});
+
+/**
+ * The raw URI is a credential, so it is a tap target and not printed text.
+ *
+ * The card used to render it as a line of selectable monospace under the QR — a 400-plus
+ * character string that overflowed the panel on a laptop, and worse, put the same secret
+ * the page warns you not to screenshot into text that copies, pastes into a support ticket
+ * and shows up in a screen share. The href still carries it, unavoidably and exactly as
+ * the QR does; what changed is that nothing renders it for a shoulder to read.
+ */
+it('offers the enrolment link as a control rather than as printed text', function (): void {
+    signInMemberAs(MembershipRole::Member, 'member-linktext@acme.test');
+
+    $component = Volt::test('devices.mine');
+    $uri = $component->instance()->enrolmentUri();
+    $html = $component->assertOk()->html();
+
+    expect($html)->toContain('href="'.e($uri).'"')
+        // Never as a text node — the old `<p class="mono">{{ $uri }}</p>`.
+        ->and((bool) preg_match('/>\s*'.preg_quote(e($uri), '/').'/', $html))->toBeFalse();
+});
+
+/**
+ * Opening this page ON the phone being enrolled is the most natural thing to do, and it
+ * used to be a dead end: the card rendered a QR at every width and offered nothing else,
+ * and you cannot scan the screen you are holding.
+ */
+it('gives a phone something to tap and does not ask it to scan itself', function (): void {
+    signInMemberAs(MembershipRole::Member, 'member-mobile@acme.test');
+
+    $html = Volt::test('devices.mine')->assertOk()->html();
+
+    // The tap target is the primary action below the `sm` breakpoint…
+    expect($html)->toContain('Open the Cbox ID app')
+        // …and the QR is withheld there rather than rendered uselessly. Asserted on the
+        // class that hides it, because the SVG is present in the DOM either way.
+        ->and($html)->toContain('hidden sm:block');
+});
+
+/**
+ * A self-hosted deployment ships its own build under its own bundle id, so a hardcoded
+ * store link would send their people to the wrong app — a dead end they cannot diagnose.
+ * Unset means the line is absent, not empty.
+ */
+it('links to the app store only when the deployment names one', function (): void {
+    signInMemberAs(MembershipRole::Member, 'member-store@acme.test');
+
+    expect(Volt::test('devices.mine')->assertOk()->html())->not->toContain('Get the app');
+
+    config()->set('id-devices.app_store_url', 'https://apps.example.test/cbox-id');
+
+    $html = Volt::test('devices.mine')->assertOk()->html();
+
+    expect($html)->toContain('Get the app')
+        ->and($html)->toContain('https://apps.example.test/cbox-id');
 });
 
 it('shows only the caller own devices', function (): void {

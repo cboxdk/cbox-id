@@ -58,11 +58,30 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
 
 ## Audit & monitoring
 
-- The platform writes an **append-only, hash-chained audit trail** with signed
-  checkpoints — tamper-evident by design. Ship it to your SIEM via the audit
+- The platform writes an **append-only, hash-chained audit trail**. Each entry hashes
+  the one before it, so modifying an entry or removing one from the middle breaks the
+  chain and `verifyChain()` reports where. Ship it to your SIEM via the audit
   read/pull-stream API (see the framework's
   [Security](https://github.com/cboxdk/laravel-id/blob/main/docs/security/_index.md)
   docs).
+
+- **Signed checkpoints are OPT-IN and off by default, so TAIL deletion is not detected
+  until you turn them on.** The chain catches modification and gaps by itself; delete the
+  newest N entries and what remains is a shorter, perfectly valid chain. Only a signed
+  checkpoint — a permanent, exportable statement about the chain's head at a point in
+  time — makes that visible.
+
+  It defaults to off deliberately rather than by oversight. The first signature is a
+  one-way door: a checkpoint is evidence about the hashes *as they are today*, and the
+  GDPR-erasure work still ahead needs one re-chain of the existing rows (hashing the
+  ciphertext of `ip` and `context` instead of the plaintext, so destroying a per-subject
+  key leaves every hashed byte unchanged). Any checkpoint signed before that re-chain
+  would report tampering that never happened, forever.
+
+  Set `CBOX_ID_AUDIT_CHECKPOINT_SCHEDULE=true` only after following the order in the
+  framework's `UPGRADING.md` — or right away on a deployment with no such migration
+  ahead of it. `cbox-id:audit:checkpoint --dry-run` reports what would be signed without
+  signing anything.
 - Watch the queue depth and failures (webhook delivery + event outbox ride it) and
   the scheduler (key retirement/cleanups depend on it).
 - Alert on auth anomalies surfaced by risk scoring (`cboxdk/laravel-risk`) and on

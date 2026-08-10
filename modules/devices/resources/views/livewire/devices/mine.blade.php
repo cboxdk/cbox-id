@@ -95,8 +95,11 @@ new #[Layout('components.layouts.app')] class extends Component
     public function enrolmentUri(): ?string
     {
         // Memoised for the render, and not as an optimisation. One render asks for this
-        // three times — the @if, the QR writer, and the line of text below it — and
-        // minting on each would print one code beneath a QR encoding a different one.
+        // four times — the @if, the QR writer, and both deep links — and minting on each
+        // would hand the phone a different code from the one the QR encodes. Since the
+        // card started offering a tap target beside the QR there are two ways to spend it
+        // on screen at once, so a drift here would be a link that silently fails for
+        // whoever picked the other one.
         if ($this->memoisedUri !== null) {
             return $this->memoisedUri;
         }
@@ -211,25 +214,59 @@ new #[Layout('components.layouts.app')] class extends Component
                  that kept its full size. The grid stacks below `sm` and only pairs them
                  when there is room for both. --}}
             <div class="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] items-start">
-                <div class="shrink-0 max-w-full" style="color:var(--foreground)">
+                {{-- HIDDEN ON A PHONE, because you cannot scan the screen you are holding.
+                     The card used to render the QR at every width and offer nothing else,
+                     so opening this page on the device being enrolled — the single most
+                     natural thing to do — reached a dead end. --}}
+                <div class="hidden sm:block shrink-0 max-w-full" style="color:var(--foreground)">
                     {!! $this->enrolmentQr() !!}
                 </div>
 
-                <div class="min-w-0 space-y-2">
+                <div class="min-w-0 space-y-3">
                     <h2 class="text-base font-medium" style="color:var(--foreground)">Add a phone</h2>
-                    <p class="text-sm" style="color:var(--muted)">
-                        Install <strong>Cbox ID</strong> from the App Store, open it, and scan this
+
+                    {{-- The instructions differ by which device you are on, so they are
+                         written twice rather than hedged into one sentence that is
+                         half-wrong everywhere. --}}
+                    <p class="text-sm sm:hidden" style="color:var(--muted)">
+                        Open <strong>Cbox ID</strong> on this phone to finish enrolling it.
+                    </p>
+                    <p class="hidden sm:block text-sm" style="color:var(--muted)">
+                        Install <strong>Cbox ID</strong> on your phone, open it, and scan this
                         code. You'll then sign in with your normal account in the browser.
                     </p>
+
+                    {{-- THE DEEP LINK, as a tap target rather than as printed text.
+                         `wire:navigate` is deliberately absent: this is a custom scheme
+                         handed to the OS, not a page Livewire can fetch. --}}
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        <a href="{{ $this->enrolmentUri() }}" class="btn btn-primary sm:hidden">
+                            Open the Cbox ID app
+                        </a>
+                        {{-- `sm:block`, NOT `sm:inline`. In the compiled stylesheet
+                             `.hidden` lands after the `sm:inline` rule at equal
+                             specificity, so `display:none` wins and the link is in the
+                             DOM at every width and drawn at none of them — invisible in a
+                             way no assertion about the markup can see. `sm:block` is
+                             emitted after `.hidden` and does override it. Verified in a
+                             browser at 1280px, not reasoned about. --}}
+                        <a href="{{ $this->enrolmentUri() }}" class="hidden sm:block text-sm underline" style="color:var(--muted)">
+                            Reading this on the phone itself? Open the app
+                        </a>
+                        @if (is_string($storeUrl = config('id-devices.app_store_url')) && $storeUrl !== '')
+                            <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer"
+                               class="text-sm underline" style="color:var(--muted)">Get the app</a>
+                        @endif
+                    </div>
+
                     {{-- Said plainly, because a code on a screen invites the question —
                          and because the previous wording ("safe to share") stopped being
                          true the moment the code started carrying an identity. --}}
                     <p class="text-sm" style="color:var(--muted)">
-                        This code expires after two minutes and only works once, for your account.
+                        This link expires after two minutes and only works once, for your account.
                         It refreshes on its own while this page is open — don't share a screenshot
                         of it.
                     </p>
-                    <p class="mono text-xs" style="color:var(--faint)">{{ $this->enrolmentUri() }}</p>
                 </div>
             </div>
         </div>
@@ -280,7 +317,7 @@ new #[Layout('components.layouts.app')] class extends Component
                 @empty
                     <tr>
                         <td colspan="5" class="px-4 py-10 text-center" style="color:var(--faint)">
-                            No devices enrolled yet — scan the code above to add your phone.
+                            No devices enrolled yet — use the card above to add your phone.
                         </td>
                     </tr>
                 @endforelse
