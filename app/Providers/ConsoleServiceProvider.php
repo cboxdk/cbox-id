@@ -74,7 +74,6 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('api-keys', 'API keys', feature: 'organization.manage', order: 30)
             ->page('environment-keys', 'Environment keys', feature: 'organization.environments', order: 40)
             ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
-            ->page('activity', 'Activity', feature: 'organization.members', order: 60)
             // 70 is the BILLING module's, added by its own provider — see modules/billing.
             // Left as a gap rather than closed up: the orders in this area are unique
             // across modules by contract, and renumbering to fill it would collide with a

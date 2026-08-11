@@ -518,7 +518,8 @@ it('gives the whole area to an account owner', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    expect(identityPlatformPages())->toHaveCount(8);
+    // Seven since Activity was retired — see the redirect in routes/web.php.
+    expect(identityPlatformPages())->toHaveCount(7);
 });
 
 it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
@@ -644,13 +645,13 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // Everything. Ownership itself is guarded per-action, not by hiding pages.
     'owner' => [MembershipRole::Owner, [
         'projects', 'members', 'api-keys', 'environment-keys',
-        'environment-domains', 'activity', 'billing', 'organization-settings',
+        'environment-domains', 'billing', 'organization-settings',
     ]],
 
     // An admin is an owner minus the ownership transfer, which is not a page.
     'admin' => [MembershipRole::Admin, [
         'projects', 'members', 'api-keys', 'environment-keys',
-        'environment-domains', 'activity', 'billing', 'organization-settings',
+        'environment-domains', 'billing', 'organization-settings',
     ]],
 
     // THE ONE THE FOLD BREAKS. A developer is a technical credential: environments and
@@ -678,7 +679,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // Read-only across the account: it may SEE the roster and the bill, and change
     // neither — so no API keys, no environment keys or domains, no settings.
     'viewer' => [MembershipRole::Viewer, [
-        'projects', 'members', 'activity', 'billing',
+        'projects', 'members', 'billing',
     ]],
 ])->group('security');
 

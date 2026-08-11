@@ -212,6 +212,25 @@ new #[Layout('components.layouts.console', ['title' => 'Activity log'])] class e
                                     <span class="text-sm" style="color:var(--muted)">{{ str_replace('_', ' ', $entry->target_type) }}</span>
                                     <span class="mono text-xs ml-1" style="color:var(--faint)" title="{{ $entry->target_id }}">{{ Str::limit($entry->target_id ?? '', 10, '…') }}</span>
                                 @endif
+
+                                {{-- THE CONTEXT THE WRITER RECORDED. It was stored and never
+                                     shown here — an id tells you WHICH environment was
+                                     created, and "Staging" tells you which one that was at
+                                     the time, which is the whole reason somebody wrote it
+                                     down. Scalars only: a nested payload belongs in an
+                                     export, not in a table cell, and flattening one here
+                                     would produce a row nobody can read. --}}
+                                @php
+                                    $facts = collect($entry->context)
+                                        ->filter(fn ($v): bool => is_scalar($v))
+                                        ->take(3);
+                                @endphp
+                                @if ($facts->isNotEmpty())
+                                    <p class="text-xs mt-0.5 truncate" style="color:var(--faint)"
+                                       title="{{ $facts->map(fn ($v, $k): string => $k.': '.$v)->implode(', ') }}">
+                                        {{ $facts->map(fn ($v, $k): string => $k.': '.$v)->implode(' · ') }}
+                                    </p>
+                                @endif
                             </td>
                             <td class="text-right whitespace-nowrap">
                                 <time class="text-xs" style="color:var(--muted)" title="{{ $entry->recorded_at?->toDayDateTimeString() }}">{{ $entry->recorded_at?->diffForHumans() }}</time>

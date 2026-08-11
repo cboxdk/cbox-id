@@ -123,7 +123,9 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/applications' => 'API keys',
         '/admin/single-sign-on' => 'Single sign-on',
         '/admin/single-sign-on/new' => 'connection',
-        '/admin/login-methods' => 'Login methods',
+        // Renamed: it registers SAML service providers that trust us, which is the
+        // opposite direction from Single sign-on, and "Login methods" named that one.
+        '/admin/login-methods' => 'SAML applications',
         '/admin/login-methods/new' => 'method',
         '/admin/directories' => 'Sync users in',
         '/admin/directories/new' => 'directory',

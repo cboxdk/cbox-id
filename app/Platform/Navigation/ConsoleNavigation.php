@@ -53,7 +53,12 @@ class ConsoleNavigation
             new NavArea('Sign-in', 'connections',
                 new NavPage('environment.connections', 'Single sign-on'),
                 new NavPage('environment.social-providers', 'Social sign-in'),
-                new NavPage('environment.sso-providers', 'Login methods'),
+                // "Login methods" described the OPPOSITE direction. This page registers the
+                // applications that trust this environment as their SAML identity provider —
+                // outbound, us as the IdP — while Sign-in › Single sign-on is inbound: letting
+                // people arrive with a company account they already have. One name suggested
+                // the other, on the same rail, two entries apart.
+                new NavPage('environment.sso-providers', 'SAML applications'),
                 // One component serves both planes now, so it has one title — and the
                 // organization plane's "Sync users in" is the name the help topic and the
                 // published guide already use. "Directories" also said nothing about

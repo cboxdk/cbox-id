@@ -14,6 +14,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Migration\LegacyMigration;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Otp\Contracts\OtpService;
 use Cbox\Id\Platform\PlatformRoot;
@@ -68,6 +69,10 @@ final class PlatformAuth
         private readonly LoginAttempts $loginAttempts,
         private readonly PlatformRoot $platformRoot,
         private readonly OrganizationActivity $activity,
+        // Optional: null unless a host has bound a LegacyCredentialSource. Nullable in the
+        // constructor rather than resolved on demand, so the absence is visible in the
+        // signature of the class that decides logins instead of buried in a container call.
+        private readonly ?LegacyMigration $legacy = null,
     ) {}
 
     /**
@@ -146,8 +151,24 @@ final class PlatformAuth
         $subject = $this->subjects->findByEmail($email);
 
         if ($subject === null) {
+            // NOBODY HERE BY THAT NAME — which during a migration does not mean nobody at
+            // all. If a legacy source is bound it gets the one chance to say otherwise,
+            // and a person it recognises is created here as a result of the login that
+            // just succeeded. This runs ONLY when there is no local user, which is rule 1
+            // on LegacyCredentialSource: somebody who has already migrated authenticates
+            // against what is HERE, and the old system never gets a second vote on a
+            // password they may have changed since.
+            $subject = $this->legacy?->migrate($email, $password);
+        }
+
+        if ($subject === null) {
             // Do equivalent hashing work so a missing account isn't measurably
             // faster than a wrong password — closes the email-enumeration oracle.
+            //
+            // The legacy lookup above costs a query or an HTTP hop that a local hit does
+            // not, which is a new signal — but it is paid for every unknown address
+            // regardless of the answer, so it separates "not migrated yet" from "already
+            // migrated", never "exists" from "does not".
             $this->hasher->check($password, self::timingHash());
 
             return AttemptOutcome::Invalid;

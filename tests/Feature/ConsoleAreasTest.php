@@ -210,7 +210,10 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
         $checked++;
     }
 
-    expect($checked)->toBe(8);
+    // Eight until Identity platform › Activity was retired into Logs › Activity log,
+    // which reads the same hash-chained entries for the same organization. The count is
+    // exact for the reason above: a shrinking number must be a decision.
+    expect($checked)->toBe(7);
 });
 
 it('lands every environment nav entry on a page titled and headed the way the entry is labelled', function (): void {

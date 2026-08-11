@@ -21,7 +21,7 @@ use Livewire\WithPagination;
  * matches, closing cross-tenant id tampering. Access is gated by the env-admin
  * session (route middleware).
  */
-new #[Layout('components.layouts.environment', ['title' => 'Login methods'])] class extends Component
+new #[Layout('components.layouts.environment', ['title' => 'SAML applications'])] class extends Component
 {
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
@@ -67,7 +67,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Login methods'])] cl
 }; ?>
 
 <div>
-    <x-page-header title="Login methods" subtitle="Register the applications that use this environment as their SAML identity provider.">
+    <x-page-header title="SAML applications" subtitle="Applications that trust this environment as their SAML identity provider. To let people sign in with an account they already have elsewhere, use Sign-in → Single sign-on.">
         <x-slot:actions>
             <a href="{{ route('environment.sso-providers.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> Add method</a>
         </x-slot:actions>

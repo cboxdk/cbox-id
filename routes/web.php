@@ -341,7 +341,15 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Volt::route('/api-keys', 'console.api-keys')->name('api-keys');
     Volt::route('/environment-keys', 'console.environment-keys')->name('environment-keys');
     Volt::route('/environment-domains', 'console.environment-domains')->name('environment-domains');
-    Volt::route('/activity', 'console.activity')->name('activity');
+    // Retired into Logs › Activity log, which reads the SAME hash-chained entries scoped
+    // to the same organization — and reads them better: two filters and a search against
+    // this page's one, plus a help topic, and it already served both console planes. Two
+    // pages over one trail meant an operator could look in the wrong one and conclude
+    // nothing had happened.
+    //
+    // A redirect rather than a deletion: this URL is in bookmarks and in links from the
+    // organization pages, and the destination is the same information.
+    Route::permanentRedirect('/activity', '/audit')->name('activity');
     // `/billing` is NOT here. It is the billing module's route, registered by
     // {@see \Cbox\Id\Billing\BillingServiceProvider} through the same ConsoleRoutes
     // socket a third-party plugin would use — so a deployment that does not bill, or an

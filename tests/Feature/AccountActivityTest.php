@@ -76,7 +76,12 @@ it('renders the activity page for an admin and lists recorded actions', function
         targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
 
     signInAsMember($ownerSubjectId);
+    // Follows the redirect: `activity` was retired into Logs › Activity log, which reads
+    // the same hash-chained entries for the same organization.
     $this->get(route('activity'))
+        ->assertRedirect(route('audit'));
+
+    $this->get(route('audit'))
         ->assertOk()
         ->assertSee('Activity')
         ->assertSee('environment created')
@@ -93,6 +98,14 @@ it('refuses the activity page to a member who cannot read members (403)', functi
     [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
 
     signInAsMember($viewerSubjectId);
-    $this->get(route('activity'))
+
+    // Asserted on the page that survived. `/activity` is now a redirect, and a redirect
+    // authorizes nothing — the property being protected is that the LOG refuses them.
+    //
+    // The merge narrowed this deliberately: the retired page admitted anyone who could
+    // read members (a Viewer), and Logs › Activity log is admin-only. Narrowing toward the
+    // stricter of two gates is the direction to fail in when merging them, and widening
+    // the surviving page to match the retired one would have loosened it on both planes.
+    $this->get(route('audit'))
         ->assertForbidden();
 });

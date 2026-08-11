@@ -47,6 +47,18 @@ final class ScopeCatalog
             ['key' => 'vault.manage', 'label' => 'Manage stored secrets', 'description' => 'Create, rotate and revoke downstream credentials in the Token Vault.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'vault.lease', 'label' => 'Use stored secrets', 'description' => 'Fetch a stored credential to call a downstream service.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'apps.manifest', 'label' => 'Publish its own manifest', 'description' => 'Let this app push its own roles &amp; permissions manifest to Cbox ID.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            // The scope `/oauth/decisions` requires once an operator turns
+            // `oauth.decisions.require_scope` on. It was named by the controller and by
+            // the config and offered NOWHERE, so switching that flag on made the endpoint
+            // unusable by every client at once — the same defect `organizations` and
+            // `groups` each had, a third time.
+            //
+            // Here rather than in the dynamic-registration allow-list, deliberately: it
+            // hands a resource server the subject's whole permission and entitlement set
+            // in an organization, which is strictly more than UserInfo gives out. That is
+            // an operator's decision, like the vault and manifest scopes beside it, not
+            // something a client grants itself by asking.
+            ['key' => 'decisions:read', 'label' => 'Ask for authorization decisions', 'description' => "Let this app call the decision endpoint for a person's permissions and entitlements in an organization.", 'category' => self::PLATFORM_API, 'recommended' => false],
         ];
     }
 
