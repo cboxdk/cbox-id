@@ -114,6 +114,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // binding, it does not weaken security — the request is authenticated by its
         // XML signature and every assertion is pinned to the SP's registered ACS).
         $middleware->validateCsrfTokens(except: [
+            // The embedded sign-in endpoint. It is a deliberate cross-origin POST from a
+            // page on somebody else's site, so it carries no Laravel CSRF token and never
+            // could — and CSRF is the wrong control for it anyway: the attack CSRF
+            // prevents is a request made with a victim's AMBIENT session, and this request
+            // authenticates itself by the credentials in its body. What decides whether a
+            // caller may make it at all is the publishable key plus the origin allow-list,
+            // which is a check no forged cross-site form can pass.
+            //
+            // Found by calling it in production, where it answered 419 while every test
+            // was green — Laravel's test helpers bypass CSRF, so the suite could not see
+            // it. BrowserlessCsrfTest exists so it cannot happen again.
+            'frontend/v1/*',
             'sso/saml/idp/sso',
             // The INBOUND ACS is the mirror case: the customer's IdP cross-site
             // POSTs the signed SAMLResponse here, carrying no Laravel CSRF token.
