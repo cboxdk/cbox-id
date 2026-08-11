@@ -329,6 +329,31 @@ final class PlatformAuth
     }
 
     /**
+     * Hold a subject for a second factor, as `attemptPassword()` does after a good password.
+     *
+     * EXISTS FOR THE EMBEDDED CHANNEL, and deliberately narrow. A page on somebody else's
+     * origin carries no session cookie between the password request and the code request,
+     * so the pending state travels as a signed ticket and has to be put back HERE before
+     * `completeMfa()` can find it. The alternative was a second implementation of the
+     * challenge in the controller, which would be the one missing whatever this method
+     * grows next.
+     *
+     * It grants nothing on its own: everything downstream still demands a correct code,
+     * and the caller can only reach this with a ticket minted by a completed password
+     * check in the same environment.
+     */
+    public function holdForMfa(Request $request, string $subjectId): void
+    {
+        $request->session()->put(self::MFA_PENDING_KEY, $subjectId);
+    }
+
+    /** The same, for an emailed step-up code. See {@see holdForMfa()}. */
+    public function holdForOtpStepUp(Request $request, string $subjectId, string $email = ''): void
+    {
+        $request->session()->put(self::OTP_PENDING_KEY, ['subject' => $subjectId, 'email' => $email]);
+    }
+
+    /**
      * Complete a pending MFA challenge with a TOTP code.
      */
     public function completeMfa(Request $request, string $code): bool

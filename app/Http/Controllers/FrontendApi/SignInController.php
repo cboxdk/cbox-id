@@ -96,8 +96,11 @@ class SignInController
             // page is told which challenge to draw and NOTHING about who it is drawing it
             // for — the pending subject stays in the session `PlatformAuth` already put it
             // in, so no identifier for it crosses this channel.
-            AttemptOutcome::Mfa => new JsonResponse(['status' => 'mfa_required']),
-            AttemptOutcome::Otp => new JsonResponse(['status' => 'otp_required']),
+            // The pending state travels as a token, because a cross-origin page carries
+            // no session cookie to the next request. It names the subject and nothing a
+            // caller can read — see the ticket table.
+            AttemptOutcome::Mfa => $this->pending($key, $request, 'pending_mfa', 'mfa_required'),
+            AttemptOutcome::Otp => $this->pending($key, $request, 'pending_otp', 'otp_required'),
 
             // A tenant mandates single sign-on, so there is no second step here at all —
             // the page must send them to their identity provider. Named, because a page
@@ -138,6 +141,26 @@ class SignInController
             // Said out loud so an SDK does not have to know it: the ticket is for one
             // redirect, not for storing.
             'expires_in' => 60,
+        ]);
+    }
+
+    /**
+     * Mint the token that carries a half-finished sign-in to the next request.
+     */
+    private function pending(PublishableKey $key, Request $request, string $stage, string $status): JsonResponse
+    {
+        $subjectId = $stage === 'pending_otp'
+            ? ($this->auth->pendingOtpStepUp($request)['subject'] ?? null)
+            : $this->auth->pendingMfaSubject($request);
+
+        if (! is_string($subjectId)) {
+            return $this->refuse();
+        }
+
+        return new JsonResponse([
+            'status' => $status,
+            'mfa_token' => $this->tickets->mintPending($key, $subjectId, ['pwd'], $stage),
+            'expires_in' => 300,
         ]);
     }
 

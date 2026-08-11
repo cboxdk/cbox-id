@@ -177,13 +177,19 @@ Handle three other outcomes:
 
 | status | what it means |
 |---|---|
-| `mfa_required` / `otp_required` | right password, second factor still needed |
+| `mfa_required` / `otp_required` | right password, second factor still needed — finish with `submitSecondFactor(result.mfaToken, code)` |
 | `sso_required` | this organization mandates single sign-on — send them to their IdP |
 | `invalid` | wrong password, unknown address, or locked account |
 
 **Present `invalid` the same way every time.** The server refuses to tell those three apart
 because that is the enumeration oracle every identity product eventually leaks; a UI that
 tells them apart rebuilds it.
+
+The pending token carries the half-finished sign-in, because a cross-origin page has no
+session cookie to carry it in. A TOTP code and a recovery code both work. A wrong code
+costs an attempt rather than the whole sign-in — five are allowed, which is what stops a
+mistyped digit sending somebody back to the password field while still bounding a
+brute-force of a six-digit space.
 
 Guessing is rate limited per email address, not just per key — an attacker spreading
 attempts across pages holding the same key would otherwise sit under a per-key limit.

@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $token_hash
  * @property string $publishable_key_id
  * @property string $subject_id
+ * @property string $stage
+ * @property int $attempts
  * @property array<int, string> $amr
  * @property CarbonInterface $expires_at
  * @property CarbonInterface|null $redeemed_at

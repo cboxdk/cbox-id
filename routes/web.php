@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
@@ -48,6 +49,12 @@ Route::middleware([
 ])->prefix('frontend/v1')->group(function (): void {
     Route::match(['post', 'options'], '/sign-in', SignInController::class)
         ->name('frontend.sign-in');
+
+    // The factor the password did not satisfy. Same door, same key, same origin list —
+    // the pending state travels as a token because a cross-origin page carries no session
+    // cookie from the first request to this one.
+    Route::match(['post', 'options'], '/sign-in/factor', SecondFactorController::class)
+        ->name('frontend.sign-in.factor');
 });
 
 /*

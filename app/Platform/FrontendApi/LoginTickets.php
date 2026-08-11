@@ -21,6 +21,24 @@ final class LoginTickets
     /** Long enough to cross one redirect, short enough that a URL in history is stale. */
     private const TTL_SECONDS = 60;
 
+    /**
+     * A pending second factor gets longer, because a person has to read a code off a phone.
+     *
+     * Five minutes is the window the hosted form's challenge already effectively has, and
+     * matching it means an embedded sign-in is not mysteriously stricter than the page it
+     * replaces.
+     */
+    private const PENDING_TTL_SECONDS = 300;
+
+    /**
+     * Wrong codes a pending ticket survives.
+     *
+     * Not one: somebody mistypes six digits, and making that cost them their password as
+     * well is a worse product for no security. Not many either — the bound is what stops
+     * the ticket becoming something to brute-force a six-digit space against.
+     */
+    private const MAX_ATTEMPTS = 5;
+
     /** 32 base62 — full entropy, so the hash below can be a plain sha256. */
     private const ENTROPY = 32;
 
@@ -37,14 +55,92 @@ final class LoginTickets
      */
     public function mint(PublishableKey $key, string $subjectId, array $amr): string
     {
+        return $this->issue($key, $subjectId, $amr, 'ready', self::TTL_SECONDS);
+    }
+
+    /**
+     * Mint a ticket that is NOT yet a sign-in, because a factor is still owed.
+     *
+     * It carries the same subject and key as the ready ticket it will become, so nothing
+     * has to be copied between two records that could then disagree.
+     *
+     * @param  list<string>  $amr  what the first factor established
+     */
+    public function mintPending(PublishableKey $key, string $subjectId, array $amr, string $stage): string
+    {
+        return $this->issue($key, $subjectId, $amr, $stage, self::PENDING_TTL_SECONDS);
+    }
+
+    /**
+     * The pending ticket this token names, with one attempt counted against it.
+     *
+     * COUNTING HAPPENS HERE, before the code is checked, and that ordering is the point: a
+     * caller that crashes the verifier, times out, or simply walks away must still have
+     * spent an attempt, or the bound is not a bound.
+     *
+     * Returns null once the attempts are gone, which the caller treats exactly as a wrong
+     * code — telling them apart would say "that ticket was real, you just ran out".
+     */
+    public function claimAttempt(string $token, string $stage): ?LoginTicket
+    {
+        $hash = hash('sha256', $token);
+
+        return DB::transaction(function () use ($hash, $stage): ?LoginTicket {
+            $claimed = LoginTicket::query()
+                ->where('token_hash', $hash)
+                ->where('stage', $stage)
+                ->whereNull('redeemed_at')
+                ->where('expires_at', '>', now())
+                ->where('attempts', '<', self::MAX_ATTEMPTS)
+                ->increment('attempts');
+
+            if ($claimed !== 1) {
+                return null;
+            }
+
+            $ticket = LoginTicket::query()->where('token_hash', $hash)->first();
+
+            return $ticket instanceof LoginTicket ? $ticket : null;
+        });
+    }
+
+    /**
+     * Turn a pending ticket into a ready one, once the factor is satisfied.
+     *
+     * The SAME row is promoted rather than a second minted: a pending ticket that survived
+     * its own promotion would be a second chance at a factor that has already been used.
+     *
+     * @param  list<string>  $amr  the methods now established, including the second factor
+     */
+    public function promote(LoginTicket $ticket, array $amr): string
+    {
+        $token = Str::random(self::ENTROPY);
+
+        $ticket->update([
+            'token_hash' => hash('sha256', $token),
+            'stage' => 'ready',
+            'amr' => $amr,
+            'attempts' => 0,
+            'expires_at' => now()->addSeconds(self::TTL_SECONDS),
+        ]);
+
+        return $token;
+    }
+
+    /**
+     * @param  list<string>  $amr
+     */
+    private function issue(PublishableKey $key, string $subjectId, array $amr, string $stage, int $ttl): string
+    {
         $token = Str::random(self::ENTROPY);
 
         LoginTicket::query()->create([
             'token_hash' => hash('sha256', $token),
             'publishable_key_id' => $key->id,
             'subject_id' => $subjectId,
+            'stage' => $stage,
             'amr' => $amr,
-            'expires_at' => now()->addSeconds(self::TTL_SECONDS),
+            'expires_at' => now()->addSeconds($ttl),
         ]);
 
         return $token;
@@ -70,6 +166,9 @@ final class LoginTickets
         return DB::transaction(function () use ($hash): ?LoginTicket {
             $claimed = LoginTicket::query()
                 ->where('token_hash', $hash)
+                // `ready` only: a ticket still owing a second factor is not a sign-in, and
+                // redeeming one would be the bypass this whole stage exists to prevent.
+                ->where('stage', 'ready')
                 ->whereNull('redeemed_at')
                 ->where('expires_at', '>', now())
                 ->update(['redeemed_at' => now()]);
