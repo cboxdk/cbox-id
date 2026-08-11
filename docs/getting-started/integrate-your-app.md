@@ -191,6 +191,23 @@ costs an attempt rather than the whole sign-in — five are allowed, which is wh
 mistyped digit sending somebody back to the password field while still bounding a
 brute-force of a six-digit space.
 
+### Passkeys, from your own button
+
+```ts
+const options = await frontend.passkeyOptions()
+const assertion = await navigator.credentials.get({ publicKey: { ...options, challenge: decode(options.challenge) } })
+const result = await frontend.signInWithPasskey(options.challenge_token, serialise(assertion))
+```
+
+**The relying party is this issuer's, not your page's.** WebAuthn binds an assertion to the
+origin that asked for it — that is what makes a passkey phishing-resistant — so an embedded
+button on `acme.com` authenticates against your Cbox ID host's `rpId`. If your page is on a
+different registrable domain, passkeys need the hosted page or a subdomain of your issuer.
+That is WebAuthn working as designed, and it is the first thing that surprises people.
+
+The result is a login ticket, exactly like a password sign-in, so everything after it is
+the same flow.
+
 Guessing is rate limited per email address, not just per key — an attacker spreading
 attempts across pages holding the same key would otherwise sit under a per-key limit.
 

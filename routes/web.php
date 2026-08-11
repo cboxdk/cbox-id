@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Controllers\FrontendApi\PasskeySignInController;
 use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\ImpersonationController;
@@ -55,6 +56,14 @@ Route::middleware([
     // cookie from the first request to this one.
     Route::match(['post', 'options'], '/sign-in/factor', SecondFactorController::class)
         ->name('frontend.sign-in.factor');
+
+    // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
+    // handle rather than in a session cookie, for the same reason everything else here
+    // does: the caller is on somebody else's origin.
+    Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'options'])
+        ->name('frontend.sign-in.passkey.options');
+    Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
+        ->name('frontend.sign-in.passkey');
 });
 
 /*
