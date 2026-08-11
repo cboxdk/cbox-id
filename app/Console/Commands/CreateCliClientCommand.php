@@ -41,8 +41,13 @@ class CreateCliClientCommand extends Command
 
     public function handle(EnvironmentContext $context, ClientRegistry $clients): int
     {
+        // `config()` is mixed, and a cast of mixed is a cast that can surprise. Narrowed
+        // rather than forced: a non-string default is a misconfiguration, not something to
+        // stringify silently.
+        $configured = config('cbox-id.environments.default', '');
+
         $environmentId = $this->stringOption('environment')
-            ?? (string) config('cbox-id.environments.default', '');
+            ?? (is_string($configured) ? $configured : '');
 
         if ($environmentId === '') {
             $this->error('No environment given and none configured. Pass --environment.');
@@ -94,7 +99,8 @@ class CreateCliClientCommand extends Command
 
     private function host(): string
     {
-        $url = (string) config('app.url', '');
+        $configured = config('app.url', '');
+        $url = is_string($configured) ? $configured : '';
 
         return parse_url($url, PHP_URL_HOST) ?: 'your-environment-host';
     }
