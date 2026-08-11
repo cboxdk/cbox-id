@@ -190,3 +190,49 @@ it('carries the raw query string across the stash, not just into it', function (
         ->and($restored->rawQueryString)
         ->toBe($raw, 'the resume leg lost the bytes the SP actually signed');
 });
+
+/**
+ * THE ASSERTION MUST DESCRIBE HOW THEY ACTUALLY SIGNED IN.
+ *
+ * `AuthnContextClassRef` was hardcoded to `…:ac:classes:Password`, so a passkey sign-in
+ * produced a signed statement that a password had been typed. Relying parties act on that
+ * field: an SP configured to require a password was satisfied by a sign-in that had none.
+ *
+ * The mapping itself is the framework's and is tested there. What this covers is the
+ * WIRING — that this controller reads the session's `amr` and passes it — which is the
+ * part that can silently not work while every other test stays green.
+ */
+function assertionContextFor(array $amr): string
+{
+    $subject = app(Subjects::class)->create('ctx-'.mt_rand().'@acme.test', 'Ctx', 'supersecret123');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-ctx-'.mt_rand()));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    $sessionId = app(SessionManager::class)->start($subject->id, $org->id, $amr)->id;
+    $sp = test()->registerSamlServiceProvider();
+
+    $html = (string) test()->withSession([PlatformAuth::SESSION_KEY => $sessionId])
+        ->get('/sso/saml/idp/sso?'.http_build_query([
+            'SAMLRequest' => test()->makeRedirectAuthnRequest($sp->entity_id),
+        ]))->getContent();
+
+    preg_match('/name="SAMLResponse" value="([^"]+)"/', $html, $m);
+
+    return base64_decode($m[1] ?? '', true) ?: '';
+}
+
+it('never says a password was used when the person used a passkey', function (): void {
+    $xml = assertionContextFor(['webauthn']);
+
+    expect($xml)->not->toContain('ac:classes:Password')
+        ->and($xml)->toContain('ac:classes:unspecified');
+});
+
+/**
+ * And the mirror: a password sign-in says password-protected-transport, not bare
+ * `Password` — which means a password with NO transport protection, and understated what
+ * actually happened.
+ */
+it('says password-protected-transport for a password sign-in', function (): void {
+    expect(assertionContextFor(['pwd']))->toContain('ac:classes:PasswordProtectedTransport');
+});

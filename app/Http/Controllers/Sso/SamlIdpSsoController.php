@@ -105,7 +105,18 @@ final class SamlIdpSsoController
 
         $this->handoff->clear();
 
-        $response = $this->idp->issueResponse($authnRequest, $subjectId, $this->attributesFor($subjectId));
+        // HOW they signed in travels with the assertion. Without it the IdP falls back to
+        // "unspecified", which is vague but true; with it the assertion says
+        // password-protected-transport or unspecified according to what actually happened.
+        // It used to say "Password" unconditionally — a false statement in a signed
+        // document that relying parties act on, and one that contradicted the `acr` the
+        // OIDC side derived from this very session.
+        $response = $this->idp->issueResponse(
+            $authnRequest,
+            $subjectId,
+            $this->attributesFor($subjectId),
+            $this->authenticationMethods($request),
+        );
 
         // The binding brings its own content policy. This app's SecurityHeaders is
         // appended globally and would otherwise stamp `form-action 'self'` on a form
@@ -130,6 +141,30 @@ final class SamlIdpSsoController
         }
 
         return $this->subjects->isActive($session->user_id) ? $session->user_id : null;
+    }
+
+    /**
+     * How the person signed in, from their live session.
+     *
+     * Read here rather than threaded down from `authenticatedSubjectId()` because that
+     * method answers one question and this is another; the session lookup is a cache hit
+     * by this point.
+     *
+     * @return list<string>
+     */
+    private function authenticationMethods(Request $request): array
+    {
+        $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
+        $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
+
+        if ($session === null) {
+            return [];
+        }
+
+        /** @var list<string> $amr */
+        $amr = array_values(array_filter($session->amr, is_string(...)));
+
+        return $amr;
     }
 
     /**
