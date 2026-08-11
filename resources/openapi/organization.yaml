@@ -10,7 +10,7 @@ info:
     This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
     which is served on each environment's own host and authenticated with
     environment-scoped credentials. Credentials never cross planes: an organization key
-    (`cbid_acc_…`) cannot call the environment API, and vice versa.
+    (`cbid_org_…`) cannot call the environment API, and vice versa.
 
     **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
     a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
