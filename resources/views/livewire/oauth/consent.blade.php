@@ -142,6 +142,9 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         ?string $max_age = null,
         ?string $acr_values = null,
         ?string $resource = null,
+        // The stand-in for a session cookie a cross-origin page cannot carry. Redeemed
+        // below, before anything decides whether somebody is signed in.
+        ?string $login_ticket = null,
     ): void {
         $request = request();
 
@@ -313,6 +316,23 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         // sign-in page (or X-Frame-Options blocked it), the promise never resolved, and
         // the SPA logged the user out on every token refresh. OIDC Core §3.1.2.6 wants
         // error=login_required returned to the redirect_uri instead.
+        if (! app(CurrentUser::class)->check()) {
+            // A LOGIN TICKET stands in for the session cookie a cross-origin page cannot
+            // carry. It is what an embedded sign-in form receives instead of tokens: the
+            // credential check already happened at /frontend/v1/sign-in, and this turns
+            // that into a session so the ORDINARY flow below runs — same consent, same
+            // PKCE, same code. Nothing about issuance changes; only how the person got
+            // here does.
+            //
+            // Redeemed before the prompt=none branch, so a silent renew that carries one
+            // succeeds rather than being told nobody is signed in.
+            $ticket = $from('login_ticket', $login_ticket);
+
+            if (is_string($ticket) && $ticket !== '') {
+                app(\App\Platform\FrontendApi\SignInWithTicket::class)->establish(request(), $ticket);
+            }
+        }
+
         if (! app(CurrentUser::class)->check()) {
             if (in_array('none', $prompts, true)) {
                 $this->redirectError($redirectUri, 'login_required', $stateParam,

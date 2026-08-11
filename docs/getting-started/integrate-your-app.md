@@ -146,6 +146,48 @@ readable error, because a page has no business reading the body of a rejection i
 authorized to make. Check the exact origin in your browser's network tab against the list
 on the key.
 
+## 7. Drawing your own sign-in form
+
+`frontend.config()` tells a page what to draw. `frontend.signIn()` lets it do the signing
+in, without sending the person to the hosted page at all:
+
+```ts
+const result = await frontend.signIn(email, password)
+
+if (result.status === 'ok') {
+  window.location.href = `${config.endpoints.authorization}?${new URLSearchParams({
+    client_id, redirect_uri, response_type: 'code',
+    code_challenge, code_challenge_method: 'S256',
+    login_ticket: result.loginTicket,
+  })}`
+}
+```
+
+**You get a ticket, never a token.** That is the whole design. Handing tokens to a page
+that proved a password is the implicit grant, which OAuth 2.1 removes — tokens in a URL, in
+history, in `Referer`, with no client authentication and no PKCE binding. The ticket is
+single-use, lasts sixty seconds, and is spent on the ordinary authorize flow with your own
+PKCE challenge. Nothing about how tokens are issued changes; only how the person arrived.
+
+The credential check itself is the same code the hosted form runs: the same lockout
+counter, the same breach check, the same MFA branch, the same audit entries. There is no
+second implementation to fall behind.
+
+Handle three other outcomes:
+
+| status | what it means |
+|---|---|
+| `mfa_required` / `otp_required` | right password, second factor still needed |
+| `sso_required` | this organization mandates single sign-on — send them to their IdP |
+| `invalid` | wrong password, unknown address, or locked account |
+
+**Present `invalid` the same way every time.** The server refuses to tell those three apart
+because that is the enumeration oracle every identity product eventually leaks; a UI that
+tells them apart rebuilds it.
+
+Guessing is rate limited per email address, not just per key — an attacker spreading
+attempts across pages holding the same key would otherwise sit under a per-key limit.
+
 ## When it does not work
 
 The token endpoint returns an RFC-shaped `error`, and for most failures an

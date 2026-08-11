@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
@@ -25,8 +26,29 @@ use App\Http\Middleware\TargetEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Api\Http\Middleware\NoStore;
+use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
+use Cbox\Id\FrontendApi\Http\Middleware\AuthenticateFrontendApi;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
+
+// EMBEDDED SIGN-IN — registered at the TOP LEVEL, deliberately outside every group.
+//
+// Nested inside the console group it inherited `Authenticate`, which refuses an anonymous
+// caller — and an anonymous caller offering a password is the entire point of this
+// endpoint. It carries the Frontend API's own door instead: a publishable key plus the
+// origin allow-list, which is the gate a browser on somebody else's site can pass.
+//
+// `web` is needed for one narrow reason: `PlatformAuth::attemptPassword()` writes the
+// session it establishes, and the controller reads it back in the same request to mint the
+// ticket. The cookie itself never has to reach the caller.
+Route::middleware([
+    'web',
+    ResolveEnvironment::class,
+    AuthenticateFrontendApi::class,
+])->prefix('frontend/v1')->group(function (): void {
+    Route::match(['post', 'options'], '/sign-in', SignInController::class)
+        ->name('frontend.sign-in');
+});
 
 /*
  * FIRST RUN — the only surface an unclaimed deployment serves, and one it stops serving
