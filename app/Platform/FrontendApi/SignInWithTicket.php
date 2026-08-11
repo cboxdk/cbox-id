@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Platform\FrontendApi;
 
 use App\Platform\PlatformAuth;
-use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Http\Request;
@@ -34,8 +33,8 @@ final class SignInWithTicket
 {
     public function __construct(
         private readonly LoginTickets $tickets,
+        private readonly PlatformAuth $auth,
         private readonly Subjects $subjects,
-        private readonly SessionManager $sessions,
         private readonly EnvironmentContext $environments,
     ) {}
 
@@ -74,9 +73,23 @@ final class SignInWithTicket
         /** @var list<string> $amr */
         $amr = array_values(array_filter($ticket->amr, is_string(...)));
 
-        $session = $this->sessions->start($subject->id, null, $amr);
-
-        $request->session()->put(PlatformAuth::SESSION_KEY, $session->id);
+        // `establish()`, NOT `sessions->start()`. Starting a session directly produced one
+        // that was missing four things the hosted path gives every other sign-in, and the
+        // first two are security properties:
+        //
+        //  - the sudo confirmation and any half-finished second-factor handles survived
+        //    into the new session. Minting a session is exactly the moment a prior step-up
+        //    should stop being established, and `establish()` forgets them by name.
+        //  - the session id was never rotated, so a fixed id set before the sign-in
+        //    carried through it.
+        //  - no organization was pinned, so the session landed with none — which the
+        //    console, the entitlement reads and the org scope all resolve from.
+        //  - no IP or user-agent was recorded, so adaptive risk had no history to compare
+        //    the next login against.
+        //
+        // The same lesson as everywhere else in this channel: call the app's own code
+        // rather than a subset of it that will fall behind.
+        $this->auth->establish($request, $subject->id, $amr);
 
         return true;
     }

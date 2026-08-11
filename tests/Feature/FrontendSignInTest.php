@@ -7,10 +7,16 @@ use App\Platform\FrontendApi\LoginTicket;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\SignInWithTicket;
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\FrontendApiServiceProvider;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
@@ -184,4 +190,40 @@ it('refuses a ticket for a subject who has since been deleted', function (): voi
     LoginTicket::query()->update(['subject_id' => '01aaaaaaaaaaaaaaaaaaaaaaaa']);
 
     expect(app(SignInWithTicket::class)->establish(request(), $ticket))->toBeFalse();
+});
+
+/**
+ * A TICKET-CREATED SESSION MUST BE THE SAME SESSION THE HOSTED FORM CREATES.
+ *
+ * It was not: `sessions->start()` produced one with no organization, no IP or user-agent
+ * for adaptive risk, no rotated id — and, worst, a surviving sudo confirmation, because
+ * only `establish()` forgets it. Minting a session is exactly the moment a prior step-up
+ * should stop being established.
+ */
+it('drops a prior step-up when a ticket mints a session', function (): void {
+    $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
+
+    session()->put(Sudo::SESSION_KEY, now()->timestamp);
+
+    app(SignInWithTicket::class)->establish(request(), $ticket);
+
+    expect(session()->get(Sudo::SESSION_KEY))->toBeNull();
+});
+
+it('pins an organization on a ticket-created session, as the hosted form does', function (): void {
+    $org = app(Organizations::class)
+        ->create(new NewOrganization('Acme', 'acme-ticket'));
+    app(Memberships::class)
+        ->add($org->id, $this->subject->id, MembershipRole::Owner);
+
+    $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
+
+    app(SignInWithTicket::class)->establish(request(), $ticket);
+
+    $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+    $session = app(SessionManager::class)->active((string) $sessionId);
+
+    // Without a pinned organization the console, the entitlement reads and the org scope
+    // all resolve to nothing.
+    expect($session?->organization_id)->toBe($org->id);
 });
