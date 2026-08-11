@@ -3,6 +3,7 @@
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Migration\LegacyLoginApprovals;
+use App\Platform\Migration\LegacyLoginProbe;
 use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -25,6 +26,33 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
     public function boot(): void
     {
         app(ConsoleScope::class)->assertMayAdminister();
+    }
+
+    /** The address to probe with — the operator's own, never somebody else's. */
+    public string $probeEmail = '';
+
+    public ?string $probeResult = null;
+
+    /**
+     * Ask the declared endpoint whether it is alive, before anybody approves it.
+     *
+     * Without this an operator approves blind, and the first thing to discover that the
+     * endpoint does not answer is a real person's login — failing closed, so they simply
+     * cannot sign in and nobody knows why.
+     */
+    public function probe(LegacyLoginApprovals $approvals, LegacyLoginProbe $probe): void
+    {
+        app(ConsoleScope::class)->assertMayAdminister();
+
+        $declaration = $approvals->current();
+
+        if ($declaration === null || ! filter_var($this->probeEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->probeResult = 'Enter an address that exists in your old system.';
+
+            return;
+        }
+
+        $this->probeResult = $probe->describe($declaration, $this->probeEmail);
     }
 
     public function approve(LegacyLoginApprovals $approvals): void
@@ -119,6 +147,25 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
                         <li>If that endpoint is <strong>down</strong>, people who have not migrated cannot sign in. Everyone already moved is unaffected.</li>
                     </ul>
                 </div>
+            </div>
+
+            {{-- The check before the decision, and above it on purpose: an operator who has
+                 not tried the endpoint should meet this first. It sends no password —
+                 `find()` asks whether the address is known and nothing more, so this screen
+                 cannot become a credential-testing oracle with an approve button beside
+                 it. --}}
+            <div class="cbx-panel-body" style="padding-top:0;display:flex;flex-direction:column;gap:8px">
+                <p class="label">Try it first</p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input wire:model="probeEmail" type="email" class="input" style="max-width:20rem"
+                           placeholder="an address in your old system" aria-label="Address to test with">
+                    <button wire:click="probe" class="btn btn-ghost" wire:loading.attr="disabled" wire:target="probe">
+                        <span class="spinner" wire:loading wire:target="probe" aria-hidden="true"></span> Test endpoint
+                    </button>
+                </div>
+                @if ($probeResult !== null)
+                    <p class="text-xs" role="status" aria-live="polite" style="color:var(--muted)">{{ $probeResult }}</p>
+                @endif
             </div>
 
             <div class="cbx-panel-body" style="padding-top:0">
