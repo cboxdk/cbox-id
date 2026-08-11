@@ -41,6 +41,8 @@ use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
+use Cbox\Id\Migration\Contracts\LegacyCredentialSource;
+use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -64,6 +66,15 @@ final class PlatformServiceProvider extends ServiceProvider
         // to POST and then renders the form in our colours, which is the tell that gives
         // away an embedded widget as somebody else's.
         $this->app->tag(AppearanceConfig::class, FrontendConfigContributor::class);
+
+        // THE LEGACY LOGIN AN APP DECLARED, once a person has approved it. Bound
+        // unconditionally because the source itself is inert without an approved row —
+        // it answers null to everything, exactly as if nothing were configured — so
+        // there is no state where binding it does something an operator did not ask for.
+        //
+        // Without this binding the whole feature is decorative: an operator could approve
+        // a declaration and nothing would ever consult it.
+        $this->app->singleton(LegacyCredentialSource::class, DeclaredCredentialSource::class);
 
         // Read once per request: three view components label themselves with the current
         // environment, and one of them renders per deletable row.
