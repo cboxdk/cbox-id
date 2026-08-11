@@ -19,7 +19,7 @@
      Relies on the parent shell providing `x-data="{ nav: false }"`. --}}
 
 {{-- Always-visible bottom bar (thumb zone) --}}
-<div class="lg:hidden fixed bottom-0 inset-x-0 z-30 flex items-center gap-3 px-4"
+<div data-cbox-mobile-nav class="lg:hidden fixed bottom-0 inset-x-0 z-30 flex items-center gap-3 px-4"
      style="height:3.5rem;padding-bottom:env(safe-area-inset-bottom);background:var(--sidebar);border-top:1px solid var(--sidebar-border)">
     @if ($initial)
         <span class="grid place-items-center w-8 h-8 rounded-lg text-sm font-semibold shrink-0" style="background:var(--accent);color:var(--accent-fg)" aria-hidden="true">{{ $initial }}</span>
