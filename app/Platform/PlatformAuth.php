@@ -272,7 +272,21 @@ final class PlatformAuth
     {
         $pending = $this->pendingOtpStepUp($request);
 
-        if ($pending === null || ! $this->otp->verifyLatest(self::OTP_PURPOSE, $pending['email'], $code, $request->ip())->verified) {
+        if ($pending === null) {
+            return false;
+        }
+
+        // Emailed codes are shorter-lived than TOTP but no wider, and the same account is
+        // under attack. `verifyLatest()` carries its own per-code attempt bound; this is
+        // the per-ACCOUNT one, which is what stops somebody requesting a fresh code for
+        // every handful of guesses.
+        if ($this->loginAttempts->isLockedOut($pending['subject'])) {
+            return false;
+        }
+
+        if (! $this->otp->verifyLatest(self::OTP_PURPOSE, $pending['email'], $code, $request->ip())->verified) {
+            $this->loginAttempts->recordFailure($pending['subject']);
+
             return false;
         }
 
@@ -360,7 +374,25 @@ final class PlatformAuth
     {
         $subjectId = $this->pendingMfaSubject($request);
 
-        if ($subjectId === null || ! $this->mfa->verifyTotp($subjectId, $code)) {
+        if ($subjectId === null) {
+            return false;
+        }
+
+        // THE LOCKOUT BINDS ON THE SECOND FACTOR TOO, and it did not: `recordFailure()`
+        // was called from the password path alone, so a wrong TOTP code was free
+        // everywhere in the product. Somebody holding a password from a breach could
+        // grind the six-digit space at whatever rate they could make requests — the
+        // account lockout counted none of it, and the embedded channel made it scriptable.
+        //
+        // Checked BEFORE the code, or a locked account still tells an attacker which guess
+        // was right — the same reason the password path checks it first.
+        if ($this->loginAttempts->isLockedOut($subjectId)) {
+            return false;
+        }
+
+        if (! $this->mfa->verifyTotp($subjectId, $code)) {
+            $this->loginAttempts->recordFailure($subjectId);
+
             return false;
         }
 
@@ -379,7 +411,20 @@ final class PlatformAuth
     {
         $subjectId = $this->pendingMfaSubject($request);
 
-        if ($subjectId === null || ! $this->mfa->verifyRecoveryCode($subjectId, $code)) {
+        if ($subjectId === null) {
+            return false;
+        }
+
+        // The same bound as the TOTP path above. A recovery code has far more entropy, so
+        // grinding it is not the threat — but it is the same account under attack, and a
+        // path that does not count is a path an attacker moves to.
+        if ($this->loginAttempts->isLockedOut($subjectId)) {
+            return false;
+        }
+
+        if (! $this->mfa->verifyRecoveryCode($subjectId, $code)) {
+            $this->loginAttempts->recordFailure($subjectId);
+
             return false;
         }
 

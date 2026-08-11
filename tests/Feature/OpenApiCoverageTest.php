@@ -101,6 +101,12 @@ function undocumentedByDesign(): array
 {
     return [
         // Discovery documents — served, and self-describing by definition.
+        // Bootstrap and discovery documents at the ROOT. These are not debt in the sense
+        // the note above means: the spec files describe `/api/v1` and the path prefix is
+        // hardcoded, so a `.well-known` document cannot be expressed in them at all. They
+        // are listed because the checker walks every route, not because anybody chose to
+        // leave them undescribed.
+        'GET /.well-known/cbox-cli',
         'GET /.well-known/cbox-authenticator',
         'GET /.well-known/jwks.json',
         'GET /.well-known/oauth-authorization-server',
