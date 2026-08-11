@@ -363,12 +363,21 @@ class InstallCommand extends Command
         // supplied is never echoed — not to the terminal, not to a shell history file,
         // not to whatever is capturing CI output.
         if ($plan->operator->generated) {
+            // THE PASSWORD IS PRINTED ON ITS OWN, UNWRAPPED. `note()` wraps to the
+            // terminal width, and a credential split across two lines is one an operator
+            // copies wrong — in a narrow window, or a CI log, or a scrollback that
+            // reflowed. So the framing is a note and the secret is a bare line that
+            // nothing can reflow.
             note(
-                "Generated password for {$installed->operator->email}:\n\n    ".$plan->operator->password
-                ."\n\nThis is the only time it is shown. Store it in a password manager now, and enrol a\n"
+                "Generated password for {$installed->operator->email} — printed below.\n\n"
+                ."This is the only time it is shown. Store it in a password manager now, and enrol a\n"
                 .'passkey or TOTP factor at your first sign-in.',
                 'Save this',
             );
+
+            // Bare, and alone on its line. `$this->line()` does not wrap, so this survives
+            // a narrow terminal and a copy-paste intact.
+            $this->line($plan->operator->password);
         }
     }
 

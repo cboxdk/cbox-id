@@ -213,7 +213,11 @@ it('shows a generated password once, and that password works', function (): void
     // proves only that SOMETHING was printed — not that it is the credential.
     $stripped = (string) preg_replace('/\e\[[0-9;]*m/', '', $output);
 
-    expect(preg_match('/Generated password for root@acme\.example:\s*\n[^\n]*?\s(\S{28})\s/', $stripped, $matches))->toBe(1);
+    // Matched as a line of its own rather than as text inside a framed box: the box wraps
+    // to the terminal width, so the previous pattern passed locally and failed in CI at a
+    // different COLUMNS — and the real defect it was hiding is that an operator in a narrow
+    // window was being shown a password split across two lines.
+    expect(preg_match('/^\s*(\S{28})\s*$/m', $stripped, $matches))->toBe(1);
 
     $operator = app(PlatformOperators::class)->findByEmail('root@acme.example');
 
