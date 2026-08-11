@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
+use App\Http\Controllers\Api\CliBootstrapController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
@@ -29,6 +30,7 @@ use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
+use Cbox\Id\Api\Http\Middleware\ResolveEnvironment as ApiResolveEnvironment;
 use Cbox\Id\FrontendApi\Http\Middleware\AuthenticateFrontendApi;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -866,3 +868,16 @@ Route::middleware('plane:console')->group(function (): void {
  */
 Route::redirect('/workspace', '/projects');
 Route::redirect('/workspace/login', '/login');
+
+/*
+ * What the `cbox` CLI needs before it can sign in here — the environment's
+ * issuer and the client id it should present.
+ *
+ * NOT in routes/api.php: that file is mounted under `/api`, and a `.well-known`
+ * document at `/api/.well-known/…` is not a well-known document. Registered the
+ * same way the authenticator's bootstrap is, on the environment resolved from
+ * the host, unauthenticated because a public client's id is not a credential.
+ */
+Route::middleware(['api', ApiResolveEnvironment::class, 'throttle:60,1'])
+    ->get('/.well-known/cbox-cli', CliBootstrapController::class)
+    ->name('cli.bootstrap');

@@ -1,0 +1,27 @@
+name: cbox-id
+image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.4-bookworm
+port: 80
+source: true
+url: APP_URL
+processes:
+  queue: ["php", "artisan", "queue:work", "--tries=1"]
+
+# This application trusts no proxy unless told to, deliberately — so behind a
+# real gateway it must be told. Without it Laravel builds every URL from the
+# request as the POD saw it: `http`, because Envoy terminated the TLS one hop
+# earlier, and every redirect and mailed link goes out as http.
+#
+# Named here rather than injected: which variable an application reads is the
+# application's business, and a platform that guesses gets it wrong for the one
+# that spells it differently.
+env:
+  TRUSTED_PROXIES: "10.244.0.0/16"
+
+# Its queue and cache expect a Redis. The platform runs Valkey, and the binding
+# names the variables this application actually reads — never injected blind.
+resources:
+  cache:
+    engine: valkey
+    bind:
+      host: REDIS_HOST
+      port: REDIS_PORT
