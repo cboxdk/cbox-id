@@ -177,7 +177,7 @@ Handle three other outcomes:
 
 | status | what it means |
 |---|---|
-| `mfa_required` / `otp_required` | right password, second factor still needed — finish with `submitSecondFactor(result.mfaToken, code)` |
+| `mfa_required` / `otp_required` | right password, second factor still needed — finish with `submitSecondFactor(result.mfaToken, code, method)`, where `method` is `'otp'` for an emailed code and `'mfa'` for an authenticator. The third argument is not optional: an emailed code answered as `'mfa'` is checked against the wrong challenge and refused. |
 | `sso_required` | this organization mandates single sign-on — send them to their IdP |
 | `invalid` | wrong password, unknown address, or locked account |
 

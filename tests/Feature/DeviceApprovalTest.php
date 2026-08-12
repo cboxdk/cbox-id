@@ -112,3 +112,31 @@ it('does not let the browser forge the verified state (locked)', function () {
 
     Volt::test('device')->set('verified', true);
 })->throws(Exception::class, 'Cannot update locked property');
+
+it('does not ask the browser to autofill a one-time code over the device code', function () {
+    // MEASURED IN A BROWSER, not theorised: the field carried
+    // autocomplete="one-time-code", which means "a code delivered out of band TO THIS
+    // DEVICE" — so Safari and every password manager offered the last SMS OTP they had
+    // seen and REPLACED the code the verification link had just prefilled. The form then
+    // submitted six digits the user never saw and the page said "that code is invalid or
+    // has expired", accusing a device that had done nothing wrong.
+    //
+    // A device-authorization user_code travels the other way: shown on another screen,
+    // typed in here. It must never invite OTP autofill.
+    signedInFor();
+
+    $html = Volt::test('device')->html();
+
+    expect($html)->not->toContain('one-time-code')
+        ->and($html)->toContain('autocomplete="off"');
+});
+
+it('prefills the code the verification link carries', function () {
+    // The other half of the same story: the link was doing its job, which is why the
+    // wrong value in the field was so hard to explain.
+    signedInFor();
+
+    Volt::test('device', ['user_code' => 'kkfj-rtjx'])
+        // Upper-cased, because the code is shown that way and typed either way.
+        ->assertSet('userCode', 'KKFJ-RTJX');
+});
