@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Livewire\WithPagination;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use App\Mail\OrganizationInviteMail;
 use App\Platform\OrganizationActivity;
 use App\Platform\OrganizationCapabilities;
@@ -34,6 +37,16 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class extends Component
 {
+    use WithPagination;
+
+    /**
+     * Rows per page.
+     *
+     * 25, like every other list in this console, and it is the number that turns this page
+     * from one whose cost grows with the organization into one that does not.
+     */
+    private const PER_PAGE = 25;
+
     public string $inviteEmail = '';
 
     public string $inviteName = '';
@@ -301,29 +314,47 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
     {
         $organizationId = $scope->organizationId();
 
+        // PAGINATED, and it always should have been. `forOrganization()` hydrated the whole
+        // roster and the loop below asked two more questions per row — measured at 10
+        // queries and ~13 KB per member, so a 101-member organization served a 1.3 MB
+        // document off 1037 queries, and a 500-member one is an availability failure rather
+        // than a slow page. The sibling roster at `livewire/members.blade.php` has been the
+        // correct shape all along; this is that shape.
+        //
         // IN THE PLATFORM ROOT, like every other membership read on this page. The console
         // is served on the console host, and whether that host resolves to the root is a
         // deployment detail — the management plane's rows live in the root either way, so
         // the scope is stated rather than assumed.
-        /** @var Collection<int, Membership> $roster */
+        /** @var LengthAwarePaginator<int, Membership> $roster */
         $roster = $organizationId === null
-            ? collect()
-            : app(PlatformRoot::class)->run(fn () => $members->forOrganization($organizationId)) ?? collect();
+            ? new Paginator([], 0, self::PER_PAGE)
+            : (app(PlatformRoot::class)->run(
+                fn (): LengthAwarePaginator => $members->paginateForOrganization($organizationId, self::PER_PAGE),
+            ) ?? new Paginator([], 0, self::PER_PAGE));
 
-        // The people behind the memberships, keyed by subject id. Hydrated in ONE pass
-        // rather than per row: a membership carries authority and not identity, so every
-        // name and address on this page is a second lookup, and doing it inside the loop
-        // is how a 25-row roster becomes 25 queries.
-        $people = [];
+        /** @var list<string> $userIds */
+        $userIds = collect($roster->items())->pluck('user_id')->all();
+
+        // The people behind the memberships, keyed by subject id, in ONE query. A
+        // membership carries authority and not identity, so every name and address on this
+        // page is a second lookup — and doing it inside the loop is how a 25-row roster
+        // becomes 25 queries. That sentence was already written here, directly above a
+        // loop that did exactly what it warns against.
+        $people = $userIds === [] ? [] : (app(PlatformRoot::class)->run(
+            fn (): array => $subjects->findMany($userIds),
+        ) ?? []);
+
+        // And the environment access per row, also in one pass. What the organization owns
+        // is a property of the ORGANIZATION rather than of each member, and asking it once
+        // per row was most of the cost.
+        $accessByUser = ($organizationId === null || $userIds === []) ? [] : (app(PlatformRoot::class)->run(
+            fn (): array => $members->accessibleEnvironmentIdsFor($organizationId, $userIds),
+        ) ?? []);
+
         $accessCounts = [];
 
-        foreach ($roster as $membership) {
-            $people[$membership->user_id] = app(PlatformRoot::class)->run(
-                fn () => $subjects->find($membership->user_id),
-            );
-            $accessCounts[$membership->id] = $organizationId === null ? [] : (app(PlatformRoot::class)->run(
-                fn (): array => $members->accessibleEnvironmentIds($organizationId, $membership->user_id),
-            ) ?? []);
+        foreach ($roster->items() as $membership) {
+            $accessCounts[$membership->id] = $accessByUser[$membership->user_id] ?? [];
         }
 
         // THROUGH THE PROJECTS, because `environments.account_id` is gone.
@@ -450,6 +481,10 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
             </div>
         @endforeach
     </div>
+
+    @if ($members->hasPages())
+        <div class="mt-4">{{ $members->links() }}</div>
+    @endif
 
     @if ($canManage)
         <div class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">

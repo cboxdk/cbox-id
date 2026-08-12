@@ -14,6 +14,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -38,34 +39,77 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** @return array{0: string} the organization id */
 function queryBudgetAdmin(int $extraMembers = 0): array
 {
-    $subject = app(Subjects::class)->create('budget@acme.test', 'Budget Admin', 'super-secret-1234');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-budget'));
-    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+    // IN THE PLATFORM ROOT, because that is where the console reads them from. The
+    // management plane's rows live in the root whatever host serves the console, so a
+    // fixture that writes them in the ambient scope builds an organization the page under
+    // test cannot see — which is exactly what happened: the roster rendered zero rows and
+    // the query count FELL as members were added.
+    // The root has to EXIST before anything reads under it: `PlatformRoot::run()` resolves
+    // the `is_default` environment, and without one the fixture and the page under test end
+    // up in two different scopes — which is what left the roster rendering zero rows while
+    // the query count quietly fell as members were added.
+    platformRootEnvironment();
 
-    // A PRODUCT, because that is what makes an organization a CUSTOMER — the
-    // Identity-platform area is refused to an organization that owns none, which is how a
-    // tenant's own end-user organization is kept out of it. A bare organization here would
-    // measure the query budget of a redirect.
-    app(Projects::class)->createForOrganization($org->id, 'Acme');
+    return app(PlatformRoot::class)->run(function () use ($extraMembers): array {
+        $subject = app(Subjects::class)->create('budget@acme.test', 'Budget Admin', 'super-secret-1234');
+        $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-budget'));
+        app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
-    for ($i = 0; $i < $extraMembers; $i++) {
-        $extra = app(Subjects::class)->create("member{$i}@acme.test", "Member {$i}", 'super-secret-1234');
-        app(Memberships::class)->add($org->id, $extra->id, MembershipRole::Member);
-    }
+        // A PRODUCT, because that is what makes an organization a CUSTOMER — the
+        // Identity-platform area is refused to an organization that owns none, which is how
+        // a tenant's own end-user organization is kept out of it. A bare organization here
+        // would measure the query budget of a redirect.
+        app(Projects::class)->createForOrganization($org->id, 'Acme');
 
-    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    session([PlatformAuth::SESSION_KEY => $session->id]);
-    app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
+        for ($i = 0; $i < $extraMembers; $i++) {
+            $extra = app(Subjects::class)->create("member{$i}@acme.test", "Member {$i}", 'super-secret-1234');
+            app(Memberships::class)->add($org->id, $extra->id, MembershipRole::Member);
+        }
 
-    return [$org->id];
+        $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+        session([PlatformAuth::SESSION_KEY => $session->id]);
+        app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
+
+        return [$org->id];
+    }) ?? [];
+}
+
+/**
+ * How many roster rows the page actually drew.
+ *
+ * Counted off the rendered markup, because the number of QUERIES a page makes is
+ * meaningless without it: a page that renders nothing is always cheap.
+ */
+function rosterRows(string $route): int
+{
+    $html = (string) test()->get(route($route))->assertOk()->getContent();
+
+    return substr_count($html, 'wire:key="member-');
 }
 
 function addMembers(string $organizationId, int $count): void
 {
-    for ($i = 0; $i < $count; $i++) {
-        $extra = app(Subjects::class)->create("extra{$i}@acme.test", "Extra {$i}", 'super-secret-1234');
-        app(Memberships::class)->add($organizationId, $extra->id, MembershipRole::Member);
-    }
+    app(PlatformRoot::class)->run(function () use ($organizationId, $count): void {
+        for ($i = 0; $i < $count; $i++) {
+            $subject = app(Subjects::class)->create("extra{$i}@acme.test", "Extra {$i}", 'super-secret-1234');
+            app(Memberships::class)->add($organizationId, $subject->id, MembershipRole::Member);
+        }
+    });
+}
+
+/** The same measurement for a URL rather than a route name — pagination needs a query string. */
+function queriesForUrl(string $url): int
+{
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    test()->get($url)->assertOk();
+
+    $count = count(DB::getQueryLog());
+
+    DB::disableQueryLog();
+
+    return $count;
 }
 
 /** @return int the number of queries the request issued */
@@ -84,22 +128,57 @@ function queriesFor(string $route): int
 
 it('does not pay a per-row query on the member roster', function (): void {
     [$orgId] = queryBudgetAdmin(extraMembers: 2);
+
+    // ROWS FIRST, THEN QUERIES. This measured an EMPTY page for months: the fixture
+    // creates memberships in the ambient scope while the page reads them under
+    // `PlatformRoot`, so the roster rendered nothing and the count FELL as rows were
+    // added — 30 at 3 members, 20 at 21. A budget test that does not know whether the
+    // page drew anything is measuring the chrome.
+    expect(rosterRows('members'))->toBe(3, 'the roster rendered no rows — the fixture is wrong, not the page');
+
     $small = queriesFor('members');
 
     // The SAME application and the same page, with eighteen more rows in it. Measuring
     // in one instance on purpose: refreshApplication() would drop the in-memory schema.
     addMembers($orgId, 18);
+
+    expect(rosterRows('members'))->toBe(21);
+
     $large = queriesFor('members');
 
     fwrite(STDERR, "\n  members: {$small} queries at 3 rows, {$large} at 21\n");
 
-    // Ten times the rows must not cost ten times the queries. The delete dialog and its
-    // nested badge added two per row, so this gap was ~36; a batched page is flat.
+    // Ten times the rows must not cost ten times the queries. It was ten queries PER
+    // MEMBER — 1037 on a 101-member page — before the roster was paginated and the
+    // subject and environment-access lookups were batched.
     expect($large - $small)->toBeLessThan(
         10,
         "the roster costs per-row queries: {$small} at 3 rows, {$large} at 21"
     );
 });
+
+/**
+ * A page beyond the first must cost the same as the first.
+ *
+ * Pagination is what bounds this page, so the property worth holding is not "25 rows is
+ * cheap" but "the twenty-sixth member changes nothing" — which is exactly what an
+ * unpaginated page cannot do.
+ */
+it('costs the same on page two as on page one', function (): void {
+    [$orgId] = queryBudgetAdmin(extraMembers: 2);
+    addMembers($orgId, 40);
+
+    // WARM FIRST. The first request in a process pays for things no later one does — the
+    // installer's `exists` probes, the platform-root lookup, the auth policies — and
+    // measured cold against warm this reads as a ten-query difference that has nothing to
+    // do with the page. Diffed properly, the two pages issue the same statements.
+    queriesFor('members');
+
+    $first = queriesFor('members');
+    $second = queriesForUrl(route('members').'?page=2');
+
+    expect(abs($second - $first))->toBeLessThan(3, "page one cost {$first}, page two {$second}");
+})->group('performance');
 
 /**
  * Ceilings taken from a real measurement, then given room: dashboard 61, settings 17 at
