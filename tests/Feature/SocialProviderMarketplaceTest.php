@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 
 /**
@@ -167,7 +168,11 @@ it('asks for what Apple actually needs, which is not a client secret', function 
         ->assertSee('Key ID')
         ->assertSee('Private key (.p8)')
         ->assertSee('Services ID')
-        ->assertSee('has no client secret to copy');
+        ->assertSee('There is no client secret to paste')
+        // AND NO FIELD FOR ONE. Saying "there is nothing to paste here" above a box
+        // labelled "Client secret" is worse than saying nothing: the box is the
+        // instruction people follow. This assertion is what stops the field coming back.
+        ->assertDontSee('id="clientSecret"', escape: false);
 });
 
 it('will not enable a provider whose required parameters are blank', function (): void {
@@ -207,4 +212,59 @@ it('uses the OIDC callback path for an OIDC provider', function (): void {
     $id = enableProvider($org->id, 'google', ConnectionType::Oidc);
 
     Volt::test('social-providers')->assertSee('/sso/oidc/'.$id.'/callback');
+});
+
+/**
+ * APPLE HAS NO CLIENT SECRET, and the form used to demand one anyway.
+ *
+ * It relabelled the field "Services ID" — which is the CLIENT ID — so the form asked for
+ * the same value twice, once as a password, and stored the second copy as
+ * `client_secret`. Whatever the administrator typed there went to Apple's token endpoint
+ * as a credential Apple never issued, and the sign-in failed with `invalid_client`: an
+ * error that reads as a wrong client id and gets debugged as one.
+ */
+it('enables Apple without asking for a secret Apple does not issue', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
+    // Apple's issuer is fixed, so the page runs discovery against it. Faked, because
+    // reaching appleid.apple.com from a test is neither reliable nor the thing under
+    // test — what is under test is that the form completes with the secret field empty.
+    Http::fake(['appleid.apple.com/*' => Http::response([
+        'issuer' => 'https://appleid.apple.com',
+        'authorization_endpoint' => 'https://appleid.apple.com/auth/authorize',
+        'token_endpoint' => 'https://appleid.apple.com/auth/token',
+        'jwks_uri' => 'https://appleid.apple.com/auth/keys',
+    ])]);
+
+    Volt::test('social-providers')
+        ->call('choose', 'apple')
+        ->set('clientId', 'com.acme.service')
+        ->set('parameters.team_id', 'TEAM123456')
+        ->set('parameters.key_id', 'KEY1234567')
+        ->set('parameters.private_key', "-----BEGIN PRIVATE KEY-----\nMHc\n-----END PRIVATE KEY-----")
+        ->call('enable')
+        ->assertHasNoErrors();
+
+    $enabled = app(Connections::class)->catalogueProvidersFor($org->id);
+
+    expect($enabled)->toHaveCount(1)
+        ->and($enabled[0]->provider)->toBe('apple');
+
+    // AND NOTHING IS STORED UNDER `client_secret`. An empty string there is not
+    // harmless: it is what the token exchange would send, and it is indistinguishable
+    // downstream from a secret that was configured and is wrong.
+    $config = app(Connections::class)->oidcConfig($enabled[0]);
+
+    expect($config->clientSecret)->toBeNull()
+        ->and($config->clientId)->toBe('com.acme.service');
+});
+
+it('still requires a client secret from a provider that issues one', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    Volt::test('social-providers')
+        ->call('choose', 'github')
+        ->set('clientId', 'gh-client')
+        ->call('enable')
+        ->assertHasErrors('clientSecret');
 });

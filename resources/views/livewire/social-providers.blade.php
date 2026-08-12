@@ -6,6 +6,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ClientSecretKind;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Enums\ProviderCapability;
 use Cbox\Id\Federation\Exceptions\InvalidAssertion;
@@ -108,10 +109,19 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
             return;
         }
 
-        $this->validate([
-            'clientId' => ['required', 'string', 'max:400'],
-            'clientSecret' => ['required', 'string', 'max:5000'],
-        ], attributes: ['clientId' => 'client ID', 'clientSecret' => 'client secret']);
+        // The secret is required only from a provider that issues one. Apple does not,
+        // and demanding it made the one provider whose setup form we bothered to shape
+        // specially the one provider nobody could finish enabling.
+        $rules = ['clientId' => ['required', 'string', 'max:400']];
+
+        if (! $this->mintsItsOwnSecret($template)) {
+            $rules['clientSecret'] = ['required', 'string', 'max:5000'];
+        }
+
+        $this->validate($rules, attributes: [
+            'clientId' => $this->mintsItsOwnSecret($template) ? 'Services ID' : 'client ID',
+            'clientSecret' => 'client secret',
+        ]);
 
         // Every missing parameter is reported at once. Reporting the first and stopping
         // would walk someone through Apple's three fields one round-trip at a time.
@@ -145,7 +155,7 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
         $config = [
             'provider' => $template->key,
             'client_id' => trim($this->clientId),
-            'client_secret' => trim($this->clientSecret),
+            ...($this->mintsItsOwnSecret($template) ? [] : ['client_secret' => trim($this->clientSecret)]),
             ...$values,
         ];
 
@@ -240,6 +250,20 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
             )),
             'template' => $this->selected === null ? null : ProviderCatalog::find($this->selected),
         ];
+    }
+
+    /**
+     * Whether this provider hands out key material instead of a client secret.
+     *
+     * Asked in three places — validation, what gets stored, and what the form draws — so
+     * it is one question with one answer rather than three `=== 'signed_jwt'` string
+     * comparisons that could drift apart. Which they had: the form relabelled the secret
+     * field for Apple while validation still demanded it and the save path still stored
+     * whatever was typed as `client_secret`.
+     */
+    public function mintsItsOwnSecret(ProviderTemplate $template): bool
+    {
+        return $template->secretKind === ClientSecretKind::SignedJwt;
     }
 
     /**
@@ -424,21 +448,39 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
                     @endforeach
 
                     <div>
-                        <label class="label" for="clientId">Client ID</label>
+                        {{-- Apple's client id is the SERVICES ID, not the App ID, and saying
+                             "Client ID" here is the single most common way a first attempt
+                             fails: both exist in Apple's console, both look like a reverse
+                             domain, and only one of them works. --}}
+                        <label class="label" for="clientId">{{ $this->mintsItsOwnSecret($template) ? 'Services ID' : 'Client ID' }}</label>
                         <input id="clientId" type="text" wire:model="clientId" class="input">
+                        @if ($this->mintsItsOwnSecret($template))
+                            <p class="mt-1 text-xs" style="color:var(--muted)">
+                                The Services ID you enabled Sign in with Apple on — not the App ID.
+                            </p>
+                        @endif
                         @error('clientId') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
-                        <label class="label" for="clientSecret">{{ $template->secretKind->value === 'signed_jwt' ? 'Services ID' : 'Client secret' }}</label>
-                        <input id="clientSecret" type="password" wire:model="clientSecret" class="input" autocomplete="off">
-                        @if ($template->secretKind->value === 'signed_jwt')
-                            <p class="mt-1 text-xs" style="color:var(--muted)">
-                                {{ $template->name }} has no client secret to copy — we mint one from the key above and renew it before it expires.
-                            </p>
-                        @endif
-                        @error('clientSecret') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                    </div>
+                    {{-- ASKED FOR ONLY WHERE ONE EXISTS. Apple issues no client secret: the
+                         credential is an ES256 assertion minted per request from the key
+                         above. The field used to be shown anyway, relabelled, which left
+                         the form asking twice for the Services ID — once as the client id
+                         and once as a password — and made enabling Apple impossible to get
+                         right. --}}
+                    @if ($this->mintsItsOwnSecret($template))
+                        <p class="text-sm rounded-lg px-3 py-2.5" style="background:var(--surface-2);border:1px solid var(--border);color:var(--muted)">
+                            There is no client secret to paste. {{ $template->name }} expects a signed
+                            assertion instead, which we mint from the key above for each sign-in and
+                            renew long before it expires.
+                        </p>
+                    @else
+                        <div>
+                            <label class="label" for="clientSecret">Client secret</label>
+                            <input id="clientSecret" type="password" wire:model="clientSecret" class="input" autocomplete="off">
+                            @error('clientSecret') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
                 </div>
 
                 <div class="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
