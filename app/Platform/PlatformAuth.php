@@ -489,6 +489,7 @@ final class PlatformAuth
 
         $this->applyPendingLink($subjectId);
         $this->recordOrganizationSignIn($subjectId);
+
     }
 
     /**

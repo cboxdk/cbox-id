@@ -24,6 +24,7 @@ use Cbox\Id\Billing\BillingServiceProvider;
 use Cbox\Id\Compliance\ComplianceServiceProvider;
 use Cbox\Id\Connectors\ConnectorsServiceProvider;
 use Cbox\Id\Devices\DevicesServiceProvider;
+use Cbox\Id\Kernel\Crypto\Exceptions\CryptoConfigurationException;
 use Cbox\Id\RiskPlus\RiskPlusServiceProvider;
 use Cbox\Id\Whitelabel\WhitelabelServiceProvider;
 use Illuminate\Foundation\Application;
@@ -31,6 +32,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
@@ -223,4 +225,26 @@ return Application::configure(basePath: dirname(__DIR__))
         // throttled request rendered a bare `{"message":"Too Many Attempts."}`. Those
         // are the two most common failures a generated client meets.
         $exceptions->render(ApiErrorRenderer::render(...));
+
+        // A DEPLOYMENT THAT WAS NEVER CONFIGURED SHOULD SAY SO, not 500.
+        //
+        // `SecretBox` refuses to boot without a master key, which is correct — a platform
+        // that sealed secrets under a key it invented at boot would lose them all on the
+        // next restart. But the resulting exception reached the browser as a blank 500 on
+        // EVERY page, including `/first-run`, the one screen that exists for a container
+        // somebody else started and cannot run a CLI inside.
+        //
+        // So the failure keeps its status and gains the one sentence that resolves it.
+        // Measured on a clean checkout: `cp .env.example .env && php artisan migrate` then
+        // any URL — the operator saw a stack trace with `debug` on, and nothing at all with
+        // it off.
+        $exceptions->render(function (CryptoConfigurationException $e, Request $request): ?Response {
+            if ($request->expectsJson()) {
+                return null;
+            }
+
+            return response()->view('errors.unconfigured', [
+                'reason' => $e->getMessage(),
+            ], 503);
+        });
     })->create();

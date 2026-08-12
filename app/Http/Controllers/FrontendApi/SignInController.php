@@ -155,9 +155,27 @@ class SignInController
         /** @var list<string> $amr */
         $amr = array_values(array_filter($session->amr, is_string(...)));
 
+        $ticket = $this->tickets->mint($key, $session->user_id, $amr);
+
+        // AND THE SESSION IS ENDED, having served its purpose.
+        //
+        // `attemptPassword()` establishes one because that is what the hosted form needs,
+        // and this controller only reads the `amr` off it. Nothing carries the cookie away
+        // — it is `SameSite=lax` and the caller is cross-origin — so leaving the row behind
+        // put a live, unreachable session into the person's own active-sessions list on
+        // EVERY embedded sign-in. They cannot tell it from a real one, so the honest
+        // reading of that list is "somewhere I am signed in that I do not recognise", which
+        // is precisely the signal the list exists to give.
+        //
+        // The ticket is already minted, so the session is no longer the authority on
+        // anything: redemption calls `establish()` again and produces the session the
+        // person actually keeps.
+        $this->sessions->revoke($session->id);
+        $request->session()->forget(PlatformAuth::SESSION_KEY);
+
         return new JsonResponse([
             'status' => 'ok',
-            'login_ticket' => $this->tickets->mint($key, $session->user_id, $amr),
+            'login_ticket' => $ticket,
             // Said out loud so an SDK does not have to know it: the ticket is for one
             // redirect, not for storing.
             'expires_in' => 60,

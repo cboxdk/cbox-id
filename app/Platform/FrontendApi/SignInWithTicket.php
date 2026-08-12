@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Platform\FrontendApi;
 
+use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Http\Request;
@@ -36,6 +38,8 @@ final class SignInWithTicket
         private readonly PlatformAuth $auth,
         private readonly Subjects $subjects,
         private readonly EnvironmentContext $environments,
+        private readonly CurrentUser $current,
+        private readonly SessionManager $sessions,
     ) {}
 
     /**
@@ -90,6 +94,36 @@ final class SignInWithTicket
         // The same lesson as everywhere else in this channel: call the app's own code
         // rather than a subset of it that will fall behind.
         $this->auth->establish($request, $subject->id, $amr);
+
+        // Read through the session helper rather than off the request: a caller may hand
+        // us a bare Request with no store bound, and this is the LAST step of a sign-in
+        // that has already succeeded — failing it over a lookup would be the tail wagging
+        // the dog.
+        $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+        $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
+
+        // AND THE REQUEST'S OWN VIEW OF WHO IS SIGNED IN, which is not the same thing.
+        //
+        // `CurrentUser` is resolved once, by the auth middleware, at the START of a
+        // request. Every hosted door redirects immediately after establishing, so the next
+        // request re-resolves it and nobody noticed — but this one establishes a session
+        // and then CONTINUES: `/oauth/authorize` redeems in `mount()` and asks `check()`
+        // three lines later.
+        //
+        // For the caller this whole channel exists for — a page on another origin, with no
+        // session cookie at all — that answer was false. The ticket was spent, a perfectly
+        // good session was created, and the person was redirected to the hosted sign-in
+        // page they had embedded a form to avoid. It passed in tests only because the test
+        // client carried the sign-in POST's session in the same cookie jar, which no
+        // cross-origin browser does.
+        //
+        // Set HERE rather than inside `establish()`: this is the one door that carries on
+        // after establishing, and refreshing the resolved identity underneath every other
+        // caller — impersonation, org switching, the operator handoff — changes what their
+        // own later reads see, which is a much larger claim than this bug needs.
+        if ($session !== null) {
+            $this->current->set($subject, $session, null, null);
+        }
 
         return true;
     }

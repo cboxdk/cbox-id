@@ -167,7 +167,11 @@ it('turns a ticket into a session at the authorize endpoint', function (): void 
         ->assertOk()
         ->json('login_ticket');
 
-    expect(app(CurrentUser::class)->check())->toBeFalse();
+    // The SESSION, not the request-scoped `CurrentUser`: the container is a singleton
+    // across requests in a test process, so `check()` here would still be answering about
+    // the sign-in POST. What has to be true is that nothing carried a session across —
+    // which is the whole reason the ticket exists.
+    expect(session()->get(PlatformAuth::SESSION_KEY))->toBeNull();
 
     app(SignInWithTicket::class)->establish(request(), $ticket);
 
@@ -252,7 +256,7 @@ it('signs a person in at the authorize route itself, from the ticket in the URL'
         ->assertOk()
         ->json('login_ticket');
 
-    $this->get('/oauth/authorize?'.http_build_query([
+    $response = $this->get('/oauth/authorize?'.http_build_query([
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
         'response_type' => 'code',
@@ -261,11 +265,15 @@ it('signs a person in at the authorize route itself, from the ticket in the URL'
         'code_challenge' => 'abc',
         'code_challenge_method' => 'S256',
         'login_ticket' => $ticket,
-    ]))->assertOk()
-        // Not the sign-in page: the ticket WAS the sign-in.
-        ->assertDontSee('name="password"', false);
+    ]));
 
-    expect(session()->get(PlatformAuth::SESSION_KEY))->not->toBeNull();
+    // Whatever the client's consent state produces — a rendered prompt or a redirect
+    // straight back with the code — the one thing that must NOT happen is a bounce to the
+    // sign-in page. The ticket WAS the sign-in.
+    $location = (string) $response->headers->get('Location');
+
+    expect($location)->not->toContain('/login')
+        ->and(session()->get(PlatformAuth::SESSION_KEY))->not->toBeNull();
 });
 
 /**
