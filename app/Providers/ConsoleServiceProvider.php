@@ -49,9 +49,16 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav = Console::nav();
 
+        // OVERVIEW IS THE ONE AREA THAT MIXES BOTH KINDS. The rail's role gate works on
+        // whole AREAS — a plain member sees `overview`, `account` and nothing else — while
+        // Usage inside it calls `assertMayAdminister()` in its own boot(). So a member was
+        // shown a link to a page that answered 403: present-and-refusing, which reads like
+        // a permissions problem somebody will go and try to fix, and is the worse failure
+        // of the two available. Gated page-by-page now, on the same question the page
+        // asks, which is why they cannot disagree.
         $nav->area('overview', 'Overview', 'dashboard', 10)
             ->page('dashboard', 'Overview', order: 10)
-            ->page('usage', 'Usage', order: 20)
+            ->page('usage', 'Usage', feature: 'organization.usage', order: 20)
             ->page('approvals', 'Agent approvals', order: 30);
 
         // What an organization has BECAUSE IT OWNS IDENTITY PROVIDERS — the projects it
@@ -239,5 +246,10 @@ final class ConsoleServiceProvider extends ServiceProvider
         // to a page the visitor would be turned away from. Both ask the same ConsoleScope,
         // which is why they cannot disagree about who is staff.
         $features->register('platform.operator', static fn (): bool => app(ConsoleScope::class)->isPlatformOperator());
+        // Usage is organization-wide telemetry — sign-ins, users created, tokens issued —
+        // not the visitor's own record, so it is an administration surface sitting in an
+        // area a member can see. THE SAME QUESTION THE PAGE ASKS, deliberately: the page
+        // is the authorization and this only decides whether the rail offers a link to it.
+        $features->register('organization.usage', static fn (): bool => app(ConsoleScope::class)->mayAdminister());
     }
 }
