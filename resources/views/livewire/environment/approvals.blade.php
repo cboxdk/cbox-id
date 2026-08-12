@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
-use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\Identity\Models\User;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
+use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Agent approvals — the human-in-the-loop surface for
@@ -23,6 +25,11 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] class extends Component
 {
+    use WithPagination;
+
+    /** A screenful. See the read in with() for why this page is bounded at all. */
+    private const PER_PAGE = 25;
+
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
      * re-run on Livewire actions (PersistentMiddlewareTest holds that), but this
@@ -82,8 +89,6 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
      */
     public function with(): array
     {
-        $clients = app(ClientRegistry::class);
-
         $labels = [
             'openid' => 'Verify your identity',
             'profile' => 'Your name',
@@ -91,25 +96,39 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
             'offline_access' => 'Stay signed in',
         ];
 
+        // A PAGE OF THEM. This is every pending request in the environment, not one
+        // person's — an agent platform generates these continuously, and the unbounded
+        // read hydrated the lot into one response. Twenty-five is a screenful; an
+        // operator working through a backlog pages, and an environment with a runaway
+        // client no longer takes the console down with it.
         $requests = BackchannelAuthRequest::query()
             ->where('status', 'pending')
             ->where('expires_at', '>', now())
             ->orderByDesc('created_at')
-            ->get()
-            ->map(function (BackchannelAuthRequest $request) use ($clients, $labels): array {
-                return [
-                    'id' => $request->id,
-                    'appName' => $clients->byClientId($request->client_id)->name ?? $request->client_id,
-                    'bindingMessage' => $request->binding_message,
-                    'scopeRows' => array_map(
-                        fn (string $scope): array => ['scope' => $scope, 'label' => $labels[$scope] ?? $scope],
-                        $request->scopes,
-                    ),
-                ];
-            });
+            ->paginate(self::PER_PAGE);
 
+        // Two lookups for the page, not two per row. `byClientId()` inside the map was a
+        // query each, so a full page cost 25 round trips to render 25 application names.
+        $names = Client::query()
+            ->whereIn('client_id', $requests->getCollection()->pluck('client_id')->unique())
+            ->pluck('name', 'client_id');
+
+        // WHOSE request it is. The page asks an operator to recognise a request and gave
+        // them the application name alone — which is the same on every row when one
+        // agent platform is behind them all. The subject is the fact that distinguishes
+        // "an agent is asking to act as Dana" from "an agent is asking".
+        $subjects = User::query()
+            ->whereIn('id', $requests->getCollection()->pluck('user_id')->unique())
+            ->pluck('email', 'id');
+
+        // The paginator keeps its own rows — the models — and the two lookups travel
+        // beside it. Mapping them into arrays would mean re-typing the paginator, and the
+        // view needs the models anyway to build its scope rows.
         return [
             'requests' => $requests,
+            'appNames' => $names,
+            'subjects' => $subjects,
+            'scopeLabels' => $labels,
         ];
     }
 }; ?>
@@ -119,33 +138,33 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
 
     <div class="mt-6 space-y-4">
         @forelse ($requests as $request)
-            <div class="rounded-xl border p-5" style="border-color:var(--border)" wire:key="req-{{ $request['id'] }}">
+            <div class="rounded-xl border p-5" style="border-color:var(--border)" wire:key="req-{{ $request->id }}">
                 <div class="flex items-center gap-3">
                     <span class="grid place-items-center rounded-full shrink-0" style="width:2.25rem;height:2.25rem;background:var(--accent-soft);color:var(--accent-strong)">
                         <x-icon name="shield" class="w-5 h-5" />
                     </span>
                     <div class="min-w-0">
-                        <p class="font-semibold truncate">{{ $request['appName'] }} is requesting access</p>
-                        <p class="text-xs" style="color:var(--faint)">wants to act on the user's behalf</p>
+                        <p class="font-semibold truncate">{{ $appNames[$request->client_id] ?? $request->client_id }} is requesting access</p>
+                        <p class="text-xs truncate" style="color:var(--faint)">wants to act on behalf of {{ $subjects[$request->user_id] ?? 'a user who no longer exists' }}</p>
                     </div>
                 </div>
 
-                @if ($request['bindingMessage'])
+                @if ($request->binding_message)
                     <div class="mt-4 rounded-lg px-3.5 py-3" style="background:var(--accent-soft)">
                         <p class="label">Confirm this matches the device</p>
-                        <p class="mt-1 font-medium">{{ $request['bindingMessage'] }}</p>
+                        <p class="mt-1 font-medium">{{ $request->binding_message }}</p>
                     </div>
                 @endif
 
-                @if (count($request['scopeRows']) > 0)
+                @if ($request->scopes !== [])
                     <div class="mt-4">
-                        <p class="label">This will allow {{ $request['appName'] }} to</p>
+                        <p class="label">This will allow {{ $appNames[$request->client_id] ?? $request->client_id }} to</p>
                         <ul class="mt-2 space-y-2">
-                            @foreach ($request['scopeRows'] as $row)
+                            @foreach ($request->scopes as $scope)
                                 <li class="flex items-center gap-2.5 text-sm">
                                     <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--success-strong)" />
-                                    <span>{{ $row['label'] }}</span>
-                                    <span class="badge">{{ $row['scope'] }}</span>
+                                    <span>{{ $scopeLabels[$scope] ?? $scope }}</span>
+                                    <span class="badge">{{ $scope }}</span>
                                 </li>
                             @endforeach
                         </ul>
@@ -153,7 +172,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
                 @endif
 
                 <div class="mt-5 flex gap-2.5">
-                    <button type="button" wire:click="deny('{{ $request['id'] }}')" wire:confirm="Deny this request?" class="btn btn-danger" style="color:var(--destructive)" wire:loading.attr="disabled">Deny</button>
+                    <button type="button" wire:click="deny('{{ $request->id }}')" wire:confirm="Deny this request?" class="btn btn-danger" style="color:var(--destructive)" wire:loading.attr="disabled">Deny</button>
                 </div>
             </div>
         @empty
@@ -163,5 +182,9 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
                 <p>Agent approval requests will appear here for review as they arrive.</p>
             </div>
         @endforelse
+
+        @if ($requests->hasPages())
+            <div class="mt-4">{{ $requests->links() }}</div>
+        @endif
     </div>
 </div>

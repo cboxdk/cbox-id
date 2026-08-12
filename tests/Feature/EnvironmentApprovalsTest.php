@@ -14,6 +14,7 @@ use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 
@@ -79,4 +80,48 @@ it('offers no approve action to an operator', function (): void {
         Volt::test('environment.approvals')->instance(),
         'approve',
     ))->toBeFalse();
+});
+
+/**
+ * THE PAGE READ EVERY PENDING REQUEST IN THE ENVIRONMENT, and then asked the client
+ * registry for an application name once per row.
+ *
+ * This is not one person's approvals list — it is the operator's view of the whole
+ * environment, and an agent platform produces these continuously. Thirty rows on one
+ * screen was thirty-one queries and an unbounded hydration; the number that mattered was
+ * whichever one arrived first on a bad day.
+ */
+it('shows one page of requests and pays a flat number of queries for it', function (): void {
+    envApprovalsSetup();
+
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Agent',
+        type: ClientType::Confidential,
+        redirectUris: [],
+        scopes: ['openid'],
+    ));
+
+    // More than a page, from more than one person, so both lookups have something to
+    // batch — a fixture with one subject would pass against a per-row query too.
+    foreach (range(1, 30) as $i) {
+        $subject = app(Subjects::class)->create("agent-user-{$i}@acme.example", "Agent User {$i}");
+        app(BackchannelAuthentication::class)->request($client->client, ['openid'], $subject->id);
+    }
+
+    // Warm: the first render of any console page pays for schema and config reads that
+    // have nothing to do with this query, and comparing a cold page against a warm one
+    // measures the wrong thing entirely.
+    Volt::test('environment.approvals')->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $page = Volt::test('environment.approvals');
+
+    // The rendered page proves the count is about a full page rather than an empty one:
+    // a budget assertion over a page that rendered nothing is the cheapest green there is.
+    expect(substr_count($page->html(), 'is requesting access'))->toBe(25)
+        ->and($queries)->toBeLessThan(15);
 });
