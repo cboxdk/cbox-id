@@ -39,6 +39,12 @@ beforeEach(function (): void {
  */
 function axeViolations(string $html): array
 {
+    // A DOCUMENT, not a redirect body or an error page. axe finds no violations in an
+    // empty document, so a sweep that never checked this reads as "accessible" for exactly
+    // the pages that failed to render — which is how a guard covering a third of the
+    // product came to look like coverage of all of it.
+    expect(strlen($html))->toBeGreaterThan(2000, 'the page rendered no document to audit');
+
     foreach (['axe-core', 'jsdom'] as $pkg) {
         expect(file_exists(base_path("node_modules/{$pkg}")))
             ->toBeTrue("node_modules/{$pkg} is missing — run `npm install`. This guard must never be skipped.");
@@ -494,3 +500,81 @@ it('does not claim to be a dialog', function (): void {
         ->and($markup)->toContain('aria-controls')
         ->and($markup)->toContain('aria-expanded');
 });
+
+/**
+ * THE OTHER TWO CONSOLE PLANES, which this guard has never opened.
+ *
+ * It swept eighteen ORGANIZATION-plane pages and stopped there, while the
+ * environment-admin console (`/admin/*`) and the operator console (`/platform/*`) are
+ * whole planes of their own — the ones an administrator lives in all day. A guard that
+ * covers a third of the product and reads as "accessibility is tested" is the shape this
+ * repository has been bitten by before: the suite cannot see whether a control is drawn,
+ * so the plane nobody sweeps is the plane a defect survives on.
+ */
+it('has no WCAG 2.1 A/AA violations on the environment console', function (string $route): void {
+    multiTenantDeployment();
+    actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
+
+    $html = $this->get(route($route))->assertOk()->getContent();
+
+    expect(axeViolations($html))->toBe([]);
+})->with([
+    'home' => 'environment.home',
+    'organizations' => 'environment.organizations',
+    'users' => 'environment.users',
+    'roles' => 'environment.roles',
+    'permissions' => 'environment.permissions',
+    'connections' => 'environment.connections',
+    'directories' => 'environment.directories',
+    'provisioning' => 'environment.provisioning',
+    'clients' => 'environment.clients',
+    'frontend-keys' => 'environment.frontend-keys',
+    'legacy-login' => 'environment.legacy-login',
+    'webhooks' => 'environment.webhooks',
+    'hooks' => 'environment.hooks',
+    'audit' => 'environment.audit',
+    'audit-streams' => 'environment.audit-streams',
+    'governance' => 'environment.governance',
+    'sod-policies' => 'environment.sod-policies',
+    'auth-policy' => 'environment.auth-policy',
+    'settings' => 'environment.settings',
+    'appearance' => 'environment.appearance',
+    'sso-providers' => 'environment.sso-providers',
+    'social-providers' => 'environment.social-providers',
+    'vault' => 'environment.vault',
+    'analytics' => 'environment.analytics',
+    'approvals' => 'environment.approvals',
+])->group('ux');
+
+it('has no WCAG 2.1 A/AA violations on the operator console', function (string $route): void {
+    actAsOperator('a11y-op@platform.test');
+
+    $html = $this->get(route($route))->assertOk()->getContent();
+
+    expect(axeViolations($html))->toBe([]);
+})->with([
+    'customers' => 'platform.customers',
+    'organizations' => 'platform.organizations',
+    'environments' => 'platform.environments',
+    'operators' => 'platform.operators',
+    'usage' => 'platform.usage',
+    'search' => 'platform.search',
+])->group('ux');
+
+/**
+ * And the page a person opens to find a session they do not recognise — added in this
+ * review pass, and exactly the kind of page that must be readable by somebody who cannot
+ * see it.
+ */
+it('has no WCAG 2.1 A/AA violations on sessions & activity', function (): void {
+    $subject = app(Subjects::class)->create('a11y-activity@acme.test', 'A11y', 'super-secret-1234');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y-activity'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    $this->get('/magic/'.app(MagicLink::class)->request('a11y-activity@acme.test'));
+
+    $html = $this->get('/account/activity')->assertOk()->getContent();
+
+    expect(axeViolations($html))->toBe([]);
+})->group('ux');
