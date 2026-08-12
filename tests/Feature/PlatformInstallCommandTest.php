@@ -217,9 +217,19 @@ it('shows a generated password once, and that password works', function (): void
     // to the terminal width, so the previous pattern passed locally and failed in CI at a
     // different COLUMNS — and the real defect it was hiding is that an operator in a narrow
     // window was being shown a password split across two lines.
-    expect(preg_match('/^\s*(\S{28})\s*$/m', $stripped, $matches))->toBe(1);
+    //
+    // EVERY candidate line is tried, not just the first, and the alphabet stays `\S`
+    // because `Str::password()` includes symbols. A framed box drawn at some terminal
+    // widths puts a 28-character border in the output too, and taking the first match made
+    // this test's result depend on how wide the window happened to be — a red that says
+    // nothing about the product, which is the worst kind.
+    expect(preg_match_all('/^\s*(\S{28})\s*$/m', $stripped, $matches))->toBeGreaterThan(0);
 
     $operator = app(PlatformOperators::class)->findByEmail('root@acme.example');
 
-    expect(app(PlatformOperators::class)->verifyPassword((string) $operator?->id, $matches[1]))->toBeTrue();
+    $works = collect($matches[1])->contains(
+        fn (string $candidate): bool => app(PlatformOperators::class)->verifyPassword((string) $operator?->id, $candidate),
+    );
+
+    expect($works)->toBeTrue('no line in the install output is the password it printed');
 });
