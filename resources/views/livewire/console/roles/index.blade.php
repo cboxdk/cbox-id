@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Collection;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -171,7 +172,11 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
             'mayGrant' => fn (Role $role): bool => $this->mayGrant($role),
             // The keys still on offer for one role: declared, assignable, in its scope,
             // and not already held.
-            'offerable' => fn (Role $role): array => $this->offerable($role),
+            // Precomputed for the page in two queries rather than two PER ROW. The
+            // closure ran inside the `@forelse`, so a 25-role page paid 50 — and it
+            // re-runs on every keystroke in the search box, which is where it was
+            // measured: 28 queries at 0 roles, 79 at 25.
+            'offerable' => $this->offerableFor($roles->getCollection(), $permissionsByRole),
             // Not an entitlement problem and not an empty environment: an environment
             // administrator who has chosen no organization is looking at all of it, and
             // cannot compose a tenant's role until they say which tenant they mean.
@@ -235,33 +240,60 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
     }
 
     /**
-     * The permission names still on offer for a role: declared, tenant-assignable, within
-     * the role's scope, and not already granted.
+     * The permissions still on offer, for every role on the page, in one pass.
      *
-     * @return array<string, string> name => description
+     * ONE QUERY FOR THE WHOLE PAGE rather than two per row. The catalogue is read once —
+     * `tenant_assignable`, not orphaned — and each role's own scope and grants are applied
+     * in memory, because both are already in hand: the grants were batched for the page
+     * above, and a role's scope is one column on the role.
+     *
+     * @param  \Illuminate\Support\Collection<int, Role>  $roles
+     * @param  array<string, list<string>>  $permissionsByRole
+     * @return array<string, array<string, string>> role id => (name => description)
      */
-    private function offerable(Role $role): array
+    private function offerableFor(Collection $roles, array $permissionsByRole): array
     {
-        if (! $this->mayGrant($role)) {
+        $grantable = $roles->filter(fn (Role $role): bool => $this->mayGrant($role));
+
+        if ($grantable->isEmpty()) {
             return [];
         }
 
-        $granted = DB::table('role_permission')
-            ->join('permissions', 'permissions.id', '=', 'role_permission.permission_id')
-            ->where('role_permission.role_id', $role->id)
-            ->pluck('permissions.name')
+        /** @var list<object{name: string, description: string|null, client_id: string|null}> $catalogue */
+        $catalogue = Permission::query()
+            ->whereNull('orphaned_at')
+            ->where('tenant_assignable', true)
+            // Only the apps the roles on THIS page belong to, plus the unscoped ones —
+            // reading the whole catalogue would make the page's cost the size of the
+            // environment rather than the size of the page.
+            ->where(fn (Builder $q): Builder => $q
+                ->whereIn('client_id', $grantable->pluck('client_id')->filter()->unique()->all())
+                ->orWhereNull('client_id'))
+            ->orderBy('name')
+            ->get(['name', 'description', 'client_id'])
             ->all();
 
         $offerable = [];
 
-        foreach (Permission::query()
-            ->whereNull('orphaned_at')
-            ->where('tenant_assignable', true)
-            ->where(fn (Builder $q): Builder => $q->where('client_id', $role->client_id)->orWhereNull('client_id'))
-            ->whereNotIn('name', $granted)
-            ->orderBy('name')
-            ->get(['name', 'description']) as $permission) {
-            $offerable[$permission->name] = $permission->description ?? '';
+        foreach ($grantable as $role) {
+            $granted = $permissionsByRole[$role->id] ?? [];
+            $forRole = [];
+
+            foreach ($catalogue as $permission) {
+                // A role may be granted its own app's permissions and the unscoped ones,
+                // and nothing another app declared.
+                if ($permission->client_id !== null && $permission->client_id !== $role->client_id) {
+                    continue;
+                }
+
+                if (in_array($permission->name, $granted, true)) {
+                    continue;
+                }
+
+                $forRole[$permission->name] = $permission->description ?? '';
+            }
+
+            $offerable[$role->id] = $forRole;
         }
 
         return $offerable;
@@ -355,7 +387,7 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
         @forelse ($roles as $role)
             @php
                 $granted = $permissionsByRole[$role->id] ?? [];
-                $available = $offerable($role);
+                $available = $offerable[$role->id] ?? [];
             @endphp
             {{-- A row rather than one big link: the permission picker lives in it, and a
                  select inside an anchor is neither valid nor operable by keyboard. --}}

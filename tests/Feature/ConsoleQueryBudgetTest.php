@@ -7,6 +7,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\PlatformAuth;
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -80,6 +81,14 @@ function queryBudgetAdmin(int $extraMembers = 0): array
  * Counted off the rendered markup, because the number of QUERIES a page makes is
  * meaningless without it: a page that renders nothing is always cheap.
  */
+/** How many role rows the page drew — same reasoning as {@see rosterRows()}. */
+function roleRows(string $route): int
+{
+    $html = (string) test()->get(route($route))->assertOk()->getContent();
+
+    return substr_count($html, 'wire:key="role-');
+}
+
 function rosterRows(string $route): int
 {
     $html = (string) test()->get(route($route))->assertOk()->getContent();
@@ -441,3 +450,48 @@ it('answers the first-run question once per request however many gates ask it', 
 
     expect(app(PlatformInstaller::class))->not->toBe($installer);
 });
+
+/**
+ * THE ROLES LIST PAID TWO QUERIES PER ROW, from a closure called inside the `@forelse`.
+ *
+ * Measured before: 28 queries at 0 roles, 39 at 5, 79 at 25 — and `with()` re-runs on
+ * every keystroke in the search box, so the cost landed on somebody typing. The catalogue
+ * it was reading per row is the same catalogue for every role on the page.
+ */
+it('does not pay a per-row query on the roles list', function (): void {
+    [$orgId] = queryBudgetAdmin();
+
+    $roles = app(Roles::class);
+
+    app(PlatformRoot::class)->run(function () use ($roles, $orgId): void {
+        foreach (range(1, 3) as $i) {
+            $roles->define($orgId, "role.small.{$i}", "Small {$i}");
+        }
+    });
+
+    // ROWS FIRST, THEN QUERIES — the trap the member roster fell into for months. A page
+    // that renders nothing is always cheap.
+    expect(roleRows('roles'))->toBe(3, 'the roles list rendered no rows — the fixture is wrong, not the page');
+
+    // Warm, so the first request's installer probes and platform-root lookup are not
+    // counted as if they were the page's.
+    queriesFor('roles');
+    $small = queriesFor('roles');
+
+    app(PlatformRoot::class)->run(function () use ($roles, $orgId): void {
+        foreach (range(1, 18) as $i) {
+            $roles->define($orgId, "role.large.{$i}", "Large {$i}");
+        }
+    });
+
+    expect(roleRows('roles'))->toBe(21);
+
+    $large = queriesFor('roles');
+
+    fwrite(STDERR, "\n  roles: {$small} queries at 3 rows, {$large} at 21\n");
+
+    expect($large - $small)->toBeLessThan(
+        5,
+        "the roles list costs per-row queries: {$small} at 3 rows, {$large} at 21"
+    );
+})->group('performance');
