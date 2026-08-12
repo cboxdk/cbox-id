@@ -6,6 +6,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
@@ -272,4 +273,52 @@ it('attributes an environment admin to their subject too', function (): void {
     );
 
     expect($exists)->toBeTrue();
+})->group('security');
+
+/**
+ * CHOOSING WAS A ONE-WAY DOOR.
+ *
+ * An unselected environment console is the environment-wide view — every read is written
+ * as `when($id !== null, …)`, so null means "no filter" rather than "nothing". That is
+ * where an administrator arrives, and once they had picked an organization there was no
+ * way back to it: `chooseOrganization()` only ever wrote to the session, and signing out
+ * was the only way to see the whole environment again.
+ */
+it('goes back to the whole environment after choosing an organization', function (): void {
+    // The environment first: an organization created before the switch belongs to another
+    // one, and choosing it is refused — correctly.
+    actAsRealEnvironmentAdmin();
+    $orgId = anOrganization('acme-clear');
+
+    scope()->chooseOrganization($orgId);
+    expect(scope()->organizationId())->toBe($orgId);
+
+    scope()->clearOrganization();
+
+    expect(scope()->organizationId())->toBeNull();
+});
+
+/**
+ * The step-up does not travel with the selection, in either direction. It was made while
+ * acting as one organization, and acting as ALL of them is a larger authority than the one
+ * it was confirmed against — the same argument that drops it when switching between two.
+ */
+it('drops the step-up when going back to the whole environment', function (): void {
+    actAsRealEnvironmentAdmin();
+    $orgId = anOrganization('acme-clear-sudo');
+
+    scope()->chooseOrganization($orgId);
+    app(EnvironmentSudo::class)->confirm();
+
+    scope()->clearOrganization();
+
+    expect(app(EnvironmentSudo::class)->confirmed())->toBeFalse();
+})->group('security');
+
+it('refuses to let an organization member clear a selection they never made', function (): void {
+    // On that plane the organization IS the membership, and answering null would hand the
+    // console the "no filter" reading — every other organization's rows.
+    actingAsRole(MembershipRole::Owner);
+
+    expect(fn () => scope()->clearOrganization())->toThrow(AuthorizationException::class);
 })->group('security');

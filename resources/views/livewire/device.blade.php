@@ -231,7 +231,21 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
 
             <div>
                 <label class="label" for="userCode">Device code</label>
-                <input wire:model="userCode" id="userCode" name="userCode" type="text" autocomplete="one-time-code"
+                {{--
+                    autocomplete="off", NOT "one-time-code".
+
+                    `one-time-code` means "a code delivered out of band TO THIS DEVICE" —
+                    an SMS or authenticator OTP — and it is the signal Safari, iOS and
+                    every password manager use to offer the last such code they saw. A
+                    device-authorization user_code travels the OTHER way: it is shown on
+                    another device's screen and typed in here. Asking for OTP autofill
+                    silently REPLACED the prefilled code with an unrelated six-digit one,
+                    so the form submitted a code the user never saw and the page answered
+                    "that code is invalid or has expired" — pointing at the device, which
+                    was blameless.
+                --}}
+                <input wire:model="userCode" id="userCode" name="userCode" type="text" autocomplete="off"
+                       data-1p-ignore data-lpignore="true" data-form-type="other"
                        autocapitalize="characters" spellcheck="false"
                        class="input input-lg mono text-center tracking-[0.3em]" placeholder="XXXX-XXXX"
                        @error('userCode') aria-invalid="true" aria-describedby="userCode-error" @enderror>

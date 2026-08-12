@@ -201,6 +201,42 @@ class ConsoleScope
         // The selection has moved, so anything derived from it has to. Nothing here can
         // have changed the SET — but a memo that survives the write it belongs to is the
         // bug memoising would otherwise introduce, and the name definitely has changed.
+        $this->forgetDerivedSelection();
+    }
+
+    /**
+     * Go back to acting on the WHOLE environment.
+     *
+     * The missing half of {@see chooseOrganization()}, and its absence made choosing a
+     * one-way door: every read in this console is written as
+     * `when($id !== null, fn ($q) => $q->where('organization_id', $id))`, so an unselected
+     * console is the environment-wide view — the default an administrator arrives at, and
+     * one they could never return to for the rest of the session once they had picked an
+     * organization. Signing out was the only way back.
+     *
+     * The same step-up reasoning as choosing: the confirmation was made while acting as
+     * one organization and does not transfer to acting as all of them.
+     *
+     * @throws AuthorizationException
+     */
+    public function clearOrganization(): void
+    {
+        if ($this->plane() !== ConsolePlane::Environment) {
+            // On the organization plane the selection is the membership, not a choice —
+            // there is nothing to clear and pretending otherwise would answer null, which
+            // that plane reads as "no filter" and must never be handed.
+            throw new AuthorizationException('Only an environment administrator acts on more than one organization.');
+        }
+
+        session()->forget(self::SELECTION_KEY);
+
+        app(EnvironmentSudo::class)->forget();
+
+        $this->forgetDerivedSelection();
+    }
+
+    private function forgetDerivedSelection(): void
+    {
         $this->availableRecord = null;
         $this->nameResolved = false;
         $this->nameRecord = null;

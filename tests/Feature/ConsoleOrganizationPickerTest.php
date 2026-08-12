@@ -81,6 +81,25 @@ it('shows the picker in the console chrome', function (): void {
     $this->get(route('environment.home'))
         ->assertOk()
         ->assertSee('Act on behalf of')
-        ->assertSee('Choose organization')
+        // "Choose organization" read as an instruction — as though the console could not
+        // work until you picked one — when unselected is the ordinary state and means the
+        // whole environment. The label says what you are looking at now.
+        ->assertSee('All organizations')
         ->assertSee('Tenant Co');
+});
+
+/**
+ * THE WAY BACK. Choosing used to be a one-way door: every list, count and form in the
+ * console stayed filtered to that organization for the rest of the session, and signing
+ * out was the only route back to the environment-wide view an administrator arrives on.
+ */
+it('offers the whole environment as a choice of its own', function (): void {
+    anEnvironmentAdmin();
+    $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-co'));
+
+    Volt::test('console.organization-switcher')
+        ->call('choose', $org->id)
+        ->call('clear');
+
+    expect(app(ConsoleScope::class)->organizationId())->toBeNull();
 });

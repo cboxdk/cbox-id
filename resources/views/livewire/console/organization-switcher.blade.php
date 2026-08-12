@@ -75,6 +75,27 @@ new class extends Component
     }
 
     /**
+     * Go back to acting on the whole environment.
+     *
+     * The missing half of choosing, and its absence made the control a one-way door: an
+     * administrator who picked an organization had every list, count and form in the
+     * console filtered to it for the rest of the session, with signing out as the only way
+     * back to the environment-wide view they arrived on.
+     */
+    public function clear(): void
+    {
+        try {
+            app(ConsoleScope::class)->clearOrganization();
+        } catch (AuthorizationException $e) {
+            $this->addError('search', $e->getMessage());
+
+            return;
+        }
+
+        $this->js('window.location.reload()');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function with(): array
@@ -108,9 +129,12 @@ new class extends Component
                 @click="org = !org; if (org) $nextTick(() => $refs.orgSearch?.focus())"
                 :aria-expanded="org" aria-haspopup="dialog"
             @endif>
+        {{-- "Choose organization" read as an instruction — as though the console could
+             not work until you picked one — when unselected is the ordinary state and
+             means "everything in this environment". It says what you are looking at. --}}
         <span class="truncate {{ $actingId === null ? 'italic' : 'font-semibold' }}"
               style="{{ $actingId === null ? 'color:var(--muted-foreground)' : '' }}">
-            {{ $actingId === null ? 'Choose organization' : ($actingName ?? 'Unknown organization') }}
+            {{ $actingId === null ? 'All organizations' : ($actingName ?? 'Unknown organization') }}
         </span>
         @if ($canChoose)
             <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--muted-foreground)" aria-hidden="true" />
@@ -123,6 +147,22 @@ new class extends Component
              class="cbx-panel"
              style="position:absolute;top:calc(100% + 6px);left:0;width:288px;z-index:40;box-shadow:var(--shadow-popover);padding:6px">
             <p class="cbx-nav-group" style="padding:6px 10px 4px">Act on behalf of</p>
+
+            {{-- The default, and a real row rather than a link tucked under the list: it
+                 is where an administrator starts, and it was the one destination the
+                 control could not reach. --}}
+            <button type="button" wire:click="clear" role="option"
+                    aria-selected="{{ $actingId === null ? 'true' : 'false' }}"
+                    class="cbx-row w-full text-start"
+                    style="padding:8px 10px;border-radius:6px;gap:10px;{{ $actingId === null ? 'background:var(--secondary)' : '' }}">
+                <span class="min-w-0 flex-1 truncate">
+                    All organizations
+                    <span class="block text-[11px]" style="color:var(--muted-foreground)">The whole environment, unfiltered</span>
+                </span>
+                @if ($actingId === null)
+                    <x-icon name="check" class="w-4 h-4 shrink-0" style="color:var(--primary)" aria-hidden="true" />
+                @endif
+            </button>
 
             <div style="padding:0 6px 6px">
                 <input x-ref="orgSearch" type="search" wire:model.live.debounce.300ms="search"
