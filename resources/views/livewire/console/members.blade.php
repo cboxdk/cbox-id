@@ -117,7 +117,24 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
         // MailLinks, not URL:: — an invitation is mailed, so its origin must come from the
         // deployment rather than from the Host header of whoever asked to send it.
         $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
-        Mail::to($this->inviteEmail)->send(new OrganizationInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
+
+        // A TRANSPORT FAILURE IS NOT A SUCCESSFUL INVITE. The row is already committed by
+        // the time the mailer runs, so an SMTP outage used to throw a 500 at the person
+        // clicking Send while the invitation sat in the database — invisible, because this
+        // page listed no pending invitations, and unrepeatable, because inviting the same
+        // address again is refused. They are told what happened and the invitation is
+        // withdrawn, so the obvious thing to do next (try again) works.
+        try {
+            Mail::to($this->inviteEmail)->send(new OrganizationInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
+        } catch (Throwable $e) {
+            app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $pending->invitation->id));
+
+            report($e);
+
+            $this->addError('inviteEmail', 'We could not send that invitation — the mail server refused it. Nothing was created; try again, or check the deployment\'s mail configuration.');
+
+            return;
+        }
 
         $activity->record($organizationId, 'organization.member_invited', $scope->actorId(),
             targetType: 'invitation', targetId: $pending->invitation->id,
@@ -126,6 +143,93 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
         $sentTo = $this->inviteEmail;
         $this->reset('inviteEmail', 'inviteName');
         $this->dispatch('toast', message: 'Invitation sent to '.$sentTo.'.');
+    }
+
+    /**
+     * Send the invitation again, to somebody who never got the first one.
+     *
+     * A NEW TOKEN, not the old one: the mailed link is a signed URL over a token this
+     * server only stores hashed, so there is nothing to re-send — and re-issuing is the
+     * honest behaviour anyway, since the reason somebody asks is usually that the first
+     * link expired. The old invitation is withdrawn in the same breath so the two cannot
+     * both be live.
+     */
+    public function resendInvite(string $invitationId, ConsoleScope $scope, Invitations $invitations, OrganizationActivity $activity, MailLinks $links): void
+    {
+        $scope->assertMayAdminister();
+
+        $organizationId = $scope->requireOrganizationId();
+
+        $invitation = app(PlatformRoot::class)->run(
+            fn () => $invitations->pending($organizationId)->firstWhere('id', $invitationId),
+        );
+
+        if ($invitation === null) {
+            return;
+        }
+
+        app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $invitation->id));
+
+        $pending = app(PlatformRoot::class)->run(fn () => $invitations->invite(
+            $organizationId,
+            $invitation->email,
+            $invitation->role,
+            $scope->actorId(),
+        ));
+
+        if ($pending === null) {
+            return;
+        }
+
+        $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
+
+        try {
+            Mail::to($invitation->email)->send(new OrganizationInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
+        } catch (Throwable $e) {
+            app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $pending->invitation->id));
+
+            report($e);
+
+            $this->dispatch('toast', message: 'That invitation could not be sent — the mail server refused it.');
+
+            return;
+        }
+
+        $activity->record($organizationId, 'organization.member_invited', $scope->actorId(),
+            targetType: 'invitation', targetId: $pending->invitation->id,
+            context: ['email' => $invitation->email, 'role' => $invitation->role->value, 'resent' => true], request: request());
+
+        $this->dispatch('toast', message: 'Invitation sent again to '.$invitation->email.'.');
+    }
+
+    /**
+     * Withdraw an invitation nobody accepted.
+     *
+     * The other half of being able to SEE them: an address invited by mistake, or somebody
+     * who left before accepting, otherwise held a live link into the organization for a
+     * week with nothing in the product to stop it.
+     */
+    public function revokeInvite(string $invitationId, ConsoleScope $scope, Invitations $invitations, OrganizationActivity $activity): void
+    {
+        $scope->assertMayAdminister();
+
+        $organizationId = $scope->requireOrganizationId();
+
+        $invitation = app(PlatformRoot::class)->run(
+            fn () => $invitations->pending($organizationId)->firstWhere('id', $invitationId),
+        );
+
+        if ($invitation === null) {
+            return;
+        }
+
+        app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $invitation->id));
+
+        $activity->record($organizationId, 'organization.invitation_revoked', $scope->actorId(),
+            targetType: 'invitation', targetId: $invitation->id,
+            context: ['email' => $invitation->email], request: request());
+
+        $this->dispatch('toast', message: 'Invitation withdrawn. That link no longer works.');
     }
 
     public function changeRole(string $memberId, string $role, ConsoleScope $scope, OrganizationActivity $activity, Memberships $members): void
@@ -366,6 +470,13 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
                 ->get();
 
         return [
+            // The invitations nobody has accepted. Listed because a page that can send one
+            // and cannot show it leaves an address holding a live link into the
+            // organization for a week with nothing in the product to say so — and because
+            // "did that go?" is the question immediately after clicking Send.
+            'invitations' => $organizationId === null ? collect() : (app(PlatformRoot::class)->run(
+                fn () => app(Invitations::class)->pending($organizationId),
+            ) ?? collect()),
             'members' => $roster,
             'people' => $people,
             'actorId' => $scope->actorId(),
@@ -484,6 +595,53 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
 
     @if ($members->hasPages())
         <div class="mt-4">{{ $members->links() }}</div>
+    @endif
+
+    @if ($invitations->isNotEmpty())
+        <section class="cbx-panel mt-6">
+            <div class="cbx-panel-header">
+                <div>
+                    <h2 class="cbx-panel-title">Invited, not joined yet</h2>
+                    <p class="cbx-panel-desc">These links work until they expire or you withdraw them.</p>
+                </div>
+            </div>
+            <div class="cbx-panel-body" style="display:flex;flex-direction:column;gap:8px">
+                @foreach ($invitations as $invitation)
+                    @php
+                        $revokeInviteAction = "revokeInvite('{$invitation->id}')";
+                    @endphp
+                    <div wire:key="invite-{{ $invitation->id }}" class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm truncate">{{ $invitation->email }} <span class="badge ml-1">{{ $invitation->role->label() }}</span></p>
+                            <p class="text-xs truncate" style="color:var(--faint)">
+                                invited {{ $invitation->created_at?->diffForHumans() ?? 'recently' }} ·
+                                @if ($invitation->expires_at->isPast())
+                                    <span style="color:var(--destructive)">expired {{ $invitation->expires_at->diffForHumans() }}</span>
+                                @else
+                                    expires {{ $invitation->expires_at->diffForHumans() }}
+                                @endif
+                            </p>
+                        </div>
+                        @if ($canManage)
+                            <button type="button" class="btn btn-ghost btn-sm shrink-0"
+                                    wire:click="resendInvite('{{ $invitation->id }}')"
+                                    wire:loading.attr="disabled" wire:target="resendInvite">
+                                Send again
+                            </button>
+                            {{-- Type-to-confirm: it revokes somebody else's way in, and the
+                                 link they were sent stops working the moment it is done. --}}
+                            <x-confirm-delete
+                                :name="$invitation->email"
+                                :action="$revokeInviteAction"
+                                label="Withdraw"
+                                verb="Withdraw"
+                                trigger-class="btn btn-ghost btn-sm shrink-0"
+                                consequence="The link they were sent stops working immediately. You can invite them again afterwards." />
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </section>
     @endif
 
     @if ($canManage)
