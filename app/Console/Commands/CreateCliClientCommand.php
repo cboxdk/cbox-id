@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Support\CliClient;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -63,11 +64,18 @@ class CreateCliClientCommand extends Command
 
     private function provision(ClientRegistry $clients, string $environmentId): int
     {
+        $issuer = $this->issuerFor(app(IssuerResolver::class), $environmentId);
+
         $existing = CliClient::find();
 
         if ($existing instanceof Client) {
+            // The sign-in command too, because "already provisioned" is usually
+            // asked by somebody who wants to know what to run next — and the
+            // answer is not guessable from the deployment's own URL.
             $this->info("The cbox CLI client is already provisioned in {$environmentId}.");
             $this->line("  client_id: {$existing->client_id}");
+            $this->newLine();
+            $this->line('  <options=bold>cbox login --issuer '.$issuer.'</>');
 
             return self::SUCCESS;
         }
@@ -90,19 +98,27 @@ class CreateCliClientCommand extends Command
         $this->line('  client_id: '.$client->client_id);
         $this->newLine();
         $this->line('Nothing to copy anywhere: the CLI reads this from');
-        $this->line('GET /.well-known/cbox-cli on this environment\'s own host.');
+        $this->line('GET '.$issuer.'/.well-known/cbox-cli');
         $this->newLine();
-        $this->line('  <options=bold>cbox login --issuer https://'.$this->host().'</>');
+        $this->line('  <options=bold>cbox login --issuer '.$issuer.'</>');
 
         return self::SUCCESS;
     }
 
-    private function host(): string
+    /**
+     * The address a person actually signs in against.
+     *
+     * THE ENVIRONMENT'S OWN ISSUER, not `app.url`. On a multi-tenant deployment
+     * `app.url` is the platform ROOT, which serves no discovery document at all —
+     * it is an issuer for nobody, by design ({@see EnforcePlane}). Printing it
+     * sent an operator to a host that 404s on `.well-known/openid-configuration`,
+     * with the client they had just provisioned sitting on a different name.
+     * Measured on the hosted deployment: cboxid.com answered 404 and
+     * cbox.cboxid.com answered 200.
+     */
+    private function issuerFor(IssuerResolver $issuers, string $environmentId): string
     {
-        $configured = config('app.url', '');
-        $url = is_string($configured) ? $configured : '';
-
-        return parse_url($url, PHP_URL_HOST) ?: 'your-environment-host';
+        return $issuers->forEnvironment($environmentId);
     }
 
     private function stringOption(string $key): ?string

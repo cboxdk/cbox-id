@@ -213,23 +213,28 @@ it('shows a generated password once, and that password works', function (): void
     // proves only that SOMETHING was printed — not that it is the credential.
     $stripped = (string) preg_replace('/\e\[[0-9;]*m/', '', $output);
 
-    // Matched as a line of its own rather than as text inside a framed box: the box wraps
-    // to the terminal width, so the previous pattern passed locally and failed in CI at a
-    // different COLUMNS — and the real defect it was hiding is that an operator in a narrow
-    // window was being shown a password split across two lines.
+    // WHITESPACE-DELIMITED TOKENS, not lines.
     //
-    // EVERY candidate line is tried, not just the first, and the alphabet stays `\S`
-    // because `Str::password()` includes symbols. A framed box drawn at some terminal
-    // widths puts a 28-character border in the output too, and taking the first match made
-    // this test's result depend on how wide the window happened to be — a red that says
-    // nothing about the product, which is the worst kind.
-    expect(preg_match_all('/^\s*(\S{28})\s*$/m', $stripped, $matches))->toBeGreaterThan(0);
+    // The point of this test is that the string an operator can copy IS the credential.
+    // Anchoring on a line made the assertion about layout instead: under `--parallel` a
+    // worker's detected terminal width differs, the framed box around the notice is drawn
+    // to that width, and roughly one run in six produced an output where no line matched at
+    // all — a red that says nothing about the product, arriving on somebody else's build.
+    //
+    // A token is the honest unit: a password nobody can select with a double-click is not
+    // shown, whatever line it is on.
+    $candidates = array_values(array_filter(
+        preg_split('/\s+/', $stripped) ?: [],
+        static fn (string $token): bool => mb_strlen($token) === 28,
+    ));
 
     $operator = app(PlatformOperators::class)->findByEmail('root@acme.example');
 
-    $works = collect($matches[1])->contains(
+    $works = collect($candidates)->contains(
         fn (string $candidate): bool => app(PlatformOperators::class)->verifyPassword((string) $operator?->id, $candidate),
     );
 
-    expect($works)->toBeTrue('no line in the install output is the password it printed');
+    expect($works)->toBeTrue(
+        'nothing in the install output is the password it printed. Output was: '.$stripped,
+    );
 });
