@@ -21,8 +21,11 @@ ticket.
 ## Two ways to connect
 
 **Cbox ID pulls** — for Google Workspace and Microsoft Entra, connect the directory
-directly on the page with admin credentials. Cbox ID reads users and groups on a
-schedule. Nothing to configure on the provider side beyond consent.
+directly on the page with admin credentials. Cbox ID reads users and groups **hourly**,
+via `cbox-id:directory:sync`, which is scheduled for you — so this needs the platform's
+scheduler to be running (`php artisan schedule:work`, or a cron entry calling
+`schedule:run`). Without it a directory syncs once, when you connect it, and never again.
+Nothing to configure on the provider side beyond consent.
 
 **Your provider pushes** — for Okta, OneLogin, or anything else that speaks SCIM.
 Register a directory here to get a bearer token, then point your provider at the
