@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Prometheus\Http\Middleware\AllowIps;
 
 /**
  * THE FILE A NEW CUSTOMER ACTUALLY COPIES.
@@ -79,3 +81,44 @@ it('answers an unconfigured deployment with an answer rather than a stack trace'
         // the machinery that cannot start yet.
         ->and($view)->not->toContain('cbx-shell');
 });
+
+/**
+ * A DEPENDENCY MUST NOT PUBLISH AN ENDPOINT THIS APPLICATION NEVER CHOSE.
+ *
+ * `spatie/laravel-prometheus` arrived transitively — `cboxdk/laravel-queue-metrics`
+ * requires it — and nothing here registers a collector or references it. Its own defaults
+ * are `enabled => true`, a `/prometheus` route, and `allowed_ips => []`, which its comment
+ * documents as "All IP's are allowed when empty". Measured on the hosted deployment:
+ * `GET https://…/prometheus` answered 200 to an anonymous request.
+ *
+ * It answered an empty body, because nothing collects — which is exactly what makes it the
+ * wrong thing to leave: a door that starts emitting the day somebody registers a
+ * collector, by which time nobody remembers it was open.
+ */
+it('serves no metrics endpoint unless an operator asked for one', function (): void {
+    expect(config('prometheus.enabled'))->toBeFalse();
+
+    $routes = collect(Route::getRoutes()->getRoutes())
+        ->map(fn ($route): string => $route->uri())
+        // The queue-metrics module's own endpoint is a separate, gated surface.
+        ->filter(fn (string $uri): bool => $uri === 'prometheus')
+        ->values()
+        ->all();
+
+    expect($routes)->toBe([]);
+})->group('security');
+
+/**
+ * And when an operator DOES turn it on, an empty allow-list must refuse rather than admit:
+ * the failure direction that costs a scrape is better than the one that costs a disclosure.
+ */
+it('refuses every address when metrics are on and none were named', function (): void {
+    config(['prometheus.enabled' => true, 'prometheus.allowed_ips' => []]);
+
+    // The app's own config file is what decides this — the package's default for an empty
+    // list is "allow everybody", and this asserts we do not inherit that reading.
+    $shipped = require base_path('config/prometheus.php');
+
+    expect($shipped['allowed_ips'])->toBe([])
+        ->and($shipped['middleware'])->toContain(AllowIps::class);
+})->group('security');
