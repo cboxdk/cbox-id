@@ -68,7 +68,7 @@ it('frames content identically in both console shells', function (): void {
  * happily, since a suite cannot see whether a control is drawn. It is not a substitute for
  * looking at the page on a phone; it is the part of that which can be automated.
  */
-it('emits the shared mobile navigation on both console planes', function (): void {
+it('emits the shared mobile navigation on the organization plane', function (): void {
     // A real console session — `actingAsRole` sets the CurrentUser but not the session
     // key the console's own guard reads, so the dashboard answers 302 under it.
     $subject = app(Subjects::class)
@@ -82,7 +82,32 @@ it('emits the shared mobile navigation on both console planes', function (): voi
 
     $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
 
-    // The bottom bar's own signature: pinned to the viewport foot, below `lg` only.
-    expect($html)->toContain('lg:hidden fixed bottom-0')
-        ->and($html)->toContain('Open navigation');
+    // THE SHARED COMPONENT'S OWN MARKERS. `Open navigation` is the organization shell's
+    // sub-nav toggle, not the bottom bar — asserting on it looked like coverage of
+    // `<x-mobile-nav>` and was coverage of something only this plane has, which is how the
+    // test below could claim two planes while visiting one.
+    expect($html)->toContain('data-cbox-mobile-nav')
+        ->and($html)->toContain('lg:hidden fixed bottom-0')
+        ->and($html)->toContain('Open menu');
+})->group('ux');
+
+/**
+ * AND THE OTHER PLANE, which the test above named and never visited.
+ *
+ * It issued one GET to `route('dashboard')` — the organization plane — while its name
+ * promised both, so deleting `<x-mobile-nav>` from `layouts/environment.blade.php` left it
+ * green. That is "green tests, invisible UI" re-opened on the plane the test names, and a
+ * suite cannot see whether a control is drawn unless it looks at the plane it is drawn on.
+ */
+it('emits the shared mobile navigation on the environment plane too', function (): void {
+    // The whole `/admin` prefix carries `multi.tenant` and 404s otherwise: a single-tenant
+    // install has one environment, it is the platform root, and it belongs to no account.
+    multiTenantDeployment();
+    actAsEnvironmentAdminOfATenant();
+
+    $html = (string) $this->get(route('environment.home'))->assertOk()->getContent();
+
+    expect($html)->toContain('data-cbox-mobile-nav')
+        ->and($html)->toContain('lg:hidden fixed bottom-0')
+        ->and($html)->toContain('Open menu');
 })->group('ux');

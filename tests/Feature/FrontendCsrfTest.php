@@ -74,13 +74,87 @@ it('exempts nothing that authenticates by session alone', function (): void {
             continue;
         }
 
-        // The console's own `Authenticate` — matched as a CLASS, not as a substring:
-        // `AuthenticateFrontendApi` contains the word and is the opposite thing, a door
-        // opened by a publishable key rather than by an ambient session.
-        if (collect($route->gatherMiddleware())->contains(Authenticate::class)) {
+        // THE ALIAS AND THE CLASS. `gatherMiddleware()` returns what a route DECLARED,
+        // and every route in this application declares the alias `platform.auth` — the
+        // class string appears on none of them. So the previous version of this check
+        // compared against something that could never match: `$sessionAuthenticated` was
+        // unconditionally empty, and adding a session-authenticated POST under
+        // `frontend/v1/*` — a real CSRF hole — left it green.
+        //
+        // Both are matched, because a route may legitimately name either, and the alias is
+        // resolved rather than assumed: a rename in `bootstrap/app.php` must not silently
+        // turn this guard back into one that cannot fail.
+        $names = collect($route->gatherMiddleware());
+
+        // REQUIRING a session, not merely resolving one. `platform.auth:optional`
+        // populates `CurrentUser` when a valid session happens to be there and continues
+        // anonymously otherwise — which is what `/oauth/authorize` needs, since the whole
+        // point of that endpoint is to answer somebody who is not signed in yet.
+        //
+        // The distinction is the parameter, and it is deliberate: the exemption exists for
+        // routes a cross-site caller must be able to reach, and a route that REFUSES an
+        // anonymous caller is by definition not one of those. What protects the optional
+        // ones is that they mint nothing on the request itself — /authorize re-validates
+        // client, redirect_uri, scope and PKCE from scratch, and the code it issues can
+        // only go to that client's registered redirect_uri.
+        $sessionAuthenticating = $names->contains(
+            fn (mixed $name): bool => $name === Authenticate::class
+                || (is_string($name) && requiresASession($name)),
+        );
+
+        if ($sessionAuthenticating) {
             $sessionAuthenticated[] = $route->uri();
         }
     }
 
     expect($sessionAuthenticated)->toBe([]);
 });
+
+/**
+ * THE GUARD ABOVE HAS TO BE ABLE TO SEE A HOLE, and for months it could not.
+ *
+ * Registering a session-authenticated POST inside the exempt prefix is the defect it
+ * exists to catch, so this puts one there deliberately and asserts the check finds it.
+ * Without this, the only thing proving the guard works is reading it.
+ */
+it('would notice a session-authenticated route joining the exemption', function (): void {
+    Route::middleware(['web', 'platform.auth'])->post('frontend/v1/a-mistake', fn () => 'nope');
+
+    $offenders = [];
+
+    foreach (Route::getRoutes()->getRoutes() as $route) {
+        if (! in_array('POST', $route->methods(), true) || $route->uri() !== 'frontend/v1/a-mistake') {
+            continue;
+        }
+
+        $names = collect($route->gatherMiddleware());
+
+        if ($names->contains(fn (mixed $n): bool => is_string($n) && requiresASession($n))) {
+            $offenders[] = $route->uri();
+        }
+    }
+
+    expect($offenders)->toBe(['frontend/v1/a-mistake']);
+});
+
+/**
+ * Whether this middleware name REFUSES an anonymous caller.
+ *
+ * Resolved through the router's own alias map rather than a hardcoded string: every route
+ * in this application declares the alias, the class string appears on none of them, and
+ * comparing against the class was what made the guard above unable to fail for months.
+ * A rename in `bootstrap/app.php` must not quietly do that again.
+ *
+ * `:optional` resolves a session without requiring one — see the caller.
+ */
+function requiresASession(string $name): bool
+{
+    $alias = Str::before($name, ':');
+    $parameters = Str::contains($name, ':') ? Str::after($name, ':') : '';
+
+    if ((app('router')->getMiddleware()[$alias] ?? null) !== Authenticate::class) {
+        return false;
+    }
+
+    return ! in_array('optional', array_map(trim(...), explode(',', $parameters)), true);
+}

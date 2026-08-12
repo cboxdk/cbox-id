@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
@@ -37,6 +38,27 @@ function seedCustomers(int $count): void
         }
 
         $organizations->create(new NewOrganization('Northwind Traders', 'northwind-traders'));
+    });
+}
+
+/**
+ * Two environments that differ in name, slug AND domain, so a search can be shown to match
+ * on each of the three columns the page claims to search.
+ */
+function seedEnvironments(): void
+{
+    app(PlatformRoot::class)->run(function (): void {
+        Environment::query()->create([
+            'name' => 'Northwind Production',
+            'slug' => 'northwind-production',
+            'domain' => 'id.northwind.example',
+        ]);
+
+        Environment::query()->create([
+            'name' => 'Contoso Staging',
+            'slug' => 'contoso-staging',
+            'domain' => 'id.contoso.example',
+        ]);
     });
 }
 
@@ -87,13 +109,53 @@ it('bounds the page rather than rendering every customer on the install', functi
     expect($onPage)->toBe(25);
 })->group('performance');
 
+/**
+ * REAL ENVIRONMENTS, and both halves asserted.
+ *
+ * This used to seed ORGANIZATIONS and search the ENVIRONMENT list, which held exactly one
+ * row — the platform root. The page rendered its empty state, and the single occurrence of
+ * "northwind" in the document was the term echoed back inside `No environments match
+ * "northwind"`. The test asserted its own search box. It would have passed against a search
+ * that matched everything, nothing, or the wrong column.
+ */
 it('narrows the environment list, matching on slug and domain too', function (): void {
-    seedCustomers(2);
+    seedEnvironments();
 
     Volt::test('platform.environments')
+        // Present before the search, or "it disappeared" proves nothing.
+        ->assertSee('Northwind Production')
+        ->assertSee('Contoso Staging')
         ->set('search', 'northwind')
-        ->assertSee('northwind')
-        ->assertDontSee('customer-1');
+        ->assertSee('Northwind Production')
+        ->assertDontSee('Contoso Staging');
+});
+
+it('matches an environment on its slug', function (): void {
+    seedEnvironments();
+
+    Volt::test('platform.environments')
+        ->set('search', 'contoso-staging')
+        ->assertSee('Contoso Staging')
+        ->assertDontSee('Northwind Production');
+});
+
+it('matches an environment on a custom domain', function (): void {
+    seedEnvironments();
+
+    Volt::test('platform.environments')
+        ->set('search', 'id.northwind.example')
+        ->assertSee('Northwind Production')
+        ->assertDontSee('Contoso Staging');
+});
+
+it('says so plainly when nothing matches', function (): void {
+    seedEnvironments();
+
+    Volt::test('platform.environments')
+        ->set('search', 'nothing-by-that-name')
+        ->assertDontSee('Northwind Production')
+        ->assertDontSee('Contoso Staging')
+        ->assertSee('No environments match');
 });
 
 /**
