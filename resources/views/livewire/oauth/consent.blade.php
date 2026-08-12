@@ -349,14 +349,27 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             $established = app(\App\Platform\FrontendApi\SignInWithTicket::class)->establish(request(), $ticket);
 
             if (! $established && app(CurrentUser::class)->check()) {
-                // A ticket that was presented and refused, over a session that happens to
-                // be signed in as somebody else. Continuing would mint a code for whoever
-                // the cookie names — the wrong-principal outcome above, arrived at from the
-                // other direction. The page that sent the ticket decides what to do next.
-                $this->redirectError($redirectUri, 'access_denied', $stateParam,
-                    'The login_ticket could not be redeemed.');
+                // A ticket that was presented and refused, over a session that IS signed
+                // in. Two very different things arrive here, and `redeem()` cannot tell
+                // them apart — its conditional UPDATE is what makes a ticket single-use:
+                //
+                //  - the same person pressing reload on this consent screen, or arriving
+                //    back through history. Their ticket was spent by the render they are
+                //    refreshing. Aborting their authorization for that would be a bug
+                //    wearing a security control's clothes.
+                //  - a ticket naming somebody else, over a cookie naming this person. That
+                //    is the wrong-principal case, and it stays refused.
+                //
+                // So the ticket's subject decides, read from the row rather than from the
+                // redemption.
+                $ticketSubject = app(\App\Platform\FrontendApi\LoginTickets::class)->subjectOf($ticket);
 
-                return;
+                if ($ticketSubject !== app(CurrentUser::class)->id()) {
+                    $this->redirectError($redirectUri, 'access_denied', $stateParam,
+                        'The login_ticket could not be redeemed.');
+
+                    return;
+                }
             }
         }
 

@@ -38,7 +38,11 @@ final class FederatedLanding
         // rotating the session id against fixation.
         $this->platform->adopt($request, $session);
 
-        return redirect()->intended(route('dashboard'));
+        // The intent has to be one a SUBJECT can serve. A tenant host also carries the
+        // environment ADMIN console, whose refusals write the same `url.intended`, and
+        // sending an end user to `/admin/...` bounces them back here with the intent
+        // rewritten — the loop an administrator hit from the other direction.
+        return redirect()->to(IntendedUrl::pullForSubject() ?? route('dashboard'));
     }
 
     /**

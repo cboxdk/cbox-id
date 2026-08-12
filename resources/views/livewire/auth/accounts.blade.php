@@ -1,5 +1,6 @@
 <?php
 
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -22,8 +23,10 @@ new #[Layout('components.layouts.auth', ['title' => 'Choose account'])] class ex
     public function switchTo(string $subjectId): mixed
     {
         if (app(PlatformAuth::class)->switchTo(request(), $subjectId)) {
-            // Resume wherever the flow was headed (e.g. the OAuth authorize request).
-            return redirect()->intended(route('dashboard'));
+            // Resume wherever the flow was headed (e.g. the OAuth authorize request) —
+            // provided it is somewhere a SUBJECT can go. The admin console's refusals
+            // write the same key on a tenant host.
+            return redirect()->to(IntendedUrl::pullForSubject() ?? route('dashboard'));
         }
 
         return null;

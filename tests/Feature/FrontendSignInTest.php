@@ -377,3 +377,80 @@ it('serves no sign-in endpoint at all when the channel is switched off', functio
         $_SERVER['CBOX_ID_FRONTEND_API'] = $_ENV['CBOX_ID_FRONTEND_API'] = 'true';
     }
 });
+
+/**
+ * PRESSING RELOAD ON THE CONSENT SCREEN IS NOT AN ATTACK.
+ *
+ * The ticket was spent by the render being refreshed, so redemption answers null the
+ * second time — exactly as it does for a replayed ticket, because the conditional UPDATE
+ * that makes a ticket single-use cannot tell the two apart. Aborting the authorization for
+ * it would be a bug wearing a security control's clothes: the person is signed in, they
+ * are the person the ticket named, and they pressed F5.
+ */
+it('lets the same person refresh the consent screen they just landed on', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $ticket = frontendSignIn(['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertOk()
+        ->json('login_ticket');
+
+    $url = '/oauth/authorize?'.http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'login_ticket' => $ticket,
+    ]);
+
+    $this->get($url);
+
+    // The same URL again, ticket already spent.
+    $again = $this->get($url);
+
+    expect((string) $again->headers->get('Location'))->not->toContain('error=access_denied')
+        ->and(session()->get(PlatformAuth::SESSION_KEY))->not->toBeNull();
+});
+
+/**
+ * And the case it must still refuse: a spent ticket that named SOMEBODY ELSE, presented
+ * over a session signed in as this person.
+ */
+it('still refuses a spent ticket that names another person', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $bob = app(Subjects::class)->create('bob@acme.test', 'Bob', 'a-strong-unbreached-passphrase');
+    $bobsTicket = app(LoginTickets::class)->mint($this->key, $bob->id, ['pwd']);
+
+    // Spend it, so redemption will answer null the way a replay does.
+    app(LoginTickets::class)->redeem($bobsTicket);
+
+    $location = $this->withSession([
+        PlatformAuth::SESSION_KEY => app(SessionManager::class)->start($this->subject->id, null, ['pwd'])->id,
+    ])->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'login_ticket' => $bobsTicket,
+    ]))->headers->get('Location');
+
+    expect((string) $location)->toContain('error=access_denied');
+});

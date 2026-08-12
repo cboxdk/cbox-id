@@ -74,6 +74,15 @@ final class IntendedUrl
             return null;
         }
 
+        // A BACKSLASH IS A SLASH TO A BROWSER. `parse_url('/\evil.test/x')` reports no
+        // host and a path, so it passes every check above — and Chrome and Firefox
+        // normalise it and treat the result as protocol-relative. Nothing writes a
+        // user-supplied value into this key today; that is a fact about the callers, not a
+        // property of this class, and this is the cheaper half of the argument.
+        if (str_contains($path, '\\')) {
+            return null;
+        }
+
         return $claims($path) ? $intended : null;
     }
 

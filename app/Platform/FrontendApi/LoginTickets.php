@@ -188,4 +188,26 @@ final class LoginTickets
             return $ticket instanceof LoginTicket ? $ticket : null;
         });
     }
+
+    /**
+     * The subject a ticket named, whether or not it is still redeemable.
+     *
+     * FOR TELLING A REPLAY FROM A REFRESH. `redeem()` answers null for both — it cannot do
+     * otherwise, the conditional UPDATE is what makes it single-use — but the caller has
+     * to distinguish them: a ticket already spent BY THIS BROWSER, for the person now
+     * signed in, is somebody pressing reload on the consent screen, and aborting their
+     * authorization for it would be a bug wearing a security control's clothes. A ticket
+     * naming somebody else is the wrong-principal case and stays refused.
+     *
+     * The row survives until {@see LoginTicket::prunable()} sweeps it an hour later, which
+     * is what makes this answerable at all.
+     */
+    public function subjectOf(string $token): ?string
+    {
+        $ticket = LoginTicket::query()
+            ->where('token_hash', hash('sha256', $token))
+            ->first();
+
+        return $ticket instanceof LoginTicket ? $ticket->subject_id : null;
+    }
 }
