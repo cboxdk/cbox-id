@@ -135,6 +135,7 @@ it('does not let an unverified account add a sign-in provider', function (): voi
 it('shows a tenant own provider on its branded sign-in page', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     enableProvider($org->id, 'github');
+    signOutOfConsole();
 
     $this->get(route('login.branded', $org->slug))
         ->assertOk()
@@ -144,6 +145,7 @@ it('shows a tenant own provider on its branded sign-in page', function (): void 
 it('does not show one tenant provider on another sign-in page', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     enableProvider('someone-elses-org', 'github');
+    signOutOfConsole();
 
     // The buttons decide which credentials a sign-in uses, so rendering another
     // tenant's would land the resulting account in the wrong organization.

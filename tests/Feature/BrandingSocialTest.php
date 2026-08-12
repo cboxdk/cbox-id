@@ -32,6 +32,8 @@ it('lets an admin theme the branded login page via the appearance editor', funct
         'brand_color' => '#0ea5e9',
     ]);
 
+    signOutOfConsole();
+
     $this->get('/o/'.$org->slug.'/login')
         ->assertOk()
         ->assertSee('#0ea5e9')          // colour injected into the themed <style>

@@ -741,6 +741,29 @@ class ConsoleScope
     }
 
     /**
+     * The gate for a resource the ENVIRONMENT owns and no organization has a share of.
+     *
+     * Most of this console is per-organization, and `assertMayAdminister()` is the right
+     * question there. A few things are not: publishable keys and the legacy-login
+     * declaration have no organization column at all, so on the organization plane
+     * "may this administrator change this" resolves to a membership role and answers yes
+     * for EVERY organization in the environment — one tenant's admin revoking another
+     * tenant's keys, or approving where the whole environment's passwords are sent.
+     *
+     * A capability belongs to both planes unless somebody said otherwise, and this is that
+     * sentence: not drift, and not to be "restored" — the page is absent from the
+     * organization plane because the thing it administers is not the organization's.
+     *
+     * @throws AuthorizationException
+     */
+    public function assertMayAdministerEnvironment(): void
+    {
+        if ($this->plane() !== ConsolePlane::Environment || ! $this->environmentAdmin->check()) {
+            throw new AuthorizationException('This belongs to the environment, and is administered from the environment console.');
+        }
+    }
+
+    /**
      * Whether the acting organization is entitled to a feature.
      *
      * Enforced on BOTH planes, which it was not before: fifteen `guardEntitled()` calls

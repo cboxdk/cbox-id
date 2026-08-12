@@ -111,8 +111,10 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('developers', 'Developers', 'clients', 50)
             ->page('clients', 'Apps & API keys', order: 10)
-            ->page('frontend-keys', 'Frontend keys', order: 15)
-            ->page('legacy-login', 'Legacy login', order: 17)
+            // Frontend keys and Legacy login are on the environment plane only: both are
+            // owned by the environment with no organization column, so listing them here
+            // would put every organization's administrator in charge of every other
+            // organization's. See ConsoleScope::assertMayAdministerEnvironment().
             ->page('webhooks', 'Webhooks', order: 20)
             ->page('hooks', 'Inline hooks', order: 30)
             ->page('vault', 'Token vault', order: 40);

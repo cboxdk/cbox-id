@@ -39,14 +39,20 @@ new #[Layout('components.layouts.console', ['title' => 'Frontend keys'])] class 
 
     public ?string $justCreated = null;
 
+    /** The key whose allow-list is open for editing, if any. */
+    public ?string $editing = null;
+
+    /** The list being edited, in the same newline-separated shape as the create form. */
+    public string $editOrigins = '';
+
     public function boot(): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
     }
 
     public function create(PublishableKeys $keys): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
 
         $this->validate();
 
@@ -69,9 +75,55 @@ new #[Layout('components.layouts.console', ['title' => 'Frontend keys'])] class 
         $this->dispatch('toast', message: 'Key created. Paste it into your frontend — it is meant to be public.');
     }
 
+    /**
+     * Open a key's allow-list for editing.
+     *
+     * THE ALLOW-LIST IS THE CONTROL, and a control that can only be set once is not one:
+     * adding a staging domain otherwise meant minting a second key and shipping a new
+     * bundle, and revoking a key to change a list is a change with an outage in it.
+     */
+    public function edit(string $id): void
+    {
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
+
+        $key = PublishableKey::query()->with('origins')->find($id);
+
+        if (! $key instanceof PublishableKey || ! $key->isActive()) {
+            return;
+        }
+
+        $this->editing = $id;
+        $this->editOrigins = $key->origins->pluck('origin')->implode("\n");
+    }
+
+    public function saveOrigins(PublishableKeys $keys): void
+    {
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
+
+        if ($this->editing === null) {
+            return;
+        }
+
+        try {
+            $keys->setOrigins($this->editing, $this->parsedOrigins($this->editOrigins));
+        } catch (UnusableOrigin $e) {
+            // On the field, for the same reason `create()` does it: the person has to see
+            // which line to fix, and the whole list is refused rather than the bad line
+            // being dropped — a silently shortened allow-list is a key that stops working
+            // somewhere nobody looked.
+            $this->addError('editOrigins', $e->getMessage());
+
+            return;
+        }
+
+        $this->reset('editing', 'editOrigins');
+
+        $this->dispatch('toast', message: 'Origins updated. The change is live on the next request.');
+    }
+
     public function revoke(PublishableKeys $keys, string $id): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
 
         $keys->revoke($id);
 
@@ -87,10 +139,10 @@ new #[Layout('components.layouts.console', ['title' => 'Frontend keys'])] class 
      *
      * @return list<string>
      */
-    private function parsedOrigins(): array
+    private function parsedOrigins(?string $input = null): array
     {
         return array_values(array_filter(
-            array_map(trim(...), preg_split('/\r\n|\r|\n/', $this->origins) ?: []),
+            array_map(trim(...), preg_split('/\r\n|\r|\n/', $input ?? $this->origins) ?: []),
             static fn (string $line): bool => $line !== '',
         ));
     }
@@ -174,6 +226,7 @@ new #[Layout('components.layouts.console', ['title' => 'Frontend keys'])] class 
                     </button>
                     <button type="button" wire:click="$set('creating', false)" class="btn btn-ghost">Cancel</button>
                 </div>
+            </div>
         </form>
     @endif
 
@@ -200,16 +253,38 @@ new #[Layout('components.layouts.console', ['title' => 'Frontend keys'])] class 
                     </thead>
                     <tbody>
                         @foreach ($keys as $key)
-                            <tr @class(['opacity-60' => ! $key->isActive()])>
+                            {{-- The badge carries "revoked", not the row's opacity: dimming
+                                 every cell also dims the key value, which is the thing
+                                 somebody is reading against a log when they come here. --}}
+                            <tr>
                                 <td>
                                     {{ $key->name }}
-                                    <span class="badge ml-1">{{ $key->mode->label() }}</span>
+                                    {{-- Live and test are not the same thing to look at, and a
+                                         revoked key must not read like a mode. Three bare
+                                         `.badge`s in one cell rendered as three identical grey
+                                         pills, so the state was carried by the words alone. --}}
+                                    <span class="badge {{ $key->mode->value === 'live' ? 'badge-success' : 'badge-info' }} ml-1">{{ $key->mode->label() }}</span>
                                     @unless ($key->isActive())
-                                        <span class="badge ml-1">Revoked</span>
+                                        <span class="badge badge-danger ml-1">Revoked</span>
                                     @endunless
                                 </td>
                                 <td class="mono text-[12px] break-all">{{ $key->key }}</td>
                                 <td>
+                                    @if ($editing === $key->id)
+                                        <div style="display:flex;flex-direction:column;gap:8px">
+                                            <label class="sr-only" for="fk-edit-{{ $key->id }}">Allowed origins for {{ $key->name }}</label>
+                                            <textarea id="fk-edit-{{ $key->id }}" wire:model="editOrigins" rows="3" class="input mono"
+                                                      aria-invalid="@error('editOrigins') true @else false @enderror"></textarea>
+                                            @error('editOrigins') <p class="field-error">{{ $message }}</p> @enderror
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" wire:click="saveOrigins" class="btn btn-primary btn-sm"
+                                                        wire:loading.attr="disabled" wire:target="saveOrigins">
+                                                    <span class="spinner" wire:loading wire:target="saveOrigins" aria-hidden="true"></span> Save origins
+                                                </button>
+                                                <button type="button" wire:click="$set('editing', null)" class="btn btn-ghost btn-sm">Cancel</button>
+                                            </div>
+                                        </div>
+                                    @else
                                     @forelse ($key->origins as $origin)
                                         <span class="block mono text-[12px]">{{ $origin->origin }}</span>
                                     @empty
@@ -218,15 +293,30 @@ new #[Layout('components.layouts.console', ['title' => 'Frontend keys'])] class 
                                              error nobody can explain. --}}
                                         <span class="text-xs" style="color:var(--danger)">None — this key works nowhere</span>
                                     @endforelse
+                                    @endif
                                 </td>
                                 <td class="text-xs" style="color:var(--muted)">
                                     {{ $key->last_used_at?->diffForHumans() ?? 'Never' }}
                                 </td>
                                 <td class="text-right">
                                     @if ($key->isActive())
-                                        <button wire:click="revoke('{{ $key->id }}')"
-                                                wire:confirm="Revoke {{ $key->name }}? Any page still holding it stops working immediately."
-                                                class="btn btn-ghost btn-sm">Revoke</button>
+                                        {{-- Editing the list is the ordinary case, so it is
+                                             a plain button beside the destructive one rather
+                                             than behind it. --}}
+                                        <button type="button" wire:click="edit('{{ $key->id }}')"
+                                                class="btn btn-ghost btn-sm mr-1">Edit origins</button>
+                                        {{-- Type-to-confirm, per the rule in the component
+                                             itself: this destroys a credential and cannot be
+                                             undone from here. It also names the environment,
+                                             which is the failure being designed against —
+                                             staging and production in two identical tabs. --}}
+                                        <x-confirm-delete
+                                            :name="$key->name"
+                                            :action=""revoke('{$key->id}')""
+                                            label="Revoke"
+                                            consequence="Any page still holding this key stops working immediately, and a key cannot be un-revoked."
+                                            trigger-class="btn btn-ghost btn-sm"
+                                        />
                                     @endif
                                 </td>
                             </tr>

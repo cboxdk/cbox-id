@@ -552,6 +552,13 @@ function actingAsRole(MembershipRole $role, bool $emailVerified = true): array
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
+    // AND THE SESSION KEY THE CONSOLE'S OWN GUARD READS, without which an HTTP request
+    // made after this helper is anonymous: `CurrentUser` is resolved state for code inside
+    // the process, and the guard on the way in reads the session. Tests that then asserted
+    // `not 403` were asserting against a 302 to /login and passed whatever the page did —
+    // including a 500, a 404, or the very cross-plane 403 they were written to catch.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return [$subject->id, $org];
 }
 
@@ -611,6 +618,51 @@ function fakePasskeys(?string $authenticateAs): void
             return null;
         }
     });
+}
+
+/**
+ * The console plane these two pages live on.
+ *
+ * Publishable keys and the legacy-login declaration are owned by the ENVIRONMENT and have
+ * no organization column, so they are administered from the environment console alone —
+ * on the organization plane, "may this administrator change this" resolves to a membership
+ * role and answers yes for every organization in the environment. See
+ * {@see ConsoleScope::assertMayAdministerEnvironment()}.
+ */
+function actAsEnvironmentAdminOfATenant(): string
+{
+    $tenant = provisionAccount();
+
+    serveOnTestHost($tenant['environment']);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($tenant['environment']->id));
+    actAsEnvironmentAdmin($tenant['subjectId'], $tenant['environment']->id);
+
+    return $tenant['environment']->id;
+}
+
+/**
+ * Confirm a fresh step-up for the current console session.
+ *
+ * For the handful of actions gated behind `sudo` — the token vault, log-stream creation,
+ * approving where sign-ins are delegated. Written through `Sudo` rather than by putting the
+ * key in the session by hand, so a test cannot assert against a shape no door produces.
+ */
+function confirmStepUp(): void
+{
+    app(Sudo::class)->confirm();
+}
+
+/**
+ * Leave the console session behind, keeping everything `actingAsRole()` set up.
+ *
+ * For the pages an ANONYMOUS visitor sees — a branded sign-in page, a public consent
+ * screen. The fixture that creates the organization has to sign in to create it; the
+ * request under test must not be signed in, or the page correctly redirects to the
+ * dashboard and the assertion is about a 302.
+ */
+function signOutOfConsole(): void
+{
+    session()->forget(PlatformAuth::SESSION_KEY);
 }
 
 /**

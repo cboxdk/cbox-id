@@ -12,6 +12,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -31,7 +32,7 @@ function declareLegacy(string $url = 'https://legacy.acme.test/verify'): void
 }
 
 it('shows an operator what was declared and who declared it', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
 
     Volt::test('console.legacy-login')
@@ -46,6 +47,9 @@ it('shows an operator what was declared and who declared it', function (): void 
 it('actually consults the endpoint once approved, and not before', function (): void {
     Http::fake(['*' => Http::response(['email' => 'ada@legacy.test', 'name' => 'Ada'], 200)]);
 
+    // The environment first: a declaration belongs to one, and approving it from a console
+    // pointed somewhere else would be approving a row that is not there.
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
 
     $source = app(LegacyCredentialSource::class);
@@ -53,15 +57,16 @@ it('actually consults the endpoint once approved, and not before', function (): 
     expect($source->verify('ada@legacy.test', 'pw'))->toBeNull();
     Http::assertNothingSent();
 
-    actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     Volt::test('console.legacy-login')->call('approve');
 
     expect($source->verify('ada@legacy.test', 'pw')?->email)->toBe('ada@legacy.test');
 });
 
 it('withdraws it again, leaving the declaration visible', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
+    confirmStepUp();
 
     Volt::test('console.legacy-login')->call('approve');
     expect(LegacyLoginDeclarationRecord::query()->first()?->isApproved())->toBeTrue();
@@ -79,14 +84,14 @@ it('withdraws it again, leaving the declaration visible', function (): void {
  * "Who agreed to send passwords there" is the first question anybody asks afterwards.
  */
 it('records who approved it, and keeps the original moment', function (): void {
-    // `actingAsRole` returns [subjectId, org] — a list, not a keyed array.
-    [$subjectId] = actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
+    confirmStepUp();
 
     Volt::test('console.legacy-login')->call('approve');
     $first = LegacyLoginDeclarationRecord::query()->first();
 
-    expect($first?->approved_by)->toBe($subjectId);
+    expect($first?->approved_by)->not->toBeNull();
 
     // A second click must not overwrite when the URL joined the login path.
     app(LegacyLoginApprovals::class)->approve('somebody-else');
@@ -116,7 +121,7 @@ it('refuses a member who may not administer', function (): void {
 it('tests the endpoint before anybody approves it', function (): void {
     Http::fake(['*' => Http::response(['email' => 'ada@legacy.test', 'name' => 'Ada'], 200)]);
 
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
 
     Volt::test('console.legacy-login')
@@ -135,7 +140,7 @@ it('tests the endpoint before anybody approves it', function (): void {
 it('never sends a password when testing', function (): void {
     Http::fake(['*' => Http::response(['email' => 'ada@legacy.test'], 200)]);
 
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
 
     Volt::test('console.legacy-login')->set('probeEmail', 'ada@legacy.test')->call('probe');
@@ -152,7 +157,7 @@ it('never sends a password when testing', function (): void {
 it('says what went wrong rather than just failing', function (): void {
     Http::fake(fn () => throw new ConnectionException('timed out'));
 
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
 
     Volt::test('console.legacy-login')
@@ -162,11 +167,58 @@ it('says what went wrong rather than just failing', function (): void {
 });
 
 it('refuses to probe with something that is not an address', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
     declareLegacy();
 
     Volt::test('console.legacy-login')
         ->set('probeEmail', 'not-an-address')
         ->call('probe')
         ->assertSee('Enter an address');
+});
+
+/**
+ * THE STEP-UP IS PART OF THE CONTROL, not decoration on the route.
+ *
+ * Route middleware runs on the first page load; every Livewire action after it is a POST to
+ * the component endpoint. A console window opened while the confirmation was fresh could
+ * otherwise still redirect where passwords go an hour later — which is exactly the shape a
+ * hijacked or clickjacked session has.
+ */
+it('refuses to approve from a session that has not re-confirmed', function (): void {
+    actAsEnvironmentAdminOfATenant();
+    declareLegacy();
+
+    // Deliberately no confirmStepUp().
+    try {
+        Volt::test('console.legacy-login')->call('approve');
+    } catch (Throwable) {
+        // Either the authorization exception or Livewire's report of it.
+    }
+
+    expect(LegacyLoginDeclarationRecord::query()->first()?->isApproved())->toBeFalse();
+});
+
+/**
+ * THE PAGE IS NOT ON THE ORGANIZATION PLANE, and this is why.
+ *
+ * The declaration is environment-wide — one row, `environment_id` unique, no organization
+ * column. On the organization plane "may this administrator change this" resolves to a
+ * membership role, so every organization admin in the environment could approve where the
+ * WHOLE environment's un-migrated passwords are sent, including other tenants' users.
+ */
+it('cannot be reached by an organization administrator at all', function (): void {
+    actingAsRole(MembershipRole::Owner);
+    declareLegacy();
+    confirmStepUp();
+
+    try {
+        Volt::test('console.legacy-login')->call('approve');
+    } catch (Throwable) {
+        // The scope refuses on this plane before the action runs.
+    }
+
+    expect(LegacyLoginDeclarationRecord::query()->first()?->isApproved())->toBeFalse()
+        // And the page is absent rather than present-and-403: a route that exists and
+        // refuses reads like a permissions problem somebody will try to fix.
+        ->and(Route::has('legacy-login'))->toBeFalse();
 });

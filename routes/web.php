@@ -446,14 +446,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // somewhere to land that is not the form you just submitted. This plane gains editing
     // an app's details and rotating its secret with it; the other gains the roles manifest.
     Volt::route('/clients', 'console.clients.index')->name('clients');
-    // Publishable keys — the ones a browser holds. Beside Apps & API keys because that is
-    // where somebody goes looking for "how does my frontend talk to this", and the two
-    // answer opposite halves of it: one is the secret a server holds, one is the public
-    // key a page holds.
-    Volt::route('/frontend-keys', 'console.frontend-keys')->name('frontend-keys');
-    // Beside the frontend keys, under Developers: both answer "how does my other system
-    // talk to this one", and this is the half about the system you are leaving.
-    Volt::route('/legacy-login', 'console.legacy-login')->name('legacy-login');
+    // Publishable keys and the legacy-login declaration are NOT here, and that is the
+    // one deliberate exception to "a capability belongs to both planes". Both are owned
+    // by the environment and have no organization column, so on this plane every
+    // organization's administrator would be administering every other organization's —
+    // revoking their keys, or approving where the whole environment's passwords are sent.
+    // They live on the environment plane alone; see ConsoleScope::assertMayAdministerEnvironment().
     Volt::route('/clients/new', 'console.clients.create')->name('clients.create');
     Volt::route('/clients/{client}', 'console.clients.show')->name('clients.show');
     // Webhooks: the SAME components the environment plane serves. The routable
@@ -672,7 +670,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // and both are preserved.
         Volt::route('/applications', 'console.clients.index')->name('environment.clients');
         Volt::route('/frontend-keys', 'console.frontend-keys')->name('environment.frontend-keys');
-        Volt::route('/legacy-login', 'console.legacy-login')->name('environment.legacy-login');
+        // Behind sudo, like the token vault and log-stream creation: the button on this
+        // page decides where every un-migrated address and the password typed with it is
+        // sent. The design deliberately put a person in the loop, and a person who has
+        // not proved they are still at the keyboard in the last fifteen minutes is a
+        // hijacked or clickjacked session, not a person. The component asks again inside
+        // the action, because a Livewire call after the first page load never re-runs
+        // route middleware.
+        Volt::route('/legacy-login', 'console.legacy-login')->middleware('sudo')->name('environment.legacy-login');
         Volt::route('/applications/new', 'console.clients.create')->name('environment.clients.create');
         Volt::route('/applications/{client}', 'console.clients.show')->name('environment.clients.show');
 

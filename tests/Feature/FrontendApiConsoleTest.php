@@ -10,6 +10,7 @@ use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -20,7 +21,7 @@ beforeEach(function (): void {
 });
 
 it('creates a key with its origins from the console', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
 
     Volt::test('console.frontend-keys')
         ->set('name', 'Marketing site')
@@ -40,7 +41,7 @@ it('creates a key with its origins from the console', function (): void {
  * reach the FIELD — a toast disappears while they are still reading which line is wrong.
  */
 it('refuses the whole list on the field when one origin is unusable', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
 
     Volt::test('console.frontend-keys')
         ->set('name', 'Site')
@@ -52,7 +53,7 @@ it('refuses the whole list on the field when one origin is unusable', function (
 });
 
 it('refuses plain http away from loopback, and says why', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
 
     Volt::test('console.frontend-keys')
         ->set('name', 'Site')
@@ -62,7 +63,7 @@ it('refuses plain http away from loopback, and says why', function (): void {
 });
 
 it('revokes a key so pages holding it stop working', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
@@ -78,7 +79,7 @@ it('revokes a key so pages holding it stop working', function (): void {
  * which loses the entire point of the channel.
  */
 it('keeps showing the key in full, because it is not a secret', function (): void {
-    actingAsRole(MembershipRole::Owner);
+    actAsEnvironmentAdminOfATenant();
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
@@ -145,4 +146,96 @@ it('says nothing about appearance when the environment has set none', function (
     ])->getJson('/frontend/v1/config')
         ->assertOk()
         ->assertJsonMissingPath('appearance');
+});
+
+/**
+ * THE ALLOW-LIST IS THE CONTROL, so it has to be changeable.
+ *
+ * `setOrigins()` existed on the contract with no caller anywhere — the page offered create
+ * and revoke only. Adding a staging domain therefore meant minting a second key and
+ * shipping a new bundle, and changing a list meant an outage you scheduled yourself.
+ */
+it('edits a key allow-list without minting a new key', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
+
+    Volt::test('console.frontend-keys')
+        ->call('edit', $key->id)
+        ->assertSet('editOrigins', 'https://acme.test')
+        ->set('editOrigins', "https://acme.test\nhttps://staging.acme.test")
+        ->call('saveOrigins')
+        ->assertHasNoErrors();
+
+    expect($key->fresh()?->origins()->pluck('origin')->all())
+        ->toBe(['https://acme.test', 'https://staging.acme.test']);
+});
+
+it('refuses the whole edited list when one origin is unusable, and says which', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
+
+    Volt::test('console.frontend-keys')
+        ->call('edit', $key->id)
+        ->set('editOrigins', "https://acme.test\nhttps://acme.test/app")
+        ->call('saveOrigins')
+        ->assertHasErrors('editOrigins');
+
+    // Unchanged: a list that half-applied would be a key that works in half the places
+    // somebody just told it to.
+    expect($key->fresh()?->origins()->pluck('origin')->all())->toBe(['https://acme.test']);
+});
+
+/**
+ * THE PAGE IS NOT ON THE ORGANIZATION PLANE. Publishable keys are environment-owned with no
+ * organization column, so on that plane every organization's administrator would be
+ * administering — and revoking — every other organization's keys.
+ */
+it('is absent from the organization console rather than present and refusing', function (): void {
+    expect(Route::has('frontend-keys'))->toBeFalse()
+        ->and(Route::has('environment.frontend-keys'))->toBeTrue();
+});
+
+it('refuses an organization administrator who reaches the component directly', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    try {
+        Volt::test('console.frontend-keys')
+            ->set('name', 'Theirs')
+            ->set('origins', 'https://theirs.test')
+            ->call('create');
+    } catch (Throwable) {
+        // The scope refuses on this plane before the action runs.
+    }
+
+    expect(PublishableKey::query()->count())->toBe(0);
+});
+
+/**
+ * AN UNCLOSED DIV SWALLOWED THE PAGE.
+ *
+ * The create panel's `cbx-panel-body` was never closed, so per the HTML parsing rules the
+ * `</form>` closed nothing and everything after it — the key count, the empty state, the
+ * whole table — became a descendant of the still-open form whenever the panel was expanded.
+ * The table rendered inside the form's chrome, and the Revoke button, which had no `type`,
+ * defaulted to `submit` and posted the create form on its way past.
+ *
+ * Asserted through a real parse rather than by eye: this is exactly the class of defect a
+ * suite cannot see, because every Livewire assertion in this file passes either way.
+ */
+it('keeps the key table outside the create form', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
+
+    $html = Volt::test('console.frontend-keys')->set('creating', true)->html();
+
+    $document = new DOMDocument;
+    $document->loadHTML('<!doctype html><html lang="en"><body>'.$html.'</body></html>', LIBXML_NOERROR);
+
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//form//table')?->length)->toBe(0, 'the key table parsed as part of the create form')
+        ->and($xpath->query('//table')?->length)->toBe(1, 'the key table did not render at all');
 });

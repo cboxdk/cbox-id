@@ -4,6 +4,8 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Migration\LegacyLoginApprovals;
 use App\Platform\Migration\LegacyLoginProbe;
+use App\Platform\Sudo;
+use Illuminate\Auth\Access\AuthorizationException;
 use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -25,7 +27,7 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
 {
     public function boot(): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
     }
 
     /** The address to probe with — the operator's own, never somebody else's. */
@@ -42,7 +44,7 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
      */
     public function probe(LegacyLoginApprovals $approvals, LegacyLoginProbe $probe): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
 
         $declaration = $approvals->current();
 
@@ -57,7 +59,13 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
 
     public function approve(LegacyLoginApprovals $approvals): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
+
+        // ASKED AGAIN HERE, not only on the route. Route middleware runs on the first page
+        // load; every Livewire action after it is a POST to the component endpoint, so a
+        // window opened before the sudo confirmation expired can still call this an hour
+        // later. This is the one click in the console that redirects where passwords go.
+        $this->assertFreshStepUp();
 
         // `id()` is non-null behind the console's own gate — `assertMayAdminister()` has
         // already refused anybody without a session — so there is nothing to branch on.
@@ -68,11 +76,28 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
 
     public function revoke(LegacyLoginApprovals $approvals): void
     {
-        app(ConsoleScope::class)->assertMayAdminister();
+        app(ConsoleScope::class)->assertMayAdministerEnvironment();
+
+        // Withdrawing is the safe direction, and it is still gated: an attacker who can
+        // silently turn the migration OFF locks every un-migrated person out of the
+        // product, which is an outage they chose the timing of.
+        $this->assertFreshStepUp();
 
         $approvals->revoke();
 
         $this->dispatch('toast', message: 'Withdrawn. People already migrated are unaffected; anyone still on the old system cannot sign in.');
+    }
+
+    /**
+     * Refuse an action from a session that has not re-confirmed recently.
+     *
+     * @throws AuthorizationException
+     */
+    private function assertFreshStepUp(): void
+    {
+        if (! app(Sudo::class)->confirmed()) {
+            throw new AuthorizationException('Confirm it is you before changing where sign-ins are sent.');
+        }
     }
 
     /** @return array<string, mixed> */
@@ -109,10 +134,12 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
         <div class="cbx-panel mt-6">
             <div class="cbx-panel-header">
                 <h2 class="cbx-panel-title">Declared endpoint</h2>
+                {{-- Two bare `.badge`s rendered as the same grey pill, so the one state on
+                     this page that matters — is it live — was carried by the word alone. --}}
                 @if ($declaration->isApproved())
-                    <span class="badge">Active</span>
+                    <span class="badge badge-success">Active</span>
                 @else
-                    <span class="badge">Awaiting approval</span>
+                    <span class="badge badge-warn">Awaiting approval</span>
                 @endif
             </div>
 
@@ -155,28 +182,53 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
                  cannot become a credential-testing oracle with an approve button beside
                  it. --}}
             <div class="cbx-panel-body" style="padding-top:0;display:flex;flex-direction:column;gap:8px">
-                <p class="label">Try it first</p>
+                <label class="label" for="ll-probe-email">Try it first</label>
                 <div class="flex flex-wrap items-center gap-2">
-                    <input wire:model="probeEmail" type="email" class="input" style="max-width:20rem"
-                           placeholder="an address in your old system" aria-label="Address to test with">
+                    {{-- A real label, not a placeholder: the placeholder disappears on the
+                         first keystroke, and this field is the one somebody looks away from
+                         mid-form to go and find an address. --}}
+                    <input id="ll-probe-email" wire:model="probeEmail" type="email" class="input" style="max-width:20rem"
+                           placeholder="an address in your old system"
+                           aria-invalid="@error('probeEmail') true @else false @enderror"
+                           aria-describedby="ll-probe-result">
                     <button wire:click="probe" class="btn btn-ghost" wire:loading.attr="disabled" wire:target="probe">
                         <span class="spinner" wire:loading wire:target="probe" aria-hidden="true"></span> Test endpoint
                     </button>
                 </div>
+                @error('probeEmail') <p class="field-error">{{ $message }}</p> @enderror
                 @if ($probeResult !== null)
-                    <p class="text-xs" role="status" aria-live="polite" style="color:var(--muted)">{{ $probeResult }}</p>
+                    <p id="ll-probe-result" class="text-xs" role="status" aria-live="polite" style="color:var(--muted)">{{ $probeResult }}</p>
                 @endif
             </div>
 
             <div class="cbx-panel-body" style="padding-top:0">
+                {{-- TYPE-TO-CONFIRM, per the rule written into the component itself: this
+                     is not undoable from the console in any meaningful sense — once an
+                     endpoint has been approved it has been offered live passwords — and the
+                     dialog names the environment, which is the failure being designed
+                     against here more than anywhere: staging and production in two
+                     identical tabs. A native dialog is dismissed by Enter.
+
+                     The typed string is the endpoint's HOST, not the app's name: the host
+                     is the fact being agreed to, and typing it is reading it. --}}
                 @if ($declaration->isApproved())
-                    <button wire:click="revoke"
-                            wire:confirm="Withdraw this endpoint? Anyone who has not migrated yet will stop being able to sign in."
-                            class="btn btn-ghost">Withdraw</button>
+                    <x-confirm-delete
+                        :name="parse_url($declaration->url, PHP_URL_HOST) ?: $declaration->url"
+                        action="revoke"
+                        label="Withdraw"
+                        verb="Withdraw"
+                        consequence="Anyone who has not migrated yet stops being able to sign in until this is approved again. People already moved are unaffected."
+                        trigger-class="btn btn-ghost"
+                    />
                 @else
-                    <button wire:click="approve"
-                            wire:confirm="Approve {{ $declaration->url }}? Passwords typed by people who are not in Cbox ID yet will be sent there."
-                            class="btn btn-primary">Approve this endpoint</button>
+                    <x-confirm-delete
+                        :name="parse_url($declaration->url, PHP_URL_HOST) ?: $declaration->url"
+                        action="approve"
+                        label="Approve this endpoint"
+                        verb="Approve"
+                        consequence="From now on, the email and password of anyone who is not in Cbox ID yet are sent to that endpoint."
+                        trigger-class="btn btn-danger"
+                    />
                 @endif
             </div>
         </div>
