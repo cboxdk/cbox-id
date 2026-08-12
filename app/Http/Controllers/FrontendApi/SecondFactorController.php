@@ -7,6 +7,7 @@ namespace App\Http\Controllers\FrontendApi;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\PlatformAuth;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -49,17 +50,15 @@ class SecondFactorController
 
         $stage = $request->input('method') === 'otp' ? 'pending_otp' : 'pending_mfa';
 
-        $ticket = $this->tickets->claimAttempt($token, $stage);
+        // The key is part of the claim rather than a check after it: a ticket minted by
+        // one customer's page must not be completable from another's — both hold valid keys
+        // against this environment — and checking afterwards meant the wrong page could
+        // spend the real person's five attempts before being refused.
+        $ticket = $this->tickets->claimAttempt($token, $stage, $key);
 
         if ($ticket === null) {
-            // Unknown token, wrong stage, expired, or out of attempts — one answer, for
-            // the same reason a wrong password and an unknown address are one answer.
-            return $this->refuse();
-        }
-
-        // A ticket minted by one customer's page must not be completable from another's,
-        // even though both hold valid keys against this environment.
-        if ($ticket->publishable_key_id !== $key->id) {
+            // Unknown token, wrong key, wrong stage, expired, or out of attempts — one
+            // answer, for the same reason a wrong password and an unknown address are one.
             return $this->refuse();
         }
 
@@ -72,10 +71,11 @@ class SecondFactorController
         }
 
         // Promoted rather than re-minted: a pending ticket that survived its own promotion
-        // would be a second chance at a factor already used. The `amr` now names both.
+        // would be a second chance at a factor already used. The `amr` now names both
+        // factors, and it names them the way every other door does — see {@see AuthMethod}.
         return new JsonResponse([
             'status' => 'ok',
-            'login_ticket' => $this->tickets->promote($ticket, [...$ticket->amr, $stage === 'pending_otp' ? 'otp' : 'mfa']),
+            'login_ticket' => $this->tickets->promote($ticket, AuthMethod::forSecondFactorCode()),
             'expires_in' => 60,
         ]);
     }
@@ -90,8 +90,26 @@ class SecondFactorController
         // The recovery-code path is the escape hatch when the authenticator is gone, and it
         // is the same escape hatch here — an embedded form that could not accept one would
         // strand exactly the people the hatch exists for.
-        return $this->auth->completeMfa($request, $code)
-            || $this->auth->completeMfaWithRecoveryCode($request, $code);
+        //
+        // ONE INPUT COSTS ONE FAILURE. Both methods record a failure of their own, so
+        // running them in sequence over the same string charged the account lockout twice
+        // for one mistyped code — halving the real threshold for a person and doubling an
+        // attacker's rate of locking somebody out. The hosted form has two fields and
+        // charges once; here the shape of the code decides which method is even asked.
+        return $this->looksLikeTotp($code)
+            ? $this->auth->completeMfa($request, $code)
+            : $this->auth->completeMfaWithRecoveryCode($request, $code);
+    }
+
+    /**
+     * Whether this input can only be a TOTP code.
+     *
+     * A TOTP code is six digits; a recovery code is not. Deciding on the shape rather than
+     * trying both is what keeps one wrong code costing one attempt — see the caller.
+     */
+    private function looksLikeTotp(string $code): bool
+    {
+        return preg_match('/^\d{6}$/', $code) === 1;
     }
 
     private function completeOtp(Request $request, string $subjectId, string $code): bool

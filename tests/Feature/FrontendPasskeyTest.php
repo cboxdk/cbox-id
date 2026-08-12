@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Platform\FrontendApi\LoginTicket;
+use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\PasskeyChallenges;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\FrontendApiServiceProvider;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\RelyingParties;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -77,6 +83,62 @@ it('refuses an assertion with no handle, and one with a handle nobody issued', f
 it('refuses the whole flow to a caller with no key', function (): void {
     $this->postJson('/frontend/v1/sign-in/passkey/options')->assertStatus(401);
     $this->postJson('/frontend/v1/sign-in/passkey', ['id' => 'x', 'challenge_token' => 'y'])->assertStatus(401);
+});
+
+/**
+ * A VERIFYING ASSERTION, all the way to a ticket.
+ *
+ * Every other test in this file stops at a refusal — and a refusal is also what a
+ * controller that never verified anything returns. Nothing here could tell the difference
+ * between a working passkey door and a dead one, which is how the SSO mandate below went
+ * missing from it without a test turning red.
+ */
+it('mints a ticket for an assertion that verifies', function (): void {
+    [$subject] = accountWithOrg('pk-embedded@acme.test');
+    fakePasskeys($subject->id);
+
+    $handle = app(PasskeyChallenges::class)->issue($this->key, 'a-random-challenge');
+
+    $body = $this->withHeaders(asPage())->postJson('/frontend/v1/sign-in/passkey', [
+        'id' => 'credential-id',
+        'challenge_token' => $handle,
+    ])->assertOk()->json();
+
+    expect($body['status'])->toBe('ok')
+        ->and($body['login_ticket'])->toBeString();
+
+    $ticket = app(LoginTickets::class)->redeem($body['login_ticket']);
+
+    expect($ticket?->subject_id)->toBe($subject->id)
+        // A passkey IS the factor: no `pwd` nobody typed, and the vocabulary is the one
+        // the hosted door uses — an RP gating on `amr` must not see two answers for one
+        // credential.
+        ->and($ticket?->amr)->toBe(AuthMethod::forPasskey());
+});
+
+/**
+ * THE MANDATE APPLIES TO THIS DOOR TOO.
+ *
+ * An organization told by the console that its identity provider is the only way in was
+ * open to anybody holding a passkey: the hosted door asks `localSignInAllowedFor()` and
+ * this one did not, so the embedded button was a second entrance into an organization
+ * that had been shown a page saying it had closed them.
+ */
+it('refuses a passkey in an organization that mandates SSO', function (): void {
+    [$subject, $organization] = accountWithOrg('pk-sso@acme.test');
+    fakePasskeys($subject->id);
+
+    app(AuthPolicies::class)->setForOrganization($organization->id, new AuthPolicy(sso: SsoEnforcement::Required));
+
+    $handle = app(PasskeyChallenges::class)->issue($this->key, 'a-random-challenge');
+
+    $this->withHeaders(asPage())->postJson('/frontend/v1/sign-in/passkey', [
+        'id' => 'credential-id',
+        'challenge_token' => $handle,
+    ])->assertStatus(403)->assertJsonPath('status', 'sso_required');
+
+    // And nothing was minted to be redeemed later.
+    expect(LoginTicket::query()->count())->toBe(0);
 });
 
 /**

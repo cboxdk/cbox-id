@@ -81,14 +81,20 @@ final class LoginTickets
      * Returns null once the attempts are gone, which the caller treats exactly as a wrong
      * code — telling them apart would say "that ticket was real, you just ran out".
      */
-    public function claimAttempt(string $token, string $stage): ?LoginTicket
+    public function claimAttempt(string $token, string $stage, PublishableKey $key): ?LoginTicket
     {
         $hash = hash('sha256', $token);
 
-        return DB::transaction(function () use ($hash, $stage): ?LoginTicket {
+        return DB::transaction(function () use ($hash, $stage, $key): ?LoginTicket {
             $claimed = LoginTicket::query()
                 ->where('token_hash', $hash)
                 ->where('stage', $stage)
+                // THE KEY IS PART OF THE CLAIM, not a check afterwards. Both are in the
+                // same environment, so both reach this endpoint — and a token issued for
+                // one customer's page, replayed five times through another's key, used to
+                // burn the attempts before the ownership check refused it, leaving the real
+                // person unable to finish their own second factor.
+                ->where('publishable_key_id', $key->id)
                 ->whereNull('redeemed_at')
                 ->where('expires_at', '>', now())
                 ->where('attempts', '<', self::MAX_ATTEMPTS)
@@ -181,20 +187,5 @@ final class LoginTickets
 
             return $ticket instanceof LoginTicket ? $ticket : null;
         });
-    }
-
-    /**
-     * Drop tickets nobody redeemed.
-     *
-     * Called from the scheduler beside the other sweeps. Expired rows are harmless — they
-     * cannot be redeemed — but a table that only grows is one somebody eventually finds
-     * during an incident and cannot read.
-     */
-    public function prune(): int
-    {
-        /** @var int $deleted */
-        $deleted = LoginTicket::query()->where('expires_at', '<', now()->subHour())->delete();
-
-        return $deleted;
     }
 }

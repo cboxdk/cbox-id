@@ -17,6 +17,7 @@ use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Exceptions\UnsupportedCredential;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -151,7 +152,7 @@ final class PasskeyController extends Controller
             return new JsonResponse(['redirect' => route('login')]);
         }
 
-        $auth->establish($request, $subjectId, ['passkey']);
+        $auth->establish($request, $subjectId, AuthMethod::forPasskey());
 
         return new JsonResponse(['redirect' => route('dashboard')]);
     }

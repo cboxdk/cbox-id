@@ -13,6 +13,9 @@ use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\FrontendApiServiceProvider;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -226,4 +229,143 @@ it('pins an organization on a ticket-created session, as the hosted form does', 
     // Without a pinned organization the console, the entitlement reads and the org scope
     // all resolve to nothing.
     expect($session?->organization_id)->toBe($org->id);
+});
+
+/**
+ * THE CHAIN OVER REAL HTTP — a ticket presented to the route, not to the class behind it.
+ *
+ * The test above calls `SignInWithTicket::establish()` directly, so it holds the class's
+ * behaviour and nothing about the wiring. Renaming the query parameter, or moving the
+ * redemption after the session check, kills the feature with that test still green. This
+ * one drives `GET /oauth/authorize?...&login_ticket=` exactly as a browser does.
+ */
+it('signs a person in at the authorize route itself, from the ticket in the URL', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $ticket = frontendSignIn(['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertOk()
+        ->json('login_ticket');
+
+    $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'login_ticket' => $ticket,
+    ]))->assertOk()
+        // Not the sign-in page: the ticket WAS the sign-in.
+        ->assertDontSee('name="password"', false);
+
+    expect(session()->get(PlatformAuth::SESSION_KEY))->not->toBeNull();
+});
+
+/**
+ * THE WRONG-PRINCIPAL BUG. Redemption used to sit inside `if (! signed in)`, so a browser
+ * already holding Alice's session ignored a ticket that had just authenticated Bob: the
+ * flow ran as Alice, skipped consent for a first-party client, and handed the relying party
+ * an id_token for somebody who never signed in on that page. Bob's ticket went unspent and
+ * nothing anywhere reported a mismatch.
+ */
+it('lets the ticket decide who is signing in, not the cookie that was already there', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $alice = app(Subjects::class)->create('alice@acme.test', 'Alice', 'a-strong-unbreached-passphrase');
+
+    $bobsTicket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
+
+    $this->withSession([PlatformAuth::SESSION_KEY => app(SessionManager::class)->start($alice->id, null, ['pwd'])->id])
+        ->get('/oauth/authorize?'.http_build_query([
+            'client_id' => $registered->client->client_id,
+            'redirect_uri' => 'https://app.test/cb',
+            'response_type' => 'code',
+            'scope' => 'openid',
+            'state' => 'st',
+            'code_challenge' => 'abc',
+            'code_challenge_method' => 'S256',
+            'login_ticket' => $bobsTicket,
+        ]))->assertOk();
+
+    $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+
+    expect(app(SessionManager::class)->active(is_string($sessionId) ? $sessionId : '')?->user_id)
+        ->toBe($this->subject->id);
+});
+
+/**
+ * OIDC Core §3.1.2.1 lets `prompt=none` succeed only when the End-User "is already
+ * authenticated". A ticket creates a session inside the request — no UI is shown, so the
+ * letter about interaction is kept, but the precondition is not, and an SPA reading a
+ * successful silent renew as proof of a pre-existing SSO session would be believing
+ * something we invented milliseconds ago on a page it does not control.
+ */
+it('will not let a ticket satisfy prompt=none', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
+
+    $location = $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'prompt' => 'none',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+        'login_ticket' => $ticket,
+    ]))->assertRedirect()->headers->get('Location');
+
+    parse_str((string) parse_url((string) $location, PHP_URL_QUERY), $params);
+
+    expect($params['error'])->toBe('login_required')
+        ->and(session()->get(PlatformAuth::SESSION_KEY))->toBeNull();
+});
+
+/**
+ * OFF UNLESS SOMEBODY SAID OTHERWISE — and that has to cover the endpoint where an
+ * anonymous caller offers a password, not only the two public documents.
+ *
+ * The framework gates `/config` and `/session` on this flag. These three were registered
+ * unconditionally, so on an install that had never turned the channel on, the embedded
+ * password door was live the moment anyone minted a key — and switching the flag off during
+ * an incident closed the harmless half and left this serving.
+ *
+ * The application is rebuilt with the variable off, because the route group is decided at
+ * boot: setting config alone would assert against routes that were already registered.
+ */
+it('serves no sign-in endpoint at all when the channel is switched off', function (): void {
+    putenv('CBOX_ID_FRONTEND_API=false');
+    $_SERVER['CBOX_ID_FRONTEND_API'] = $_ENV['CBOX_ID_FRONTEND_API'] = 'false';
+
+    $this->refreshApplication();
+
+    try {
+        foreach (['/frontend/v1/sign-in', '/frontend/v1/sign-in/factor', '/frontend/v1/sign-in/passkey'] as $route) {
+            $this->postJson($route)->assertNotFound();
+        }
+    } finally {
+        putenv('CBOX_ID_FRONTEND_API=true');
+        $_SERVER['CBOX_ID_FRONTEND_API'] = $_ENV['CBOX_ID_FRONTEND_API'] = 'true';
+    }
 });

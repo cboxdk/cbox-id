@@ -15,6 +15,7 @@ use Cbox\Id\Identity\Exceptions\IdentityAlreadyLinked;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Migration\LegacyMigration;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Otp\Contracts\OtpService;
 use Cbox\Id\Platform\PlatformRoot;
@@ -225,7 +226,7 @@ final class PlatformAuth
             return AttemptOutcome::Otp;
         }
 
-        $this->establish($request, $subject->id, ['pwd']);
+        $this->establish($request, $subject->id, [AuthMethod::Password->value]);
 
         return AttemptOutcome::Ok;
     }
@@ -291,7 +292,7 @@ final class PlatformAuth
         }
 
         session()->forget(self::OTP_PENDING_KEY);
-        $this->establish($request, $pending['subject'], ['pwd', 'otp']);
+        $this->establish($request, $pending['subject'], AuthMethod::forSecondFactorCode());
 
         return true;
     }
@@ -397,7 +398,7 @@ final class PlatformAuth
         }
 
         session()->forget(self::MFA_PENDING_KEY);
-        $this->establish($request, $subjectId, ['pwd', 'mfa']);
+        $this->establish($request, $subjectId, AuthMethod::forSecondFactorCode());
 
         return true;
     }
@@ -429,7 +430,7 @@ final class PlatformAuth
         }
 
         session()->forget(self::MFA_PENDING_KEY);
-        $this->establish($request, $subjectId, ['pwd', 'mfa']);
+        $this->establish($request, $subjectId, AuthMethod::forRecoveryCode());
 
         return true;
     }

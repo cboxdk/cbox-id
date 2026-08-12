@@ -45,28 +45,37 @@ use Livewire\Volt\Volt;
 // `web` is needed for one narrow reason: `PlatformAuth::attemptPassword()` writes the
 // session it establishes, and the controller reads it back in the same request to mint the
 // ticket. The cookie itself never has to reach the caller.
-Route::middleware([
-    'web',
-    ResolveEnvironment::class,
-    AuthenticateFrontendApi::class,
-])->prefix('frontend/v1')->group(function (): void {
-    Route::match(['post', 'options'], '/sign-in', SignInController::class)
-        ->name('frontend.sign-in');
+//
+// BEHIND THE SAME SWITCH AS THE REST OF THE CHANNEL. The framework gates `/config` and
+// `/session` on `cbox-id.frontend_api.enabled` and says why: a feature that quietly appears
+// on upgrade is one nobody reviewed. These three were registered unconditionally, so on an
+// install that had never turned the channel on, an anonymous cross-origin password endpoint
+// was live the moment anybody minted a key — and switching the flag off during an incident
+// removed the two harmless documents and left these serving.
+if (config('cbox-id.frontend_api.enabled') === true) {
+    Route::middleware([
+        'web',
+        ResolveEnvironment::class,
+        AuthenticateFrontendApi::class,
+    ])->prefix('frontend/v1')->group(function (): void {
+        Route::match(['post', 'options'], '/sign-in', SignInController::class)
+            ->name('frontend.sign-in');
 
-    // The factor the password did not satisfy. Same door, same key, same origin list —
-    // the pending state travels as a token because a cross-origin page carries no session
-    // cookie from the first request to this one.
-    Route::match(['post', 'options'], '/sign-in/factor', SecondFactorController::class)
-        ->name('frontend.sign-in.factor');
+        // The factor the password did not satisfy. Same door, same key, same origin list —
+        // the pending state travels as a token because a cross-origin page carries no
+        // session cookie from the first request to this one.
+        Route::match(['post', 'options'], '/sign-in/factor', SecondFactorController::class)
+            ->name('frontend.sign-in.factor');
 
-    // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
-    // handle rather than in a session cookie, for the same reason everything else here
-    // does: the caller is on somebody else's origin.
-    Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'options'])
-        ->name('frontend.sign-in.passkey.options');
-    Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
-        ->name('frontend.sign-in.passkey');
-});
+        // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
+        // handle rather than in a session cookie, for the same reason everything else here
+        // does: the caller is on somebody else's origin.
+        Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'options'])
+            ->name('frontend.sign-in.passkey.options');
+        Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
+            ->name('frontend.sign-in.passkey');
+    });
+}
 
 /*
  * FIRST RUN — the only surface an unclaimed deployment serves, and one it stops serving

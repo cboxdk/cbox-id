@@ -7,7 +7,6 @@ namespace App\Platform\Migration;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Migration\Models\LegacyLoginDeclarationRecord;
 use Cbox\Id\Migration\Sources\HttpCredentialSource;
-use Cbox\Ssrf\Contracts\UrlGuard;
 use Illuminate\Http\Client\Factory as Http;
 use Throwable;
 
@@ -37,7 +36,6 @@ final class LegacyLoginProbe
 {
     public function __construct(
         private readonly Http $http,
-        private readonly UrlGuard $ssrf,
         private readonly SecretBox $secrets,
     ) {}
 
@@ -58,7 +56,7 @@ final class LegacyLoginProbe
             return 'The stored secret could not be opened. Re-declare the endpoint from your app.';
         }
 
-        $source = new HttpCredentialSource($this->http, $this->ssrf, $declaration->url, $secret);
+        $source = new HttpCredentialSource($this->http, $declaration->url, $secret);
 
         try {
             $found = $source->find($email);

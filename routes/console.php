@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\RiskDecision;
+use App\Platform\FrontendApi\LoginTicket;
 use Cbox\Id\Analytics\Models\AnalyticsEvent;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -21,6 +22,11 @@ Artisan::command('inspire', function () {
 // relational analytics store grows without bound. Its window is
 // `id-analytics.retention_days`. Harmless when the store is off — the table is simply
 // empty. ({@see \Cbox\Id\Analytics\Models\AnalyticsEvent::prunable()})
-Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class]])
+// LoginTicket is the third, and the one that grows fastest: a row per embedded sign-in
+// attempt, each naming a subject. Its window is fixed rather than configurable — a ticket
+// lives sixty seconds and the row is kept an hour past that, which is long enough to look
+// at during an incident and short enough that nobody has to think about it.
+// ({@see \App\Platform\FrontendApi\LoginTicket::prunable()})
+Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class]])
     ->daily()
     ->onOneServer();

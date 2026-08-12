@@ -17,8 +17,11 @@ use App\Platform\Sudo;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Exceptions\UnknownCredential;
+use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
@@ -580,6 +583,34 @@ function grantFeature(string $organizationId, string $key): void
         new EntitlementInput($key, ['enabled' => true]),
         EntitlementSource::Manual,
     );
+}
+
+/**
+ * A controllable Passkeys stand-in: the framework already tests the real WebAuthn
+ * verifier against a software authenticator, so here we verify only the HTTP +
+ * session bridging in the app's controller.
+ */
+function fakePasskeys(?string $authenticateAs): void
+{
+    app()->instance(Passkeys::class, new class($authenticateAs) implements Passkeys
+    {
+        public function __construct(private readonly ?string $authenticateAs) {}
+
+        public function register(string $userId, string $challenge, string $clientResponseJson, ?string $name = null): WebAuthnCredential
+        {
+            return new WebAuthnCredential(['user_id' => $userId, 'credential_id' => 'cred_'.$userId, 'name' => $name]);
+        }
+
+        public function authenticate(string $credentialId, string $challenge, string $clientResponseJson): string
+        {
+            return $this->authenticateAs ?? throw new UnknownCredential('none');
+        }
+
+        public function credentialById(string $credentialId): ?WebAuthnCredential
+        {
+            return null;
+        }
+    });
 }
 
 /**

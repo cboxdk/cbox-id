@@ -62,6 +62,13 @@ $suiteOwned = [
     'CBOX_ID_WEBAUTHN_RP_ID' => 'localhost',
     'CBOX_ID_WEBAUTHN_ORIGIN' => 'http://localhost',
 
+    // The Frontend API is OFF by default in production and ON here, pinned rather than
+    // inherited: the routes are decided when the application boots, so a suite reading
+    // this from whichever `.env` happens to be on the machine is a suite whose green says
+    // nothing about anybody else's. The one test that proves the off-state rebuilds the
+    // application with it off, which is what an install that never turned it on does.
+    'CBOX_ID_FRONTEND_API' => 'true',
+
     // Modules off, their delivery jobs inline. The devices tests assert the feature's
     // default state, and a developer .env — or a runner's shell — must not change what
     // they see; a test that wants a module on turns it on through config().

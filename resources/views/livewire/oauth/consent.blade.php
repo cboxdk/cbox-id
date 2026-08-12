@@ -316,20 +316,47 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
         // sign-in page (or X-Frame-Options blocked it), the promise never resolved, and
         // the SPA logged the user out on every token refresh. OIDC Core §3.1.2.6 wants
         // error=login_required returned to the redirect_uri instead.
-        if (! app(CurrentUser::class)->check()) {
-            // A LOGIN TICKET stands in for the session cookie a cross-origin page cannot
-            // carry. It is what an embedded sign-in form receives instead of tokens: the
-            // credential check already happened at /frontend/v1/sign-in, and this turns
-            // that into a session so the ORDINARY flow below runs — same consent, same
-            // PKCE, same code. Nothing about issuance changes; only how the person got
-            // here does.
-            //
-            // Redeemed before the prompt=none branch, so a silent renew that carries one
-            // succeeds rather than being told nobody is signed in.
-            $ticket = $from('login_ticket', $login_ticket);
+        // A LOGIN TICKET stands in for the session cookie a cross-origin page cannot carry.
+        // It is what an embedded sign-in form receives instead of tokens: the credential
+        // check already happened at /frontend/v1/sign-in, and this turns it into a session
+        // so the ORDINARY flow below runs — same consent, same PKCE, same code. Nothing
+        // about issuance changes; only how the person got here does.
+        //
+        // REDEEMED BEFORE ANYTHING LOOKS AT THE COOKIE, and this is the whole point of the
+        // ordering. It used to sit inside `if (! check())`, so a browser already holding a
+        // session for Alice ignored a ticket that had just authenticated Bob: the flow ran
+        // as Alice, skipped consent for a first-party client, and handed the relying party
+        // an id_token for somebody who never signed in on that page. Nothing anywhere
+        // reported a mismatch, and Bob's ticket sat unspent until it expired. Any browser
+        // that has ever visited the hosted login on this issuer could reach it.
+        $ticket = $from('login_ticket', $login_ticket);
 
-            if (is_string($ticket) && $ticket !== '') {
-                app(\App\Platform\FrontendApi\SignInWithTicket::class)->establish(request(), $ticket);
+        if (is_string($ticket) && $ticket !== '') {
+            // prompt=none is the SILENT-RENEW path, and OIDC Core §3.1.2.1 lets it succeed
+            // only when the End-User "is already authenticated". Redeeming a ticket creates
+            // a session inside the request — no UI is shown, so the letter about
+            // interaction is kept, but the precondition is not, and an RP reading a
+            // successful silent renew as proof of a pre-existing SSO session would be
+            // drawing a conclusion we made up milliseconds ago on a page it does not
+            // control. So the two do not combine.
+            if (in_array('none', $prompts, true)) {
+                $this->redirectError($redirectUri, 'login_required', $stateParam,
+                    'A login_ticket cannot satisfy prompt=none: the user was not already authenticated.');
+
+                return;
+            }
+
+            $established = app(\App\Platform\FrontendApi\SignInWithTicket::class)->establish(request(), $ticket);
+
+            if (! $established && app(CurrentUser::class)->check()) {
+                // A ticket that was presented and refused, over a session that happens to
+                // be signed in as somebody else. Continuing would mint a code for whoever
+                // the cookie names — the wrong-principal outcome above, arrived at from the
+                // other direction. The page that sent the ticket decides what to do next.
+                $this->redirectError($redirectUri, 'access_denied', $stateParam,
+                    'The login_ticket could not be redeemed.');
+
+                return;
             }
         }
 

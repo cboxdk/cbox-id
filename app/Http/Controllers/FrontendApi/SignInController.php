@@ -7,8 +7,10 @@ namespace App\Http\Controllers\FrontendApi;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\PlatformAuth;
+use App\Platform\RiskGuard;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -54,6 +56,7 @@ class SignInController
         private readonly PlatformAuth $auth,
         private readonly LoginTickets $tickets,
         private readonly SessionManager $sessions,
+        private readonly RiskGuard $risk,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -73,7 +76,11 @@ class SignInController
             return $this->refuse();
         }
 
-        $limiter = 'cbox-frontend-signin:'.hash('sha256', mb_strtolower($email));
+        // Scoped to the environment: two deployments sharing this installation must not
+        // share a bucket, or an attacker in one can lock a name out of the other. The key
+        // itself is deliberately NOT in here — a per-key limiter is evaded by spreading
+        // guesses across keys, and the address is the thing being defended.
+        $limiter = 'cbox-frontend-signin:'.$key->environment_id.':'.hash('sha256', mb_strtolower($email));
 
         if (RateLimiter::tooManyAttempts($limiter, self::PER_EMAIL_PER_MINUTE)) {
             // 429 rather than the generic refusal: a legitimate person hitting this needs
@@ -87,7 +94,20 @@ class SignInController
 
         RateLimiter::hit($limiter);
 
-        $outcome = $this->auth->attemptPassword($request, $email, $password);
+        // THE SAME ADAPTIVE-RISK GATE THE HOSTED FORM APPLIES, and for the same reason: a
+        // credential-stuffing run scored `Reject` by IP reputation or bot velocity is
+        // blocked on the hosted page and would otherwise simply be pointed here instead.
+        // A `Challenge` score forces the emailed-code step-up rather than letting a
+        // password alone finish — the `Otp` branch below already exists to carry it.
+        $assessment = $this->risk->assess($request, 'login', $email);
+
+        if ($this->risk->shouldBlock($assessment)) {
+            // The generic refusal, not a named one: telling an anonymous caller they were
+            // scored is telling them what to change.
+            return $this->refuse();
+        }
+
+        $outcome = $this->auth->attemptPassword($request, $email, $password, $this->risk->shouldStepUp($assessment));
 
         return match ($outcome) {
             AttemptOutcome::Ok => $this->ticketFor($key, $request),
@@ -159,7 +179,7 @@ class SignInController
 
         return new JsonResponse([
             'status' => $status,
-            'mfa_token' => $this->tickets->mintPending($key, $subjectId, ['pwd'], $stage),
+            'mfa_token' => $this->tickets->mintPending($key, $subjectId, [AuthMethod::Password->value], $stage),
             'expires_in' => 300,
         ]);
     }

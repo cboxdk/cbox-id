@@ -6,6 +6,7 @@ namespace App\Http\Controllers\FrontendApi;
 
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\PasskeyChallenges;
+use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Identity\Contracts\Passkeys;
@@ -14,6 +15,7 @@ use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
 use Cbox\Id\Identity\Exceptions\InvalidAssertionResponse;
 use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,6 +49,7 @@ class PasskeySignInController
         private readonly LoginTickets $tickets,
         private readonly Passkeys $passkeys,
         private readonly RiskGuard $risk,
+        private readonly PlatformAuth $auth,
         private readonly RelyingParties $relyingParties,
     ) {}
 
@@ -118,12 +121,31 @@ class PasskeySignInController
             return $this->refuse();
         }
 
-        // `webauthn` alone, and no `pwd`: a passkey IS the factor, and recording a password
-        // that nobody typed would put an untruth on the session's `amr` — which decides
-        // `acr` and, since this week, the SAML assertion's context class too.
+        // THE SSO MANDATE APPLIES TO THIS DOOR TOO, and this is the check the hosted flow
+        // makes at the same point ({@see \App\Http\Controllers\PasskeyController}). A
+        // mandate is not a statement about credential strength — an organization told the
+        // console "our identity provider decides who gets in", and a passkey registered on
+        // this platform is this platform deciding. An embedded button that admitted one
+        // anyway would be a second door into an organization that was shown a page saying
+        // it had closed them.
+        //
+        // After the assertion verifies, like every other door: a refusal must never be
+        // reachable by anybody who has not already proved they hold the credential.
+        if (! $this->auth->localSignInAllowedFor($subjectId)) {
+            // Named rather than folded into the uniform refusal: the page has to draw
+            // something other than "wrong credential", and by this point the caller has
+            // proved they hold the passkey, so there is nothing left to disclose.
+            return new JsonResponse(['status' => 'sso_required'], 403);
+        }
+
+        // No `pwd`: a passkey IS the factor, and recording a password nobody typed would
+        // put an untruth on the session's `amr` — which decides `acr` and, since this week,
+        // the SAML assertion's context class too. The vocabulary itself comes from
+        // {@see AuthMethod} so this door and the hosted one cannot describe the same
+        // credential differently.
         return new JsonResponse([
             'status' => 'ok',
-            'login_ticket' => $this->tickets->mint($key, $subjectId, ['webauthn']),
+            'login_ticket' => $this->tickets->mint($key, $subjectId, AuthMethod::forPasskey()),
             'expires_in' => 60,
         ]);
     }
