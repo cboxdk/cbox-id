@@ -72,10 +72,13 @@ function moduleConsoleRoutes(): array
         // membership-role question is not the one that governs it.
         'directory.members'];
 
-    // Personal, not administrative: it lists the caller's OWN handsets and belongs to
-    // every signed-in user. Pinned open by its own test below, so removing it here does
-    // not quietly drop it from coverage.
-    $personal = ['devices.mine'];
+    // Personal, not administrative: these list the caller's OWN handsets, sessions and
+    // connected applications, and belong to every signed-in user — the whole point of
+    // `account.activity` is that a person can revoke what is acting as them without
+    // asking an administrator. Both are pinned open by their own tests
+    // ({@see AccountActivityTest}, and the device test below), so excluding them here does
+    // not quietly drop them from coverage.
+    $personal = ['devices.mine', 'account.activity'];
 
     // THE PLATFORM SECTION, which refuses a plain member HARDER than this sweep asserts
     // and so cannot be swept by it. `AuthenticateOperator` answers 404 rather than 403 on

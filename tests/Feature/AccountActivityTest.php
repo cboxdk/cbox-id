@@ -2,110 +2,202 @@
 
 declare(strict_types=1);
 
-use App\Platform\OrganizationActivity;
-use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use App\Platform\CurrentUser;
+use App\Platform\DeviceLabel;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\Models\Membership;
-use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
 
-// Guarded so they coexist with the same helpers in WorkspaceConsoleTest (Pest
-// requires each test file independently — the first definition wins).
-it('records an account-scoped, hash-chained entry when a member is invited', function (): void {
-    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account] = provisionAccount();
+uses(RefreshDatabase::class);
 
-    // The page action funnels through OrganizationActivity; drive it through the real
-    // Livewire component (deps are auto-injected) with the owner as the actor.
-    signInAsMember($ownerSubjectId);
+/**
+ * YOU CANNOT REVOKE WHAT YOU CANNOT SEE, and until this page a person could see their
+ * current session, a COUNT of the others, and nothing at all about the applications
+ * holding refresh tokens as them — including every device-flow grant, which is the case
+ * self-service revocation exists for.
+ */
+function signedInPerson(string $email = 'ada@acme.test'): array
+{
+    $subject = app(Subjects::class)->create($email, 'Ada Lovelace', 'a-strong-unbreached-passphrase');
+    app(Subjects::class)->markEmailVerified($subject->id, $email);
 
-    Volt::test('console.members')
-        ->set('inviteEmail', 'newbie@acme.example')
-        ->set('inviteName', 'New Bie')
-        ->set('inviteRole', MembershipRole::Admin->value)
-        ->call('invite');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-activity-'.bin2hex(random_bytes(3))));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
 
-    // Chained under the ORGANIZATION id as scope, isolated to this customer. Read in the
-    // platform root, where the chain lives — an audit entry is environment-owned, and the
-    // ambient scope answers with an empty set that reads exactly like "nothing recorded".
-    $entry = app(PlatformRoot::class)->run(fn () => AuditEntry::query()->where('scope', $account->id)
-        ->where('action', 'organization.member_invited')->firstOrFail());
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd'], '203.0.113.10', 'Mozilla/5.0 (Macintosh) Chrome/141 Safari/537');
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+    app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Member);
 
-    expect($entry->actor_id)->toBe($ownerSubjectId)
-        ->and($entry->target_type)->toBe('invitation')
-        ->and($entry->context['email'])->toBe('newbie@acme.example')
-        ->and($entry->sequence)->toBeGreaterThanOrEqual(1);
+    return [$subject->id, $org->id, $session->id];
+}
+
+it('shows every session a person holds, not just a count of them', function (): void {
+    [$subjectId, $orgId, $currentId] = signedInPerson();
+
+    app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], '198.51.100.7', 'Mozilla/5.0 (iPhone) Safari/604');
+
+    $page = Volt::test('account.activity');
+
+    $page->assertSee('Chrome on macOS')
+        ->assertSee('Safari on iPhone')
+        // The address is what somebody actually recognises, or does not.
+        ->assertSee('203.0.113.10')
+        ->assertSee('198.51.100.7')
+        ->assertSee('This device');
 });
 
-it('records environment key mint + revoke on the account chain', function (): void {
-    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account, 'environment' => $env] = provisionAccount();
-    $activity = app(OrganizationActivity::class);
+/**
+ * THE POINT OF A LIST is that you can act on ONE row. A single "sign out everywhere" is
+ * the right answer to "my account is compromised" and the wrong one to "that is the
+ * laptop I left at the office".
+ */
+it('signs out one session and leaves the rest alone', function (): void {
+    [$subjectId, $orgId, $currentId] = signedInPerson();
 
-    // Record directly via the service (the page action funnels through it).
-    $activity->record($account->id, 'organization.environment_key_created', $ownerSubjectId,
-        targetType: 'environment', targetId: $env->id, context: ['name' => 'CI']);
-    $activity->record($account->id, 'organization.environment_key_revoked', $ownerSubjectId,
-        targetType: 'environment', targetId: $env->id, context: ['key_id' => 'k_1']);
+    $other = app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], '198.51.100.7', 'Firefox');
 
-    $recent = $activity->recent($account->id);
+    Volt::test('account.activity')->call('revokeSession', $other->id);
 
-    // Newest first, and gap-free monotonic sequence within the account chain.
-    expect($recent->first()->action)->toBe('organization.environment_key_revoked')
-        ->and($recent->pluck('action'))->toContain('organization.environment_key_created')
-        ->and($recent->pluck('sequence')->sort()->values()->all())->toBe(range(1, $recent->count()));
+    expect(app(SessionManager::class)->active($other->id))->toBeNull()
+        ->and(app(SessionManager::class)->active($currentId))->not->toBeNull();
 });
 
-it('keeps one account activity chain from leaking into another', function (): void {
-    ['organization' => $a, 'member' => $ownerA, 'subjectId' => $ownerASubjectId] = provisionAccount('a@acme.example');
-    ['organization' => $b] = provisionAccount('b@beta.example');
-    $activity = app(OrganizationActivity::class);
+/**
+ * A COMPONENT ACTION IS A POST ANYBODY SIGNED IN CAN MAKE, and an id rendered on a page is
+ * an id from the client. Somebody else's session id must do nothing at all.
+ */
+it('refuses to sign out a session belonging to somebody else', function (): void {
+    signedInPerson();
 
-    $activity->record($a->id, 'organization.environment_created', $ownerASubjectId, targetType: 'environment', targetId: 'e1');
+    [$strangerId, $strangerOrg] = signedInPerson('mallory@acme.test');
+    $strangers = app(SessionManager::class)->start($strangerId, $strangerOrg, ['pwd']);
 
-    // The entry landed on A's chain and NOT on B's, asked of the one action this test
-    // wrote. Provisioning also writes to a customer's chain — the organization is created
-    // through the contract, which audits — so counting everything would make this a "did
-    // anything land" test rather than an isolation one.
-    expect($activity->recent($a->id)->where('action', 'organization.environment_created'))->toHaveCount(1)
-        ->and($activity->recent($b->id)->where('action', 'organization.environment_created'))->toHaveCount(0);
+    // Back to the first person, holding their own session.
+    [$subjectId, $orgId, $currentId] = signedInPerson('ada2@acme.test');
+
+    Volt::test('account.activity')->call('revokeSession', $strangers->id);
+
+    expect(app(SessionManager::class)->active($strangers->id))->not->toBeNull();
+})->group('security');
+
+it('signs out everywhere else without signing out the browser asking', function (): void {
+    [$subjectId, $orgId, $currentId] = signedInPerson();
+
+    $a = app(SessionManager::class)->start($subjectId, $orgId, ['pwd']);
+    $b = app(SessionManager::class)->start($subjectId, $orgId, ['pwd']);
+
+    Volt::test('account.activity')->call('signOutEverywhereElse');
+
+    expect(app(SessionManager::class)->active($a->id))->toBeNull()
+        ->and(app(SessionManager::class)->active($b->id))->toBeNull()
+        ->and(app(SessionManager::class)->active($currentId))->not->toBeNull();
 });
 
-it('renders the activity page for an admin and lists recorded actions', function (): void {
-    ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account, 'environment' => $env] = provisionAccount();
-    app(OrganizationActivity::class)->record($account->id, 'organization.environment_created', $ownerSubjectId,
-        targetType: 'environment', targetId: $env->id, context: ['name' => 'Staging']);
+/**
+ * THE DEVICE-FLOW CASE, which is the whole reason this page exists: you approve something
+ * on a TV or a command line, and later you want it gone. Before this it was invisible.
+ */
+it('shows an application holding a grant, and withdraws exactly that one', function (): void {
+    [$subjectId, $orgId] = signedInPerson();
 
-    signInAsMember($ownerSubjectId);
-    // Follows the redirect: `activity` was retired into Logs › Activity log, which reads
-    // the same hash-chained entries for the same organization.
-    $this->get(route('activity'))
-        ->assertRedirect(route('audit'));
+    $cli = app(ClientRegistry::class)->register(new NewClient('Acme CLI', ClientType::Public, grantTypes: ['urn:ietf:params:oauth:grant-type:device_code'], scopes: ['openid', 'offline_access']))->client;
+    $other = app(ClientRegistry::class)->register(new NewClient('Acme Web', ClientType::Public, grantTypes: ['authorization_code'], scopes: ['openid']))->client;
 
-    $this->get(route('audit'))
-        ->assertOk()
-        ->assertSee('Activity')
-        ->assertSee('environment created')
-        ->assertSee('Staging');
+    $tokens = app(RefreshTokens::class);
+    $tokens->issue($cli, $subjectId, $orgId, ['openid', 'offline_access']);
+    $kept = $tokens->issue($other, $subjectId, $orgId, ['openid']);
+
+    $page = Volt::test('account.activity');
+
+    $page->assertSee('Acme CLI')
+        ->assertSee('Acme Web')
+        // Worth saying out loud: this one keeps working when nobody is there.
+        ->assertSee('Works when you are away');
+
+    $page->call('revokeApplication', $cli->client_id);
+
+    $remaining = app(RefreshTokens::class)->connectedApplications($subjectId);
+
+    expect($remaining)->toHaveCount(1)
+        ->and($remaining[0]->name)->toBe('Acme Web');
+})->group('security');
+
+it('never shows one person another person\'s applications', function (): void {
+    [$strangerId, $strangerOrg] = signedInPerson('mallory@acme.test');
+
+    $client = app(ClientRegistry::class)->register(new NewClient('Mallory CLI', ClientType::Public, grantTypes: ['authorization_code'], scopes: ['openid']))->client;
+    app(RefreshTokens::class)->issue($client, $strangerId, $strangerOrg, ['openid']);
+
+    signedInPerson('ada3@acme.test');
+
+    Volt::test('account.activity')->assertDontSee('Mallory CLI');
+})->group('security');
+
+/**
+ * "Was that me?" is the question a person asks the moment they see a session they do not
+ * recognise, which is why it is on the same page rather than one click away.
+ */
+it('shows the account events a person needs to recognise, in their own words', function (): void {
+    signedInPerson();
+
+    Volt::test('account.activity')
+        // `user.session_started` is written by the session manager on every sign-in.
+        ->assertSee('Signed in')
+        // And not the machine name for it.
+        ->assertDontSee('user.session_started');
 });
 
-it('refuses the activity page to a member who cannot read members (403)', function (): void {
-    ['organization' => $account] = provisionAccount();
-    // A DEVELOPER, not a Billing member. Billing was the role this pinned, and it is no
-    // longer assignable: an account is an organization now, the capability comes from the
-    // membership, and Billing maps to Viewer — who may read the roster. Developer is the
-    // reachable role that still refuses it, and refuses it for the reason that matters: a
-    // technical credential must not enumerate the team.
-    [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+it('shows nobody else\'s activity', function (): void {
+    [$strangerId] = signedInPerson('mallory2@acme.test');
 
-    signInAsMember($viewerSubjectId);
+    signedInPerson('ada4@acme.test');
 
-    // Asserted on the page that survived. `/activity` is now a redirect, and a redirect
-    // authorizes nothing — the property being protected is that the LOG refuses them.
-    //
-    // The merge narrowed this deliberately: the retired page admitted anyone who could
-    // read members (a Viewer), and Logs › Activity log is admin-only. Narrowing toward the
-    // stricter of two gates is the direction to fail in when merging them, and widening
-    // the surviving page to match the retired one would have loosened it on both planes.
-    $this->get(route('audit'))
-        ->assertForbidden();
+    $html = Volt::test('account.activity')->html();
+
+    expect($html)->not->toContain($strangerId);
+})->group('security');
+
+/**
+ * A user agent is not something a person can read. "Chrome on macOS" is what they compare
+ * against the thing in their hand.
+ */
+it('names a device in words rather than in a user-agent string', function (string $agent, string $expected): void {
+    expect(DeviceLabel::for($agent))->toBe($expected);
+})->with([
+    'chrome on mac' => ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Chrome on macOS'],
+    'safari on iphone' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', 'Safari on iPhone'],
+    // Edge and Chrome both claim to be Safari, so the order of the checks is the test.
+    'edge on windows' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', 'Edge on Windows'],
+    'firefox on linux' => ['Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0', 'Firefox on Linux'],
+]);
+
+it('says a client sent no browser name rather than calling it unknown', function (): void {
+    // Almost always a CLI, a script or an SDK — which is more useful to say than admitting
+    // we did not look.
+    expect(DeviceLabel::for(null))->toContain('no browser name');
+});
+
+/**
+ * The audit chain carries `recorded_at`, and the model declares no Eloquent timestamps —
+ * so reading `created_at` rendered a column of em dashes on a page whose entire job is to
+ * tell somebody WHEN something happened.
+ */
+it('dates every activity row', function (): void {
+    signedInPerson();
+
+    $html = Volt::test('account.activity')->html();
+
+    // A time element with a real datetime, not the placeholder.
+    expect($html)->toMatch('/<time[^>]+datetime="\d{4}-\d{2}-\d{2}T/');
 });

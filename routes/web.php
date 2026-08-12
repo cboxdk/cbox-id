@@ -351,6 +351,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // passkeys, sessions). Available to members and admins alike.
     Volt::route('/account', 'account')->name('account');
 
+    // WHERE YOU ARE SIGNED IN, AND WHAT CAN ACT AS YOU. Its own page rather than a fourth
+    // section on `/account`: that page is about the credentials you hold — password,
+    // passkeys, 2FA — and this is about what is currently holding YOU. A person arrives
+    // here with a different question ("is any of this not me?") and usually in a hurry.
+    Volt::route('/account/activity', 'account.activity')->name('account.activity');
+
     Volt::route('/usage', 'usage')->name('usage');
     // THE TENANT DIRECTORY — everyone who can sign in to this organization, plus the
     // invitations nobody has accepted. Its own URI, because it is not the same page as
