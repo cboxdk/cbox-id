@@ -3,14 +3,18 @@
 declare(strict_types=1);
 
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Models\EnrolmentCode;
 use Cbox\Id\Devices\Support\EnrolmentToken;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -150,4 +154,39 @@ it('records a refused code in the audit log without leaking the reason to the ca
     expect($response->json('message'))->toBe(
         'That enrolment code is not valid. Open Trusted devices for a fresh one.'
     );
+});
+
+it('sweeps spent codes once they could no longer be accepted', function (): void {
+    // The table grows by a row per enrolment and is never read — it exists only to
+    // refuse a replay — so without a sweep it grows for the life of the deployment.
+    $code = app(EnrolmentToken::class)->mint('user_alice');
+    enrol(codePayload(['enrolment_token' => $code]))->assertStatus(201);
+
+    expect(EnrolmentCode::query()->withoutGlobalScopes()->count())->toBe(1);
+
+    // Still inside the keep-window.
+    Artisan::call('model:prune', ['--model' => [EnrolmentCode::class]]);
+    expect(EnrolmentCode::query()->withoutGlobalScopes()->count())->toBe(1);
+
+    EnrolmentCode::query()->withoutGlobalScopes()
+        ->update(['expires_at' => Carbon::now()->subHours(2)]);
+
+    Artisan::call('model:prune', ['--model' => [EnrolmentCode::class]]);
+    expect(EnrolmentCode::query()->withoutGlobalScopes()->count())->toBe(0);
+});
+
+it('sweeps with no environment in context, where the scope denies by default', function (): void {
+    // EnvironmentScope appends `1 = 0` when nothing is in context, and a scheduled sweep
+    // has nothing in context. Scoped, this would delete nothing while appearing to work.
+    $code = app(EnrolmentToken::class)->mint('user_alice');
+    enrol(codePayload(['enrolment_token' => $code]))->assertStatus(201);
+
+    EnrolmentCode::query()->withoutGlobalScopes()
+        ->update(['expires_at' => Carbon::now()->subHours(2)]);
+
+    app(EnvironmentContext::class)->set(null);
+
+    Artisan::call('model:prune', ['--model' => [EnrolmentCode::class]]);
+
+    expect(EnrolmentCode::query()->withoutGlobalScopes()->count())->toBe(0);
 });

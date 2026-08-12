@@ -3,6 +3,7 @@
 use App\Models\RiskDecision;
 use App\Platform\FrontendApi\LoginTicket;
 use Cbox\Id\Analytics\Models\AnalyticsEvent;
+use Cbox\Id\Devices\Models\EnrolmentCode;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -27,6 +28,12 @@ Artisan::command('inspire', function () {
 // lives sixty seconds and the row is kept an hour past that, which is long enough to look
 // at during an incident and short enough that nobody has to think about it.
 // ({@see \App\Platform\FrontendApi\LoginTicket::prunable()})
-Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class]])
+// EnrolmentCode is the fourth: a row per handset enrolled, kept only to refuse a replay
+// of a code that lives two minutes. Swept an hour past its own expiry, and its
+// prunable() deliberately drops the environment scope — that scope is deny-by-default,
+// and a scheduled sweep has no environment in context, so left alone it would delete
+// nothing while appearing to work.
+// ({@see \Cbox\Id\Devices\Models\EnrolmentCode::prunable()})
+Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class, EnrolmentCode::class]])
     ->daily()
     ->onOneServer();
