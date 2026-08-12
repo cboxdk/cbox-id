@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
@@ -197,10 +198,12 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         // Resume an in-flight SAML sign-on (the subject was bounced here mid-SSO);
         // else the intended URL stashed when auth bounced us here (e.g. an
         // /oauth/authorize the user was completing); else the console.
-        $intended = session()->pull('url.intended');
+        // The intent has to be one a SUBJECT can serve. This host also carries the
+        // environment ADMIN console, whose refusals write the same key — and sending an
+        // end user to `/admin/...` bounces them straight back here with the intent
+        // rewritten, which is the loop the administrator hit from the other direction.
         $this->redirect(
-            app(SamlSsoHandoff::class)->resumeUrl()
-                ?? (is_string($intended) && $intended !== '' ? $intended : route('dashboard')),
+            app(SamlSsoHandoff::class)->resumeUrl() ?? IntendedUrl::pullForSubject() ?? route('dashboard'),
             navigate: false,
         );
     }

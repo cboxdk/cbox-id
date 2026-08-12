@@ -10,7 +10,15 @@ use App\Platform\Install\EnvFile;
 use App\Platform\Install\InstalledPlatform;
 use App\Platform\Install\InstallPlan;
 use App\Platform\Install\OperatorIdentity;
+use App\Support\CliClient;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -57,6 +65,9 @@ class InstallCommand extends Command
         {--issuer= : Public HTTPS URL of this platform (the token issuer). Defaults to APP_URL}';
 
     protected $description = 'Install this Cbox ID deployment — operator, environment, and the first organization';
+
+    /** Where `cbox login` should point, once the client exists. Null if it does not. */
+    private ?string $cliClientIssuer = null;
 
     public function handle(): int
     {
@@ -106,6 +117,7 @@ class InstallCommand extends Command
             return self::FAILURE;
         }
 
+        $this->provisionCliClient($installed);
         $this->report($installed, $plan);
 
         return $this->verify();
@@ -335,6 +347,60 @@ class InstallCommand extends Command
         }
     }
 
+    /**
+     * The OAuth client `cbox login` signs in as, so a fresh deployment has one.
+     *
+     * PART OF INSTALL BECAUSE IT IS PART OF A WORKING DEPLOYMENT. Left out, the
+     * first thing anybody does with the CLI is fail, and the fix is a second
+     * command nobody knows exists — the same gap the sign-in URL above was added
+     * to close.
+     *
+     * IN THE ENVIRONMENT THAT IS AN ISSUER. On the multi-tenant shape that is the
+     * first tenant, never the platform root: the root serves no discovery document
+     * and is an issuer for nobody, so a client minted there could never be used.
+     * On the single-tenant shape the root IS the issuer and gets it.
+     *
+     * IT DOES NOT FAIL THE INSTALL. The platform is installed by this point, and
+     * refusing to finish over a convenience would leave an operator with a
+     * half-reported deployment and no password. It says what went wrong and names
+     * the command that retries it.
+     */
+    private function provisionCliClient(InstalledPlatform $installed): void
+    {
+        $environment = $installed->tenant ?? $installed->root;
+        $key = $environment->getKey();
+
+        if (! is_string($key) || $key === '') {
+            return;
+        }
+
+        try {
+            $this->cliClientIssuer = $this->laravel->make(EnvironmentContext::class)->runAs(
+                GenericEnvironment::of($key),
+                function () use ($key): string {
+                    if (! CliClient::find() instanceof Client) {
+                        $this->laravel->make(ClientRegistry::class)->register(new NewClient(
+                            name: CliClient::NAME,
+                            type: ClientType::Public,
+                            redirectUris: [],
+                            grantTypes: CliClient::GRANTS,
+                            scopes: CliClient::SCOPES,
+                            firstParty: true,
+                            organizationId: null,
+                        ));
+                    }
+
+                    return $this->laravel->make(IssuerResolver::class)->forEnvironment($key);
+                },
+            );
+        } catch (Throwable $e) {
+            $this->components->warn(
+                'The cbox CLI client was not provisioned ('.$e->getMessage().'). '
+                ."Run `php artisan cbox-id:cli:client --environment={$key}`."
+            );
+        }
+    }
+
     private function report(InstalledPlatform $installed, InstallPlan $plan): void
     {
         $this->line('  <fg=green>✓</> Platform root environment ['.$installed->root->slug.'].');
@@ -358,6 +424,13 @@ class InstallCommand extends Command
         $this->line('  <fg=green>✓</> Sign in at '.$base.route('login', [], false).'.');
         $this->line('     The deployment section — environments, accounts, operators — is '
             .$base.route('platform.environments', [], false).'.');
+
+        // The CLI's address, which is NOT $base on the multi-tenant shape: the
+        // console lives on the account host and the issuer is the tenant's own.
+        if ($this->cliClientIssuer !== null) {
+            $this->line('  <fg=green>✓</> The cbox CLI can sign in: '
+                .'<options=bold>cbox login --issuer '.$this->cliClientIssuer.'</>');
+        }
 
         // Shown ONCE, and only when this command invented it. A password the operator
         // supplied is never echoed — not to the terminal, not to a shell history file,

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
 use App\Platform\SamlSsoHandoff;
 use Illuminate\Support\Facades\RateLimiter;
@@ -47,7 +48,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
         }
 
         RateLimiter::clear($key);
-        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? (is_string($intended = session()->pull('url.intended')) && $intended !== '' ? $intended : route('dashboard')), navigate: false);
+        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? IntendedUrl::pullForSubject() ?? route('dashboard'), navigate: false);
     }
 
     public function verify(PlatformAuth $auth): void
@@ -72,7 +73,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Two-factor verification'])]
         }
 
         RateLimiter::clear($key);
-        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? (is_string($intended = session()->pull('url.intended')) && $intended !== '' ? $intended : route('dashboard')), navigate: false);
+        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? IntendedUrl::pullForSubject() ?? route('dashboard'), navigate: false);
     }
 }; ?>
 

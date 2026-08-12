@@ -458,6 +458,18 @@ final class PlatformAuth
         // load-bearing on whatever else happens to refuse first.
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
+        // AND THE ENVIRONMENT-ADMIN ANCHOR. On a tenant host the admin console and the
+        // tenant's own end-user pages share one cookie and one session key, so a subject
+        // signing in here REPLACES an admin session that was there — but the anchor
+        // survived `regenerate()`, leaving a session that claimed to administer the
+        // environment while naming a session row the platform root has never heard of.
+        // Every request then paid for a root lookup to be told no.
+        //
+        // Safe for the admin door itself: {@see EnvironmentAdminAuth::establish()} calls
+        // this first and writes the anchor afterwards, deliberately, so that an anchor
+        // never stands alone.
+        session()->forget(EnvironmentAdminAuth::ENV_KEY);
+
         // Pin to the caller-supplied org when given (impersonation authorizes against
         // a SPECIFIC org — the session must land there, not in the subject's oldest
         // membership, or the role gate and the effective session would disagree).
@@ -486,6 +498,7 @@ final class PlatformAuth
     public function adopt(Request $request, Session $session): void
     {
         session()->forget([self::MFA_PENDING_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
+        session()->forget(EnvironmentAdminAuth::ENV_KEY);
 
         $organizationId = $session->organization_id
             ?? $this->memberships->forUser($session->user_id)->value('organization_id');

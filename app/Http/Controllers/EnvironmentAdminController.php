@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\IntendedUrl;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -120,7 +121,14 @@ final class EnvironmentAdminController extends Controller
 
         $auth->establish($grant->subjectId, $hostEnv);
 
-        return redirect()->intended(route('environment.home'));
+        // NOT `redirect()->intended()`. This host serves two identities that share one
+        // session, and `url.intended` is written by whichever of them was refused last —
+        // so an admin arriving here after having bounced off an end-user page was sent
+        // straight back to it, refused again for not being a subject, and returned to the
+        // tenant sign-in form with the intent rewritten. The console became unreachable
+        // from a browser that had merely visited `/device` once. An intent is honoured
+        // only by the plane that can serve it.
+        return redirect()->to(IntendedUrl::pullForAdminConsole() ?? route('environment.home'));
     }
 
     public function logout(Request $request, EnvironmentAdminAuth $auth): RedirectResponse

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use App\Console\Commands\InstallCommand;
 use App\Platform\Install\EnvFile;
+use App\Support\CliClient;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
@@ -237,4 +241,60 @@ it('shows a generated password once, and that password works', function (): void
     expect($works)->toBeTrue(
         'nothing in the install output is the password it printed. Output was: '.$stripped,
     );
+});
+
+it('leaves a single-tenant deployment able to sign the cbox CLI in', function (): void {
+    // Without this the first thing anybody does with the CLI fails, and the fix is a
+    // second command nobody knows exists — the same gap the sign-in URL closes for the
+    // console. On this shape the root IS the issuer, so the client belongs there.
+    [$exit] = runInstall([
+        '--email' => 'root@acme.example',
+        '--name' => 'Root Operator',
+        '--password' => 'a-strong-unbreached-passphrase',
+        '--environment' => 'Production',
+    ]);
+
+    expect($exit)->toBe(0);
+
+    $root = Environment::query()->where('is_default', true)->first();
+
+    $client = app(EnvironmentContext::class)->runAs(
+        GenericEnvironment::of((string) $root?->getKey()),
+        fn () => CliClient::find(),
+    );
+
+    expect($client)->not->toBeNull()
+        // Public, because a binary on a laptop keeps no secret; and exactly the two
+        // grants it uses, so it cannot be talked into another later.
+        ->and($client?->type)->toBe(ClientType::Public)
+        ->and($client?->grant_types)->toBe(CliClient::GRANTS)
+        // offline_access, or the session ends an hour in and people paste keys instead.
+        ->and($client?->scopes)->toContain('offline_access');
+});
+
+it('mints the CLI client in the tenant, never in the platform root', function (): void {
+    // The root serves no discovery document — it is an issuer for nobody — so a client
+    // minted there could never be used to sign in.
+    [$exit] = runInstall([
+        '--email' => 'root@acme.example',
+        '--name' => 'Root Operator',
+        '--password' => 'a-strong-unbreached-passphrase',
+        '--multi-tenant' => true,
+        '--console-host' => 'accounts.acme.example',
+        '--organization' => 'Acme',
+        '--environment' => 'Production',
+    ]);
+
+    expect($exit)->toBe(0);
+
+    $root = Environment::query()->where('is_default', true)->first();
+    $tenant = Environment::query()->where('is_default', false)->first();
+
+    $in = fn (?Environment $e) => $e === null ? null : app(EnvironmentContext::class)->runAs(
+        GenericEnvironment::of((string) $e->getKey()),
+        fn () => CliClient::find(),
+    );
+
+    expect($in($tenant))->not->toBeNull()
+        ->and($in($root))->toBeNull();
 });

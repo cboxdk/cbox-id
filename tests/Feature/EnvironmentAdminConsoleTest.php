@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\PlaneResolver;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -356,3 +358,79 @@ it('refuses a session anchored to one environment on another the same admin may 
     expect($auth->membership())
         ->toBeNull('a session anchored to one environment administered another on the same cookie');
 })->group('security');
+
+/**
+ * THE LOCKOUT A REAL ADMINISTRATOR HIT, in production.
+ *
+ * A tenant host serves two identities over one cookie: the environment ADMIN console (an
+ * account member, whose session resolves in the platform root) and the tenant's own
+ * end-user pages (a subject inside the environment). Neither can open the other's pages —
+ * that is the design — and both refusals write the same `url.intended`.
+ *
+ * So: an admin opens `/device?user_code=…`, an end-user page. `redirect()->guest()` bounces
+ * them to the tenant sign-in form and records `/device` as the intent. They go back to the
+ * account console and open the environment again; the handoff redeems perfectly, mints a
+ * good admin session — and then honours that intent. Straight to `/device`, which a
+ * platform-root subject may not open, which bounces to the tenant login and rewrites the
+ * intent. The admin console was unreachable from a browser that had once visited an
+ * end-user page, and every hop was doing its job.
+ */
+it('does not follow an end-user page an admin was bounced off', function (): void {
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    serveOnTestHost($env);
+
+    // What `redirect()->guest()` leaves behind when /device refuses an admin.
+    $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    session()->put('url.intended', 'https://'.$host.'/device?user_code=GMGF-WDZW');
+
+    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
+
+    $this->get("/admin/handoff?token={$token}")->assertRedirect(route('environment.home'));
+
+    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($member->user_id)
+        // And it is consumed, not left for the next sign-in on the other plane to trip on.
+        ->and(session('url.intended'))->toBeNull();
+});
+
+it('still resumes a page inside the admin console', function (): void {
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    serveOnTestHost($env);
+
+    // On the host this request is actually made to. An intended URL naming another host
+    // is refused outright rather than reasoned about — that is an open redirect wearing a
+    // convenience feature's clothes.
+    $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+
+    session()->put('url.intended', 'https://'.$host.'/admin/organizations');
+
+    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
+
+    $this->get("/admin/handoff?token={$token}")
+        ->assertRedirect('https://'.$host.'/admin/organizations');
+});
+
+/**
+ * The other half of the same collision. A subject signing in on this host REPLACES whatever
+ * admin session was there — one cookie, one session key — but the environment anchor
+ * survived `regenerate()`, leaving a session that claimed to administer the environment
+ * while naming a session row the platform root has never heard of. Harmless in effect,
+ * because the resolver refuses it, and a root lookup on every single request to say so.
+ */
+it('drops the admin anchor when a subject signs in on the same host', function (): void {
+    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    serveOnTestHost($env);
+
+    actAsEnvironmentAdmin($member->user_id, $envId);
+    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
+
+    $subject = app(EnvironmentContext::class)->runAs(
+        GenericEnvironment::of($envId),
+        fn () => app(Subjects::class)->create('enduser@acme.example', 'End User', 'a-strong-unbreached-passphrase'),
+    );
+
+    app(PlatformAuth::class)->establish(request(), $subject->id, ['pwd']);
+
+    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBeNull()
+        ->and(app(EnvironmentAdminAuth::class)->subjectId())->toBeNull();
+});

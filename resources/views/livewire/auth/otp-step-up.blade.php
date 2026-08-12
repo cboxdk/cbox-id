@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
 use App\Platform\SamlSsoHandoff;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
@@ -62,7 +63,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Additional verification'])]
         }
 
         RateLimiter::clear($key);
-        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? (is_string($intended = session()->pull('url.intended')) && $intended !== '' ? $intended : route('dashboard')), navigate: false);
+        $this->redirect(app(SamlSsoHandoff::class)->resumeUrl() ?? IntendedUrl::pullForSubject() ?? route('dashboard'), navigate: false);
     }
 
     public function resend(PlatformAuth $auth): void
