@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -87,3 +88,52 @@ it('offers an owner no page that refuses them', function (): void {
 
     expect($refused)->toBe([]);
 })->group('security');
+
+/**
+ * AND NOTHING IS ROUTED WITH NO WAY TO REACH IT.
+ *
+ * The opposite failure to the one above, and the one that actually happened: two pages
+ * moved from the organization plane to the environment plane, were routed there, and were
+ * put on no rail — reachable for a day only by typing the URL, while the getting-started
+ * guide told people to look for them in a menu that did not list them.
+ *
+ * Asserted over the environment rail as a whole rather than for those two pages by name,
+ * because naming them is a check that passes for the next page somebody forgets.
+ */
+it('offers every environment-console page somewhere in its rail', function (): void {
+    // Every module on, so a module page absent from the rail is a real omission rather
+    // than a switched-off feature correctly hidden.
+    config([
+        'id-analytics.enabled' => true,
+        'compliance.enabled' => true,
+        'connectors.enabled' => true,
+        'id-devices.enabled' => true,
+    ]);
+
+    $railed = collect(app(ConsoleNavigation::class)->environment()->areas)
+        ->flatMap(fn ($area) => collect($area->pages)->map(fn ($page) => $page->route))
+        ->all();
+
+    // Detail and create pages hang off a list that IS on the rail — a rail entry per
+    // route would be a menu nobody could read. The list pages are what must be reachable.
+    $unreachable = collect(Route::getRoutes()->getRoutes())
+        ->map(fn ($route): ?string => $route->getName())
+        ->filter(fn (?string $name): bool => is_string($name)
+            && str_starts_with($name, 'environment.')
+            && ! str_contains($name, '.create')
+            && ! str_contains($name, '.show')
+            && ! in_array($name, [
+                // Chrome and ceremony rather than pages: the console's own front door, the
+                // step-up screen, the sign-out post, the handoff.
+                'environment.home', 'environment.sudo', 'environment.logout', 'environment.impersonate',
+                // An ACTION, not a page: the signed handoff that opens this environment's
+                // console from the account plane. It has no rail entry because it is not
+                // somewhere you navigate to.
+                'environment.open',
+            ], true))
+        ->reject(fn (string $name): bool => in_array($name, $railed, true))
+        ->values()
+        ->all();
+
+    expect($unreachable)->toBe([]);
+})->group('ux');

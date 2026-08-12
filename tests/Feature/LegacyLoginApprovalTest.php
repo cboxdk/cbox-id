@@ -57,7 +57,7 @@ it('actually consults the endpoint once approved, and not before', function (): 
     expect($source->verify('ada@legacy.test', 'pw'))->toBeNull();
     Http::assertNothingSent();
 
-    confirmStepUp();
+    confirmEnvironmentStepUp();
     Volt::test('console.legacy-login')->call('approve');
 
     expect($source->verify('ada@legacy.test', 'pw')?->email)->toBe('ada@legacy.test');
@@ -66,7 +66,7 @@ it('actually consults the endpoint once approved, and not before', function (): 
 it('withdraws it again, leaving the declaration visible', function (): void {
     actAsEnvironmentAdminOfATenant();
     declareLegacy();
-    confirmStepUp();
+    confirmEnvironmentStepUp();
 
     Volt::test('console.legacy-login')->call('approve');
     expect(LegacyLoginDeclarationRecord::query()->first()?->isApproved())->toBeTrue();
@@ -86,7 +86,7 @@ it('withdraws it again, leaving the declaration visible', function (): void {
 it('records who approved it, and keeps the original moment', function (): void {
     actAsEnvironmentAdminOfATenant();
     declareLegacy();
-    confirmStepUp();
+    confirmEnvironmentStepUp();
 
     Volt::test('console.legacy-login')->call('approve');
     $first = LegacyLoginDeclarationRecord::query()->first();
@@ -209,7 +209,7 @@ it('refuses to approve from a session that has not re-confirmed', function (): v
 it('cannot be reached by an organization administrator at all', function (): void {
     actingAsRole(MembershipRole::Owner);
     declareLegacy();
-    confirmStepUp();
+    confirmEnvironmentStepUp();
 
     try {
         Volt::test('console.legacy-login')->call('approve');
@@ -221,4 +221,37 @@ it('cannot be reached by an organization administrator at all', function (): voi
         // And the page is absent rather than present-and-403: a route that exists and
         // refuses reads like a permissions problem somebody will try to fix.
         ->and(Route::has('legacy-login'))->toBeFalse();
+});
+
+/**
+ * OVER HTTP, THROUGH THE REAL ROUTE — which is the thing every other test in this file
+ * cannot see.
+ *
+ * `Volt::test()` instantiates the component directly and runs none of the route's
+ * middleware, so a page can be gated on a step-up its own administrator has no way to
+ * satisfy and every test here stays green. That is exactly what happened: the page was
+ * moved to the environment plane and gated on the ORGANIZATION plane's `sudo`, which sends
+ * the admin to `/sudo`, which resolves the subject under the ambient tenant scope, finds
+ * nothing, and bounces to the tenant end-user login. No path back, and nothing red.
+ */
+it('opens for an environment administrator who has confirmed the environment step-up', function (): void {
+    multiTenantDeployment();
+    actAsEnvironmentAdminOfATenant();
+    declareLegacy();
+    confirmEnvironmentStepUp();
+
+    $this->get(route('environment.legacy-login'))
+        ->assertOk()
+        ->assertSee('legacy.acme.test');
+});
+
+it('asks for the environment step-up rather than one the admin cannot give', function (): void {
+    multiTenantDeployment();
+    actAsEnvironmentAdminOfATenant();
+    declareLegacy();
+
+    // No confirmation. The redirect must be to the ENVIRONMENT step-up, not the
+    // organization one — the organization one is a door this person cannot open.
+    $this->get(route('environment.legacy-login'))
+        ->assertRedirect(route('environment.sudo'));
 });

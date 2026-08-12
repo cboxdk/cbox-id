@@ -84,6 +84,15 @@ class ConsoleNavigation
                 // the published guide already use. It also names the half "Applications"
                 // hides: the machine credentials that never sign anyone in.
                 new NavPage('environment.clients', 'Apps & API keys'),
+                // Beside Apps & API keys because that is where somebody goes looking for
+                // "how does my frontend talk to this", and the two answer opposite halves
+                // of it: one is the secret a server holds, one is the public key a page
+                // holds. They live on this plane ALONE — both are owned by the environment
+                // with no organization column — and when they moved here from the
+                // organization plane they were routed and never put on a rail, so for a
+                // day they were reachable only by typing the URL.
+                new NavPage('environment.frontend-keys', 'Frontend keys'),
+                new NavPage('environment.legacy-login', 'Legacy login'),
                 new NavPage('environment.webhooks', 'Webhooks'),
                 // "Inline hooks" on both planes now. Called "Event hooks" here, it sat
                 // one line under Webhooks — a different capability that runs after the

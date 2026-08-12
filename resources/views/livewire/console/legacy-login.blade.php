@@ -4,7 +4,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Migration\LegacyLoginApprovals;
 use App\Platform\Migration\LegacyLoginProbe;
-use App\Platform\Sudo;
+use App\Platform\EnvironmentSudo;
 use Illuminate\Auth\Access\AuthorizationException;
 use Cbox\Id\OAuthServer\Models\Client;
 use Livewire\Attributes\Layout;
@@ -61,9 +61,10 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
     {
         app(ConsoleScope::class)->assertMayAdministerEnvironment();
 
-        // ASKED AGAIN HERE, not only on the route. Route middleware runs on the first page
-        // load; every Livewire action after it is a POST to the component endpoint, so a
-        // window opened before the sudo confirmation expired can still call this an hour
+        // ASKED AGAIN HERE, not only on the route, and asked of the ENVIRONMENT step-up
+        // because that is the plane this page is on. Route middleware runs on the first
+        // page load; every Livewire action after it is a POST to the component endpoint,
+        // so a window opened before the confirmation expired can still call this an hour
         // later. This is the one click in the console that redirects where passwords go.
         $this->assertFreshStepUp();
 
@@ -95,7 +96,7 @@ new #[Layout('components.layouts.console', ['title' => 'Legacy login'])] class e
      */
     private function assertFreshStepUp(): void
     {
-        if (! app(Sudo::class)->confirmed()) {
+        if (! app(EnvironmentSudo::class)->confirmed()) {
             throw new AuthorizationException('Confirm it is you before changing where sign-ins are sent.');
         }
     }

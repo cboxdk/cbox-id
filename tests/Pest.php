@@ -653,6 +653,18 @@ function confirmStepUp(): void
 }
 
 /**
+ * Confirm the ENVIRONMENT plane's step-up.
+ *
+ * A different session key from {@see confirmStepUp()}, deliberately: a confirmation made
+ * as an organization member must never satisfy a gate on the environment console, where
+ * the person is a platform-root subject administering somebody else's tenant.
+ */
+function confirmEnvironmentStepUp(): void
+{
+    app(EnvironmentSudo::class)->confirm();
+}
+
+/**
  * Leave the console session behind, keeping everything `actingAsRole()` set up.
  *
  * For the pages an ANONYMOUS visitor sees — a branded sign-in page, a public consent

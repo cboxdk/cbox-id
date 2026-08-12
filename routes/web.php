@@ -677,7 +677,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // hijacked or clickjacked session, not a person. The component asks again inside
         // the action, because a Livewire call after the first page load never re-runs
         // route middleware.
-        Volt::route('/legacy-login', 'console.legacy-login')->middleware('sudo')->name('environment.legacy-login');
+        // `env.sudo`, not `sudo`. They are different session keys on purpose — a
+        // confirmation on one plane must never satisfy the other — and this page is on the
+        // ENVIRONMENT plane, where the person is a platform-root subject. Gated on the
+        // organization plane's step-up, the page was unreachable: `RequireSudo` sent them
+        // to `/sudo`, which resolves the subject under the ambient tenant scope, finds
+        // nothing, and bounces to the tenant end-user login. There is no path from there
+        // back. The vault two lines below has said this since the planes merged.
+        Volt::route('/legacy-login', 'console.legacy-login')->middleware('env.sudo')->name('environment.legacy-login');
         Volt::route('/applications/new', 'console.clients.create')->name('environment.clients.create');
         Volt::route('/applications/{client}', 'console.clients.show')->name('environment.clients.show');
 
