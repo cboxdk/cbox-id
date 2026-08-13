@@ -262,7 +262,7 @@ it('signs a person in at the authorize route itself, from the ticket in the URL'
         'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'login_ticket' => $ticket,
     ]));
@@ -303,7 +303,7 @@ it('lets the ticket decide who is signing in, not the cookie that was already th
             'response_type' => 'code',
             'scope' => 'openid',
             'state' => 'st',
-            'code_challenge' => 'abc',
+            'code_challenge' => pkceChallenge(),
             'code_challenge_method' => 'S256',
             'login_ticket' => $bobsTicket,
         ]))->assertOk();
@@ -339,7 +339,7 @@ it('will not let a ticket satisfy prompt=none', function (): void {
         'scope' => 'openid',
         'state' => 'st',
         'prompt' => 'none',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'login_ticket' => $ticket,
     ]))->assertRedirect()->headers->get('Location');
@@ -406,7 +406,7 @@ it('lets the same person refresh the consent screen they just landed on', functi
         'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'login_ticket' => $ticket,
     ]);
@@ -447,7 +447,7 @@ it('still refuses a spent ticket that names another person', function (): void {
         'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'login_ticket' => $bobsTicket,
     ]))->headers->get('Location');

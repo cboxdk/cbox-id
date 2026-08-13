@@ -247,6 +247,19 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
             return;
         }
 
+        // AND IT MUST BE THE RIGHT SHAPE. RFC 7636 §4.2: an S256 challenge is base64url of
+        // a SHA-256 digest — 43 characters of the unreserved set. The issuer refuses
+        // anything else, so without this check a client sending a placeholder got a
+        // consent screen, pressed Allow, and hit a 500 at the moment the code was minted:
+        // the error belongs HERE, at /authorize, where a developer is looking and where
+        // the protocol has a way to say it.
+        if (preg_match('/^[A-Za-z0-9\-._~]{43}$/', $codeChallenge) !== 1) {
+            $this->redirectError($redirectUri, 'invalid_request', $stateParam,
+                'The code_challenge must be the base64url-encoded SHA-256 digest of your code_verifier.');
+
+            return;
+        }
+
         if ($codeChallengeMethod !== 'S256') {
             $this->redirectError($redirectUri, 'invalid_request', $stateParam,
                 'Only the S256 code_challenge_method is supported.');

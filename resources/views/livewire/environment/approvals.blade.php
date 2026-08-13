@@ -63,6 +63,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
         // fail-closed operator action rather than consent on someone else's behalf.
         app(BackchannelAuthentication::class)->deny($request->id, $request->user_id);
 
+        // BACK TO PAGE ONE. Deny the last row on page two and the paginator still asks
+        // for page two, which is now empty — and this page's empty state says "No pending
+        // requests", so an operator working a backlog concludes they are done.
+        $this->resetPage();
+
         $this->dispatch('toast', message: 'Request denied.', severity: 'error');
     }
 
@@ -134,7 +139,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
 }; ?>
 
 <div>
-    <x-page-header title="Agent approvals" subtitle="Pending requests from agents asking to act on a user's behalf. Approve only requests you recognize." />
+    <x-page-header title="Agent approvals" subtitle="Requests from agents asking to act on a user's behalf. The user approves these themselves — deny anything you do not recognise." />
 
     <div class="mt-6 space-y-4">
         @forelse ($requests as $request)
@@ -179,7 +184,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
             <div class="cbx-empty">
                 <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
                 <h3>No pending requests</h3>
-                <p>Agent approval requests will appear here for review as they arrive.</p>
+                <p>Agent approval requests will appear here as they arrive, for you to deny if you do not recognise them.</p>
             </div>
         @endforelse
 

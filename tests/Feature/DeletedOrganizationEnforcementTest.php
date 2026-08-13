@@ -107,7 +107,7 @@ it('refuses a deleted organization the consent screen’s code issuance', functi
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ]);
 

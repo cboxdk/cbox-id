@@ -65,11 +65,40 @@ new #[Layout('components.layouts.console', ['title' => 'New outbound connection'
     public string $secret = '';
 
     /**
+     * The three things an OAuth2 client-credentials target needs beyond the secret.
+     *
+     * They had no fields at all. The scheme was offered in the dropdown, the connection
+     * saved Active, and every push then failed on an empty token URL — classified
+     * retryable, so it backed off and retried until the operation was exhausted. Nobody
+     * was provisioned, nobody was deprovisioned, and there was nowhere in the product to
+     * supply what was missing.
+     */
+    #[Validate('nullable|string|max:2048|url')]
+    public string $tokenUrl = '';
+
+    #[Validate('nullable|string|max:400')]
+    public string $clientId = '';
+
+    #[Validate('nullable|string|max:400')]
+    public string $scope = '';
+
+    /**
      * Register a downstream SCIM target, then route to its detail page.
      */
     public function create(ProvisioningConnections $connections): mixed
     {
         $this->validate();
+
+        $usesClientCredentials = AuthScheme::from($this->scheme) === AuthScheme::OAuth2ClientCredentials;
+
+        // Required only for the scheme that needs them, and required THERE — a connection
+        // saved without them is one that can never complete a single push.
+        if ($usesClientCredentials) {
+            $this->validate([
+                'tokenUrl' => ['required', 'string', 'max:2048', 'url'],
+                'clientId' => ['required', 'string', 'max:400'],
+            ], attributes: ['tokenUrl' => 'token URL', 'clientId' => 'client ID']);
+        }
 
         try {
             $organizationId = $this->targetOrganizationId();
@@ -88,6 +117,11 @@ new #[Layout('components.layouts.console', ['title' => 'New outbound connection'
             $this->baseUrl,
             AuthScheme::from($this->scheme),
             $this->secret,
+            authConfig: $usesClientCredentials ? array_filter([
+                'token_url' => trim($this->tokenUrl),
+                'client_id' => trim($this->clientId),
+                'scope' => trim($this->scope),
+            ], static fn (string $value): bool => $value !== '') : [],
         )->connection;
 
         $this->dispatch('toast', message: 'Provisioning connection registered.');
@@ -168,6 +202,32 @@ new #[Layout('components.layouts.console', ['title' => 'New outbound connection'
             </select>
             @error('scheme') <p class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
+        {{-- Only for the scheme that uses them. Shown by `x-show` rather than a Blade
+             @if so switching the dropdown does not cost a round trip, and validated
+             server-side regardless of what is on screen. --}}
+        <div x-data x-show="$wire.scheme === 'oauth2_client_credentials'" x-cloak class="space-y-4">
+            <div>
+                <label class="label" for="tokenUrl">Token URL</label>
+                <input wire:model="tokenUrl" id="tokenUrl" type="url" class="input" placeholder="https://api.example.com/oauth/token"
+                       aria-describedby="tokenUrl-help @error('tokenUrl') tokenUrl-error @enderror"
+                       @error('tokenUrl') aria-invalid="true" @enderror>
+                <p id="tokenUrl-help" class="mt-1 text-xs" style="color:var(--faint)">Where we exchange the client credentials for an access token. Checked against the same outbound rules as the SCIM base URL.</p>
+                @error('tokenUrl') <p class="field-error" id="tokenUrl-error" role="alert">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="label" for="clientId">Client ID</label>
+                <input wire:model="clientId" id="clientId" type="text" class="input" placeholder="scim-provisioner"
+                       @error('clientId') aria-invalid="true" aria-describedby="clientId-error" @enderror>
+                @error('clientId') <p class="field-error" id="clientId-error" role="alert">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="label" for="scope">Scope <span style="color:var(--faint)">(optional)</span></label>
+                <input wire:model="scope" id="scope" type="text" class="input" placeholder="scim:write"
+                       @error('scope') aria-invalid="true" aria-describedby="scope-error" @enderror>
+                @error('scope') <p class="field-error" id="scope-error" role="alert">{{ $message }}</p> @enderror
+            </div>
+        </div>
+
         <div>
             <label class="label" for="secret">Secret</label>
             <input wire:model="secret" id="secret" type="password" class="input" placeholder="Bearer token or OAuth client secret" autocomplete="new-password">

@@ -20,7 +20,9 @@ use Cbox\Id\Platform\Models\Project;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * The spine of the operator plane: one CUSTOMER, and everything that hangs off it.
@@ -48,6 +50,11 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Customer'])] class extends Component
 {
+    use WithPagination;
+
+    /** A screenful of the roster. See the read in with() for why this page is bounded. */
+    private const PER_PAGE = 25;
+
     public string $organizationId = '';
 
     /**
@@ -244,16 +251,17 @@ new #[Layout('components.layouts.app', ['title' => 'Customer'])] class extends C
         // trusting an undeclared property.
         $createdAt = $account->getAttribute('created_at');
 
+        // ONE QUERY FOR THE PEOPLE, which is what the comment below has always claimed
+        // and what this loop was not doing: `find()` per membership is one round trip per
+        // member of the customer, on a page that re-runs `with()` on every interaction.
         [$roster, $people] = $platformRoot->run(function () use ($members, $account): array {
-            $roster = $members->forOrganization($account->id);
-            $people = [];
+            $roster = $members->paginateForOrganization($account->id, self::PER_PAGE);
 
-            foreach ($roster as $membership) {
-                $people[$membership->user_id] = app(Subjects::class)->find($membership->user_id);
-            }
+            /** @var list<string> $userIds */
+            $userIds = collect($roster->items())->map(fn (Membership $m): string => (string) $m->user_id)->values()->all();
 
-            return [$roster, $people];
-        }) ?? [collect(), []];
+            return [$roster, $userIds === [] ? [] : app(Subjects::class)->findMany($userIds)];
+        }) ?? [new Paginator([], 0, self::PER_PAGE), []];
 
         return [
             'account' => $account,
@@ -263,7 +271,7 @@ new #[Layout('components.layouts.app', ['title' => 'Customer'])] class extends C
             'createdAt' => $createdAt instanceof CarbonInterface ? $createdAt->toDayDateTimeString() : null,
             // Memberships AND the people behind them. A membership carries authority, not
             // identity, so an operator looking at a customer's roster needs both — and the
-            // subjects are hydrated in one pass rather than per row.
+            // subjects really are hydrated in one pass now rather than per row.
             'members' => $roster,
             'people' => $people,
             'projects' => $projectList,
@@ -382,6 +390,10 @@ new #[Layout('components.layouts.app', ['title' => 'Customer'])] class extends C
                     </tbody>
                 </table>
             </div>
+
+            @if ($members->hasPages())
+                <div class="mt-4">{{ $members->links() }}</div>
+            @endif
         @endif
     </div>
 

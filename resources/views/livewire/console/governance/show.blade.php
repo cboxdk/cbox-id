@@ -11,6 +11,7 @@ use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Access reviews › detail. The full, deep-linkable
@@ -24,6 +25,11 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.console', ['title' => 'Access review'])] class extends Component
 {
+    use WithPagination;
+
+    /** A screenful of the snapshot. See the read in with() for why this is bounded. */
+    private const PER_PAGE = 25;
+
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
      * re-run on Livewire actions (PersistentMiddlewareTest holds that), but this
@@ -131,7 +137,13 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
     public function with(AccessReviews $reviews): array
     {
         $campaign = $this->campaign();
-        $items = $reviews->itemsFor($campaign->id);
+
+        // A PAGE OF THE SNAPSHOT. `itemsFor()` reads one row per role assignment plus one
+        // per membership in the organization — a set that grows with the customer's
+        // end-user count — and this is a `with()`, so it re-ran in full after every single
+        // certify and revoke. A review of a twenty-thousand-person organization was
+        // twenty thousand rows hydrated per click.
+        $items = $reviews->paginateItemsFor($campaign->id, self::PER_PAGE);
 
         return [
             // Route names differ per plane; one component, so it asks rather than assumes.
@@ -141,8 +153,8 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
             // A reviewer certifying access needs to see *who* they're deciding on and
             // *what* — resolve subject ids to names/emails and role refs to role names
             // so the table never shows bare ULIDs.
-            'subjectLabels' => $this->resolveSubjects($items),
-            'roleNames' => $this->resolveRoleNames($items),
+            'subjectLabels' => $this->resolveSubjects($items->items()),
+            'roleNames' => $this->resolveRoleNames($items->items()),
         ];
     }
 
@@ -152,21 +164,29 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
      */
     private function resolveSubjects(iterable $items): array
     {
-        $subjects = app(Subjects::class);
-        $labels = [];
+        $ids = [];
 
         foreach ($items as $item) {
-            $id = $item->subject_id;
-
-            if ($id === '' || isset($labels[$id])) {
-                continue;
+            if ($item->subject_id !== '') {
+                $ids[$item->subject_id] = true;
             }
+        }
 
-            $subject = $subjects->find($id);
-            $name = $subject->name ?? $subject?->email;
+        if ($ids === []) {
+            return [];
+        }
+
+        // ONE QUERY. `find()` inside the loop was a round trip per distinct person in the
+        // campaign, and a campaign has one item per role each of them holds — so a
+        // reviewer working through a large organization paid for the whole roster again
+        // on every decision they made.
+        $labels = [];
+
+        foreach (app(Subjects::class)->findMany(array_keys($ids)) as $subject) {
+            $name = $subject->name ?? $subject->email;
 
             if (is_string($name) && $name !== '') {
-                $labels[$id] = $name;
+                $labels[$subject->id] = $name;
             }
         }
 
@@ -283,6 +303,10 @@ new #[Layout('components.layouts.console', ['title' => 'Access review'])] class 
                     <p>This organization has no direct role or membership grants to certify.</p>
                 </div>
             @endforelse
+
+            @if ($items->hasPages())
+                <div class="mt-4">{{ $items->links() }}</div>
+            @endif
         </div>
     </div>
 </div>

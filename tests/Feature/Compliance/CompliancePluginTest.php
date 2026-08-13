@@ -6,9 +6,13 @@ use Cbox\Console\Kit\ConsoleManager;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Compliance\Contracts\AuditExportSink;
 use Cbox\Id\Compliance\Testing\FakeAuditExportSink;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -58,4 +62,46 @@ it('renders a dashboard export card', function (): void {
     $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
 
     expect($html)->toContain('Audit export')->toContain('pending');
+});
+
+/**
+ * THE AUDIT PAGE RE-HASHED THE ENTIRE CHAIN ON EVERY KEYSTROKE.
+ *
+ * `verifyChain()` reads every row in its range and re-hashes each one in PHP, and the call
+ * sat in `with()` — which Livewire re-runs on every action and on every debounced keystroke
+ * of the two filter inputs. On a tenant with a few hundred thousand entries, which is
+ * months of ordinary sign-ins, the page took tens of seconds and then died on the memory
+ * limit, and typing made it worse.
+ *
+ * It now verifies the tail by default and the whole chain only when asked. What a short
+ * window cannot see — entries deleted off the end — is what `verifyChain()` cross-checks
+ * against the last signed checkpoint on every call regardless of range, so the cheap answer
+ * is a narrower true rather than a weaker one.
+ */
+it('verifies a window of the audit chain, not all of history', function (): void {
+    [$actor, $org] = actingAsRole(MembershipRole::Owner);
+
+    $log = app(AuditLog::class);
+
+    foreach (range(1, 60) as $i) {
+        $log->record(new AuditEvent(action: 'test.entry.'.$i, organizationId: $org->id));
+    }
+
+    $rows = 0;
+    DB::listen(function ($query) use (&$rows): void {
+        if (str_contains($query->sql, 'audit_logs')) {
+            $rows++;
+        }
+    });
+
+    $page = Volt::test('compliance.audit');
+
+    // The badge is honest about being a window rather than claiming the whole chain.
+    $page->assertSee('The most recent')
+        ->assertSee('Verify the whole chain');
+
+    // And asking for everything is a deliberate action, which then says so.
+    $page->call('verifyEverything')->assertSee('All ');
+
+    expect($rows)->toBeGreaterThan(0, 'the page read no audit rows at all — the assertion above is about an empty page');
 });

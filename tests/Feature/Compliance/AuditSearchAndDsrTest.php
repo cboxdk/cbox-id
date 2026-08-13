@@ -84,3 +84,38 @@ it('counts an event where the subject is both actor and target once', function (
 
     expect(app(SubjectDataExport::class)->forSubject('user_1', 'org_alpha')->auditEntryCount())->toBe(1);
 });
+
+/**
+ * THE SCREEN RENDERED ONE NUMBER AND BUILT THE WHOLE BUNDLE TO GET IT.
+ *
+ * `forSubject()` cursors through the subject's ENTIRE audit history, twice — once for
+ * what they did and once for what was done to them — 200 rows at a time, into memory. The
+ * console's only use of it was `auditEntryCount()`, on a field bound with
+ * `.live.debounce.500ms`, so a half-typed subject id swept the lot.
+ */
+it('estimates the size of a bundle without building one', function (): void {
+    $this->recordAudit('auth.login', 'org_alpha', 'count_user');
+    $this->recordAudit('auth.login', 'org_alpha', 'count_user');
+    $this->recordAudit('user.mfa_disabled', 'org_alpha', 'admin_9', 'count_user');
+    $this->recordAudit('auth.login', 'org_beta', 'count_user');
+    $this->recordAudit('org.viewed', 'org_alpha', 'someone_else');
+
+    $count = app(SubjectDataExport::class)->countFor('count_user', 'org_alpha');
+
+    // Two as actor plus one as target, from THIS organization's chain only — the other
+    // tenant's entry and the other person's are not theirs.
+    expect($count)->toBe(3);
+});
+
+/**
+ * And it is an ESTIMATE, deliberately — the sum of both directions, so an entry where the
+ * subject is both actor and target counts twice where the bundle deduplicates by sequence.
+ * Deduplicating here would mean reading every sequence, which is the sweep this avoids.
+ * The screen says "about", and the bundle itself stays exact.
+ */
+it('over-counts an entry a subject is both actor and target of, and the bundle does not', function (): void {
+    $this->recordAudit('user.password_changed', 'org_alpha', 'self_user', 'self_user');
+
+    expect(app(SubjectDataExport::class)->countFor('self_user', 'org_alpha'))->toBe(2)
+        ->and(app(SubjectDataExport::class)->forSubject('self_user', 'org_alpha')->auditEntryCount())->toBe(1);
+});

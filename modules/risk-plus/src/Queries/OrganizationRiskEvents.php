@@ -6,7 +6,6 @@ namespace Cbox\Id\RiskPlus\Queries;
 
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -45,11 +44,11 @@ final class OrganizationRiskEvents
      */
     public function query(string $organizationId): Builder
     {
-        $memberIds = $this->memberships
-            ->forOrganization($organizationId)
-            ->map(static fn (Membership $membership): string => $membership->user_id)
-            ->values()
-            ->all();
+        // IDS ONLY. This hydrated a model per member of the organization to reduce it to
+        // a list of ids that is then thrown away. The subquery a reader would reach for
+        // instead is not available: `memberships` is tenant-owned, so an unwrapped one
+        // meets `TenantScope`'s deny-by-default trap and matches nothing.
+        $memberIds = $this->memberships->userIdsForOrganization($organizationId);
 
         return RiskEvent::query()
             ->whereNotNull('email')

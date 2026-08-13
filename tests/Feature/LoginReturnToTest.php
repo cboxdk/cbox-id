@@ -49,7 +49,7 @@ it('preserves an authorize request as the intended url', function (): void {
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
         'response_type' => 'code',
-        'code_challenge' => 'xyz',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ]);
 
@@ -78,7 +78,7 @@ it('answers an unauthenticated prompt=none with login_required at the redirect_u
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
         'response_type' => 'code',
-        'code_challenge' => 'xyz',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'state' => 'st-123',
         'prompt' => 'none',
@@ -124,7 +124,7 @@ it('reaches the consent screen over HTTP for a genuinely signed-in user', functi
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
         'response_type' => 'code',
-        'code_challenge' => 'xyz',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ]);
 

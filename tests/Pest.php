@@ -909,3 +909,26 @@ function signInAtLogin(string $email, string $password, bool $stepUp = false): A
         ),
     );
 }
+
+/**
+ * A REAL S256 PKCE PAIR, because a placeholder is not a test.
+ *
+ * Five suites sent `code_challenge: 'abc'` — three characters that are the base64url of
+ * no digest at all. Every one of those tests was exercising a request no conformant
+ * client could send, and the issuer's own RFC 7636 §4.2 check is what surfaced it.
+ *
+ * @return array{verifier: string, challenge: string}
+ */
+function pkcePair(string $verifier = 'a-verifier-of-sufficient-length-0123456789abc'): array
+{
+    return [
+        'verifier' => $verifier,
+        'challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
+    ];
+}
+
+/** Just the challenge, for the many call sites that never redeem the code. */
+function pkceChallenge(): string
+{
+    return pkcePair()['challenge'];
+}

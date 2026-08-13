@@ -38,6 +38,31 @@ class SubjectDataExport
     public function __construct(private readonly AuditReader $reader) {}
 
     /**
+     * How large a subject's bundle would be, without building it.
+     *
+     * The console shows this number while somebody types a subject id into a live-updating
+     * field, and it used to get it by calling {@see forSubject()} — two cursor sweeps of
+     * that person's ENTIRE audit history, held in memory, to call `count()` on the result.
+     * A half-typed id swept the lot.
+     *
+     * SLIGHTLY OVER-COUNTS, on purpose: it is the sum of the two directions, so an entry
+     * where the subject is both actor and target (changing their own password) is counted
+     * twice, where the bundle deduplicates by sequence. Deduplicating would mean reading
+     * the sequences, which is the sweep this exists to avoid — and the honest name for
+     * what the screen needs here is "roughly how much is there", answered before anyone
+     * commits to producing it. The bundle itself remains exact.
+     */
+    public function countFor(string $subjectId, string $organizationId): int
+    {
+        return $this->reader->count(new AuditQueryFilter(organizationId: $organizationId, actorId: $subjectId))
+            + $this->reader->count(new AuditQueryFilter(
+                organizationId: $organizationId,
+                targetType: 'user',
+                targetId: $subjectId,
+            ));
+    }
+
+    /**
      * @param  string  $organizationId  the chain to read — the caller's OWN organization
      */
     public function forSubject(string $subjectId, string $organizationId): SubjectDataBundle

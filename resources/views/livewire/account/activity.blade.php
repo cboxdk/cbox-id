@@ -238,10 +238,16 @@ new #[Layout('components.layouts.app', ['title' => 'Sessions & activity'])] clas
                             last active {{ $s->last_active_at?->diffForHumans() ?? 'never' }}
                         </p>
                     </div>
+                    {{-- The accessible name names the DEVICE. A screen-reader user pulling
+                         up the button list on a page with six sessions otherwise gets six
+                         buttons called "Sign out" and no way to tell which is which — on
+                         the one control that can sign them out of the browser they are
+                         holding. The visible label stays short. --}}
                     <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)"
+                            aria-label="Sign out {{ $isCurrent ? 'this device' : \App\Platform\DeviceLabel::for($s->user_agent) }}"
                             wire:click="revokeSession('{{ $s->id }}')"
                             wire:confirm="{{ $isCurrent ? 'Sign out of this device? You will have to sign in again.' : 'Sign out of that session?' }}">
-                        {{ $isCurrent ? 'Sign out' : 'Sign out' }}
+                        Sign out
                     </button>
                 </div>
             @endforeach
@@ -308,7 +314,9 @@ new #[Layout('components.layouts.app', ['title' => 'Sessions & activity'])] clas
         <div class="cbx-panel-header">
             <div>
                 <h2 class="cbx-panel-title">Recent activity</h2>
-                <p class="cbx-panel-desc">Sign-ins and changes to how you sign in. The most recent {{ count($activity) }} events.</p>
+                {{-- Guarded: "The most recent 0 events." rendered directly above the empty state that
+                     says nothing is recorded yet. --}}
+                <p class="cbx-panel-desc">Sign-ins and changes to how you sign in.@if (count($activity) > 0) The most recent {{ count($activity) }} {{ \Illuminate\Support\Str::plural('event', count($activity)) }}.@endif</p>
             </div>
         </div>
 

@@ -7,7 +7,6 @@ use Cbox\Id\Devices\Models\PushNotification;
 
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Models\Membership;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Route;
@@ -88,14 +87,23 @@ new #[Layout('components.layouts.console', ['title' => 'Trusted devices'])] clas
             return $query;
         }
 
-        $memberIds = app(Memberships::class)
-            ->forOrganization($organizationId)
-            ->map(static fn (Membership $membership): string => $membership->user_id)
-            ->values()
-            ->all();
+        // IDS ONLY, and memoised for the request. This hydrated a model per member of the
+        // organization to reduce it to a list of ids that is then thrown away — and it ran
+        // TWICE per render, once for the device list and once for the recent-pushes list,
+        // both of which call this. The subquery a reader would reach for instead is not
+        // available: `memberships` is tenant-owned, so an unwrapped one meets
+        // `TenantScope`'s deny-by-default trap and matches nothing.
+        $this->memberIds ??= app(Memberships::class)->userIdsForOrganization($organizationId);
 
-        return $query->whereIn('subject_id', $memberIds);
+        return $query->whereIn('subject_id', $this->memberIds);
     }
+
+    /**
+     * The organization's subject ids, resolved at most once per request.
+     *
+     * @var list<string>|null
+     */
+    private ?array $memberIds = null;
 
     /**
      * @return Collection<int, PushNotification>

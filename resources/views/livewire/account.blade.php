@@ -10,6 +10,7 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Cbox\Id\Identity\Contracts\Mfa;
+use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
@@ -129,13 +130,20 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
         $this->dispatch('toast', message: 'Password updated.');
     }
 
-    public function enable(Mfa $mfa): void
+    public function enable(Mfa $mfa, MfaMandate $mandate): void
     {
+        $me = app(CurrentUser::class);
+
+        // BEFORE the step-up, because this is not a question about how sure we are that
+        // it is you — it is whether the feature exists here at all. "Not offered" is a
+        // real setting an administrator can choose and it was enforced nowhere:
+        // `MfaRequirement::Off` and `Optional` were indistinguishable everywhere in the
+        // product. A button removed from a page is a styling decision; this is the rule.
+        abort_unless($mandate->offersEnrolment($me->id()), 403);
+
         if ($this->requiresSudo()) {
             return;
         }
-
-        $me = app(CurrentUser::class);
         $enrollment = $mfa->enrollTotp($me->id(), $me->email() ?? $me->name(), 'Cbox ID');
 
         $this->secret = $enrollment->secret;
@@ -355,6 +363,10 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
                     ->count()
                 : 0,
             'twoFactorEnabled' => $me->id() !== '' && app(Mfa::class)->hasConfirmedTotp($me->id()),
+
+            // Whether a second factor is offered here AT ALL — the "Not offered" setting
+            // on the auth-policy screen, which until now decided nothing.
+            'twoFactorOffered' => $me->id() === '' || app(MfaMandate::class)->offersEnrolment($me->id()),
             'recoveryRemaining' => $me->id() !== '' ? app(Mfa::class)->remainingRecoveryCodes($me->id()) : 0,
             'passkeys' => $me->id() !== ''
                 ? WebAuthnCredential::query()->where('user_id', $me->id())->orderByDesc('created_at')->get()
@@ -485,6 +497,13 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
                     <x-icon name="refresh" class="w-4 h-4" /> {{ $recoveryRemaining > 0 ? 'Regenerate codes' : 'Generate codes' }}
                 </button>
             </div>
+        @elseif (! $twoFactorOffered)
+            {{-- The administrator has turned second factors off for this deployment. Said
+                 out loud rather than by an absent button, because somebody looking for
+                 this panel deserves to know it was a decision and not a missing feature. --}}
+            <p class="text-sm" style="color:var(--muted)">
+                Your administrator has turned off two-factor authentication for this environment.
+            </p>
         @elseif (! $enrolling)
             <button wire:click="enable" class="btn btn-primary" wire:loading.attr="disabled"><x-icon name="key" class="w-4 h-4" /> Enable 2FA</button>
         @else

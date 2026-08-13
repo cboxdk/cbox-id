@@ -20,6 +20,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -151,8 +152,9 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
      * A NEW TOKEN, not the old one: the mailed link is a signed URL over a token this
      * server only stores hashed, so there is nothing to re-send — and re-issuing is the
      * honest behaviour anyway, since the reason somebody asks is usually that the first
-     * link expired. The old invitation is withdrawn in the same breath so the two cannot
-     * both be live.
+     * link expired. `InvitationService::invite()` supersedes the earlier pending
+     * invitation for the same address as part of minting the new one, so the two are never
+     * both live and nothing here has to revoke first.
      */
     public function resendInvite(string $invitationId, ConsoleScope $scope, Invitations $invitations, OrganizationActivity $activity, MailLinks $links): void
     {
@@ -168,8 +170,26 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
             return;
         }
 
-        app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $invitation->id));
+        // ONE MAIL PER MINUTE PER ADDRESS. A component action is a POST anybody signed in
+        // can repeat, `OrganizationInviteMail` is not queued, and the sending domain is
+        // shared with every other tenant — so a held-down button is an outbound flood
+        // billed to our reputation, not just this organization's. The self-service resend
+        // on the projects page is throttled for exactly this reason; this one is the
+        // higher-privilege sibling and had nothing.
+        $key = 'organization-invite-resend|'.$organizationId.'|'.$invitation->email;
 
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            $this->dispatch('toast', message: 'Already sent. Try again in '.RateLimiter::availableIn($key).' seconds — and check their spam folder in the meantime.', severity: 'error');
+
+            return;
+        }
+
+
+        // NO PRE-REVOKE. `InvitationService::invite()` already supersedes every earlier
+        // pending invitation for the same address, so revoking first bought nothing — and
+        // cost everything when the mail then failed: the original was gone, the
+        // replacement was rolled back, and the person was left holding a dead link with
+        // no live invitation anywhere.
         $pending = app(PlatformRoot::class)->run(fn () => $invitations->invite(
             $organizationId,
             $invitation->email,
@@ -186,14 +206,24 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
         try {
             Mail::to($invitation->email)->send(new OrganizationInviteMail($scope->organizationName() ?? '', $scope->actorId(), $url));
         } catch (Throwable $e) {
-            app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $pending->invitation->id));
-
+            // THE INVITATION STAYS. Unlike the create path — where rolling back leaves
+            // the screen saying nothing happened, which is the truth — here the person
+            // already had one, and destroying the replacement on a transport failure
+            // would leave them with none at all. A live invitation nobody received is
+            // strictly better than no invitation: it is on the list below, and the button
+            // that failed is the one that retries it.
             report($e);
 
-            $this->dispatch('toast', message: 'That invitation could not be sent — the mail server refused it.');
+            $this->dispatch('toast', message: 'That invitation could not be sent — the mail server refused it. It is still listed below; try again in a moment.', severity: 'error');
 
             return;
         }
+
+        // AFTER a successful send, not before it. Charging the window on the way in meant
+        // a transport failure told the admin "try again in a moment" and then answered the
+        // retry with "Already sent. Try again in 54 seconds" — about a mail that was never
+        // sent.
+        RateLimiter::hit($key, 60);
 
         $activity->record($organizationId, 'organization.member_invited', $scope->actorId(),
             targetType: 'invitation', targetId: $pending->invitation->id,
@@ -228,6 +258,11 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
         $activity->record($organizationId, 'organization.invitation_revoked', $scope->actorId(),
             targetType: 'invitation', targetId: $invitation->id,
             context: ['email' => $invitation->email], request: request());
+
+        // Back to page one: withdrawing the last row on a later page leaves the paginator
+        // asking for a page that no longer exists, and the empty state then claims there
+        // is nothing outstanding.
+        $this->resetPage();
 
         $this->dispatch('toast', message: 'Invitation withdrawn. That link no longer works.');
     }
@@ -266,6 +301,10 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
 
         $activity->record($organizationId, 'organization.member_removed', $scope->actorId(),
             targetType: 'membership', targetId: $target->id, request: request());
+
+        // Same reason as withdrawing an invitation: removing the last row on a later page
+        // leaves the paginator pointed at a page that no longer exists.
+        $this->resetPage();
 
         $this->dispatch('toast', message: 'Member removed.');
     }
@@ -607,10 +646,11 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
             </div>
             <div class="cbx-panel-body" style="display:flex;flex-direction:column;gap:8px">
                 @foreach ($invitations as $invitation)
-                    @php
-                        $revokeInviteAction = "revokeInvite('{$invitation->id}')";
-                    @endphp
-                    <div wire:key="invite-{{ $invitation->id }}" class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)">
+                    {{-- flex-wrap: at 375px the address, the role badge and two buttons do
+                         not fit on one line, and without it the address truncated to
+                         "teammate@yo…" — which is the one thing on the row a person needs
+                         to read. --}}
+                    <div wire:key="invite-{{ $invitation->id }}" class="flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2" style="border-color:var(--border)">
                         <div class="min-w-0 flex-1">
                             <p class="text-sm truncate">{{ $invitation->email }} <span class="badge ml-1">{{ $invitation->role->label() }}</span></p>
                             <p class="text-xs truncate" style="color:var(--faint)">
@@ -623,20 +663,32 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
                             </p>
                         </div>
                         @if ($canManage)
+                            {{-- The accessible name carries the address. Six pending
+                                 invitations otherwise give a screen-reader user six
+                                 buttons called "Send again" and six called "Withdraw",
+                                 with nothing to tell them apart. --}}
                             <button type="button" class="btn btn-ghost btn-sm shrink-0"
+                                    aria-label="Send the invitation to {{ $invitation->email }} again"
                                     wire:click="resendInvite('{{ $invitation->id }}')"
                                     wire:loading.attr="disabled" wire:target="resendInvite">
-                                Send again
+                                <span wire:loading.remove wire:target="resendInvite">Send again</span>
+                                <span wire:loading wire:target="resendInvite">Sending&hellip;</span>
                             </button>
-                            {{-- Type-to-confirm: it revokes somebody else's way in, and the
-                                 link they were sent stops working the moment it is done. --}}
-                            <x-confirm-delete
-                                :name="$invitation->email"
-                                :action="$revokeInviteAction"
-                                label="Withdraw"
-                                verb="Withdraw"
-                                trigger-class="btn btn-ghost btn-sm shrink-0"
-                                consequence="The link they were sent stops working immediately. You can invite them again afterwards." />
+                            {{-- `wire:confirm`, NOT type-to-confirm. The confirm-delete
+                                 component is for what cannot be undone from the console,
+                                 and its own docblock warns that making a reversible action
+                                 cost a typed name trains people to type names without
+                                 reading them. Withdrawing is reversible — the consequence
+                                 text says so itself — and the string you would have to type
+                                 is the email address, when the commonest reason to withdraw
+                                 is that the address was wrong. --}}
+                            <button type="button" class="btn btn-ghost btn-sm shrink-0" style="color:var(--destructive)"
+                                    aria-label="Withdraw the invitation to {{ $invitation->email }}"
+                                    wire:click="revokeInvite('{{ $invitation->id }}')"
+                                    wire:confirm="Withdraw the invitation to {{ $invitation->email }}? The link they were sent stops working immediately. You can invite them again afterwards."
+                                    wire:loading.attr="disabled" wire:target="revokeInvite">
+                                Withdraw
+                            </button>
                         @endif
                     </div>
                 @endforeach

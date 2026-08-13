@@ -17,8 +17,10 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
@@ -230,4 +232,51 @@ it('keeps the subject plane on /login when SSO fails there', function (): void {
 
     $response->assertRedirect(route('login'));
     expect(session('errors')->first('email'))->toContain('no longer active');
+});
+
+/**
+ * THE CALLBACK MUST ACCEPT A CROSS-SITE POST, AND THIS APP'S ROUTE SHADOWS THE PACKAGE'S.
+ *
+ * `response_mode=form_post` means the provider hands the browser an auto-submitting form
+ * aimed at the redirect URI — which Apple does by itself the moment a scope beyond
+ * `openid` is requested. The framework was taught to accept POST there and it made no
+ * difference to this product: `routes/web.php` re-registers the callback deliberately, to
+ * turn a session into a cookie, and it registered GET only. Apple's answer was 405.
+ *
+ * Route-level assertions, because the request-level ones cannot see either half: Laravel's
+ * test helpers bypass CSRF entirely, so a POST through them passes whether the exemption
+ * works or not.
+ */
+it('serves the OIDC callback on POST as well as GET, from this app controller', function (): void {
+    $route = collect(Route::getRoutes()->getRoutes())
+        ->first(fn ($route): bool => $route->uri() === 'sso/oidc/{connection}/callback');
+
+    expect($route)->not->toBeNull()
+        ->and($route->methods())->toContain('POST')
+        // THIS app's controller on both verbs. The package registers the same URI, and a
+        // split — GET here, POST in the package — would sign the person in on one binding
+        // and hand them raw JSON on the other.
+        ->and($route->getActionName())->toContain('App\Http\Controllers\Sso\OidcCallbackController');
+});
+
+it('exempts the OIDC callback from CSRF, which a provider cannot carry', function (): void {
+    // Read from the static the framework fills at bootstrap, the same way
+    // FrontendCsrfTest does — a request-level assertion would pass either way, because
+    // Laravel's test helpers disable CSRF verification outright.
+    $property = new ReflectionProperty(ValidateCsrfToken::class, 'neverVerify');
+    $property->setAccessible(true);
+
+    expect($property->getValue())->toContain('sso/oidc/*/callback');
+});
+
+/**
+ * And the state it checks comes from the stash, not the session — because a cross-site
+ * POST does not carry a `SameSite=Lax` session cookie, so a controller reading the session
+ * finds nothing on exactly the callbacks that need it and says the link expired.
+ */
+it('reads the flow state from the stash the redirect leg wrote', function (): void {
+    $source = file_get_contents(base_path('app/Http/Controllers/Sso/OidcCallbackController.php'));
+
+    expect($source)->toContain('FederationFlowStash')
+        ->and($source)->not->toContain("session()->pull('oidc.");
 });

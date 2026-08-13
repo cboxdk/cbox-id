@@ -62,7 +62,7 @@ it('renders an error state for an unknown client', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])
         ->assertRenderedNotRedirected()
@@ -79,7 +79,7 @@ it('rejects a redirect_uri not registered to the client', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])
         ->assertRenderedNotRedirected()
@@ -96,7 +96,7 @@ it('routes prompt=login to add-another-account (no logout of the current one)', 
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'prompt' => 'login',
     ])->assertRedirect(route('accounts.add'));
@@ -112,7 +112,7 @@ it('routes prompt=select_account to the account chooser', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'prompt' => 'select_account',
     ])->assertRedirect(route('accounts'));
@@ -128,7 +128,7 @@ it('does not re-prompt once re-authenticated (loop guard)', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'prompt' => 'login',
         'reauthed' => '1',
@@ -149,7 +149,7 @@ it('returns interaction_required on prompt=none when consent would be shown', fu
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'prompt' => 'none',
     ])->assertRedirect(
@@ -172,7 +172,7 @@ it('locks validated request parameters so the browser cannot tamper with them be
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])->assertSet('error', null);
 
@@ -195,7 +195,7 @@ it('refuses to mint a code at approval if the client/redirect is no longer valid
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])->assertSet('error', null);
 
@@ -226,7 +226,7 @@ it('refuses to mint a code for a suspended organization', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])->assertSet('error', null);
 
@@ -246,7 +246,7 @@ it('issues a code and redirects on approve for a valid request', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])
         ->assertSet('error', null)
@@ -283,7 +283,7 @@ function fpAuthorizeParams(string $clientId): array
         'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ];
 }
@@ -329,7 +329,7 @@ it('does NOT skip consent for a non-first-party client', function () {
         'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])
         ->assertRenderedNotRedirected()
@@ -356,7 +356,7 @@ it('returns authorize errors to the client as a redirect, not a page', function 
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
         'response_type' => 'code',
-        'code_challenge' => 'xyz',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'state' => 'st-9',
     ];
@@ -409,7 +409,7 @@ it('accepts any port on a loopback redirect it registered', function (): void {
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'http://127.0.0.1:59123/callback',  // a different port, next run
         'response_type' => 'code',
-        'code_challenge' => 'xyz',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'prompt' => 'none',
     ]);
@@ -436,7 +436,7 @@ it('does not float the port for a non-loopback host', function (): void {
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test:8443/cb',
         'response_type' => 'code',
-        'code_challenge' => 'xyz',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ]);
 
@@ -465,7 +465,7 @@ it('resumes a pushed authorization request when PAR is required', function (): v
         'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st-par',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
         'prompt' => 'login',
     ]);
@@ -502,7 +502,7 @@ it('returns the RFC 9207 issuer when the user denies consent', function () {
         'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ])
         ->assertSet('error', null)
@@ -736,3 +736,36 @@ it('carries the requested resource across the sign-in round trip', function (): 
     expect($resume)->toContain('/oauth/authorize')
         ->and($resume)->toContain('resource=https://mcp.acme.example');
 })->group('security');
+
+/**
+ * A MALFORMED CHALLENGE IS AN `invalid_request` AT /authorize, NOT A 500 AT ISSUE.
+ *
+ * The issuer refuses anything that is not the base64url of a SHA-256 digest (RFC 7636
+ * §4.2). Without the same check here, a client sending a placeholder got a consent screen,
+ * pressed Allow, and hit an exception at the moment the code was minted — past the point
+ * where the protocol has any way to tell them what was wrong, and with the user looking at
+ * an error page instead of their app.
+ *
+ * Every fixture in this file used to send `code_challenge=abc`, so nothing in the suite
+ * had ever exercised a conformant one.
+ */
+it('refuses a code_challenge that is not an S256 digest, at the authorize endpoint', function (): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'Malformed challenge',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $location = $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'code_challenge' => 'abc',
+        'code_challenge_method' => 'S256',
+    ]))->assertRedirect()->headers->get('Location');
+
+    expect((string) $location)->toStartWith('https://app.test/cb?')
+        ->and((string) $location)->toContain('error=invalid_request');
+});

@@ -500,7 +500,7 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
             <div class="p-4 border-b" style="border-color:var(--border)">
                 <h2 class="font-semibold text-sm" style="color:var(--foreground)">Add a provider</h2>
                 <p class="text-sm mt-0.5" style="color:var(--muted)">
-                    You will need a client ID and secret from your own account with the provider.
+                    You will need credentials from your own account with the provider — usually a client ID and secret, though Apple issues a signing key instead.
                 </p>
             </div>
 

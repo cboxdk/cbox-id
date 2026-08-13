@@ -347,8 +347,10 @@ envelope plus `Retry-After` and the `X-RateLimit-*` headers.
 
 ## Security posture (defaults you should keep)
 
-These make the deployment safe to expose. `cbox-id:doctor` flags any that regress in
-production.
+These make the deployment safe to expose. `cbox-id:doctor` flags THREE of them in
+production — `APP_DEBUG`, `SESSION_SECURE_COOKIE` and `SESSION_ENCRYPT`. The rest of this
+table is yours to hold: nothing checks them for you, and a green `doctor` is not a
+statement about `SESSION_SAME_SITE`, `HASH_DRIVER` or `SESSION_DRIVER`.
 
 | Variable | Ship as | Why |
 |---|---|---|

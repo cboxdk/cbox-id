@@ -33,11 +33,11 @@ they exist.
 
 That boundary is load-bearing rather than decorative: it is the proof that the
 extension points actually work. If a first-party module needed a special hook that an
-external one could not reach, the socket would be a fiction. Keeping these six on the
+external one could not reach, the socket would be a fiction. Keeping these seven on the
 public seam keeps it honest.
 
 They were separate Composer packages until they were folded in. The move was about
-release overhead, not architecture — six repositories, six changelogs and six
+release overhead, not architecture — seven repositories, seven changelogs and seven
 version bumps to ship one coherent change, protecting about eight thousand lines that
 were never the moat. The sockets survived the move intact; only the distribution
 changed.
@@ -57,7 +57,7 @@ changed.
 
 ## Writing a new one
 
-Follow any of the five. A module is a directory with `src/`, optionally
+Follow any of the seven. A module is a directory with `src/`, optionally
 `database/migrations/`, `resources/views/`, and `routes/`; a PSR-4 root in
 `composer.json`; and its provider added to `bootstrap/app.php`. Register nav and
 feature gates through the `Console` facade, and bind capabilities behind contracts so

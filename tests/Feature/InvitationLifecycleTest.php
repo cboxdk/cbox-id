@@ -150,3 +150,44 @@ it('creates nothing when the invitation could not be sent', function (): void {
 
     expect(pendingIn($org))->toHaveCount(0);
 });
+
+/**
+ * A COMPONENT ACTION IS A POST ANYBODY SIGNED IN CAN REPEAT, and this one sends mail
+ * inline off a sending domain shared with every other tenant. A held-down button was an
+ * outbound flood billed to our reputation.
+ */
+it('sends at most one invitation mail a minute to the same address', function (): void {
+    Mail::fake();
+    $org = invitingOwner();
+    $id = inviteFrom($org, 'flooded@acme.test');
+
+    $page = Volt::test('console.members');
+
+    $page->call('resendInvite', $id);
+
+    // The second attempt names the NEW invitation, because the first resend superseded
+    // the one we started with — replaying against a stale id would be refused for the
+    // wrong reason and the throttle would not be what this test measured.
+    $page->call('resendInvite', (string) pendingIn($org)->first()?->id);
+
+    Mail::assertSentCount(1);
+});
+
+/**
+ * AND A TRANSPORT FAILURE ON A RESEND LEAVES THE INVITATION ALIVE.
+ *
+ * Unlike the create path — where rolling back leaves the screen saying nothing happened,
+ * which is true — this person already had an invitation. Revoking the replacement when
+ * the mail failed left them with none at all: the original had been superseded, the
+ * replacement was destroyed, and the link already in their inbox was dead.
+ */
+it('keeps the invitation alive when a resend cannot be delivered', function (): void {
+    $org = invitingOwner();
+    $id = inviteFrom($org, 'undeliverable@acme.test');
+
+    Mail::shouldReceive('to')->andThrow(new RuntimeException('the mail server refused it'));
+
+    Volt::test('console.members')->call('resendInvite', $id);
+
+    expect(pendingIn($org))->toHaveCount(1);
+});

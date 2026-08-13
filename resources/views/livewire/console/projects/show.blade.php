@@ -141,7 +141,10 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
         $this->assertCanManage($scope, $members);
 
         $this->validate(['editName' => 'required|string|max:120']);
-        $projects->rename($this->project($scope)->id, trim($this->editName));
+        // The OWNER-CARRYING verb: `Project` has no global scope, so a bare
+        // `rename($id, …)` is a write across every customer's projects fenced only by
+        // this page remembering to resolve first. It does — and now the query does too.
+        $projects->renameForOrganization($scope->requireOrganizationId(), $this->project($scope)->id, trim($this->editName));
         $this->dispatch('toast', message: 'Project renamed.');
     }
 
@@ -177,14 +180,14 @@ new #[Layout('components.layouts.app', ['title' => 'Project'])] class extends Co
     public function suspend(ConsoleScope $scope, Memberships $members, Projects $projects): void
     {
         $this->assertCanManage($scope, $members);
-        $projects->suspend($this->project($scope)->id);
+        $projects->suspendForOrganization($scope->requireOrganizationId(), $this->project($scope)->id);
         $this->dispatch('toast', message: 'Project suspended — its environments stay live but no new ones can be added until reactivated.');
     }
 
     public function reactivate(ConsoleScope $scope, Memberships $members, Projects $projects): void
     {
         $this->assertCanManage($scope, $members);
-        $projects->reactivate($this->project($scope)->id);
+        $projects->reactivateForOrganization($scope->requireOrganizationId(), $this->project($scope)->id);
         $this->dispatch('toast', message: 'Project reactivated.');
     }
 

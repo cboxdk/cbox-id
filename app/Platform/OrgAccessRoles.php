@@ -106,14 +106,31 @@ final class OrgAccessRoles
     }
 
     /**
-     * userId => the role ids that user holds in this org (all members at once).
+     * userId => the role ids that user holds in this org.
      *
+     * @param  list<string>|null  $userIds  narrow to these people; null reads the whole
+     *                                      organization, which grows with its end-user count
      * @return array<string, list<string>>
      */
-    public function assignmentsByUser(string $organizationId): array
+    public function assignmentsByUser(string $organizationId, ?array $userIds = null): array
     {
+        $query = RoleAssignment::query()->where('organization_id', $organizationId);
+
+        // NARROWED TO THE PAGE, when the caller can say which people it is rendering.
+        // Unbounded, this is one row per member per role held — a set that grows with the
+        // organization's END-USER count on a page that only ever draws twenty-five of
+        // them, and `with()` re-runs it on every interaction.
+        if ($userIds !== null) {
+            if ($userIds === []) {
+                return [];
+            }
+
+            $query->whereIn('user_id', $userIds);
+        }
+
         $out = [];
-        foreach (RoleAssignment::query()->where('organization_id', $organizationId)->get(['user_id', 'role_id']) as $assignment) {
+
+        foreach ($query->get(['user_id', 'role_id']) as $assignment) {
             $out[self::str($assignment->user_id)][] = self::str($assignment->role_id);
         }
 

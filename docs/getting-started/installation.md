@@ -50,7 +50,7 @@ generates one), the deployment shape, and the public issuer URL. Then it:
    never overwriting a value that is already there;
 5. creates the platform-root environment and stamps it `is_default`;
 6. creates the first platform operator;
-7. in the multi-tenant shape, creates the first account, its project and its own
+7. in the multi-tenant shape, creates the first organization, its project and its own
    environment;
 8. mints the signing key, so the JWKS answers on the first request;
 9. runs `cbox-id:doctor` and fails if the deployment it just built is unhealthy.
@@ -77,7 +77,7 @@ php artisan cbox-id:install --no-interaction \
 | `--multi-tenant` | Install the SaaS shape. Requires `--console-host`. |
 | `--console-host=` | Where the account console lives, e.g. `cboxid.com`. |
 | `--environment=` | Name of the first environment. Defaults to `Production`. |
-| `--account=` | Name of the first account (multi-tenant only). |
+| `--organization=` | Name of the first organization (multi-tenant only). |
 | `--issuer=` | Public HTTPS URL of this platform. Defaults to `APP_URL`. |
 
 A non-zero exit means either nothing was installed, or the health check found

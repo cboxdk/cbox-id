@@ -14,6 +14,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -59,4 +60,48 @@ it('forbids a non-admin member', function (): void {
     govAdmin(MembershipRole::Member);
 
     Volt::test('console.governance.index')->assertForbidden();
+});
+
+/**
+ * THE REVIEW PAGE READ THE ENTIRE SNAPSHOT AND ASKED FOR EACH PERSON SEPARATELY.
+ *
+ * A campaign holds one item per role assignment PLUS one per membership in the
+ * organization — a set that grows with the customer's end-user count. That whole set was
+ * hydrated in `with()`, which Livewire re-runs after every single certify and revoke, and
+ * the subject labels beside it were one `find()` per distinct person. A reviewer working
+ * through a twenty-thousand-person organization paid for the whole roster again on each
+ * decision they made.
+ */
+it('reviews a page of a campaign at a time, at a flat query cost', function (): void {
+    $orgId = govAdmin();
+    $role = app(Roles::class)->define($orgId, 'engineer');
+
+    // Forty people holding the role, so both the item count and the distinct-subject
+    // count exceed a page — a fixture inside one page would pass against either defect.
+    foreach (range(1, 40) as $i) {
+        $subject = app(Subjects::class)->create("reviewee-{$i}@acme.test", "Reviewee {$i}");
+        app(Roles::class)->assign($orgId, $subject->id, $role->id);
+    }
+
+    Volt::test('console.governance.create')->set('name', 'Big review')->call('open')->assertHasNoErrors();
+    $campaign = CertificationCampaign::query()->where('organization_id', $orgId)->firstOrFail();
+
+    // Warm: a first render pays for schema and config reads that have nothing to do with
+    // this page, and comparing a cold render against a warm one measures the wrong thing.
+    Volt::test('console.governance.show', ['campaign' => $campaign->id])->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $page = Volt::test('console.governance.show', ['campaign' => $campaign->id]);
+
+    // Twenty-five rows on screen out of forty-one, and a flat cost to draw them — the
+    // row count is what stops this passing against a page that rendered nothing.
+    // The subject labels are names, and the snapshot is ordered by id — so the first
+    // page holds the earliest-created assignments and the fortieth is not among them.
+    expect($page->html())->toContain('Reviewee 1')
+        ->and($page->html())->not->toContain('Reviewee 40')
+        ->and($queries)->toBeLessThan(15);
 });

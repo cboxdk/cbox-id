@@ -65,3 +65,33 @@ it('names only commands that exist', function (): void {
 
     expect(array_unique($missing))->toBe([], 'documented but not defined: '.implode('; ', array_unique($missing)));
 });
+
+/**
+ * AND THE OPTIONS, which is where it drifted next.
+ *
+ * `installation.md` documented `--account=` for `cbox-id:install`. The flag is
+ * `--organization=` — renamed when a customer stopped being an "account" — so the one
+ * command a stranger runs non-interactively, in CI, on a platform that refuses to install
+ * twice, exited with "The --account option does not exist." before doing anything.
+ *
+ * The names test above could not see it: the command it cited was real. Options are the
+ * other half of a command's contract, and they move for exactly the same reasons.
+ */
+it('documents only options the install command accepts', function (): void {
+    $source = (string) file_get_contents(__DIR__.'/../../app/Console/Commands/InstallCommand.php');
+
+    preg_match_all('/\{--([a-z0-9-]+)[=}\s]/i', $source, $defined);
+
+    $accepted = array_flip($defined[1]);
+
+    expect(count($accepted))->toBeGreaterThan(3, 'the signature read broke');
+
+    $doc = (string) file_get_contents(__DIR__.'/../../docs/getting-started/installation.md');
+
+    // The option table cites them as `--name=`; that is the shape to check.
+    preg_match_all('/`--([a-z0-9-]+)=/i', $doc, $cited);
+
+    $unknown = array_values(array_diff(array_unique($cited[1]), array_keys($accepted)));
+
+    expect($unknown)->toBe([], 'installation.md documents options the command rejects: '.implode(', ', $unknown));
+});

@@ -8,6 +8,7 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\NeverBreachedCheck;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
@@ -158,4 +159,38 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
     actAsEnvironmentAdmin($viewer->user_id, $r->environment->id);
 
     Volt::test('console.auth-policy')->assertForbidden();
+});
+
+/**
+ * "NOT OFFERED" NOW MEANS NOT OFFERED.
+ *
+ * The auth-policy screen offers three settings for a second factor and enforced two of
+ * them. `MfaRequirement::Off` appeared once in the entire codebase — its own declaration
+ * — so it behaved exactly like `Optional`: the enrolment panel rendered for everybody and
+ * everybody could enrol. That page carries a comment promising every control on it is
+ * live, which had quietly stopped being true.
+ *
+ * Both halves are asserted, because only one of them is a control: the panel not being
+ * drawn is a styling decision, and `enable()` refusing is the rule.
+ */
+it('neither offers nor accepts second-factor enrolment when the policy turns it off', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Off));
+
+    Volt::test('account')
+        ->assertSee('turned off two-factor authentication')
+        ->assertDontSee('Enable 2FA')
+        ->call('enable')
+        ->assertForbidden();
+});
+
+it('still offers it when the policy leaves it optional', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Optional));
+
+    Volt::test('account')
+        ->assertSee('Enable 2FA')
+        ->assertDontSee('turned off two-factor authentication');
 });

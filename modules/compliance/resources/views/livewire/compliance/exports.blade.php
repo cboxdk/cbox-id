@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
-use Cbox\Id\Compliance\Dsr\SubjectDataBundle;
+use App\Platform\OrganizationActivity;
 use Cbox\Id\Compliance\Dsr\SubjectDataExport;
 use Cbox\Id\Compliance\Export\ExportAuditTrail;
 use Cbox\Id\Compliance\Models\AuditExportRun;
@@ -12,6 +12,7 @@ use Cbox\Id\Compliance\Retention\RetentionPolicy;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Console › Exports & retention — one component, both planes.
@@ -79,30 +80,80 @@ new #[Layout('components.layouts.console', ['title' => 'Exports & retention'])] 
      * string, and passing an environment-wide bundle to a data-subject request would ship
      * one person's records from every tenant they exist in.
      */
-    private function subject(): ?SubjectDataBundle
+    /**
+     * Produce the bundle and hand it over as a file.
+     *
+     * THE PAGE PROMISED THIS AND DID NOT DO IT. The section is titled "Data-subject
+     * export (GDPR access)", the empty state says "to run a data-subject export", and
+     * there was no button, no route and no command anywhere in the product —
+     * `SubjectDataExport::forSubject()` was reachable from tests alone. A compliance
+     * officer answering a subject access request could learn how many entries there were
+     * and then had nowhere to go.
+     *
+     * Streamed rather than stored: the bundle is one person's audit history, and writing
+     * it to disk to serve it would create a second copy of exactly the data a subject
+     * access request exists to hand over once.
+     */
+    public function download(OrganizationActivity $activity): ?StreamedResponse
+    {
+        $scope = app(ConsoleScope::class);
+        $scope->assertMayAdminister();
+
+        $id = trim($this->subjectId);
+        $organizationId = $scope->organizationId();
+
+        if ($id === '' || $organizationId === null) {
+            return null;
+        }
+
+        $bundle = app(SubjectDataExport::class)->forSubject($id, $organizationId);
+
+        // RECORDED, because handing one person's audit trail to somebody is itself an
+        // event that belongs in the trail. Who asked, for whom, and how much.
+        $activity->record($organizationId, 'compliance.subject_export', $scope->actorId(),
+            targetType: 'user', targetId: $id,
+            context: ['entries' => $bundle->auditEntryCount()], request: request());
+
+        return response()->streamDownload(
+            fn () => print json_encode($bundle->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            'subject-'.preg_replace('/[^A-Za-z0-9_-]/', '', $id).'.json',
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
+    /**
+     * How much there is, NOT the bundle itself.
+     *
+     * The screen renders one number, and building the bundle to get it meant two cursor
+     * sweeps of the subject's entire audit history into memory — on a field bound with
+     * `.live.debounce.500ms`, so a half-typed subject id did it too. The export itself is
+     * still exact and still built by the run that produces it.
+     */
+    private function subjectEntryCount(): ?int
     {
         $id = trim($this->subjectId);
         $organizationId = app(ConsoleScope::class)->organizationId();
 
         return $id === '' || $organizationId === null
             ? null
-            : app(SubjectDataExport::class)->forSubject($id, $organizationId);
+            : app(SubjectDataExport::class)->countFor($id, $organizationId);
     }
 
     /**
-     * @return array{runs: Collection<int, AuditExportRun>, showsRuns: bool, needsOrganization: bool, subject: SubjectDataBundle|null}
+     * @return array{runs: Collection<int, AuditExportRun>, showsRuns: bool, needsOrganization: bool, subjectEntryCount: int|null, subjectId: string}
      */
     public function with(): array
     {
         return [
             'runs' => $this->runs(),
+            'subjectId' => trim($this->subjectId),
             'showsRuns' => $this->showsRunHistory(),
             // The view half. Without it the DSR field renders on the environment plane
             // with no organization chosen, accepts a subject id, and silently answers
             // nothing — a control that looks broken rather than one that says what it
             // needs.
             'needsOrganization' => app(ConsoleScope::class)->organizationId() === null,
-            'subject' => $this->subject(),
+            'subjectEntryCount' => $this->subjectEntryCount(),
         ];
     }
 }; ?>
@@ -208,13 +259,34 @@ new #[Layout('components.layouts.console', ['title' => 'Exports & retention'])] 
         </label>
         @endif
 
-        @if ($subject)
-            <div class="card mt-4 p-4 text-sm">
-                <p style="color:var(--foreground)">
-                    <span class="font-semibold mono">{{ number_format($subject->auditEntryCount()) }}</span>
-                    audit entrie(s) found for <span class="mono">{{ $subject->subjectId }}</span>.
-                </p>
-            </div>
-        @endif
+        {{-- ROLE=STATUS, because this card morphs in after a debounced keystroke: without
+             it the only thing that can report "no matches" is silent to a screen reader. --}}
+        <div role="status" aria-live="polite">
+            @if ($subjectEntryCount !== null)
+                <div class="card mt-4 p-4 text-sm">
+                    <p style="color:var(--foreground)">
+                        At most <span class="font-semibold mono">{{ number_format($subjectEntryCount) }}</span>
+                        {{ \Illuminate\Support\Str::plural('audit entry', $subjectEntryCount) }}
+                        for <span class="mono">{{ $subjectId }}</span>.
+                    </p>
+                    {{-- "At most", which is strictly what it is: the number sums both
+                         directions, so an entry where this person is both actor and target
+                         counts twice. The bundle deduplicates by sequence, so the file is
+                         exact — getting an exact number HERE would mean reading every
+                         sequence, which is the sweep this screen exists without. --}}
+                    <p class="mt-1 text-xs" style="color:var(--faint)">
+                        An upper bound — the file itself is exact and deduplicated.
+                    </p>
+
+                    <button type="button" wire:click="download" class="btn btn-primary mt-3"
+                            wire:loading.attr="disabled" wire:target="download">
+                        <span wire:loading.remove wire:target="download">
+                            <x-icon name="audit" class="w-4 h-4" /> Download the bundle (JSON)
+                        </span>
+                        <span wire:loading wire:target="download">Building the bundle&hellip;</span>
+                    </button>
+                </div>
+            @endif
+        </div>
     </section>
 </div>

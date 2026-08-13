@@ -83,7 +83,9 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
   ahead of it. `cbox-id:audit:checkpoint --dry-run` reports what would be signed without
   signing anything.
 - Watch the queue depth and failures (webhook delivery + event outbox ride it) and
-  the scheduler (key retirement/cleanups depend on it).
+  the scheduler (the cleanups depend on it). **Key retirement does not** —
+  `cbox-id:keys:rotate` is not scheduled and never has been; you run it on your own
+  cadence. See [deployment](deployment.md#5-run-the-workers).
 - Alert on auth anomalies surfaced by risk scoring (`cboxdk/laravel-risk`) and on
   audit-chain verification failures.
 

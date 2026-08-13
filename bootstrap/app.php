@@ -146,6 +146,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'sso/saml/idp/slo',
             'sso/saml/*/slo',
 
+            // The OIDC callback, for the same reason one line up: a provider answering
+            // with `response_mode=form_post` hands the browser a cross-site form aimed
+            // here, and a provider has no way to know a Laravel CSRF token. Apple picks
+            // that mode by itself the moment a scope beyond `openid` is requested, so
+            // this is not an exotic path — it is every Sign in with Apple.
+            //
+            // `state` is the control that replaces it, and it is stronger here than the
+            // token would be: it is single-use, minted per authorization, and bound to
+            // this browser by a cookie the callback pulls and forgets.
+            'sso/oidc/*/callback',
+
             // OIDC RP-Initiated Logout §5 makes POST mandatory at the end-session
             // endpoint, and POST is the binding a client MUST use when the
             // id_token_hint is too long for a URL. The controller reads its parameters

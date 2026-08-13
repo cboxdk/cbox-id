@@ -32,7 +32,9 @@ use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Organization\Models\Membership;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /**
  * Environment control plane › Organizations › detail. The full, deep-linkable
@@ -52,6 +54,11 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.environment', ['title' => 'Organization'])] class extends Component
 {
+    use WithPagination;
+
+    /** A screenful of the roster. See the read in with() for why this page is bounded. */
+    private const PER_PAGE = 25;
+
     /**
      * Second layer. The route's `env.admin` middleware is the primary gate and IS
      * re-run on Livewire actions (PersistentMiddlewareTest holds that), but this
@@ -271,6 +278,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $this->memberEmail = '';
         $this->memberRole = 'member';
         $this->memberAccessRoles = [];
+        // Ordering is oldest-first, so a member added while on a later page lands at
+        // the end: the toast said "Member added" and nothing visible changed.
+        $this->resetPage();
+
         $this->dispatch('toast', message: 'Member added.');
     }
 
@@ -338,6 +349,11 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
 
         try {
             $memberships->remove($org->id, $userId);
+
+            // Removing the only row on the last page leaves the paginator asking for a
+            // page that no longer exists — an empty table under live page links.
+            $this->resetPage();
+
             $this->dispatch('toast', message: 'Member removed.');
         } catch (LastOwner) {
             $this->dispatch('toast', message: 'An organization must keep at least one owner.', severity: 'error');
@@ -485,13 +501,20 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         // environment on every render (this is a `with()`, so it re-runs on each
         // interaction), scaling with environment size; scoping to the member ids keeps
         // the cost flat in the environment and proportional only to this org's roster.
-        $roster = $memberships->forOrganization($org->id);
+        // A PAGE OF THE ROSTER. This read was one row per member of the organization,
+        // hydrated in full on every interaction — the widest end-user surface in the
+        // environment console, and the number that made it grow with the customer rather
+        // than with the screen.
+        $roster = $memberships->paginateForOrganization($org->id, self::PER_PAGE);
+
+        /** @var list<string> $memberIds */
+        $memberIds = collect($roster->items())->map(fn (Membership $m): string => (string) $m->user_id)->values()->all();
 
         /** @var Collection<string, User> $userMap */
-        $userMap = User::query()->whereIn('id', $roster->pluck('user_id')->all())->get()->keyBy('id');
+        $userMap = User::query()->whereIn('id', $memberIds)->get()->keyBy('id');
 
         $members = [];
-        foreach ($roster as $m) {
+        foreach ($roster->items() as $m) {
             $u = $userMap->get($m->user_id);
             $members[] = [
                 'userId' => $m->user_id,
@@ -514,7 +537,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
             'accessRolesById' => $accessRoles->keyBy('id'),
             'appNames' => $catalog->appNames($accessRoles),
             'permsByRole' => $catalog->permissions($accessRoles),
-            'assignmentsByUser' => $catalog->assignmentsByUser($org->id),
+            // Scoped to the page's people for the same reason: this is one row per member
+            // per role held, and the page renders twenty-five members.
+            'assignmentsByUser' => $catalog->assignmentsByUser($org->id, $memberIds),
+            'roster' => $roster,
             'assignableRoles' => OrgRoles::assignable(),
         ];
     }
@@ -644,6 +670,10 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
                     <p>Add an existing user by email below to give them access to this organization.</p>
                 </div>
             @endforelse
+
+            @if ($roster->hasPages())
+                <div class="mt-4">{{ $roster->links() }}</div>
+            @endif
         </div>
         <form wire:submit="addMember" class="mt-4 space-y-3">
             <div class="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">

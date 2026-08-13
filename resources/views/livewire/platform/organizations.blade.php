@@ -139,9 +139,20 @@ new #[Layout('components.layouts.app', ['title' => 'Organizations'])] class exte
             })
             ->get(['id', 'name', 'slug', 'type', 'status', 'parent_id']);
 
+        // COUNTED FOR THE ROWS ON SCREEN, not for the environment. Ungated, this is a
+        // full group-by over every membership row in the environment — one row per person
+        // per organization — to decorate a list that is already filtered to a handful.
+        // The sibling page (`platform/customers`) scopes the identical aggregate to its
+        // page's ids; this is that.
+        /** @var list<string> $listedIds */
+        $listedIds = $orgs->map(fn (Organization $o): string => $o->id)->values()->all();
+
         /** @var Collection<string, int> $memberCounts */
-        $memberCounts = Membership::query()->selectRaw('organization_id, count(*) as c')
-            ->groupBy('organization_id')->pluck('c', 'organization_id');
+        $memberCounts = $listedIds === []
+            ? collect()
+            : Membership::query()->selectRaw('organization_id, count(*) as c')
+                ->whereIn('organization_id', $listedIds)
+                ->groupBy('organization_id')->pluck('c', 'organization_id');
 
         // Depth-first flatten so the table reads as the management tree.
         //

@@ -688,3 +688,33 @@ it('renders the area name above the page title', function (): void {
         ->assertOk()
         ->assertSee('<p class="cbx-page-eyebrow">People</p>', escape: false);
 });
+
+/**
+ * THE WIDEST END-USER SURFACE IN THE ENVIRONMENT CONSOLE READ THE WHOLE ROSTER.
+ *
+ * `forOrganization()` is one row per member, hydrated in full, and it sat in `with()` —
+ * which Livewire re-runs on every interaction. Beside it, `assignmentsByUser()` read one
+ * row per member per role held, for the entire organization, to decorate the twenty-five
+ * rows actually on screen. A customer with five thousand people made this page seconds
+ * per click; fifty thousand made it a timeout.
+ */
+it('renders one page of an organization roster, however many members it has', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Populous', slug: 'populous'));
+
+    foreach (range(1, 30) as $i) {
+        $user = app(Subjects::class)->create("member-{$i}@populous.test", "Member {$i}");
+        app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
+    }
+
+    $page = Volt::test('environment.organizations.show', ['organization' => $org->id]);
+
+    // The roster is ordered by creation, so the first page holds members 1–25 and the
+    // last five are on the second. Asserted both ways round: the presence check is what
+    // stops this passing against a page that rendered nothing at all, and the absence
+    // check is the pagination.
+    $page->assertSee('member-1@populous.test')
+        ->assertDontSee('member-30@populous.test');
+
+    expect($page->html())->toContain('Next');
+});

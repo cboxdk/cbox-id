@@ -155,3 +155,73 @@ it('forbids a non-admin member', function (): void {
 
     Volt::test('console.provisioning.index')->assertForbidden();
 });
+
+/**
+ * "OAUTH2 CLIENT CREDENTIALS" WAS OFFERED WITH NOWHERE TO PUT THE CREDENTIALS.
+ *
+ * The dropdown had the option, the docs advertised it, and `HttpScimClient` reads
+ * `token_url`, `client_id` and `scope` out of `auth_config` — which this form never wrote,
+ * because it called `register()` with five positional arguments and let `$authConfig`
+ * default to `[]`. There is no edit form either, so nothing anywhere in the product could
+ * supply them.
+ *
+ * The connection saved Active and every push then failed on an empty token URL, was
+ * classified retryable, and backed off and retried until the operation was exhausted.
+ * Nobody was provisioned and nobody was deprovisioned.
+ */
+it('stores what an OAuth2 client-credentials target needs to authenticate', function (): void {
+    config(['cbox-id.provisioning.verify_url' => false]);
+    $orgId = provAdmin();
+
+    Volt::test('console.provisioning.create')
+        ->set('name', 'Downstream')
+        ->set('baseUrl', 'https://scim.example.test/v2')
+        ->set('scheme', 'oauth2_client_credentials')
+        ->set('tokenUrl', 'https://scim.example.test/oauth/token')
+        ->set('clientId', 'scim-provisioner')
+        ->set('scope', 'scim:write')
+        ->set('secret', 'cs_123')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $connection = ProvisioningConnection::query()->where('organization_id', $orgId)->firstOrFail();
+
+    expect($connection->auth_config['token_url'])->toBe('https://scim.example.test/oauth/token')
+        ->and($connection->auth_config['client_id'])->toBe('scim-provisioner')
+        ->and($connection->auth_config['scope'])->toBe('scim:write');
+});
+
+it('refuses to register a client-credentials target with nowhere to fetch a token', function (): void {
+    config(['cbox-id.provisioning.verify_url' => false]);
+    provAdmin();
+
+    // The alternative is what shipped: an Active connection that can never complete a
+    // single push, failing on a schedule, with no field anywhere to correct it.
+    Volt::test('console.provisioning.create')
+        ->set('name', 'Downstream')
+        ->set('baseUrl', 'https://scim.example.test/v2')
+        ->set('scheme', 'oauth2_client_credentials')
+        ->set('secret', 'cs_123')
+        ->call('create')
+        ->assertHasErrors(['tokenUrl', 'clientId']);
+});
+
+/**
+ * And a bearer target keeps writing nothing — the fields belong to one scheme, and an
+ * `auth_config` on a connection that does not use it is a stored value nothing reads.
+ */
+it('leaves the auth config empty for a bearer target', function (): void {
+    config(['cbox-id.provisioning.verify_url' => false]);
+    $orgId = provAdmin();
+
+    Volt::test('console.provisioning.create')
+        ->set('name', 'Bearer one')
+        ->set('baseUrl', 'https://scim.example.test/v2')
+        ->set('scheme', 'bearer')
+        ->set('tokenUrl', 'https://ignored.example.test/token')
+        ->set('secret', 'tok_123')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(ProvisioningConnection::query()->where('organization_id', $orgId)->firstOrFail()->auth_config)->toBe([]);
+});

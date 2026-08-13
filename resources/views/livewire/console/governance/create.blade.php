@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use Illuminate\Auth\Access\AuthorizationException;
 use Cbox\Id\Governance\Contracts\AccessReviews;
-use Cbox\Id\Organization\Models\Organization;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -64,7 +63,7 @@ new #[Layout('components.layouts.console', ['title' => 'New access review'])] cl
             createdBy: $this->reviewerId(),
         );
 
-        $this->dispatch('toast', message: 'Access review "'.$campaign->name.'" opened with '.count($reviews->itemsFor($campaign->id)).' item(s).');
+        $this->dispatch('toast', message: 'Access review "'.$campaign->name.'" opened with '.$reviews->countItemsFor($campaign->id).' item(s).');
 
         return $this->redirectRoute(app(ConsoleScope::class)->routeName('governance.show'), ['campaign' => $campaign->id], navigate: true);
     }
@@ -77,7 +76,6 @@ new #[Layout('components.layouts.console', ['title' => 'New access review'])] cl
         return [
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
-            'organizations' => Organization::query()->orderBy('name')->get(),
         ];
     }
 

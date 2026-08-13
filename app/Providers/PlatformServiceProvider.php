@@ -31,12 +31,14 @@ use App\Platform\Install\DatabasePlatformInstaller;
 use App\Platform\Install\EnvFile;
 use App\Platform\Install\FileSetupTokens;
 use App\Platform\OpenEntitlements;
+use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
 use App\Platform\TrustedHosts;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\SignedInSubject;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
@@ -59,6 +61,11 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
+
+        // WHO IS SIGNED IN, for the package's own logout endpoints. Its default reads
+        // Laravel's guard, which this application never populates — see
+        // PlatformSignedInSubject for what that silently cost RP-initiated logout.
+        $this->app->scoped(SignedInSubject::class, PlatformSignedInSubject::class);
 
         // The customer's theme, on the Frontend API's public config document. Tagged
         // rather than referenced by the package: the framework owns the channel and

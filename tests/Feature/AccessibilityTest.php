@@ -276,16 +276,47 @@ it('renders selected text at WCAG AA in both themes', function (string $theme): 
 |--------------------------------------------------------------------------
 */
 
-/** @return array<string, string> relative path => contents */
+/**
+ * Every Blade view this application renders, keyed by a readable path.
+ *
+ * INCLUDING THE MODULES. It walked `resources/views` alone, so seven in-tree modules —
+ * compliance, billing, devices, analytics, connectors, risk-plus, whitelabel — were
+ * outside every static guard in this file. Two compliance pages shipped a documented AA
+ * contrast failure underneath a rule this same file states, and nothing said a word.
+ *
+ * The modules are not third-party code we happen to render: they are this product, split
+ * across directories for release reasons. A guard that stops at one directory is a guard
+ * whose coverage is an accident of layout.
+ *
+ * @return array<string, string> relative path => contents
+ */
 function bladeViews(?string $under = null): array
 {
-    $root = base_path('resources/views'.($under !== null ? '/'.$under : ''));
+    $roots = [base_path('resources/views'.($under !== null ? '/'.$under : ''))];
+
+    // The per-module view trees, only when the caller wants everything — a call narrowed
+    // to `livewire/console` is asking about one plane and must not be widened.
+    if ($under === null) {
+        foreach ((array) glob(base_path('modules/*/resources/views')) as $moduleViews) {
+            if (is_string($moduleViews) && is_dir($moduleViews)) {
+                $roots[] = $moduleViews;
+            }
+        }
+    }
+
     $out = [];
 
-    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
-    foreach ($it as $file) {
-        if ($file->isFile() && str_ends_with($file->getFilename(), '.blade.php')) {
-            $out[str_replace(base_path('resources/views').'/', '', $file->getPathname())] = file_get_contents($file->getPathname());
+    foreach ($roots as $root) {
+        if (! is_dir($root)) {
+            continue;
+        }
+
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+
+        foreach ($it as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), '.blade.php')) {
+                $out[str_replace(base_path().'/', '', $file->getPathname())] = file_get_contents($file->getPathname());
+            }
         }
     }
 

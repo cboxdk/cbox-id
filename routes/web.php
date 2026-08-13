@@ -167,7 +167,13 @@ Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
 Route::post('/sso/saml/{connection}/acs', SamlAcsController::class)
     ->middleware(['throttle:30,1', NoStore::class])
     ->name('sso.saml.acs');
-Route::get('/sso/oidc/{connection}/callback', OidcCallbackController::class)
+// GET AND POST. `response_mode=form_post` means the provider POSTs the callback from
+// its own origin instead of redirecting with a query string, and Apple switches to it by
+// itself once any scope beyond `openid` is requested — so a GET-only redirect URI answers
+// every Sign in with Apple with 405, which the person reads as a cancellation. The
+// controller takes `state` and `code` from the query or the body indifferently. CSRF is
+// exempted for this URI in bootstrap/app.php, where the reasoning lives.
+Route::match(['get', 'post'], '/sso/oidc/{connection}/callback', OidcCallbackController::class)
     ->middleware(['throttle:30,1', NoStore::class])
     ->name('sso.oidc.callback');
 

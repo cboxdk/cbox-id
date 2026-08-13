@@ -54,7 +54,7 @@ function scopeAuthorizeParams(string $clientId, string $scope): array
         'response_type' => 'code',
         'scope' => $scope,
         'state' => 'st',
-        'code_challenge' => 'abc',
+        'code_challenge' => pkceChallenge(),
         'code_challenge_method' => 'S256',
     ];
 }
