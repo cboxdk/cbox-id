@@ -138,7 +138,19 @@ it('leaves another person\'s sessions alone', function (): void {
 
     app(CurrentUser::class)->set($mine, $myses, $org, MembershipRole::Owner);
 
-    $this->get('/oauth/logout?id_token_hint=whatever')->assertSuccessful();
+    // A VERIFIED HINT NAMING THE OTHER PERSON. `id_token_hint=whatever` does not verify,
+    // so it took the identical path to sending no hint at all — the test passed on the
+    // no-hint branch and said nothing about whose sessions a valid hint may end. Drop the
+    // `hash_equals` binding in the controller and anyone holding any id_token this issuer
+    // minted could sign a victim out by unauthenticated GET, with this still green.
+    $hintForThem = app(TokenSigner::class)->sign([
+        'sub' => $theirs->id,
+        'aud' => 'some-client',
+        'iat' => time(),
+        'exp' => time() + 3600,
+    ]);
+
+    $this->get('/oauth/logout?'.http_build_query(['id_token_hint' => $hintForThem]))->assertSuccessful();
 
     expect(Session::query()->whereKey($their->id)->value('revoked_at'))->toBeNull();
 })->group('security');

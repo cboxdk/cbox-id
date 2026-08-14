@@ -8,6 +8,7 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -165,7 +166,27 @@ it('shows nobody else\'s activity', function (): void {
 
     $html = Volt::test('account.activity')->html();
 
-    expect($html)->not->toContain($strangerId);
+    // THE ENTRY IDS, because the page never renders a subject id anywhere. This asserted
+    // `not->toContain($strangerId)` and so could not fail: delete the ownership predicate
+    // and every person sees every other person's sign-ins, lockouts and passkey
+    // enrolments, while the assertion stays green because the id it looked for was never
+    // in the document either way.
+    //
+    // Each row carries `wire:key="activity-<audit entry id>"`, so the entries themselves
+    // are identifiable in the markup — which makes the stranger's OWN rows the thing to
+    // look for.
+    $strangerEntries = AuditEntry::query()
+        ->where('actor_id', $strangerId)
+        ->pluck('id')
+        ->all();
+
+    // The fixture has to have produced some, or this proves nothing.
+    expect($strangerEntries)->not->toBeEmpty();
+
+    foreach ($strangerEntries as $entryId) {
+        expect(str_contains($html, 'activity-'.$entryId))
+            ->toBeFalse('the page rendered another person\'s activity row');
+    }
 })->group('security');
 
 /**
