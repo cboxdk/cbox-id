@@ -1,7 +1,7 @@
 <?php
 
 declare(strict_types=1);
-use Spatie\Prometheus\Http\Middleware\AllowIps;
+use App\Http\Middleware\AllowNamedIpsOnly;
 
 /*
  * Metrics are OFF unless somebody turns them on, and locked to named addresses when they do.
@@ -29,10 +29,13 @@ return [
 
     /*
      * AND EVEN THEN, ONLY FROM NAMED ADDRESSES. An empty list means "everybody" to this
-     * package, so an operator who turns metrics on without thinking about who may read
-     * them gets a closed door rather than an open one: with the feature enabled and no
-     * addresses listed, `AllowIps` refuses every request, which is the failure direction
-     * that costs a scrape rather than a disclosure.
+     * package — its own `AllowIps` returns `$next($request)` when the list is empty — so
+     * the middleware below is OURS. With the feature enabled and no addresses listed it
+     * refuses every request, which is the failure direction that costs a scrape rather
+     * than a disclosure.
+     *
+     * This paragraph used to describe the vendor's middleware doing that, which it never
+     * did. See {@see AllowNamedIpsOnly}.
      */
     'allowed_ips' => array_values(array_filter(
         explode(',', (string) env('PROMETHEUS_ALLOWED_IPS', '')),
@@ -42,6 +45,6 @@ return [
     'default_namespace' => 'app',
 
     'middleware' => [
-        AllowIps::class,
+        AllowNamedIpsOnly::class,
     ],
 ];

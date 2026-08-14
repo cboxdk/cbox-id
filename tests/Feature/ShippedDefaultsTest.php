@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\AllowNamedIpsOnly;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use Spatie\Prometheus\Http\Middleware\AllowIps;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * THE FILE A NEW CUSTOMER ACTUALLY COPIES.
@@ -109,16 +112,61 @@ it('serves no metrics endpoint unless an operator asked for one', function (): v
 })->group('security');
 
 /**
- * And when an operator DOES turn it on, an empty allow-list must refuse rather than admit:
- * the failure direction that costs a scrape is better than the one that costs a disclosure.
+ * And when an operator DOES turn it on, an empty allow-list must refuse rather than admit.
+ *
+ * THIS USED TO ASSERT THE CONFIG FILE'S OWN LITERALS BACK AT ITSELF — that `allowed_ips`
+ * was `[]` when no env var is set, and that a middleware class was listed. Both were
+ * trivially true, and neither said anything about what a request gets. The control it
+ * claimed did not exist: the vendor's `AllowIps` returns `$next($request)` on an empty
+ * list, which its own config comment states outright ("All IP's are allowed when empty").
+ * So the file promised a closed door beside a middleware that opened one, and the test
+ * could not tell.
+ *
+ * A REQUEST, therefore. Metrics on, nobody named, and the answer must not be a 200.
  */
 it('refuses every address when metrics are on and none were named', function (): void {
-    config(['prometheus.enabled' => true, 'prometheus.allowed_ips' => []]);
+    // THE MIDDLEWARE ITSELF, not a request to `/prometheus`. That route is registered at
+    // boot from `prometheus.enabled`, so toggling the config inside a test never registers
+    // it — and a request would then 404 because the route is absent, which is the same
+    // answer a refusal gives. Passing for that reason is the failure this whole test was
+    // rewritten to escape.
+    $refused = false;
 
-    // The app's own config file is what decides this — the package's default for an empty
-    // list is "allow everybody", and this asserts we do not inherit that reading.
-    $shipped = require base_path('config/prometheus.php');
+    try {
+        config(['prometheus.allowed_ips' => []]);
 
-    expect($shipped['allowed_ips'])->toBe([])
-        ->and($shipped['middleware'])->toContain(AllowIps::class);
+        app(AllowNamedIpsOnly::class)->handle(
+            Request::create('/prometheus', 'GET', server: ['REMOTE_ADDR' => '203.0.113.7']),
+            fn (): Response => new Response('metrics', 200),
+        );
+    } catch (NotFoundHttpException) {
+        $refused = true;
+    }
+
+    expect($refused)->toBeTrue('an empty allow-list admitted a caller');
+
+    // And the wiring: the refusal is only reached if the config names this middleware.
+    expect((require base_path('config/prometheus.php'))['middleware'])->toContain(AllowNamedIpsOnly::class);
+})->group('security');
+
+/** And serves a named address, so the refusal is a rule rather than a wall. */
+it('serves metrics to an address the operator named', function (): void {
+    config(['prometheus.allowed_ips' => ['203.0.113.7']]);
+
+    $response = app(AllowNamedIpsOnly::class)->handle(
+        Request::create('/prometheus', 'GET', server: ['REMOTE_ADDR' => '203.0.113.7']),
+        fn (): Response => new Response('metrics', 200),
+    );
+
+    expect($response->getStatusCode())->toBe(200);
+})->group('security');
+
+/** An address that was not named gets the same answer as nobody at all. */
+it('refuses an address the operator did not name', function (): void {
+    config(['prometheus.allowed_ips' => ['10.9.9.9']]);
+
+    expect(fn () => app(AllowNamedIpsOnly::class)->handle(
+        Request::create('/prometheus', 'GET', server: ['REMOTE_ADDR' => '203.0.113.7']),
+        fn (): Response => new Response('metrics', 200),
+    ))->toThrow(NotFoundHttpException::class);
 })->group('security');
