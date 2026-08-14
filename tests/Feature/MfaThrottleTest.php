@@ -126,23 +126,48 @@ it('stops grinding recovery codes on the same budget', function (): void {
  */
 it('rate-limits the second factor on every plane that checks one', function (): void {
     $verifiers = [];
+    $checked = 0;
 
-    foreach (File::allFiles(__DIR__.'/../../resources/views/livewire') as $file) {
-        if ($file->getExtension() !== 'php') {
-            continue;
-        }
+    // THE MODULES TOO. Seven in-tree module view trees sat outside this walk, and a module
+    // shipping a step-up screen is exactly the "new plane added without one" this test
+    // exists to catch.
+    $roots = array_merge(
+        [base_path('resources/views/livewire')],
+        array_filter((array) glob(base_path('modules/*/resources/views/livewire')), 'is_dir'),
+    );
 
-        $source = (string) $file->getContents();
+    foreach ($roots as $root) {
+        foreach (File::allFiles($root) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
 
-        $checksAFactor = str_contains($source, 'completeMfa')
-            || str_contains($source, 'verifyTotp')
-            || str_contains($source, 'verifyRecoveryCode')
-            || str_contains($source, 'completeMfaWithRecoveryCode');
+            $source = (string) $file->getContents();
 
-        if ($checksAFactor && ! str_contains($source, 'RateLimiter')) {
-            $verifiers[] = $file->getRelativePathname();
+            // EVERY VERB THAT CHECKS A SECRET SOMEBODY TYPES, not the three names one
+            // screen happened to use. The old list matched `auth/mfa` and nothing else,
+            // so this sweep covered ONE of the four planes its own docblock names — and
+            // would have said nothing about the other three losing their limiter.
+            $checksAFactor = (bool) preg_match(
+                '/->(completeMfa|completeMfaWithRecoveryCode|verifyTotp|verifyRecoveryCode|confirmTotp|completeOtpStepUp|verifyPassword)\(/',
+                $source,
+            );
+
+            if (! $checksAFactor) {
+                continue;
+            }
+
+            $checked++;
+
+            if (! str_contains($source, 'RateLimiter')) {
+                $verifiers[] = str_replace(base_path().'/', '', $file->getPathname());
+            }
         }
     }
+
+    // A FLOOR, because a detector that matches nothing reports a clean sweep. Four planes
+    // check a factor today; this fails if the vocabulary drifts out from under it again.
+    expect($checked)->toBeGreaterThanOrEqual(4, 'the detector stopped matching the screens it is meant to watch');
 
     expect($verifiers)->toBe([], 'these screens verify a second factor with nothing bounding the guesses');
 });

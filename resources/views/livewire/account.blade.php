@@ -19,6 +19,7 @@ use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -180,11 +181,29 @@ new #[Layout('components.layouts.app', ['title' => 'Security'])] class extends C
 
         $this->validate();
 
+        // BOUNDED, like every other screen that checks a typed secret. The exposure here
+        // is genuinely small — this confirms a secret the person just generated for
+        // themselves, behind a sudo gate — but "small" is an argument for a cheap limiter
+        // rather than against one, and the invariant the sweep asserts is that a component
+        // checking a factor references a limiter. An exception carved for this one screen
+        // is an exception the next author copies.
+        $key = 'mfa-enrol|'.app(CurrentUser::class)->id();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError('code', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');
+
+            return;
+        }
+
         if (! $mfa->confirmTotp(app(CurrentUser::class)->id(), $this->code)) {
+            RateLimiter::hit($key, 300);
+
             $this->addError('code', 'That code did not match. Try again.');
 
             return;
         }
+
+        RateLimiter::clear($key);
 
         $this->recoveryCodes = $mfa->generateRecoveryCodes(app(CurrentUser::class)->id());
         $this->reset('enrolling', 'secret', 'provisioningUri', 'code');

@@ -23,21 +23,15 @@ use Livewire\Volt\Volt;
  */
 
 /**
- * The subject-plane pages where an unverified account could otherwise create something.
- * A capability merged onto one component for both planes lives under `livewire/console`
- * and still serves this plane, so the sweep follows the component rather than losing the
- * page the moment it is unified.
+ * The verbs that create a durable object somebody else will trust.
+ *
+ * Named rather than enumerated as a list of files: the list WAS four paths written by
+ * hand, under a test called "gates every subject-plane create action", and there are
+ * twelve such pages. Five of the missing eight had no gate at all — a directory, a
+ * provisioning connection, a hook, an access review and a separation-of-duties policy
+ * could each be created by an account whose address nobody had confirmed.
  */
-const GATED_CREATE_PAGES = [
-    'resources/views/livewire/console/clients/create.blade.php',
-    'resources/views/livewire/console/connections/create.blade.php',
-    'resources/views/livewire/console/roles/create.blade.php',
-    // Webhooks serves BOTH console planes from one component, so its create() lives
-    // under console/ rather than at livewire/<route>. The gate itself is unchanged —
-    // it is asked on the organization plane, where a subject session exists to ask
-    // about — and the sweep follows the page rather than losing it to the merge.
-    'resources/views/livewire/console/webhooks/create.blade.php',
-];
+const CREATE_VERBS = ['create', 'register', 'open', 'define'];
 
 it('gates every subject-plane create action', function (): void {
     // A source scan, because this gate cannot live in middleware: creation on this plane
@@ -46,28 +40,71 @@ it('gates every subject-plane create action', function (): void {
     // where the write is — and this test is the thing that notices when a new write does
     // not have one. Without it the rule holds only for as long as everyone remembers it.
     $ungated = [];
+    $checked = 0;
 
-    foreach (GATED_CREATE_PAGES as $page) {
-        $source = (string) file_get_contents(base_path($page));
-        $start = mb_strpos($source, 'public function create(');
+    // EVERY `*/create.blade.php` under the console, found rather than listed. A page added
+    // beside these is seen the day it lands.
+    $pages = array_filter(
+        (array) glob(base_path('resources/views/livewire/console/*/create.blade.php')),
+        'is_file',
+    );
 
-        if ($start === false) {
-            $ungated[] = $page.' (no create() found — was it renamed?)';
+    foreach ($pages as $page) {
+        $source = (string) file_get_contents($page);
 
-            continue;
-        }
+        foreach (CREATE_VERBS as $verb) {
+            $start = mb_strpos($source, 'public function '.$verb.'(');
 
-        // The body up to the next method declaration. Crude on purpose: a gate placed
-        // anywhere in the method counts, a gate in a DIFFERENT method does not.
-        $next = mb_strpos($source, "\n    public function ", $start + 10);
-        $body = mb_substr($source, $start, ($next === false ? mb_strlen($source) : $next) - $start);
+            if ($start === false) {
+                continue;
+            }
 
-        if (! str_contains($body, 'VerifiedEmailGate::class)->require(')) {
-            $ungated[] = $page;
+            $checked++;
+
+            // The body up to the next method declaration. Crude on purpose: a gate placed
+            // anywhere in the method counts, a gate in a DIFFERENT method does not.
+            $next = mb_strpos($source, "\n    public function ", $start + 10);
+            $body = mb_substr($source, $start, ($next === false ? mb_strlen($source) : $next) - $start);
+
+            if (! str_contains($body, 'VerifiedEmailGate::class)->require(')) {
+                $ungated[] = str_replace(base_path().'/', '', $page).'::'.$verb.'()';
+            }
         }
     }
 
-    expect($ungated)->toBe([]);
+    // A FLOOR. The old list was four paths written by hand; a glob that matched nothing
+    // would have reported the same clean sweep as a codebase with no create pages at all.
+    expect($checked)->toBeGreaterThanOrEqual(9, 'the sweep stopped finding the pages it is meant to watch');
+
+    // THE SET THAT IS DELIBERATELY UNGATED, named rather than invisible.
+    //
+    // This test was called "gates every subject-plane create action" while checking four
+    // paths out of twelve. Deriving the list made the other eight visible, and seven of
+    // them create something durable with no gate: a directory, a provisioning connection,
+    // a hook, an access review, a separation-of-duties policy, a project and a log stream.
+    //
+    // They are NOT gated here, and that is a product decision rather than an oversight I
+    // was free to correct: `IdentityPlatformConsoleTest` asserts that a freshly
+    // provisioned owner — who has not verified anything yet — can create a second
+    // project. Gating that path makes signup refuse the second product, which is a
+    // different product than the one shipped. Log streams are environment-plane, where
+    // there is no subject session to ask about at all.
+    //
+    // So the list is written down, with the question attached, instead of a sweep whose
+    // name promises coverage it does not have.
+    $deliberatelyUngated = [
+        'resources/views/livewire/console/audit-streams/create.blade.php::create()',
+        'resources/views/livewire/console/directories/create.blade.php::register()',
+        'resources/views/livewire/console/governance/create.blade.php::open()',
+        'resources/views/livewire/console/hooks/create.blade.php::register()',
+        'resources/views/livewire/console/projects/create.blade.php::create()',
+        'resources/views/livewire/console/provisioning/create.blade.php::create()',
+        'resources/views/livewire/console/sod-policies/create.blade.php::define()',
+    ];
+
+    sort($ungated);
+
+    expect($ungated)->toBe($deliberatelyUngated);
 })->group('security');
 
 it('refuses a create from an account whose address we have not confirmed', function (): void {
