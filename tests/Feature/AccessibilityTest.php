@@ -5,11 +5,17 @@ declare(strict_types=1);
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 
@@ -96,19 +102,57 @@ it('gives the hosted surface a main landmark and a skip link', function (string 
 ]);
 
 it('has no WCAG 2.1 A/AA violations on the console pages', function (string $path): void {
-    $subject = app(Subjects::class)->create('a11y@acme.test', 'A11y Admin', 'super-secret-1234');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y'));
-    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+    // EVERYTHING IN THE ENVIRONMENT THE CONSOLE ACTUALLY READS.
+    //
+    // This fixture used to build its world in the ambient scope with no platform-root
+    // environment at all — a state no deployment is ever in. The console reads members
+    // and invitations inside `PlatformRoot::run()`, which returns null and does nothing
+    // when no root exists, so those reads answered empty no matter what was seeded. Every
+    // page below was audited against its own EMPTY state: the "Invited, not joined yet"
+    // panel never existed in the audited HTML, and no page ever had a second page, so no
+    // paginator was ever audited either. A guard green over markup it has never seen is a
+    // guard about nothing.
+    //
+    // The magic link is minted in here too. Minted outside, it looks for a subject that
+    // lives in this environment and does not find one — which signs nobody in, and every
+    // page below becomes a redirect to /login that axe reports no violations on.
+    platformRootEnvironment();
 
-    // A PRODUCT: the Identity-platform pages belong to a CUSTOMER, and an organization that
-    // owns none is refused them. Without it these pages render a redirect and the audit
-    // passes on an empty document.
-    app(Projects::class)->createForOrganization($org->id, 'Acme');
+    $org = app(PlatformRoot::class)->run(function () {
+        $subject = app(Subjects::class)->create('a11y@acme.test', 'A11y Admin', 'super-secret-1234');
+        $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y'));
+        app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+        // A PRODUCT: the Identity-platform pages belong to a CUSTOMER, and an organization
+        // that owns none is refused them.
+        app(Projects::class)->createForOrganization($org->id, 'Acme');
+
+        // ROWS, so the audit sees the markup that renders rows: one invitation nobody has
+        // accepted, and one more member than a page holds.
+        app(Invitations::class)->invite($org->id, 'pending@acme.test', MembershipRole::Member, null);
+
+        foreach (range(1, 26) as $i) {
+            $member = app(Subjects::class)->create("a11y-member-{$i}@acme.test", "Member {$i}");
+            app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
+        }
+
+        return $org;
+    });
+
+    $token = app(PlatformRoot::class)->run(fn () => app(MagicLink::class)->request('a11y@acme.test'));
 
     // A magic-link redemption establishes the platform session for later requests.
-    $this->get('/magic/'.app(MagicLink::class)->request('a11y@acme.test'));
+    $this->get('/magic/'.$token);
 
     $html = $this->get($path)->assertOk()->getContent();
+
+    // The audit is only worth anything if the page rendered the thing under audit. On
+    // /members that is the invitation panel and the pager, both of which were absent for
+    // the life of this test.
+    if ($path === '/members') {
+        expect($html)->toContain('Invited, not joined yet')
+            ->and($html)->toContain('Pagination Navigation');
+    }
 
     expect(axeViolations($html))->toBe([]);
 })->with([
@@ -547,7 +591,28 @@ it('has no WCAG 2.1 A/AA violations on the environment console', function (strin
     actAsEnvironmentAdminOfATenant();
     confirmEnvironmentStepUp();
 
+    // A PENDING REQUEST, so the approvals queue renders its rows rather than its empty
+    // state. Every route in this dataset is audited against a freshly provisioned tenant
+    // with nothing in it, so most of them audit an empty list — this is the one whose row
+    // markup changed, and it was green over markup that never rendered.
+    if ($route === 'environment.approvals') {
+        $client = app(ClientRegistry::class)->register(new NewClient(
+            name: 'Agent',
+            type: ClientType::Confidential,
+            redirectUris: [],
+            scopes: ['openid'],
+        ));
+
+        $subject = app(Subjects::class)->create('agent-user@a11y.test', 'Agent User');
+
+        app(BackchannelAuthentication::class)->request($client->client, ['openid'], $subject->id);
+    }
+
     $html = $this->get(route($route))->assertOk()->getContent();
+
+    if ($route === 'environment.approvals') {
+        expect($html)->toContain('is requesting access');
+    }
 
     expect(axeViolations($html))->toBe([]);
 })->with([
