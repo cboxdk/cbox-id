@@ -58,7 +58,7 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     // An unmapped host (the apex itself) resolves to the platform-root environment —
     // exactly what SetEnvironment/ResolveEnvironment do in production.
     $this->getJson('http://cboxid.com/.well-known/openid-configuration')->assertNotFound();
-    $this->getJson('http://cboxid.com/.well-known/jwks.json')->assertNotFound();
+    // JWKS is NOT in this list — see the test below, and the reason it is deliberate.
     $this->getJson('http://cboxid.com/.well-known/oauth-authorization-server')->assertNotFound();
     $this->getJson('http://cboxid.com/.well-known/oauth-protected-resource')->assertNotFound();
     $this->postJson('http://cboxid.com/oauth/token')->assertNotFound();
@@ -82,6 +82,42 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     // it does not exist on the account plane itself.
     $this->get('http://cboxid.com/admin/single-sign-on')->assertNotFound();
 });
+
+/**
+ * …except the public verification keys, which the root MUST serve.
+ *
+ * The one deliberate hole in the wall above, and it is the same argument the wall is made
+ * of, pointed the other way. The root was given the token endpoints so it can issue to the
+ * authenticator we ship — enrolling a device at `/account/devices` is an authorization-code
+ * flow against whichever host the person is standing on. A host that signs a token and
+ * withholds the key to verify it has shipped half an IdP exactly as surely as one that
+ * advertises an endpoint which 404s; this file's own opening paragraph makes that argument
+ * about discovery.
+ *
+ * `plane:keys` and `PlaneResolver::servesVerificationKeys()` were written for this in
+ * commit 0b5e9b3 ("the root minted signatures and withheld the key to check them"). That
+ * commit changed the middleware and the resolver and never added the config line that puts
+ * the plane on the route — so `verification_keys_middleware` fell back to
+ * `first_party_middleware`, which decides by reading a `client_id` off the request. A key
+ * set carries none. It hit the empty-client branch and 404'd, in production, for five days.
+ *
+ * The assertion this replaced was the PRE-fix one, left behind by the same commit.
+ *
+ * What keeps the root from becoming an identity provider for a customer's own app is the
+ * first-party client check on the token endpoints — not hiding public key material, which
+ * discloses nothing and invites no federation.
+ */
+it('serves the public verification keys on the platform-root host, which issues tokens there', function (): void {
+    saasShape();
+
+    $this->getJson('http://cboxid.com/.well-known/jwks.json')->assertOk();
+
+    // THE CONTRAST IS THE POINT, and it is why this is not simply a hole. Keys are public
+    // material; discovery is an ASSERTION that this host is an identity provider, and it
+    // stays absent. A test that only asserted the 200 would pass just as well if somebody
+    // put the whole issuer surface back on the root.
+    $this->getJson('http://cboxid.com/.well-known/openid-configuration')->assertNotFound();
+})->group('security');
 
 /**
  * The other half, and the reason the issuer question had to stop doing two jobs.

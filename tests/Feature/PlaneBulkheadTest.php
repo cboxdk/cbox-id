@@ -10,6 +10,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -364,3 +365,71 @@ it('refuses a plane name that no longer exists, in both shapes', function (): vo
 
     expect(passesPlane(new EnforcePlane(new PlaneResolver($ctx, $resolver)), 'subject'))->toBeFalse();
 });
+
+/**
+ * Every plane name is carried by at least one route — or is named here as deliberately not.
+ *
+ * `plane:keys` was on ZERO routes for five days. The middleware knew the name, the
+ * resolver had `servesVerificationKeys()` written for it, the docblock explained why the
+ * platform root needs it, and the commit that added all three never added the config line
+ * that puts it on `/.well-known/jwks.json`. It fell back to `plane:first-party`, which
+ * decides by reading a `client_id` a key set does not carry, and the root answered 404 to
+ * the keys verifying the tokens it was signing — in production.
+ *
+ * Nothing could have noticed. The unit tests above ask `EnforcePlane` what it ANSWERS for
+ * a plane, which was correct throughout; the request tests ask what a URL returns, and
+ * only for URLs somebody thought to list. Neither can see a name that is simply never
+ * applied. This asks the routing table instead.
+ *
+ * A name may legitimately carry nothing — `operator` does, and says so in its own
+ * docblock — but that has to be a written decision rather than a gap, which is the
+ * difference this test is made of.
+ */
+it('leaves no plane name applied to nothing', function (): void {
+    // Stated in the test, not read from the middleware: a list derived from the same
+    // source it is checking would accept any drift as correct.
+    $deliberatelyUnrouted = [
+        // The staff console became a SECTION of the one console (`/platform`), which asks
+        // who you are rather than which host you are on. The name is kept because it is
+        // still the answer if a separate operator door is ever served again.
+        'operator',
+    ];
+
+    $applied = [];
+
+    foreach (Route::getRoutes() as $route) {
+        foreach ($route->gatherMiddleware() as $middleware) {
+            // BOTH SPELLINGS. Routes registered in this app use the `plane:` alias;
+            // the ones the framework registers come from `cbox-id.api.*` config, which
+            // may name either. Matching only the class — which is what `route:list`
+            // prints, and so what a first attempt copies — found nothing at all, and the
+            // floor below is what said so rather than the sweep passing vacuously.
+            if (! is_string($middleware)) {
+                continue;
+            }
+
+            if (str_starts_with($middleware, 'plane:')) {
+                $applied[] = Str::after($middleware, 'plane:');
+            } elseif (str_starts_with($middleware, EnforcePlane::class.':')) {
+                $applied[] = Str::after($middleware, ':');
+            }
+        }
+    }
+
+    $applied = array_values(array_unique($applied));
+
+    // The sweep found the routing table, not an empty one.
+    expect(count($applied))->toBeGreaterThan(3, 'the plane sweep found almost nothing — it is looking in the wrong place');
+
+    $known = (new ReflectionClass(EnforcePlane::class))->getConstant('PLANES');
+
+    $orphans = array_values(array_diff($known, $applied, $deliberatelyUnrouted));
+
+    expect($orphans)->toBe([], 'plane names no route applies: '.implode(', ', $orphans));
+
+    // And the other direction: a route naming a plane the middleware does not know falls
+    // to `default => false` and 404s the surface outright.
+    $unknown = array_values(array_diff($applied, $known));
+
+    expect($unknown)->toBe([], 'routes apply plane names EnforcePlane does not know: '.implode(', ', $unknown));
+})->group('security');

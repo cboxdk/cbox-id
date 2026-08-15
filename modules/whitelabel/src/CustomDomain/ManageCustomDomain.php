@@ -25,8 +25,11 @@ use Cbox\Ssrf\Exceptions\BlockedUrl;
  * resolver only adopts a custom domain as the OIDC `iss` / SAML entityID once DNS
  * control is proven via `EnvironmentDomainService` (which stamps `domain_verified_at`).
  * A domain set here therefore never asserts an issuer for a host the tenant has not
- * shown they control, and — because it leaves `domain_verified_at` null — is not added
- * to the trusted-Host allow-list either ({@see TrustedHosts}).
+ * shown they control, and — because it CLEARS `domain_verified_at` — is not added to the
+ * trusted-Host allow-list either ({@see TrustedHosts}). It said "leaves null" and wrote
+ * only the `domain` column, which leaves whatever was there: an environment that had
+ * verified one host and re-pointed the brand to another handed the new host the old
+ * host's proof. See {@see self::set()}.
  *
  * TWO KINDS OF COLLISION, and this used to fence only one. An exact clash with another
  * environment's `domain` is refused below and again by the column's unique constraint.
@@ -90,7 +93,21 @@ class ManageCustomDomain
             throw InvalidCustomDomain::taken($host);
         }
 
-        $environment->forceFill(['domain' => $host])->save();
+        // THE PROOF IS CLEARED, NOT LEFT ALONE. The docblock above promises this writer
+        // "leaves `domain_verified_at` null" — and it wrote only the `domain` column, so
+        // what it actually left was whatever was already there. An environment that had
+        // verified `acme.com` through `EnvironmentDomainService` carried a stamp, and
+        // re-pointing the brand here moved the domain out from under it: the new host
+        // inherited the old host's DNS challenge. `TrustedHosts::readCustomDomains()`
+        // selects on exactly `whereNotNull('domain_verified_at')`, and
+        // `EnvironmentIssuerResolver` adopts the domain as OIDC `iss` on the same
+        // condition — so a host nobody had proven control of would have been trusted as a
+        // Host header and asserted as an issuer.
+        //
+        // Nothing calls this yet, which is why it was never reached. That is also exactly
+        // the condition under which it would have been reached for the first time by
+        // whoever wired up the console page.
+        $environment->forceFill(['domain' => $host, 'domain_verified_at' => null])->save();
 
         return $host;
     }
@@ -121,10 +138,16 @@ class ManageCustomDomain
         }
     }
 
-    /** Remove the current environment's custom domain. */
+    /**
+     * Remove the current environment's custom domain.
+     *
+     * The proof goes with it. A stamp outliving the domain it was taken over is a stamp
+     * waiting to be inherited by the next value written into that column — which is the
+     * same defect as {@see self::set()}, one step further apart in time.
+     */
     public function clear(): void
     {
-        $this->currentEnvironment()->forceFill(['domain' => null])->save();
+        $this->currentEnvironment()->forceFill(['domain' => null, 'domain_verified_at' => null])->save();
     }
 
     /**

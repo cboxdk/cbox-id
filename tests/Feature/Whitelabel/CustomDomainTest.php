@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\TrustedHosts;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\DatabaseEnvironmentResolver;
 use Cbox\Id\Organization\Models\Environment as EnvironmentModel;
@@ -89,4 +90,51 @@ it('refuses a host under the platform\'s own base domains', function (): void {
 
     expect((new DatabaseEnvironmentResolver)->resolveForHost('victim.cboxid.com')?->environmentKey())
         ->toBe($victim->id, 'a tenant subdomain was hijacked by a branding-domain write');
+})->group('security');
+
+/**
+ * The proof does not travel with the column.
+ *
+ * `domain_verified_at` is the DNS challenge `EnvironmentDomainService` answered, and two
+ * controls read it and nothing else: `TrustedHosts::readCustomDomains()` selects on
+ * `whereNotNull('domain_verified_at')` to build the Host allow-list, and the issuer
+ * resolver adopts a custom domain as OIDC `iss` on the same condition.
+ *
+ * This writer promised in its own docblock to leave that stamp null. It wrote one column,
+ * so what it left was whatever was already there — and an environment that had verified a
+ * host through the proper path was carrying a stamp. Re-pointing the brand moved the
+ * domain out from under the proof and the new host inherited it.
+ */
+it('does not let a re-pointed brand domain inherit the previous domain\'s proof', function (): void {
+    $environment = makeEnvironment();
+
+    // The state a whitelabel customer is actually in: one domain, properly verified.
+    $environment->forceFill([
+        'domain' => 'id.acme.com',
+        'domain_verified_at' => now(),
+    ])->save();
+
+    app(ManageCustomDomain::class)->set('id.somebody-elses.example');
+
+    $fresh = $environment->fresh();
+
+    expect($fresh?->domain)->toBe('id.somebody-elses.example')
+        ->and($fresh?->domain_verified_at)->toBeNull();
+
+    // The two controls that read the stamp, asserted through their own code rather than
+    // through the column — the column is the mechanism, this is the consequence.
+    expect(in_array('id.somebody-elses.example', app(TrustedHosts::class)->patterns(), true))
+        ->toBeFalse('an unproven host reached the trusted-Host allow-list');
+})->group('security');
+
+it('takes the proof away with the domain when the brand domain is cleared', function (): void {
+    $environment = makeEnvironment();
+
+    $environment->forceFill(['domain' => 'id.acme.com', 'domain_verified_at' => now()])->save();
+
+    app(ManageCustomDomain::class)->clear();
+
+    // A stamp outliving its domain is the same defect one step apart in time: it sits in
+    // the row waiting for the next value written into `domain`.
+    expect($environment->fresh()?->domain_verified_at)->toBeNull();
 })->group('security');

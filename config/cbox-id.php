@@ -80,6 +80,29 @@ return [
          * on a tenant subdomain and failed on the root.
          */
         'first_party_middleware' => ['plane:first-party'],
+
+        /*
+         * The PUBLIC VERIFICATION KEYS (`/.well-known/jwks.json`), on their own plane —
+         * and this line is the whole fix, because leaving it out is what broke it.
+         *
+         * Unset, the package falls back to `first_party_middleware`, and that gate reads a
+         * `client_id` off the request to decide whether the platform root may answer. A key
+         * set names no client and carries none, so on the root it hit the empty-client
+         * branch and 404'd — while `/oauth/token` one line above happily issued signed
+         * tokens to the authenticator. A host that signs a token and withholds the key to
+         * verify it has shipped half an IdP, which is the exact sentence `plane:keys` was
+         * written to enforce; `EnforcePlane` had the name, `PlaneResolver` had
+         * `servesVerificationKeys()`, and no route ever carried it. The whole seam existed
+         * except for this line.
+         *
+         * Verified as a live 404 on https://cboxid.com/.well-known/jwks.json before the fix.
+         *
+         * `plane:keys` is issuer OR platform-root, deliberately WIDER than the first-party
+         * gate and safe to be: public key material discloses nothing, and it invites no
+         * federation the way discovery, dynamic registration, SCIM and the SAML bindings
+         * do — those stay on `plane:issuer` and stay absent on the root.
+         */
+        'verification_keys_middleware' => ['plane:keys'],
     ],
 
     /*
