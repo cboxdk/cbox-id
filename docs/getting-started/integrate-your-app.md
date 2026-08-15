@@ -74,9 +74,16 @@ a conformant client compares it against the `iss` it receives and refuses a mism
 
 ```bash
 npm install @cboxdk/id-js      # browser / Next.js
-pip install cbox-id-client     # Python
+npm install @cboxdk/id-react   # React components
 composer require cboxdk/laravel-id-client
+go get github.com/cboxdk/id-go
 ```
+
+Python is not on this list: `cbox-id-client` has never been published, so
+`pip install cbox-id-client` installs nothing. The source is at
+[cboxdk/id-python](https://github.com/cboxdk/id-python) and a Python service can vendor it
+or install from the tag, but it is unsupported — treat this platform's Python story as
+"use the HTTP API directly" until that changes.
 
 ```js
 import { createCboxId } from '@cboxdk/id-js/nextjs';
