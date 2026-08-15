@@ -35,6 +35,12 @@ drift out of date with the app's own code.
 An app-declared role whose app stops declaring it is marked **orphaned** rather
 than silently removed, so an existing grant is never quietly reinterpreted.
 
+## Saying what a role may do, here
+
+If you want "what can an Editor actually do" written down in the console rather than left
+to each app's own code, that is what [permissions](permissions.md) are — and you can write
+them yourself on the Permissions page without any integration at all.
+
 ## Assigning
 
 - Person by person on the **Members** page.
@@ -57,5 +63,6 @@ than silently removed, so an existing grant is never quietly reinterpreted.
 
 ## Related
 
+- [Permissions](permissions.md) — the individual capabilities a role is built from.
 - [Apps & API keys](apps-and-api-keys.md) — where an app's manifest URL is configured.
 - [Access reviews](access-reviews.md), [Role conflicts](role-conflicts.md).

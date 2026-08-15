@@ -20,7 +20,8 @@ console explains itself in two or three sentences; when that is not enough, the
 
 ## Getting a new organization running
 
-1. [Roles](roles.md) — decide who can do what before you invite anyone.
+1. [Roles](roles.md) — decide who can do what before you invite anyone, and
+   [permissions](permissions.md) if you want that spelled out here rather than in each app.
 2. [Apps & API keys](apps-and-api-keys.md) — register the first app people will sign in to.
 3. [Single sign-on](single-sign-on.md) — let people use the company account they already have.
 4. [Social sign-in](social-sign-in.md) — Google, GitHub, Apple and the rest, plus how connecting one to an existing account works.

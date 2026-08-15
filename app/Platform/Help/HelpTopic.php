@@ -30,6 +30,7 @@ enum HelpTopic: string
     case TrustedDevices = 'trusted-devices';
     case Members = 'members';
     case Roles = 'roles';
+    case Permissions = 'permissions';
     case SingleSignOn = 'single-sign-on';
     case SocialSignIn = 'social-sign-in';
     case SyncUsersIn = 'sync-users-in';
@@ -55,6 +56,7 @@ enum HelpTopic: string
             self::TrustedDevices => 'Your phone as the key',
             self::Members => 'Members and invitations',
             self::Roles => 'What roles do',
+            self::Permissions => 'What a role is made of',
             self::SingleSignOn => 'Signing in with your own identity provider',
             self::SocialSignIn => 'Signing in with an account people already have',
             self::SyncUsersIn => 'Keeping people up to date automatically',
@@ -86,6 +88,8 @@ enum HelpTopic: string
             self::Members => 'Everyone who can sign in to this organization, and the invitations you have sent that nobody has accepted yet. Invite people by email; they set up their own sign-in, so you never handle anyone\'s password.',
 
             self::Roles => 'A role is a job title your apps understand — "Editor", "Support agent". You decide who holds which role here, and each app decides for itself what its roles are allowed to do. Roles travel with the person into every connected app, so you grant and revoke access in one place.',
+
+            self::Permissions => 'A permission is one thing a role is allowed to do — "create invoices", "read reports". You can write your own here, without any code, and then compose them into roles. Apps can also register theirs automatically, so the list stays in step with what the app actually enforces. Permissions you write belong to you; the ones your environment shares are yours to use but not to change.',
 
             self::SingleSignOn => 'Lets your people sign in with the company account they already have — Microsoft Entra ID, Okta, Google Workspace — instead of a separate password here. You connect your identity provider once and claim your email domains; everyone on those domains is then sent to your provider to sign in.',
 
@@ -129,6 +133,7 @@ enum HelpTopic: string
             self::SyncUsersIn => 'guides/sync-users-in',
             self::SyncUsersOut => 'guides/sync-users-out',
             self::Roles => 'guides/roles',
+            self::Permissions => 'guides/permissions',
             self::Apps => 'guides/apps-and-api-keys',
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
