@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Navigation\ConsoleNavigation;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,8 +126,38 @@ it('gives every platform page the eyebrow its rail area actually uses', function
     }
 });
 
+/**
+ * VACUOUS FROM 1.0.0 UNTIL NOW, and the shape is worth naming.
+ *
+ * `polishOperator()` creates a platform-root environment and ONE operator and nothing
+ * else, so `platform.customers` and `platform.organizations` rendered their empty states
+ * and `platform.operators` withheld the Suspend button — it sits behind `@if ($op['id']
+ * !== $currentId)`, and the only operator that existed was the one looking. All three
+ * routes hit the `continue`, so the assertion ran zero times: the test measured exactly
+ * three `assertOk()` calls and nothing else. Deleting every `wire:confirm` from all three
+ * blades left it green, which is precisely the regression it is named for.
+ *
+ * A SECOND operator and a real customer, therefore — and a floor, because "the button was
+ * not on the page" must never again be indistinguishable from "the button is guarded".
+ */
 it('will not suspend a live tenant or a fellow operator on one unconfirmed click', function (): void {
     polishOperator();
+
+    // Somebody to suspend who is not the person looking. Created through the registry
+    // rather than `actAsOperator()`, which would sign us in as THEM — and the button is
+    // withheld for the operator doing the looking, which is the whole reason this page
+    // rendered no control before.
+    app(PlatformOperators::class)->create('other-op@platform.test', 'a-strong-operator-pass', 'Other');
+
+    // And a customer, so the tenant lists have a row with a Suspend control on it.
+    app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Suspendable',
+        ownerEmail: 'suspendable@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    $checked = 0;
 
     // Accounts already did this; Organizations and Operators sat ~8px from "View" with
     // no dialog, no undo and no toast.
@@ -138,8 +169,12 @@ it('will not suspend a live tenant or a fellow operator on one unconfirmed click
             continue;
         }
 
+        $checked++;
+
         expect($html)->toContain('wire:confirm');
     }
+
+    expect($checked)->toBe(3, 'a page rendered no Suspend control, so this proved nothing about it');
 });
 
 it('says who the operator is signed in as when there is no account to name', function (): void {

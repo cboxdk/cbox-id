@@ -22,14 +22,33 @@ uses(RefreshDatabase::class);
  * here rather than shipping quietly.
  */
 it('screens every password-accepting flow against the breach corpus', function (): void {
-    // array_merge, NOT `+`. Both globs are zero-indexed, so `+` keeps the left array's
-    // keys and discards every colliding key from the right — it silently dropped all 19
-    // top-level components, including the one that genuinely had no NotBreached. The
-    // test existed to catch exactly that and could not see the file.
-    $components = array_merge(
-        glob(resource_path('views/livewire/**/*.blade.php'), GLOB_BRACE) ?: [],
-        glob(resource_path('views/livewire/*.blade.php')) ?: [],
-    );
+    // A RECURSIVE WALK, because `glob('**/*.blade.php')` is not one. PHP's `**` is an
+    // ordinary wildcard matching a SINGLE path segment, so this pair saw 37 of the 92
+    // components under `livewire/` — everything two directories deep was invisible,
+    // which is `console/**` and `environment/**`: most of the console, including the one
+    // page where an administrator sets somebody ELSE's password.
+    //
+    // The last fix here was `array_merge` instead of `+`, and its comment says the test
+    // existed to catch exactly the file it could not see. Same defect, one layer down.
+    $components = [];
+
+    foreach ([resource_path('views/livewire'), ...array_filter((array) glob(base_path('modules/*/resources/views/livewire')), 'is_dir')] as $root) {
+        if (! is_dir($root)) {
+            continue;
+        }
+
+        /** @var iterable<SplFileInfo> $files */
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+
+        foreach ($files as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), '.blade.php')) {
+                $components[] = $file->getPathname();
+            }
+        }
+    }
+
+    // A FLOOR: a walk that finds nothing reports a clean sweep.
+    expect(count($components))->toBeGreaterThan(80, 'the component walk stopped finding the console');
 
     /** @var list<string> $unscreened */
     $unscreened = [];
@@ -40,7 +59,11 @@ it('screens every password-accepting flow against the breach corpus', function (
         // A component "accepts a password" when it validates one into a real credential.
         // Detect by what the component DOES, not by one key spelling: account.blade.php
         // validates 'newPassword', so a 'password' => [...] pattern missed it entirely.
-        $setsPassword = preg_match("/'(password|newPassword)'\s*=>\s*\[/", $source) === 1
+        // ANY key whose name says password, not two spellings. `environment/users/show`
+        // validates `pwPassword` — the page where an administrator sets somebody ELSE's
+        // credential — and was invisible to a detector listing `password|newPassword`,
+        // even once the walk could reach the file.
+        $setsPassword = preg_match("/'[A-Za-z_]*[Pp]assword[A-Za-z_]*'\s*=>\s*\[/", $source) === 1
             || str_contains($source, '->setPassword(')
             || str_contains($source, '->resetPassword(');
 
