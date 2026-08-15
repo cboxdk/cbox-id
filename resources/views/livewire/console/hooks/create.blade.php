@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
@@ -78,6 +79,15 @@ new #[Layout('components.layouts.console', ['title' => 'New inline hook'])] clas
      */
     public function register(ExternalActions $actions): mixed
     {
+        // OUTBOUND REACH, handed to an account whose address nobody has confirmed.
+        // This connection makes the platform ITSELF send requests to a URL the creator
+        // chose, or pull identities from one — the same class as a webhook, which this
+        // console has always gated. Internal bookkeeping (an access review, a policy) is
+        // deliberately not held this way; reach outside the tenant is.
+        if (app(ConsoleScope::class)->plane() === ConsolePlane::Organization) {
+            app(VerifiedEmailGate::class)->require('register a hook');
+        }
+
         // Both are public props, so a crafted wire request can set either to anything.
         // `hook` especially: without the enum rule the HookPoint::from() below throws
         // ValueError and the console 500s instead of refusing the input. Stated here in

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
@@ -105,6 +106,15 @@ new #[Layout('components.layouts.console', ['title' => 'New directory'])] class 
      */
     public function register(Directories $directories): mixed
     {
+        // OUTBOUND REACH, handed to an account whose address nobody has confirmed.
+        // This connection makes the platform ITSELF send requests to a URL the creator
+        // chose, or pull identities from one — the same class as a webhook, which this
+        // console has always gated. Internal bookkeeping (an access review, a policy) is
+        // deliberately not held this way; reach outside the tenant is.
+        if (app(ConsoleScope::class)->plane() === ConsolePlane::Organization) {
+            app(VerifiedEmailGate::class)->require('connect a directory');
+        }
+
         // Asked before any other work: a non-entitled organization is refused outright
         // rather than walked through a form it may not submit.
         $organizationId = $this->targetOrganizationId();

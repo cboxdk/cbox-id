@@ -107,6 +107,13 @@ it('refuses a crafted revocation scope on the admin set-password panel', functio
 
 it('refuses a crafted hook point instead of throwing', function (): void {
     $subject = app(Subjects::class)->create('admin@acme.test', 'Admin', 'a-perfectly-long-passphrase');
+    // VERIFIED, because that is what an established admin of an established organization
+    // IS — the same reasoning `actingAsRole()` states and applies by default. An
+    // unverified fixture quietly exercises the unverified-account rules instead of the
+    // page under test, and then the fixture gets blamed rather than the rule.
+    app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
+    $subject = app(Subjects::class)->find($subject->id) ?? $subject;
+
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-hooks'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Admin);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);

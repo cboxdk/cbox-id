@@ -76,29 +76,32 @@ it('gates every subject-plane create action', function (): void {
     // would have reported the same clean sweep as a codebase with no create pages at all.
     expect($checked)->toBeGreaterThanOrEqual(9, 'the sweep stopped finding the pages it is meant to watch');
 
-    // THE SET THAT IS DELIBERATELY UNGATED, named rather than invisible.
+    // THE RULE, NOT A LIST: gate what confers REACH OR TRUST OUTSIDE THE TENANT.
     //
     // This test was called "gates every subject-plane create action" while checking four
-    // paths out of twelve. Deriving the list made the other eight visible, and seven of
-    // them create something durable with no gate: a directory, a provisioning connection,
-    // a hook, an access review, a separation-of-duties policy, a project and a log stream.
+    // paths written by hand out of twelve. Deriving them made the rest visible, and the
+    // question then became which of those deserve the gate at all.
     //
-    // They are NOT gated here, and that is a product decision rather than an oversight I
-    // was free to correct: `IdentityPlatformConsoleTest` asserts that a freshly
-    // provisioned owner — who has not verified anything yet — can create a second
-    // project. Gating that path makes signup refuse the second product, which is a
-    // different product than the one shipped. Log streams are environment-plane, where
-    // there is no subject session to ask about at all.
+    // GATED, because each one hands an unverified account something that acts beyond the
+    // tenant: an OAuth client and an SSO connection are credentials other systems trust, a
+    // role grants access, and a webhook, a directory, a provisioning connection and a hook
+    // all make this platform send requests to a URL the creator chose or pull identities
+    // from one. That is the shape worth holding until an address is confirmed.
     //
-    // So the list is written down, with the question attached, instead of a sweep whose
-    // name promises coverage it does not have.
+    // NOT GATED, and each for its own reason rather than by omission:
+    //
+    //  - `projects` — a project reaches nothing, and refusing one mid-signup is a growth
+    //    regression. `IdentityPlatformConsoleTest` asserts a freshly provisioned owner can
+    //    create a second product, and that test is right.
+    //  - `governance` and `sod-policies` — internal bookkeeping. An access review and a
+    //    separation-of-duties policy are read by this tenant's own administrators and
+    //    nobody else, so gating them buys nothing and costs onboarding friction.
+    //  - `audit-streams` — environment plane, where there is no subject session to ask
+    //    about at all.
     $deliberatelyUngated = [
         'resources/views/livewire/console/audit-streams/create.blade.php::create()',
-        'resources/views/livewire/console/directories/create.blade.php::register()',
         'resources/views/livewire/console/governance/create.blade.php::open()',
-        'resources/views/livewire/console/hooks/create.blade.php::register()',
         'resources/views/livewire/console/projects/create.blade.php::create()',
-        'resources/views/livewire/console/provisioning/create.blade.php::create()',
         'resources/views/livewire/console/sod-policies/create.blade.php::define()',
     ];
 

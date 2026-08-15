@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\VerifiedEmailGate;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
@@ -87,6 +88,15 @@ new #[Layout('components.layouts.console', ['title' => 'New outbound connection'
      */
     public function create(ProvisioningConnections $connections): mixed
     {
+        // OUTBOUND REACH, handed to an account whose address nobody has confirmed.
+        // This connection makes the platform ITSELF send requests to a URL the creator
+        // chose, or pull identities from one — the same class as a webhook, which this
+        // console has always gated. Internal bookkeeping (an access review, a policy) is
+        // deliberately not held this way; reach outside the tenant is.
+        if (app(ConsoleScope::class)->plane() === ConsolePlane::Organization) {
+            app(VerifiedEmailGate::class)->require('register a provisioning connection');
+        }
+
         $this->validate();
 
         $usesClientCredentials = AuthScheme::from($this->scheme) === AuthScheme::OAuth2ClientCredentials;

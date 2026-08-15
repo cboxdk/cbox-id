@@ -67,6 +67,27 @@ ID recognise `you@acme.com` as yours and send that person to your provider.
 A domain can only be claimed by one organization — if verification is refused
 because it is already claimed, that is why.
 
+## Choose how far it goes
+
+Claiming a domain decides who Cbox ID RECOGNISES. It does not, on its own, decide
+whether those people may still use a password. That is the **Single sign-on** setting
+on **Auth policy**, and the three values differ:
+
+| Setting | What somebody on a verified domain sees |
+|---|---|
+| **Require SSO** | Sent straight to your provider. There is no password form to fall back to, and an old credential cannot bypass the provider you mandated. |
+| **Prefer SSO** | "Continue with single sign-on" first, with the password form beneath it. |
+| **Off** | The password form, with the connection offered underneath. |
+
+**If you want SSO to be the only way in, choose Require SSO.** Until recently a verified
+domain routed to the provider whatever this was set to, so a tenant that had left it at
+*Off* was enforced anyway. That was wrong in both directions: it ignored the setting, and
+it locked out anybody who had enrolled a passkey, because there was no local form to reach
+it from. Microsoft warns against exactly this pattern for the same reason.
+
+If your organization was relying on that implicit behaviour, set **Require SSO** — the
+setting now means what it says.
+
 ## Troubleshooting
 
 **"Couldn't read the provider's OpenID configuration"** — the issuer URL is wrong,

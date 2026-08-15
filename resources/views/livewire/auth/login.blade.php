@@ -15,6 +15,8 @@ use App\Platform\SsoMandate;
 use App\Platform\SsoMandates;
 use App\Platform\SsoRefusal;
 use App\Platform\SsoStart;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\MagicLink;
@@ -55,6 +57,25 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
     /** Home-realm discovery: true once the email step passed with no SSO connection, revealing the password form. */
     public bool $identified = false;
+
+    /**
+     * Where to send somebody whose address belongs to a tenant with single sign-on, when
+     * that tenant still accepts passwords.
+     *
+     * Null under `Require SSO` — there the redirect already happened and there is no
+     * password form to sit beside — and null when no connection matches at all.
+     */
+    public ?string $ssoOffer = null;
+
+    /**
+     * Whether that offer LEADS the page or merely sits on it.
+     *
+     * `Prefer SSO` says in as many words that single sign-on is presented first, so it is
+     * the primary action with the password form below. Under `Off` the tenant has not
+     * asked for that, so the password form leads and the connection is offered after it —
+     * discoverable, not pushed.
+     */
+    public bool $ssoOfferLeads = false;
 
     /**
      * The organization that refused this password because it mandates SSO, once one has.
@@ -256,10 +277,25 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
     }
 
     /**
-     * Route the email's home realm to its IdP if it has one. Returns true when a
-     * redirect was issued (the caller must stop), false to continue with the local
-     * flow — keeping the "verified domain → always SSO, never local auth" invariant
-     * in one place for both the identifier step and a direct password submit.
+     * Route the email's home realm to its IdP, as far as that tenant's policy allows.
+     *
+     * ROUTING AND ENFORCEMENT ARE TWO QUESTIONS, and this method used to answer both with
+     * one: any verified domain with an active connection was redirected, whatever the
+     * organization had set. So `Off` and `Prefer SSO` both behaved exactly like `Require
+     * SSO` for everyone on that domain — two of the three settings on the auth-policy
+     * screen decided nothing, and a tenant that had deliberately left enforcement off
+     * still had its people bounced to an IdP with no way back.
+     *
+     * The cost of that is not theoretical. Microsoft advises against auto-acceleration for
+     * exactly this reason: it hinders stronger authentication. This platform ships
+     * passkeys, and a person who has enrolled one on a verified domain could not reach
+     * them.
+     *
+     * So: `Require SSO` redirects and there is no local form to fall back to. Anything
+     * weaker OFFERS the connection — prominently under `Prefer SSO`, quietly under `Off` —
+     * and leaves the password form standing beneath it.
+     *
+     * Returns true when a redirect was issued and the caller must stop.
      */
     private function redirectHomeRealm(): bool
     {
@@ -267,9 +303,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             return false;
         }
 
-        $this->redirect(SsoStart::url($connection), navigate: false);
+        $sso = app(AuthPolicies::class)->resolve($connection->organization_id)->sso;
 
-        return true;
+        if (! $sso->allowsPasswordLogin()) {
+            $this->redirect(SsoStart::url($connection), navigate: false);
+
+            return true;
+        }
+
+        $this->ssoOffer = SsoStart::url($connection);
+        $this->ssoOfferLeads = $sso === SsoEnforcement::Preferred;
+
+        return false;
     }
 
     /**
@@ -281,7 +326,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
      */
     public function startOver(): void
     {
-        $this->reset('ssoOrganization', 'ssoStartUrl', 'ssoReason', 'identified', 'password');
+        $this->reset('ssoOrganization', 'ssoStartUrl', 'ssoReason', 'ssoOffer', 'ssoOfferLeads', 'identified', 'password');
     }
 
     /**
@@ -413,8 +458,29 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
             </button>
         </form>
     @else
+        {{-- THE CONNECTION, OFFERED RATHER THAN FORCED.
+
+             `Prefer SSO` says single sign-on is presented first, so under it this leads and
+             the password form sits beneath. Under `Off` the tenant has asked for neither,
+             so the form leads and the same button follows it — discoverable, not pushed.
+             `Require SSO` never reaches here: that redirects before the form is drawn.
+
+             A full navigation, not wire:navigate — the destination answers with a
+             cross-origin 302 an SPA navigation cannot follow. --}}
+        @if ($ssoOffer !== null && $ssoOfferLeads)
+            <div class="mt-7">
+                <a href="{{ $ssoOffer }}" class="btn btn-primary btn-lg w-full">Continue with single sign-on</a>
+
+                <div class="flex items-center gap-3 mt-5" aria-hidden="true">
+                    <span class="h-px flex-1" style="background:var(--border)"></span>
+                    <span class="text-xs" style="color:var(--faint)">or use your password</span>
+                    <span class="h-px flex-1" style="background:var(--border)"></span>
+                </div>
+            </div>
+        @endif
+
         {{-- name + autocomplete so password managers (1Password, iCloud Keychain, browsers) recognise and fill the form. --}}
-        <form wire:submit="login" class="mt-7 space-y-4" method="post" action="{{ route('login') }}">
+        <form wire:submit="login" class="{{ $ssoOffer !== null && $ssoOfferLeads ? 'mt-5' : 'mt-7' }} space-y-4" method="post" action="{{ route('login') }}">
             <div>
                 <div class="flex items-center justify-between mb-1.5">
                     <label class="label" for="email" style="margin-bottom:0">Email</label>
@@ -448,6 +514,11 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
                 </span>
             </button>
         </form>
+
+        {{-- The same offer, after the form, when the tenant has not asked for it to lead. --}}
+        @if ($ssoOffer !== null && ! $ssoOfferLeads)
+            <a href="{{ $ssoOffer }}" class="btn btn-ghost btn-lg w-full mt-3">Continue with single sign-on instead</a>
+        @endif
     @endif
 
     <div class="divider my-6">OR</div>

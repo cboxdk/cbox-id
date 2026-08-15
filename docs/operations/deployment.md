@@ -125,6 +125,35 @@ In production this also checks the **hardening** posture: `APP_DEBUG` off, secur
 encrypted session cookies. Treat any ✗ as release-blocking. A green doctor plus a
 reachable `/.well-known/openid-configuration` means you're live.
 
+## Upgrading: SSO enforcement now means what it says
+
+**Read this before deploying if any tenant has a verified domain and an active SSO
+connection.**
+
+A verified domain used to route to the provider whatever the organization's **Single
+sign-on** setting was, so *Off* and *Prefer SSO* both behaved like *Require SSO*. They no
+longer do: only *Require SSO* refuses the password form. Anything weaker offers the
+connection and leaves the form standing.
+
+That is the correct reading of the setting, and it is what lets somebody with a passkey
+sign in on a federated domain — but for a tenant that was relying on the implicit
+behaviour it is a loosening, and nothing will tell them. Find them before you deploy:
+
+```sql
+SELECT o.id, o.name, o.slug
+FROM organizations o
+JOIN verified_domains d ON d.organization_id = o.id AND d.verified_at IS NOT NULL
+JOIN connections c ON c.organization_id = o.id AND c.status = 'active'
+LEFT JOIN auth_policies p ON p.organization_id = o.id
+WHERE p.sso IS NULL OR p.sso <> 'required';
+```
+
+Every row is an organization whose people are force-redirected today and will get a
+password form afterwards. Set **Require SSO** on each — from the console, or by writing
+`sso = 'required'` to its auth policy — and the behaviour is unchanged. Deliberately not
+migrated for you: it writes a customer's security posture, and inferring consent from a
+configuration they never made is how the setting came to be ignored in the first place.
+
 ## Reverse proxy notes
 
 - Terminate TLS; forward the real scheme/host (`X-Forwarded-Proto`/`-Host`) and

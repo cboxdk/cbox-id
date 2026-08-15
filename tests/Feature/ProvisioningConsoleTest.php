@@ -21,6 +21,13 @@ uses(RefreshDatabase::class);
 function provAdmin(MembershipRole $role = MembershipRole::Owner): string
 {
     $subject = app(Subjects::class)->create('prov@acme.test', 'Prov Admin', 'supersecret123');
+    // VERIFIED, because that is what an established admin of an established organization
+    // IS — the same reasoning `actingAsRole()` states and applies by default. An
+    // unverified fixture quietly exercises the unverified-account rules instead of the
+    // page under test, and then the fixture gets blamed rather than the rule.
+    app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
+    $subject = app(Subjects::class)->find($subject->id) ?? $subject;
+
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-prov'));
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
