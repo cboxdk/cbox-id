@@ -8,6 +8,53 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Security
+
+- **A tenant admin could edit the whole environment's permission catalog.** The Permissions
+  page is offered on both consoles deliberately — roles are made of permissions, and a plane
+  that offers one while hiding the other asks an admin to assign a thing they cannot inspect.
+  Where the rows landed was not deliberate: every manual permission an organization admin
+  wrote went into the environment-wide tier, so they could rename a key a peer's roles were
+  built from, and Delete cascades `role_permission` for **every** role in the environment.
+
+  The plane now decides ownership. Reads use `visibleToOrganization()`, writes use
+  `ownedByOrganization()` — they differ by exactly the shared tier, which is readable
+  because roles are composed from it and unwritable because that was the bug. Requires
+  `cboxdk/laravel-id` ^1.9 for the `organization_id` column; existing rows stay shared and
+  are not backfilled. Two smaller leaks on the same page went with it: every app-declared
+  key was rendered to every tenant admin regardless of `tenant_assignable` (an internal key
+  is named after the thing it guards), and the "in N roles" count included peers' roles.
+
+  Found by a third-party review of this repo.
+
+- **`plane:keys` was applied to no route, so the platform root published no verification
+  keys.** `/.well-known/jwks.json` fell back to `plane:first-party`, which decides by
+  reading a `client_id` off the request — and a key set carries none. The root answered 404
+  while `/oauth/token` beside it issued signed tokens to the authenticator. The middleware,
+  the resolver and the reasoning all shipped in an earlier commit; the config line that puts
+  the plane on the route did not. `PlaneBulkheadTest` now refuses any plane name no route
+  carries, with `operator` named as the one deliberate exception.
+
+- **A re-pointed brand domain inherited the previous domain's DNS proof.**
+  `ManageCustomDomain` promised to leave `domain_verified_at` null and wrote only the
+  `domain` column, so it left whatever was there — and `TrustedHosts` selects on exactly
+  that column while the issuer resolver adopts the domain as OIDC `iss` on the same
+  condition. Latent: nothing routes to that writer yet, which is also the state it would
+  have been in when somebody wired the console page. `clear()` had the same gap.
+
+### Added
+
+- **A Permissions guide, and the "?" topic the page never had.** Every other console page
+  has one; this had neither, so the only written account of what a permission is lived in
+  the SDK reference. `docs/guides/permissions.md` is in plain language, for an administrator
+  who does not want to write code to use a form that is already on their screen.
+
+### Fixed
+
+- `pip install cbox-id-client` appeared in step 5 of the quickstart — the first command a
+  new integrator runs. It has never been published. The block now lists the four packages
+  that do resolve, and says Python is source-only.
+
 ## [1.1.0] - 2026-08-08
 
 One console. The `/platform` pages were still a second one — their own layout, their own
