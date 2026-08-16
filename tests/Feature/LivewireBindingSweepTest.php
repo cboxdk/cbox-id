@@ -13,15 +13,41 @@ declare(strict_types=1);
  * whose `@error` block was never rendered, and the button returned 200 and did nothing.
  *
  * Cheap to check and impossible to get wrong twice.
+ *
+ * IT SCANS `modules/` TOO. It walked `resources/views/livewire` alone, so three module
+ * components using `wire:model` — whitelabel branding and both compliance pages — were
+ * never checked at all. Sibling sweeps in this suite have made the same omission
+ * repeatedly (the accessibility audit was doing it a fortnight ago), and a module is
+ * exactly where a stale binding survives longest: it has fewer readers than the app's own
+ * views and its own tests set properties directly.
  */
 it('binds every wire:model to a property its component declares', function (): void {
     $offenders = [];
     $checked = 0;
 
-    /** @var iterable<SplFileInfo> $files */
-    $files = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(resource_path('views/livewire')),
-    );
+    $roots = [resource_path('views/livewire')];
+
+    foreach ((array) glob(base_path('modules/*/resources/views')) as $moduleViews) {
+        if (is_string($moduleViews) && is_dir($moduleViews)) {
+            $roots[] = $moduleViews;
+        }
+    }
+
+    // The module roots have to be FOUND, not assumed: a renamed layout would silently
+    // narrow this back to the app's own views, which is the state it is being widened out
+    // of. Modules exist in this repo, so finding none means the glob is wrong.
+    expect(count($roots))->toBeGreaterThan(3, 'no module view directories were found — the sweep narrowed itself');
+
+    $files = [];
+
+    foreach ($roots as $root) {
+        /** @var iterable<SplFileInfo> $found */
+        $found = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+
+        foreach ($found as $file) {
+            $files[] = (string) $file;
+        }
+    }
 
     foreach ($files as $file) {
         if (! str_ends_with((string) $file, '.blade.php')) {
@@ -45,7 +71,7 @@ it('binds every wire:model to a property its component declares', function (): v
             $checked++;
 
             if (! isset($declared[$name])) {
-                $offenders[] = str_replace(resource_path('views/livewire/'), '', (string) $file).": wire:model=\"{$name}\"";
+                $offenders[] = str_replace([resource_path('views/livewire/'), base_path('')], '', (string) $file).": wire:model=\"{$name}\"";
             }
         }
     }

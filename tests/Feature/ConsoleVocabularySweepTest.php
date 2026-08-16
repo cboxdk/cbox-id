@@ -17,6 +17,10 @@ declare(strict_types=1);
  *
  * Comments are stripped before matching: the history of WHY the plane went is worth keeping
  * in the source, and a reader of the code is not a reader of the UI.
+ *
+ * IT SCANS `modules/` TOO. It walked `resources/views` alone, so a module page could say
+ * "Accounts" in a heading indefinitely — and modules are where the drift is likeliest,
+ * because a module ships its own copy and nobody renaming the plane goes looking in it.
  */
 it('never calls a customer an account in user-facing copy', function (): void {
     /** @var list<string> $offenders */
@@ -44,13 +48,32 @@ it('never calls a customer an account in user-facing copy', function (): void {
         '/>\s*Account\s*</',
     ];
 
-    /** @var iterable<SplFileInfo> $files */
-    $files = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(resource_path('views')),
-    );
+    $roots = [resource_path('views')];
 
-    foreach ($files as $file) {
-        $path = (string) $file;
+    foreach ((array) glob(base_path('modules/*/resources/views')) as $moduleViews) {
+        if (is_string($moduleViews) && is_dir($moduleViews)) {
+            $roots[] = $moduleViews;
+        }
+    }
+
+    // The module roots have to be FOUND, not assumed: a renamed layout would silently
+    // narrow this back to the app's own views, which is the state it is being widened out
+    // of. Modules exist in this repo, so finding none means the glob is wrong.
+    expect(count($roots))->toBeGreaterThan(3, 'no module view directories were found — the sweep narrowed itself');
+
+    /** @var list<string> $paths */
+    $paths = [];
+
+    foreach ($roots as $root) {
+        /** @var iterable<SplFileInfo> $found */
+        $found = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+
+        foreach ($found as $file) {
+            $paths[] = (string) $file;
+        }
+    }
+
+    foreach ($paths as $path) {
 
         if (! str_ends_with($path, '.blade.php')) {
             continue;
@@ -67,7 +90,7 @@ it('never calls a customer an account in user-facing copy', function (): void {
 
         foreach ($forbidden as $pattern) {
             if (preg_match($pattern, $source, $m) === 1) {
-                $offenders[] = str_replace(resource_path('views/'), '', $path).': "'.$m[0].'"';
+                $offenders[] = str_replace([resource_path('views/'), base_path('')], '', $path).': "'.$m[0].'"';
             }
         }
     }

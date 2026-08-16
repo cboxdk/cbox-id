@@ -57,6 +57,15 @@ final class ConsoleRoutes
             // gate that follows is the env-admin session — a subject session grants
             // nothing here.
             'plane:environment',
+            // …and the same multi-tenant gate, which this stack was missing. 55 of the
+            // host's 64 environment routes carry it and these did not, so on a
+            // single-tenant deployment a module's environment page answered a redirect
+            // to a sign-in it can never pass while every sibling page 404'd. That
+            // difference is the disclosure `RequireMultiTenant` exists to prevent: it
+            // answers 404 rather than 403 precisely so an unauthenticated caller cannot
+            // learn which shape this deployment runs. A door that cannot open should not
+            // be a door, and it should not be a differently-shaped door either.
+            'multi.tenant',
             'env.admin',
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($environmentUri, $uri, $component, $name): void {

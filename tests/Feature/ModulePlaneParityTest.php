@@ -69,6 +69,12 @@ function enrolledHandset(string $subjectId, string $name): Device
 /** Sign in as an environment administrator, optionally acting on an organization. */
 function moduleEnvironmentAdmin(string $slug = 'module-parity', bool $chooseOrganization = true): ?string
 {
+    // The environment console lives under `/admin`, which exists only on a multi-tenant
+    // deployment — `RequireMultiTenant` 404s it otherwise, because a single-tenant install
+    // has one environment, it is the platform root, and it belongs to no account. This was
+    // absent while module environment routes were the only ones missing that gate, so these
+    // tests reached pages the host's OWN environment pages already 404'd in the same shape.
+    multiTenantDeployment();
     platformRootEnvironment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
