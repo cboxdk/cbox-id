@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Console\Support\SecretLine;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\Install\Enums\DeploymentShape;
 use App\Platform\Install\EnvFile;
@@ -448,9 +449,13 @@ class InstallCommand extends Command
                 'Save this',
             );
 
-            // Bare, and alone on its line. `$this->line()` does not wrap, so this survives
-            // a narrow terminal and a copy-paste intact.
-            $this->line($plan->operator->password);
+            // Bare, alone on its line, and UNFORMATTED. `line()` does not wrap — which is
+            // why it was chosen — but it does write through Symfony's OutputFormatter,
+            // which reads `<...>` as markup and eats it. `Str::password(28)` draws from an
+            // alphabet containing `<` and `>`, so about one generated password in 140 was
+            // printed with a character missing: shown once, hashed correctly, and useless.
+            // See {@see SecretLine}.
+            SecretLine::write($this->output, $plan->operator->password);
         }
     }
 
