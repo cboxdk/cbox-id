@@ -127,19 +127,42 @@ it('keeps dismissal per admin, not per organization', function (): void {
     expect($checklist->isDismissed($org->id, 'subject-one'))->toBeFalse();
 });
 
+/**
+ * A step the organization cannot reach is ABSENT, not present-and-impossible — otherwise
+ * the checklist can never reach 100% and the console shows a permanent unfinished badge.
+ *
+ * ASSERTED IN BOTH DIRECTIONS, against the entitlement mode that decides it. The version
+ * this replaces looped over the listed steps asserting each one's `requiresFeature()` was
+ * `null`, `'sso'` or `'scim'` — which is a property of the ENUM, true of every step
+ * whether it was filtered or not. A checklist that listed single-sign-on to an
+ * organization with no SSO entitlement satisfied it exactly as well as one that did not,
+ * so the filtering it was written to prove was never exercised.
+ */
 it('leaves out steps the organization is not entitled to, so the list can reach 100%', function (): void {
+    // Deny-by-default. `open` is the shipped default and grants everything, which is why
+    // this has to be stated: the assertion below is about what happens when it is not.
+    config(['cbox-id.entitlements.mode' => 'metered']);
+
     $org = checklistOrg();
 
-    $keys = array_map(
-        fn ($s) => $s->key,
-        app(SetupChecklist::class)->for($org->id)->steps,
-    );
+    $keys = array_map(fn ($s) => $s->key, app(SetupChecklist::class)->for($org->id)->steps);
 
-    // Whatever this deployment's entitlements are, an unavailable step is absent
-    // rather than present-and-impossible: every listed step must be completable.
-    foreach ($keys as $key) {
-        expect($key->requiresFeature())->toBeIn([null, 'sso', 'scim']);
-    }
+    expect(in_array(SetupStepKey::SingleSignOn, $keys, true))->toBeFalse('an unentitled SSO step was listed')
+        ->and(in_array(SetupStepKey::SyncUsersIn, $keys, true))->toBeFalse('an unentitled SCIM step was listed')
+        // …and the unconditional steps are still there, so "filtered everything" cannot
+        // masquerade as "filtered correctly".
+        ->and($keys)->toContain(SetupStepKey::InviteTeam, SetupStepKey::ConnectApp);
+});
 
-    expect($keys)->toContain(SetupStepKey::InviteTeam, SetupStepKey::ConnectApp);
+it('lists the entitled steps once the organization has them', function (): void {
+    config(['cbox-id.entitlements.mode' => 'open']);
+
+    $org = checklistOrg();
+
+    $keys = array_map(fn ($s) => $s->key, app(SetupChecklist::class)->for($org->id)->steps);
+
+    // The other half. Without it, a filter that dropped every feature-gated step would
+    // pass the test above and quietly remove SSO and directory sync from onboarding for
+    // the customers who bought them.
+    expect($keys)->toContain(SetupStepKey::SingleSignOn, SetupStepKey::SyncUsersIn);
 });
