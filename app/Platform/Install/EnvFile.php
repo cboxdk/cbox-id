@@ -67,8 +67,34 @@ final class EnvFile
         $contents = (string) file_get_contents($this->path);
         $line = $key.'='.$this->escape($value);
 
-        $contents = preg_match('/^'.preg_quote($key, '/').'=.*$/m', $contents) === 1
-            ? (string) preg_replace('/^'.preg_quote($key, '/').'=.*$/m', $line, $contents)
+        // REPLACED LINE BY LINE, not with preg_replace. The value goes in the
+        // REPLACEMENT position there, where `$1` and `\1` are backreferences and `\\` is
+        // an escape — so `preg_replace` silently rewrote the very thing it was asked to
+        // record. Verified: an issuer of `https://id.acme.com/$1/x` was written as
+        // `https://id.acme.com//x`, and `C:\\path` as `C:\path`.
+        //
+        // Nothing written today contains either character — the crypto key is base64,
+        // the hosts are hostnames — so this was latent. It is fixed rather than noted
+        // because the one value where corruption is silent AND unrecoverable goes
+        // through here: `CBOX_ID_CRYPTO_KEY`, whose own failure message says every
+        // sealed secret written during the install becomes unreadable without it. A
+        // latent bug guarding that is not one to leave for the day somebody changes a
+        // key format.
+        $pattern = '/^'.preg_quote($key, '/').'=/';
+        $lines = explode("\n", $contents);
+        $replaced = false;
+
+        foreach ($lines as $index => $existing) {
+            if (preg_match($pattern, $existing) === 1) {
+                $lines[$index] = $line;
+                $replaced = true;
+
+                break;
+            }
+        }
+
+        $contents = $replaced
+            ? implode("\n", $lines)
             : rtrim($contents, "\n")."\n".$line."\n";
 
         return file_put_contents($this->path, $contents) !== false;
@@ -77,6 +103,13 @@ final class EnvFile
     private function escape(string $value): string
     {
         // Quote when the value contains characters that would break a bare .env line.
-        return preg_match('/\s|#|"|\'/', $value) === 1 ? '"'.str_replace('"', '\"', $value).'"' : $value;
+        if (preg_match('/\s|#|"|\'/', $value) !== 1) {
+            return $value;
+        }
+
+        // BACKSLASHES FIRST. Escaping only the quotes left a value ending in `\` able to
+        // escape its own closing quote — `a"b\` became `"a\"b\"`, which reads as an
+        // unterminated string and swallows the next line of the file.
+        return '"'.str_replace(['\\', '"'], ['\\\\', '\"'], $value).'"';
     }
 }
