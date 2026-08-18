@@ -7,6 +7,7 @@ namespace App\Http\Controllers\FrontendApi;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\PlatformAuth;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,6 +37,7 @@ class SecondFactorController
     public function __construct(
         private readonly PlatformAuth $auth,
         private readonly LoginTickets $tickets,
+        private readonly Subjects $subjects,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -114,7 +116,25 @@ class SecondFactorController
 
     private function completeOtp(Request $request, string $subjectId, string $code): bool
     {
-        $this->auth->holdForOtpStepUp($request, $subjectId);
+        // THE ADDRESS THE CODE WAS SENT TO, not the empty-string default.
+        //
+        // This cross-origin request carries no session cookie, so the pending state has to
+        // be rebuilt from the ticket — and it was rebuilt with the subject alone.
+        // `completeOtpStepUp()` then verified the code against `$pending['email']`, which
+        // was `''`, so a CORRECT code never matched. Worse than not working: each failure
+        // recorded a login-attempt failure, so a person typing the right code out of their
+        // inbox was walked into a lockout.
+        //
+        // Resolved from the subject here rather than carried in the ticket: the ticket is
+        // held by a browser on somebody else's origin, and an email address is exactly the
+        // sort of thing that must not travel on it.
+        $subject = $this->subjects->find($subjectId);
+
+        if ($subject?->email === null) {
+            return false;
+        }
+
+        $this->auth->holdForOtpStepUp($request, $subjectId, $subject->email);
 
         return $this->auth->completeOtpStepUp($request, $code);
     }

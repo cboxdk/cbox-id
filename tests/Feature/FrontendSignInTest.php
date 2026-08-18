@@ -20,6 +20,12 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Otp\Contracts\OtpChannels;
+use Cbox\Id\Otp\Testing\FakeOtpChannel;
+use Cbox\Risk\Contracts\RiskScorer;
+use Cbox\Risk\Enums\Outcome;
+use Cbox\Risk\ValueObjects\RiskAssessment;
+use Cbox\Risk\ValueObjects\RiskContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
@@ -454,3 +460,62 @@ it('still refuses a spent ticket that names another person', function (): void {
 
     expect((string) $location)->toContain('error=access_denied');
 });
+
+/*
+ * THE EMAILED STEP-UP HAD TO BE ABLE TO FINISH.
+ *
+ * `otp_required` appeared in exactly one place in the codebase — the controller that
+ * returns it — and in no test at all, which is how this shipped: the second-factor
+ * controller rebuilt the pending state from the ticket with the SUBJECT only, and
+ * `holdForOtpStepUp()` defaults the address to `''`. Verification then compared the
+ * emailed code against a code issued to `''`, so a CORRECT code never matched.
+ *
+ * Worse than not working. Each failure recorded a login-attempt failure, so a person
+ * carefully typing the right code out of their inbox was walked into an account lockout
+ * by the product.
+ *
+ * The address is resolved server-side from the subject rather than carried in the ticket:
+ * that ticket is held by a browser on somebody else's origin, and an email address is
+ * exactly what must not travel on it.
+ */
+it('completes an emailed step-up with the code that was actually sent', function (): void {
+    config(['risk.mode' => 'enforce']);
+
+    // Inlined rather than reusing AdaptiveRiskStepUpTest's helper: Pest's function
+    // definitions are file-scoped, and a cross-file call binds to whichever file the
+    // runner loaded first — which is an order dependency, not a fixture.
+    app()->instance(RiskScorer::class, new class implements RiskScorer
+    {
+        public function assess(RiskContext $context): RiskAssessment
+        {
+            return new RiskAssessment(99.0, Outcome::StepUp, []);
+        }
+    });
+
+    $channel = new FakeOtpChannel;
+    app(OtpChannels::class)->register('email', $channel);
+
+    $start = frontendSignIn([
+        'email' => 'ada@acme.test',
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertOk();
+
+    expect($start->json('status'))->toBe('otp_required')
+        ->and($start->json('mfa_token'))->toBeString();
+
+    // Delivered to the real address, which is the half that worked.
+    $code = (string) $channel->codeFor('ada@acme.test');
+    expect($code)->not->toBe('');
+
+    $response = test()->withHeaders([
+        'X-Cbox-Publishable-Key' => test()->key->key,
+        'Origin' => 'https://app.acme.test',
+    ])->postJson('/frontend/v1/sign-in/factor', [
+        'mfa_token' => $start->json('mfa_token'),
+        'code' => $code,
+        'method' => 'otp',
+    ]);
+
+    $response->assertOk();
+    expect($response->json('login_ticket'))->toBeString();
+})->group('security');
