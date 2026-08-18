@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
-use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\GrantAccessRole;
 use App\Platform\MailLinks;
@@ -21,11 +20,11 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Platform\Contracts\OrganizationProjects;
-use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Platform\Contracts\OrganizationProjects;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -37,7 +36,6 @@ use Livewire\WithPagination;
 new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Component
 {
     use WithPagination;
-
 
     #[Validate('required|email|max:190')]
     public string $inviteEmail = '';
@@ -159,10 +157,17 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
         // Park the chosen access roles for this email — applied on acceptance, so
         // there's no separate assignment step after they join.
         foreach ($selectedRoles as $roleId) {
+            // KEYED TO THIS INVITATION, not to the address. Parked by (org, email) alone,
+            // a grant outlived the invitation that chose it: revoke the invite and the
+            // roles stayed, waiting for the next invitation to that address to pick them
+            // up. Revocation now clears them, and only this invitation's grants are ever
+            // applied.
             InvitationRoleGrant::query()->firstOrCreate([
+                'invitation_id' => $pending->invitation->id,
+                'role_id' => $roleId,
+            ], [
                 'organization_id' => $this->orgId(),
                 'email' => $email,
-                'role_id' => $roleId,
             ]);
         }
 
@@ -200,6 +205,12 @@ new #[Layout('components.layouts.app', ['title' => 'Members'])] class extends Co
     {
         $this->authorizeAdmin();
         $invitations->revoke($this->orgId(), $id);
+
+        // AND THE ROLES IT PARKED. Revoking updated the invitation row and left the
+        // grants behind, so the roles just withdrawn sat waiting for the next invitation
+        // to that address to collect them.
+        InvitationRoleGrant::query()->where('invitation_id', $id)->delete();
+
         $this->dispatch('toast', message: 'Invitation revoked.');
     }
 

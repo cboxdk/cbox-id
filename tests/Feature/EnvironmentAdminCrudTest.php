@@ -249,6 +249,10 @@ it('resets a user\'s two-factor factors', function (): void {
         'confirmed_at' => now(),
     ]);
 
+    // The step-up first: this page's takeover actions demand a fresh credential, the
+    // same as the vault and legacy-login two screens away.
+    confirmEnvironmentStepUp();
+
     Volt::test('environment.users.show', ['user' => $user->id])->call('resetMfa');
 
     expect(MfaFactor::query()->where('user_id', $user->id)->count())->toBe(0);

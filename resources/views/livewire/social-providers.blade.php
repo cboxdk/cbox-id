@@ -16,6 +16,7 @@ use Cbox\Id\Federation\ProviderCatalog;
 use Cbox\Id\Federation\ValueObjects\ProviderTemplate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Livewire;
 use Livewire\Volt\Component;
 
 /**
@@ -45,6 +46,29 @@ new #[Layout('components.layouts.console', ['title' => 'Social sign-in'])] class
 
     /** @var array<string, string> catalogue parameter key => value (Okta domain, Apple team id, …) */
     public array $parameters = [];
+
+    /**
+     * EVERY REQUEST, not only the first — the fifth page, missed when the other four were
+     * fixed.
+     *
+     * mount() runs once, so a page already open re-hydrates from its snapshot and serves
+     * render() straight through. An administrator demoted after opening this one kept
+     * reading which social providers are configured, and kept `cancel()` working, for as
+     * long as the tab stayed there. The mutating actions re-check on their own; the READ
+     * did not, and the configuration of a tenant's identity providers is not public.
+     *
+     * Only on the update path, and 403 rather than a redirect: a first request that fails
+     * this is somebody arriving where they may not go, and mount() sends them somewhere
+     * they can be.
+     */
+    public function boot(): void
+    {
+        if (! Livewire::isLivewireRequest()) {
+            return;
+        }
+
+        abort_unless(app(ConsoleScope::class)->mayAdminister(), 403);
+    }
 
     public function mount(): void
     {

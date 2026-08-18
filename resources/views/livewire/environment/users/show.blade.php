@@ -3,37 +3,40 @@
 declare(strict_types=1);
 
 use App\Mail\AdminAssignedPasswordMail;
-use Cbox\Id\Identity\Contracts\AdminPasswords;
-use Cbox\Id\Identity\Enums\PasswordRevocationScope;
-use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
-use Illuminate\Support\Str;
-use App\Platform\GrantAccessRole;
-use App\Platform\MailLinks;
-use App\Platform\EnvironmentAdminAuth;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
+use App\Platform\Console\ConsoleStepUp;
+use App\Platform\EnvironmentAdminAuth;
+use App\Platform\GrantAccessRole;
+use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\Enums\UserStatus;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
+use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Organization;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Volt\Component;
 
 /**
  * Environment control plane › Users › detail. The full, deep-linkable lifecycle for
@@ -99,6 +102,17 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
      */
     protected ?string $issuedPassword = null;
 
+    /**
+     * WHOSE account this page is. LOCKED, so it is the route's answer and not the wire's.
+     *
+     * A plain public property is settable from the browser on every subsequent request,
+     * so this component could be retargeted at any user in the environment after mount:
+     * open your own detail page, post `userId=<somebody else>` alongside `setPassword`,
+     * and the page acts on them. The route parameter is the only thing that should decide
+     * whose account this is, and #[Locked] is what makes that true — Livewire refuses a
+     * wire update that touches it.
+     */
+    #[Locked]
     public string $userId = '';
 
     public string $editName = '';
@@ -123,6 +137,32 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         $this->userId = $model->id;
         $this->editName = $model->name ?? '';
         $this->editEmail = $model->email;
+    }
+
+    /**
+     * Demand a fresh credential before a takeover action, and say why on the screen.
+     *
+     * Returns true when the caller must stop: the redirect has already been issued and
+     * where to come back to is recorded. The reason is per-action rather than one generic
+     * sentence, because "this is a protected action" is what teaches people to type a
+     * password without reading the page.
+     */
+    private function stepUpPending(string $reason): bool
+    {
+        $route = app(ConsoleStepUp::class)->challenge(
+            'environment.users.show',
+            'environment.users.show',
+            ['user' => $this->userId],
+            $reason,
+        );
+
+        if ($route === null) {
+            return false;
+        }
+
+        $this->redirectRoute($route, navigate: false);
+
+        return true;
     }
 
     private function user(): User
@@ -203,6 +243,23 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             'pwExpiryHours' => ['required', 'integer', 'min:0', 'max:8760'],
         ], attributes: ['pwPassword' => 'password', 'pwReason' => 'reason']);
 
+        // A FRESH PASSWORD BEFORE YOU CHOOSE SOMEBODY ELSE'S. This replaces any user in
+        // the environment's credential and, with `reveal`, hands the plaintext straight
+        // back — the most complete takeover this console offers. The vault and the
+        // legacy-login page two screens away have demanded a step-up since the planes
+        // merged, on the reasoning that the more privileged door should not be the one
+        // without one. This was that door: a browser left open on a desk was the attack.
+        //
+        // AFTER validation, deliberately. A step-up in front of a shape check answers
+        // garbage input with a password prompt instead of an error message, which trains
+        // people to type their password at a screen they have not read — and hands
+        // somebody probing the form a credential challenge rather than a refusal. The
+        // authorization checks that DO come first are in boot(); this is the last gate
+        // before the write, and nothing gets past it.
+        if ($this->stepUpPending('Setting a password replaces this person’s credential; with “reveal” you are shown it.')) {
+            return;
+        }
+
         $temporary = $this->pwMode === 'temporary';
         $expiresAt = $temporary && $this->pwExpiryHours > 0
             ? now()->addHours($this->pwExpiryHours)
@@ -277,6 +334,12 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
     public function markVerified(Subjects $subjects): void
     {
+        // Marking an address verified is what lets it be used to recover the account, so
+        // it is a takeover with one more step rather than a lesser action.
+        if ($this->stepUpPending('Marking this address verified lets it be used to recover this user’s sign-in.')) {
+            return;
+        }
+
         $user = $this->user();
         $subjects->markEmailVerified($user->id, $user->email);
         $this->dispatch('toast', message: 'Email marked as verified.');
@@ -284,6 +347,13 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
 
     public function resetMfa(Mfa $mfa): void
     {
+        // Taking away someone's second factor leaves their password the only thing
+        // between an attacker and the account — the step that makes the two above worth
+        // doing.
+        if ($this->stepUpPending('Resetting two-factor leaves this user protected by their password alone.')) {
+            return;
+        }
+
         // Through the contract, so the reset is audited as `user.mfa_disabled`. This
         // used to delete the rows directly — an admin taking away someone's second
         // factor was the one MFA action in the console that left no trace.
@@ -426,7 +496,7 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {
         $user = $this->user();
 
-        /** @var \Illuminate\Support\Collection<string, string> $orgNames */
+        /** @var Collection<string, string> $orgNames */
         $orgNames = Organization::query()->orderBy('name')->pluck('name', 'id');
 
         $rows = [];

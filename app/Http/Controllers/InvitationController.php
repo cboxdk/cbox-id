@@ -51,9 +51,12 @@ final class InvitationController extends Controller
 
         // Apply any access roles chosen for this invite, then clear them — so the
         // invitee lands already holding the roles the admin picked.
+        // THIS INVITATION'S grants. Selected by (org, email) they included every grant
+        // ever parked for that address — among them the ones an administrator had
+        // deliberately revoked, because revoking updated the invitation and left the
+        // grants where they were.
         $grants = InvitationRoleGrant::query()
-            ->where('organization_id', $invitation->organization_id)
-            ->where('email', $invitation->email)
+            ->where('invitation_id', $invitation->id)
             ->get();
 
         /** @var list<string> $withheld */
@@ -96,8 +99,7 @@ final class InvitationController extends Controller
         }
 
         InvitationRoleGrant::query()
-            ->where('organization_id', $invitation->organization_id)
-            ->where('email', $invitation->email)
+            ->where('invitation_id', $invitation->id)
             ->delete();
 
         if ($withheld !== []) {

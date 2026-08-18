@@ -9,6 +9,7 @@ use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Invitation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
@@ -40,7 +41,10 @@ it('applies parked access roles when the invitation is accepted', function (): v
     $role = app(Roles::class)->define($org->id, 'Editor');
 
     $pending = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
+    // Keyed to THIS invitation: a grant parked by (org, email) alone outlived the invite
+    // that chose it, and the next invitation to the same address collected it.
     InvitationRoleGrant::query()->create([
+        'invitation_id' => $pending->invitation->id,
         'organization_id' => $org->id,
         'email' => 'newbie@acme.test',
         'role_id' => $role->id,
@@ -85,6 +89,7 @@ it('accepts an invitation whose parked role was retired in the meantime', functi
 
     foreach ([$live->id, $retired->id] as $roleId) {
         InvitationRoleGrant::query()->create([
+            'invitation_id' => $pending->invitation->id,
             'organization_id' => $org->id,
             'email' => 'newbie@acme.test',
             'role_id' => $roleId,
@@ -118,3 +123,115 @@ it('accepts an invitation whose parked role was retired in the meantime', functi
         ->where('email', 'newbie@acme.test')
         ->exists())->toBeFalse();
 });
+
+/*
+ * A REVOKED INVITATION TAKES ITS ROLES WITH IT.
+ *
+ * The grants were parked by `(organization_id, email, role_id)` — the invitation itself
+ * was nowhere in the row — and revoking only updated the invitation. So the roles an
+ * administrator had deliberately withdrawn sat there waiting for the NEXT invitation to
+ * the same address to collect them: invite as finance-admin, think better of it and
+ * revoke, invite again as a plain member, and they land holding finance-admin. Nothing in
+ * the flow ever said so, and the person who revoked had every reason to believe they had.
+ */
+it('does not hand a later invitation the roles a revoked one had parked', function (): void {
+    Mail::fake();
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $privileged = app(Roles::class)->define($org->id, 'Finance Admin');
+
+    // Invited with a privileged role, then thought better of.
+    Volt::test('members')
+        ->set('inviteEmail', 'newbie@acme.test')
+        ->set('inviteRole', 'member')
+        ->set('inviteAccessRoles', [$privileged->id])
+        ->call('invite')
+        ->assertHasNoErrors();
+
+    $first = Invitation::query()->where('email', 'newbie@acme.test')->firstOrFail();
+
+    Volt::test('members')->call('revokeInvitation', $first->id);
+
+    // Invited again, this time as a plain member with no access roles at all. Through the
+    // service rather than the console because only it hands back the RAW token — the row
+    // stores a hash, which is why the console's own flow mails the link instead.
+    $second = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
+
+    $this->get('/invitations/'.$second->token.'/accept')->assertRedirect();
+
+    $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
+
+    expect($subject)->not->toBeNull()
+        ->and(RoleAssignment::query()
+            ->where('organization_id', $org->id)
+            ->where('user_id', $subject->id)
+            ->where('role_id', $privileged->id)
+            ->exists())->toBeFalse();
+})->group('security');
+
+it('clears the parked roles at the moment of revocation', function (): void {
+    Mail::fake();
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $role = app(Roles::class)->define($org->id, 'Editor');
+
+    Volt::test('members')
+        ->set('inviteEmail', 'newbie@acme.test')
+        ->set('inviteRole', 'member')
+        ->set('inviteAccessRoles', [$role->id])
+        ->call('invite')
+        ->assertHasNoErrors();
+
+    $invitation = Invitation::query()->where('email', 'newbie@acme.test')->firstOrFail();
+    expect(InvitationRoleGrant::query()->where('invitation_id', $invitation->id)->exists())->toBeTrue();
+
+    Volt::test('members')->call('revokeInvitation', $invitation->id);
+
+    expect(InvitationRoleGrant::query()->where('invitation_id', $invitation->id)->exists())->toBeFalse();
+})->group('security');
+
+/*
+ * AND ACCEPTANCE APPLIES ONE INVITATION'S ROLES, not the address's.
+ *
+ * Isolated deliberately: with revocation now clearing grants, the broad
+ * `(organization_id, email)` select has nothing stale left to pick up, so reverting it
+ * breaks no test — the two halves of the fix mask each other. This case involves no
+ * revocation at all. Two invitations to the same address are live at once (an
+ * administrator re-invites before the first expires, which nothing prevents), each
+ * carrying different roles. Only the acceptance scope decides which set is applied.
+ */
+it('applies only the accepted invitation’s roles when two are live for one address', function (): void {
+    Mail::fake();
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $privileged = app(Roles::class)->define($org->id, 'Finance Admin');
+    $ordinary = app(Roles::class)->define($org->id, 'Editor');
+
+    $first = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
+    InvitationRoleGrant::query()->create([
+        'invitation_id' => $first->invitation->id,
+        'organization_id' => $org->id,
+        'email' => 'newbie@acme.test',
+        'role_id' => $privileged->id,
+    ]);
+
+    $second = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
+    InvitationRoleGrant::query()->create([
+        'invitation_id' => $second->invitation->id,
+        'organization_id' => $org->id,
+        'email' => 'newbie@acme.test',
+        'role_id' => $ordinary->id,
+    ]);
+
+    $this->get('/invitations/'.$second->token.'/accept')->assertRedirect();
+
+    $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
+    $holds = fn (string $roleId): bool => RoleAssignment::query()
+        ->where('organization_id', $org->id)
+        ->where('user_id', $subject->id)
+        ->where('role_id', $roleId)
+        ->exists();
+
+    expect($holds($ordinary->id))->toBeTrue()
+        ->and($holds($privileged->id))->toBeFalse()
+        // And the other invitation's grant is untouched — accepting one must not consume
+        // what belongs to the other.
+        ->and(InvitationRoleGrant::query()->where('invitation_id', $first->invitation->id)->exists())->toBeTrue();
+})->group('security');

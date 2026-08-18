@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
-use App\Platform\IntendedUrl;
-use App\Platform\PlatformAuth;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\IntendedUrl;
 use App\Platform\MailLinks;
+use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
 use App\Platform\SignupPolicy;
@@ -15,17 +15,18 @@ use App\Platform\SsoMandate;
 use App\Platform\SsoMandates;
 use App\Platform\SsoRefusal;
 use App\Platform\SsoStart;
-use Cbox\Id\Identity\Contracts\AuthPolicies;
-use Cbox\Id\Identity\Enums\SsoEnforcement;
+use App\Platform\ThrottleScope;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
@@ -365,9 +366,18 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
         $this->ssoReason = $factor->sentence();
     }
 
+    /**
+     * PER ENVIRONMENT, as well as per address and per source.
+     *
+     * The same address exists independently in every tenant here — that is what a
+     * multi-tenant IdP is — so a key of (action, email, ip) put two different people in
+     * one bucket. Failed attempts against one tenant's account throttled the other's, and
+     * a lockout was a cross-tenant denial of service anyone could trigger by guessing at
+     * an address they knew existed elsewhere.
+     */
     private function throttleKey(string $action): string
     {
-        return $action.'|'.Str::lower($this->email).'|'.request()->ip();
+        return $action.'|'.ThrottleScope::key().'|'.Str::lower($this->email).'|'.request()->ip();
     }
 }; ?>
 

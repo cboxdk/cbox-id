@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
 use App\Platform\MailLinks;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -15,6 +15,7 @@ use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
 use Cbox\Id\Federation\Models\VerifiedDomain;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -25,14 +26,13 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
-use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Platform\PlatformRoot;
-use Cbox\Id\Organization\Models\Membership;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 
@@ -48,7 +48,7 @@ use Livewire\WithPagination;
  * here because the contract carries no delete verb.
  *
  * "Delete" means status → Deleted: the tenant leaves every list and, since
- * {@see \App\Platform\OrganizationAccess}, its members are refused everywhere a
+ * {@see App\Platform\OrganizationAccess}, its members are refused everywhere a
  * suspended tenant's are. Nothing is erased — the rows stay for audit. Deleting an
  * organization is not a data-erasure control and must not be described as one.
  */
@@ -388,10 +388,15 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
         $assignableIds = $catalog->assignable($org->id)->pluck('id')->all();
         foreach ($this->inviteAccessRoles as $roleId) {
             if (in_array($roleId, $assignableIds, true)) {
+                // KEYED TO THIS INVITATION, not to the address — see the members page
+                // for the whole reasoning. A grant parked by (org, email) outlived the
+                // invitation that chose it and was picked up by the next one.
                 InvitationRoleGrant::query()->firstOrCreate([
+                    'invitation_id' => $pending->invitation->id,
+                    'role_id' => $roleId,
+                ], [
                     'organization_id' => $org->id,
                     'email' => $this->inviteEmail,
-                    'role_id' => $roleId,
                 ]);
             }
         }
@@ -405,6 +410,12 @@ new #[Layout('components.layouts.environment', ['title' => 'Organization'])] cla
     public function revokeInvitation(string $id, Invitations $invitations): void
     {
         $invitations->revoke($this->org()->id, $id);
+
+        // AND THE ROLES IT PARKED. Revoking updated the invitation row and left the
+        // grants behind, so the roles just withdrawn sat waiting for the next invitation
+        // to that address to collect them.
+        InvitationRoleGrant::query()->where('invitation_id', $id)->delete();
+
         $this->dispatch('toast', message: 'Invitation revoked.');
     }
 

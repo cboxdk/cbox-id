@@ -9,11 +9,12 @@ use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
 use App\Platform\SignupProvisioner;
 use App\Platform\SsoStart;
+use App\Platform\ThrottleScope;
 use App\Platform\Turnstile;
-use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Rules\PasswordMeetsPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -91,7 +92,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
         $this->validate();
 
         // Throttle to blunt account-enumeration and automated signup abuse.
-        $key = 'signup|'.request()->ip();
+        //
+        // PER ENVIRONMENT. Without it, every tenant on the deployment shares one bucket
+        // per IP: an office behind a single NAT address burning its ten attempts on
+        // acme.cboxid.com locked out signups on every other tenant reachable from that
+        // office — one customer's traffic denying another's, which is the shape of a
+        // cross-tenant fault however benign the cause.
+        $key = 'signup|'.ThrottleScope::key().'|'.request()->ip();
 
         if (RateLimiter::tooManyAttempts($key, 10)) {
             $this->addError('email', 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.');

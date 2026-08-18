@@ -37,6 +37,10 @@ function pwUserSetup(): string
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
     actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
 
+    // The takeover actions on this page demand a fresh credential, the same as the vault
+    // and legacy-login two screens away — see EnvironmentUserTakeoverTest for why.
+    confirmEnvironmentStepUp();
+
     return app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
 }
 

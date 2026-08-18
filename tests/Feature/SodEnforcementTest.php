@@ -159,8 +159,16 @@ it('withholds a parked grant that has become conflicting by the time it is accep
     $invitee = app(Subjects::class)->create('later@acme.test', 'Later', 'supersecret123');
     $invitation = app(Invitations::class)->invite($orgId, 'later@acme.test', MembershipRole::Member);
 
-    InvitationRoleGrant::query()->create(['organization_id' => $orgId, 'email' => 'later@acme.test', 'role_id' => $createPo->id]);
-    InvitationRoleGrant::query()->create(['organization_id' => $orgId, 'email' => 'later@acme.test', 'role_id' => $approvePay->id]);
+    // Keyed to THIS invitation: parked by (org, email) alone, a grant outlived the invite
+    // that chose it and the next invitation to that address collected it.
+    foreach ([$createPo->id, $approvePay->id] as $roleId) {
+        InvitationRoleGrant::query()->create([
+            'invitation_id' => $invitation->invitation->id,
+            'organization_id' => $orgId,
+            'email' => 'later@acme.test',
+            'role_id' => $roleId,
+        ]);
+    }
 
     // The rule appears AFTER the invite was sent.
     app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs payment', [$createPo->id, $approvePay->id]);
