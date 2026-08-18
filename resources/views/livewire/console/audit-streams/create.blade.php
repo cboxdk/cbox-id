@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
+use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme;
 use Cbox\LaravelSiem\Enums\Destination;
@@ -68,6 +70,20 @@ new #[Layout('components.layouts.console', ['title' => 'New log stream'])] class
             return null;
         }
 
+        $scope = app(ConsoleScope::class);
+
+        // WHOSE TRAIL THIS SHIPS. A stream with no organization receives EVERY
+        // organization's entries in this environment — members joining, sign-ins failing,
+        // roles changing, for tenants that are not yours. That is the operator's own
+        // compliance shipping and it belongs to the environment plane; a tenant
+        // administrator gets a stream that carries their organization and nothing else.
+        //
+        // Taken from the scope, never from a field: there is no form control for it,
+        // because there is no question to ask.
+        $organizationId = $scope->plane() === ConsolePlane::Environment
+            ? null
+            : $scope->requireOrganizationId();
+
         $registered = $streams->create(
             $this->name,
             $destination,
@@ -75,6 +91,13 @@ new #[Layout('components.layouts.console', ['title' => 'New log stream'])] class
             $this->secret !== '' ? $this->secret : null,
             $authScheme,
         );
+
+        // Stamped after create(), because the underlying package knows nothing about
+        // organizations — the column is ours and so is the boundary.
+        if ($organizationId !== null) {
+            AuditStream::query()->whereKey($registered->stream->id)
+                ->update(['organization_id' => $organizationId]);
+        }
 
         // A generated HMAC key (or an echoed token) is revealed exactly once; only
         // ciphertext is persisted, so hand it to the detail page as a one-time flash —
@@ -84,7 +107,11 @@ new #[Layout('components.layouts.console', ['title' => 'New log stream'])] class
         }
         $this->dispatch('toast', message: 'Log stream created.');
 
-        return $this->redirectRoute('environment.audit-streams.show', ['stream' => $registered->stream->id], navigate: true);
+        return $this->redirectRoute(
+            app(ConsoleScope::class)->routeName('audit-streams.show'),
+            ['stream' => $registered->stream->id],
+            navigate: true,
+        );
     }
 
     /**

@@ -15,6 +15,7 @@ use Cbox\Id\AccessControl\Manifest\Manifest;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
+use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\DirectoryConnectors;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
@@ -60,6 +61,9 @@ use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
+use Cbox\LaravelSiem\Contracts\LogStreams;
+use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
+use Cbox\LaravelSiem\Enums\Destination as SiemDestination;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -2405,4 +2409,92 @@ it('serves sign-in rules from the same component on the organization plane', fun
         ->assertDontSee('Per organization');
 
     expect(Route::has('auth-policy'))->toBeTrue();
+})->group('security');
+
+/*
+ * A TENANT'S SIEM RECEIVES THAT TENANT'S EVENTS, NOT THE ENVIRONMENT'S.
+ *
+ * Log streaming moved to the organization plane on the fair argument that shipping an
+ * audit trail to a SIEM is a compliance obligation the organization carries. The stream
+ * it created was environment-owned, as every stream had been while only an operator could
+ * make one — so an administrator of organization A registered their own endpoint and
+ * started receiving B and C's sign-ins, role changes and member events. Not a leak anyone
+ * had to work for: the feature working as built, on a plane that was never in its design.
+ */
+it('stamps a stream created on the organization plane with that organization', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
+    confirmConsoleStepUp();
+    Volt::test('console.audit-streams.create')
+        ->set('name', 'Acme Splunk')
+        ->set('destination', 'generic_json')
+        ->set('endpointUrl', 'https://siem.acme.example/collector')
+        ->set('auth', 'none')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(AuditStream::query()->value('organization_id'))->toBe($org->id);
+})->group('security');
+
+it('keeps the environment-wide stream on the environment plane, where the operator is', function (): void {
+    anEnvironmentAdminActingOn('tenant-streams-wide');
+
+    confirmConsoleStepUp();
+    Volt::test('console.audit-streams.create')
+        ->set('name', 'Operator Splunk')
+        ->set('destination', 'generic_json')
+        ->set('endpointUrl', 'https://siem.operator.example/collector')
+        ->set('auth', 'none')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    // Null is the environment's own: it receives everything, which is what makes it the
+    // operator's compliance shipping and not a tenant's.
+    expect(AuditStream::query()->whereNull('organization_id')->exists())->toBeTrue();
+})->group('security');
+
+it('shows an organization only the streams it owns, never the environment’s', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+
+    // The tenant's own, made the way the console makes it.
+    confirmConsoleStepUp();
+    Volt::test('console.audit-streams.create')
+        ->set('name', 'Acme Splunk')
+        ->set('destination', 'generic_json')
+        ->set('endpointUrl', 'https://siem.acme.example/collector')
+        ->set('auth', 'none')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    // And the environment's own, which only the operator can make — written directly
+    // because the organization plane has no way to express it, which is the point.
+    $operators = app(LogStreams::class)->create(
+        'Operator',
+        SiemDestination::GenericJson,
+        'https://siem.operator.example/collector',
+        null,
+        SiemAuthScheme::None,
+    );
+
+    $listed = Volt::test('console.audit-streams.index')->viewData('streams');
+
+    expect($listed->pluck('organization_id')->all())->toBe([$org->id])
+        ->and($listed->pluck('id')->all())->not->toContain($operators->stream->id);
+})->group('security');
+
+it('404s a stream belonging to the environment when a tenant asks for it by id', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    $operators = app(LogStreams::class)->create(
+        'Operator',
+        SiemDestination::GenericJson,
+        'https://siem.operator.example/collector',
+        null,
+        SiemAuthScheme::None,
+    );
+
+    // The id is not a secret — it is in the operator's own URL bar — so guessing it must
+    // not be the control. Ownership is.
+    Volt::test('console.audit-streams.show', ['stream' => $operators->stream->id])
+        ->assertStatus(404);
 })->group('security');

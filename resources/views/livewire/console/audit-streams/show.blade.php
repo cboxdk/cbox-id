@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
@@ -61,7 +62,17 @@ new #[Layout('components.layouts.console', ['title' => 'Log stream'])] class ext
 
     private function resolveStream(): AuditStream
     {
-        $model = AuditStream::query()->whereKey($this->streamId)->first();
+        // Resolved WITHIN this plane's ownership, so an id belonging to another
+        // organization — or to the environment itself — 404s here rather than opening a
+        // page with a pause button on somebody else's SIEM.
+        $scope = app(ConsoleScope::class);
+
+        $model = AuditStream::query()
+            ->ownedByOrganization(
+                $scope->plane() === ConsolePlane::Environment ? null : $scope->requireOrganizationId(),
+            )
+            ->whereKey($this->streamId)
+            ->first();
         abort_if($model === null, 404);
 
         return $model;

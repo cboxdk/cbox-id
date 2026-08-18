@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
@@ -46,7 +47,16 @@ new #[Layout('components.layouts.console', ['title' => 'Log streaming'])] class 
      */
     public function with(): array
     {
-        $query = AuditStream::query()->orderByDesc('created_at');
+        // OWNED, not deliverable. An organization is DELIVERED the environment's own
+        // streams' attention and must never be able to manage them — listing with the
+        // delivery scope would show a tenant the operator's SIEM endpoint and offer them
+        // a pause button for it. The difference between the two scopes is the control.
+        $scope = app(ConsoleScope::class);
+        $query = AuditStream::query()
+            ->ownedByOrganization(
+                $scope->plane() === ConsolePlane::Environment ? null : $scope->requireOrganizationId(),
+            )
+            ->orderByDesc('created_at');
 
         $term = trim($this->search);
         if ($term !== '') {
