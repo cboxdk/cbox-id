@@ -96,7 +96,12 @@ new #[Layout('components.layouts.console', ['title' => 'Role'])] class extends C
         ]);
 
         $description = trim($this->editDescription);
-        $roles->updateRole($role->id, trim($this->editName), $description !== '' ? $description : null);
+        $roles->updateRole(
+            $role->id,
+            trim($this->editName),
+            $description !== '' ? $description : null,
+            $this->fenceOrganizationId(),
+        );
 
         $this->dispatch('toast', message: 'Role updated.');
     }
@@ -122,10 +127,10 @@ new #[Layout('components.layouts.console', ['title' => 'Role'])] class extends C
             ->exists();
 
         if ($attached) {
-            $roles->revokePermission($role->id, $permission->id);
+            $roles->revokePermission($role->id, $permission->id, $this->fenceOrganizationId());
             $this->dispatch('toast', message: 'Permission revoked.');
         } else {
-            $roles->attachPermission($role->id, $permission->id);
+            $roles->attachPermission($role->id, $permission->id, $this->fenceOrganizationId());
             $this->dispatch('toast', message: 'Permission granted.');
         }
     }
@@ -139,7 +144,7 @@ new #[Layout('components.layouts.console', ['title' => 'Role'])] class extends C
         // affecting EVERY holder of the role left nothing on /audit, nothing for a
         // SIEM, and no `role.unassigned` for the downstream apps that mirror grants off
         // it. deleteRole() drops the same rows and reports what it did.
-        $roles->deleteRole($role->id);
+        $roles->deleteRole($role->id, $this->fenceOrganizationId());
 
         $this->dispatch('toast', message: 'Role deleted.');
 
@@ -244,6 +249,22 @@ new #[Layout('components.layouts.console', ['title' => 'Role'])] class extends C
         return Role::query()
             ->whereNotNull('organization_id')
             ->where('organization_id', $scope->requireOrganizationId());
+    }
+
+    /**
+     * The organization the role service should fence on, or null for the environment
+     * plane — where an operator legitimately manages the environment's own roles and
+     * there is no tenant to name.
+     *
+     * Belt and braces alongside {@see changeable()}: this page already resolves a role
+     * inside an ownership-scoped set, and the service now fences on its own, so a later
+     * edit that loosens the resolve here cannot quietly reopen a cross-tenant write.
+     */
+    private function fenceOrganizationId(): ?string
+    {
+        $scope = app(ConsoleScope::class);
+
+        return $scope->plane() === ConsolePlane::Environment ? null : $scope->requireOrganizationId();
     }
 
     /**
