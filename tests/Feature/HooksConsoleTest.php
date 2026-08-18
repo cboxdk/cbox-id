@@ -135,7 +135,7 @@ it('shows an environment-owned endpoint to a tenant admin without offering to ma
     hooksAdmin();
 
     $environmentWide = app(ExternalActions::class)
-        ->register(HookPoint::TokenMinting, 'https://operator.example.test/token')->endpoint;
+        ->registerForEnvironment(HookPoint::TokenMinting, 'https://operator.example.test/token')->endpoint;
 
     Volt::test('console.hooks.show', ['hook' => $environmentWide->id])
         ->assertOk()

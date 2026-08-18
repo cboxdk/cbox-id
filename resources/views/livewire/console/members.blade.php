@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Livewire\Livewire;
 use Livewire\WithPagination;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
@@ -61,6 +62,31 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
 
     /** @var list<string> */
     public array $accessEnvIds = [];
+
+    /**
+     * THE UPDATE PATH TOO, not only the first request.
+     *
+     * The check below lived in mount() alone, and Livewire runs mount() once: a page
+     * already open re-hydrates from its snapshot and calls render()/with() straight
+     * through, so a person downgraded out of this capability kept a working page. Their
+     * browser went on posting to /livewire/update and going on receiving the roster and its pending invitations — PII, every time for as
+     * long as the tab stayed open — authorization that expired when the user navigated
+     * rather than when their access did.
+     *
+     * Only on the update path, and 403 rather than a redirect. A first request that fails
+     * this is somebody arriving where they may not go, and mount() sends them somewhere
+     * they can be — the console's own answer, and the one the navigation-honesty test
+     * holds us to. An update that fails it is a page that stopped being theirs while they
+     * were holding it, and there is nothing to redirect: the response is a JSON patch.
+     */
+    public function boot(ConsoleScope $scope): void
+    {
+        if (! Livewire::isLivewireRequest()) {
+            return;
+        }
+
+        abort_unless($scope->capabilities()?->canReadMembers() === true, 403);
+    }
 
     public function mount(ConsoleScope $scope): mixed
     {

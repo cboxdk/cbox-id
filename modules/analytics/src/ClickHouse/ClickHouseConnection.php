@@ -97,7 +97,12 @@ class ClickHouseConnection
      */
     private function send(string $sql, ?string $body, array $parameters): string
     {
-        $query = ['query' => $sql, 'user' => $this->user, 'password' => $this->password];
+        // CREDENTIALS IN HEADERS, NEVER IN THE QUERY STRING. They used to ride as `user`
+        // and `password` query parameters, which is where every reverse proxy access log,
+        // APM span, ClickHouse's own query_log and any exception reporter record them —
+        // the password ending up in half a dozen places nobody thinks of as a secret
+        // store. ClickHouse reads X-ClickHouse-User / X-ClickHouse-Key for exactly this.
+        $query = ['query' => $sql];
 
         foreach ($parameters as $name => $value) {
             $query['param_'.$name] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
@@ -109,6 +114,10 @@ class ClickHouseConnection
         // in the `query` param either way; an empty body just satisfies the HTTP
         // requirement and is harmless for SELECT/DDL, while INSERT still sends rows.
         $request = $this->http->timeout($this->timeout)
+            ->withHeaders([
+                'X-ClickHouse-User' => $this->user,
+                'X-ClickHouse-Key' => $this->password,
+            ])
             ->withQueryParameters($query)
             ->withBody($body ?? '', 'text/plain');
 

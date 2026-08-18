@@ -115,11 +115,12 @@ new #[Layout('components.layouts.console', ['title' => 'New inline hook'])] clas
             return null;
         }
 
-        $registered = $actions->register(
-            HookPoint::from($this->hook),
-            $this->url,
-            $organizationId,
-        );
+        // Two calls rather than one with a nullable argument. The registry no longer lets
+        // "for every tenant here" be expressed by a variable that happens to be null, so
+        // the environment-wide case is stated at the one call site entitled to make it.
+        $registered = $organizationId === null
+            ? $actions->registerForEnvironment(HookPoint::from($this->hook), $this->url)
+            : $actions->register(HookPoint::from($this->hook), $this->url, $organizationId);
 
         // The plaintext secret exists only in this response; hand it to the detail page
         // as a one-time flash — it is never retrievable again.

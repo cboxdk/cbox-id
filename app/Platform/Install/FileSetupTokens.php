@@ -32,6 +32,14 @@ final class FileSetupTokens implements SetupTokens
     public function __construct(
         private readonly Filesystem $disk,
         private readonly LoggerInterface $log,
+        /**
+         * Whether the token itself goes into the warning below.
+         *
+         * Off by default — see issue(). On for a single-container deploy where the
+         * operator's only view of the box is `docker logs`, which is a real deployment
+         * shape and a deliberate choice by whoever knows where those logs end up.
+         */
+        private readonly bool $logToken = false,
     ) {}
 
     public function issue(): string
@@ -51,11 +59,25 @@ final class FileSetupTokens implements SetupTokens
         // Deliberately at WARNING: this is the one moment an unclaimed platform is
         // reachable, and an operator scanning for it should not have to raise the log
         // level to find out that their deployment is waiting to be claimed.
+        //
+        // THE TOKEN ITSELF IS NO LONGER IN IT BY DEFAULT. This value is the whole of the
+        // authority to claim an unclaimed platform, and the log is the one place a secret
+        // reliably escapes the box it was written on: a deployment shipping to a
+        // centralised aggregator handed everyone with log access the ability to claim it
+        // first. The file is 0600 on the server and `cbox-id:setup-token` prints it, so
+        // nothing is lost but the copy that travelled.
+        //
+        // A single-container deploy where `docker logs` genuinely is the console can set
+        // CBOX_ID_LOG_SETUP_TOKEN=true and get the old behaviour back — an explicit
+        // choice by whoever knows where their logs go.
+        $context = $this->logToken ? ['setup_token' => $token] : [];
+
         $this->log->warning(
-            'Cbox ID is not installed yet. Open /first-run and paste this setup token to claim this deployment. '
-            .'It is shown once, it is the only thing standing between an empty platform and whoever finds it first, '
+            'Cbox ID is not installed yet. Open /first-run and paste the setup token to claim this deployment. '
+            .'Read it with `php artisan cbox-id:setup-token`, or from storage/app/private/'.self::PATH.' on the server. '
+            .'It is the only thing standing between an empty platform and whoever finds it first, '
             .'and it stops working the moment the platform is claimed.',
-            ['setup_token' => $token],
+            $context,
         );
 
         return $token;

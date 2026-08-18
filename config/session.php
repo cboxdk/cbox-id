@@ -47,7 +47,16 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    // Encrypted by default everywhere except local dev and the test runner, matching
+    // `secure` below and for the same reason: the shipped default is the one every
+    // deployment that copied .env.example actually runs, and this session store holds
+    // sudo intents, the portal's scope and organization, impersonation markers and the
+    // console's own state. Anyone with read access to the session table — a replica, a
+    // backup, an operator with a psql prompt — read all of it in plain text.
+    //
+    // Local and testing stay off so a developer can read a session row while debugging,
+    // and so the test suite is not measuring the cipher.
+    'encrypt' => env('SESSION_ENCRYPT', ! in_array(env('APP_ENV'), ['local', 'testing'], true)),
 
     /*
     |--------------------------------------------------------------------------

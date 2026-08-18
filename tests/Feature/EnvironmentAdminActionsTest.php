@@ -137,7 +137,7 @@ it('exercises the role detail mutating actions (saveDetails, togglePermission, d
 it('exercises the webhook detail mutating actions (saveSubscription, pause, resume, rotateSecret, delete)', function (): void {
     crudSetup();
     $endpoint = app(WebhookRegistry::class)
-        ->register(null, 'https://example.com/wh', ['user.created'])->endpoint;
+        ->registerForEnvironment('https://example.com/wh', ['user.created'])->endpoint;
 
     Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
         ->set('editUrl', 'https://example.com/wh-updated')
@@ -179,7 +179,7 @@ it('exercises the sso-provider detail mutating actions (save, remove)', function
 it('exercises the event-hook detail mutating actions (pause, activate, remove)', function (): void {
     crudSetup();
     $hook = app(ExternalActions::class)
-        ->register(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
+        ->registerForEnvironment(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
 
     Volt::test('console.hooks.show', ['hook' => $hook->id])
         ->call('pause')

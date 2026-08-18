@@ -975,7 +975,7 @@ it('shows an organization the environment-wide endpoint it cannot change', funct
     actingAsRole(MembershipRole::Owner);
 
     $endpoint = app(WebhookRegistry::class)
-        ->register(null, 'https://hooks.example.test/everyone', ['user.created'])->endpoint;
+        ->registerForEnvironment('https://hooks.example.test/everyone', ['user.created'])->endpoint;
     $sealed = $endpoint->secret_encrypted;
 
     Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
@@ -2019,7 +2019,10 @@ it('gives the environment plane domain verification and the Admin Portal invite'
     expect(VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->exists())->toBeTrue();
 
     $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
-    expect($component->get('portalUrl'))->toContain('/setup/');
+    // Asserted through the RENDER, not through the wire: portalUrl is a protected
+    // property precisely so it never enters the Livewire snapshot, and a test that could
+    // still read it off the wire would be testing that the fix is absent.
+    $component->assertSee('/setup/', escape: false);
 })->group('security');
 
 it('attributes an Admin Portal link to the environment administrator who minted it', function (): void {

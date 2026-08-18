@@ -112,7 +112,13 @@ new #[Layout('components.layouts.console', ['title' => 'New webhook'])] class ex
         }
 
         try {
-            $registered = $webhooks->register($organizationId, $this->url, array_values($this->eventTypes));
+            // Two calls rather than one with a nullable argument. The registry no longer
+            // lets "every tenant's events" be expressed by a variable that happens to be
+            // null, so the environment-wide case is stated at the one call site entitled
+            // to make it.
+            $registered = $organizationId === null
+                ? $webhooks->registerForEnvironment($this->url, array_values($this->eventTypes))
+                : $webhooks->register($organizationId, $this->url, array_values($this->eventTypes));
         } catch (UnsafeWebhookUrl) {
             // The registry's SSRF guard refused the target — surface it on the field
             // rather than 500. The endpoint must resolve to a public address.

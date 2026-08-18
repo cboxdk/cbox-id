@@ -142,6 +142,21 @@ return [
     ],
 
     /*
+     * Whether the first-run setup token is written into the application log.
+     *
+     * OFF, because that token is the whole of the authority to claim an unclaimed
+     * deployment and the log is the one place a secret reliably escapes the box it was
+     * written on: shipped to a central aggregator, it hands everyone with log access the
+     * ability to claim the platform first. The file is 0600 on the server and
+     * `php artisan cbox-id:setup-token` prints it.
+     *
+     * A single-container deploy where `docker logs` genuinely is the operator's only view
+     * of the box can turn it back on — an explicit choice by whoever knows where those
+     * logs end up.
+     */
+    'log_setup_token' => (bool) env('CBOX_ID_LOG_SETUP_TOKEN', false),
+
+    /*
      * Passkeys / WebAuthn. `rp_id` is the Relying Party ID (the domain credentials are
      * scoped to — no scheme, no port); `origin` is the exact origin the browser reports.
      * Both are asserted during verification — a mismatch is rejected.

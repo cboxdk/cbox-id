@@ -57,8 +57,18 @@ new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class
     #[Url(as: 'q')]
     public string $search = '';
 
-    /** The Admin Portal setup URL, shown to the admin exactly once after minting. */
-    public ?string $portalUrl = null;
+    /**
+     * The Admin Portal setup URL, shown to the admin exactly once after minting.
+     *
+     * PROTECTED, not public — the same reason the SCIM page next door gives. Livewire
+     * serialises public properties into the wire snapshot embedded in the DOM and echoes
+     * them back in the body of every subsequent /livewire/update request. This link
+     * admits its holder to the tenant's SSO setup with no account at all, so as a public
+     * property it sat in the page for any browser extension to read and was
+     * re-transmitted into request-body logs on every round trip until the admin
+     * navigated away.
+     */
+    protected ?string $portalUrl = null;
 
     // Verified domains
     public string $domain = '';
@@ -91,6 +101,16 @@ new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class
         $token = $portal->generate($scope->requireOrganizationId(), PortalScope::Sso, $scope->actorId());
 
         $this->portalUrl = route('portal.enter', $token);
+    }
+
+    /**
+     * An explicit action rather than `$set('portalUrl', null)`: a protected property is
+     * not settable from the wire, and it should not be — the client naming a server
+     * property to write is the shape this whole change is getting away from.
+     */
+    public function dismissPortalLink(): void
+    {
+        $this->portalUrl = null;
     }
 
     /**
@@ -224,6 +244,9 @@ new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class
             // so on the environment plane every admin control silently disappeared and
             // the page rendered as an empty read-only shell.
             'mayAdminister' => $scope->mayAdminister(),
+            // Passed through with(), because the property is protected and the view can
+            // no longer read it directly.
+            'portalUrl' => $this->portalUrl,
             // "No organization chosen" is a real state on the environment plane and must
             // not be reported as "not entitled" — entitled() answers false either way,
             // and telling an administrator to contact their account team when they simply
@@ -324,7 +347,7 @@ new #[Layout('components.layouts.console', ['title' => 'Single sign-on'])] class
                         <div class="flex items-center gap-2 font-semibold"><x-icon name="members" class="w-4 h-4" /> Setup link for your IT admin</div>
                         <p class="mt-1 text-sm" style="color:var(--muted-foreground)">Send this single-use link to whoever configures your identity provider. It expires soon and works without an account. Copy it now — it is shown only once.</p>
                     </div>
-                    <button wire:click="$set('portalUrl', null)" class="btn btn-ghost btn-sm">Done</button>
+                    <button wire:click="dismissPortalLink" class="btn btn-ghost btn-sm">Done</button>
                 </div>
                 <p class="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--secondary);border:1px solid var(--border)">{{ $portalUrl }}</p>
             </div>

@@ -196,7 +196,7 @@ it('renders the detail pages for connections, directories, roles, applications a
         )
     )->client;
     $webhook = app(WebhookRegistry::class)
-        ->register(null, 'https://example.com/in', ['user.created'])->endpoint;
+        ->registerForEnvironment('https://example.com/in', ['user.created'])->endpoint;
     $directory = app(Directories::class)->register($org->id, 'HR directory')->directory;
     $connection = app(Connections::class)->create(
         $org->id,
@@ -522,7 +522,7 @@ it('renders the detail pages for login methods, event hooks, conflict rules and 
         )
     );
     $hook = app(ExternalActions::class)
-        ->register(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
+        ->registerForEnvironment(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
     $roleA = app(Roles::class)->define(null, 'Maker');
     $roleB = app(Roles::class)->define(null, 'Checker');
     $policy = app(SegregationOfDuties::class)

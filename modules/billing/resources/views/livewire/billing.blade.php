@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Livewire\Livewire;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
@@ -21,6 +22,31 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Component
 {
+    /**
+     * THE UPDATE PATH TOO, not only the first request.
+     *
+     * The check below lived in mount() alone, and Livewire runs mount() once: a page
+     * already open re-hydrates from its snapshot and calls render()/with() straight
+     * through, so a person downgraded out of this capability kept a working page. Their
+     * browser went on posting to /livewire/update and going on receiving the invoices, the plan and the usage for as
+     * long as the tab stayed open — authorization that expired when the user navigated
+     * rather than when their access did.
+     *
+     * Only on the update path, and 403 rather than a redirect. A first request that fails
+     * this is somebody arriving where they may not go, and mount() sends them somewhere
+     * they can be — the console's own answer, and the one the navigation-honesty test
+     * holds us to. An update that fails it is a page that stopped being theirs while they
+     * were holding it, and there is nothing to redirect: the response is a JSON patch.
+     */
+    public function boot(ConsoleScope $scope): void
+    {
+        if (! Livewire::isLivewireRequest()) {
+            return;
+        }
+
+        abort_unless($scope->capabilities()?->canReadBilling() === true, 403);
+    }
+
     public function mount(ConsoleScope $scope): mixed
     {
         // Billing is visible to roles that can read it (owner/admin/billing + the

@@ -43,7 +43,10 @@ it('lets an entitled admin generate a setup link, recorded in the audit trail', 
 
     $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
 
-    expect($component->get('portalUrl'))->toContain('/setup/');
+    // Asserted through the RENDER, not through the wire: portalUrl is a protected
+    // property precisely so it never enters the Livewire snapshot, and a test that could
+    // still read it off the wire would be testing that the fix is absent.
+    $component->assertSee('/setup/', escape: false);
     expect(AdminPortalLink::query()->where('organization_id', $orgId)->count())->toBe(1);
     $fake->assertRecorded('portal_link.created', fn ($e) => $e->organizationId === $orgId);
 });

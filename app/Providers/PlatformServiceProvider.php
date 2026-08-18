@@ -155,6 +155,10 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->singleton(SetupTokens::class, fn (Application $app): SetupTokens => new FileSetupTokens(
             $app->make(FilesystemFactory::class)->disk('local'),
             $app->make(LoggerInterface::class),
+            // Opt-in, because the token is the entire authority to claim an unclaimed
+            // platform and a centralised log aggregator is not a secret store. See
+            // FileSetupTokens::issue().
+            (bool) config('cbox-id.log_setup_token'),
         ));
 
         // The env file this deployment actually booted from (`.env.production`, a
