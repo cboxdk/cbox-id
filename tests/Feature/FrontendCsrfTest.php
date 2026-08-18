@@ -158,3 +158,74 @@ function requiresASession(string $name): bool
 
     return ! in_array('optional', array_map(trim(...), explode(',', $parameters)), true);
 }
+
+/*
+ * EVERY ADVERTISED MACHINE ENDPOINT, not just the one that broke last time.
+ *
+ * `frontend/v1/*` is exempt because a production 419 taught us to. The same reasoning
+ * covers a whole class the test did not: every endpoint this deployment ADVERTISES to
+ * machines is called by software that has no Laravel session and cannot carry a CSRF
+ * token — a conformant DCR client posting to `/oauth/register`, an SP posting a SAML
+ * AuthnRequest, an RP posting to `end_session_endpoint`.
+ *
+ * They are all exempt today. Nothing held them there: remove `oauth/register` from
+ * `bootstrap/app.php` and every Dynamic Client Registration in the world starts answering
+ * 419, with the whole suite still green — because `ValidateCsrfToken` skips itself under
+ * `runningUnitTests()`, so no request-level test in this framework can ever see it.
+ *
+ * Derived from the discovery document rather than hand-listed, so an endpoint advertised
+ * TOMORROW is covered without anyone remembering to add it here.
+ */
+it('exempts every machine endpoint it advertises to the world', function (): void {
+    // DCR advertised, because discovery omits `registration_endpoint` when the mode is
+    // `disabled` — and a dataset that quietly empties itself is a test that cannot fail.
+    // Found by mutation: with this line absent, deleting `oauth/register` from the
+    // exemption list left this green.
+    config()->set('cbox-id.oauth.dynamic_registration.mode', 'protected');
+
+    $discovery = $this->getJson('/.well-known/openid-configuration')->assertOk()->json();
+    $except = csrfExemptPatterns();
+
+    // The advertised endpoints that machines POST to. `authorization_endpoint` is a
+    // browser redirect and `jwks_uri`/`userinfo_endpoint` are GETs, so they are not in
+    // scope — this is about POSTs arriving without an ambient session.
+    $machinePosts = array_filter([
+        $discovery['registration_endpoint'] ?? null,
+        $discovery['end_session_endpoint'] ?? null,
+    ]);
+
+    // Both, by name — `not->toBeEmpty()` was satisfied by whichever one happened to be
+    // advertised, which is how the register case slipped through.
+    expect($discovery)->toHaveKey('registration_endpoint')
+        ->and($discovery)->toHaveKey('end_session_endpoint')
+        ->and($machinePosts)->toHaveCount(2);
+
+    $unprotected = [];
+
+    foreach ($machinePosts as $url) {
+        $path = trim((string) parse_url((string) $url, PHP_URL_PATH), '/');
+
+        $exempt = collect($except)->contains(fn (string $pattern): bool => Str::is(trim($pattern, '/'), $path));
+
+        if (! $exempt) {
+            $unprotected[] = $path;
+        }
+    }
+
+    expect($unprotected)->toBe([]);
+})->group('security');
+
+/*
+ * And the SAML bindings, which discovery does not describe because they are not an OAuth
+ * concern. Same class, same failure: a cross-site POST from the SP's own origin, carrying
+ * an XML signature and no CSRF token.
+ */
+it('exempts the SAML POST bindings in both directions', function (): void {
+    $except = csrfExemptPatterns();
+
+    foreach (['sso/saml/idp/sso', 'sso/saml/idp/slo', 'sso/saml/acme/acs', 'sso/saml/acme/slo'] as $path) {
+        $exempt = collect($except)->contains(fn (string $pattern): bool => Str::is(trim($pattern, '/'), $path));
+
+        expect($exempt)->toBeTrue();
+    }
+})->group('security');
