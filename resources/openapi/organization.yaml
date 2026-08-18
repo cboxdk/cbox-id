@@ -102,6 +102,7 @@ paths:
       summary: List environments
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
       responses:
         "200":
           description: OK
@@ -160,6 +161,7 @@ paths:
       description: Requires the `read-members` capability (owner/admin/viewer). The roster is PII — a developer key is refused.
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
       responses:
         "200":
           description: OK
@@ -286,9 +288,17 @@ components:
         all_environments: { type: boolean }
     ListMeta:
       type: object
+      description: >-
+        Paging for a list response. `has_more` used to be returned with nothing to act on
+        it — no page parameter and no cursor — so a caller told there was more had no way
+        to ask for it. `next_page` is present exactly when `has_more` is true, so a client
+        can loop without computing anything.
       properties:
         limit: { type: integer }
+        page: { type: integer, minimum: 1 }
+        total: { type: integer, description: "Present on lists that can count cheaply." }
         has_more: { type: boolean }
+        next_page: { type: ["integer", "null"], description: "Pass as `page` on the next request; absent on the last page." }
     Error:
       type: object
       required: [error, message]

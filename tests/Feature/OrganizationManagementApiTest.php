@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use App\Mail\OrganizationInviteMail;
 use App\Platform\OrganizationCapabilities;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Contracts\Projects;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Http;
@@ -219,4 +222,74 @@ it('answers a capability question the same way the console does', function (): v
     $this->withToken(issueKey($account, MembershipRole::Viewer))
         ->getJson('/api/v1/organization/members')
         ->assertOk();
+})->group('security');
+
+/*
+ * `has_more` HAD NOTHING TO ACT ON IT.
+ *
+ * Both list endpoints returned `has_more: true` with no page parameter and no cursor, so a
+ * customer with more members than one page had no way to fetch the rest — the field was
+ * true and useless, and the OpenAPI document described only `limit` and `has_more`, so it
+ * was not a client's mistake for failing to guess.
+ *
+ * The member list also loaded the ENTIRE roster and sliced it in PHP, then called
+ * Subjects::find() once per row — a full-table read plus an N+1 to render fifty people.
+ */
+it('pages the member roster, and says how to get the next one', function (): void {
+    $account = apiAccount();
+    $admin = issueKey($account, MembershipRole::Admin);
+
+    // The owner plus four, so two pages of three. Created inside the platform root for
+    // the same reason the controller reads them there: memberships and subjects are
+    // environment-owned and this plane pins no environment.
+    app(PlatformRoot::class)->run(function () use ($account): void {
+        foreach (range(1, 4) as $i) {
+            $subject = app(Subjects::class)->create("member{$i}@acme.example", "Member {$i}");
+            app(Memberships::class)->add($account->id, $subject->id, MembershipRole::Developer);
+        }
+    });
+
+    $first = $this->withToken($admin)->getJson('/api/v1/organization/members?limit=3')->assertOk();
+
+    expect($first->json('data'))->toHaveCount(3)
+        ->and($first->json('meta.total'))->toBe(5)
+        ->and($first->json('meta.has_more'))->toBeTrue()
+        // The whole point: the response says which page to ask for next.
+        ->and($first->json('meta.next_page'))->toBe(2);
+
+    $second = $this->withToken($admin)
+        ->getJson('/api/v1/organization/members?limit=3&page='.$first->json('meta.next_page'))
+        ->assertOk();
+
+    expect($second->json('data'))->toHaveCount(2)
+        ->and($second->json('meta.has_more'))->toBeFalse()
+        ->and($second->json('meta.next_page'))->toBeNull();
+
+    // And the two pages are disjoint — a paginator that returns the same rows twice is
+    // worse than none, because a caller looping on `next_page` never terminates.
+    $ids = array_merge(
+        array_column($first->json('data'), 'id'),
+        array_column($second->json('data'), 'id'),
+    );
+
+    expect($ids)->toHaveCount(5)->and(array_unique($ids))->toHaveCount(5);
+})->group('security');
+
+it('pages environments the same way, rather than inventing a second idiom', function (): void {
+    $account = apiAccount();
+    $admin = issueKey($account, MembershipRole::Admin);
+
+    // Provisioning made one; add one more so a limit of 1 has a second page.
+    $this->withToken($admin)->postJson('/api/v1/organization/environments', ['name' => 'Staging'])->assertCreated();
+
+    $first = $this->withToken($admin)->getJson('/api/v1/organization/environments?limit=1')->assertOk();
+
+    expect($first->json('data'))->toHaveCount(1)
+        ->and($first->json('meta.has_more'))->toBeTrue()
+        ->and($first->json('meta.next_page'))->toBe(2);
+
+    $second = $this->withToken($admin)->getJson('/api/v1/organization/environments?limit=1&page=2')->assertOk();
+
+    expect($second->json('data'))->toHaveCount(1)
+        ->and($second->json('data.0.id'))->not->toBe($first->json('data.0.id'));
 })->group('security');

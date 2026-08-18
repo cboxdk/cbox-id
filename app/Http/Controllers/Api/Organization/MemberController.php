@@ -44,24 +44,49 @@ final class MemberController extends Controller
 
         // IN THE PLATFORM ROOT — memberships and subjects are both environment-owned, and
         // this plane pins no environment.
-        /** @var array{0: int, 1: list<array<string, mixed>>} $result */
+        /** @var array{0: int, 1: int, 2: bool, 3: list<array<string, mixed>>} $result */
         $result = $platformRoot->run(function () use ($members, $subjects, $organizationId, $limit): array {
-            $roster = $members->forOrganization($organizationId);
+            // PAGINATED IN SQL, not sliced in PHP. `forOrganization()` returns the whole
+            // roster: a tenant with ten thousand members loaded ten thousand rows to show
+            // fifty, and `has_more` was computed from a count the caller had already paid
+            // to materialise.
+            // The paginator reads `page` from the request itself, which is why this takes
+            // no page argument — Laravel's LengthAwarePaginator resolves it.
+            $paginator = $members->paginateForOrganization($organizationId, $limit);
 
-            $rows = [];
+            /** @var list<Membership> $rows */
+            $rows = array_values($paginator->items());
 
-            foreach ($roster->take($limit) as $membership) {
-                $rows[] = $this->present($membership, $subjects->find($membership->user_id));
-            }
+            // ONE QUERY FOR THE PEOPLE, not one per row. `find()` inside the loop was an
+            // N+1 whose width is the page size — findMany() is the contract's documented
+            // counterpart and exists for exactly this.
+            $byId = $subjects->findMany(array_map(
+                static fn ($membership): string => $membership->user_id,
+                $rows,
+            ));
 
-            return [$roster->count(), $rows];
-        }) ?? [0, []];
+            return [
+                $paginator->total(),
+                $paginator->currentPage(),
+                $paginator->hasMorePages(),
+                array_map(fn (Membership $membership): array => $this->present($membership, $byId[$membership->user_id] ?? null), $rows),
+            ];
+        }) ?? [0, 1, false, []];
 
-        [$total, $rows] = $result;
+        [$total, $page, $hasMore, $rows] = $result;
 
+        // `has_more` WITH A WAY TO ACT ON IT. It was returned with no cursor and no page
+        // parameter, so a caller told there were more members had no means of asking for
+        // them — the field was true and useless.
         return response()->json([
             'data' => $rows,
-            'meta' => ['limit' => $limit, 'has_more' => $total > $limit],
+            'meta' => array_filter([
+                'limit' => $limit,
+                'page' => $page,
+                'total' => $total,
+                'has_more' => $hasMore,
+                'next_page' => $hasMore ? $page + 1 : null,
+            ], static fn ($value): bool => $value !== null),
         ]);
     }
 

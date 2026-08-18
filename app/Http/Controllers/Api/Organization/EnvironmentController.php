@@ -26,21 +26,33 @@ final class EnvironmentController extends Controller
     public function index(Request $request, OrganizationApiContext $context): JsonResponse
     {
         $limit = min(100, max(1, $request->integer('limit', 50)));
+        $page = max(1, $request->integer('page', 1));
 
+        // `limit + 1` to learn whether there is a next page without a second COUNT — the
+        // extra row is read and dropped.
         $environments = Environment::query()
             ->whereIn('project_id', Project::query()->where('organization_id', (string) $context->organizationId())->pluck('id'))
             ->orderBy('created_at')
+            ->orderBy('id')
+            ->skip(($page - 1) * $limit)
             ->limit($limit + 1)
             ->get();
 
-        // A consistent envelope: data + meta on every list, with a simple
-        // has-more/next-cursor signal (an organization's environments are plan-bounded, so a
-        // limit is plenty — the shape stays uniform with the larger env-plane lists).
+        // `has_more` WITH A WAY TO ACT ON IT. The envelope advertised a next-cursor signal
+        // and carried no cursor and no page parameter, so a caller told there were more
+        // environments had no means of asking for them. An organization's environments are
+        // plan-bounded, so page numbers are enough — and they match the member list next
+        // door rather than inventing a second idiom.
         $hasMore = $environments->count() > $limit;
 
         return response()->json([
             'data' => $environments->take($limit)->map(fn (Environment $e): array => $this->present($e))->values()->all(),
-            'meta' => ['limit' => $limit, 'has_more' => $hasMore],
+            'meta' => array_filter([
+                'limit' => $limit,
+                'page' => $page,
+                'has_more' => $hasMore,
+                'next_page' => $hasMore ? $page + 1 : null,
+            ], static fn ($value): bool => $value !== null),
         ]);
     }
 
