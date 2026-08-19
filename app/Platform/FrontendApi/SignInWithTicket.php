@@ -52,17 +52,19 @@ final class SignInWithTicket
      */
     public function establish(Request $request, string $token): bool
     {
-        $ticket = $this->tickets->redeem($token);
+        // This endpoint resolves its own environment from the host, and redemption is
+        // bound to it: a ticket minted elsewhere is not claimable here, whatever ambient
+        // scope this runs under. Without a resolved environment there is nothing to bind
+        // to, so there is nothing to redeem.
+        $environment = $this->environments->current();
 
-        if ($ticket === null) {
+        if ($environment === null) {
             return false;
         }
 
-        // A ticket carries the environment it was minted in, and this endpoint resolves
-        // its own from the host. A mismatch means the ticket is being replayed somewhere
-        // it was not issued for, which redemption cannot see because it reads under the
-        // scope it is given.
-        if ($ticket->environment_id !== $this->environments->current()?->environmentKey()) {
+        $ticket = $this->tickets->redeem($token, $environment->environmentKey());
+
+        if ($ticket === null) {
             return false;
         }
 

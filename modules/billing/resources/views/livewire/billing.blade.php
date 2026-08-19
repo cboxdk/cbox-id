@@ -7,6 +7,9 @@ use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
+use Cbox\Id\Platform\Models\Project;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -66,10 +69,27 @@ new #[Layout('components.layouts.app', ['title' => 'Billing'])] class extends Co
         $organizationId = $scope->organizationId();
 
         // Per-project plan + allowance (the billing anchor is the project).
-        $projectRows = $organizationId === null ? [] : $projects->forOrganization($organizationId)->map(fn ($p): array => [
+        //
+        // The environment counts arrive in ONE grouped read rather than a count query
+        // inside the map. An organization with thirty projects paid thirty round trips to
+        // render a page whose whole content is "how much of your allowance is used" —
+        // and the answer to that question for every project is a single GROUP BY.
+        /** @var Collection<int, Project> $organizationProjects */
+        $organizationProjects = $organizationId === null ? new Collection : $projects->forOrganization($organizationId);
+
+        /** @var SupportCollection<string, int> $environmentCounts */
+        $environmentCounts = $organizationProjects->isEmpty()
+            ? new SupportCollection
+            : Environment::query()
+                ->whereIn('project_id', $organizationProjects->pluck('id'))
+                ->groupBy('project_id')
+                ->selectRaw('project_id, count(*) as aggregate')
+                ->pluck('aggregate', 'project_id');
+
+        $projectRows = $organizationProjects->map(fn (Project $p): array => [
             'id' => $p->id,
             'name' => $p->name,
-            'used' => Environment::query()->where('project_id', $p->id)->count(),
+            'used' => (int) ($environmentCounts[$p->id] ?? 0),
             'limit' => $p->environment_limit,
         ])->all();
 

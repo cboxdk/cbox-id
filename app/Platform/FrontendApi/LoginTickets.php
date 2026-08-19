@@ -165,13 +165,23 @@ final class LoginTickets
      * first and marking afterwards would leave a window in which two requests both see an
      * unredeemed ticket, and two sessions is one more than a password bought.
      */
-    public function redeem(string $token): ?LoginTicket
+    public function redeem(string $token, string $environmentKey): ?LoginTicket
     {
         $hash = hash('sha256', $token);
 
-        return DB::transaction(function () use ($hash): ?LoginTicket {
+        return DB::transaction(function () use ($hash, $environmentKey): ?LoginTicket {
             $claimed = LoginTicket::query()
                 ->where('token_hash', $hash)
+                // THE ENVIRONMENT IS PART OF THE CLAIM, not a check on the row afterwards.
+                //
+                // It used to be checked by the caller, on the ticket this method returned.
+                // That check could never fail: the model is environment-scoped, so a
+                // foreign ticket was already invisible here and redemption answered null
+                // one step earlier. The caller's guard was unreachable, its test passed
+                // with the guard deleted, and the protection everything downstream assumed
+                // was really the ambient scope — which one `withoutScope()` anywhere in a
+                // future call path would remove without a single test going red.
+                ->where('environment_id', $environmentKey)
                 // `ready` only: a ticket still owing a second factor is not a sign-in, and
                 // redeeming one would be the bypass this whole stage exists to prevent.
                 ->where('stage', 'ready')
@@ -183,7 +193,10 @@ final class LoginTickets
                 return null;
             }
 
-            $ticket = LoginTicket::query()->where('token_hash', $hash)->first();
+            $ticket = LoginTicket::query()
+                ->where('token_hash', $hash)
+                ->where('environment_id', $environmentKey)
+                ->first();
 
             return $ticket instanceof LoginTicket ? $ticket : null;
         });

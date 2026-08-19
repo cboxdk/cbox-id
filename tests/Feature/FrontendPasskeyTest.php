@@ -12,6 +12,7 @@ use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -107,7 +108,7 @@ it('mints a ticket for an assertion that verifies', function (): void {
     expect($body['status'])->toBe('ok')
         ->and($body['login_ticket'])->toBeString();
 
-    $ticket = app(LoginTickets::class)->redeem($body['login_ticket']);
+    $ticket = app(LoginTickets::class)->redeem($body['login_ticket'], app(EnvironmentContext::class)->requireEnvironment()->environmentKey());
 
     expect($ticket?->subject_id)->toBe($subject->id)
         // A passkey IS the factor: no `pwd` nobody typed, and the vocabulary is the one

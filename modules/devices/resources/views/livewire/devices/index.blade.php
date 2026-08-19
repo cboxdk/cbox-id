@@ -8,11 +8,13 @@ use Cbox\Id\Devices\Models\PushNotification;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 /*
  * Styled with the host's CSS variables rather than Tailwind `dark:` utilities — the
@@ -25,6 +27,10 @@ use Livewire\Volt\Component;
  */
 new #[Layout('components.layouts.console', ['title' => 'Trusted devices'])] class extends Component
 {
+    use WithPagination;
+
+    private const PER_PAGE = 25;
+
     /**
      * Read gate re-checked on EVERY request, not just first mount — boot() runs on each
      * hydration, so an admin demoted mid-session cannot keep re-rendering the estate's
@@ -42,10 +48,10 @@ new #[Layout('components.layouts.console', ['title' => 'Trusted devices'])] clas
     }
 
     /**
-     * @return Collection<int, Device>
+     * @return LengthAwarePaginator<int, Device>
      */
     #[Computed]
-    public function devices(): Collection
+    public function devices(): LengthAwarePaginator
     {
         // Confined to the acting organization's members.
         //
@@ -53,10 +59,15 @@ new #[Layout('components.layouts.console', ['title' => 'Trusted devices'])] clas
         // page handed an admin of one tenant every other tenant's handset names, models,
         // OS versions and health. The page's own docblock calls that "precisely the
         // reconnaissance an attacker wants", which was true of the page itself.
+        // PAGINATED, NOT TRUNCATED. This took the 100 most recently seen devices and the
+        // page called itself the device inventory. An admin looking for the handset
+        // somebody enrolled last spring — which is the reason to open this page during an
+        // incident — scrolled to the bottom, found it absent, and had nothing telling them
+        // the list was cut. A silent truncation on a security page answers "no such
+        // device" to a question nobody asked.
         return $this->scoped(Device::query())
             ->orderByDesc('last_seen_at')
-            ->limit(100)
-            ->get();
+            ->paginate(self::PER_PAGE);
     }
 
     /**
@@ -201,6 +212,10 @@ new #[Layout('components.layouts.console', ['title' => 'Trusted devices'])] clas
             </tbody>
         </table>
     </div>
+
+    @if ($this->devices->hasPages())
+        <div class="mt-4">{{ $this->devices->links() }}</div>
+    @endif
 
     <div>
         <h2 class="mb-3 text-sm font-medium" style="color:var(--foreground)">Recent notifications</h2>

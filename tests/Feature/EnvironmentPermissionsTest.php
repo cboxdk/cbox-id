@@ -152,3 +152,44 @@ it('isolates manual permissions to their authoring environment', function (): vo
         ->and(Permission::query()->withoutGlobalScopes()->whereKey($legacy->id)->exists())->toBeTrue()
         ->and(DB::table('role_permission')->where('permission_id', $permA->id)->exists())->toBeTrue();
 });
+
+/**
+ * The catalog is not bounded by anyone who reads this page.
+ *
+ * App-declared permissions arrive from a manifest push: an integration decides how many
+ * there are, and this page rendered every one of them on every render — and again in the
+ * Livewire payload on every action taken anywhere on it. A tenant with a large app
+ * catalog got a page that was slow to open and impossible to look anything up in.
+ *
+ * The bound is worth nothing if it hides rows with no way back to them, so the two halves
+ * are asserted together: the list stops, it says so, and search reaches past it.
+ */
+it('bounds the app-declared catalog and lets search reach past it', function (): void {
+    $env = permSetup();
+
+    // One page's worth plus a tail, named so the last one cannot be confused for the
+    // first alphabetically — the list is ordered by name.
+    for ($i = 0; $i < 60; $i++) {
+        Permission::query()->create([
+            'client_id' => 'client_app_1',
+            'environment_id' => $env,
+            'name' => sprintf('app:action%02d', $i),
+            'tenant_assignable' => true,
+        ]);
+    }
+
+    Permission::query()->create([
+        'client_id' => 'client_app_1',
+        'environment_id' => $env,
+        'name' => 'zebra:groom',
+        'tenant_assignable' => true,
+    ]);
+
+    $page = Volt::test('console.permissions.index');
+
+    $page->assertDontSee('zebra:groom')
+        // And it says the list stopped, rather than simply ending.
+        ->assertSee('Showing 50 of 61');
+
+    $page->set('search', 'zebra')->assertSee('zebra:groom');
+});

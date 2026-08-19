@@ -32,7 +32,10 @@ function signedInFor(): string
 function deviceClient(): Client
 {
     return app(ClientRegistry::class)->register(new NewClient(
-        name: 'TV App', type: ClientType::Confidential, grantTypes: ['urn:ietf:params:oauth:grant-type:device_code'], scopes: ['openid'],
+        // Both scopes it is used to request below: a device-flow request naming a scope
+        // the client is not registered for is refused outright rather than downscoped,
+        // because there is no browser in the loop to notice a smaller grant.
+        name: 'TV App', type: ClientType::Confidential, grantTypes: ['urn:ietf:params:oauth:grant-type:device_code'], scopes: ['openid', 'email'],
     ))->client;
 }
 

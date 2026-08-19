@@ -8,6 +8,8 @@ use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Models\Client;
+use Illuminate\Contracts\Database\Query\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -55,6 +57,15 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
     {
         app(ConsoleScope::class)->assertMayAdminister();
     }
+
+    /**
+     * How many app-declared keys are listed before the page says how many more there are.
+     * An integration can push a manifest of any size without asking anybody here.
+     */
+    private const DECLARED_SHOWN = 50;
+
+    /** Narrows every list on the page, in SQL. */
+    public string $search = '';
 
     public string $name = '';
 
@@ -241,12 +252,27 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
     {
         $owner = $this->owner();
 
-        $all = Permission::query()->visibleToOrganization($owner)->orderBy('name')->get();
+        // THE FILTERS BELONG IN SQL, and the tenant-assignable one especially: it decided
+        // whether a peer's app catalog was visible at all, and it decided it in PHP, after
+        // every one of those rows had already been read. A tenant admin's render loaded
+        // the environment's entire permission catalog to display a filtered subset of it.
+        $search = trim($this->search);
+
+        $visible = fn (): Builder => Permission::query()
+            ->visibleToOrganization($owner)
+            ->when($search !== '', fn (Builder $q): Builder => $q->where(
+                fn (Builder $inner) => $inner->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%'),
+            ))
+            ->orderBy('name');
 
         // Only THIS environment's manual permissions are editable here. Operator-seeded
         // platform-global (null environment) rows remain visible-and-bindable in the
         // Roles editor but are not surfaced with edit/delete controls they'd no-op on.
-        $manual = $all->whereNull('client_id')->where('environment_id', $this->environmentId());
+        $manual = $visible()
+            ->whereNull('client_id')
+            ->where('environment_id', $this->environmentId())
+            ->get();
 
         // Split by ownership, because the page's controls differ and a row that renders an
         // Edit button the caller's writes cannot resolve is a lie the console tells once
@@ -258,28 +284,30 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
             ? $mine->take(0)
             : $manual->filter(fn (Permission $p): bool => $p->organization_id === null)->values();
 
-        $declared = $all->whereNotNull('client_id');
-
         // A tenant sees an app's catalog only where the app said tenants may use it, and
         // only for apps they could actually be using. Every declared key in the
         // environment was rendered to every tenant admin, `tenant_assignable` or not — and
         // an internal key is named after the thing it guards, so a peer's catalog read as
         // a description of what that peer had bought. The environment plane keeps the full
         // view: it administers the apps.
-        if ($owner !== null) {
-            $usable = Client::query()
-                ->where(function ($query) use ($owner): void {
-                    $query->whereNull('organization_id')->orWhere('organization_id', $owner);
-                })
-                ->pluck('client_id')
-                ->all();
+        $declaredQuery = $visible()->whereNotNull('client_id');
 
-            $declared = $declared->filter(
-                fn (Permission $p): bool => $p->tenant_assignable && in_array($p->client_id, $usable, true),
-            );
+        if ($owner !== null) {
+            $declaredQuery
+                ->where('tenant_assignable', true)
+                ->whereIn('client_id', Client::query()
+                    ->where(fn (EloquentBuilder $query) => $query
+                        ->whereNull('organization_id')
+                        ->orWhere('organization_id', $owner))
+                    ->select('client_id'));
         }
 
-        $declared = $declared->values();
+        // One page at a time, with the total beside it. Grouped by app underneath, this
+        // is a browse view over something an integration can add to without asking — a
+        // manifest push of two hundred keys turned it into a scroll with no way to find
+        // anything, and shipped every one of them in the Livewire payload on each action.
+        $declaredTotal = (clone $declaredQuery)->count();
+        $declared = $declaredQuery->limit(self::DECLARED_SHOWN)->get();
 
         $appNames = Client::query()
             ->whereIn('client_id', $declared->pluck('client_id')->filter()->unique()->all())
@@ -307,7 +335,7 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
             ->join('roles', 'roles.id', '=', 'role_permission.role_id')
             ->where('roles.environment_id', $this->environmentId())
             ->when($owner !== null, fn ($query) => $query->where('roles.organization_id', $owner))
-            ->whereIn('role_permission.permission_id', $all->pluck('id'))
+            ->whereIn('role_permission.permission_id', $manual->pluck('id')->merge($declared->pluck('id'))->all())
             ->selectRaw('role_permission.permission_id as permission_id, count(*) as aggregate')
             ->groupBy('role_permission.permission_id')
             ->pluck('aggregate', 'permission_id');
@@ -318,6 +346,8 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
             'sharesEnvironment' => $owner === null,
             'declared' => $declared,
             'declaredByApp' => $declared->groupBy('client_id'),
+            'declaredTotal' => $declaredTotal,
+            'declaredShown' => $declared->count(),
             'appNames' => $appNames,
             'usage' => $usage,
         ];
@@ -370,6 +400,25 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
                 </label>
             @endif
         </form>
+    </div>
+
+    {{-- One search over every list below. The catalog grows by integration rather than
+         by anyone on this page deciding to add to it, so "scroll until you find it" stops
+         working at a size nobody here chose. --}}
+    <div>
+        <label class="block">
+            <span class="sr-only">Search permissions</span>
+            <input type="search" wire:model.live.debounce.300ms="search" class="input w-full"
+                   aria-label="Search permissions by key or description"
+                   placeholder="Search permissions by key or description">
+        </label>
+        {{-- WCAG 4.1.3: the lists below morph in on a debounced keystroke, so this is the
+             only thing that can tell a screen-reader user the search found nothing. --}}
+        <p class="mt-1 text-xs" role="status" aria-live="polite" style="color:var(--faint)">
+            @if ($search !== '')
+                {{ $manual->count() + $inherited->count() + $declaredTotal }} matching {{ \Illuminate\Support\Str::plural('permission', $manual->count() + $inherited->count() + $declaredTotal) }}
+            @endif
+        </p>
     </div>
 
     {{-- Manual permissions --}}
@@ -470,7 +519,7 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <div class="flex items-center gap-2">
             <p class="text-sm font-medium">App-declared</p>
-            <span class="badge">{{ $declared->count() }}</span>
+            <span class="badge">{{ $declaredTotal }}</span>
         </div>
         <p class="mt-1 text-xs" style="color:var(--faint)">Synced from each app's manifest over the SDK/API. Read-only — the app is their source of truth.</p>
         <div class="mt-4 space-y-4">
@@ -496,10 +545,21 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
             @empty
                 <div class="cbx-empty">
                     <div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div>
-                    <h3>No app has registered a catalog yet</h3>
-                    <p>Once an app declares its permissions through the SDK or API, they appear here.</p>
+                    @if ($search !== '')
+                        <h3>No app permission matches “{{ $search }}”</h3>
+                        <p>Clear the search to see the whole catalog.</p>
+                    @else
+                        <h3>No app has registered a catalog yet</h3>
+                        <p>Once an app declares its permissions through the SDK or API, they appear here.</p>
+                    @endif
                 </div>
             @endforelse
+
+            @if ($declaredShown < $declaredTotal)
+                <p class="text-xs" style="color:var(--faint)">
+                    Showing {{ $declaredShown }} of {{ $declaredTotal }}. Search to reach the rest.
+                </p>
+            @endif
         </div>
     </div>
 </div>

@@ -8,6 +8,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Navigation\ConsoleNavigation;
+use Carbon\CarbonInterface;
 use Cbox\Id\Compliance\Models\AuditExportRun;
 use Cbox\Id\Console\Enums\HealthStatus;
 use Cbox\Id\Devices\Enums\DevicePlatform;
@@ -51,7 +52,7 @@ uses(RefreshDatabase::class);
  */
 
 /** One enrolled handset for a subject, built the way the module's own tests build them. */
-function enrolledHandset(string $subjectId, string $name): Device
+function enrolledHandset(string $subjectId, string $name, ?CarbonInterface $lastSeenAt = null): Device
 {
     $device = new Device;
     $device->fill([
@@ -60,6 +61,7 @@ function enrolledHandset(string $subjectId, string $name): Device
         'platform' => DevicePlatform::Ios,
         'name' => $name,
         'status' => DeviceStatus::Active,
+        'last_seen_at' => $lastSeenAt,
     ]);
     $device->save();
 
@@ -378,6 +380,35 @@ it('shows an organization admin only their own members\' devices', function (): 
 
     expect($html)->toContain('Mine')->not->toContain('Zarquon');
 })->group('security');
+
+/**
+ * The inventory is the whole inventory.
+ *
+ * This page took the 100 most recently seen devices and presented the result as "handsets
+ * enrolled in the authenticator app". An admin opening it during an incident to find a
+ * device enrolled months ago scrolled to the end of a list that had quietly stopped, with
+ * nothing on the page saying so — a truncation that reads as "no such device".
+ */
+it('reaches a device that falls past the first page', function (): void {
+    everyModuleFeatureOn();
+    platformRootEnvironment();
+
+    [$subjectId] = actingAsRole(MembershipRole::Owner);
+
+    // One page's worth in front of it, all seen more recently, so the oldest is off page
+    // one by construction rather than by luck of ordering.
+    enrolledHandset($subjectId, 'Ancient', lastSeenAt: now()->subYear());
+
+    for ($i = 0; $i < 30; $i++) {
+        enrolledHandset($subjectId, 'Recent '.$i, lastSeenAt: now()->subMinutes($i));
+    }
+
+    $page = Volt::test('devices.index');
+
+    expect($page->html())->not->toContain('Ancient');
+
+    expect($page->set('paginators.page', 2)->html())->toContain('Ancient');
+});
 
 /**
  * The scope, not console-kit's CurrentContext.

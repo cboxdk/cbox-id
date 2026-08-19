@@ -13,6 +13,7 @@ use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\FrontendApiServiceProvider;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
@@ -124,8 +125,8 @@ it('rate limits guesses against one address, whoever is asking', function (): vo
 it('redeems a ticket exactly once', function (): void {
     $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
 
-    expect(app(LoginTickets::class)->redeem($ticket))->not->toBeNull()
-        ->and(app(LoginTickets::class)->redeem($ticket))->toBeNull();
+    expect(app(LoginTickets::class)->redeem($ticket, app(EnvironmentContext::class)->requireEnvironment()->environmentKey()))->not->toBeNull()
+        ->and(app(LoginTickets::class)->redeem($ticket, app(EnvironmentContext::class)->requireEnvironment()->environmentKey()))->toBeNull();
 });
 
 it('refuses a ticket that has expired', function (): void {
@@ -133,7 +134,7 @@ it('refuses a ticket that has expired', function (): void {
 
     LoginTicket::query()->update(['expires_at' => now()->subMinute()]);
 
-    expect(app(LoginTickets::class)->redeem($ticket))->toBeNull();
+    expect(app(LoginTickets::class)->redeem($ticket, app(EnvironmentContext::class)->requireEnvironment()->environmentKey()))->toBeNull();
 });
 
 it('keeps only a hash of the ticket', function (): void {
@@ -151,7 +152,7 @@ it('keeps only a hash of the ticket', function (): void {
 it('carries the authentication methods through to the session it creates', function (): void {
     $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd', 'webauthn']);
 
-    expect(app(LoginTickets::class)->redeem($ticket)?->amr)->toBe(['pwd', 'webauthn']);
+    expect(app(LoginTickets::class)->redeem($ticket, app(EnvironmentContext::class)->requireEnvironment()->environmentKey())?->amr)->toBe(['pwd', 'webauthn']);
 });
 
 it('refuses an empty email or password without consulting the auth stack', function (array $body): void {
@@ -185,10 +186,37 @@ it('turns a ticket into a session at the authorize endpoint', function (): void 
 });
 
 /**
- * A ticket minted in one environment must not sign anybody in elsewhere. Redemption reads
- * under whatever scope it is given, so the bind is checked where the environment is known.
+ * A ticket minted in one environment must not sign anybody in elsewhere.
+ *
+ * THIS TEST USED TO PASS FOR THE WRONG REASON, and deleting the protection it named left
+ * it green. It moved the row to another environment and called `establish()`, but the
+ * ticket model is environment-scoped: the moved row was simply invisible, redemption
+ * answered null, and the environment check one line further down was never reached. What
+ * it proved was that the ambient scope works — true, already covered, and not what it
+ * said. Any later caller that redeemed inside `withoutScope()` would have had no
+ * protection at all and no failing test to say so.
+ *
+ * So the bind now lives in the conditional UPDATE that claims the ticket, and this runs
+ * with scoping suspended — the one condition under which a foreign ticket is reachable at
+ * all. If redemption stops naming the environment, this is the test that goes red.
  */
 it('refuses a ticket that belongs to another environment', function (): void {
+    $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
+    $elsewhere = app(EnvironmentContext::class)->requireEnvironment()->environmentKey().'_not';
+
+    $claimed = app(EnvironmentContext::class)->withoutScope(
+        fn (): ?LoginTicket => app(LoginTickets::class)->redeem($ticket, $elsewhere),
+    );
+
+    expect($claimed)->toBeNull()
+        // And it was refused, not spent: the rightful environment can still redeem it.
+        ->and(app(LoginTickets::class)->redeem($ticket, app(EnvironmentContext::class)->requireEnvironment()->environmentKey()))->not->toBeNull();
+});
+
+/**
+ * The same refusal through the front door, which is what a replayed ticket actually meets.
+ */
+it('establishes no session from a ticket minted for another environment', function (): void {
     $ticket = app(LoginTickets::class)->mint($this->key, $this->subject->id, ['pwd']);
 
     LoginTicket::query()->update(['environment_id' => 'env_somewhere_else']);
@@ -443,7 +471,7 @@ it('still refuses a spent ticket that names another person', function (): void {
     $bobsTicket = app(LoginTickets::class)->mint($this->key, $bob->id, ['pwd']);
 
     // Spend it, so redemption will answer null the way a replay does.
-    app(LoginTickets::class)->redeem($bobsTicket);
+    app(LoginTickets::class)->redeem($bobsTicket, app(EnvironmentContext::class)->requireEnvironment()->environmentKey());
 
     $location = $this->withSession([
         PlatformAuth::SESSION_KEY => app(SessionManager::class)->start($this->subject->id, null, ['pwd'])->id,

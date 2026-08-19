@@ -12,6 +12,7 @@ use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -55,7 +56,7 @@ it('never redeems a pending ticket as a sign-in', function (): void {
     $pending = app(LoginTickets::class)
         ->mintPending($this->key, $this->subject->id, ['pwd'], 'pending_mfa');
 
-    expect(app(LoginTickets::class)->redeem($pending))->toBeNull();
+    expect(app(LoginTickets::class)->redeem($pending, app(EnvironmentContext::class)->requireEnvironment()->environmentKey()))->toBeNull();
 });
 
 /**
@@ -90,7 +91,7 @@ it('carries a password and a real TOTP code through to a session', function (): 
 
     // And the ticket it hands back is a real sign-in: it establishes, and the `amr` names
     // both factors rather than only the password.
-    $ticket = app(LoginTickets::class)->redeem($second->json('login_ticket'));
+    $ticket = app(LoginTickets::class)->redeem($second->json('login_ticket'), app(EnvironmentContext::class)->requireEnvironment()->environmentKey());
 
     expect($ticket?->subject_id)->toBe($this->subject->id)
         ->and($ticket?->amr)->toContain('pwd')
@@ -165,7 +166,7 @@ it('promotes the same row and leaves nothing behind to reuse', function (): void
     expect(LoginTicket::query()->count())->toBe(1)
         // The old token is dead the moment the new one exists.
         ->and(app(LoginTickets::class)->claimAttempt($pending, 'pending_mfa', $this->key))->toBeNull()
-        ->and(app(LoginTickets::class)->redeem($ready)?->amr)->toBe(['pwd', 'mfa']);
+        ->and(app(LoginTickets::class)->redeem($ready, app(EnvironmentContext::class)->requireEnvironment()->environmentKey())?->amr)->toBe(['pwd', 'mfa']);
 });
 
 it('refuses the second factor without a key, a token or a code', function (array $body): void {

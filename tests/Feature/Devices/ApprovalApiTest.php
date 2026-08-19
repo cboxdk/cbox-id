@@ -52,7 +52,10 @@ function approvalAuth(string $token): array
 function raiseApproval(string $subjectId, ?string $bindingMessage = 'Transfer DKK 4,200 to ACME ApS'): string
 {
     $client = app(ClientRegistry::class)->register(
-        new NewClient('Acme Agent', ClientType::Confidential, scopes: ['openid'])
+        // Registered for exactly what it goes on to request. A CIBA request for a scope
+        // the client does not hold is refused at the ceiling now — machine-initiated
+        // flows have no user in front of them to notice a silently downscoped grant.
+        new NewClient('Acme Agent', ClientType::Confidential, scopes: ['openid', 'profile'])
     )->client;
 
     return app(BackchannelAuthentication::class)

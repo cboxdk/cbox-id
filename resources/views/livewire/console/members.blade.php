@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Livewire\Livewire;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\WithPagination;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
@@ -49,6 +50,16 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
      */
     private const PER_PAGE = 25;
 
+    /**
+     * How many environment checkboxes the access editor draws at once. Past this a list of
+     * checkboxes stops being a way to choose and starts being a wall; the search box is
+     * how you get to the rest.
+     */
+    private const ENVIRONMENTS_PER_EDITOR = 25;
+
+    /** Pending invitations shown before the panel says how many more there are. */
+    private const INVITATIONS_SHOWN = 25;
+
     public string $inviteEmail = '';
 
     public string $inviteName = '';
@@ -57,6 +68,9 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
 
     /** The member whose environment access is being edited, if any. */
     public ?string $editingAccessFor = null;
+
+    /** Narrows the environment checkbox list inside the open access editor. */
+    public string $envSearch = '';
 
     public bool $accessAll = true;
 
@@ -527,12 +541,34 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
         }
 
         // THROUGH THE PROJECTS, because `environments.account_id` is gone.
-        $environments = $organizationId === null
+        //
+        // READ ONLY WHILE THE EDITOR IS OPEN, AND ONLY A PAGE OF IT. Every render of this
+        // roster loaded every environment the organization owns, to render one checkbox
+        // each inside a panel that is closed almost all the time. A customer with hundreds
+        // of environments paid for that list on each page of members, and then, on opening
+        // "Edit access", got hundreds of checkboxes with no way to find one.
+        //
+        // The summary line above still needs the TOTAL, so that is a count rather than the
+        // rows — one aggregate instead of the estate.
+        $environmentQuery = fn (): Builder => Environment::query()
+            ->whereIn('project_id', Project::query()->where('organization_id', $organizationId)->pluck('id'));
+
+        $environmentCount = $organizationId === null ? 0 : $environmentQuery()->count();
+
+        $search = trim($this->envSearch);
+
+        $environments = ($organizationId === null || $this->editingAccessFor === null)
             ? collect()
-            : Environment::query()
-                ->whereIn('project_id', Project::query()->where('organization_id', $organizationId)->pluck('id'))
+            : $environmentQuery()
+                ->when($search !== '', fn (Builder $q): Builder => $q->where('name', 'like', '%'.$search.'%'))
                 ->orderBy('created_at')
+                ->limit(self::ENVIRONMENTS_PER_EDITOR + 1)
                 ->get();
+
+        // One over the cap tells us there are more without a second query; the extra is
+        // not rendered, and the panel says so rather than ending silently.
+        $environmentsTruncated = $environments->count() > self::ENVIRONMENTS_PER_EDITOR;
+        $environments = $environments->take(self::ENVIRONMENTS_PER_EDITOR);
 
         return [
             // The invitations nobody has accepted. Listed because a page that can send one
@@ -540,13 +576,18 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
             // organization for a week with nothing in the product to say so — and because
             // "did that go?" is the question immediately after clicking Send.
             'invitations' => $organizationId === null ? collect() : (app(PlatformRoot::class)->run(
-                fn () => app(Invitations::class)->pending($organizationId),
+                fn () => app(Invitations::class)->pending($organizationId, self::INVITATIONS_SHOWN),
             ) ?? collect()),
+            'invitationCount' => $organizationId === null ? 0 : (app(PlatformRoot::class)->run(
+                fn (): int => app(Invitations::class)->countPending($organizationId),
+            ) ?? 0),
             'members' => $roster,
             'people' => $people,
             'actorId' => $scope->actorId(),
             'accessCounts' => $accessCounts,
             'environments' => $environments,
+            'environmentCount' => $environmentCount,
+            'environmentsTruncated' => $environmentsTruncated,
             // Asked of the SCOPE, not of the member row, so the rail, this page's own
             // guard and the buttons it renders all answer from one place — and so a
             // person acting on somebody else's organization is refused here too, which
@@ -631,7 +672,7 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
                         @if ($m?->all_environments === true)
                             Access to all environments
                         @else
-                            Access to {{ count($accessCounts[$m->id] ?? []) }} of {{ $environments->count() }} environments
+                            Access to {{ count($accessCounts[$m->id] ?? []) }} of {{ $environmentCount }} environments
                         @endif
                     </div>
                     @if ($editingAccessFor === $m->id)
@@ -640,12 +681,44 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
                                 <input type="checkbox" wire:model.live="accessAll"> All environments (including ones added later)
                             </label>
                             <div class="mt-2 space-y-1.5" @if ($accessAll) style="opacity:0.4;pointer-events:none" @endif>
-                                @foreach ($environments as $env)
+                                {{-- Searchable, because a checkbox list is only a way to
+                                     choose while you can find the thing you are choosing.
+                                     Selections survive filtering: an environment that
+                                     scrolls out of the results stays in `accessEnvIds`,
+                                     which is what the count below reports. --}}
+                                @if ($environmentCount > count($environments))
+                                    <label class="block">
+                                        <span class="sr-only">Search environments</span>
+                                        <input type="search" wire:model.live.debounce.300ms="envSearch"
+                                               aria-label="Search environments by name"
+                                               placeholder="Search {{ $environmentCount }} environments"
+                                               class="input input-sm w-full" @disabled($accessAll)>
+                                    </label>
+                                @endif
+
+                                @forelse ($environments as $env)
                                     <label class="flex items-center gap-2 text-sm">
                                         <input type="checkbox" value="{{ $env->id }}" wire:model="accessEnvIds" @disabled($accessAll)>
                                         {{ $env->name }} @if ($env->isSandbox())<span style="color:var(--warning-strong)">· sandbox</span>@endif
                                     </label>
-                                @endforeach
+                                @empty
+                                    <p class="text-sm" style="color:var(--faint)">
+                                        No environment matches “{{ $envSearch }}”.
+                                    </p>
+                                @endforelse
+
+                                @if ($environmentsTruncated)
+                                    <p class="text-xs" style="color:var(--faint)">
+                                        Showing the first {{ count($environments) }}. Search to reach the rest.
+                                    </p>
+                                @endif
+
+                                {{-- Announced, because the list it describes redraws on a
+                                     debounced keystroke with nothing else to report the
+                                     result. --}}
+                                <p class="text-xs" role="status" aria-live="polite" style="color:var(--muted)">
+                                    {{ count($environments) }} shown · {{ count($accessEnvIds) }} selected
+                                </p>
                             </div>
                             <div class="mt-3 flex gap-2">
                                 <button type="button" class="btn btn-primary btn-sm" wire:click="saveAccess">Save access</button>
@@ -667,7 +740,16 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
             <div class="cbx-panel-header">
                 <div>
                     <h2 class="cbx-panel-title">Invited, not joined yet</h2>
-                    <p class="cbx-panel-desc">These links work until they expire or you withdraw them.</p>
+                    <p class="cbx-panel-desc">
+                        These links work until they expire or you withdraw them.
+                        @if ($invitationCount > $invitations->count())
+                            {{-- Said out loud rather than the list simply stopping: an
+                                 unaccepted invitation is a live way into the organization,
+                                 and a count that does not match what is drawn is how one
+                                 sits there unnoticed. --}}
+                            Showing the {{ $invitations->count() }} most recent of {{ $invitationCount }}.
+                        @endif
+                    </p>
                 </div>
             </div>
             <div class="cbx-panel-body" style="display:flex;flex-direction:column;gap:8px">
