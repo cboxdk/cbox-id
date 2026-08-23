@@ -387,7 +387,12 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
 <div>
     <a href="{{ route($scopeRoute('clients')) }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Apps & API keys</a>
     <h1 class="mt-2 font-semibold tracking-tight" style="font-size:1.5rem">New app</h1>
-    <p class="mt-1 text-sm" style="color:var(--muted)">Connect an application — for signing people in (single sign-on) or for machine-to-machine API access. The client secret is shown once, right after you create it.</p>
+    {{-- The old subtitle named exactly two modes — "signing people in" and
+         "machine-to-machine" — which is the same two-checkbox model the form has stopped
+         using, and it excluded a CLI and an agent by omission. It also promised a client
+         secret, which a public app never receives; the sentence under the kind picker
+         says which of the two this one is, once the answer is known. --}}
+    <p class="mt-1 text-sm" style="color:var(--muted)">Register an app so it can sign your people in, act on their behalf, or call the API as itself. Answer what kind it is and Cbox ID picks the flow, the credentials and the scopes to match.</p>
 
     <form wire:submit="create" class="mt-6 max-w-2xl rounded-xl border p-5 space-y-5" style="border-color:var(--border)">
         <div class="grid gap-4 sm:grid-cols-2">
