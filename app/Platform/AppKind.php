@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Models\Client;
 
 /**
  * What kind of application is being registered — the ONE question the console asks
@@ -46,6 +47,27 @@ enum AppKind: string
     public static function offered(): array
     {
         return [self::WebApp, self::SpaOrMobile, self::CliOrDevice, self::Service, self::Agent, self::Advanced];
+    }
+
+    /**
+     * Which kind an already-registered app is, read back from its grants.
+     *
+     * The grants are what the token endpoint actually enforces, so they are the honest
+     * source — a stored `kind` column would be a second answer to the same question, free
+     * to drift from the one that decides anything. Anything that does not match a preset
+     * is Advanced, which is exactly what it is.
+     */
+    public static function forClient(Client $client): self
+    {
+        $grants = $client->grant_types ?? [];
+
+        foreach ([self::WebApp, self::SpaOrMobile, self::CliOrDevice, self::Service, self::Agent] as $kind) {
+            if ($kind->grantTypes() === $grants && $kind->clientType() === $client->type) {
+                return $kind;
+            }
+        }
+
+        return self::Advanced;
     }
 
     public function label(): string

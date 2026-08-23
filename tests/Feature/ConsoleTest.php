@@ -237,3 +237,98 @@ it('re-authorizes org-admin console pages on every request via boot(), not just 
         $cu->set($subject, $session, $org, MembershipRole::Owner);  // restore for next page
     }
 });
+
+/**
+ * The starter snippet has to be for the app you are looking at.
+ *
+ * It rendered only for `authorization_code`, so a CLI and a service — the two kinds
+ * where nobody has an existing snippet to adapt — got nothing at the one moment a
+ * copy-paste is worth most: the screen that reveals the secret once. And what it did
+ * render called an API the SDK does not have, `new CboxID(…)` with `id.signIn()`.
+ *
+ * A snippet nobody ran is worse than no snippet. It is read as the documented way, and
+ * it fails in the reader's editor with no clue that the console was wrong rather than
+ * their typing.
+ */
+it('shows a CLI app the device-flow snippet, not a redirect one', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Snippet CLI')
+        ->set('kind', 'cli')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Snippet CLI')->firstOrFail();
+
+    $html = Volt::test('console.clients.show', ['client' => $client->id])->html();
+
+    expect($html)
+        ->toContain('requestDeviceAuthorization')
+        ->toContain('pollDeviceToken')
+        // Not the browser flow: a CLI has no callback URL, and offering it one here
+        // undoes the whole point of the kind it was registered as.
+        ->not->toContain('createAuthorizationRequest')
+        ->not->toContain('redirectUri');
+});
+
+/**
+ * And no link to a package that does not exist. `pypi.org/project/cbox-id` was listed
+ * beside the working SDKs; nothing has ever been published there.
+ */
+it('offers only SDKs that can actually be installed', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Snippet Web')
+        ->set('kind', 'web')
+        ->set('redirectUris', 'https://snippet.acme.test/cb')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Snippet Web')->firstOrFail();
+
+    $html = Volt::test('console.clients.show', ['client' => $client->id])->html();
+
+    expect($html)
+        ->toContain('@cboxdk/id-js')
+        // The real class and the real calls, so the snippet compiles where it is pasted.
+        ->toContain('CboxIdClient')
+        ->toContain('createAuthorizationRequest')
+        ->not->toContain('pypi.org');
+});
+
+/**
+ * JSX escaping in a Blade file prints the escaping.
+ *
+ * The starter snippet wrote `{'{'}` where it wanted a brace — the React idiom — and Blade
+ * has no such rule: only `{{ }}` is special, a lone brace is a lone brace. So the console
+ * showed every developer `new CboxIdClient({'{'}` and they copied it. Nothing in the suite
+ * could see it, because the assertion everyone writes is `toContain('CboxIdClient')`.
+ *
+ * Swept across the console rather than asserted on one page: the idiom spreads by
+ * copy-paste, which is how it reached a Blade file in the first place.
+ */
+it('never escapes braces the way JSX does', function () {
+    $offenders = [];
+
+    foreach (['resources/views', 'modules'] as $root) {
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(base_path($root)));
+
+        foreach ($files as $file) {
+            if (! str_ends_with((string) $file, '.blade.php')) {
+                continue;
+            }
+
+            $source = (string) file_get_contents((string) $file);
+
+            if (str_contains($source, "{'{'}") || str_contains($source, "{'}'}")) {
+                $offenders[] = str_replace(base_path().'/', '', (string) $file);
+            }
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});

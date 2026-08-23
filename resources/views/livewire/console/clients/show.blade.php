@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
+use App\Platform\AppKind;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Rules\SecureRedirectUri;
@@ -403,6 +404,9 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'client' => $client,
             'issuer' => rtrim(is_string($appUrl) ? $appUrl : '', '/'),
+            // Read back from the grants rather than stored: they are what the token
+            // endpoint enforces, so they cannot disagree with what this page claims.
+            'appKind' => AppKind::forClient($client),
             // Protected → never dehydrated; passed explicitly so the secret renders once.
             'revealedSecret' => $this->revealedSecret,
             // How many roles this app currently declares. Tombstoned ones (orphaned_at)
@@ -462,29 +466,85 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
                 </div>
             </dl>
 
-            @if (in_array('authorization_code', $client->grant_types ?? [], true))
-                <div class="mt-4">
-                    <p class="text-xs font-medium uppercase mb-2" style="color:var(--muted);letter-spacing:0.06em">Wire it up with a Cbox&nbsp;ID SDK</p>
-                    <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)">// npm i @cboxdk/id-js</span>
-import {'{'} CboxID {'}'} from '@cboxdk/id-js'
+        </div>
+    @endif
 
-const id = new CboxID({'{'}
+    {{-- ALWAYS, NOT ONLY IN THE MINUTE AFTER CREATION. This lived inside the
+         reveal card, which renders only when a plaintext secret was just flashed — so a
+         public client never saw it at all, and that is precisely the CLI and the SPA:
+         the two kinds whose author has no existing snippet to adapt. Coming back to the
+         page a day later showed nothing either. --}}
+    <div class="rounded-xl border p-5" style="border-color:var(--border)">
+        <h2 class="cbx-section-title">Connect it</h2>
+        <p class="mt-1 text-sm" style="color:var(--muted)">
+            {{ $appKind->label() }} — {{ $appKind->description() }}
+        </p>
+        {{-- THE STARTER, MATCHED TO WHAT THIS APP IS. It rendered only for
+             authorization_code, so a CLI or a service — the two kinds where nobody
+             has an existing snippet to adapt — got nothing at the one moment a
+             copy-paste is worth most: the screen that shows the secret once.
+
+             It also called an API the SDK does not have (`new CboxID(…)`,
+             `id.signIn()`) and linked to `pypi.org/project/cbox-id`, which is not a
+             package that exists. A snippet nobody ran is worse than no snippet: it
+             is read as the documented way and fails in the reader's editor. --}}
+        <div class="mt-4">
+            <p class="text-xs font-medium uppercase mb-2" style="color:var(--muted);letter-spacing:0.06em">Wire it up</p>
+
+            @if ($appKind === \App\Platform\AppKind::CliOrDevice)
+            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)">// npm i @cboxdk/id-js</span>
+import { CboxIdClient } from '@cboxdk/id-js'
+
+const cbox = new CboxIdClient({
+  issuer: '{{ $issuer }}',
+  clientId: '{{ $client->client_id }}',
+  scopes: [{!! collect($client->scopes ?? [])->map(fn ($s) => "'".e($s)."'")->implode(', ') !!}],
+})
+
+const auth = await cbox.requestDeviceAuthorization()
+console.log(`Open ${auth.verificationUri} and enter ${auth.userCode}`)
+
+const user = await cbox.pollDeviceToken(auth) <span style="color:var(--muted)">// blocks until they approve</span></pre>
+            @elseif ($appKind === \App\Platform\AppKind::Service)
+            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)"># A token for the service itself — no person involved.</span>
+curl -X POST {{ $issuer }}/oauth/token \
+  -d grant_type=client_credentials \
+  -d client_id={{ $client->client_id }} \
+  -d client_secret=$CBOX_ID_CLIENT_SECRET \
+  -d scope="{{ implode(' ', $client->scopes ?? []) }}"</pre>
+            @elseif ($appKind === \App\Platform\AppKind::Agent)
+            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)"># Ask a person to approve, on a device they already have.</span>
+curl -X POST {{ $issuer }}/oauth/backchannel_authentication \
+  -u {{ $client->client_id }}:$CBOX_ID_CLIENT_SECRET \
+  -d login_hint=person@example.com \
+  -d binding_message="Deploy release 4.2 to production" \
+  -d scope="{{ implode(' ', $client->scopes ?? []) }}"</pre>
+            @elseif (in_array('authorization_code', $client->grant_types ?? [], true))
+            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)">// npm i @cboxdk/id-js</span>
+import { CboxIdClient } from '@cboxdk/id-js'
+
+const cbox = new CboxIdClient({
   issuer: '{{ $issuer }}',
   clientId: '{{ $client->client_id }}',
   redirectUri: '{{ ($client->redirect_uris ?? [])[0] ?? 'https://app.example.com/auth/callback' }}',
   scopes: [{!! collect($client->scopes ?? [])->map(fn ($s) => "'".e($s)."'")->implode(', ') !!}],
-{'}'})
+})
 
-await id.signIn() <span style="color:var(--muted)">// redirects to Cbox ID, returns signed in</span></pre>
-                    <p class="text-xs mt-2" style="color:var(--muted)">SDKs:
-                        <a href="https://www.npmjs.com/package/@cboxdk/id-js" class="underline" style="color:var(--accent-strong)">id-js</a> ·
-                        <a href="https://www.npmjs.com/package/@cboxdk/id-react" class="underline" style="color:var(--accent-strong)">id-react</a> ·
-                        <a href="https://pypi.org/project/cbox-id/" class="underline" style="color:var(--accent-strong)">python</a>
-                    </p>
-                </div>
+<span style="color:var(--muted)">// On your sign-in route: persist state/codeVerifier/nonce, then redirect to req.url</span>
+const req = await cbox.createAuthorizationRequest()
+
+<span style="color:var(--muted)">// On your callback route:</span>
+const user = await cbox.authenticate({ params, stored })</pre>
             @endif
+
+            <p class="text-xs mt-2" style="color:var(--muted)">SDKs:
+            <a href="https://www.npmjs.com/package/@cboxdk/id-js" class="underline" style="color:var(--accent-strong)">id-js</a> ·
+            <a href="https://www.npmjs.com/package/@cboxdk/id-react" class="underline" style="color:var(--accent-strong)">id-react</a> ·
+            <a href="https://packagist.org/packages/cboxdk/laravel-id-client" class="underline" style="color:var(--accent-strong)">laravel</a> ·
+            <a href="https://github.com/cboxdk/id-go" class="underline" style="color:var(--accent-strong)">go</a>
+            </p>
         </div>
-    @endif
+    </div>
 
     {{-- Identifiers --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">

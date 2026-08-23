@@ -128,8 +128,15 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
         $previous = AppKind::tryFrom($this->kindWhenScopesWereSet) ?? AppKind::WebApp;
         $next = AppKind::tryFrom($value) ?? AppKind::WebApp;
 
-        sort($this->selectedScopes);
-        $untouched = $this->selectedScopes === $previous->defaultScopes();
+        // COMPARED ON A COPY. `sort()` takes its argument by reference, so sorting the
+        // property to compare it also reordered the list the person sees and the one that
+        // is registered — `openid`, which every example puts first, arrived fourth.
+        $current = $this->selectedScopes;
+        sort($current);
+        $expected = $previous->defaultScopes();
+        sort($expected);
+
+        $untouched = $current === $expected;
 
         if ($untouched) {
             $this->selectedScopes = $next->defaultScopes();
