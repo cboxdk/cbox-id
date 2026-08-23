@@ -115,3 +115,42 @@ it('keeps every nav label identical to its page title', function (): void {
             ->and($view)->toContain("<x-page-header title=\"{$label}\"");
     }
 });
+
+/**
+ * A guide that points at a page which is not there is the same defect as a console
+ * linking to a package that was never published: the reader follows it, finds nothing,
+ * and has no way to tell whether they took a wrong turn or we did.
+ *
+ * Swept rather than spot-checked, because these links break by RENAME — somebody moves a
+ * file and every page that referenced it goes quietly dead, in a directory nothing else
+ * compiles.
+ */
+it('resolves every relative link between docs pages', function (): void {
+    $broken = [];
+
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(base_path('docs')));
+
+    foreach ($files as $file) {
+        $path = (string) $file;
+
+        if (! str_ends_with($path, '.md')) {
+            continue;
+        }
+
+        $directory = dirname($path);
+
+        // Relative targets only: an absolute URL is somebody else's uptime, and an
+        // anchor without a file is a link within the page.
+        preg_match_all('/\]\(([^)#:]+\.md)(#[^)]*)?\)/', (string) file_get_contents($path), $matches);
+
+        foreach ($matches[1] as $target) {
+            $resolved = realpath($directory.'/'.$target);
+
+            if ($resolved === false) {
+                $broken[] = str_replace(base_path().'/', '', $path).' → '.$target;
+            }
+        }
+    }
+
+    expect($broken)->toBe([]);
+});
