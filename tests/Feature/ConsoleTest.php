@@ -332,3 +332,33 @@ it('never escapes braces the way JSX does', function () {
 
     expect($offenders)->toBe([]);
 });
+
+/**
+ * The list has to say what each app is.
+ *
+ * It drew "Sign-in" for `authorization_code` and "API" for `client_credentials`, read
+ * straight off the grants — so a CLI, whose grant is neither, drew no label at all and
+ * sat in the list as an unexplained "Public". The one kind whose author most needs to
+ * find it again was the one the list could not describe.
+ */
+it('names every kind of app in the list, including the ones with neither grant', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')->set('name', 'List CLI')->set('kind', 'cli')->call('create')->assertHasNoErrors();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')->set('name', 'List Service')->set('kind', 'service')->call('create')->assertHasNoErrors();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'List Web')->set('kind', 'web')->set('redirectUris', 'https://list.acme.test/cb')
+        ->call('create')->assertHasNoErrors();
+
+    $html = Volt::test('console.clients.index')->html();
+
+    expect($html)
+        ->toContain('CLI or device')
+        ->toContain('Service or background job')
+        ->toContain('Web app');
+});

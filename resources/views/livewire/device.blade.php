@@ -40,13 +40,37 @@ new #[Layout('components.layouts.app', ['title' => 'Connect a device'])] class e
 
     public ?string $error = null;
 
-    public function mount(?string $user_code = null): void
+    public function mount(?string $user_code = null, ?DeviceAuthorization $devices = null, ?ClientRegistry $clients = null, ?CurrentUser $me = null): void
     {
         // The device's verification_uri_complete links here with the code prefilled.
         $code = $user_code ?? request()->query('user_code');
 
-        if (is_string($code)) {
-            $this->userCode = strtoupper(trim($code));
+        if (! is_string($code)) {
+            return;
+        }
+
+        $this->userCode = strtoupper(trim($code));
+
+        // AND THEN RESOLVE IT, rather than showing a filled-in field and a Continue
+        // button. RFC 8628 §3.3.1 defines `verification_uri_complete` precisely so the
+        // person does not have to type or confirm the code — following the link IS the
+        // step. Stopping to ask them to press Continue on a form they did not fill in
+        // reads as "something went wrong", on a phone, in the middle of somebody else's
+        // terminal session.
+        //
+        // Nothing is approved here. This only resolves the code to the app and scopes,
+        // which is the screen they came to read; approving is still a deliberate click.
+        if ($devices !== null && $clients !== null && $me !== null) {
+            $this->lookup($devices, $clients, $me);
+
+            // A bad code in a URL is not the same event as a bad code somebody typed:
+            // they got here by following a link, so telling them to "check the code on
+            // your device" is advice about a code they never saw. Clear it and let them
+            // enter one.
+            if (! $this->verified) {
+                $this->error = 'That sign-in request has expired or already finished. Enter the code shown on your device.';
+                $this->userCode = '';
+            }
         }
     }
 

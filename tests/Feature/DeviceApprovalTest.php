@@ -89,11 +89,13 @@ it('denies a device', function () {
     expect(DeviceCode::query()->value('status'))->toBe(GrantPollStatus::Denied);
 });
 
-it('prefills and upper-cases the code from the verification_uri_complete link', function () {
+it('upper-cases the code from the verification_uri_complete link', function () {
     signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
 
-    Volt::test('device', ['user_code' => 'bcdf-ghjk'])
-        ->assertSet('userCode', 'BCDF-GHJK');
+    // Typed either way, shown upper-case.
+    Volt::test('device', ['user_code' => strtolower($result->userCode)])
+        ->assertSet('userCode', strtoupper($result->userCode));
 });
 
 it('rate-limits repeated invalid code lookups (anti-guessing)', function () {
@@ -134,12 +136,38 @@ it('does not ask the browser to autofill a one-time code over the device code', 
         ->and($html)->toContain('autocomplete="off"');
 });
 
-it('prefills the code the verification link carries', function () {
+it('goes straight to the approval screen when the link carries the code', function () {
     // The other half of the same story: the link was doing its job, which is why the
     // wrong value in the field was so hard to explain.
+    //
+    // And having carried the code, the page used to stop and show it in a field with a
+    // Continue button. RFC 8628 §3.3.1 defines `verification_uri_complete` so the person
+    // does not have to type or confirm the code — following the link IS that step, and
+    // being asked to press Continue on a form they did not fill in reads, on a phone, as
+    // something having gone wrong.
+    signedInFor();
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+
+    Volt::test('device', ['user_code' => $result->userCode])
+        ->assertSet('verified', true)
+        // Resolved, not approved: what they came to read is which app is asking.
+        ->assertSet('clientName', 'TV App')
+        ->assertSet('outcome', null)
+        ->assertSee('Approve');
+});
+
+/**
+ * A dead link is not the same event as a mistyped code.
+ *
+ * Somebody following `verification_uri_complete` after the code expired never saw the
+ * code, so "check the code on your device and try again" is advice about something they
+ * cannot check. They get the form, empty, and a sentence that describes what happened.
+ */
+it('offers the form when the link carries a code that no longer exists', function () {
     signedInFor();
 
-    Volt::test('device', ['user_code' => 'kkfj-rtjx'])
-        // Upper-cased, because the code is shown that way and typed either way.
-        ->assertSet('userCode', 'KKFJ-RTJX');
+    Volt::test('device', ['user_code' => 'ZZZZ-ZZZZ'])
+        ->assertSet('verified', false)
+        ->assertSet('userCode', '')
+        ->assertSet('error', fn (?string $e): bool => $e !== null && str_contains($e, 'expired or already finished'));
 });

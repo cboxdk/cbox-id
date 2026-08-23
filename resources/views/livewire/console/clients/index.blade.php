@@ -185,11 +185,13 @@ new #[Layout('components.layouts.console', ['title' => 'Apps & API keys'])] clas
                 @if ($client->first_party)
                     <span class="text-xs rounded-full px-2 py-0.5" style="background:var(--accent-soft);color:var(--accent-strong)">First-party</span>
                 @endif
-                <div class="flex flex-wrap gap-1">
-                    @if (in_array('authorization_code', $client->grant_types ?? [], true))<span class="badge">Sign-in</span>@endif
-                    @if (in_array('client_credentials', $client->grant_types ?? [], true))<span class="badge">API</span>@endif
-                </div>
-                <span class="badge">{{ ucfirst($client->type->value) }}</span>
+                {{-- WHAT IT IS, in one label. This read the grants directly and drew
+                     "Sign-in" for authorization_code and "API" for client_credentials —
+                     so a CLI, whose grant is neither, drew nothing at all and appeared
+                     in the list as an unexplained "Public". Beside it sat
+                     "Confidential"/"Public", which is specification vocabulary for a
+                     fact the reader of a list is not asking about. --}}
+                <span class="badge">{{ \App\Platform\AppKind::forClient($client)->label() }}</span>
                 <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
             </a>
         @empty
@@ -236,7 +238,7 @@ new #[Layout('components.layouts.console', ['title' => 'Apps & API keys'])] clas
                         @if (($roleCounts[$client->client_id] ?? 0) > 0)
                             <span class="badge">{{ $roleCounts[$client->client_id] }} role(s)</span>
                         @endif
-                        <span class="badge">{{ ucfirst($client->type->value) }}</span>
+                        <span class="badge">{{ \App\Platform\AppKind::forClient($client)->label() }}</span>
                         <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
                     </a>
                 @endforeach
