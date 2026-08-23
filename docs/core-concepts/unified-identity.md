@@ -18,7 +18,7 @@ environment.
 > worth reading is WHY, because the same argument is the reason not to grow a second
 > credential store again. Where the text below says a thing "stays" or "does not go away",
 > read it as what was true at the time; the current shape is
-> [customers, projects & the platform plane](../../../laravel-id/docs/core-concepts/customers-and-projects.md)
+> [customers, projects & the platform plane](https://github.com/cboxdk/laravel-id/blob/main/docs/core-concepts/customers-and-projects.md)
 > in the framework.
 
 ## The problem this solves

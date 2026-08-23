@@ -117,15 +117,49 @@ it('keeps every nav label identical to its page title', function (): void {
 });
 
 /**
+ * Resolve a repo-relative path the way Linux does, whatever the host filesystem thinks.
+ *
+ * Walks it segment by segment against `scandir`, because the obvious `realpath()` and
+ * `file_exists()` are both case-INSENSITIVE on macOS: a link to `Roles.md` resolves on
+ * the laptop that wrote it and 404s on the box that renders the site.
+ */
+function docsPathExists(string $repoRoot, string $relative): bool
+{
+    $current = $repoRoot;
+
+    foreach (explode('/', $relative) as $segment) {
+        $entries = @scandir($current);
+
+        if ($entries === false || ! in_array($segment, $entries, true)) {
+            return false;
+        }
+
+        $current .= '/'.$segment;
+    }
+
+    return true;
+}
+
+/**
  * A guide that points at a page which is not there is the same defect as a console
  * linking to a package that was never published: the reader follows it, finds nothing,
  * and has no way to tell whether they took a wrong turn or we did.
  *
- * Swept rather than spot-checked, because these links break by RENAME — somebody moves a
- * file and every page that referenced it goes quietly dead, in a directory nothing else
+ * Swept rather than spot-checked, because these break by RENAME — somebody moves a file
+ * and every page that referenced it goes quietly dead, in a directory nothing else
  * compiles.
+ *
+ * Resolved TEXTUALLY and then checked case-sensitively, NOT with `realpath()`. realpath
+ * answers two questions wrongly here, and both make the test pass on the machine that
+ * wrote the link and fail on the one that publishes it: the case problem above, and that
+ * it follows a path straight out of the repository. The first CI run of this test found
+ * exactly that — `../../../laravel-id/docs/…`, which resolved on my laptop because that
+ * repo happens to sit beside this one in ~/Projects, and for nobody else on earth. A
+ * cross-repo reference has to be a URL; a link that leaves docs/ but stays in the repo
+ * is fine.
  */
 it('resolves every relative link between docs pages', function (): void {
+    $repoRoot = base_path();
     $broken = [];
 
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(base_path('docs')));
@@ -137,17 +171,38 @@ it('resolves every relative link between docs pages', function (): void {
             continue;
         }
 
-        $directory = dirname($path);
+        $directory = str_replace($repoRoot.'/', '', dirname($path));
 
         // Relative targets only: an absolute URL is somebody else's uptime, and an
         // anchor without a file is a link within the page.
         preg_match_all('/\]\(([^)#:]+\.md)(#[^)]*)?\)/', (string) file_get_contents($path), $matches);
 
         foreach ($matches[1] as $target) {
-            $resolved = realpath($directory.'/'.$target);
+            $segments = [];
+            $escapes = false;
 
-            if ($resolved === false) {
-                $broken[] = str_replace(base_path().'/', '', $path).' → '.$target;
+            foreach (explode('/', $directory.'/'.$target) as $segment) {
+                if ($segment === '' || $segment === '.') {
+                    continue;
+                }
+
+                if ($segment === '..') {
+                    if ($segments === []) {
+                        $escapes = true;
+
+                        break;
+                    }
+
+                    array_pop($segments);
+
+                    continue;
+                }
+
+                $segments[] = $segment;
+            }
+
+            if ($escapes || ! docsPathExists($repoRoot, implode('/', $segments))) {
+                $broken[] = str_replace($repoRoot.'/', '', $path).' → '.$target;
             }
         }
     }
