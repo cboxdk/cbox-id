@@ -10,6 +10,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -67,14 +68,13 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
 it('registers an OAuth client for the organization', function () {
     $orgId = owner();
 
-    // A machine-to-machine app (client-credentials), so no redirect URI is needed;
-    // its scopes come from the advanced/custom field. Registration moved to its own
-    // routable page when the two consoles merged; the capability is unchanged.
+    // A machine-to-machine app. The form asks ONE question — what kind of app is this —
+    // and the client type, the grants and the absence of a redirect URI all follow from
+    // the answer; only the API scopes are still typed in.
     confirmConsoleStepUp();
     Volt::test('console.clients.create')
         ->set('name', 'CI Pipeline')
-        ->set('grantAuthorizationCode', false)
-        ->set('grantClientCredentials', true)
+        ->set('kind', 'service')
         ->set('selectedScopes', [])
         ->set('customScopes', 'api.read, api.write')
         ->call('create')
@@ -83,7 +83,64 @@ it('registers an OAuth client for the organization', function () {
     $client = Client::query()->where('organization_id', $orgId)->first();
     expect($client)->not->toBeNull()
         ->and($client->name)->toBe('CI Pipeline')
-        ->and($client->scopes)->toContain('api.read');
+        ->and($client->scopes)->toContain('api.read')
+        ->and($client->grant_types)->toBe(['client_credentials'])
+        // No redirect URI was asked for and none was invented.
+        ->and($client->redirect_uris)->toBe([]);
+});
+
+/**
+ * The kind that had no way to exist.
+ *
+ * A CLI needs the device grant, a public client and no redirect URI. The form offered
+ * two checkboxes — "sign people in" and "call the API as itself" — and neither produces
+ * that combination, so the flow this platform is best at could not be registered from
+ * the page that registers apps for it. The only route to one was an artisan command we
+ * wrote for our own CLI.
+ */
+it('registers a CLI app with the device grant and no redirect URI', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Acme CLI')
+        ->set('kind', 'cli')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Acme CLI')->firstOrFail();
+
+    expect($client->grant_types)->toBe(['urn:ietf:params:oauth:grant-type:device_code', 'refresh_token'])
+        // Public: a binary on somebody's laptop cannot keep a secret, and the form does
+        // not offer to pretend otherwise once "CLI" is the answer.
+        ->and($client->type)->toBe(ClientType::Public)
+        ->and($client->redirect_uris)->toBe([])
+        // Registered for `offline_access`, because it registered for `refresh_token`. A
+        // device request naming a scope outside the ceiling is refused outright, so a
+        // ceiling that omits it turns the first `cbox login` into an error.
+        ->and($client->scopes)->toContain('offline_access');
+});
+
+/**
+ * And the escape hatch stays reachable, or the presets become a cage: the combinations
+ * nobody anticipated are exactly the ones a preset list cannot contain.
+ */
+it('still lets an advanced registration pick its own grants', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Hybrid App')
+        ->set('kind', 'advanced')
+        ->set('type', 'confidential')
+        ->set('grantAuthorizationCode', true)
+        ->set('grantClientCredentials', true)
+        ->set('redirectUris', 'https://hybrid.acme.test/cb')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    expect(Client::query()->where('name', 'Hybrid App')->firstOrFail()->grant_types)
+        ->toBe(['authorization_code', 'refresh_token', 'client_credentials']);
 });
 
 // Sign-out only returns people to the app when the requested post_logout_redirect_uri

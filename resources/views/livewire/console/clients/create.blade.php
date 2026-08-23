@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\AppKind;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
@@ -71,6 +72,12 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
 
     public string $name = '';
 
+    /**
+     * The one question. Everything the specification calls a decision — client type,
+     * grants, which scopes to register for — follows from it. {@see AppKind}.
+     */
+    public string $kind = 'web';
+
     /** confidential = has a secret (server-side); public = PKCE, no secret (SPA/native/mobile). */
     public string $type = 'confidential';
 
@@ -84,7 +91,13 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
     public string $postLogoutRedirectUris = '';
 
     /** @var array<int, string> Scopes ticked from the catalog. */
-    public array $selectedScopes = ['openid', 'profile', 'email'];
+    public array $selectedScopes = ['openid', 'profile', 'email', 'offline_access'];
+
+    /**
+     * Which kind the ticked scopes came from, so {@see self::updatedKind()} can tell a
+     * list somebody curated from one it wrote itself.
+     */
+    public string $kindWhenScopesWereSet = 'web';
 
     /** Advanced: any extra custom scope keys, comma-separated. */
     public string $customScopes = '';
@@ -103,6 +116,32 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
      */
     public bool $environmentWide = false;
 
+    /**
+     * Follow the chosen kind, unless the person has already disagreed with it.
+     *
+     * Re-applying the defaults on every change would silently undo a deliberate tick —
+     * so it only writes the scopes while they still are the previous kind's defaults.
+     * Somebody who has curated the list keeps their list.
+     */
+    public function updatedKind(string $value): void
+    {
+        $previous = AppKind::tryFrom($this->kindWhenScopesWereSet) ?? AppKind::WebApp;
+        $next = AppKind::tryFrom($value) ?? AppKind::WebApp;
+
+        sort($this->selectedScopes);
+        $untouched = $this->selectedScopes === $previous->defaultScopes();
+
+        if ($untouched) {
+            $this->selectedScopes = $next->defaultScopes();
+        }
+
+        $this->kindWhenScopesWereSet = $value;
+
+        if ($next !== AppKind::Advanced) {
+            $this->type = $next->clientType() === ClientType::Public ? 'public' : 'confidential';
+        }
+    }
+
     public function create(ClientRegistry $clients, ScopeCatalog $catalog): mixed
     {
         // Held on the organization plane only, because that is the plane the gate is
@@ -117,6 +156,7 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
 
         $this->validate([
             'name' => ['required', 'string', 'max:190'],
+            'kind' => ['required', 'in:'.implode(',', array_column(AppKind::cases(), 'value'))],
             'type' => ['required', 'in:confidential,public'],
             'grantAuthorizationCode' => ['boolean'],
             'grantClientCredentials' => ['boolean'],
@@ -126,7 +166,11 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             'manifestUrl' => ['nullable', 'url', 'max:500'],
         ]);
 
-        $grantTypes = $this->parsedGrantTypes();
+        $kind = AppKind::tryFrom($this->kind) ?? AppKind::WebApp;
+
+        $grantTypes = $kind === AppKind::Advanced
+            ? $this->parsedGrantTypes()
+            : $kind->grantTypes();
 
         if ($grantTypes === []) {
             $this->addError('grantAuthorizationCode', 'Choose at least one way this app connects.');
@@ -188,9 +232,16 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             $this->parsedCustomScopes(),
         )));
 
+        // The kind decides where the code runs, and therefore whether it can hold a
+        // secret. Only Advanced lets that be answered by hand — a person who has told us
+        // they are building a CLI has already told us it is public.
+        $clientType = $kind === AppKind::Advanced
+            ? ($this->type === 'public' ? ClientType::Public : ClientType::Confidential)
+            : $kind->clientType();
+
         $registered = $clients->register(new NewClient(
             name: trim($this->name),
-            type: $this->type === 'public' ? ClientType::Public : ClientType::Confidential,
+            type: $clientType,
             redirectUris: $redirects,
             grantTypes: $grantTypes,
             scopes: $scopes,
@@ -312,6 +363,13 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'scopeGroups' => $catalog->grouped(),
+            'appKinds' => AppKind::offered(),
+            'selectedKind' => $kind = AppKind::tryFrom($this->kind) ?? AppKind::WebApp,
+            // Asked of the KIND, not of a checkbox: a CLI has no callback URL, and the
+            // field asking for one was what made people believe they had chosen wrong.
+            'needsRedirectUris' => $kind === AppKind::Advanced
+                ? $this->grantAuthorizationCode
+                : $kind->needsRedirectUris(),
             // The one branch a page is allowed to make on the plane: whether the
             // administrator acts on several organizations or implicitly on their own.
             'mayScopeEnvironmentWide' => app(ConsoleScope::class)->plane()->choosesOrganization(),
@@ -331,6 +389,30 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
                 <input @error('name') aria-invalid="true" aria-describedby="name-error" @enderror wire:model="name" id="name" type="text" class="input" placeholder="Support Portal" autofocus>
                 @error('name') <p id="name-error" class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
+        </div>
+
+        {{-- THE ONE QUESTION. Client type, grants and the scope ceiling all follow from
+             it, so they are answered once here instead of four times in the vocabulary of
+             the specification. {@see \App\Platform\AppKind} --}}
+        <fieldset>
+            <legend class="label">What kind of app is this?</legend>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                @foreach ($appKinds as $option)
+                    <label class="flex items-start gap-2.5 rounded-lg p-3 cursor-pointer"
+                           style="border:1px solid {{ $kind === $option->value ? 'var(--primary)' : 'var(--border)' }}"
+                           wire:key="kind-{{ $option->value }}">
+                        <input wire:model.live="kind" type="radio" name="kind" value="{{ $option->value }}" class="mt-0.5">
+                        <span class="min-w-0">
+                            <span class="block text-sm font-medium">{{ $option->label() }}</span>
+                            <span class="block text-xs mt-0.5" style="color:var(--muted)">{{ $option->description() }}</span>
+                        </span>
+                    </label>
+                @endforeach
+            </div>
+            @error('kind') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+        </fieldset>
+
+        @if ($selectedKind === \App\Platform\AppKind::Advanced)
             <div>
                 <label class="label" for="type">Client type</label>
                 <select wire:model="type" id="type" class="select">
@@ -339,7 +421,20 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
                 </select>
                 @error('type') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
-        </div>
+        @else
+            <p class="text-xs" style="color:var(--muted)">
+                {{-- Said out loud rather than inferred silently: somebody who later reads
+                     "public client" on the detail page should have met the words here. --}}
+                Registered as a
+                <b>{{ $selectedKind->clientType() === \Cbox\Id\OAuthServer\Enums\ClientType::Public ? 'public' : 'confidential' }}</b>
+                client
+                @if ($selectedKind->clientType() === \Cbox\Id\OAuthServer\Enums\ClientType::Public)
+                    — it holds no secret, because the code runs where a secret could be read.
+                @else
+                    — it is issued a secret, shown once on the next screen.
+                @endif
+            </p>
+        @endif
 
         @if ($mayScopeEnvironmentWide)
             <div>
@@ -353,42 +448,34 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             </div>
         @endif
 
-        {{-- How the app connects — with a visual of the handshake. --}}
-        <div>
-            <span class="label">How does this app connect?</span>
-            <div class="mt-1 flex flex-wrap gap-x-6 gap-y-2 mb-3">
-                <label class="flex items-center gap-2 text-sm">
-                    <input wire:model.live="grantAuthorizationCode" type="checkbox" class="rounded"> Sign people in <span style="color:var(--muted)">(single sign-on)</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input wire:model.live="grantClientCredentials" type="checkbox" class="rounded"> Call the API as itself <span style="color:var(--muted)">(machine-to-machine)</span>
-                </label>
+        {{-- The handshake this kind actually performs, so the choice above can be
+             checked against what the person expects to happen. --}}
+        @if ($selectedKind === \App\Platform\AppKind::Advanced)
+            <div>
+                <span class="label">How does this app connect?</span>
+                <div class="mt-1 flex flex-wrap gap-x-6 gap-y-2 mb-3">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input wire:model.live="grantAuthorizationCode" type="checkbox" class="rounded"> Sign people in <span style="color:var(--muted)">(single sign-on)</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input wire:model.live="grantClientCredentials" type="checkbox" class="rounded"> Call the API as itself <span style="color:var(--muted)">(machine-to-machine)</span>
+                    </label>
+                </div>
+                @error('grantAuthorizationCode') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </div>
-            @error('grantAuthorizationCode') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+        @elseif ($selectedKind->flow() !== [])
+            <div class="cbx-flow" role="img" aria-label="How {{ $selectedKind->label() }} signs in: {{ strip_tags(implode(', then ', $selectedKind->flow())) }}">
+                @foreach ($selectedKind->flow() as $i => $step)
+                    @if ($i > 0)<span class="cbx-flow-arrow">→</span>@endif
+                    <div class="cbx-flow-step">
+                        <span class="cbx-flow-dot" style="background:{{ $loop->last ? 'var(--success-soft)' : 'var(--accent-soft)' }};color:{{ $loop->last ? 'var(--success-strong)' : 'var(--primary)' }}">{{ $i + 1 }}</span>
+                        <span>{!! $step !!}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
 
-            @if ($grantAuthorizationCode)
-                <div class="cbx-flow" role="img" aria-label="Sign-in handshake: person, your app, Cbox ID, back to your app">
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--info-soft);color:var(--info)">1</span><span>Person clicks <b>Sign in</b> in your app</span></div>
-                    <span class="cbx-flow-arrow">→</span>
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">2</span><span>Redirected to <b>Cbox ID</b> to authenticate</span></div>
-                    <span class="cbx-flow-arrow">→</span>
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">3</span><span>Redirected <b>back to your app</b> with a code</span></div>
-                    <span class="cbx-flow-arrow">→</span>
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--success-soft);color:var(--success-strong)">4</span><span>Your app swaps the code for tokens</span></div>
-                </div>
-            @endif
-            @if ($grantClientCredentials)
-                <div class="cbx-flow" role="img" aria-label="Machine-to-machine: your app requests a token, then calls the API">
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">1</span><span>Your app sends its <b>ID + secret</b> to Cbox ID</span></div>
-                    <span class="cbx-flow-arrow">→</span>
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--accent-soft);color:var(--primary)">2</span><span>Cbox ID returns an <b>access token</b></span></div>
-                    <span class="cbx-flow-arrow">→</span>
-                    <div class="cbx-flow-step"><span class="cbx-flow-dot" style="background:var(--success-soft);color:var(--success-strong)">3</span><span>Your app calls the <b>API</b> with the token</span></div>
-                </div>
-            @endif
-        </div>
-
-        @if ($grantAuthorizationCode)
+        @if ($needsRedirectUris)
             <div>
                 <label class="label" for="redirectUris">Redirect URIs <span style="color:var(--faint);font-weight:400">— where Cbox ID sends people back (one per line)</span></label>
                 <textarea @error('redirectUris') aria-invalid="true" aria-describedby="redirectUris-error" @enderror wire:model="redirectUris" id="redirectUris" rows="2" class="input mono" style="height:auto;padding:8px 10px;font-size:0.78rem" placeholder="https://app.example.com/auth/callback"></textarea>
@@ -403,10 +490,21 @@ new #[Layout('components.layouts.console', ['title' => 'New app'])] class extend
             </div>
         @endif
 
-        {{-- Permissions / scopes — a described picker, not a blank box. --}}
+        {{-- SCOPES, AND CALLED SCOPES. This box said "Permissions this app requests",
+             and the console has a Permissions page a few links away that means something
+             else entirely: a scope is the ceiling on what THIS APP may ask for, a
+             permission is what a PERSON is allowed to do. One word for two concepts is
+             most of why the difference is hard to explain — so the word goes to the page
+             that owns it, and this one says what it is. --}}
         <div>
-            <span class="label">Permissions this app requests</span>
-            <p class="mt-1 text-xs" style="color:var(--muted)">Scopes decide what the app is allowed to see and do. People see the sign-in ones on the consent screen (first-party apps skip it).</p>
+            <span class="label">What this app may ask for</span>
+            <p class="mt-1 text-xs" style="color:var(--muted)">
+                Scopes — the ceiling on this app's access. It can request these and nothing
+                else; people see the sign-in ones on the consent screen (first-party apps
+                skip it). Separate from
+                <a href="{{ route($scopeRoute('permissions')) }}" wire:navigate class="underline">Permissions</a>,
+                which is what a <em>person</em> is allowed to do once signed in.
+            </p>
             <div class="mt-3 space-y-4">
                 @foreach ($scopeGroups as $group => $scopes)
                     <div wire:key="scopegroup-{{ $group }}">

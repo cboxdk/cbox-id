@@ -345,6 +345,7 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
             'inherited' => $inherited,
             'sharesEnvironment' => $owner === null,
             'declared' => $declared,
+            'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'declaredByApp' => $declared->groupBy('client_id'),
             'declaredTotal' => $declaredTotal,
             'declaredShown' => $declared->count(),
@@ -361,6 +362,15 @@ new #[Layout('components.layouts.console', ['title' => 'Permissions'])] class ex
          any integration at all. --}}
     <x-page-header title="Permissions" :help="\App\Platform\Help\HelpTopic::Permissions"
                    subtitle="Everything a role can be allowed to do. Write your own below — no code needed — or let your apps register theirs automatically." />
+
+    {{-- The other half of the sentence, said where the confusion happens. A permission
+         and a scope are different things with one shared word, and the page each lives on
+         is the only place a reader can be told which one they are looking at. --}}
+    <p class="text-sm" style="color:var(--muted)">
+        A permission is what a <b>person</b> may do, once signed in. What an <b>app</b> may
+        ask for is a scope, set when you register it under
+        <a href="{{ route($scopeRoute('clients')) }}" wire:navigate class="underline">Apps &amp; API keys</a>.
+    </p>
 
     {{-- Create a manual permission --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">

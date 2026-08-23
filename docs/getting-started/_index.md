@@ -17,3 +17,4 @@ sign into.
 For the fast path, see the top-level [Quickstart](../quickstart.md). For production
 hardening, see [Deployment](../operations/deployment.md).
 - [Integrate your app](integrate-your-app.md) — where a `client_id` comes from: register an application, copy its credentials, point an SDK at them.
+- [Sign in from a CLI](sign-in-from-a-cli.md) — the device grant, for a terminal, a CI job or anything without a browser of its own.

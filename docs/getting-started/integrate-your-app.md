@@ -32,14 +32,22 @@ does not exist in the other.
 
 ## 2. Register the application
 
-**Applications → New application.**
+**Apps & API keys → New app.**
 
-| Field | What to put |
+The form asks one question — **what kind of app is this?** — and everything the
+specification would have you decide separately follows from the answer:
+
+| You answer | You get |
 |---|---|
-| **Name** | What your users will see on the consent screen. |
-| **Type** | `Public` for a browser or mobile app (no secret can be kept). `Confidential` for a server-side app. |
-| **Redirect URIs** | Every URI the browser may be returned to, exactly. |
-| **Grant types** | The flows this app uses. A client may only use the grants it registers — asking for another returns `unauthorized_client`. |
+| **Web app** | Confidential client, authorization code + refresh, redirect URIs. |
+| **Single-page or mobile app** | Public client, authorization code with PKCE, redirect URIs. |
+| **CLI or device** | Public client, the device grant, no redirect URI. See [Sign in from a CLI](sign-in-from-a-cli.md). |
+| **Service or background job** | Confidential client, client credentials, no person involved. |
+| **AI agent** | Confidential client, CIBA — it asks a person to approve first. |
+| **Something else** | The grants and client type, picked by hand. |
+
+Then a name (what people see on the consent screen), the redirect URIs if the kind needs
+them, and the scopes.
 
 Two things that trip people up:
 
