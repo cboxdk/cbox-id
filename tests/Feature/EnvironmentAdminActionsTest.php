@@ -20,11 +20,19 @@ use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Governance\Enums\CampaignStatus;
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Governance\Models\SodPolicy;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme as ProvisioningAuthScheme;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
@@ -325,4 +333,72 @@ it('exercises the audit-stream detail mutating actions (disable, resume, delete)
     Volt::test('console.audit-streams.show', ['stream' => $stream->id])
         ->call('deleteStream');
     expect(AuditStream::query()->whereKey($stream->id)->exists())->toBeFalse();
+});
+
+/**
+ * @group security
+ *
+ * EXISTENCE IS NOT LIFE.
+ *
+ * Adding a user to an organization checked only that the row was there — so a member
+ * could be added to a SUSPENDED or DELETED organization, and the membership was really
+ * written. Access granted through an organization that refuses every authenticated
+ * action, from a picker that offered it as an ordinary choice.
+ *
+ * Asserted through the property rather than the dropdown: hiding an option is not a
+ * guard, because `assignOrgId` is a Livewire property and a client sets it to whatever
+ * it likes.
+ */
+it('refuses to add a user to an organization that is not live', function (string $status): void {
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    $subjectId = app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
+
+    $dead = app(Organizations::class)->create(new NewOrganization('Gone Ltd', 'gone-ltd-'.$status));
+    $dead->forceFill(['status' => OrganizationStatus::from($status)])->save();
+
+    Volt::test('environment.users.show', ['user' => $subjectId])
+        ->set('assignOrgId', $dead->id)
+        ->set('assignRole', MembershipRole::Member->value)
+        ->call('assignOrg')
+        ->assertHasErrors('assignOrgId');
+
+    expect(app(Memberships::class)->of($dead->id, $subjectId))->toBeNull();
+})->with(['suspended', 'deleted'])->group('security');
+
+/**
+ * And it is not offered in the first place, so nobody is invited to try.
+ */
+it('offers only live organizations in the add-to-organization picker', function (): void {
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    $subjectId = app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
+
+    $live = app(Organizations::class)->create(new NewOrganization('Still Here', 'still-here'));
+    $dead = app(Organizations::class)->create(new NewOrganization('Gone Ltd', 'gone-ltd'));
+    $dead->forceFill(['status' => OrganizationStatus::Deleted])->save();
+
+    $html = Volt::test('environment.users.show', ['user' => $subjectId])->html();
+
+    expect($html)->toContain('Still Here')->not->toContain('Gone Ltd');
 });

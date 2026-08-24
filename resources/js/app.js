@@ -194,6 +194,16 @@
 // Livewire equivalent of an Inertia error boundary). Same-origin, no inline JS.
 (() => {
     const MESSAGES = {
+        // 401 is what the auth middleware answers a Livewire request with once the
+        // platform session record has expired. It used to answer a 302, which Livewire's
+        // fetch followed to a 200 of login HTML — no error status, nothing to report, and
+        // a console that had quietly stopped working with no way to tell.
+        401: {
+            title: 'Your session expired',
+            body: 'You were signed out after a period of inactivity. Sign in again to pick up where you left off.',
+            cta: 'Sign in',
+            href: '/login',
+        },
         419: {
             title: 'Your session expired',
             body: 'For your security you were signed out after a period of inactivity. Reload to continue.',
@@ -273,7 +283,17 @@
             }
         };
 
-        overlay.querySelector('[data-cbox-reload]').addEventListener('click', () => window.location.reload());
+        overlay.querySelector('[data-cbox-reload]').addEventListener('click', () => {
+            // An expired session goes to sign-in rather than reloading: a reload lands
+            // there anyway, via a redirect, and the button should say where it is going.
+            if (m.href) {
+                window.location.href = m.href;
+
+                return;
+            }
+
+            window.location.reload();
+        });
         overlay.querySelector('[data-cbox-dismiss]').addEventListener('click', close);
 
         overlay.addEventListener('keydown', (e) => {

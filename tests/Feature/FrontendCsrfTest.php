@@ -229,3 +229,41 @@ it('exempts the SAML POST bindings in both directions', function (): void {
         expect($exempt)->toBeTrue();
     }
 })->group('security');
+
+/**
+ * A LIVEWIRE REQUEST HAS TO BE TOLD, not redirected.
+ *
+ * Two clocks disagree by design: Laravel's session cookie lives for SESSION_LIFETIME
+ * while the platform's session record expires on its own idle window. So the cookie —
+ * and the CSRF token with it — is still valid when the record is already gone, which
+ * means no 419 either, and 419 was the one status the console's error surface handled.
+ *
+ * What the middleware answered was a 302. Livewire's fetch follows it, gets a 200 of
+ * login HTML, cannot parse it as a Livewire response, and has no failure status to
+ * report — so clicking around a console whose session had expired did nothing at all.
+ * No error, no prompt, no redirect. The page had simply stopped working.
+ */
+it('answers an expired Livewire request with something the browser can act on', function (): void {
+    // No session: exactly the state an idle-expired console is in on its next click.
+    // Provisioned but signed OUT — exactly the state an idle-expired console is in on
+    // its next click. Without this the first-run guard answers before auth is reached.
+    installedDeployment();
+
+    $response = $this->withHeaders(['X-Livewire' => 'true'])->get('/settings');
+
+    expect($response->getStatusCode())->toBe(401);
+
+    // And it names where to go, so the front end can offer "Sign in" rather than a
+    // reload that only reaches the login page by a redirect nobody sees.
+    expect($response->json('redirect'))->toContain('/login');
+})->group('security');
+
+/**
+ * The browser navigation keeps its redirect. A person typing the URL should land on the
+ * sign-in page, not read a JSON body.
+ */
+it('still redirects an ordinary navigation to sign in', function (): void {
+    installedDeployment();
+
+    $this->get('/settings')->assertRedirect(route('login'));
+})->group('security');

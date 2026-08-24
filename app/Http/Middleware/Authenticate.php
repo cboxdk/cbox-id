@@ -16,7 +16,9 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Livewire\Livewire;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -76,9 +78,7 @@ final class Authenticate
                 return $next($request);
             }
 
-            // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
-            // /oauth/authorize?…) is returned to complete it after logging in.
-            return redirect()->guest(route('login'));
+            return $this->refuse($request);
         }
 
         $subject = $this->subjects->find($session->user_id);
@@ -244,5 +244,41 @@ final class Authenticate
         // outlive the rotation it was supposed to trigger.
         return $this->adminPasswords->requiresChange($subjectId)
             || $this->passwordExpiry->hasExpired($subjectId);
+    }
+
+    /**
+     * Send an unauthenticated caller to sign in — in a way the CALLER can act on.
+     *
+     * A 302 is right for a browser navigation and useless to a Livewire request. The
+     * console runs on Livewire, its fetch FOLLOWS the redirect, and what comes back is a
+     * 200 carrying the login page's HTML — not a Livewire response, not an error status.
+     * Livewire cannot parse it and there is no failure to report, so clicking around a
+     * console whose session had expired did nothing at all: no error, no prompt, no
+     * redirect. The only clue was that the page had quietly stopped working.
+     *
+     * It reached that state because two clocks disagree. Laravel's session cookie lives
+     * for `SESSION_LIFETIME`, and the platform session record expires on its own idle
+     * window (`cbox-id.sessions.idle_minutes`) — so the cookie, and therefore the CSRF
+     * token, is still valid when the record is already gone. With a valid token there is
+     * no 419 either, which is the one status the console's error surface already handled.
+     *
+     * 401 with a JSON body naming where to go: the front end turns it into "your session
+     * expired, sign in again" and sends them to a login that still returns them to where
+     * they were, because guest() has stashed it either way.
+     */
+    private function refuse(Request $request): Response
+    {
+        // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
+        // /oauth/authorize?…) is returned to complete it after logging in.
+        $redirect = redirect()->guest(route('login'));
+
+        if (Livewire::isLivewireRequest() || $request->expectsJson()) {
+            return new JsonResponse([
+                'message' => 'Your session has expired.',
+                'redirect' => route('login'),
+            ], 401);
+        }
+
+        return $redirect;
     }
 }

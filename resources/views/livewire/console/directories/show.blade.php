@@ -439,11 +439,30 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
         </div>
     @endif
 
-    {{-- Directory group → role mapping (the bridge from the provider's groups to ours) --}}
-    @if ($groups->isNotEmpty())
-        <div class="rounded-xl border p-5" style="border-color:var(--border)">
-            <h2 class="cbx-section-title">Group → role mapping</h2>
-            <p class="mt-1 text-xs" style="color:var(--faint)">Map a directory group onto a role — everyone in the group gets it automatically as membership syncs. A hand-assigned role is never affected.</p>
+    {{-- Directory group → role mapping (the bridge from the provider's groups to ours).
+
+         RENDERED EVEN WITH NO GROUPS. It used to disappear entirely until the provider
+         had pushed some, which hid the feature from precisely the person setting the
+         connection up — and left "create a group" sounding like something to do here.
+         There is no way to create one in this console and there should not be: a group
+         mirrors the identity provider, arriving over SCIM or a directory pull. Saying so
+         is the difference between an empty section and a missing one. --}}
+    <div class="rounded-xl border p-5" style="border-color:var(--border)">
+        <h2 class="cbx-section-title">Group → role mapping</h2>
+        <p class="mt-1 text-xs" style="color:var(--faint)">Map a directory group onto a role — everyone in the group gets it automatically as membership syncs. A hand-assigned role is never affected.</p>
+
+        @if ($groups->isEmpty())
+            <div class="cbx-empty mt-4">
+                <div class="cbx-empty-icon"><x-icon name="members" class="w-5 h-5" /></div>
+                <h3>No groups have arrived yet</h3>
+                <p>
+                    Groups are not created here — they mirror your identity provider, and
+                    appear once it pushes them over SCIM or the directory sync runs. In
+                    Entra ID or Okta, assign the groups to this application; they show up
+                    here within a sync, and then you map each one onto a role.
+                </p>
+            </div>
+        @else
             <div class="mt-4 space-y-2">
                 @foreach ($groups as $group)
                     <div class="flex items-start justify-between gap-4 flex-wrap rounded-lg border px-3 py-2" style="border-color:var(--border)" wire:key="group-{{ $group->id }}">
@@ -489,8 +508,8 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
                     </div>
                 @endforeach
             </div>
-        </div>
-    @endif
+        @endif
+    </div>
 
     {{-- Lifecycle --}}
     @if ($mayChange)

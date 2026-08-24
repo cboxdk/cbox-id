@@ -7,7 +7,13 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 
 it('requires authentication to enrol a passkey', function () {
-    $this->postJson('/passkeys/register/options')->assertRedirect(route('login'));
+    // 401, not a redirect. This asked for JSON, and answering a JSON caller with a 302
+    // to an HTML sign-in page gives it nothing it can act on — which is the same defect
+    // that made an expired console silently stop working: Livewire followed the redirect,
+    // got a 200 of login HTML, and had no failure to report.
+    $this->postJson('/passkeys/register/options')
+        ->assertStatus(401)
+        ->assertJsonPath('redirect', route('login'));
 });
 
 it('issues registration options for a signed-in subject with a fresh step-up', function () {

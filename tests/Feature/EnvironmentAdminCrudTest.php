@@ -722,3 +722,30 @@ it('renders one page of an organization roster, however many members it has', fu
 
     expect($page->html())->toContain('Next');
 });
+
+/**
+ * A section that disappears when it is empty hides the feature from the one person
+ * setting it up.
+ *
+ * Group → role mapping rendered only once the provider had pushed groups, so a fresh
+ * directory showed nothing about groups at all — and "create a group" then sounds like
+ * something to do in this console. It is not: a group mirrors the identity provider and
+ * arrives over SCIM or a directory pull. There is no way to author one here, and there
+ * should not be.
+ */
+it('says where directory groups come from before any have arrived', function (): void {
+    crudSetup();
+
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Groups Co', slug: 'groups-co'));
+    app(ConsoleScope::class)->chooseOrganization($org->id);
+
+    $directory = app(Directories::class)->register($org->id, 'Okta')->directory;
+
+    $html = Volt::test('console.directories.show', ['directory' => $directory->id])->html();
+
+    expect($html)
+        ->toContain('Group → role mapping')
+        ->toContain('No groups have arrived yet')
+        // The remedy names where the work happens, which is not here.
+        ->toContain('SCIM');
+});

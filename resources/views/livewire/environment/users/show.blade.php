@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Organization\Enums\OrganizationStatus;
+use App\Platform\OrganizationAccess;
 use App\Mail\AdminAssignedPasswordMail;
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
@@ -387,8 +389,23 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             'assignAccessRoles.*' => ['string'],
         ], ['assignRole' => OrgRoles::message()]);
 
-        if (Organization::query()->whereKey($this->assignOrgId)->doesntExist()) {
+        $target = Organization::query()->whereKey($this->assignOrgId)->first();
+
+        if (! $target instanceof Organization) {
             $this->addError('assignOrgId', 'That organization is not in this environment.');
+
+            return;
+        }
+
+        // EXISTENCE IS NOT LIFE. This asked only whether the row was there, so a member
+        // could be added to a SUSPENDED or DELETED organization — and the membership was
+        // really written, granting access through an organization that refuses every
+        // authenticated action. The picker below no longer offers them, which is not the
+        // guard: `assignOrgId` is a Livewire property and a client can set it to anything.
+        $refusal = OrganizationAccess::refusalPhrase($target->status);
+
+        if ($refusal !== null) {
+            $this->addError('assignOrgId', 'That organization has been '.$refusal.' and cannot take new members.');
 
             return;
         }
@@ -496,8 +513,19 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {
         $user = $this->user();
 
+        // Names for the memberships this user already holds — every organization,
+        // whatever its status, because a membership of a suspended one still has to be
+        // legible on this page rather than showing a bare id.
         /** @var Collection<string, string> $orgNames */
         $orgNames = Organization::query()->orderBy('name')->pluck('name', 'id');
+
+        // What may be JOINED is a narrower question. Offering a deleted organization in
+        // the picker invites exactly the thing the guard in assignOrg() now refuses.
+        /** @var Collection<string, string> $joinableOrgs */
+        $joinableOrgs = Organization::query()
+            ->where('status', OrganizationStatus::Active)
+            ->orderBy('name')
+            ->pluck('name', 'id');
 
         $rows = [];
         $impersonatable = [];
@@ -526,7 +554,8 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             // shown once and never dehydrated into the DOM snapshot.
             'issuedPassword' => $this->issuedPassword,
             'requiresPasswordChange' => app(AdminPasswords::class)->requiresChange($user->id),
-            'allOrgs' => $orgNames,
+            'allOrgs' => $joinableOrgs,
+            'orgNames' => $orgNames,
             'memberships' => $rows,
             'orgCatalog' => $orgCatalog,
             'assignableForNewOrg' => $this->assignOrgId !== '' ? $catalog->assignable($this->assignOrgId) : collect(),
