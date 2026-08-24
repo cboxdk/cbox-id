@@ -444,3 +444,64 @@ it('shows the issuer that discovery actually serves', function () {
     // issuer whatever host answers.
     expect(Volt::test('console.settings')->html())->toContain($served);
 });
+
+/**
+ * Scopes were badges.
+ *
+ * To add one to a live app you deleted it and registered a new one — taking its client
+ * id and secret, and every integration holding them, with it, to add a string to a list.
+ */
+it('lets an app’s scopes be edited without re-registering it', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Scope Edit')->set('kind', 'web')
+        ->set('redirectUris', 'https://scope.acme.test/cb')
+        ->call('create')->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Scope Edit')->firstOrFail();
+    $before = $client->client_id;
+
+    Volt::test('console.clients.show', ['client' => $client->id])
+        // Seeded from the record, split so a hand-typed key is not silently dropped.
+        ->assertSet('editScopes', fn (array $s): bool => in_array('openid', $s, true))
+        ->set('editScopes', ['openid', 'profile'])
+        ->set('editCustomScopes', 'tax.data, api.read')
+        ->call('saveDetails')
+        ->assertHasNoErrors();
+
+    $client->refresh();
+
+    expect($client->scopes)->toContain('openid')
+        ->toContain('tax.data')
+        ->toContain('api.read')
+        // Narrowed, not merely added to.
+        ->not->toContain('offline_access')
+        // And the credentials are the same ones every integration already holds.
+        ->and($client->client_id)->toBe($before);
+});
+
+/**
+ * A key the catalog does not know must survive an edit, or the first save after adding
+ * one silently removes it — and the failure lands on whoever calls the API next.
+ */
+it('keeps a custom scope through an unrelated edit', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Custom Scope')->set('kind', 'web')
+        ->set('redirectUris', 'https://custom.acme.test/cb')
+        ->set('customScopes', 'tax.data')
+        ->call('create')->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Custom Scope')->firstOrFail();
+
+    Volt::test('console.clients.show', ['client' => $client->id])
+        ->set('editName', 'Custom Scope Renamed')
+        ->call('saveDetails')
+        ->assertHasNoErrors();
+
+    expect($client->refresh()->scopes)->toContain('tax.data');
+});

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsolePlane;
 use App\Platform\AppKind;
+use App\Platform\Connect\ConnectSnippets;
+use App\Platform\ScopeCatalog;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Rules\SecureRedirectUri;
@@ -65,6 +67,20 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
     /** Where this app publishes its role/permission manifest for Cbox ID to pull. */
     public string $editManifestUrl = '';
 
+    /**
+     * The scopes this app is registered for — EDITABLE, which they were not.
+     *
+     * The page showed them as read-only badges, so the only way to add one to a live app
+     * was to delete it and register a new one, taking its client id and secret with it.
+     * Every integration holding those credentials breaks, to add a string to a list.
+     *
+     * @var array<int, string>
+     */
+    public array $editScopes = [];
+
+    /** Advanced: extra scope keys the catalog does not offer, comma-separated. */
+    public string $editCustomScopes = '';
+
     /** Whether the manifest panel is expanded. */
     public bool $managingManifest = false;
 
@@ -75,6 +91,12 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
      * DOM — the plaintext lives only in the response that reveals it, and is gone on the
      * next rehydration whether or not anyone dismisses the banner.
      */
+    /**
+     * Where a rotation interrupted by a step-up is remembered, so it can be finished
+     * rather than silently dropped. Holds the client id it was asked for.
+     */
+    private const RESUME_KEY = 'clients.rotate_after_step_up';
+
     protected ?string $revealedSecret = null;
 
     /** Whether the revealed secret was just minted here, rather than handed over at creation. */
@@ -93,6 +115,14 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
         $this->editPostLogoutRedirectUris = implode("\n", $model->post_logout_redirect_uris ?? []);
         $this->editManifestUrl = $model->manifest_url ?? '';
 
+        $catalogKeys = app(ScopeCatalog::class)->keys();
+        $registered = array_values($model->scopes ?? []);
+
+        // Split by whether the catalog knows the key, so a scope somebody typed by hand
+        // survives an edit instead of being dropped the first time this form is saved.
+        $this->editScopes = array_values(array_intersect($registered, $catalogKeys));
+        $this->editCustomScopes = implode(', ', array_values(array_diff($registered, $catalogKeys)));
+
         // A secret handed over by the create page — shown once, then aged out. Read in
         // mount() rather than in with(), because the flash is aged out at the end of this
         // request: read per-render it would vanish on the first unrelated action instead
@@ -100,6 +130,19 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
         $flashed = session('revealed_secret');
         if (is_string($flashed) && $flashed !== '') {
             $this->revealedSecret = $flashed;
+        }
+
+        // FINISH WHAT THE STEP-UP INTERRUPTED. Pulled, so it is spent whether or not the
+        // rotation below goes through — a flag that survived a refusal would fire on some
+        // later visit to a page the person had no rotation in mind for.
+        $resume = session()->pull(self::RESUME_KEY);
+
+        if ($resume === $this->clientId) {
+            // Straight back through the same method: it re-resolves the app, re-checks
+            // that this administrator may manage it, and re-asks for the step-up. If the
+            // window closed on the way here, they are simply sent to it again rather than
+            // rotating on a stale confirmation.
+            $this->rotateSecret();
         }
     }
 
@@ -192,6 +235,7 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
             'editName' => ['required', 'string', 'max:190'],
             'editRedirectUris' => ['nullable', 'string', 'max:2000'],
             'editPostLogoutRedirectUris' => ['nullable', 'string', 'max:2000'],
+            'editCustomScopes' => ['nullable', 'string', 'max:500'],
         ]);
 
         $redirects = $this->splitLines($this->editRedirectUris);
@@ -216,9 +260,26 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
             }
         }
 
+        $catalog = app(ScopeCatalog::class);
+
+        $custom = array_values(array_filter(array_map(
+            'trim',
+            explode(',', $this->editCustomScopes),
+        ), static fn (string $scope): bool => $scope !== ''));
+
+        $scopes = array_values(array_unique(array_merge(
+            array_values(array_intersect($this->editScopes, $catalog->keys())),
+            $custom,
+        )));
+
         $client->name = trim($this->editName);
         $client->redirect_uris = $redirects;
         $client->post_logout_redirect_uris = $postLogoutRedirects;
+        // THE CEILING, and narrowing it takes effect on the next token. A device or CIBA
+        // request naming a scope removed here is refused outright rather than downscoped,
+        // so this is a live change to what an integration can ask for — which is exactly
+        // why it belongs on the page rather than behind delete-and-recreate.
+        $client->scopes = $scopes;
         $client->save();
 
         $this->dispatch('toast', message: 'App updated.');
@@ -338,6 +399,18 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
         );
 
         if ($sudo !== null) {
+            // REMEMBER WHAT THEY ASKED FOR. Without this the step-up returns them to this
+            // page with nothing done: they typed the app's name, clicked Rotate, entered
+            // their password, and landed back on an unchanged page with no rotation and
+            // nothing saying why. The only way to find out it had not happened was to do
+            // the whole thing again — which is what people did, so the second attempt is
+            // the one that worked and the first looked like a bug in the product.
+            //
+            // Single-use and keyed to THIS app: it is pulled on the way back in, so a
+            // stale flag cannot rotate something later, and a flag naming another app is
+            // ignored rather than applied to whatever page happens to open next.
+            session()->put(self::RESUME_KEY, $this->clientId);
+
             $this->redirectRoute($sudo, navigate: false);
 
             return;
@@ -419,7 +492,10 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
             'issuer' => rtrim(app(IssuerResolver::class)->issuer(), '/'),
             // Read back from the grants rather than stored: they are what the token
             // endpoint enforces, so they cannot disagree with what this page claims.
-            'appKind' => AppKind::forClient($client),
+            'appKind' => $kind = AppKind::forClient($client),
+            // One per SDK that can do this app's job, filled in with its real values.
+            'snippets' => app(ConnectSnippets::class)->for($kind, $client, rtrim(app(IssuerResolver::class)->issuer(), '/')),
+            'scopeGroups' => app(ScopeCatalog::class)->grouped(),
             // Protected → never dehydrated; passed explicitly so the secret renders once.
             'revealedSecret' => $this->revealedSecret,
             // How many roles this app currently declares. Tombstoned ones (orphaned_at)
@@ -455,7 +531,15 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
          and a runnable SDK snippet, which is what someone actually needs in the one
          minute the secret is on screen. --}}
     @if ($revealedSecret)
-        <div class="rounded-xl border p-5" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent);background:var(--warning-soft)">
+        {{-- IT BRINGS ITSELF INTO VIEW. Rotation is triggered from the bottom of the page
+             and reveals the new secret at the TOP of it, so the only feedback in the
+             viewport was a toast in the opposite corner — and the person was left to
+             guess that the thing they asked for had happened somewhere they could not
+             see. `tabindex="-1"` with focus() rather than scroll alone, so a screen
+             reader lands on the heading too. --}}
+        <div x-data x-init="$el.scrollIntoView({ behavior: 'smooth', block: 'start' }); $el.focus({ preventScroll: true })"
+             tabindex="-1"
+             class="rounded-xl border p-5" style="border-color:color-mix(in oklch, var(--warning) 40%, transparent);background:var(--warning-soft)">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-sm font-semibold" style="color:var(--warning-strong)">{{ $revealedIsFresh ? 'New client secret' : 'Your app is ready — connect it' }}</p>
@@ -464,18 +548,31 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
                 <button type="button" wire:click="dismissSecret" class="btn btn-ghost btn-sm shrink-0">Done</button>
             </div>
 
+            {{-- A COPY BUTTON ON EVERY VALUE. Each of these is going into a config file
+                 or an environment variable, and one of them is shown exactly once — so
+                 "select it carefully with the mouse" is the wrong ask, and a mis-selected
+                 secret is unrecoverable rather than merely annoying. --}}
             <dl class="mt-4 grid gap-3 sm:grid-cols-2">
                 <div class="rounded-lg p-3" style="background:var(--surface-2);border:1px solid var(--border)">
                     <dt class="text-xs" style="color:var(--muted)">Issuer</dt>
-                    <dd class="mono text-sm break-all select-all">{{ $issuer }}</dd>
+                    <div class="mt-1 flex items-start justify-between gap-2">
+                        <dd class="mono text-sm break-all select-all">{{ $issuer }}</dd>
+                        <x-copy-button :value="$issuer" label="Copy" class="btn-ghost" />
+                    </div>
                 </div>
                 <div class="rounded-lg p-3" style="background:var(--surface-2);border:1px solid var(--border)">
                     <dt class="text-xs" style="color:var(--muted)">Client ID</dt>
-                    <dd class="mono text-sm break-all select-all">{{ $client->client_id }}</dd>
+                    <div class="mt-1 flex items-start justify-between gap-2">
+                        <dd class="mono text-sm break-all select-all">{{ $client->client_id }}</dd>
+                        <x-copy-button :value="$client->client_id" label="Copy" class="btn-ghost" />
+                    </div>
                 </div>
                 <div class="rounded-lg p-3 sm:col-span-2" style="background:var(--surface-2);border:1px solid var(--border)">
                     <dt class="text-xs font-semibold" style="color:var(--warning-strong)">Client secret — copy it now, it won't be shown again</dt>
-                    <dd class="mono text-sm break-all select-all mt-1">{{ $revealedSecret }}</dd>
+                    <div class="mt-1 flex items-start justify-between gap-2">
+                        <dd class="mono text-sm break-all select-all">{{ $revealedSecret }}</dd>
+                        <x-copy-button :value="$revealedSecret" label="Copy secret" class="btn-primary" />
+                    </div>
                 </div>
             </dl>
 
@@ -492,70 +589,49 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
         <p class="mt-1 text-sm" style="color:var(--muted)">
             {{ $appKind->label() }} — {{ $appKind->description() }}
         </p>
-        {{-- THE STARTER, MATCHED TO WHAT THIS APP IS. It rendered only for
-             authorization_code, so a CLI or a service — the two kinds where nobody
-             has an existing snippet to adapt — got nothing at the one moment a
-             copy-paste is worth most: the screen that shows the secret once.
 
-             It also called an API the SDK does not have (`new CboxID(…)`,
-             `id.signIn()`) and linked to `pypi.org/project/cbox-id`, which is not a
-             package that exists. A snippet nobody ran is worse than no snippet: it
-             is read as the documented way and fails in the reader's editor. --}}
-        <div class="mt-4">
-            <p class="text-xs font-medium uppercase mb-2" style="color:var(--muted);letter-spacing:0.06em">Wire it up</p>
+        {{-- TABS, because the page used to show ONE example in JavaScript whatever the
+             reader was building — and this screen is also where a one-time secret sits,
+             so translating a JS snippet into Go happens under time pressure. Which SDKs
+             appear follows from the app's kind: a device-flow tab under a service app is
+             a tab that cannot work. --}}
+        <div x-data="{ tab: @js($snippets[0]->id ?? 'curl') }" class="mt-4">
+            <div class="flex flex-wrap gap-1" role="tablist" aria-label="SDK examples">
+                @foreach ($snippets as $snippet)
+                    <button type="button" role="tab"
+                            wire:key="tab-{{ $snippet->id }}"
+                            x-on:click="tab = @js($snippet->id)"
+                            x-bind:aria-selected="tab === @js($snippet->id) ? 'true' : 'false'"
+                            x-bind:class="tab === @js($snippet->id) ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost'"
+                            class="btn btn-sm btn-ghost">{{ $snippet->label }}</button>
+                @endforeach
+            </div>
 
-            @if ($appKind === \App\Platform\AppKind::CliOrDevice)
-            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)">// npm i @cboxdk/id-js</span>
-import { CboxIdClient } from '@cboxdk/id-js'
+            @foreach ($snippets as $snippet)
+                <div x-show="tab === @js($snippet->id)" x-cloak wire:key="panel-{{ $snippet->id }}" role="tabpanel" class="mt-3">
+                    @if ($snippet->install)
+                        <div class="flex items-center gap-2">
+                            <p class="mono text-xs rounded-lg px-3 py-2 flex-1 select-all" style="background:var(--surface-2);border:1px solid var(--border);color:var(--muted)">{{ $snippet->install }}</p>
+                            <x-copy-button :value="$snippet->install" label="Copy" class="btn-ghost" />
+                        </div>
+                    @endif
 
-const cbox = new CboxIdClient({
-  issuer: '{{ $issuer }}',
-  clientId: '{{ $client->client_id }}',
-  scopes: [{!! collect($client->scopes ?? [])->map(fn ($s) => "'".e($s)."'")->implode(', ') !!}],
-})
+                    <div class="mt-2 flex items-start gap-2">
+                        <pre class="rounded-lg p-3 overflow-x-auto text-xs mono flex-1" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6">{{ $snippet->code }}</pre>
+                        <x-copy-button :value="$snippet->code" label="Copy" class="btn-ghost" />
+                    </div>
 
-const auth = await cbox.requestDeviceAuthorization()
-console.log(`Open ${auth.verificationUri} and enter ${auth.userCode}`)
-
-const user = await cbox.pollDeviceToken(auth) <span style="color:var(--muted)">// blocks until they approve</span></pre>
-            @elseif ($appKind === \App\Platform\AppKind::Service)
-            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)"># A token for the service itself — no person involved.</span>
-curl -X POST {{ $issuer }}/oauth/token \
-  -d grant_type=client_credentials \
-  -d client_id={{ $client->client_id }} \
-  -d client_secret=$CBOX_ID_CLIENT_SECRET \
-  -d scope="{{ implode(' ', $client->scopes ?? []) }}"</pre>
-            @elseif ($appKind === \App\Platform\AppKind::Agent)
-            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)"># Ask a person to approve, on a device they already have.</span>
-curl -X POST {{ $issuer }}/oauth/backchannel_authentication \
-  -u {{ $client->client_id }}:$CBOX_ID_CLIENT_SECRET \
-  -d login_hint=person@example.com \
-  -d binding_message="Deploy release 4.2 to production" \
-  -d scope="{{ implode(' ', $client->scopes ?? []) }}"</pre>
-            @elseif (in_array('authorization_code', $client->grant_types ?? [], true))
-            <pre class="rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6"><span style="color:var(--muted)">// npm i @cboxdk/id-js</span>
-import { CboxIdClient } from '@cboxdk/id-js'
-
-const cbox = new CboxIdClient({
-  issuer: '{{ $issuer }}',
-  clientId: '{{ $client->client_id }}',
-  redirectUri: '{{ ($client->redirect_uris ?? [])[0] ?? 'https://app.example.com/auth/callback' }}',
-  scopes: [{!! collect($client->scopes ?? [])->map(fn ($s) => "'".e($s)."'")->implode(', ') !!}],
-})
-
-<span style="color:var(--muted)">// On your sign-in route: persist state/codeVerifier/nonce, then redirect to req.url</span>
-const req = await cbox.createAuthorizationRequest()
-
-<span style="color:var(--muted)">// On your callback route:</span>
-const user = await cbox.authenticate({ params, stored })</pre>
-            @endif
-
-            <p class="text-xs mt-2" style="color:var(--muted)">SDKs:
-            <a href="https://www.npmjs.com/package/@cboxdk/id-js" class="underline" style="color:var(--accent-strong)">id-js</a> ·
-            <a href="https://www.npmjs.com/package/@cboxdk/id-react" class="underline" style="color:var(--accent-strong)">id-react</a> ·
-            <a href="https://packagist.org/packages/cboxdk/laravel-id-client" class="underline" style="color:var(--accent-strong)">laravel</a> ·
-            <a href="https://github.com/cboxdk/id-go" class="underline" style="color:var(--accent-strong)">go</a>
-            </p>
+                    @if ($snippet->docs)
+                        {{-- target=_blank: this is a reference opened WHILE wiring an app
+                             up, and on the one screen that shows a secret exactly once.
+                             Navigating away from it is how the secret is lost. --}}
+                        <p class="mt-2 text-xs">
+                            <a href="{{ $snippet->docs }}" target="_blank" rel="noopener noreferrer"
+                               class="underline" style="color:var(--accent-strong)">{{ $snippet->label }} SDK reference ↗</a>
+                        </p>
+                    @endif
+                </div>
+            @endforeach
         </div>
     </div>
 
@@ -564,8 +640,19 @@ const user = await cbox.authenticate({ params, stored })</pre>
         <h2 class="cbx-section-title">Credentials</h2>
         <div class="mt-4 space-y-3">
             <div>
+                <p class="label">Issuer</p>
+                <div class="flex items-center gap-2">
+                    <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all flex-1" style="background:var(--surface-2);border:1px solid var(--border)">{{ $issuer }}</p>
+                    <x-copy-button :value="$issuer" label="Copy" class="btn-ghost" />
+                </div>
+                <p class="mt-1 text-xs" style="color:var(--faint)">This environment's own issuer — what an SDK discovers from and what the <code class="mono">iss</code> claim carries.</p>
+            </div>
+            <div>
                 <p class="label">Client ID</p>
-                <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all" style="background:var(--surface-2);border:1px solid var(--border)">{{ $client->client_id }}</p>
+                <div class="flex items-center gap-2">
+                    <p class="mono text-xs rounded-lg px-3 py-2 select-all break-all flex-1" style="background:var(--surface-2);border:1px solid var(--border)">{{ $client->client_id }}</p>
+                    <x-copy-button :value="$client->client_id" label="Copy" class="btn-ghost" />
+                </div>
             </div>
             <div>
                 <p class="label">Client secret</p>
@@ -610,37 +697,77 @@ const user = await cbox.authenticate({ params, stored })</pre>
         </div>
     @endif
 
-    {{-- Grant types & scopes (read-only summary) --}}
+    {{-- Connection & permissions. The scopes were BADGES: to add one to a live app you
+         deleted it and registered a new one, taking its client id and secret — and every
+         integration holding them — with it, to add a string to a list. --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <h2 class="cbx-section-title">Connection &amp; permissions</h2>
-        <div class="mt-4 space-y-3">
-            <div>
-                <p class="label">Connects via</p>
-                <div class="flex flex-wrap gap-1.5">
-                    @if (in_array('authorization_code', $client->grant_types ?? [], true))
-                        <span class="badge">Sign-in</span>
-                    @endif
-                    @if (in_array('client_credentials', $client->grant_types ?? [], true))
-                        <span class="badge">API</span>
-                    @endif
-                    @if (($client->grant_types ?? []) === [])
-                        <span class="text-sm" style="color:var(--faint)">—</span>
-                    @endif
+
+        <div class="mt-4">
+            <p class="label">Connects via</p>
+            <p class="text-sm" style="color:var(--muted)">
+                {{ $appKind->label() }} — {{ implode(', ', $client->grant_types ?? []) ?: '—' }}
+            </p>
+            <p class="mt-1 text-xs" style="color:var(--faint)">
+                How an app connects is fixed at registration: changing it changes what the
+                credentials mean, so register a new app rather than repurposing this one.
+            </p>
+        </div>
+
+        @if ($mayManage)
+            <form wire:submit="saveDetails" class="mt-5">
+                <span class="label">What this app may ask for</span>
+                <p class="mt-1 text-xs" style="color:var(--muted)">
+                    Scopes — the ceiling on this app's access. Narrowing it takes effect on
+                    the next token, and a device or agent request naming a scope you remove
+                    is refused rather than quietly given less.
+                </p>
+
+                <div class="mt-3 space-y-4">
+                    @foreach ($scopeGroups as $group => $groupScopes)
+                        <div wire:key="editscope-{{ $group }}">
+                            <p class="text-xs font-semibold uppercase mb-2" style="color:var(--muted);letter-spacing:0.05em">{{ $group }}</p>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                @foreach ($groupScopes as $catalogScope)
+                                    <label class="flex items-start gap-2.5 rounded-lg p-2.5 cursor-pointer" style="border:1px solid var(--border)">
+                                        <input wire:model="editScopes" type="checkbox" value="{{ $catalogScope['key'] }}" class="mt-0.5 rounded">
+                                        <span class="min-w-0">
+                                            <span class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-sm font-medium">{{ $catalogScope['label'] }}</span>
+                                                <span class="text-xs rounded-full px-2 py-0.5 mono" style="background:var(--surface-2);color:var(--muted)">{{ $catalogScope['key'] }}</span>
+                                            </span>
+                                            <span class="block text-xs mt-0.5" style="color:var(--muted)">{{ $catalogScope['description'] }}</span>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
-            </div>
-            <div>
+
+                <div class="mt-4">
+                    <label class="label" for="editCustomScopes" style="font-weight:400;font-size:0.75rem">Advanced — custom scopes <span style="color:var(--faint)">(comma-separated)</span></label>
+                    <input wire:model="editCustomScopes" id="editCustomScopes" type="text" class="input mono" placeholder="api.read, tax.data">
+                    @error('editCustomScopes') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                    <p class="mt-1 text-xs" style="color:var(--faint)">Keys your own APIs check for. Kept as typed — a scope the catalog does not know survives an edit here.</p>
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-4" wire:loading.attr="disabled" wire:target="saveDetails">Save scopes</button>
+            </form>
+        @else
+            <div class="mt-4">
                 <p class="label">Scopes</p>
                 @if (count($client->scopes ?? []) > 0)
                     <div class="flex flex-wrap gap-1.5">
-                        @foreach ($client->scopes as $scope)
-                            <span class="badge mono">{{ $scope }}</span>
+                        @foreach ($client->scopes as $clientScope)
+                            <span class="badge mono">{{ $clientScope }}</span>
                         @endforeach
                     </div>
                 @else
                     <span class="text-sm" style="color:var(--faint)">—</span>
                 @endif
             </div>
-        </div>
+        @endif
     </div>
 
     {{-- Roles & permissions the app declares (the manifest pull transport) --}}
