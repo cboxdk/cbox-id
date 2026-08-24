@@ -505,3 +505,30 @@ it('keeps a custom scope through an unrelated edit', function () {
 
     expect($client->refresh()->scopes)->toContain('tax.data');
 });
+
+/**
+ * "Where do I create a group?" is the question, and the answer was in a code comment.
+ *
+ * An app that authorizes from a `groups` claim — Kubernetes, Grafana, Vault, and most
+ * SaaS written before this vocabulary settled — gets the person's ROLE names under that
+ * claim, once the app's `groups` scope is on. There is nothing else to create. The only
+ * other place the console says "group" is directory sync, which goes the opposite way
+ * and applies only when somebody ELSE is the identity provider — so somebody whose IdP
+ * is Cbox ID went looking there and found instructions for a system they do not have.
+ */
+it('says on the roles page that roles are the groups a token carries', function () {
+    $orgId = owner();
+
+    Role::query()->create([
+        'environment_id' => app(EnvironmentContext::class)->requireEnvironment()->environmentKey(),
+        'organization_id' => $orgId,
+        'name' => 'Support agent',
+        'source' => RoleSource::Manual,
+    ]);
+
+    expect(Volt::test('console.roles.index')->html())
+        ->toContain('groups')
+        // The claim, with this environment's own role in it.
+        ->toContain('"groups"')
+        ->toContain('Support agent');
+});

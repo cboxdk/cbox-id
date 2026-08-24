@@ -61,6 +61,32 @@ them yourself on the Permissions page without any integration at all.
 - **Grants accumulate.** People change teams and keep what they had; that is what
   [access reviews](access-reviews.md) exist to clear out.
 
+## If your app asks for "groups"
+
+Plenty of software — Kubernetes, Grafana, Vault, and most SaaS written before this
+vocabulary settled — authorizes from a **`groups`** claim on the ID token. There is no
+separate Groups page here, and you are not missing one: **your roles are those groups.**
+
+Tick the **`groups`** scope when you register the app under
+[Apps & API keys](apps-and-api-keys.md), and the ID token carries the person's role names
+under the name that software already looks for:
+
+```json
+{
+  "sub": "…",
+  "groups": ["Support agent", "Editor"]
+}
+```
+
+So name the role whatever the consuming app expects to see, assign people to it, and it
+arrives. Nothing else to create.
+
+> **Not to be confused with directory groups.** The *Sync users in* page also talks about
+> groups, and those go the other way: a customer's own identity provider pushes its groups
+> to Cbox ID over SCIM, and you map each one **onto** a role. They never reach a token
+> themselves. That page is for when somebody *else* is the identity provider. When Cbox ID
+> is your identity provider, roles are the whole story.
+
 ## Related
 
 - [Permissions](permissions.md) — the individual capabilities a role is built from.

@@ -399,6 +399,25 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
   "roles": [{!! "\"".e($sampleRole->name)."\"" !!}],
   "permissions": [{!! collect($samplePermissions)->map(fn ($p) => '"'.e($p).'"')->implode(', ') !!}]
 }</pre>
+            {{-- SAID HERE, because it is the question people arrive with and the answer
+                 lived in a code comment. An app that expects "groups" — Kubernetes,
+                 Grafana, Vault, and most SaaS that predate this vocabulary — is asking
+                 for these same roles under the name its ecosystem uses. There is no
+                 separate thing to create, and looking for a Groups page is the wrong
+                 search. (Directory groups, on the Sync users in page, are the opposite
+                 direction: an upstream provider's groups mapped ONTO these roles, and
+                 they never reach a token themselves.) --}}
+            <p class="mt-3 text-sm" style="color:var(--foreground)">
+                <b>If your app expects “groups”, these are them.</b>
+                Tick the <code class="mono">groups</code> scope when you register the app
+                and the ID token carries the same role names as a
+                <code class="mono">groups</code> claim — the name Kubernetes, Grafana and
+                Vault look for. Nothing else to create.
+            </p>
+            <pre class="mt-2 rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6">{
+  "groups": [{!! "\"".e($sampleRole->name)."\"" !!}]
+}</pre>
+
             <p class="mt-2 text-xs" style="color:var(--faint)">
                 @if ($samplePermissions === [])
                     <b>{{ $sampleRole->name }}</b> has no permissions yet, so `permissions` arrives empty — the role name is still there to act on.

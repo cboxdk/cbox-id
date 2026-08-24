@@ -456,10 +456,18 @@ new #[Layout('components.layouts.console', ['title' => 'Directory'])] class exte
                 <div class="cbx-empty-icon"><x-icon name="members" class="w-5 h-5" /></div>
                 <h3>No groups have arrived yet</h3>
                 <p>
-                    Groups are not created here — they mirror your identity provider, and
+                    Groups here mirror <em>this customer's own</em> identity provider, and
                     appear once it pushes them over SCIM or the directory sync runs. In
                     Entra ID or Okta, assign the groups to this application; they show up
                     here within a sync, and then you map each one onto a role.
+                </p>
+                <p>
+                    <b>Looking for groups to put in a token?</b> Those are
+                    <a href="{{ route(app(App\Platform\Console\ConsoleScope::class)->routeName('roles')) }}" wire:navigate class="underline">roles</a>.
+                    An app that reads a <code class="mono">groups</code> claim gets your role
+                    names, once its <code class="mono">groups</code> scope is ticked — this
+                    page is the opposite direction, and only applies when somebody else is
+                    the identity provider.
                 </p>
             </div>
         @else
