@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Enums\RoleSource;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -10,6 +13,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -361,4 +365,41 @@ it('names every kind of app in the list, including the ones with neither grant',
         ->toContain('CLI or device')
         ->toContain('Service or background job')
         ->toContain('Web app');
+});
+
+/**
+ * The console says a role is "a label stamped into the token" and then never shows the
+ * token.
+ *
+ * That is the last mile of the whole model: the person configuring roles here and the
+ * developer reading them in an app are usually the same person, an hour apart, and
+ * nothing on this page told them WHICH claim to read. The two most common guesses are
+ * `scope` — which is what the app was allowed to ask for, a different question — and a
+ * nested `authorization` object, which this platform does not emit at all.
+ *
+ * Built from this environment's own role, because a generic example is one more thing to
+ * translate.
+ */
+it('shows the claim shape an app receives, using a real role', function () {
+    $orgId = owner();
+
+    app(Roles::class);
+
+    Role::query()->create([
+        'environment_id' => app(EnvironmentContext::class)->requireEnvironment()->environmentKey(),
+        'organization_id' => $orgId,
+        'name' => 'Support agent',
+        'source' => RoleSource::Manual,
+    ]);
+
+    $html = Volt::test('console.roles.index')->html();
+
+    expect($html)
+        ->toContain('What your app receives')
+        // The real claim names, and this environment's real role in them.
+        ->toContain('"roles"')
+        ->toContain('"permissions"')
+        ->toContain('Support agent')
+        // And the distinction that the page exists to make.
+        ->toContain('what the');
 });

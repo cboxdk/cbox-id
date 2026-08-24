@@ -161,6 +161,16 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'roles' => $roles,
             'permissionsByRole' => $permissionsByRole,
+            // THE LAST MILE. The card above says a role is "a label stamped into the
+            // token", and then the console never shows the token — so the developer on
+            // the other end still has to guess which claim to read, and the two most
+            // common guesses (`scope`, and a nested `authorization` object) are both
+            // wrong. Built from THIS environment's first role and its own permissions,
+            // because a generic example is one more thing to translate.
+            'sampleRole' => $roles->first(),
+            'samplePermissions' => $roles->first() !== null
+                ? array_slice($permissionsByRole[$roles->first()->id] ?? [], 0, 3)
+                : [],
             'appNames' => $this->usableApps(),
             'manifest' => RoleSource::Manifest,
             'badgeLimit' => self::BADGE_LIMIT,
@@ -374,6 +384,30 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
             </p>
         </div>
     </div>
+
+    {{-- What the app on the other end actually receives. --}}
+    @if ($sampleRole !== null)
+        <details class="card mt-4 p-4">
+            <summary class="text-sm font-medium cursor-pointer">What your app receives</summary>
+            <p class="mt-2 text-sm" style="color:var(--muted)">
+                Roles and permissions arrive in the access token as two arrays. Your app
+                reads them straight from the token — there is no call back to Cbox ID:
+            </p>
+            <pre class="mt-3 rounded-lg p-3 overflow-x-auto text-xs mono" style="background:var(--surface-2);border:1px solid var(--border);line-height:1.6">{
+  "sub": "the person's id",
+  "org": "the organization they are acting for",
+  "roles": [{!! "\"".e($sampleRole->name)."\"" !!}],
+  "permissions": [{!! collect($samplePermissions)->map(fn ($p) => '"'.e($p).'"')->implode(', ') !!}]
+}</pre>
+            <p class="mt-2 text-xs" style="color:var(--faint)">
+                @if ($samplePermissions === [])
+                    <b>{{ $sampleRole->name }}</b> has no permissions yet, so `permissions` arrives empty — the role name is still there to act on.
+                @endif
+                The <code class="mono">scope</code> claim is a different thing: it is what the
+                <em>app</em> was allowed to ask for, not what this <em>person</em> may do.
+            </p>
+        </details>
+    @endif
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name" aria-label="Search roles">
