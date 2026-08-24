@@ -48,6 +48,23 @@ it('never calls a customer an account in user-facing copy', function (): void {
         '/>\s*Account\s*</',
     ];
 
+    // FIRST PERSON IS NOT THE BANNED MEANING. The rule above is about the OPERATOR's
+    // third-person listing — a table of other people's companies headed "Accounts" while
+    // the URL says `customers`. In a customer's OWN console, "this account" names the
+    // thing they are signed in to and administering, which is the one place the word is
+    // the clearest available: they are not "a customer" to themselves.
+    //
+    // This exemption exists because the word "organization" does two jobs — a customer in
+    // the platform root, one of that customer's end-user teams inside an environment —
+    // and both appear in this one console. Reading "Organizations" on the environment
+    // rail and "Organization settings" on their own is what makes people conclude the two
+    // are the same thing one level apart. See docs/core-concepts/accounts-and-organizations.md.
+    //
+    // Narrow on purpose: one phrase, one directory. The plural listing stays banned
+    // everywhere, including here.
+    $firstPersonExempt = ['/\bthis account\b/'];
+    $firstPersonRoot = resource_path('views/livewire/console');
+
     $roots = [resource_path('views')];
 
     foreach ((array) glob(base_path('modules/*/resources/views')) as $moduleViews) {
@@ -88,7 +105,13 @@ it('never calls a customer an account in user-facing copy', function (): void {
 
         $scanned++;
 
+        $inOwnConsole = str_starts_with($path, $firstPersonRoot);
+
         foreach ($forbidden as $pattern) {
+            if ($inOwnConsole && in_array($pattern, $firstPersonExempt, true)) {
+                continue;
+            }
+
             if (preg_match($pattern, $source, $m) === 1) {
                 $offenders[] = str_replace([resource_path('views/'), base_path('')], '', $path).': "'.$m[0].'"';
             }

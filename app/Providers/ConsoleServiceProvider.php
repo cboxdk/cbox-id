@@ -85,7 +85,16 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Left as a gap rather than closed up: the orders in this area are unique
             // across modules by contract, and renumbering to fill it would collide with a
             // module the host cannot see.
-            ->page('organization-settings', 'Organization settings', feature: 'organization.manage', order: 80);
+            // ACCOUNT, not "Organization". The word does two jobs in this platform — in
+            // the platform root it names a CUSTOMER, inside a tenant's environment it
+            // names one of that customer's end-user teams — and both meanings appear in
+            // this one console. A customer reading "Organizations" on the environment
+            // rail and "Organization settings" here reasonably concludes they are the
+            // same thing one level apart, which is the single biggest comprehension
+            // obstacle in the product. The row is still an `organizations` row; only the
+            // word a person reads changes, and it changes at the altitude where the
+            // meaning is "the customer".
+            ->page('organization-settings', 'Account settings', feature: 'organization.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.

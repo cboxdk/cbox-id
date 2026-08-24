@@ -9,6 +9,8 @@ description: The tenancy planes, how identity is modelled at each of them, and t
 How Cbox ID is put together: the tenancy planes, where identity lives at each one, and
 the reasoning behind the decisions that shaped it.
 
+- [Accounts & organizations](accounts-and-organizations.md) — **start here.** The five
+  layers, and why the word "organization" appears at two of them.
 - [Unified identity](unified-identity.md) — one person, one identity,
   across the planes.
 - [Console modules](modules.md) — the five in-tree capability areas and why they

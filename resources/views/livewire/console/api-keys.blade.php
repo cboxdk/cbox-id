@@ -166,7 +166,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
          Environment keys were the only two in the console rendering no eyebrow at
          all, so neither said which area of the rail you were standing in. --}}
     <x-page-header title="API keys"
-                   subtitle="Machine credentials for the organization management API — list environments, invite members, read billing. Each key carries a role.">
+                   subtitle="Machine credentials for the account management API — list environments, invite members, read billing. Each key carries a role.">
         <x-slot:actions>
             <a href="/api/v1/openapi.yaml" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">API reference ↗</a>
         </x-slot:actions>

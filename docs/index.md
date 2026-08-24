@@ -26,6 +26,9 @@ package installed, the same files live under `vendor/cboxdk/laravel-id/docs/`.
 
 ## Start here
 
+- [Accounts & organizations](core-concepts/accounts-and-organizations.md) — the five
+  layers, and why "organization" means two different things depending on where you are
+  standing. Read this before the rest.
 - [Quickstart](quickstart.md) — operator zero-to-running in a few commands.
 - [Requirements](requirements.md) — exactly what `composer.json` enforces.
 - [Getting started](getting-started/_index.md) — installation and the first-run flow.

@@ -600,7 +600,7 @@ new #[Layout('components.layouts.app', ['title' => 'Administrators'])] class ext
 }; ?>
 
 <div>
-    <x-page-header title="Administrators" subtitle="People who can administer this organization, their roles, and which environments they reach." />
+    <x-page-header title="Administrators" subtitle="People who can administer this account, their roles, and which environments they reach." />
 
     <div class="mt-6 rounded-xl border overflow-hidden" style="border-color:var(--border)">
         @foreach ($members as $m)

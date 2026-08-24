@@ -11,11 +11,11 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 /**
- * Identity platform › Organization settings. Management-only; deletion is deliberately not a
+ * Identity platform › Account settings. Management-only; deletion is deliberately not a
  * self-serve button (it would tear down live IdPs) and is handled as a support request for
  * now.
  */
-new #[Layout('components.layouts.app', ['title' => 'Organization settings'])] class extends Component
+new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class extends Component
 {
     public string $name = '';
 
@@ -70,7 +70,7 @@ new #[Layout('components.layouts.app', ['title' => 'Organization settings'])] cl
 }; ?>
 
 <div>
-    <x-page-header title="Organization settings" subtitle="Manage the organization these identity providers belong to." />
+    <x-page-header title="Account settings" subtitle="The name of the account these identity providers are billed and administered under." />
 
     <form wire:submit="save" class="mt-6 rounded-xl border p-5" style="border-color:var(--border)">
         <label class="label" for="name">Account name</label>
@@ -85,7 +85,7 @@ new #[Layout('components.layouts.app', ['title' => 'Organization settings'])] cl
     </form>
 
     <div class="mt-4 rounded-xl border p-5" style="border-color:var(--border)">
-        <p class="text-sm font-medium">Delete organization</p>
-        <p class="mt-1 text-sm" style="color:var(--muted)">Deleting an organization tears down every project and environment it owns. To protect live IdPs this isn't self-serve — contact support to proceed.</p>
+        <p class="text-sm font-medium">Delete account</p>
+        <p class="mt-1 text-sm" style="color:var(--muted)">Deleting this account tears down every project and environment it owns. To protect live IdPs this isn't self-serve — contact support to proceed.</p>
     </div>
 </div>

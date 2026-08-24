@@ -58,11 +58,30 @@ new #[Layout('components.layouts.environment', ['title' => 'Organizations'])] cl
 }; ?>
 
 <div>
-    <x-page-header title="Organizations" subtitle="The tenants inside this environment. Each has its own users, roles, and SSO.">
+    <x-page-header title="Organizations" subtitle="Your customers. Each is a company or team using your product, with its own users, roles and SSO.">
         <x-slot:actions>
             <a href="{{ route('environment.organizations.create') }}" class="btn btn-primary shrink-0"><x-icon name="plus" class="w-4 h-4" /> New organization</a>
         </x-slot:actions>
     </x-page-header>
+
+    {{-- SAID HERE, BECAUSE HERE IS WHERE THE CONFUSION HAPPENS. The word "organization"
+         does two jobs in this platform — up in the platform root it names a CUSTOMER OF
+         CBOX ID, and here it names one of that customer's own end-user teams — and the
+         two look identical on screen because underneath they are the same kind of row.
+         The distinction is easy to state and impossible to infer, so this page states it
+         rather than leaving the reader to work out which altitude they are at. --}}
+    <div class="card p-4 mt-6" style="background:var(--accent-soft);border-color:var(--accent-edge)">
+        <div class="flex items-start gap-3">
+            <span class="grid place-items-center rounded-lg shrink-0" style="width:2rem;height:2rem;background:var(--card);color:var(--primary)"><x-icon name="layers" class="w-4 h-4" /></span>
+            <p class="text-sm" style="color:var(--foreground)">
+                <b>These are your customers, not your Cbox ID account.</b>
+                An organization here is a company or team that uses <em>your</em> product,
+                living inside this environment. Your own account — the one that owns this
+                project and its bill — is a different thing one level up, and it is where
+                "Account settings" lives.
+            </p>
+        </div>
+    </div>
 
     <div class="mt-6">
         <input wire:model.live.debounce.300ms="search" type="search" class="input" style="max-width:24rem" placeholder="Search by name or handle" aria-label="Search organizations">
