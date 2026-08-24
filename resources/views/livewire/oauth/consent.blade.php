@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\ScopeCatalog;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\OrganizationAccess;
@@ -956,12 +957,13 @@ new #[Layout('components.layouts.auth', ['title' => 'Authorize'])] class extends
      */
     public function with(): array
     {
-        $labels = [
-            'openid' => 'Verify your identity',
-            'profile' => 'Your name',
-            'email' => 'Your email address',
-            'offline_access' => 'Stay signed in',
-        ];
+        // FROM THE CATALOG, not a second copy of it. This map held four strings and
+        // fell back to the raw scope key for everything else — so a person deciding
+        // whether to allow an app was shown the literal word "groups", or
+        // "organizations", with nothing to say what either meant, on the most
+        // end-user-facing page in the product. The scopes were added to the token issuer
+        // and to discovery and to the app picker, and nobody came back here.
+        $labels = app(ScopeCatalog::class)->consentLabels();
 
         $rows = array_map(
             fn (string $scope): array => ['scope' => $scope, 'label' => $labels[$scope] ?? $scope],

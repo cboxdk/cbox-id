@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\ScopeCatalog;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
 use Cbox\Id\AccessControl\Models\Role;
@@ -531,4 +532,29 @@ it('says on the roles page that roles are the groups a token carries', function 
         // The claim, with this environment's own role in it.
         ->toContain('"groups"')
         ->toContain('Support agent');
+});
+
+/**
+ * The consent screen showed people raw scope keys.
+ *
+ * It carried its own map of four labels and fell back to the key for everything else, so
+ * somebody deciding whether to allow an app was shown the literal word "groups" — the
+ * most end-user-facing page in the product, and the one scope whose name matches nothing
+ * else in this console. `organizations` had the same problem. Both were added to the
+ * token issuer, to discovery and to the app picker, and nobody came back here.
+ *
+ * One list, two voices: the picker addresses an administrator registering an app, this
+ * addresses the person deciding whether to allow it.
+ */
+it('gives the consent screen a human phrase for every catalog scope', function () {
+    $labels = app(ScopeCatalog::class)->consentLabels();
+
+    // The two that were bare, and the four that were already fine.
+    expect($labels)->toHaveKeys(['openid', 'profile', 'email', 'offline_access', 'organizations', 'groups'])
+        ->and($labels['groups'])->not->toBe('groups')
+        ->and($labels['organizations'])->not->toBe('organizations');
+
+    // A CUSTOM scope has no entry, and rendering its key verbatim is right: it is the
+    // app's own word and there is nothing truer to say about it.
+    expect($labels)->not->toHaveKey('tax.data');
 });
