@@ -171,3 +171,52 @@ it('offers the form when the link carries a code that no longer exists', functio
         ->assertSet('userCode', '')
         ->assertSet('error', fn (?string $e): bool => $e !== null && str_contains($e, 'expired or already finished'));
 });
+
+/**
+ * @group security
+ *
+ * THE WHOLE CLI CHAIN, which no single component's tests can see.
+ *
+ * A person following `verification_uri_complete` from a terminal is almost never already
+ * signed in on their phone. So the link goes to `/device?user_code=…`, auth bounces them
+ * to `/login` and stashes where they were going, and after signing in they have to land
+ * back on the device page WITH the code still attached — otherwise they are asked to type
+ * a code they never saw, which is the failure the complete-URL exists to prevent.
+ *
+ * Three components own one link between them: the auth middleware stashes it, IntendedUrl
+ * decides whether this plane may serve it, and the device page resolves it. Each is
+ * covered on its own and the chain was covered nowhere, so any of the three could drop
+ * the query string and every suite would stay green.
+ */
+it('returns a person to the device approval after they sign in to reach it', function () {
+    $subject = app(Subjects::class)->create('cli@acme.test', 'CLI User', 'a-strong-unbreached-passphrase');
+    $org = app(Organizations::class)->create(new NewOrganization('Acme CLI', 'acme-cli'));
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+
+    $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid']);
+    $complete = '/device?user_code='.$result->userCode;
+
+    // Signed out, following the link from the terminal.
+    $this->get($complete)->assertRedirect(route('login'));
+
+    // The whole URL was kept, not just the path: without the query the person arrives at
+    // an empty form and is told to check a code they were never shown.
+    expect(session()->get('url.intended'))->toContain('user_code='.$result->userCode);
+
+    // And the sign-in page says why they are there. "Access your organization's identity
+    // console" is the wrong sentence for somebody who followed a link printed by a
+    // terminal — a small dissonance at exactly the moment they are judging whether the
+    // link is legitimate.
+    Volt::test('auth.login')->assertSee('approve the device');
+
+    Volt::test('auth.login')
+        ->set('email', 'cli@acme.test')
+        ->set('password', 'a-strong-unbreached-passphrase')
+        ->call('login')
+        ->assertRedirect($complete);
+
+    // And landing there resolves the code rather than showing it in a field.
+    Volt::test('device', ['user_code' => $result->userCode])
+        ->assertSet('verified', true)
+        ->assertSet('clientName', 'TV App');
+})->group('security');

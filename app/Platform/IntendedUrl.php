@@ -27,7 +27,13 @@ namespace App\Platform;
  */
 final class IntendedUrl
 {
-    private const KEY = 'url.intended';
+    /**
+     * Laravel's own key, so `redirect()->guest()` and this class agree without either
+     * having to know about the other. Public because the sign-in page READS it to say
+     * why somebody is being asked to sign in — reading is not consuming, and consuming
+     * it there would strand them on the dashboard afterwards.
+     */
+    public const KEY = 'url.intended';
 
     /** The admin console lives under this prefix on a tenant host. */
     private const ADMIN_PREFIX = '/admin';

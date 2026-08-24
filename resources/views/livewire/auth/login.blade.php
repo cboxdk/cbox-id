@@ -325,6 +325,30 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
      * screen has been told their address signs in somewhere else, so the next useful
      * thing they can do is type a different one.
      */
+    /**
+     * Why this person is being asked to sign in, when we know.
+     *
+     * "Access your organization's identity console" is right for somebody who typed the
+     * address, and wrong for the one case where we know they were going somewhere else:
+     * a device approval. They followed a link printed by a terminal, on a phone, and the
+     * page that greets them talks about a console they are not going to — a small
+     * dissonance at exactly the moment they are deciding whether this link is legitimate.
+     *
+     * READ, never pulled: consuming the intent here would strand them on the dashboard
+     * after signing in. {@see IntendedUrl} pulls it, once, after authentication.
+     */
+    public function purpose(): string
+    {
+        $intended = session()->get(IntendedUrl::KEY);
+        $path = is_string($intended) ? parse_url($intended, PHP_URL_PATH) : null;
+
+        if ($path === '/device') {
+            return 'Sign in to approve the device that is waiting.';
+        }
+
+        return "Welcome back. Access your organization's identity console.";
+    }
+
     public function startOver(): void
     {
         $this->reset('ssoOrganization', 'ssoStartUrl', 'ssoReason', 'ssoOffer', 'ssoOfferLeads', 'identified', 'password');
@@ -383,7 +407,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Sign in'])] class extends C
 
 <div>
     <h1 class="font-semibold tracking-tight" style="font-size:1.7rem">Sign in</h1>
-    <p class="mt-2 text-sm" style="color:var(--muted)">Welcome back. Access your organization's identity console.</p>
+    <p class="mt-2 text-sm" style="color:var(--muted)">{{ $this->purpose() }}</p>
 
     {{-- Identifier-first step 2 is MORPHED in: no navigation, no focus move, no
          announcement — the password field just silently appears. This region sits
