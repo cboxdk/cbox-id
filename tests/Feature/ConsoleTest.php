@@ -403,3 +403,44 @@ it('shows the claim shape an app receives, using a real role', function () {
         // And the distinction that the page exists to make.
         ->toContain('what the');
 });
+
+/**
+ * THE ISSUER ON THE APP PAGE IS THE ONE THE TOKENS WILL CARRY.
+ *
+ * It read `config('app.url')` — the apex the deployment is installed at — so an app
+ * registered in a tenant environment on its own host was told, from a page served at
+ * that host, that its issuer was the apex. Every developer copying that into an SDK
+ * pointed it at a host that serves no discovery document at all, and the failure arrives
+ * one layer down as "discovery request failed", blaming the SDK rather than the console
+ * that handed over the wrong value.
+ *
+ * Asserted against what `/.well-known/openid-configuration` actually answers, not against
+ * a second copy of the expected string: the whole defect was two sources disagreeing, and
+ * a test with its own third source could not have seen it.
+ */
+it('shows the issuer that discovery actually serves', function () {
+    owner();
+
+    confirmConsoleStepUp();
+    Volt::test('console.clients.create')
+        ->set('name', 'Issuer Check')
+        ->set('kind', 'web')
+        ->set('redirectUris', 'https://issuer.acme.test/cb')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $client = Client::query()->where('name', 'Issuer Check')->firstOrFail();
+
+    $served = $this->getJson('/.well-known/openid-configuration')->assertOk()->json('issuer');
+
+    expect($served)->toBeString()->not->toBeEmpty();
+
+    expect(Volt::test('console.clients.show', ['client' => $client->id])->html())
+        ->toContain($served);
+
+    // And the Settings page, which had a THIRD derivation of the same value —
+    // `'https://'.request()->getHost()`, right for a tenant on its own subdomain and
+    // right only by coincidence for the platform root, which keeps its configured
+    // issuer whatever host answers.
+    expect(Volt::test('console.settings')->html())->toContain($served);
+});

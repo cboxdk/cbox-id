@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
@@ -117,9 +118,14 @@ new #[Layout('components.layouts.console', ['title' => 'Settings'])] class exten
         $onEnvironmentPlane = $scope->plane() === ConsolePlane::Environment;
         $organization = $this->organization();
 
-        // The environment is reached on its own host (this request's host), on either
-        // plane — an organization's console is served from the same door its users are.
-        $issuer = 'https://'.request()->getHost();
+        // ASKED, NOT REBUILT. This was `'https://'.request()->getHost()`, which is right
+        // for a tenant environment on its own subdomain and right only by coincidence:
+        // the platform root and the single-tenant shape keep the CONFIGURED issuer even
+        // when they answer on another host, so the two part company exactly where nobody
+        // is looking. One value with three derivations — this, `config('app.url')` on the
+        // app page, and the resolver that discovery and the `iss` claim both use — is
+        // three chances to hand a developer a value their SDK cannot verify against.
+        $issuer = rtrim(app(IssuerResolver::class)->issuer(), '/');
 
         // Whose theme the branding card previews: the acting organization's own, or the
         // environment default it would inherit when there is no organization to speak of.

@@ -9,6 +9,7 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Rules\SecureRedirectUri;
 use Cbox\Id\AccessControl\AppManifestPuller;
 use Cbox\Id\AccessControl\Models\Role;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Database\Eloquent\Builder;
@@ -397,13 +398,25 @@ new #[Layout('components.layouts.console', ['title' => 'App'])] class extends Co
     public function with(): array
     {
         $client = $this->client();
-        $appUrl = config('app.url');
 
         return [
             // Route names differ per plane; one component, so it asks rather than assumes.
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             'client' => $client,
-            'issuer' => rtrim(is_string($appUrl) ? $appUrl : '', '/'),
+            // THE ENVIRONMENT'S OWN ISSUER, not the deployment's URL.
+            //
+            // This read `config('app.url')`, which is the apex the app is installed at —
+            // so an app registered in a tenant environment on its own subdomain was told
+            // its issuer was `https://cboxid.com`, from a page served at
+            // `https://cbox.cboxid.com`. Every developer copying that value into an SDK
+            // configured it against a host that serves no discovery document at all, and
+            // the failure arrives one layer down as "discovery request failed" — pointing
+            // at the SDK rather than at the console that handed them the wrong value.
+            //
+            // {@see IssuerResolver} is what /.well-known/openid-configuration and the
+            // `iss` claim are both derived from, so this cannot disagree with what a
+            // token actually says.
+            'issuer' => rtrim(app(IssuerResolver::class)->issuer(), '/'),
             // Read back from the grants rather than stored: they are what the token
             // endpoint enforces, so they cannot disagree with what this page claims.
             'appKind' => AppKind::forClient($client),
