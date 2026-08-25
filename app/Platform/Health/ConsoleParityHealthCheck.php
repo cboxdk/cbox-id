@@ -244,7 +244,7 @@ class ConsoleParityHealthCheck implements HealthCheck
     {
         $handlers = [];
 
-        foreach (Route::getRoutes() as $route) {
+        foreach (Route::getRoutes()->getRoutes() as $route) {
             $name = $route->getName();
             $action = $route->getActionName();
 
