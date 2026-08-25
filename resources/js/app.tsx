@@ -35,18 +35,24 @@ void createInertiaApp<SharedProps>({
     },
 
     /**
-     * The tab title. A page sets its own with `<Head title="…">`; this appends whose
-     * console it is — the CUSTOMER's name on a branded sign-in, ours everywhere else —
-     * so a person with six tabs open can tell two "Members" pages apart.
+     * THE TAB TITLE, and the same statement the root view already rendered.
      *
-     * The root view renders the same answer server-side for the first paint. This is the
-     * refinement, not the source.
+     * The server names the page (`title`, set by the console controller) and says which
+     * SECTION it belongs to — the word that distinguishes the whole install from one
+     * customer on it, because half the platform pages share a name with a page about the
+     * operator's own organization. Both are read here so the title after hydration is
+     * byte-for-byte what was in `<head>` on the first paint.
+     *
+     * A page may still override with `<Head title="…">` — the detail pages that are named
+     * after the thing they are showing do — and that wins, because it is more specific
+     * than anything the controller could state.
      */
     title: (title, page) => {
-        const props = page.props as unknown as SharedProps;
+        const props = page.props as unknown as SharedProps & { title?: string };
+        const own = title !== '' ? title : (props.title ?? '');
         const suffix = props.brand?.name ?? props.app.name;
 
-        return title ? `${title} · ${suffix}` : suffix;
+        return [own, props.shell?.section, suffix].filter(Boolean).join(' · ');
     },
 
     progress: {

@@ -152,10 +152,15 @@ export default function DesignSystem() {
                         <Avatar name="Sylvester Damgaard" />
                         <Spinner label="Loading" />
                         <CopyButton value="whsec_3f9a2c1b8e7d4f60" />
-                        <Help title="What is a signing secret?" href="/docs">
-                            Every delivery is signed with it, so a receiver can prove the request
-                            came from us and not from somebody who learned the URL.
-                        </Help>
+                        <Help
+                            help={{
+                                topic: 'webhooks',
+                                title: 'What is a signing secret?',
+                                summary:
+                                    'Every delivery is signed with it, so a receiver can prove the request came from us and not from somebody who learned the URL.',
+                                href: '/docs',
+                            }}
+                        />
                     </Row>
                 </Panel>
 

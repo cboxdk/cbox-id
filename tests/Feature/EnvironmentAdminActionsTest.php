@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\EnvironmentSudo;
 use App\Platform\Impersonation;
 use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -47,6 +48,7 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
+use Cbox\Id\Webhooks\Enums\EndpointStatus;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
@@ -146,24 +148,44 @@ it('exercises the role detail mutating actions (saveDetails, togglePermission, d
     expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
 });
 
-it('exercises the webhook detail mutating actions (saveSubscription, pause, resume, rotateSecret, delete)', function (): void {
+/**
+ * OVER HTTP, not through the component.
+ *
+ * `Volt::test()` invokes a component directly and never routes, so it kept passing after
+ * the routes stopped pointing at that component at all — a green test over a file nothing
+ * serves. Each mutation is its own request now, and each one runs the middleware stack
+ * that guards it.
+ */
+it('runs every webhook detail mutation over its own route', function (): void {
     crudSetup();
+    app(EnvironmentSudo::class)->confirm();
+
     $endpoint = app(WebhookRegistry::class)
         ->registerForEnvironment('https://example.com/wh', ['user.created'])->endpoint;
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->set('editUrl', 'https://example.com/wh-updated')
-        ->set('editEvents', ['user.created', 'user.updated'])
-        ->call('saveSubscription')
-        ->call('pause')
-        ->call('resume')
-        ->call('rotateSecret')
-        ->assertHasNoErrors();
+    $this->patch(route('environment.webhooks.update', ['webhook' => $endpoint->id]), [
+        'url' => 'https://example.com/wh-updated',
+        'eventTypes' => ['user.created', 'user.updated'],
+    ])->assertRedirect();
 
-    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('url'))->toBe('https://example.com/wh-updated');
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('url'))
+        ->toBe('https://example.com/wh-updated');
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->call('deleteEndpoint');
+    $this->post(route('environment.webhooks.pause', ['webhook' => $endpoint->id]))->assertRedirect();
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('status'))
+        ->toBe(EndpointStatus::Paused);
+
+    $this->post(route('environment.webhooks.resume', ['webhook' => $endpoint->id]))->assertRedirect();
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('status'))
+        ->toBe(EndpointStatus::Active);
+
+    $sealed = WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted');
+    $this->post(route('environment.webhooks.rotate', ['webhook' => $endpoint->id]))->assertRedirect();
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted'))
+        ->not->toBe($sealed);
+
+    $this->delete(route('environment.webhooks.destroy', ['webhook' => $endpoint->id]))
+        ->assertRedirect(route('environment.webhooks'));
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 });
 

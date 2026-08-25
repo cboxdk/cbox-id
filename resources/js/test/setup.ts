@@ -2,10 +2,30 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, expect, vi } from 'vitest';
 import axe from 'axe-core';
+import { pageProps, resetPageProps } from './page';
 
 afterEach(() => {
     cleanup();
+    resetPageProps();
 });
+
+/**
+ * A PAGE, for the primitives that read one.
+ *
+ * `usePage` reaches for Inertia's React context, which only exists under a mounted
+ * `createInertiaApp` — and mounting the whole app to assert that a checkbox toggles would
+ * be testing Inertia. Everything else in the module is the real thing: only the page
+ * itself is supplied. See {@see ./page.ts} for the fixture and how a test changes it.
+ */
+vi.mock('@inertiajs/react', async (importActual) => ({
+    ...(await importActual<typeof import('@inertiajs/react')>()),
+    usePage: () => ({
+        props: pageProps(),
+        component: 'test',
+        url: '/',
+        version: null,
+    }),
+}));
 
 /**
  * jsdom has no layout engine, so a handful of browser APIs the Radix primitives call

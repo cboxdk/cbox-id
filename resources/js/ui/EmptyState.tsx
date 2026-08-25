@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react';
+import type { HelpContent } from '@/types';
+import { Help } from './Help';
 import { Icon } from './Icon';
 import type { IconName } from './icons';
 
 export interface EmptyStateProps {
     icon?: IconName;
     title: ReactNode;
+    /** The concept, explained — and the link to the guide where one exists. */
+    help?: HelpContent;
     description?: ReactNode;
     /**
      * What to do about it, numbered. An empty list is usually not a bug but a
@@ -21,7 +25,7 @@ export interface EmptyStateProps {
  * The heading is an h3 because an empty state always sits inside a `<Panel>`, whose title
  * is the h2 — so the document outline stays intact rather than skipping a level.
  */
-export function EmptyState({ icon, title, description, steps, actions }: EmptyStateProps) {
+export function EmptyState({ icon, title, help, description, steps, actions }: EmptyStateProps) {
     return (
         <div className="cbx-empty">
             {icon !== undefined && (
@@ -30,7 +34,10 @@ export function EmptyState({ icon, title, description, steps, actions }: EmptySt
                 </span>
             )}
 
-            <h3>{title}</h3>
+            <h3 className="flex items-center gap-1">
+                {title}
+                {help !== undefined && <Help help={help} />}
+            </h3>
             {description !== undefined && <p>{description}</p>}
 
             {steps !== undefined && steps.length > 0 && (

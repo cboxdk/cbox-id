@@ -80,6 +80,38 @@ export interface Flash {
 /** What `App\Platform\Theme` decided this request should be painted in. */
 export type ThemePreference = 'light' | 'dark' | null;
 
+/**
+ * `App\Http\Props\Shared\HelpProps`
+ *
+ * The resolved copy, not a topic key. A React page holding the KEY would need its own
+ * copy of the strings to render, which is the second source of truth the enum exists to
+ * prevent. `href` is null where no guide has been written — the UI omits the link rather
+ * than shipping a 404.
+ */
+export interface HelpContent {
+    topic: string;
+    title: string;
+    summary: string;
+    href: string | null;
+}
+
+/**
+ * `App\Http\Props\Shared\PaginationProps`
+ *
+ * State, not rendered links. Laravel's paginator array carries pre-built page links with
+ * HTML entities in their labels; how many page numbers to draw and where the ellipsis
+ * goes is a layout question, and layout is decided at 375px and at 1440px by the
+ * component, not by the server.
+ */
+export interface Pagination {
+    currentPage: number;
+    lastPage: number;
+    perPage: number;
+    total: number;
+    from: number;
+    to: number;
+}
+
 /** `App\Http\Props\Shell\NavPageProps` */
 export interface NavPage {
     route: string;
@@ -163,6 +195,15 @@ export interface SharedProps {
     impersonation: ImpersonationSession | null;
     flash: Flash;
     shell: Shell | null;
+    /**
+     * The page's name, stated by the controller.
+     *
+     * A PROP rather than something each page spells in its own `<Head>`: the root view
+     * renders it into `<title>` on the first byte, and the layouts render the same string
+     * through `<Head>` once React mounts. One statement, two consumers, and no page can
+     * ship with a tab that says nothing but the product's name.
+     */
+    title?: string;
     /** Laravel's validation errors for the last submission, keyed by field. */
     errors: Record<string, string>;
 }

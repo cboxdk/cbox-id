@@ -40,13 +40,32 @@ export default defineConfig({
 
     // Mirrors `paths` in tsconfig.json. Both are needed and neither implies the other:
     // TypeScript resolves the import for the checker, Vite resolves it for the bundle.
+    //
+    // An ARRAY, not an object, and the regex is why: Vite's object form does prefix
+    // replacement, so a bare `'@routes'` entry also swallowed `@routes/organization` and
+    // resolved it to `routes/index.ts/organization`. `/^@routes$/` matches the top-level
+    // index and nothing under it.
     resolve: {
-        alias: {
-            '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
-            // Wayfinder's generated trees. `@routes` is the undotted top-level index;
-            // `@routes/x` is the tree for the `x.*` names.
-            '@routes': fileURLToPath(new URL('./resources/js/routes/index.ts', import.meta.url)),
-        },
+        alias: [
+            {
+                find: /^@routes$/,
+                replacement: fileURLToPath(
+                    new URL('./resources/js/routes/index.ts', import.meta.url),
+                ),
+            },
+            {
+                find: /^@routes\//,
+                replacement: fileURLToPath(new URL('./resources/js/routes/', import.meta.url)),
+            },
+            {
+                find: /^@actions\//,
+                replacement: fileURLToPath(new URL('./resources/js/actions/', import.meta.url)),
+            },
+            {
+                find: /^@\//,
+                replacement: fileURLToPath(new URL('./resources/js/', import.meta.url)),
+            },
+        ],
     },
 
     server: {

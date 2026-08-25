@@ -13,6 +13,7 @@ use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireSudo;
@@ -244,6 +245,15 @@ final class PlatformServiceProvider extends ServiceProvider
             RequireMultiTenant::class,
             RequireSudo::class,
             RequireEnvironmentSudo::class,
+            // "May this administrator change things here" — the question every Volt
+            // component asked in boot() because a route could not ask it for them. The
+            // pages carrying it are controllers, where the route stack answers it before
+            // the controller runs, so nothing on /livewire/update reaches it today. It is
+            // listed anyway: the exemption to justify is "a gate that does not have to
+            // hold", and this one does have to hold — for as long as any Volt page is
+            // still served, a page that gains this middleware must keep enforcing it on
+            // every action, not only on the first load.
+            RequireConsoleAdmin::class,
             // Keeps the "an impersonator cannot plant persistence" property true for
             // component actions, not just full page loads.
             BlockDuringImpersonation::class,

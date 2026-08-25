@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { SandboxBanner } from '@/chrome/Banners';
 import { Brand } from '@/chrome/Brand';
@@ -29,10 +29,11 @@ const FEATURES = [
  * flashing ours. What React contributes here is the name and the logo.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
-    const { app, brand } = usePage<SharedProps>().props;
+    const { app, brand, title } = usePage<SharedProps>().props;
 
     return (
         <TooltipProvider>
+            <Head title={title} />
             <Toaster />
             <SandboxBanner />
 

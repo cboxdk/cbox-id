@@ -1,37 +1,55 @@
-import type { ReactNode } from 'react';
+import type { HelpContent } from '@/types';
 import { Icon } from './Icon';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 
 export interface HelpProps {
-    /** What the popover is about, announced on the trigger — "Help with SCIM tokens". */
-    title: string;
-    /** Where to read more. Rendered as the last thing in the panel. */
-    href?: string;
-    linkLabel?: string;
-    children: ReactNode;
+    help: HelpContent;
+    /**
+     * Render a text trigger ("What's this?") instead of the round ? button. For a place
+     * where a floating icon has nothing to sit against — beside a form field, say.
+     */
+    label?: string;
 }
 
 /**
- * The "what is this?" panel beside a setting.
+ * THE CONSOLE'S EXPLANATION AFFORDANCE: a quiet trigger that opens two or three plain
+ * sentences about the concept in front of you, and a link to the guide where one exists.
  *
- * A popover rather than a tooltip, because the content here is prose with a link in it:
- * a tooltip closes the moment the pointer leaves, so a link inside one is unreachable,
- * and none of it exists at all on a touch screen.
+ * A POPOVER rather than a tooltip, because the content is prose with a link in it: a
+ * tooltip closes the moment the pointer leaves, so a link inside one is unreachable, and
+ * none of it exists at all on a touch screen.
+ *
+ * A DISCLOSURE rather than a dialog. It takes no focus on open, traps nothing and
+ * restores nothing — the person reading it has not left the page, and moving their focus
+ * to explain a word would be the interruption the explanation exists to avoid.
+ *
+ * The copy comes from the server, resolved from {@see \App\Platform\Help\HelpTopic}. It
+ * has to be identical wherever the same concept surfaces — a page header, an empty state
+ * and the setup checklist all explain "single sign-on" in the same words — so it lives in
+ * one place and travels as text.
  */
-export function Help({ title, href, linkLabel = 'Read more', children }: HelpProps) {
+export function Help({ help, label }: HelpProps) {
     return (
         <Popover>
-            <PopoverTrigger className="cbx-help-btn" aria-label={title}>
-                <Icon name="help" className="w-4 h-4" />
-            </PopoverTrigger>
+            {label !== undefined ? (
+                <PopoverTrigger className="cbx-help-link">{label}</PopoverTrigger>
+            ) : (
+                <PopoverTrigger
+                    className="cbx-help-btn"
+                    aria-label={`What is ${help.title}?`}
+                    title="What is this?"
+                >
+                    <Icon name="help" className="w-4 h-4" />
+                </PopoverTrigger>
+            )}
 
             <PopoverContent className="cbx-help-content">
-                <p className="cbx-help-title">{title}</p>
-                <div className="cbx-help-body">{children}</div>
+                <p className="cbx-help-title">{help.title}</p>
+                <p className="cbx-help-body">{help.summary}</p>
 
-                {href !== undefined && (
-                    <a className="cbx-help-link" href={href} target="_blank" rel="noreferrer">
-                        {linkLabel}
+                {help.href !== null && (
+                    <a className="cbx-help-link" href={help.href} target="_blank" rel="noreferrer">
+                        Read the guide
                         <span className="sr-only"> (opens in a new tab)</span>
                     </a>
                 )}

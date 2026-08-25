@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu, AccountMenuLink } from '@/chrome/AccountMenu';
 import { ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
@@ -35,7 +35,7 @@ export interface ConsoleLayoutProps {
  * arrives as one shared prop. This file is only the arrangement.
  */
 export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
-    const { shell, auth } = usePage<SharedProps>().props;
+    const { shell, auth, title } = usePage<SharedProps>().props;
 
     const [pinned, setPinned] = useState(shell?.navPinned ?? false);
     // Read in a lazy initialiser rather than an effect: reading it after mount renders
@@ -85,6 +85,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
     if (shell === null || auth.user === null) {
         return (
             <TooltipProvider>
+                <Head title={title} />
                 <Toaster />
                 <main id="main-content" className="canvas-gradient">
                     {children}
@@ -98,6 +99,13 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
     return (
         <TooltipProvider>
+            {/*
+                The title the controller stated, rendered once React is here. The root
+                view already put the same string in `<head>` for the first paint; this is
+                what keeps it right across a client-side navigation, where nothing
+                re-renders the document.
+            */}
+            <Head title={title} />
             <Toaster />
             <SandboxBanner />
             <ImpersonationBanner exitUrl={exitImpersonation.url()} />

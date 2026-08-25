@@ -222,20 +222,40 @@ class ConsoleParityHealthCheck implements HealthCheck
     }
 
     /**
-     * Which Volt component each route name serves, read from the registration itself.
+     * WHAT SERVES EACH ROUTE NAME, so two planes can be compared by their handler rather
+     * than merely by both having one.
      *
-     * Not from the router: a Volt route carries its component inside a closure, so the
-     * action holds nothing to compare and every route looks different from every other.
-     * The registration in `routes/web.php` is the authoritative statement of what serves
-     * what, and reading it is the same source-scan approach the index-width and
-     * verified-email gates already use here.
+     * Two sources, because there are two kinds of page and the older one is invisible to
+     * the router.
      *
-     * @return array<string, string> route name => component
+     * A CONTROLLER route says what it is: `Class@method` is on the route itself, so the
+     * router is the authority and nothing has to be parsed. That is also the stronger
+     * answer — it describes what will actually run, not what a file says should.
+     *
+     * A VOLT route carries its component inside a closure, so the action holds nothing to
+     * compare and every one of them looks different from every other. For those the
+     * registration in `routes/web.php` is the only statement of what serves what, and
+     * reading it is the same source-scan the index-width and verified-email gates here
+     * already use. That half goes when the last Volt page does.
+     *
+     * @return array<string, string> route name => handler
      */
     private function componentsByRouteName(): array
     {
+        $handlers = [];
+
+        foreach (Route::getRoutes() as $route) {
+            $name = $route->getName();
+            $action = $route->getActionName();
+
+            // `Closure` is every Volt route and every inline one; there is nothing in it
+            // to compare, so those fall through to the source scan below.
+            if (is_string($name) && $name !== '' && $action !== 'Closure') {
+                $handlers[$name] = $action;
+            }
+        }
+
         $source = (string) file_get_contents(base_path('routes/web.php'));
-        $components = [];
 
         // Volt::route('<path>', '<component>')…->name('<name>') — the chain may carry
         // middleware between the two, so this spans to the statement's end rather than
@@ -249,10 +269,10 @@ class ConsoleParityHealthCheck implements HealthCheck
 
         foreach ($matches as [, $component, $chain]) {
             if (preg_match("/->name\('([^']+)'\)/", $chain, $named) === 1) {
-                $components[$named[1]] = $component;
+                $handlers[$named[1]] = $component;
             }
         }
 
-        return $components;
+        return $handlers;
     }
 }

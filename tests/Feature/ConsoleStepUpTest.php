@@ -162,19 +162,20 @@ it('refuses to rotate a webhook signing secret with no step-up, and rotates with
         ['user.created'],
     )->endpoint;
 
-    $url = route('environment.webhooks.show', ['webhook' => $endpoint->id]);
+    // A real POST to the real route, so the route's middleware stack runs. The Livewire
+    // helper this replaces invoked the component directly and never routed, which is why
+    // it could not have caught a gate that had moved to the route.
+    $rotate = route('environment.webhooks.rotate', ['webhook' => $endpoint->id]);
     $before = WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted');
 
-    livewireUpdate($url, 'console.webhooks.show', 'rotateSecret')
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
+    $this->post($rotate)->assertRedirect(route('environment.sudo'));
 
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted'))
         ->toBe($before, 'a webhook signing secret was rotated with no step-up');
 
     app(EnvironmentSudo::class)->confirm();
 
-    livewireUpdate($url, 'console.webhooks.show', 'rotateSecret')->assertSuccessful();
+    $this->post($rotate)->assertRedirect();
 
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted'))
         ->not->toBe($before);
@@ -258,27 +259,23 @@ it('refuses to register a webhook endpoint with no step-up, and registers with o
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-newhook'));
     session()->put(ConsoleScope::SELECTION_KEY, $org->id);
 
-    $url = route('environment.webhooks.create');
+    $store = route('environment.webhooks.store');
     $form = [
         'url' => 'https://collector.attacker.example/events',
         'eventTypes' => ['user.created'],
     ];
 
-    app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.webhooks.create');
-    app(EnvironmentSudo::class)->forget();
-
-    replaySnapshot($url, $snapshot, 'create', [], $form)
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
+    // POSTED DIRECTLY, without visiting the form first. That is the attack this gate
+    // exists to refuse: the create PAGE asks for the step-up at the door, and a gate that
+    // only lived there would be satisfied by never opening the door.
+    $this->post($store, $form)->assertRedirect(route('environment.sudo'));
 
     expect(WebhookEndpoint::query()->where('url', $form['url'])->exists())
         ->toBeFalse('a signing secret was minted with no step-up, and a live event feed pointed somewhere new');
 
     app(EnvironmentSudo::class)->confirm();
 
-    replaySnapshot($url, $snapshot, 'create', [], $form)->assertSuccessful();
+    $this->post($store, $form)->assertRedirect();
 
     expect(WebhookEndpoint::query()->where('url', $form['url'])->exists())->toBeTrue();
 })->group('security');

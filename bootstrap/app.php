@@ -9,7 +9,9 @@ use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
+use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
@@ -210,6 +212,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // platform root must stop existing the moment it has. See the middleware.
         $middleware->appendToGroup('web', PointAtFirstRun::class);
 
+        // SUPPORT IMPERSONATION IS READ-ONLY. Global rather than per-group, because a
+        // guard registered on a route group is a guard the next route group will not
+        // carry — and this one is deny-by-default: a new endpoint is refused because it
+        // is a write, not because somebody remembered to think about it.
+        $middleware->appendToGroup('web', ReadOnlyWhileImpersonating::class);
+
         // THE UI. Every web response that renders a page renders it through Inertia, so
         // the shared props — who is signed in, which brand this host wears, whether an
         // impersonation is live — are attached here rather than by each page.
@@ -228,6 +236,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.auth' => Authenticate::class,
             'platform.guest' => RedirectIfAuthenticated::class,
             'portal.session' => PortalSession::class,
+            // May this administrator CHANGE things here, as opposed to look at them.
+            // On a route rather than inside a page: sixty-odd Volt components had to
+            // remember to ask in boot() rather than mount(), and the ones that did not
+            // kept working for a downgraded administrator with an open tab.
+            'console.admin' => RequireConsoleAdmin::class,
             'sudo' => RequireSudo::class,
             // The environment plane's own step-up. A separate alias AND a separate
             // session key: a confirmation on one plane must never satisfy the other,

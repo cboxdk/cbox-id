@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { Brand } from '@/chrome/Brand';
 import { Toaster } from '@/chrome/Toaster';
@@ -16,10 +16,11 @@ import { Icon, TooltipProvider } from '@/ui';
  * lead them somewhere their session cannot go.
  */
 export default function PortalLayout({ children }: { children: ReactNode }) {
-    const { app } = usePage<SharedProps>().props;
+    const { app, title } = usePage<SharedProps>().props;
 
     return (
         <TooltipProvider>
+            <Head title={title} />
             <Toaster />
 
             <div className="min-h-full flex flex-col">

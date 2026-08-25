@@ -995,6 +995,15 @@
  * rules. It is now the --nav-active-fg token, set per theme with the other tokens, so
  * the value exists once and the cascade does not depend on layer ordering. */
 
+/* THE INERTIA ROOT.
+   `html` and `body` are `h-full`, and the app mounts into a div between them —
+   so without this the console shell computes 100% of a zero-height parent and
+   stops at the height of its content, leaving the rail and the second-tier
+   column floating above bare background on any page shorter than the viewport. */
+#app {
+    height: 100%;
+}
+
 /* ── Overlays, menus and form controls (Radix) ──────────────────────────────
    The primitives the Volt console drew with Alpine and inline styles: dialogs,
    menus, popovers, tooltips, switches, checkboxes, radios and the two select

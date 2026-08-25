@@ -43,9 +43,26 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
 
-    {{-- The server's best answer, refined by the page's own <Head> once React mounts.
-         `inertia` marks it so Inertia replaces rather than duplicates it. --}}
-    <title inertia>{{ ($title ?? null) ? $title.' · '.$appName : $appName }}</title>
+    {{--
+        THE TAB TITLE, SERVER-FIRST.
+
+        Not left to the page's own <Head>: that runs after the bundle parses, so the first
+        paint — and anything reading the document before hydration — would see the product
+        name alone on every page in the console. A person restoring twenty tabs would get
+        twenty identical ones.
+
+        `$section` is the word that distinguishes the whole install from one customer on
+        it: half the platform pages share a name with a page about the operator's OWN
+        organization ("Usage" is this install's traffic in one and one customer's bill in
+        the other), and the platform section used to have a shell that said so.
+
+        NO `data-inertia` MARKER on purpose. Inertia removes an unmarked `<title>` the
+        moment it renders one of its own, so this is the first-paint answer and the
+        client's is the one that survives — rather than two titles fighting, or this one
+        going stale on the first client-side navigation. The layouts render the same
+        string through `<Head>`; see resources/js/layouts.
+    --}}
+    <title>{{ collect([$title ?? null, $section ?? null, $appName])->filter()->implode(' · ') }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
 

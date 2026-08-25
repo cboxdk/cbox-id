@@ -116,7 +116,13 @@ it('offers every environment-console page somewhere in its rail', function (): v
 
     // Detail and create pages hang off a list that IS on the rail — a rail entry per
     // route would be a menu nobody could read. The list pages are what must be reachable.
+    //
+    // GET ONLY. A page is something you navigate to; a POST, PATCH or DELETE is an action
+    // performed on one, and it has no rail entry for the same reason `environment.open`
+    // below has none. That distinction used to be free, because every console mutation
+    // was a Livewire action on a shared endpoint and had no route name of its own.
     $unreachable = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($route): bool => in_array('GET', $route->methods(), true))
         ->map(fn ($route): ?string => $route->getName())
         ->filter(fn (?string $name): bool => is_string($name)
             && str_starts_with($name, 'environment.')

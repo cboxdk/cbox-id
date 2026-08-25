@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\Console\WebhookController;
 use App\Http\Controllers\Dev\DesignSystemController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
@@ -491,9 +492,25 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // form, and this plane gains resume, secret rotation, subscription editing and delete
     // with it — a tenant admin who paused an endpoint previously had no way to start it
     // again, and none at all to re-key one whose secret had leaked.
-    Volt::route('/webhooks', 'console.webhooks.index')->name('webhooks');
-    Volt::route('/webhooks/new', 'console.webhooks.create')->name('webhooks.create');
-    Volt::route('/webhooks/{webhook}', 'console.webhooks.show')->name('webhooks.show');
+    /*
+     * Webhooks — list, create, detail, and the five mutations the detail page offers.
+     *
+     * Each write is its OWN route now rather than an action on one component posted to a
+     * shared endpoint, which is what lets the console-wide guards — the impersonation
+     * read-only rule, the step-ups — be enforced by middleware instead of by every page
+     * remembering to ask. See {@see \App\Http\Controllers\Console\WebhookController}.
+     */
+    Route::middleware('console.admin')->group(function (): void {
+        Route::get('/webhooks', [WebhookController::class, 'index'])->name('webhooks');
+        Route::get('/webhooks/new', [WebhookController::class, 'create'])->name('webhooks.create');
+        Route::post('/webhooks', [WebhookController::class, 'store'])->name('webhooks.store');
+        Route::get('/webhooks/{webhook}', [WebhookController::class, 'show'])->name('webhooks.show');
+        Route::patch('/webhooks/{webhook}', [WebhookController::class, 'update'])->name('webhooks.update');
+        Route::post('/webhooks/{webhook}/pause', [WebhookController::class, 'pause'])->name('webhooks.pause');
+        Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('webhooks.resume');
+        Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('webhooks.rotate');
+        Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('webhooks.destroy');
+    });
     // Activity log: the SAME component the environment plane serves. The row scoping is
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
@@ -723,9 +740,17 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Webhooks — routable list → create → detail, on the merged component. The URLs
         // are unchanged so existing links and bookmarks still resolve; the route names
         // are what the two planes disagree on, and both are preserved.
-        Volt::route('/webhooks', 'console.webhooks.index')->name('environment.webhooks');
-        Volt::route('/webhooks/new', 'console.webhooks.create')->name('environment.webhooks.create');
-        Volt::route('/webhooks/{webhook}', 'console.webhooks.show')->name('environment.webhooks.show');
+        Route::middleware('console.admin')->group(function (): void {
+            Route::get('/webhooks', [WebhookController::class, 'index'])->name('environment.webhooks');
+            Route::get('/webhooks/new', [WebhookController::class, 'create'])->name('environment.webhooks.create');
+            Route::post('/webhooks', [WebhookController::class, 'store'])->name('environment.webhooks.store');
+            Route::get('/webhooks/{webhook}', [WebhookController::class, 'show'])->name('environment.webhooks.show');
+            Route::patch('/webhooks/{webhook}', [WebhookController::class, 'update'])->name('environment.webhooks.update');
+            Route::post('/webhooks/{webhook}/pause', [WebhookController::class, 'pause'])->name('environment.webhooks.pause');
+            Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('environment.webhooks.resume');
+            Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('environment.webhooks.rotate');
+            Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('environment.webhooks.destroy');
+        });
         // Inline hooks — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.

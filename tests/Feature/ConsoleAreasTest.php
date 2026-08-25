@@ -155,17 +155,57 @@ function assertNavEntryLabelsMatchTheirPages(array $entries, string $plane): int
             "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <title> disagree",
         );
 
-        // The h1 carries classes and whitespace, so match on its text rather than on
-        // a whole tag: this has to hold for a heading rendered by x-page-header and
-        // for one a page still writes itself.
-        expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
-            "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <h1> disagree",
-        );
+        // …AND THE HEADING ON THE PAGE.
+        //
+        // Two ways to ask, because the console has two kinds of page while the port runs.
+        //
+        // An INERTIA page renders its heading in the browser, so there is no <h1> in the
+        // response to read. What there is instead is the controller's own statement of
+        // what the page is called, in `data-page` — and that is the STRONGER thing to
+        // assert, because `<PageHeader>` takes its heading from that same prop: the tab
+        // title and the heading cannot disagree by construction, which is the drift this
+        // whole test exists to catch.
+        //
+        // A VOLT page still writes its own <h1>, so that half is scanned as before. It
+        // goes when the last of them does.
+        $inertiaTitle = inertiaPageTitle($html);
+
+        if ($inertiaTitle !== null) {
+            expect($inertiaTitle)->toBe(
+                $pageLabel,
+                "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the page's stated title disagree",
+            );
+        } else {
+            // The h1 carries classes and whitespace, so match on its text rather than on
+            // a whole tag.
+            expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+                "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <h1> disagree",
+            );
+        }
 
         $checked++;
     }
 
     return $checked;
+}
+
+/**
+ * The `title` prop of an Inertia page, or null when the response is not one.
+ *
+ * `@inertia` writes the whole page object into a `<script type="application/json">` data
+ * block beside the mount point — so reading it back is exactly what the client does, and
+ * it is the only way to see what a page rendered in the browser was actually handed.
+ */
+function inertiaPageTitle(string $html): ?string
+{
+    if (preg_match('/<script data-page="[^"]*" type="application\/json">(.*?)<\/script>/s', $html, $matches) !== 1) {
+        return null;
+    }
+
+    $page = json_decode($matches[1], true);
+    $title = is_array($page) ? ($page['props']['title'] ?? null) : null;
+
+    return is_string($title) ? $title : null;
 }
 
 /**

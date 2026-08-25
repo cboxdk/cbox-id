@@ -14,8 +14,13 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Baseline security headers for an identity console. The CSP is strict — no inline and
  * no remote scripts — which the app can afford because its whole client is one Vite
- * bundle served same-origin, and Inertia hands a page its props in a `data-page`
- * attribute rather than in an inline script tag.
+ * bundle served same-origin.
+ *
+ * Inertia writes a page's props into a `<script type="application/json">` beside the
+ * mount point, and that is compatible with `script-src 'self'` rather than an exception
+ * to it: a script element whose type is not a JavaScript type is never prepared for
+ * execution, so the policy is never consulted for it. It is a data block that happens to
+ * be spelled as a tag. Verified in a browser against this policy, not assumed.
  *
  * The one exception is the Vite DEV SERVER, which lives on its own origin and cannot be
  * bundled by definition. See {@see self::viteDevOrigin()}: it is admitted only when this

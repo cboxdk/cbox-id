@@ -35,6 +35,11 @@ final class ConsoleRoutes
      * @param  string  $uri  the organization plane's path
      * @param  string  $name  the organization plane's route name; the environment plane's
      *                        is that with an `environment.` prefix
+     * @param  string|class-string  $component  the page. A CONTROLLER CLASS renders it
+     *                                          through Inertia; a dotted string is a Volt
+     *                                          component, which is how the pages that
+     *                                          have not been ported yet still route. The
+     *                                          second form goes when the last of them does.
      * @param  string|null  $environmentUri  the environment plane's path under `/admin`,
      *                                       when the two planes spell it differently (as
      *                                       the merged core capabilities do — `/connections`
@@ -69,7 +74,7 @@ final class ConsoleRoutes
             'env.admin',
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($environmentUri, $uri, $component, $name): void {
-            Volt::route($environmentUri ?? $uri, $component)->name('environment.'.$name);
+            self::get($environmentUri ?? $uri, $component)->name('environment.'.$name);
         });
     }
 
@@ -96,7 +101,23 @@ final class ConsoleRoutes
             'platform.auth',
             'console.feature:'.$feature,
         ])->group(function () use ($uri, $component, $name): void {
-            Volt::route($uri, $component)->name($name);
+            self::get($uri, $component)->name($name);
         });
+    }
+
+    /**
+     * Register the GET, whichever kind of page this is.
+     *
+     * TRANSITIONAL, and the only place in the app that has to know both kinds exist. A
+     * console page is a controller; the Volt branch is here so the pages still waiting to
+     * be ported keep routing through the same middleware stacks as the ported ones —
+     * which is what lets the move happen page by page with the suite green the whole way
+     * rather than only at the ends. It goes when the last Volt component does.
+     */
+    private static function get(string $uri, string $component): \Illuminate\Routing\Route
+    {
+        return class_exists($component)
+            ? Route::get($uri, $component)
+            : Volt::route($uri, $component);
     }
 }

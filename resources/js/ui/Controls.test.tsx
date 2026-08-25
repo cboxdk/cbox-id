@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { setPageProps } from '@/test/page';
 import { Checkbox } from './Checkbox';
 import { Combobox } from './Combobox';
 import { ConfirmDelete } from './ConfirmDelete';
@@ -260,7 +261,6 @@ describe('ConfirmDelete', () => {
                 open={open}
                 onOpenChange={setOpen}
                 name="prod-webhook"
-                environment="production"
                 onConfirm={onConfirm}
             />
         );
@@ -292,10 +292,15 @@ describe('ConfirmDelete', () => {
         expect(onConfirm).not.toHaveBeenCalled();
     });
 
-    it('names the environment, because two tabs otherwise look identical', () => {
+    it('names the environment from the shared props, not from a per-page argument', () => {
+        // The failure being designed against is staging and production open in two
+        // visually identical tabs. The line comes from the page every request already
+        // carries, so no page can forget to pass it.
+        setPageProps({ environment: { name: 'staging', type: 'sandbox', sandbox: true } });
+
         render(<Harness onConfirm={vi.fn<() => void>()} />);
 
-        expect(screen.getByText('production')).toBeInTheDocument();
+        expect(screen.getByText('staging')).toBeInTheDocument();
     });
 
     it('has no accessibility violations', async () => {

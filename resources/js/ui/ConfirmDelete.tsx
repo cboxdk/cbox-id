@@ -1,4 +1,6 @@
+import { usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
+import type { SharedProps } from '@/types';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { Field } from './Field';
@@ -15,9 +17,13 @@ export interface ConfirmDeleteProps {
     /**
      * WHICH ENVIRONMENT this is happening in, named in the dialog.
      *
-     * The failure being designed against is an administrator with staging and production
-     * open in two visually identical tabs. Without this line the dialog is identical in
-     * both, and the only thing distinguishing them is a browser tab title.
+     * TAKEN FROM THE SHARED PROPS BY DEFAULT, and that is the point of it being here
+     * rather than a per-page argument: the failure being designed against is an
+     * administrator with staging and production open in two visually identical tabs, and
+     * a line that each page has to remember to pass is a line some page will not pass.
+     *
+     * Override it only for a dialog about something in a DIFFERENT environment than the
+     * one this request is acting in.
      */
     environment?: string | null;
     confirming?: boolean;
@@ -60,6 +66,9 @@ function Confirmation({
     confirming = false,
     onConfirm,
 }: Omit<ConfirmDeleteProps, 'open'>) {
+    const shared = usePage<SharedProps>().props.environment;
+    const realm = environment === undefined ? shared.name : environment;
+
     const [typed, setTyped] = useState('');
     const matches = typed === name;
 
@@ -90,7 +99,7 @@ function Confirmation({
                 </>
             }
         >
-            {environment != null && environment !== '' && (
+            {realm != null && realm !== '' && (
                 <p
                     style={{
                         margin: '0 0 12px',
@@ -99,7 +108,7 @@ function Confirmation({
                     }}
                 >
                     In environment{' '}
-                    <strong style={{ color: 'var(--foreground)' }}>{environment}</strong>.
+                    <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
                 </p>
             )}
 
