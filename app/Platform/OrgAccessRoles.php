@@ -46,6 +46,39 @@ final class OrgAccessRoles
     }
 
     /**
+     * The roles that may be granted EVERYWHERE in this environment: environment-wide,
+     * belonging to no app, not orphaned. Ordered by name.
+     *
+     * @return Collection<int, Role>
+     */
+    public function grantableEverywhere(): Collection
+    {
+        return Role::query()
+            ->whereNull('organization_id')
+            ->whereNull('client_id')
+            ->whereNull('orphaned_at')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Whether ONE role may be granted everywhere.
+     *
+     * Asked as its own query rather than by searching the collection above: the write
+     * path must not depend on what a page happened to render, which is the difference
+     * between a control being hidden and an action being refused.
+     */
+    public function isGrantableEverywhere(string $roleId): bool
+    {
+        return Role::query()
+            ->whereKey($roleId)
+            ->whereNull('organization_id')
+            ->whereNull('client_id')
+            ->whereNull('orphaned_at')
+            ->exists();
+    }
+
+    /**
      * clientId => app name, for the app-declared roles among $roles (so the picker can
      * group "Org roles" vs each app's own roles).
      *

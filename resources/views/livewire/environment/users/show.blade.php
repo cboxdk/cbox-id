@@ -491,6 +491,43 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
         }
     }
 
+    /**
+     * Grant or revoke a role EVERYWHERE in this environment.
+     *
+     * The one grant that needs no organization, and the reason it exists: a support agent
+     * who acts across every customer, somebody who has joined no organization, and any
+     * app with no tenancy of its own to hang a grant on. Before this the only way to give
+     * such a person anything was to invent a membership for them.
+     *
+     * Deliberately NOT routed through {@see GrantAccessRole}, which is org-scoped by
+     * construction — segregation of duties refuses a toxic PAIR within an organization,
+     * and this grant belongs to none. It is still visible to that check: the framework's
+     * `assignmentsForSubject()` unions environment-wide grants into what a person holds
+     * in every organization, so the next org-scoped grant that would form a pair with
+     * this one is refused there, where the pair actually exists.
+     */
+    public function toggleEnvironmentRole(string $roleId, Roles $roles, OrgAccessRoles $catalog): void
+    {
+        $user = $this->user();
+
+        // Only an environment-wide role — no organization, no declaring app. The
+        // framework refuses anything else outright; asking here as well means the button
+        // is never drawn for a role that would be rejected.
+        if (! $catalog->isGrantableEverywhere($roleId)) {
+            return;
+        }
+
+        if (in_array($roleId, $roles->everywhereFor($user->id), true)) {
+            $roles->unassignEverywhere($user->id, $roleId);
+            $this->dispatch('toast', message: 'Role removed everywhere.');
+
+            return;
+        }
+
+        $roles->assignEverywhere($user->id, $roleId);
+        $this->dispatch('toast', message: 'Role granted in every organization.');
+    }
+
     public function removeMembership(string $orgId, Memberships $memberships): void
     {
         $user = $this->user();
@@ -554,6 +591,11 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             // shown once and never dehydrated into the DOM snapshot.
             'issuedPassword' => $this->issuedPassword,
             'requiresPasswordChange' => app(AdminPasswords::class)->requiresChange($user->id),
+            // Granted with no organization at all — the case an org-scoped grant cannot
+            // describe. Read here so the page can say what a person holds everywhere
+            // even when they belong to no organization, which is exactly when it matters.
+            'everywhereRoles' => $catalog->grantableEverywhere(),
+            'heldEverywhere' => app(Roles::class)->everywhereFor($user->id),
             'allOrgs' => $joinableOrgs,
             'orgNames' => $orgNames,
             'memberships' => $rows,
@@ -843,10 +885,42 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
                 <div class="cbx-empty">
                     <div class="cbx-empty-icon"><x-icon name="layers" class="w-5 h-5" /></div>
                     <h3>Not a member of any organization</h3>
-                    <p>Add this user to an organization below to grant them access to its apps.</p>
+                    <p>
+                        Add them to one below to grant access inside it — or, if your apps
+                        have no tenancy of their own, give them a role that applies
+                        everywhere in this environment.
+                    </p>
                 </div>
             @endforelse
         </div>
+        {{-- GRANTS THAT NAME NO ORGANIZATION. Every grant above is scoped to one tenant,
+             which cannot describe a support agent acting across all of them, somebody who
+             has joined none, or an app with no tenancy of its own. Those people used to
+             get a token with no roles and no permissions and there was no way to give
+             them any. --}}
+        @if ($everywhereRoles->isNotEmpty())
+            <div class="mt-4 rounded-lg border p-3" style="border-color:var(--border)">
+                <p class="text-sm font-medium">Roles everywhere in this environment</p>
+                <p class="mt-1 text-xs" style="color:var(--muted)">
+                    Applied in <b>every</b> organization, and to this person even when they
+                    belong to none. Only roles you defined for the whole environment can be
+                    granted this way — one organization's own role is their policy, not
+                    everyone's.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                    @foreach ($everywhereRoles as $envRole)
+                        @php $isHeld = in_array($envRole->id, $heldEverywhere, true); @endphp
+                        <button type="button" wire:key="envrole-{{ $envRole->id }}"
+                                wire:click="toggleEnvironmentRole('{{ $envRole->id }}')"
+                                class="btn btn-sm {{ $isHeld ? 'btn-primary' : 'btn-ghost' }}"
+                                aria-pressed="{{ $isHeld ? 'true' : 'false' }}">
+                            {{ $envRole->name }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <form wire:submit="assignOrg" class="mt-4 space-y-3">
             <div class="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-start">
                 <div>

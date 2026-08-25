@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
+use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
@@ -402,3 +403,74 @@ it('offers only live organizations in the add-to-organization picker', function 
 
     expect($html)->toContain('Still Here')->not->toContain('Gone Ltd');
 });
+
+/**
+ * The grant that names no organization — the case an org-scoped one cannot describe.
+ *
+ * A support agent acting across every customer, somebody who has joined no organization,
+ * and any app with no tenancy of its own each used to get a token carrying no roles and
+ * no permissions, with no way to give them any short of inventing a membership.
+ */
+it('grants a role everywhere from the user page, with no membership involved', function (): void {
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    $subjectId = app(Subjects::class)->create('agent@acme.example', 'Agent', 'the-original-passphrase')->id;
+    $support = app(Roles::class)->define(null, 'Support');
+
+    Volt::test('environment.users.show', ['user' => $subjectId])
+        ->call('toggleEnvironmentRole', $support->id);
+
+    expect(app(Roles::class)->everywhereFor($subjectId))->toBe([$support->id]);
+
+    // It reaches a token in an organization the person is not a member of — which is the
+    // whole claim, and the thing an org-scoped grant cannot do.
+    expect(app(AccessChecker::class)->forToken($subjectId, $result->organization->id, 'cid_any')->roles)
+        ->toBe(['Support']);
+
+    // Toggling again takes it back everywhere at once.
+    Volt::test('environment.users.show', ['user' => $subjectId])
+        ->call('toggleEnvironmentRole', $support->id);
+
+    expect(app(Roles::class)->everywhereFor($subjectId))->toBe([]);
+});
+
+/**
+ * @group security
+ *
+ * And one organization's own role may not be handed to everybody. It is that tenant's
+ * policy, named by them; granting it across the environment would give every other tenant
+ * a role they did not define and cannot see.
+ */
+it('refuses to grant one organization’s role everywhere from the page', function (): void {
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner2@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    $subjectId = app(Subjects::class)->create('agent2@acme.example', 'Agent', 'the-original-passphrase')->id;
+    $theirs = app(Roles::class)->define($result->organization->id, 'Billing admin');
+
+    // Called directly, because the button is never drawn for it — and a control that is
+    // merely unrendered is not a control that is enforced.
+    Volt::test('environment.users.show', ['user' => $subjectId])
+        ->call('toggleEnvironmentRole', $theirs->id);
+
+    expect(app(Roles::class)->everywhereFor($subjectId))->toBe([]);
+})->group('security');

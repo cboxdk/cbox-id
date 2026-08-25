@@ -6,7 +6,6 @@ namespace App\Platform;
 
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Role;
-use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Governance\Models\SodPolicy;
 
@@ -37,10 +36,10 @@ final class SodGuard
             return null;
         }
 
-        $held = array_map(
-            static fn (RoleAssignment $assignment): string => $assignment->role_id,
-            $this->roles->assignmentsForSubject($organizationId, $userId),
-        );
+        // Already role ids, and already including anything held ENVIRONMENT-WIDE — so a
+        // toxic pair formed across an organization grant and a global one is described
+        // here rather than being the one combination this cannot see.
+        $held = $this->roles->assignmentsForSubject($organizationId, $userId);
 
         return $this->describe($organizationId, $roleId, $held);
     }
