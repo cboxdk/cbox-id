@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\Dev\DesignSystemController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
@@ -75,6 +76,25 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
             ->name('frontend.sign-in.passkey');
     });
+}
+
+/*
+ * THE DESIGN SYSTEM GALLERY. Every primitive the console is built from, drawn on one
+ * page in both themes and at every breakpoint.
+ *
+ * It is registered ONLY on a local install, and that is the whole of its access control
+ * — there is nothing here to authorize, because there is nothing here but the components
+ * themselves rendering static sample data. `local` is a claim a developer's machine makes
+ * about itself and a built image never does; DesignSystemRouteTest holds that the route
+ * is absent in every other environment, so this cannot become a door by accident.
+ *
+ * `web` only — no plane gate, no auth. It has no session to read and nothing to leak, and
+ * gating it on a plane would 404 it on exactly the host somebody is developing against.
+ */
+if (app()->environment('local')) {
+    Route::middleware('web')
+        ->get('/dev/design-system', DesignSystemController::class)
+        ->name('dev.design-system');
 }
 
 /*
