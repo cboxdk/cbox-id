@@ -73,7 +73,7 @@ final class Impersonation
      * operator's currently-pinned plane) and captured a justification $reason —
      * impersonation is privileged access, so why it happened is recorded up front.
      */
-    public function start(Request $request, string $operatorId, string $subjectId, string $orgId, string $reason): void
+    public function start(Request $request, string $operatorId, string $subjectId, ?string $orgId, string $reason): void
     {
         // The step-up does not travel across an impersonation boundary in either
         // direction. Entering, the confirmation belongs to the operator and not to the
@@ -129,7 +129,7 @@ final class Impersonation
      * principal is recorded as an {@see ActorType::OrganizationMember}. That binding is what
      * gets restored on exit.
      */
-    public function startAsMembership(Request $request, string $actorSubjectId, string $subjectId, string $orgId, string $reason): void
+    public function startAsMembership(Request $request, string $actorSubjectId, string $subjectId, ?string $orgId, string $reason): void
     {
         // The step-up does not travel across an impersonation boundary in either
         // direction. Entering, the confirmation belongs to the operator and not to the

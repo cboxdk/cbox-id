@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Impersonation;
 use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
@@ -540,3 +541,73 @@ it('says so when a user is created with no way to sign in', function (): void {
 
     Mail::assertNothingSent();
 });
+
+/**
+ * @group security
+ *
+ * Support does not require a tenancy the product does not have.
+ *
+ * Impersonation offered a picker of the user's organizations and, when they had none,
+ * told the administrator to add them to one — in an environment that may not use
+ * organizations at all, which is exactly where a support user still needs help. Nothing
+ * in the mechanism needed it: a session can be minted with no organization, and an audit
+ * event with none files on the environment's own chain.
+ */
+it('impersonates a user who belongs to no organization', function (): void {
+    // `/admin` exists only on a multi-tenant deployment; without this the POST 404s on
+    // route middleware rather than reaching the controller.
+    multiTenantDeployment();
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner-imp@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    $subjectId = app(Subjects::class)->create('lonely@acme.example', 'Lonely', 'the-original-passphrase')->id;
+
+    // The control is offered rather than replaced by an instruction to invent a tenancy.
+    expect(Volt::test('environment.users.show', ['user' => $subjectId])->html())
+        ->toContain('Signed in as themselves, in no organization');
+
+    $this->post(route('environment.impersonate', $subjectId), ['reason' => 'Cannot open reports'])
+        ->assertRedirect();
+
+    expect(session()->get(Impersonation::SESSION_KEY))->not->toBeNull();
+})->group('security');
+
+/**
+ * @group security
+ *
+ * And omitting the organization is not the way around the rule that protects owners.
+ * Without an organization named there is no membership to inspect, so the refusal has to
+ * ask a different question: does this person administer ANYTHING here.
+ */
+it('refuses to impersonate an owner even with no organization named', function (): void {
+    multiTenantDeployment();
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner-imp2@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    $victim = app(Subjects::class)->create('boss@acme.example', 'Boss', 'the-original-passphrase')->id;
+    $org = app(Organizations::class)->create(new NewOrganization('Their Co', 'their-co'));
+    app(Memberships::class)->add($org->id, $victim, MembershipRole::Owner);
+
+    $this->post(route('environment.impersonate', $victim), ['reason' => 'Trying it on'])
+        ->assertForbidden();
+
+    expect(session()->get(Impersonation::SESSION_KEY))->toBeNull();
+})->group('security');

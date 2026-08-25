@@ -27,7 +27,7 @@ final readonly class ImpersonationMarker
         public ActorType $actorType,
         public string $operator,
         public string $subject,
-        public string $organizationId,
+        public ?string $organizationId,
         public ?string $environmentKey,
         public ?string $reason,
         public int $startedAt,
@@ -48,7 +48,7 @@ final readonly class ImpersonationMarker
      * directions here keeps {@see Impersonation::start()} from hand-writing a literal
      * that must stay in sync with the reader.
      *
-     * @return array{actor_type: string, operator: string, subject: string, org: string, env: string|null, reason: string|null, started_at: int, suspended: array{subject_session: string|null}}
+     * @return array{actor_type: string, operator: string, subject: string, org: string|null, env: string|null, reason: string|null, started_at: int, suspended: array{subject_session: string|null}}
      */
     public function toSession(): array
     {

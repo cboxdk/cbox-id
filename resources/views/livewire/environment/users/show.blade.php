@@ -603,6 +603,10 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
             'assignableForNewOrg' => $this->assignOrgId !== '' ? $catalog->assignable($this->assignOrgId) : collect(),
             'assignableForNewOrgApps' => $this->assignOrgId !== '' ? $catalog->appNames($catalog->assignable($this->assignOrgId)) : [],
             'impersonatableOrgs' => $impersonatable,
+            // Offered unless the person owns or administers something. A user with no
+            // membership at all is impersonatable — the session simply names no
+            // organization, which is what their own sign-in does too.
+            'canImpersonate' => $rows === [] || $impersonatable !== [],
             'assignableRoles' => OrgRoles::assignable(),
             'hasMfa' => app(Mfa::class)->hasConfirmedTotp($user->id),
             'sessions' => Session::query()
@@ -951,20 +955,29 @@ new #[Layout('components.layouts.environment', ['title' => 'User'])] class exten
     {{-- Support impersonation (full request — changes the session) --}}
     <div class="rounded-xl border p-5" style="border-color:var(--border)">
         <h2 class="cbx-section-title">Support impersonation</h2>
-        @if ($impersonatableOrgs !== [])
+        {{-- NO MEMBERSHIP REQUIRED. This offered a picker of the user's organizations and,
+             when they had none, told the administrator to invent one — in an environment
+             that may not use organizations at all, which is where support is needed just
+             as much. Without one the session simply names no organization, exactly as an
+             ordinary sign-in by that person would. --}}
+        @if ($canImpersonate)
             <form method="POST" action="{{ route('environment.impersonate', $user->id) }}" class="mt-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-start">
                 @csrf
-                <select name="organization" class="select" required aria-label="Organization">
-                    @foreach ($impersonatableOrgs as $io)
-                        <option value="{{ $io['org'] }}">{{ $io['orgName'] }}</option>
-                    @endforeach
-                </select>
+                @if ($impersonatableOrgs !== [])
+                    <select name="organization" class="select" required aria-label="Organization">
+                        @foreach ($impersonatableOrgs as $io)
+                            <option value="{{ $io['org'] }}">{{ $io['orgName'] }}</option>
+                        @endforeach
+                    </select>
+                @else
+                    <p class="text-sm self-center" style="color:var(--muted)">Signed in as themselves, in no organization.</p>
+                @endif
                 <input name="reason" type="text" class="input" placeholder="Reason (required)" maxlength="200" required aria-label="Reason">
                 <button type="submit" class="btn btn-ghost btn-sm shrink-0" x-on:click="if (! window.confirm('Step into this user\'s session for support? It is time-boxed and fully audited.')) $event.preventDefault()">Impersonate</button>
             </form>
             <p class="mt-2 text-xs" style="color:var(--faint)">Time-boxed to 30 minutes and recorded on the audit trail.</p>
         @else
-            <p class="mt-2 text-sm" style="color:var(--muted)">Add the user to an organization as a member to enable support impersonation (owners and admins can't be impersonated).</p>
+            <p class="mt-2 text-sm" style="color:var(--muted)">This user owns or administers an organization, and those cannot be impersonated — stepping into one would hand durable control of a tenant to whoever did it.</p>
         @endif
     </div>
 </div>

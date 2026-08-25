@@ -8,6 +8,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
 use App\Platform\PlaneResolver;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,7 +74,7 @@ final class ImpersonationController extends Controller
      * this environment resolves to null → 403. Owners/admins are refused, and a
      * justification is mandatory, exactly as for operator impersonation.
      */
-    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes): RedirectResponse
+    public function startAsEnvAdmin(Request $request, string $user, EnvironmentAdminAuth $auth, Memberships $memberships, Impersonation $impersonation, PlaneResolver $planes, Subjects $subjects): RedirectResponse
     {
         // The acting administrator's SUBJECT id, not their membership's row id. The marker
         // records who is impersonating, and on exit that identity is resolved back into a
@@ -82,15 +83,33 @@ final class ImpersonationController extends Controller
         $actorSubjectId = $auth->subjectId();
         abort_if($actorSubjectId === null, 403);
 
+        // AN ORGANIZATION IS NOT REQUIRED, because a subject need not have one. An
+        // environment that does not use organizations has support users like any other,
+        // and demanding a membership here meant the only way to help one of them was to
+        // invent a tenancy for them. What authorizes this is that the SUBJECT belongs to
+        // the environment this administrator administers — the route's env-admin group
+        // has already established the second half, and `Subjects` is environment-scoped,
+        // so a subject from elsewhere resolves to null.
         $orgId = $request->string('organization')->toString();
-        abort_if($orgId === '', 403);
+        $orgId = $orgId === '' ? null : $orgId;
 
-        $membership = $memberships->of($orgId, $user);
-        abort_if($membership === null, 403);
+        if ($orgId !== null) {
+            $membership = $memberships->of($orgId, $user);
+            abort_if($membership === null, 403);
 
-        // Never step into an owner/admin — that would hand durable tenant control to
-        // the account member (defense-in-depth on top of the read-only screen).
-        abort_if($membership->role->canManageOrganization(), 403);
+            // Never step into an owner/admin — that would hand durable tenant control to
+            // the account member (defense-in-depth on top of the read-only screen).
+            abort_if($membership->role->canManageOrganization(), 403);
+        } else {
+            // The same refusal, asked of a person who holds no membership anywhere: an
+            // owner or admin of ANY organization in this environment is off limits, so
+            // omitting the organization cannot become the way around that rule.
+            abort_if($subjects->find($user) === null, 403);
+
+            foreach ($memberships->forUser($user) as $held) {
+                abort_if($held->role->canManageOrganization(), 403);
+            }
+        }
 
         $request->validate(['reason' => ['required', 'string', 'max:200']]);
 
