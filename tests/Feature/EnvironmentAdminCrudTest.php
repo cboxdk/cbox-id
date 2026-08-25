@@ -749,3 +749,41 @@ it('says where directory groups come from before any have arrived', function ():
         // The remedy names where the work happens, which is not here.
         ->toContain('SCIM');
 });
+
+/**
+ * @group security
+ *
+ * Single sign-on for an environment that does not use organizations.
+ *
+ * The create form required an organization, so the flagship capability of an identity
+ * provider was unavailable to any environment with no tenancy of its own — the only way
+ * to have it was to invent a tenant the product has no other use for.
+ */
+it('creates an SSO connection the environment owns', function (): void {
+    crudSetup();
+
+    // The create path completes the endpoints from the issuer's discovery document
+    // (SSRF-guarded), so the connection is not left half-configured.
+    config(['cbox-id.federation.verify_url' => false]);
+    Http::fake(['idp.corp/.well-known/openid-configuration' => Http::response([
+        'issuer' => 'https://idp.corp',
+        'authorization_endpoint' => 'https://idp.corp/oauth2/authorize',
+        'token_endpoint' => 'https://idp.corp/oauth2/token',
+        'jwks_uri' => 'https://idp.corp/oauth2/keys',
+    ])]);
+
+    Volt::test('console.connections.create')
+        ->set('environmentWide', true)
+        ->set('type', 'oidc')
+        ->set('name', 'Corporate Okta')
+        ->set('issuer', 'https://idp.corp')
+        ->set('client_id', 'abc')
+        ->set('client_secret', 'shh')
+        ->set('signing_key', 'a-signing-key')
+        ->call('create')
+        ->assertHasNoErrors();
+
+    $connection = Connection::query()->where('name', 'Corporate Okta')->firstOrFail();
+
+    expect($connection->organization_id)->toBeNull();
+})->group('security');

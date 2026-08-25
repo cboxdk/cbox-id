@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "745203c3dd6d9c4fe0b047e239144127",
+    "content-hash": "498445d51caf4431097fb15214b24ca3",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -493,16 +493,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v1.17.0",
+            "version": "v1.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "52bd4dc0bb867787a554c9a43da3f96a637b3093"
+                "reference": "1a56b271051d3cd0678e41dc17e6b3a9baed65d6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/52bd4dc0bb867787a554c9a43da3f96a637b3093",
-                "reference": "52bd4dc0bb867787a554c9a43da3f96a637b3093",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/1a56b271051d3cd0678e41dc17e6b3a9baed65d6",
+                "reference": "1a56b271051d3cd0678e41dc17e6b3a9baed65d6",
                 "shasum": ""
             },
             "require": {
@@ -564,9 +564,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v1.17.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.18.0"
             },
-            "time": "2026-08-25T07:57:26+00:00"
+            "time": "2026-08-25T13:41:50+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",

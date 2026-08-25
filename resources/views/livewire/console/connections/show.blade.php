@@ -307,6 +307,16 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
     {
         $model = $this->guardEntitled();
 
+        // AN ORGANIZATION'S POLICY, and an environment-owned connection belongs to none.
+        // The equivalent for the environment is its own sign-in rules, which are set on
+        // their own page — writing them from here would let a control labelled "require
+        // SSO for this organization" quietly change the rule for every tenant too.
+        if ($model->organization_id === null) {
+            $this->dispatch('toast', severity: 'error', message: 'This connection belongs to the environment, not to one organization. Set the requirement under Sign-in rules.');
+
+            return;
+        }
+
         $current = $policies->overrideFor($model->organization_id) ?? $policies->forEnvironment();
 
         $policies->setForOrganization($model->organization_id, new AuthPolicy(
@@ -383,7 +393,7 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
             // Gated on BOTH planes, which the environment copy was not. Asked of the
             // connection's own organization for the same reason the write gate is —
             // see guardEntitled().
-            'entitled' => app(Entitlements::class)->entitled($model->organization_id, 'sso'),
+            'entitled' => $this->entitledFor($model),
         ];
     }
 
@@ -399,11 +409,28 @@ new #[Layout('components.layouts.console', ['title' => 'SSO connection'])] class
      * gate against a blank selection would refuse a legitimate edit while telling nobody
      * why. On the organization plane the two are the same organization by construction.
      */
+    /**
+     * Whether this connection's owner may use single sign-on.
+     *
+     * An entitlement belongs to an organization, and a connection owned by the
+     * ENVIRONMENT has none — the question has no tenant to ask. It is the environment's
+     * own capability, administered by whoever administers the environment, so there is
+     * nobody to withhold it from and nothing to check.
+     */
+    private function entitledFor(Connection $model): bool
+    {
+        if ($model->organization_id === null) {
+            return true;
+        }
+
+        return app(Entitlements::class)->entitled($model->organization_id, 'sso');
+    }
+
     private function guardEntitled(): Connection
     {
         $model = $this->connection();
 
-        if (! app(Entitlements::class)->entitled($model->organization_id, 'sso')) {
+        if (! $this->entitledFor($model)) {
             throw new AuthorizationException('This organization does not have access to that feature.');
         }
 

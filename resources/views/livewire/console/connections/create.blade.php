@@ -51,6 +51,9 @@ new #[Layout('components.layouts.console', ['title' => 'New connection'])] class
     #[Validate('required|string|max:120')]
     public string $name = '';
 
+    /** Owned by the environment rather than by one organization. */
+    public bool $environmentWide = false;
+
     /** Pasted IdP metadata XML, or a metadata URL — one-shot prefill for the SAML fields. */
     public string $metadataInput = '';
 
@@ -110,12 +113,38 @@ new #[Layout('components.layouts.console', ['title' => 'New connection'])] class
         $this->dispatch('toast', message: 'Metadata imported — review the fields and create the connection.');
     }
 
+    /**
+     * Whose sign-in this is: one organization's, or the environment's own.
+     *
+     * An environment-owned connection signs people in and enrols them nowhere — for an
+     * environment that does not use organizations, which until now could not have single
+     * sign-on at all and had to invent a tenancy to get it.
+     *
+     * A tenant administrator may never mint one, and "the checkbox is not rendered for
+     * them" is not the guard: the property is client-settable. Same shape as the
+     * environment-wide branch on provisioning and app registration.
+     *
+     * @throws AuthorizationException when no organization is resolved
+     */
+    private function targetOrganizationId(): ?string
+    {
+        $scope = app(ConsoleScope::class);
+
+        if (! $this->environmentWide) {
+            return $scope->requireOrganizationId();
+        }
+
+        abort_unless($scope->plane() === ConsolePlane::Environment, 403);
+
+        return null;
+    }
+
     public function create(Connections $connections): mixed
     {
         $scope = app(ConsoleScope::class);
 
         try {
-            $organizationId = $scope->requireOrganizationId();
+            $organizationId = $this->targetOrganizationId();
         } catch (AuthorizationException $e) {
             // Reported on the name field rather than thrown: on the environment plane
             // "you have not picked an organization yet" is an ordinary state of the
@@ -128,7 +157,16 @@ new #[Layout('components.layouts.console', ['title' => 'New connection'])] class
         // Deny-by-default entitlement gate, which the environment plane never had. It
         // runs before the write and after the organization is resolved, because the
         // entitlement is that organization's.
-        $scope->assertEntitled('sso');
+        //
+        // AND ONLY WHEN THERE IS ONE. An entitlement belongs to an organization, and
+        // `entitled()` answers false when none is resolved — so asserting it here would
+        // have refused the environment-owned connection this method was just taught to
+        // make, on the grounds that a tenant which does not exist lacks a feature. The
+        // environment's own capability is administered by whoever administers the
+        // environment; there is nobody to withhold it from.
+        if ($organizationId !== null) {
+            $scope->assertEntitled('sso');
+        }
         $scope->assertMayAdminister();
 
         if ($scope->plane() === ConsolePlane::Organization) {
@@ -199,7 +237,12 @@ new #[Layout('components.layouts.console', ['title' => 'New connection'])] class
             'scopeRoute' => fn (string $name): string => app(ConsoleScope::class)->routeName($name),
             // "No organization chosen" is a real state on the environment plane and must
             // not be reported as "not entitled" — entitled() answers false either way.
-            'needsOrganization' => $scope->organizationId() === null,
+            // An environment administrator may own a connection for the environment
+            // itself; a tenant administrator has exactly one organization and no choice.
+            'mayScopeEnvironmentWide' => $scope->plane()->choosesOrganization(),
+            // …and with that available, "pick an organization first" is no longer the
+            // only way forward: it applies when the connection is being made FOR one.
+            'needsOrganization' => $scope->organizationId() === null && ! $this->environmentWide,
             'entitled' => $scope->entitled('sso'),
         ];
     }
@@ -233,6 +276,19 @@ new #[Layout('components.layouts.console', ['title' => 'New connection'])] class
         </div>
     @else
     <form wire:submit="create" class="mt-6 max-w-2xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
+        @if ($mayScopeEnvironmentWide)
+            {{-- An environment that does not use organizations still has people to sign
+                 in, and single sign-on is what they are most likely to want. A connection
+                 owned by the environment signs them in and enrols them nowhere. --}}
+            <label class="flex items-start gap-2" for="environmentWide">
+                <input wire:model="environmentWide" id="environmentWide" type="checkbox" class="mt-1">
+                <span>
+                    <span class="label">For the whole environment</span>
+                    <span class="block text-xs" style="color:var(--faint)">Anyone signing in through it becomes a user of this environment and joins no organization. Use this when your product has no tenants of its own.</span>
+                </span>
+            </label>
+        @endif
+
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <label class="label" for="name">Connection name</label>

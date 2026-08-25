@@ -21,6 +21,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 
 /** Entitle an org for a self-serve feature ('cbox-id-sso' | 'cbox-id-scim'). */
@@ -558,3 +559,38 @@ it('gives the consent screen a human phrase for every catalog scope', function (
     // app's own word and there is nothing truer to say about it.
     expect($labels)->not->toHaveKey('tax.data');
 });
+
+/**
+ * @group security
+ *
+ * A tenant administrator may not mint a connection the whole environment signs in
+ * through. The checkbox is not rendered for them, which is not the guard — the property
+ * is client-settable, so the write asks again.
+ *
+ * Discovery is faked here deliberately: without it the OIDC branch fails to read the
+ * provider's configuration and refuses for that reason instead, and the test would pass
+ * with the plane guard deleted. It did, until this line was added.
+ */
+it('refuses an environment-owned SSO connection from the organization plane', function (): void {
+    owner();
+
+    config(['cbox-id.federation.verify_url' => false]);
+    Http::fake(['idp.rival/.well-known/openid-configuration' => Http::response([
+        'issuer' => 'https://idp.rival',
+        'authorization_endpoint' => 'https://idp.rival/oauth2/authorize',
+        'token_endpoint' => 'https://idp.rival/oauth2/token',
+        'jwks_uri' => 'https://idp.rival/oauth2/keys',
+    ])]);
+
+    Volt::test('console.connections.create')
+        ->set('environmentWide', true)
+        ->set('type', 'oidc')
+        ->set('name', 'Sneaky Okta')
+        ->set('issuer', 'https://idp.rival')
+        ->set('client_id', 'abc')
+        ->set('client_secret', 'shh')
+        ->set('signing_key', 'a-signing-key')
+        ->call('create');
+
+    expect(Connection::query()->where('name', 'Sneaky Okta')->exists())->toBeFalse();
+})->group('security');
