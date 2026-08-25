@@ -6,6 +6,7 @@ use App\Mail\MagicLinkMail;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -77,10 +78,15 @@ it('still sends a magic link to an existing account when signup is closed', func
     Mail::assertSent(MagicLinkMail::class);
 });
 
-it('shows the create-account link on sign-in only when signup is open', function (): void {
+it('offers the sign-in page a way to create an account only when signup is open', function (): void {
+    // The PROP, not the words on the link. Whether the door exists is the deployment's
+    // decision and belongs in a test; what the link says is the page's, and changing it
+    // is not a regression.
     config(['cbox-id.signup.mode' => 'open']);
-    $this->get(route('login'))->assertSee('Create one');
+    $this->get(route('login'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('signupOpen', true));
 
     config(['cbox-id.signup.mode' => 'invite_only']);
-    $this->get(route('login'))->assertDontSee('Create one');
+    $this->get(route('login'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('signupOpen', false));
 });

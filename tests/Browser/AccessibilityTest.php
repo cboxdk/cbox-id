@@ -59,6 +59,8 @@ it('has no accessibility issues on the sign-in surfaces', function (string $path
         // A page that threw during render is a page axe found nothing wrong with.
         ->assertNoJavaScriptErrors();
 })->with([
+    'login' => '/login',
+    'signup' => '/signup',
     'forgot-password' => '/forgot-password',
     'reset-password' => '__reset__',
 ])->group('a11y');
@@ -83,6 +85,8 @@ it('gives every ported surface one main landmark and a skip link', function (str
         // therefore report a second.
         ->assertScript('document.querySelectorAll("main").length', 1);
 })->with([
+    'login' => '/login',
+    'signup' => '/signup',
     'forgot-password' => '/forgot-password',
 ])->group('a11y');
 

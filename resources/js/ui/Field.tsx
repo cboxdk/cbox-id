@@ -39,6 +39,23 @@ export function useFieldControl(): Partial<{
 
 export interface FieldProps {
     label: ReactNode;
+    /**
+     * The control's id.
+     *
+     * Generated when omitted, which is the common case and the reason this component
+     * exists. State one only where something OUTSIDE the field refers to it — a link that
+     * focuses it, or a deep link into a form.
+     */
+    id?: string;
+    /**
+     * A control on the label's row, right-aligned — "Forgot password?", "Use a different
+     * email".
+     *
+     * Here rather than at the call site because the alternative is what it replaces: a
+     * visible heading beside the link and a second, screen-reader-only `<label>` for the
+     * input, so the field had two names and only one of them was on screen.
+     */
+    labelAction?: ReactNode;
     /** Guidance shown under the control, always — not a placeholder, not a tooltip. */
     hint?: ReactNode;
     /**
@@ -66,14 +83,17 @@ export interface FieldProps {
  */
 export function Field({
     label,
+    id: statedId,
+    labelAction,
     hint,
     error,
     required = false,
     className,
     children,
 }: FieldProps) {
-    const id = useId();
-    const controlId = `${id}-control`;
+    const generated = useId();
+    const id = statedId ?? generated;
+    const controlId = statedId ?? `${id}-control`;
     const hintId = `${id}-hint`;
     const errorId = `${id}-error`;
 
@@ -92,18 +112,27 @@ export function Field({
     return (
         <FieldContext.Provider value={context}>
             <div className={cn(className)}>
-                <label className="label" htmlFor={controlId}>
-                    {label}
-                    {required && (
-                        <>
-                            {' '}
-                            <span aria-hidden="true" style={{ color: 'var(--destructive)' }}>
-                                *
-                            </span>
-                            <span className="sr-only">(required)</span>
-                        </>
-                    )}
-                </label>
+                <div
+                    className={cn(labelAction !== undefined && 'flex items-center justify-between gap-3')}
+                >
+                    <label
+                        className="label"
+                        htmlFor={controlId}
+                        style={labelAction === undefined ? undefined : { marginBottom: '6px' }}
+                    >
+                        {label}
+                        {required && (
+                            <>
+                                {' '}
+                                <span aria-hidden="true" style={{ color: 'var(--destructive)' }}>
+                                    *
+                                </span>
+                                <span className="sr-only">(required)</span>
+                            </>
+                        )}
+                    </label>
+                    {labelAction}
+                </div>
 
                 {children}
 

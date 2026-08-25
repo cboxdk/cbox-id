@@ -5,6 +5,7 @@ import { ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { MobileNav } from '@/chrome/MobileNav';
 import { Rail } from '@/chrome/Rail';
+import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Subnav } from '@/chrome/Subnav';
 import { Switcher } from '@/chrome/Switcher';
 import { Toaster } from '@/chrome/Toaster';
@@ -86,6 +87,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
         return (
             <TooltipProvider>
                 <Head title={title} />
+            <RouteAnnouncer />
                 <Toaster />
                 <main id="main-content" className="canvas-gradient">
                     {children}
@@ -106,6 +108,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                 re-renders the document.
             */}
             <Head title={title} />
+            <RouteAnnouncer />
             <Toaster />
             <SandboxBanner />
             <ImpersonationBanner exitUrl={exitImpersonation.url()} />

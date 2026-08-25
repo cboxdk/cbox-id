@@ -11,6 +11,7 @@ use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
@@ -226,6 +227,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // that the two entries above pin, and a shared prop resolved before those would
         // describe a request that had not been placed yet.
         $middleware->appendToGroup('web', HandleInertiaRequests::class);
+
+        // A redirect that leaves the Inertia app has to say so, or the client follows it
+        // with an XHR and cannot render what comes back. AFTER the Inertia middleware, so
+        // it sees the response that middleware produced.
+        $middleware->appendToGroup('web', RedirectOutsideInertia::class);
 
         // Vite emits a modulepreload for the page chunk Inertia is about to fetch; this
         // turns those into Link headers so the browser starts them during the HTML

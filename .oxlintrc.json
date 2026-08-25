@@ -70,6 +70,14 @@
             "rules": {
                 "import/no-unassigned-import": "off"
             }
+        },
+        {
+            "files": [
+                "resources/js/types/inertia.d.ts"
+            ],
+            "rules": {
+                "import/no-unassigned-import": "off"
+            }
         }
     ]
 }

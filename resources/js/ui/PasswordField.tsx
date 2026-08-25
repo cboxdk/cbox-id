@@ -1,10 +1,12 @@
-import { forwardRef, useId, useState } from 'react';
+import { forwardRef, type ReactNode, useId, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon } from './Icon';
 import { Input, type InputProps } from './Input';
 
 export interface PasswordFieldProps extends Omit<InputProps, 'type'> {
-    label: string;
+    label: ReactNode;
+    /** A control on the label's row — "Forgot password?". See {@see Field}. */
+    labelAction?: ReactNode;
     error?: string | null;
     /**
      * Show the live length check under the field. On for a NEW password, off for one the
@@ -34,10 +36,11 @@ export interface PasswordFieldProps extends Omit<InputProps, 'type'> {
  */
 export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
     function PasswordField(
-        { label, error, policy = false, minLength = 12, className, value, onChange, ...props },
+        { label, labelAction, error, policy = false, minLength = 12, className, value, onChange, id: statedId, ...props },
         ref,
     ) {
-        const id = useId();
+        const generated = useId();
+        const id = statedId ?? generated;
         const [visible, setVisible] = useState(false);
 
         const typed = typeof value === 'string' ? value : '';
@@ -48,9 +51,18 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
 
         return (
             <div className={cn(className)}>
-                <label className="label" htmlFor={id}>
-                    {label}
-                </label>
+                <div
+                    className={labelAction === undefined ? undefined : 'flex items-center justify-between gap-3'}
+                >
+                    <label
+                        className="label"
+                        htmlFor={id}
+                        style={labelAction === undefined ? undefined : { marginBottom: '6px' }}
+                    >
+                        {label}
+                    </label>
+                    {labelAction}
+                </div>
 
                 <div style={{ position: 'relative' }}>
                     <Input

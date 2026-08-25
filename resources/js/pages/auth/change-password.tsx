@@ -37,6 +37,7 @@ export default function ChangePassword({ email }: Props) {
 
                 <PasswordField
                     label="New password"
+                    name="password"
                     autoComplete="new-password"
                     policy
                     error={form.errors.password}
@@ -46,6 +47,7 @@ export default function ChangePassword({ email }: Props) {
 
                 <PasswordField
                     label="Confirm new password"
+                    name="password_confirmation"
                     autoComplete="new-password"
                     error={form.errors.password_confirmation}
                     value={form.data.password_confirmation}

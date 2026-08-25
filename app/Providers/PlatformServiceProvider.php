@@ -19,6 +19,7 @@ use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\TargetEnvironment;
 use App\Listeners\RevokeTokensOnRoleChange;
+use App\Platform\Appearance\BrandContext;
 use App\Platform\BreachedPasswords;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
@@ -87,6 +88,19 @@ final class PlatformServiceProvider extends ServiceProvider
         // Read once per request: three view components label themselves with the current
         // environment, and one of them renders per deletable row.
         $this->app->scoped(CurrentEnvironment::class);
+
+        /*
+         * WHICH BRAND THIS REQUEST IS PAINTED IN — resolved once per request, and it has
+         * to be `scoped` rather than transient because it is WRITTEN in one place and READ
+         * in two others.
+         *
+         * A branded sign-in controller pins the organization; the root view emits its token
+         * override into `<head>` before React exists, and the Inertia middleware shares the
+         * name and logo as props. With a fresh instance per resolution the controller pins
+         * one object and the other two read empty ones — which renders the platform's own
+         * colours on a page whose whole purpose is to wear the customer's.
+         */
+        $this->app->scoped(BrandContext::class);
 
         // One instance per request: the environment-admin session resolver. Consulted
         // by the persistent middleware, the layout, and each component boot() — scoping

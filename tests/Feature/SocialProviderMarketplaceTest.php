@@ -5,7 +5,9 @@ declare(strict_types=1);
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 /**
@@ -140,7 +142,12 @@ it('shows a tenant own provider on its branded sign-in page', function (): void 
 
     $this->get(route('login.branded', $org->slug))
         ->assertOk()
-        ->assertSee('Continue with Github');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            // The TENANT's own connection, named as the tenant named it — not the
+            // platform's button for the same provider.
+            ->where('providers', fn (Collection $providers): bool => $providers
+                ->contains(fn (array $provider): bool => $provider['label'] === 'Github')));
 });
 
 it('does not show one tenant provider on another sign-in page', function (): void {

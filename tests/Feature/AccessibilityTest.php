@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Cbox\Id\Identity\Contracts\MagicLink;
-use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -72,36 +71,17 @@ function axeViolations(string $html): array
     return json_decode($result->output(), true) ?: [];
 }
 
-it('has no WCAG 2.1 A/AA violations on the public auth pages', function (string $path): void {
-    if ($path === '__reset__') {
-        app(Subjects::class)->create('reset@acme.test', 'R', 'super-secret-1234');
-        $path = '/reset-password/'.app(PasswordReset::class)->request('reset@acme.test');
-    }
-
-    $html = $this->get($path)->assertOk()->getContent();
-
-    expect(axeViolations($html))->toBe([]);
-})->with([
-    'login' => '/login',
-    'signup' => '/signup',
-]);
-
-/**
- * The hosted surface had no landmarks at all: its layout carried neither a <main> nor a
- * skip link, while every other layout in the repo carries both. That covers sign-in,
- * MFA, passkeys, consent and device approval — the pages a tenant's own users see, and
- * the ones this platform is judged on.
+/*
+ * THE PUBLIC AUTH PAGES ARE AUDITED IN A REAL BROWSER, in tests/Browser/AccessibilityTest.
+ *
+ * They are client-rendered, so there is nothing in the response here but a mount point —
+ * auditing it would audit an empty document and report no violations, which is exactly
+ * the shape of green {@see axeViolations()} exists to refuse. The browser sweep also
+ * computes colour contrast, which jsdom cannot and which the bridge below disables.
+ *
+ * The console pages below follow as they are ported, and this file goes with the last of
+ * them.
  */
-it('gives the hosted surface a main landmark and a skip link', function (string $path): void {
-    $html = $this->get($path)->assertOk()->getContent();
-
-    expect($html)->toContain('id="main-content"')
-        ->and($html)->toContain('href="#main-content"')
-        ->and(substr_count((string) $html, '<main'))->toBe(1);
-})->with([
-    'login' => '/login',
-    'signup' => '/signup',
-]);
 
 it('has no WCAG 2.1 A/AA violations on the console pages', function (string $path): void {
     // EVERYTHING IN THE ENVIRONMENT THE CONSOLE ACTUALLY READS.

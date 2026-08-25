@@ -6,8 +6,14 @@ use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\Auth\InvitationAcceptController;
 use App\Http\Controllers\Auth\LinkConfirmController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\MfaController;
+use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\SignupController;
+use App\Http\Controllers\Auth\SudoController;
 use App\Http\Controllers\Console\WebhookController;
 use App\Http\Controllers\Dev\DesignSystemController;
 use App\Http\Controllers\EmailVerificationController;
@@ -215,7 +221,8 @@ Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
  * environment. In the single-tenant shape the gate is a no-op and it is a Tier-1 join.
  */
 Route::middleware(['plane:account', 'platform.guest'])->group(function (): void {
-    Volt::route('/signup', 'auth.signup')->name('signup');
+    Route::get('/signup', [SignupController::class, 'show'])->name('signup');
+    Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');
 });
 
 /*
@@ -230,8 +237,15 @@ Route::middleware(['plane:account', 'platform.guest'])->group(function (): void 
  * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
 Route::middleware(['plane:console', 'platform.guest'])->group(function (): void {
-    Volt::route('/login', 'auth.login')->name('login');
-    Volt::route('/o/{slug}/login', 'auth.login')->name('login.branded');
+    Route::get('/login', [LoginController::class, 'show'])->name('login');
+    // Identifier-first: the address alone, so its home realm can be discovered before a
+    // password form is drawn. A server step, because the domain map is the server's.
+    Route::post('/login/identify', [LoginController::class, 'identify'])->name('login.identify');
+    Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
+    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->name('login.magic-link');
+
+    // The branded door: same page, painted in one organization's colours.
+    Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
 
     // Password reset — request a link, then choose a new password from the token.
@@ -258,13 +272,18 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
 });
 
 // The MFA challenge sits between password and a full session, so it is neither
-// fully guest nor fully authenticated.
-Volt::route('/mfa', 'auth.mfa')->name('mfa');
+// fully guest nor fully authenticated. The pending sign-in in the session is the
+// authorization; there is no guard here that could ask a better question.
+Route::get('/mfa', [MfaController::class, 'show'])->name('mfa');
+Route::post('/mfa', [MfaController::class, 'verify'])->name('mfa.verify');
+Route::post('/mfa/recovery', [MfaController::class, 'recover'])->name('mfa.recover');
 
 // The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
 // state: primary auth passed, but an elevated risk assessment demands a second
 // factor before the session is established.
-Volt::route('/login/step-up', 'auth.otp-step-up')->name('login.step-up');
+Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->name('login.step-up');
+Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->name('login.step-up.verify');
+Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->name('login.step-up.resend');
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
@@ -602,7 +621,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Step-up re-authentication ("sudo mode") gate for sensitive actions. Blocked
     // while impersonating: an impersonator must never be able to clear the gate
     // that protects credential changes.
-    Volt::route('/sudo', 'auth.sudo')->middleware(BlockDuringImpersonation::class)->name('sudo');
+    Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+        Route::get('/sudo', [SudoController::class, 'show'])->name('sudo');
+        Route::post('/sudo', [SudoController::class, 'confirm'])->name('sudo.confirm');
+    });
 
     // Blocked while impersonating: the subject session is pinned to the one org the
     // operator was authorized to enter. Pivoting to another of the subject's orgs
@@ -797,7 +819,10 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // missing: an impersonator must never be able to CLEAR the gate that protects
         // credential changes. Clearing it here would have opened the widest of the three
         // planes, where one confirmation covers every tenant in the environment.
-        Volt::route('/sudo', 'environment.sudo')->middleware(BlockDuringImpersonation::class)->name('environment.sudo');
+        Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+            Route::get('/sudo', [SudoController::class, 'showEnvironment'])->name('environment.sudo');
+            Route::post('/sudo', [SudoController::class, 'confirmEnvironment'])->name('environment.sudo.confirm');
+        });
 
         // Activity log — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
@@ -945,9 +970,17 @@ Route::middleware('plane:console')->group(function (): void {
     // Guest-accessible but gated by a signed URL (the token IS the signature; no token
     // table needed). The invitee sets their password and is signed in. The component
     // locks the token so it cannot be swapped after the signed load.
-    Volt::route('/invite/{token}/accept', 'auth.accept-invite')
+    Route::get('/invite/{token}/accept', [InvitationAcceptController::class, 'show'])
         ->middleware('signed')
         ->name('organization.invite.accept');
+
+    // SIGNED TOO, and not as belt-and-braces. The token is the whole credential, and the
+    // signature on the page above is what stops a guessed one being tried — so a write
+    // that accepted a bare token would hand back exactly what that signature refuses.
+    // The form posts to a URL signed on the page it was rendered from.
+    Route::post('/invite/{token}/accept', [InvitationAcceptController::class, 'store'])
+        ->middleware('signed')
+        ->name('organization.invite.accept.store');
 });
 
 /*

@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { SandboxBanner } from '@/chrome/Banners';
 import { Brand } from '@/chrome/Brand';
+import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Toaster } from '@/chrome/Toaster';
 import { toggleTheme } from '@/lib/theme';
 import type { SharedProps } from '@/types';
@@ -34,6 +35,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     return (
         <TooltipProvider>
             <Head title={title} />
+            <RouteAnnouncer />
             <Toaster />
             <SandboxBanner />
 

@@ -190,8 +190,9 @@ final readonly class WebhookController extends ConsoleController
          * The plaintext secret exists only in this response. It is handed to the detail
          * page as a one-time flash and is never retrievable again — not by us either.
          */
+        $this->inertia->flash('newSecret', $registered->secret);
+
         return to_route($this->scope->routeName('webhooks.show'), $registered->endpoint->id)
-            ->with('newSecret', $registered->secret)
             ->with('status', 'Webhook endpoint created.');
     }
 
@@ -250,11 +251,6 @@ final readonly class WebhookController extends ConsoleController
                 'rotate' => $this->url('webhooks.rotate', $endpoint->id),
                 'destroy' => $this->url('webhooks.destroy', $endpoint->id),
             ],
-            /*
-             * The one-time reveal, handed over from create or from a rotation. Read from
-             * the flash here so it lives in exactly one response.
-             */
-            'newSecret' => $request->session()->get('newSecret'),
         ]);
     }
 
@@ -345,9 +341,9 @@ final readonly class WebhookController extends ConsoleController
         $endpoint->save();
 
         // Shown once on the next render; the sealed form is all that persists.
-        return back()
-            ->with('newSecret', $secret)
-            ->with('status', 'Signing secret rotated — update your endpoint now.');
+        $this->inertia->flash('newSecret', $secret);
+
+        return back()->with('status', 'Signing secret rotated — update your endpoint now.');
     }
 
     public function destroy(string $webhook): RedirectResponse

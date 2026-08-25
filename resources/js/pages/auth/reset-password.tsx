@@ -41,6 +41,7 @@ export default function ResetPassword({ token }: Props) {
 
                 <PasswordField
                     label="New password"
+                    name="password"
                     autoComplete="new-password"
                     placeholder="At least 12 characters"
                     policy
@@ -51,6 +52,7 @@ export default function ResetPassword({ token }: Props) {
 
                 <PasswordField
                     label="Confirm new password"
+                    name="password_confirmation"
                     autoComplete="new-password"
                     placeholder="Re-enter your new password"
                     error={form.errors.password_confirmation}

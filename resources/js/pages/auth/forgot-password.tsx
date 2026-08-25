@@ -1,6 +1,6 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
-import type { PageProps, SharedProps } from '@/types';
+import type { PageProps } from '@/types';
 import { Button, Field, Input } from '@/ui';
 import { login } from '@routes';
 import { email as sendResetLink } from '@routes/password';
@@ -16,12 +16,11 @@ type Props = PageProps<Record<string, never>>;
  * credential-stuffing run wants.
  */
 export default function ForgotPassword(_props: Props) {
-    const page = usePage<SharedProps & { sentTo?: string; devResetUrl?: string | null }>().props;
+    // On the flash channel: "a link is on its way" is a step in a flow, and a person
+    // pressing Back should see the form again rather than a stale confirmation.
+    const { sentTo, devResetUrl } = usePage().flash;
 
     const form = useForm({ email: '' });
-
-    const sentTo = typeof page.sentTo === 'string' ? page.sentTo : null;
-    const devResetUrl = typeof page.devResetUrl === 'string' ? page.devResetUrl : null;
 
     return (
         <>
@@ -32,7 +31,7 @@ export default function ForgotPassword(_props: Props) {
                 Enter your email and we'll send a reset link.
             </p>
 
-            {sentTo !== null ? (
+            {sentTo !== undefined ? (
                 /* `<output>`: the outcome of the action on this page, and the element
                    the platform already maps to `role="status"`. */
                 <output
@@ -49,7 +48,7 @@ export default function ForgotPassword(_props: Props) {
                         no mail transport can still walk the flow. It is a live credential
                         in a page body, so it can never be anything but a local convenience.
                     */}
-                    {devResetUrl !== null && (
+                    {devResetUrl != null && (
                         <a
                             href={devResetUrl}
                             className="mt-2 inline-block underline underline-offset-2 mono"
@@ -69,6 +68,7 @@ export default function ForgotPassword(_props: Props) {
                 >
                     <Field label="Email" error={form.errors.email}>
                         <Input
+                            name="email"
                             type="email"
                             scale="lg"
                             inputMode="email"

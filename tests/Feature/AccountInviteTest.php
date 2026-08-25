@@ -16,6 +16,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 // The accept page screens the password against HaveIBeenPwned — keep it offline.
@@ -68,7 +69,14 @@ it('requires a valid signature to reach the accept page', function (): void {
     // The token alone is not enough: the link is SIGNED, and an invitation token pasted
     // into the address bar without the signature is refused before the page runs.
     $this->get('/invite/'.$pending->token.'/accept')->assertForbidden();
-});
+
+    // …and the same holds for the WRITE. Signing only the page would leave the shorter
+    // path open: guess a token, post to it, and be admitted without ever loading the page
+    // whose signature was supposed to be the gate.
+    $this->post('/invite/'.$pending->token.'/accept', [
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertForbidden();
+})->group('security');
 
 it('accepts a signed invite, sets a password, and signs in', function (): void {
     ['organization' => $account] = provisionAccount();
@@ -78,11 +86,28 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
     );
 
     $url = URL::temporarySignedRoute('organization.invite.accept', now()->addDay(), ['token' => $pending->token]);
-    $this->get($url)->assertOk()->assertSee('Accept your invitation');
 
-    Volt::test('auth.accept-invite', ['token' => $pending->token])
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('accept')
+    // The page names the organization and the address the invitation was sent to — the
+    // two things the person has to recognise before choosing a password.
+    $this->get($url)
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('auth/accept-invite')
+                ->where('email', 'new@acme.example')
+                ->has('acceptUrl'),
+        );
+
+    // The WRITE is signed too, and this is the URL the page was given. A bare POST is
+    // covered by its own test below: the token is the whole credential, so accepting one
+    // without a signature would hand back exactly what the signed page refuses.
+    $accept = URL::temporarySignedRoute(
+        'organization.invite.accept.store',
+        now()->addDay(),
+        ['token' => $pending->token],
+    );
+
+    $this->post($accept, ['password' => 'a-strong-unbreached-passphrase'])
         ->assertRedirect(route('projects'));
 
     // The MEMBERSHIP exists now, which it did not before acceptance — that is the whole

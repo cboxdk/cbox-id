@@ -20,6 +20,7 @@ use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Cbox\LaravelSiem\Models\LogStream;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Features\SupportTesting\PersistentMiddleware;
 
 uses(RefreshDatabase::class);
@@ -377,9 +378,19 @@ it('tells the administrator why the step-up appeared', function (): void {
         'redirectUris' => 'https://portal.tenant.example/callback',
     ])->assertSuccessful();
 
+    // The REASON prop, not the rendered sentence. The step-up page draws it in the
+    // browser, and the fallback wording ("This is a protected action.") belongs to the
+    // page rather than to the thing that raised the prompt — so the server's answer for
+    // "no reason was given" is null, and that is what is asserted.
     $this->get(route('environment.sudo'))
         ->assertSuccessful()
-        ->assertSee('Registering an app issues a client secret', escape: false);
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('auth/sudo')
+                ->where('plane', 'environment')
+                ->where('reason', fn (?string $reason): bool => is_string($reason)
+                    && str_contains($reason, 'Registering an app issues a client secret')),
+        );
 
     // Spent with the intent it belongs to: once the step-up is through, an unrelated
     // prompt raised later must not still be captioned with it.
@@ -387,6 +398,9 @@ it('tells the administrator why the step-up appeared', function (): void {
 
     $this->get(route('environment.sudo'))
         ->assertSuccessful()
-        ->assertDontSee('Registering an app issues a client secret', escape: false)
-        ->assertSee('This is a protected action.');
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('auth/sudo')
+                ->where('reason', null),
+        );
 })->group('security');

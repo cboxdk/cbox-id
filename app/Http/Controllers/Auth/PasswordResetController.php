@@ -68,9 +68,12 @@ final readonly class PasswordResetController extends PageController
             $devUrl = app()->environment('local') ? $url : null;
         }
 
-        return back()
-            ->with('sentTo', $request->email())
-            ->with('devResetUrl', $devUrl);
+        $this->inertia->flash([
+            'sentTo' => $request->email(),
+            'devResetUrl' => $devUrl,
+        ]);
+
+        return back();
     }
 
     public function edit(string $token): Response

@@ -1,4 +1,4 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -51,8 +51,6 @@ type Props = PageProps<{
         rotate: string;
         destroy: string;
     };
-    /** The plaintext secret, in this response and nowhere else, ever. */
-    newSecret: string | null;
 }>;
 
 export default function WebhookDetail({
@@ -62,10 +60,19 @@ export default function WebhookDetail({
     deliveries,
     indexHref,
     urls,
-    newSecret,
 }: Props) {
+    /*
+     * THE PLAINTEXT SECRET, on the flash channel and nowhere else.
+     *
+     * Not a prop, and the difference is not cosmetic: props are written into the
+     * browser's history entry, so a secret shown once would be retrievable by pressing
+     * Back — a live credential at rest in the session store, long after the page that
+     * revealed it has gone.
+     */
+    const newSecret = usePage().flash.newSecret;
+
     const [confirming, setConfirming] = useState<'rotate' | 'delete' | null>(null);
-    const [secretVisible, setSecretVisible] = useState(newSecret !== null);
+    const [secretVisible, setSecretVisible] = useState(true);
 
     const form = useForm({
         url: endpoint.url,
@@ -127,7 +134,7 @@ export default function WebhookDetail({
                     needs it gone now. Leaving it up until the next navigation is not an
                     answer.
                 */}
-                {newSecret !== null && secretVisible && (
+                {newSecret !== undefined && secretVisible && (
                     <div
                         className="rounded-xl border p-5"
                         style={{

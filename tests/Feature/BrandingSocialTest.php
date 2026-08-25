@@ -11,6 +11,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Collection;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 beforeEach(function (): void {
@@ -36,8 +38,11 @@ it('lets an admin theme the branded login page via the appearance editor', funct
 
     $this->get('/o/'.$org->slug.'/login')
         ->assertOk()
-        ->assertSee('#0ea5e9')          // colour injected into the themed <style>
-        ->assertSee($org->name);        // org name on the branded panel
+        // The colour is in the SERVER's <style> block — it has to be, or the page paints
+        // Cbox blue for one frame before turning the customer's colour.
+        ->assertSee('#0ea5e9')
+        // The name reaches React as the brand prop; the panel renders it there.
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('brand.name', $org->name));
 });
 
 it('points org settings at the appearance editor', function () {
@@ -90,5 +95,12 @@ it('hides social buttons and 404s providers when none are configured', function 
 it('offers a social provider once it is configured', function () {
     config(['services.google.client_id' => 'client', 'services.google.client_secret' => 'secret']);
 
-    $this->get('/login')->assertOk()->assertSee('Continue with Google');
+    // The PROVIDERS the page was handed, not the words it renders them with. The list
+    // is the platform's decision; "Continue with …" is the page's phrasing.
+    $this->get('/login')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->where('providers', fn (Collection $providers): bool => $providers
+                ->contains(fn (array $provider): bool => $provider['provider'] === 'google')));
 });
