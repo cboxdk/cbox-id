@@ -26,6 +26,7 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["resources/js/*"],
+            "@routes": ["resources/js/routes/index.ts"],
             "@routes/*": ["resources/js/routes/*"],
             "@actions/*": ["resources/js/actions/*"],
             "@wayfinder": ["resources/js/wayfinder/index.ts"]

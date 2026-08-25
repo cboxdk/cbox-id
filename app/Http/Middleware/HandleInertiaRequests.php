@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Http\Props\Shared\AuthProps;
+use App\Http\Props\Shared\EnvironmentProps;
 use App\Http\Props\Shared\FlashProps;
 use App\Http\Props\Shared\ImpersonationProps;
+use App\Http\Props\Shell\ShellProps;
 use App\Platform\Appearance\BrandContext;
+use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
@@ -54,8 +57,20 @@ final class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
 
+            /*
+             * Whole-product branding for a self-hosted install — the deployment's own
+             * name, headline and trust line, overridable without touching a template.
+             *
+             * `trustLine` is EMPTY by default on purpose and must stay that way: a
+             * self-hosted deployment must only claim what it can back, and shipping an
+             * unearned certification badge in the default configuration would put words
+             * in the mouth of everybody who installs this.
+             */
             'app' => [
                 'name' => config('cbox-id.branding.name', 'Cbox ID'),
+                'tagline' => config('cbox-id.branding.tagline'),
+                'trustLine' => config('cbox-id.branding.trust_line'),
+                'year' => date('Y'),
             ],
 
             // Painted by the root view before React exists; sent here so the shell can
@@ -66,9 +81,11 @@ final class HandleInertiaRequests extends Middleware
 
             'brand' => fn () => app(BrandContext::class)->toProps(),
 
-            // A sandbox realm is for development and testing, and the banner that says so
-            // is a property of the ENVIRONMENT, not of any page in it.
-            'sandbox' => fn (): bool => app(CurrentEnvironment::class)->isSandbox(),
+            // Which realm this is. A property of the ENVIRONMENT, not of any page in it —
+            // and the sandbox banner and the realm badge both hang off it.
+            'environment' => fn (): EnvironmentProps => EnvironmentProps::from(
+                app(CurrentEnvironment::class),
+            ),
 
             'impersonation' => fn (): ?ImpersonationProps => ImpersonationProps::from(
                 app(Impersonation::class),
@@ -76,6 +93,15 @@ final class HandleInertiaRequests extends Middleware
             ),
 
             'flash' => fn (): FlashProps => FlashProps::from($request->session()),
+
+            /*
+             * THE CHROME. Null on a page that has none — sign-in, the admin portal, an
+             * error — so the React shell asks one question rather than five.
+             *
+             * A closure, so a guest request never reaches the console-kit registry or the
+             * membership lookups behind it. See {@see ShellPayload} for what goes in.
+             */
+            'shell' => fn (): ?ShellProps => app(ShellPayload::class)->build(),
         ];
     }
 }

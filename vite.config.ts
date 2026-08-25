@@ -43,6 +43,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
+            // Wayfinder's generated trees. `@routes` is the undotted top-level index;
+            // `@routes/x` is the tree for the `x.*` names.
+            '@routes': fileURLToPath(new URL('./resources/js/routes/index.ts', import.meta.url)),
         },
     },
 

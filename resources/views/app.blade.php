@@ -22,7 +22,13 @@
     $appearanceCss = $brand->css();
 @endphp
 <!DOCTYPE html>
-<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full">
+{{--
+    `cbx-nav-pinned` on <html> from the cookie, for the same reason the theme is: the
+    rail is 52px collapsed and 210px pinned, and a class applied by JavaScript arrives
+    after the first paint — so the console animated 52 → 210px on every hard refresh for
+    anybody who had pinned it.
+--}}
+<html lang="en"{!! \App\Platform\Theme::attribute() !!} class="h-full {{ request()->cookie('cbox-nav-pinned') === '1' ? 'cbx-nav-pinned' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -53,7 +59,13 @@
 
     @inertiaHead
 </head>
-<body class="h-full">
+{{--
+    The background is painted HERE, not by a layout. Each React layout paints its own
+    surface, but the document behind them must already be the right colour: a body left
+    transparent shows the browser's default white for the frame between the first paint
+    and the mount, which on a dark theme is a full-screen flash.
+--}}
+<body class="h-full" style="background:var(--background);color:var(--foreground)">
     {{-- Before the app root, so it is the first thing a keyboard reaches on every page
          — including the sign-in surfaces, which under the old layouts had no landmark
          and no skip target at all. --}}
