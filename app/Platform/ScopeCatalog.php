@@ -37,7 +37,7 @@ final class ScopeCatalog
             // AND from the dynamic-registration allow-list — so it was reachable only
             // through the undiscoverable custom-scope box, and never at all for a
             // self-registering client.
-            ['key' => 'organizations', 'label' => 'Their organizations', 'description' => 'The organizations this person belongs to, so the app can offer a workspace switcher.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Which organizations you belong to'],
+            ['key' => 'organizations', 'label' => 'Their organizations', 'description' => 'The organizations this person belongs to, so the app can offer an organization switcher.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Which organizations you belong to'],
             // Same story as `organizations` above, one release later: `groups` was added to
             // discovery and to the token issuer and to neither list that can grant it. It
             // puts this app's RBAC roles on the ID TOKEN, which is what a relying party

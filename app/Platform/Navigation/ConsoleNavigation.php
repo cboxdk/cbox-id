@@ -42,7 +42,12 @@ class ConsoleNavigation
                 new NavPage('environment.analytics', 'Usage'),
                 new NavPage('environment.approvals', 'Agent approvals'),
             ),
-            new NavArea('Tenants', 'layers',
+            // Named for its page, not above it. The rail said TENANTS, the eyebrow
+            // repeated it above an <h1> reading "Organizations", and the subtitle opened
+            // "Your customers" — three words for one thing, stacked. "Tenant" is also the
+            // word Auth0 uses for what we call an environment, so it pointed the wrong way
+            // for exactly the readers most likely to need it.
+            new NavArea('Organizations', 'layers',
                 new NavPage('environment.organizations', 'Organizations'),
             ),
             new NavArea('People', 'members',

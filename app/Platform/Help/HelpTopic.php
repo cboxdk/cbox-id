@@ -70,7 +70,7 @@ enum HelpTopic: string
             self::ActivityLog => 'The record of what changed',
             self::Settings => 'Organization settings',
             self::Appearance => 'Your branded sign-in page',
-            self::AccountSecurity => 'Protecting your own account',
+            self::AccountSecurity => 'Protecting your own sign-in',
         };
     }
 

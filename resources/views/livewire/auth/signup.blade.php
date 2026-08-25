@@ -196,7 +196,7 @@ new #[Layout('components.layouts.auth', ['title' => 'Get started'])] class exten
             app(PlatformRoot::class)->run(
                 fn () => app(PlatformAuth::class)->establish(request(), $result->owner->id, ['pwd']),
             );
-            session()->flash('status', 'Workspace created. Confirm your email to finish setting up your first environment.');
+            session()->flash('status', 'Account created. Confirm your email to finish setting up your first environment.');
             $this->redirect(route('projects'), navigate: false);
 
             return;

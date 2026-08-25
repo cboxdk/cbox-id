@@ -86,7 +86,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
             return;
         }
 
-        if ($this->requiresSudo('api-keys', 'An organization API key acts with this role across the whole organization, and its value is shown once.')) {
+        if ($this->requiresSudo('api-keys', 'An account API key acts with this role across your whole account, and its value is shown once.')) {
             return;
         }
 
@@ -205,7 +205,7 @@ new #[Layout('components.layouts.app', ['title' => 'API keys'])] class extends C
                 @endif
             </div>
         @empty
-            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div><h3>No API keys yet</h3><p>Create a key to reach the organization management API from your own services.</p></div>
+            <div class="cbx-empty"><div class="cbx-empty-icon"><x-icon name="key" class="w-5 h-5" /></div><h3>No API keys yet</h3><p>Create a key to reach the account management API from your own services.</p></div>
         @endforelse
     </div>
 

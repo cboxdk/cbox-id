@@ -54,7 +54,7 @@ new #[Layout('components.layouts.app', ['title' => 'Account settings'])] class e
             fn () => $organization->forceFill(['name' => trim($this->name)])->save(),
         );
 
-        $this->dispatch('toast', message: 'Organization settings saved.');
+        $this->dispatch('toast', message: 'Account settings saved.');
     }
 
     /** The organization being administered, or null when there is none to act on. */

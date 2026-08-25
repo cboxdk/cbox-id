@@ -139,7 +139,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
 }; ?>
 
 <div>
-    <x-page-header title="Agent approvals" subtitle="Requests from agents asking to act on a user's behalf. The user approves these themselves — deny anything you do not recognise." />
+    <x-page-header title="Agent approvals" subtitle="Requests from agents asking to act on a user's behalf. Each user approves their own. Deny one from here only if it looks like abuse — the denial is recorded in the activity log." />
 
     <div class="mt-6 space-y-4">
         @forelse ($requests as $request)
@@ -184,7 +184,7 @@ new #[Layout('components.layouts.environment', ['title' => 'Agent approvals'])] 
             <div class="cbx-empty">
                 <div class="cbx-empty-icon"><x-icon name="shield" class="w-5 h-5" /></div>
                 <h3>No pending requests</h3>
-                <p>Agent approval requests will appear here as they arrive, for you to deny if you do not recognise them.</p>
+                <p>Requests from agents asking to act on a user's behalf appear here as they arrive. Each user approves their own; this page is for denying one that looks like abuse.</p>
             </div>
         @endforelse
 

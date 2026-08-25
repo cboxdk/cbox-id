@@ -62,7 +62,12 @@ it('never calls a customer an account in user-facing copy', function (): void {
     //
     // Narrow on purpose: one phrase, one directory. The plural listing stays banned
     // everywhere, including here.
-    $firstPersonExempt = ['/\bthis account\b/'];
+    //
+    // `account owner` joins it for the same reason: the transfer-ownership dialog on the
+    // customer's OWN console hands over the account, and calling that person the
+    // "organization owner" is the collision this rename exists to remove. In the
+    // operator's listing of other people's companies it stays banned.
+    $firstPersonExempt = ['/\bthis account\b/', '/\baccount owner\b/'];
     $firstPersonRoot = resource_path('views/livewire/console');
 
     $roots = [resource_path('views')];
