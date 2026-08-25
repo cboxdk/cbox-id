@@ -70,7 +70,7 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
         // handle rather than in a session cookie, for the same reason everything else here
         // does: the caller is on somebody else's origin.
-        Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'options'])
+        Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'challenge'])
             ->name('frontend.sign-in.passkey.options');
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
             ->name('frontend.sign-in.passkey');

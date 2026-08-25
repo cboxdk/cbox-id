@@ -39,17 +39,17 @@ it('adds its pages to the host Logs area, beside the activity log they extend', 
     $area = collect(Console::nav()->areas())->firstWhere('key', 'audit');
     $routes = collect($area->pages())->pluck('route')->all();
 
-    expect($routes)->toContain('audit', 'compliance.audit', 'compliance.exports');
+    expect($routes)->toContain('audit', 'compliance.audit', 'compliance.data-exports');
 
     $pages = collect($area->pages())->keyBy('route');
     expect($pages['compliance.audit']->feature)->toBe('compliance')
-        ->and($pages['compliance.exports']->feature)->toBe('compliance')
-        ->and($pages['compliance.exports']->label)->toBe('Exports & retention');
+        ->and($pages['compliance.data-exports']->feature)->toBe('compliance')
+        ->and($pages['compliance.data-exports']->label)->toBe('Exports & retention');
 });
 
 it('registers the Volt console routes', function (): void {
     expect(Route::has('compliance.audit'))->toBeTrue()
-        ->and(Route::has('compliance.exports'))->toBeTrue();
+        ->and(Route::has('compliance.data-exports'))->toBeTrue();
 });
 
 it('renders a dashboard export card', function (): void {

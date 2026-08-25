@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:b2618251-a09c-4a72-9b44-976b92bf53fe",
+    "serialNumber": "urn:uuid:543eee9a-e3c6-4323-a631-b00ed8fa1b6a",
     "version": 1,
     "metadata": {
         "tools": [
@@ -501,6 +501,22 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/inertiajs/inertia-laravel@v3.3.1",
+            "group": "inertiajs",
+            "name": "inertia-laravel",
+            "version": "v3.3.1",
+            "purl": "pkg:composer/inertiajs/inertia-laravel@v3.3.1",
+            "description": "The Laravel adapter for Inertia.js.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/laravel/framework@v13.24.0",
             "group": "laravel",
             "name": "framework",
@@ -555,6 +571,22 @@
             "version": "v3.0.2",
             "purl": "pkg:composer/laravel/tinker@v3.0.2",
             "description": "Powerful REPL for the Laravel framework.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/laravel/wayfinder@v0.1.21",
+            "group": "laravel",
+            "name": "wayfinder",
+            "version": "v0.1.21",
+            "purl": "pkg:composer/laravel/wayfinder@v0.1.21",
+            "description": "Generate TypeScript representations of your Laravel actions and routes.",
             "licenses": [
                 {
                     "license": {
@@ -827,6 +859,22 @@
                 {
                     "license": {
                         "id": "Apache-2.0"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/phpstan/phpdoc-parser@2.3.3",
+            "group": "phpstan",
+            "name": "phpdoc-parser",
+            "version": "2.3.3",
+            "purl": "pkg:composer/phpstan/phpdoc-parser@2.3.3",
+            "description": "PHPDoc parser with support for nullable, intersection and generic types",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
                     }
                 }
             ]

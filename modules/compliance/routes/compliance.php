@@ -22,5 +22,5 @@ ConsoleRoutes::page(
     feature: 'compliance',
     uri: '/compliance/exports',
     component: 'compliance.exports',
-    name: 'compliance.exports',
+    name: 'compliance.data-exports',
 );

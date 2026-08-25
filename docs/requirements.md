@@ -25,11 +25,13 @@ fails loudly if either is missing.
 
 ## Framework
 
-| Requirement | Version |
-|---|---|
-| `laravel/framework` | `^13.0` |
-| `livewire/livewire` | `^4.3` |
-| `livewire/volt` | `^1.10` |
+| Requirement | Version | Used for |
+|---|---|---|
+| `laravel/framework` | `^13.0` | The application framework. |
+| `inertiajs/inertia-laravel` | `^3.3` | The server half of the console UI: a controller returns a page name and typed props, Laravel returns them as JSON to a React bundle served same-origin. |
+| `laravel/wayfinder` | `^0.1` | Generates TypeScript route helpers and form actions from `routes/*.php` at build time, so no URL is spelled by hand in the client. |
+| `livewire/livewire` | `^4.3` | TRANSITIONAL — the Volt pages still being ported to React. Removed when the last one is. |
+| `livewire/volt` | `^1.10` | TRANSITIONAL, as above. |
 
 ## Cbox / cboxdk dependencies
 

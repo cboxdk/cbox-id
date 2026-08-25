@@ -26,8 +26,10 @@
         "cboxdk/laravel-ssrf": "^1.1.1",
         "cboxdk/laravel-telemetry": "^1.0",
         "firebase/php-jwt": "^7.0",
+        "inertiajs/inertia-laravel": "^3.3",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
+        "laravel/wayfinder": "^0.1",
         "livewire/livewire": "^4.3",
         "livewire/volt": "^1.10"
     },

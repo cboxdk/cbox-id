@@ -6,6 +6,7 @@ use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\EnforcePlane;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\RedirectIfAuthenticated;
@@ -30,6 +31,7 @@ use Cbox\Id\Whitelabel\WhitelabelServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -207,6 +209,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // sign-in form no credential can satisfy, and the screen that provisions the
         // platform root must stop existing the moment it has. See the middleware.
         $middleware->appendToGroup('web', PointAtFirstRun::class);
+
+        // THE UI. Every web response that renders a page renders it through Inertia, so
+        // the shared props — who is signed in, which brand this host wears, whether an
+        // impersonation is live — are attached here rather than by each page.
+        //
+        // Last in the group on purpose: it reads the environment and the first-run state
+        // that the two entries above pin, and a shared prop resolved before those would
+        // describe a request that had not been placed yet.
+        $middleware->appendToGroup('web', HandleInertiaRequests::class);
+
+        // Vite emits a modulepreload for the page chunk Inertia is about to fetch; this
+        // turns those into Link headers so the browser starts them during the HTML
+        // response rather than after parsing it. Pure latency, no behaviour.
+        $middleware->appendToGroup('web', AddLinkHeadersForPreloadedAssets::class);
 
         $middleware->alias([
             'platform.auth' => Authenticate::class,

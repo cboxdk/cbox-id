@@ -100,7 +100,7 @@ class ComplianceServiceProvider extends ServiceProvider
 
         $pages->add(
             area: ConsoleArea::Logs,
-            route: 'compliance.exports',
+            route: 'compliance.data-exports',
             label: 'Exports & retention',
             feature: 'compliance',
             order: 30,

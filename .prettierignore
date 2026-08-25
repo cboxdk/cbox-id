@@ -1,0 +1,7 @@
+node_modules
+public/build
+vendor
+resources/js/routes
+resources/js/actions
+resources/js/wayfinder
+resources/js/types/generated.d.ts

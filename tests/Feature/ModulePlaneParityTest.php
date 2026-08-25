@@ -182,7 +182,7 @@ it('puts every module page in the environment rail', function (): void {
 
     expect($routes)->toContain('environment.sign-in-activity')
         ->and($routes)->toContain('environment.compliance.audit')
-        ->and($routes)->toContain('environment.compliance.exports')
+        ->and($routes)->toContain('environment.compliance.data-exports')
         ->and($routes)->toContain('environment.connectors.catalog')
         ->and($routes)->toContain('environment.connectors.connections')
         ->and($routes)->toContain('environment.risk-plus.events')
@@ -271,7 +271,7 @@ it('serves every module page to an environment administrator', function (): void
     foreach ([
         'environment.sign-in-activity',
         'environment.compliance.audit',
-        'environment.compliance.exports',
+        'environment.compliance.data-exports',
         'environment.connectors.catalog',
         'environment.connectors.connections',
         'environment.risk-plus.events',
@@ -526,7 +526,7 @@ it('shows the export history to the administrator who owns the environment', fun
         'sink' => 'Acme\\ZarquonSink', 'started_at' => now(), 'finished_at' => now(),
     ]);
 
-    $this->get(route('environment.compliance.exports'))->assertOk()->assertSee('Zarquon');
+    $this->get(route('environment.compliance.data-exports'))->assertOk()->assertSee('Zarquon');
 })->group('security');
 
 /*
