@@ -177,6 +177,9 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
             // The view half of the question the actions ask. Without it the page renders
             // as a read-only shell on whichever plane the markup forgot.
             'mayAdminister' => $scope->mayAdminister(),
+            // The Environment-wide badge means two different things depending on which
+            // door you came through, and it only ever said one of them.
+            'onEnvironmentPlane' => $scope->plane() === ConsolePlane::Environment,
             // A role this administrator may see but not compose still has to be legible,
             // so the view asks per row rather than hiding what constrains the tenant.
             'mayGrant' => fn (Role $role): bool => $this->mayGrant($role),
@@ -461,7 +464,14 @@ new #[Layout('components.layouts.console', ['title' => 'Roles'])] class extends 
                         <span class="badge">All apps</span>
                     @endif
                     @if ($role->organization_id === null)
-                        <span class="badge" title="Owned by the environment — it applies here but is not yours to change.">Environment-wide</span>
+                        {{-- TWO MEANINGS, ONE BADGE. From an organization it means "you may
+                             use this but not change it". From the environment it means the
+                             opposite AND something new: this is the only kind of role that
+                             can be granted to a person across every organization at once,
+                             on their user page. The tooltip said only the first. --}}
+                        <span class="badge" title="{{ $onEnvironmentPlane
+                            ? 'Defined for the whole environment: every organization can use it, and it is the only kind that can be granted to a person in all of them at once.'
+                            : 'Owned by the environment — it applies here but is not yours to change.' }}">Environment-wide</span>
                     @endif
                     <x-icon name="chevron" class="w-4 h-4 shrink-0" style="color:var(--faint)" />
                 </div>

@@ -51,6 +51,42 @@ them yourself on the Permissions page without any integration at all.
 - At invite time, so someone has the right access the moment they accept rather
   than after a second chore.
 
+## Roles that apply everywhere
+
+Every grant above is scoped to one organization, which is right for the people who work
+inside one. It cannot describe three others:
+
+- **Your own support staff**, who act across every customer.
+- **Somebody who has joined no organization** — a person exists before they belong
+  anywhere.
+- **An app with no tenancy of its own.** If your service provider has no notion of
+  customers, there is no organization to hang a grant on, and it should not have to
+  invent one.
+
+For those, define the role as **Environment-wide** when you create it, then grant it from
+the person's page under **Roles everywhere in this environment**. It applies in every
+organization *and* to a person who belongs to none, and it comes through in the token like
+any other role.
+
+Two things to know before you use it:
+
+- **Only an environment-wide role can be granted this way.** A role belonging to one
+  organization is that customer's own policy, named by them; handing it out across the
+  environment would give every other customer a role they never defined. The console
+  offers only the eligible ones, and the write refuses the rest.
+- **It stacks, it does not replace.** Somebody can hold `Support` everywhere and `Editor`
+  in one organization, and their token in that organization carries both.
+
+[Role conflicts](role-conflicts.md) see these grants: a pair that must never sit with one
+person is still refused when one half is environment-wide and the other belongs to an
+organization.
+
+> **Access reviews do not, yet.** A review is opened for one organization and enumerates
+> the grants made *in* it, and an environment-wide grant belongs to none — so it is not
+> listed, certified or revoked there. Until that is settled, treat these grants as
+> something you audit deliberately rather than something a campaign will surface. They are
+> recorded on the environment's audit trail when made and withdrawn.
+
 ## Things worth knowing
 
 - **Roles are not organization membership.** Being an owner or admin of the
