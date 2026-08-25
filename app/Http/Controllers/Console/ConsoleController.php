@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Controllers\PageController;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ShellPayload;
@@ -24,27 +25,30 @@ use Inertia\ResponseFactory;
  * do the arithmetic itself, but then a rename would mean a button posting to the other
  * plane's URL, and nothing would say so. {@see self::url()} answers instead.
  */
-abstract readonly class ConsoleController
+abstract readonly class ConsoleController extends PageController
 {
     public function __construct(
-        protected ResponseFactory $inertia,
+        ResponseFactory $inertia,
         protected ConsoleScope $scope,
-    ) {}
+    ) {
+        parent::__construct($inertia);
+    }
 
     /**
-     * Render a console page, titled.
+     * Render a console page, titled and placed.
+     *
+     * The SECTION is the console's addition to the base: the word that distinguishes the
+     * whole install from one customer on it. Half the platform pages share a name with a
+     * page about the operator's own organization — "Usage" is this install's traffic in
+     * one and one customer's bill in the other — and the platform section used to have a
+     * shell of its own that said so in the tab.
      *
      * @param  array<string, mixed>  $props
      */
     protected function page(string $component, string $title, array $props = []): Response
     {
-        $section = app(ShellPayload::class)->build()?->section;
-
-        return $this->inertia
-            ->render($component, [...$props, 'title' => $title])
-            // For `<title>` before React exists. The prop above is the same string, read
-            // by the client's title callback — one statement, two consumers.
-            ->withViewData(['title' => $title, 'section' => $section]);
+        return parent::page($component, $title, $props)
+            ->withViewData(['section' => app(ShellPayload::class)->build()?->section]);
     }
 
     /**

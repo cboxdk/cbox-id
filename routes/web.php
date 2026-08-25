@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\Auth\AccountsController;
+use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\Auth\LinkConfirmController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Console\WebhookController;
 use App\Http\Controllers\Dev\DesignSystemController;
 use App\Http\Controllers\EmailVerificationController;
@@ -233,8 +237,16 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
     // authenticated subject, but a credential change must be a provable no-op).
-    Volt::route('/forgot-password', 'auth.forgot-password')->middleware(BlockDuringImpersonation::class)->name('password.request');
-    Volt::route('/reset-password/{token}', 'auth.reset-password')->middleware(BlockDuringImpersonation::class)->name('password.reset');
+    Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+        Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+        Route::post('/forgot-password', [PasswordResetController::class, 'send'])->name('password.email');
+        Route::get('/reset-password/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
+        // The token travels in the BODY here, not the path. A password in a form whose
+        // action carries the token would put both in the same request either way, but a
+        // token in a URL is also in the browser's history and in any referrer the page
+        // emits — and this one is a live credential until it is spent.
+        Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+    });
 
     // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
     Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
@@ -361,18 +373,24 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
-    Volt::route('/accounts', 'auth.accounts')->name('accounts');
+    Route::get('/accounts', [AccountsController::class, 'index'])->name('accounts');
+    // A POST, because it moves the session. A GET that changes who you are is a GET any
+    // image tag on any page can make.
+    Route::post('/accounts', [AccountsController::class, 'switchTo'])->name('accounts.switch');
     Volt::route('/accounts/add', 'auth.login')->name('accounts.add');
 
     // The forced password change. Inside the authenticated group on purpose: the hold
     // that sends people here (see {@see \App\Http\Middleware\Authenticate}) exempts this
     // one route, so it is reachable only by someone who is signed in and owes a change.
-    Volt::route('/password/change', 'auth.change-password')->name('password.change');
+    Route::get('/password/change', [ChangePasswordController::class, 'edit'])->name('password.change');
+    Route::post('/password/change', [ChangePasswordController::class, 'update'])->name('password.change.update');
 
     // The social link confirmation. Same shape as the password hold above and for the
     // same reason: reachable only by someone signed in who has an identity waiting on
     // their answer, and exempt from the hold so the redirect cannot loop.
-    Volt::route('/link/confirm', 'auth.link-confirm')->name('link.confirm');
+    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->name('link.confirm');
+    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->name('link.connect');
+    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->name('link.decline');
 
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.

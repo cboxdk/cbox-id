@@ -25,10 +25,15 @@ beforeEach(function (): void {
 });
 
 /**
- * Accessibility regression guard: renders each key page and runs axe-core
- * (WCAG 2.1 A/AA) over the HTML in jsdom via a tiny Node bridge. A new unlabelled
- * control, missing form label, or broken ARIA fails the suite. Requires Node
- * (already needed for Vite); colour contrast is computed here from the tokens.
+ * Accessibility regression guard for the pages STILL SERVED BY VOLT: renders each one and
+ * runs axe-core (WCAG 2.1 A/AA) over the HTML in jsdom via a tiny Node bridge.
+ *
+ * SHRINKING BY DESIGN. A client-rendered page has nothing in its response but a mount
+ * point, so auditing it here would audit an empty document and report no violations —
+ * exactly the shape of green {@see axeViolations()} guards against. Each page moves to
+ * tests/Browser/AccessibilityTest.php as it is ported, where a real browser also computes
+ * colour contrast, which jsdom cannot and which this bridge therefore disables. This file
+ * goes when the last Volt page does.
  */
 beforeEach(function (): void {
     Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
@@ -79,8 +84,6 @@ it('has no WCAG 2.1 A/AA violations on the public auth pages', function (string 
 })->with([
     'login' => '/login',
     'signup' => '/signup',
-    'forgot-password' => '/forgot-password',
-    'reset-password' => '__reset__',
 ]);
 
 /**
@@ -98,7 +101,6 @@ it('gives the hosted surface a main landmark and a skip link', function (string 
 })->with([
     'login' => '/login',
     'signup' => '/signup',
-    'forgot-password' => '/forgot-password',
 ]);
 
 it('has no WCAG 2.1 A/AA violations on the console pages', function (string $path): void {

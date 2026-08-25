@@ -34,6 +34,7 @@ export { type IconName, iconNames, iconPaths } from './icons';
 export { Input, type InputProps, Textarea } from './Input';
 export { Kv, KvList } from './Kv';
 export { PageHeader } from './PageHeader';
+export { PasswordField, PasswordManagerIdentity } from './PasswordField';
 export { Pagination } from './Pagination';
 export { Panel, type PanelProps } from './Panel';
 export { Pill, type PillTone } from './Pill';

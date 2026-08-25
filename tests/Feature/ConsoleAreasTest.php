@@ -17,6 +17,7 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
@@ -168,7 +169,7 @@ function assertNavEntryLabelsMatchTheirPages(array $entries, string $plane): int
         //
         // A VOLT page still writes its own <h1>, so that half is scanned as before. It
         // goes when the last of them does.
-        $inertiaTitle = inertiaPageTitle($html);
+        $inertiaTitle = inertiaPageTitle($response);
 
         if ($inertiaTitle !== null) {
             expect($inertiaTitle)->toBe(
@@ -192,18 +193,18 @@ function assertNavEntryLabelsMatchTheirPages(array $entries, string $plane): int
 /**
  * The `title` prop of an Inertia page, or null when the response is not one.
  *
- * `@inertia` writes the whole page object into a `<script type="application/json">` data
- * block beside the mount point — so reading it back is exactly what the client does, and
- * it is the only way to see what a page rendered in the browser was actually handed.
+ * `inertiaProps()` is the package's own reader — it decodes the page object out of the
+ * response the same way the client does, so this cannot drift from however Inertia
+ * chooses to embed it.
  */
-function inertiaPageTitle(string $html): ?string
+function inertiaPageTitle(TestResponse $response): ?string
 {
-    if (preg_match('/<script data-page="[^"]*" type="application\/json">(.*?)<\/script>/s', $html, $matches) !== 1) {
+    try {
+        $title = $response->inertiaProps('title');
+    } catch (Throwable) {
+        // Not an Inertia response at all: a Volt page, still.
         return null;
     }
-
-    $page = json_decode($matches[1], true);
-    $title = is_array($page) ? ($page['props']['title'] ?? null) : null;
 
     return is_string($title) ? $title : null;
 }

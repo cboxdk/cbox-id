@@ -10,6 +10,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 /**
@@ -183,12 +184,19 @@ it('holds every authenticated page until the question is answered', function () 
     // The screen itself must not be held, or the redirect loops and the account is
     // unreachable with no way to fix it — the failure mode the password hold already
     // taught us about.
-    // Rendered through the real stack — the question, the address it is about, and both
-    // answers. A hold that redirects to a screen nobody can act on is a lockout.
+    // Rendered through the real stack: the question, and the address it is about. A hold
+    // that redirects to a screen nobody can act on is a lockout.
+    //
+    // Asserted on the page's PROPS rather than on its text. The words are the page's to
+    // choose and it renders them in the browser, so scanning the response body for them
+    // would be scanning a mount point — and would fail the day somebody improves the
+    // copy, which is not a regression.
     $this->get(route('link.confirm'))
         ->assertOk()
-        ->assertSee('Connect Google?')
-        ->assertSee('dana@acme.test')
-        ->assertSee('Yes, connect Google')
-        ->assertSee("No, that wasn't me", escape: false);
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('auth/link-confirm')
+                ->where('provider', 'Google')
+                ->where('email', 'dana@acme.test'),
+        );
 })->group('security');
