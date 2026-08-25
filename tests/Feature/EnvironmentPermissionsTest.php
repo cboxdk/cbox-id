@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -192,4 +196,37 @@ it('bounds the app-declared catalog and lets search reach past it', function ():
         ->assertSee('Showing 50 of 61');
 
     $page->set('search', 'zebra')->assertSee('zebra:groom');
+});
+
+/**
+ * "Who holds this role?" had no answer anywhere in the console.
+ *
+ * An access review enumerates one organization's grants, and an environment-wide grant
+ * belongs to none — so a grant that applies in every organization was visible only by
+ * opening every user page in turn. A role whose holders you cannot see is a role you
+ * cannot govern, and this is the cheap half of that gap.
+ */
+it('lists who holds a role, and how they hold it', function (): void {
+    $env = permSetup();
+
+    $roles = app(Roles::class);
+    $support = $roles->define(null, 'Support');
+
+    $org = app(Organizations::class)->create(new NewOrganization('Acme Tenant', 'acme-tenant'));
+
+    $everywhere = app(Subjects::class)->create('agent@acme.test', 'Agent', 'a-strong-unbreached-passphrase')->id;
+    $inOrg = app(Subjects::class)->create('member@acme.test', 'Member', 'a-strong-unbreached-passphrase')->id;
+
+    $roles->assignEverywhere($everywhere, $support->id);
+    $roles->assign($org->id, $inOrg, $support->id);
+
+    $html = Volt::test('console.roles.show', ['role' => $support->id])->html();
+
+    expect($html)
+        ->toContain('Who holds this')
+        ->toContain('agent@acme.test')
+        ->toContain('member@acme.test')
+        // The two grants are not the same statement, and the page says which is which.
+        ->toContain('Everywhere')
+        ->toContain('Acme Tenant');
 });

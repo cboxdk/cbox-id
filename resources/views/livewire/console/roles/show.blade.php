@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\AccessControl\Models\RoleAssignment;
+use Cbox\Id\AccessControl\Models\EnvironmentRoleAssignment;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -179,7 +183,80 @@ new #[Layout('components.layouts.console', ['title' => 'Role'])] class extends C
             // Why it is read-only, which are different sentences: the app owns this role,
             // or the environment does.
             'declaredByApp' => $role->source === RoleSource::Manifest,
+            // WHO ACTUALLY HOLDS IT. No surface in the console answered this: an access
+            // review enumerates one organization's grants, and an environment-wide grant
+            // belongs to none — so the only way to learn who held a role was to open
+            // every user page in turn. A role you cannot see the holders of is a role you
+            // cannot govern.
+            'holders' => $this->holders($role),
         ];
+    }
+
+    /**
+     * The people holding this role, both ways it can be held.
+     *
+     * Environment-wide grants first and marked as such: they are the larger statement,
+     * and reading a flat list where one row means "in Acme" and the next means "in every
+     * organization" is how a reviewer certifies the wrong thing.
+     *
+     * @return list<array{name: string, email: string, scope: string|null}>
+     */
+    private function holders(Role $role): array
+    {
+        /** @var list<string> $everywhere */
+        $everywhere = array_values(array_filter(
+            EnvironmentRoleAssignment::query()->where('role_id', $role->id)->pluck('user_id')->all(),
+            'is_string',
+        ));
+
+        $inOrg = RoleAssignment::query()
+            ->where('role_id', $role->id)
+            ->get(['user_id', 'organization_id']);
+
+        /** @var list<string> $userIds */
+        $userIds = array_values(array_unique([
+            ...$everywhere,
+            ...array_filter($inOrg->pluck('user_id')->all(), 'is_string'),
+        ]));
+
+        if ($userIds === []) {
+            return [];
+        }
+
+        $people = app(Subjects::class)->findMany($userIds);
+        $orgNames = Organization::query()
+            ->whereIn('id', $inOrg->pluck('organization_id')->filter()->unique()->all())
+            ->pluck('name', 'id');
+
+        $describe = static function (string $userId) use ($people): array {
+            $person = $people[$userId] ?? null;
+
+            $email = $person?->email;
+
+            $name = $person?->name;
+
+            return [
+                'name' => is_string($name) && $name !== '' ? $name : (is_string($email) ? $email : $userId),
+                'email' => is_string($email) ? $email : '—',
+            ];
+        };
+
+        $rows = [];
+
+        foreach ($everywhere as $userId) {
+            $rows[] = [...$describe($userId), 'scope' => null];
+        }
+
+        foreach ($inOrg as $assignment) {
+            $scope = $orgNames[$assignment->organization_id] ?? $assignment->organization_id;
+
+            $rows[] = [
+                ...$describe($assignment->user_id),
+                'scope' => is_string($scope) ? $scope : null,
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -465,6 +542,34 @@ new #[Layout('components.layouts.console', ['title' => 'Role'])] class extends C
             </div>
             {{-- Each tick writes immediately; SC 4.1.3 needs that reported. --}}
             <p role="status" aria-live="polite" class="sr-only">{{ count($granted) }} of {{ count($catalog) }} permissions granted.</p>
+        @endif
+    </div>
+
+    {{-- WHO HOLDS IT. Nothing in the console answered this: an access review enumerates
+         one organization's grants, and an environment-wide grant belongs to none — so the
+         only way to learn who held a role was to open every user page in turn. A role
+         whose holders you cannot see is a role you cannot govern. --}}
+    <div class="rounded-xl border p-5" style="border-color:var(--border)">
+        <h2 class="cbx-section-title">Who holds this</h2>
+        @if ($holders === [])
+            <p class="mt-2 text-sm" style="color:var(--muted)">Nobody yet. Grant it on a person's page — inside one organization, or everywhere in this environment.</p>
+        @else
+            <p class="mt-1 text-sm" style="color:var(--muted)">{{ count($holders) }} {{ \Illuminate\Support\Str::plural('grant', count($holders)) }}. A grant made everywhere applies in every organization, including to people who belong to none.</p>
+            <div class="mt-4 rounded-lg border overflow-hidden" style="border-color:var(--border)">
+                @foreach ($holders as $holder)
+                    <div class="flex items-center gap-3 flex-wrap px-3 py-2 {{ ! $loop->last ? 'border-b' : '' }}" style="border-color:var(--border)" wire:key="holder-{{ $loop->index }}">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium truncate">{{ $holder['name'] }}</p>
+                            <p class="text-xs truncate" style="color:var(--faint)">{{ $holder['email'] }}</p>
+                        </div>
+                        @if ($holder['scope'] === null)
+                            <span class="badge" title="Applies in every organization in this environment.">Everywhere</span>
+                        @else
+                            <span class="badge">{{ $holder['scope'] }}</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
         @endif
     </div>
 
