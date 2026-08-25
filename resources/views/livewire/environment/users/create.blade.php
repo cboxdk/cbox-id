@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Mail;
+use Cbox\Id\Identity\Contracts\MagicLink;
+use App\Platform\MailLinks;
+use App\Mail\MagicLinkMail;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
@@ -31,6 +35,9 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
 
     public string $name = '';
 
+    /** Email them a sign-in link now. On, because a user who cannot sign in is not a user. */
+    public bool $sendLink = true;
+
     public function create(Subjects $subjects): mixed
     {
         $this->validate([
@@ -47,7 +54,28 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
         $subject = $subjects->create(trim($this->email), trim($this->name) !== '' ? trim($this->name) : null);
         $user = User::query()->where('email', $this->email)->first();
 
-        $this->dispatch('toast', message: 'User created.');
+        // AND ACTUALLY SEND SOMETHING. The subtitle promised "they complete sign-in via
+        // an invite or magic link" and nothing was sent at all: a row appeared here and
+        // the person heard nothing, so every environment onboarding needed an email the
+        // administrator wrote by hand.
+        //
+        // A magic link rather than an organization invitation, because an invitation is
+        // "join this organization" — it exists to create a membership — and an
+        // environment where organizations are not used has none to join. This is the
+        // mechanism that already fits: it names no tenant, it lands them signed in, and
+        // it is the same link the sign-in page sends.
+        if ($this->sendLink) {
+            // In THIS environment's context, not the platform root: the subject was just
+            // created here, and a link minted in the root would redeem against a user
+            // pool that does not contain them.
+            $token = app(MagicLink::class)->request($this->email);
+
+            Mail::to($this->email)->send(new MagicLinkMail(app(MailLinks::class)->route('magic.redeem', $token)));
+        }
+
+        $this->dispatch('toast', message: $this->sendLink
+            ? 'User created — a sign-in link is on its way to '.$this->email.'.'
+            : 'User created. They have no way to sign in until you send them a link.');
 
         return $this->redirectRoute('environment.users.show', ['user' => $user->id ?? $subject->id], navigate: true);
     }
@@ -55,7 +83,7 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
 
 <div>
     <a href="{{ route('environment.users') }}" class="text-sm inline-flex items-center gap-1" style="color:var(--muted)"><x-icon name="chevron" class="w-3.5 h-3.5 rotate-180" /> Users</a>
-    <x-page-header class="mt-2" title="New user" subtitle="They complete sign-in via an invite or magic link — no password is set here." />
+    <x-page-header class="mt-2" title="New user" subtitle="No password is set here — they get a sign-in link by email and choose how they sign in." />
 
     <form wire:submit="create" class="mt-6 max-w-xl rounded-xl border p-5 space-y-4" style="border-color:var(--border)">
         <div>
@@ -68,6 +96,13 @@ new #[Layout('components.layouts.environment', ['title' => 'New user'])] class e
             <input wire:model="name" id="name" type="text" class="input" placeholder="Full name">
             @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
         </div>
+        <label class="flex items-start gap-2.5">
+            <input wire:model="sendLink" type="checkbox" class="mt-1 rounded">
+            <span>
+                <span class="label">Email them a sign-in link</span>
+                <span class="block text-xs" style="color:var(--faint)">Valid once, and short-lived. Turn this off only if you are creating the account ahead of time and will send the link yourself.</span>
+            </span>
+        </label>
         <div class="flex items-center gap-2">
             <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="create">Create user</button>
             <a href="{{ route('environment.users') }}" class="btn btn-ghost">Cancel</a>

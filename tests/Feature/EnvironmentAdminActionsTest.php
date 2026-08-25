@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Mail\MagicLinkMail;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -51,6 +52,7 @@ use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
 use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -474,3 +476,67 @@ it('refuses to grant one organization’s role everywhere from the page', functi
 
     expect(app(Roles::class)->everywhereFor($subjectId))->toBe([]);
 })->group('security');
+
+/**
+ * The page promised an email and sent nothing.
+ *
+ * Its subtitle said the person "completes sign-in via an invite or magic link" while
+ * `create()` only wrote a subject row — so a user appeared in the console and heard
+ * nothing, and every onboarding in an environment that does not use organizations needed
+ * an email the administrator wrote by hand. A page that states an outcome which does not
+ * happen is the worst kind of copy defect: nobody goes looking for a bug in something
+ * they were told had worked.
+ *
+ * A magic link rather than an organization invitation, because an invitation exists to
+ * create a MEMBERSHIP, and an environment that ignores organizations has none to join.
+ */
+it('emails a sign-in link when an environment user is created', function (): void {
+    Mail::fake();
+
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner-inv@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    Volt::test('environment.users.create')
+        ->set('email', 'newcomer@acme.example')
+        ->set('name', 'Newcomer')
+        ->call('create');
+
+    Mail::assertSent(MagicLinkMail::class, fn ($mail): bool => $mail->hasTo('newcomer@acme.example'));
+});
+
+/**
+ * And the administrator can decline to send one — for an account created ahead of time —
+ * but the toast then says plainly that the person cannot sign in yet, rather than
+ * reporting success and leaving them stranded.
+ */
+it('says so when a user is created with no way to sign in', function (): void {
+    Mail::fake();
+
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner-inv2@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+
+    Volt::test('environment.users.create')
+        ->set('email', 'later@acme.example')
+        ->set('sendLink', false)
+        ->call('create');
+
+    Mail::assertNothingSent();
+});
