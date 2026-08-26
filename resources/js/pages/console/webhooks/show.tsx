@@ -1,6 +1,7 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
+import { relativeTime } from '@/lib/time';
 import type { PageProps } from '@/types';
 import {
     Badge,
@@ -284,9 +285,9 @@ export default function WebhookDetail({
                                                     {delivery.responseCode !== null &&
                                                         ` · HTTP ${delivery.responseCode}`}
                                                     {delivery.deliveredAt !== null
-                                                        ? ` · delivered ${relative(delivery.deliveredAt)}`
+                                                        ? ` · delivered ${relativeTime(delivery.deliveredAt)}`
                                                         : delivery.nextRetryAt !== null
-                                                          ? ` · retry ${relative(delivery.nextRetryAt)}`
+                                                          ? ` · retry ${relativeTime(delivery.nextRetryAt)}`
                                                           : ''}
                                                 </p>
                                             </div>
@@ -370,36 +371,6 @@ export default function WebhookDetail({
             />
         </>
     );
-}
-
-/**
- * "4 minutes ago", computed in the browser.
- *
- * Deliberately not formatted on the server: this is a page people leave open while they
- * wait for a retry, and a relative time rendered once is wrong from the second frame on.
- */
-function relative(iso: string): string {
-    const seconds = Math.round((Date.parse(iso) - Date.now()) / 1000);
-    const format = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-
-    const units: [Intl.RelativeTimeFormatUnit, number][] = [
-        ['second', 60],
-        ['minute', 60],
-        ['hour', 24],
-        ['day', 7],
-    ];
-
-    let value = seconds;
-
-    for (const [unit, step] of units) {
-        if (Math.abs(value) < step) {
-            return format.format(Math.round(value), unit);
-        }
-
-        value /= step;
-    }
-
-    return format.format(Math.round(value), 'week');
 }
 
 function capitalise(value: string): string {

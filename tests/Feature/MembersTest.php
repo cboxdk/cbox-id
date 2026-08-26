@@ -6,16 +6,13 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Collection;
+use Inertia\Testing\AssertableInertia;
 
 it('creates a pending invitation without granting membership', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);
 
-    Volt::test('members')
-        ->set('inviteEmail', 'newbie@acme.test')
-        ->set('inviteRole', 'member')
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteToDirectory(['email' => 'newbie@acme.test'])->assertSessionHasNoErrors();
 
     expect(app(Invitations::class)->pending($org->id)->pluck('email'))
         ->toContain('newbie@acme.test')
@@ -28,21 +25,27 @@ it('changes a member role and removes a member', function () {
     $target = app(Subjects::class)->create('target@acme.test', 'Target');
     app(Memberships::class)->add($org->id, $target->id, MembershipRole::Member);
 
-    Volt::test('members')->call('setRole', $target->id, 'admin');
+    test()->from(route('directory.members'))
+        ->patch(route('directory.members.role', $target->id), ['role' => 'admin'])
+        ->assertSessionHasNoErrors();
+
     expect(app(Memberships::class)->of($org->id, $target->id)?->role?->value)->toBe('admin');
 
-    Volt::test('members')->call('remove', $target->id);
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.remove', $target->id))
+        ->assertSessionHasNoErrors();
+
     expect(app(Memberships::class)->of($org->id, $target->id))->toBeNull();
 });
 
 it('will not let an admin remove themselves', function () {
     [$meId, $org] = actingAsRole(MembershipRole::Owner);
 
-    // The guard now surfaces via an announced error toast (role=alert), not an
-    // addError to the collapsed invite form's hidden sink — so the block is visible
-    // in the roster and announced to a screen reader.
-    Volt::test('members')->call('remove', $meId)
-        ->assertDispatched('toast', message: 'You cannot remove yourself.', severity: 'error');
+    // The refusal SAYS SO, rather than being a control that silently does nothing: the
+    // error rides back to the page it was posted from and is announced there.
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.remove', $meId))
+        ->assertSessionHasErrors(['member' => 'You cannot remove yourself.']);
 
     expect(app(Memberships::class)->of($org->id, $meId))->not->toBeNull();
 });
@@ -50,11 +53,7 @@ it('will not let an admin remove themselves', function () {
 it('forbids a plain member from inviting', function () {
     actingAsRole(MembershipRole::Member);
 
-    Volt::test('members')
-        ->set('inviteEmail', 'x@acme.test')
-        ->set('inviteRole', 'member')
-        ->call('invite')
-        ->assertForbidden();
+    inviteToDirectory(['email' => 'x@acme.test'])->assertForbidden();
 });
 
 it('forbids an admin from demoting or removing the org owner', function () {
@@ -63,8 +62,13 @@ it('forbids an admin from demoting or removing the org owner', function () {
     $owner = app(Subjects::class)->create('theowner@acme.test', 'Owner', 'supersecret123');
     app(Memberships::class)->add($org->id, $owner->id, MembershipRole::Owner);
 
-    Volt::test('members')->call('setRole', $owner->id, 'member')->assertStatus(403);
-    Volt::test('members')->call('remove', $owner->id)->assertStatus(403);
+    test()->from(route('directory.members'))
+        ->patch(route('directory.members.role', $owner->id), ['role' => 'member'])
+        ->assertStatus(403);
+
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.remove', $owner->id))
+        ->assertStatus(403);
 
     // The owner is untouched.
     expect(app(Memberships::class)->of($org->id, $owner->id)?->role?->value)->toBe('owner');
@@ -77,9 +81,11 @@ it('paginates the member roster instead of hydrating it whole', function () {
         $memberships->add($org->id, "member_{$i}", MembershipRole::Member);
     }
 
-    $component = Volt::test('members');
-
-    // 31 members (owner + 30) at 25/page: the first page renders 25 rows, not 31.
-    expect($component->viewData('members')->total())->toBe(31)
-        ->and($component->viewData('rows'))->toHaveCount(25);
+    // 31 members (owner + 30) at 25/page: the first page carries 25 rows, not 31 — and the
+    // paginator still knows there are 31, which is what makes the page a page.
+    test()->get(route('directory.members'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('pagination.total', 31)
+            ->where('members', fn (Collection $rows): bool => $rows->count() === 25));
 });

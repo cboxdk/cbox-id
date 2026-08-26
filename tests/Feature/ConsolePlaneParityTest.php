@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\OperatorEnvironment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
@@ -90,9 +91,24 @@ it('offers both re-pointing and opening from the operator target switcher', func
         ]),
     );
 
-    $html = (string) $this->get(route('platform.environments'))->assertOk()->getContent();
+    $options = collect(
+        (array) $this->get(route('platform.environments'))->assertOk()->inertiaProps('shell.environments')
+    );
 
-    expect($html)->toContain(route('platform.environment.switch'))
-        // The handoff link — the half that was missing.
-        ->and($html)->toMatch('#/open/[0-9a-zA-Z]+#');
+    // ASKED OF THE PROPS, not of the document: the switcher is a React menu, so the
+    // re-point URL is built on the client and never appears in the HTML — a string match
+    // on the page would now pass or fail for reasons that have nothing to do with what
+    // the menu offers.
+    $other = $options->firstWhere('current', false);
+
+    expect($other)->not->toBeNull('the switcher had nothing to switch to')
+        // The handoff link — the half that was missing. A signed hand-off to the
+        // environment's own host, so "switch target" can actually take you there.
+        ->and($other['openHref'])->toMatch('#/open/[0-9a-zA-Z]+#');
+
+    // …and re-pointing still works, driven rather than matched: the operator-only target
+    // key moves to the chosen plane. That is the other half of the menu.
+    targetPlatformEnvironment($other['id']);
+
+    expect(session(OperatorEnvironment::SESSION_KEY))->toBe('a-tenant-env');
 })->group('ux');

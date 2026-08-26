@@ -42,6 +42,15 @@ final readonly class ShellProps implements Prop
          */
         public ?string $section,
         public array $organizations,
+        /**
+         * The environment plane's acting organization, and null on every other plane.
+         *
+         * Separate from `$organizations` because the two answer different questions: that
+         * one is "which of MY organizations", answered with a list because a person belongs
+         * to a handful; this is "which TENANT of this environment", where the set is
+         * unbounded and the chrome must never try to enumerate it.
+         */
+        public ?ActingOrganizationProps $actingOrganization,
         public array $environments,
         public bool $isOperator,
         public string $brandHref,
@@ -58,6 +67,7 @@ final readonly class ShellProps implements Prop
             'activeArea' => $this->activeArea,
             'section' => $this->section,
             'organizations' => $this->organizations,
+            'actingOrganization' => $this->actingOrganization,
             'environments' => $this->environments,
             'isOperator' => $this->isOperator,
             'brandHref' => $this->brandHref,

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use App\Platform\ScopeCatalog;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
@@ -22,7 +23,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
+use Inertia\Support\SessionKey;
+use Inertia\Testing\AssertableInertia;
 
 /** Entitle an org for a self-serve feature ('cbox-id-sso' | 'cbox-id-scim'). */
 function entitle(string $organizationId, string $key): void
@@ -47,6 +49,12 @@ function owner(): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN. `CurrentUser` is
+    // resolved state for code already inside the process, which is all a Livewire
+    // component ever needed; a ported page is reached by a REQUEST, and without this every
+    // one of them answers a redirect to /login.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $org->id;
 }
 
@@ -59,16 +67,30 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
     // token that is shown once needs somewhere to be shown that is not the row you just
     // submitted.
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')
-        ->set('name', 'Okta')
-        ->call('register')
-        ->assertHasNoErrors();
+    registerDirectory(['name' => 'Okta'])->assertSessionHasNoErrors();
 
     $directory = Directory::query()->where('organization_id', $orgId)->where('name', 'Okta')->firstOrFail();
 
-    // The token is protected (never dehydrated into the wire snapshot), so assert the
-    // one-time reveal on the rendered output rather than reaching into component state.
-    Volt::test('console.directories.show', ['directory' => $directory->id])->assertSee('scim_');
+    // ON THE FLASH CHANNEL, which is what makes "shown once" true: props are written into
+    // the browser's history entry, and a live bearer token there is readable by pressing
+    // Back long after the page that showed it has gone.
+    // `hasFlash()` compares with assertSame, so a predicate is not something it can take
+    // — the value is read and asserted here instead.
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $token = is_array($flash) ? ($flash['newToken'] ?? null) : null;
+
+    expect($token)->toBeString()->toStartWith('scim_');
+
+    $shown = test()->get(route('directories.show', $directory->id))->assertOk();
+
+    $shown->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('newToken', $token));
+
+    expect(json_encode($shown->inertiaProps()))->toBeString()->not->toContain('scim_');
+
+    // …and the next visit carries nothing at all.
+    test()->get(route('directories.show', $directory->id))
+        ->assertOk()
+        ->assertInertiaFlashMissing('newToken');
 });
 
 it('registers an OAuth client for the organization', function () {
@@ -78,13 +100,12 @@ it('registers an OAuth client for the organization', function () {
     // and the client type, the grants and the absence of a redirect URI all follow from
     // the answer; only the API scopes are still typed in.
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'CI Pipeline')
-        ->set('kind', 'service')
-        ->set('selectedScopes', [])
-        ->set('customScopes', 'api.read, api.write')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'CI Pipeline',
+        'kind' => 'service',
+        'scopes' => [],
+        'customScopes' => 'api.read, api.write',
+    ])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('organization_id', $orgId)->first();
     expect($client)->not->toBeNull()
@@ -108,11 +129,7 @@ it('registers a CLI app with the device grant and no redirect URI', function () 
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Acme CLI')
-        ->set('kind', 'cli')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp(['name' => 'Acme CLI', 'kind' => 'cli'])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Acme CLI')->firstOrFail();
 
@@ -135,15 +152,14 @@ it('still lets an advanced registration pick its own grants', function () {
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Hybrid App')
-        ->set('kind', 'advanced')
-        ->set('type', 'confidential')
-        ->set('grantAuthorizationCode', true)
-        ->set('grantClientCredentials', true)
-        ->set('redirectUris', 'https://hybrid.acme.test/cb')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Hybrid App',
+        'kind' => 'advanced',
+        'type' => 'confidential',
+        'grantAuthorizationCode' => true,
+        'grantClientCredentials' => true,
+        'redirectUris' => 'https://hybrid.acme.test/cb',
+    ])->assertSessionHasNoErrors();
 
     expect(Client::query()->where('name', 'Hybrid App')->firstOrFail()->grant_types)
         ->toBe(['authorization_code', 'refresh_token', 'client_credentials']);
@@ -156,13 +172,11 @@ it('registers an OAuth client with post-logout redirect URIs', function () {
     $orgId = owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Support Portal')
-        ->set('grantAuthorizationCode', true)
-        ->set('redirectUris', 'https://portal.acme.test/auth/callback')
-        ->set('postLogoutRedirectUris', 'https://portal.acme.test/signed-out')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Support Portal',
+        'redirectUris' => 'https://portal.acme.test/auth/callback',
+        'postLogoutRedirectUris' => 'https://portal.acme.test/signed-out',
+    ])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('organization_id', $orgId)->where('name', 'Support Portal')->first();
     expect($client)->not->toBeNull()
@@ -173,16 +187,7 @@ it('creates and activates a SAML connection', function () {
     $orgId = owner();
     entitle($orgId, 'cbox-id-sso');
 
-    Volt::test('console.connections.create')
-        ->set('type', 'saml')
-        ->set('name', 'Corporate SAML')
-        ->set('idp_entity_id', 'https://idp.corp/metadata')
-        ->set('idp_sso_url', 'https://idp.corp/sso')
-        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
-        ->set('sp_entity_id', 'https://sp.acme/metadata')
-        ->set('sp_acs_url', 'https://sp.acme/acs')
-        ->call('create')
-        ->assertHasNoErrors();
+    createConnection()->assertSessionHasNoErrors();
 
     expect(Connection::query()->where('organization_id', $orgId)->where('name', 'Corporate SAML')->exists())->toBeTrue();
 });
@@ -194,9 +199,12 @@ it('forbids a non-admin from registering a directory', function () {
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
-    // The read gate now blocks a member at mount — they never reach register().
+    // The read gate blocks a member at the door — they never reach the write.
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')->assertForbidden();
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    test()->get(route('directories.create'))->assertForbidden();
+    registerDirectory(['name' => 'Okta'])->assertForbidden();
 });
 
 function member(): string
@@ -207,42 +215,31 @@ function member(): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Member);
 
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN. `CurrentUser` is
+    // resolved state for code already inside the process, which is all a Livewire
+    // component ever needed; a ported page is reached by a REQUEST, and without this every
+    // one of them answers a redirect to /login.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $org->id;
 }
 
-it('forbids a non-admin member from reading admin console pages', function (string $page) {
+/**
+ * THE SAME PAGES THE PORT HAS MOVED, asked over HTTP.
+ *
+ * A controller has no snapshot to drive, so the question is the ordinary one: a plain
+ * member requests the page and must not be given it. Stronger than the component check
+ * beside it, because the whole stack answers — middleware, scope, controller.
+ */
+it('forbids a non-admin member from reading a ported admin console page', function (string $route) {
     member();
 
-    // Not just the write buttons — the whole page (org-wide config, secrets,
-    // audit) must be unreadable to a plain member.
-    Volt::test($page)->assertForbidden();
-})->with(['console.audit', 'console.clients.index', 'console.connections.index', 'console.directories.index', 'console.roles.index', 'console.webhooks.index']);
+    $response = test()->get(route($route));
 
-it('re-authorizes org-admin console pages on every request via boot(), not just mount()', function () {
-    // A member who is an admin at mount, then demoted mid-session. The read gate must
-    // catch the demotion on the NEXT request — proving the guard lives in boot()
-    // (runs every hydration), not mount() (runs once). Under a mount()-only gate the
-    // open snapshot would keep re-rendering org-wide SSO/SCIM/role/webhook config.
-    $subject = app(Subjects::class)->create('demote@acme.test', 'Dee', 'supersecret123');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-demote'));
-    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
-    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
-    $cu = app(CurrentUser::class);
-    $cu->set($subject, $session, $org, MembershipRole::Owner);
-
-    entitle($org->id, 'cbox-id-sso');
-    entitle($org->id, 'cbox-id-scim');
-
-    foreach (['console.connections.index', 'console.directories.index', 'console.roles.index', 'console.webhooks.index'] as $page) {
-        $component = Volt::test($page)->assertOk();          // mounts fine as admin
-
-        $cu->set($subject, $session, $org, MembershipRole::Member); // demoted
-
-        $component->call('$refresh')->assertForbidden();     // boot() re-checks → 403
-
-        $cu->set($subject, $session, $org, MembershipRole::Owner);  // restore for next page
-    }
-});
+    // Refused OR redirected somewhere they can be — the console does both, deliberately,
+    // and which one is the page's own business. What must not happen is 200.
+    expect($response->status())->not->toBe(200);
+})->with(['webhooks', 'clients', 'connections', 'directories', 'roles', 'audit', 'permissions']);
 
 /**
  * The starter snippet has to be for the app you are looking at.
@@ -260,17 +257,20 @@ it('shows a CLI app the device-flow snippet, not a redirect one', function () {
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Snippet CLI')
-        ->set('kind', 'cli')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp(['name' => 'Snippet CLI', 'kind' => 'cli'])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Snippet CLI')->firstOrFail();
 
-    $html = Volt::test('console.clients.show', ['client' => $client->id])->html();
+    // Asserted on the SNIPPETS themselves rather than on the document: the page renders in
+    // the browser, and the code a person copies is a prop.
+    // JSON_UNESCAPED_SLASHES, so a package name reads as `@cboxdk/id-js` rather than as
+    // `@cboxdk\/id-js` — the escaped form matches nothing anybody would search for.
+    $snippets = json_encode(
+        test()->get(route('clients.show', $client->id))->assertOk()->inertiaProps('snippets'),
+        JSON_UNESCAPED_SLASHES,
+    );
 
-    expect($html)
+    expect($snippets)
         ->toContain('requestDeviceAuthorization')
         ->toContain('pollDeviceToken')
         // Not the browser flow: a CLI has no callback URL, and offering it one here
@@ -287,16 +287,18 @@ it('offers only SDKs that can actually be installed', function () {
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Snippet Web')
-        ->set('kind', 'web')
-        ->set('redirectUris', 'https://snippet.acme.test/cb')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Snippet Web',
+        'kind' => 'web',
+        'redirectUris' => 'https://snippet.acme.test/cb',
+    ])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Snippet Web')->firstOrFail();
 
-    $html = Volt::test('console.clients.show', ['client' => $client->id])->html();
+    $html = json_encode(
+        test()->get(route('clients.show', $client->id))->assertOk()->inertiaProps('snippets'),
+        JSON_UNESCAPED_SLASHES,
+    );
 
     expect($html)
         ->toContain('@cboxdk/id-js')
@@ -351,19 +353,25 @@ it('names every kind of app in the list, including the ones with neither grant',
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')->set('name', 'List CLI')->set('kind', 'cli')->call('create')->assertHasNoErrors();
+    registerApp(['name' => 'List CLI', 'kind' => 'cli'])->assertSessionHasNoErrors();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')->set('name', 'List Service')->set('kind', 'service')->call('create')->assertHasNoErrors();
+    registerApp(['name' => 'List Service', 'kind' => 'service'])->assertSessionHasNoErrors();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'List Web')->set('kind', 'web')->set('redirectUris', 'https://list.acme.test/cb')
-        ->call('create')->assertHasNoErrors();
+    registerApp([
+        'name' => 'List Web',
+        'kind' => 'web',
+        'redirectUris' => 'https://list.acme.test/cb',
+    ])->assertSessionHasNoErrors();
 
-    $html = Volt::test('console.clients.index')->html();
+    // The LABEL each row carries, read off the rows. It is one word per app that answers
+    // "what is this?", and it used to be drawn from the grants directly — so a CLI, whose
+    // grant is neither of the two the old code knew, drew nothing at all.
+    $labels = collect((array) test()->get(route('clients'))->assertOk()->inertiaProps('clients'))
+        ->pluck('kindLabel');
 
-    expect($html)
+    expect($labels)
         ->toContain('CLI or device')
         ->toContain('Service or background job')
         ->toContain('Web app');
@@ -394,16 +402,14 @@ it('shows the claim shape an app receives, using a real role', function () {
         'source' => RoleSource::Manual,
     ]);
 
-    $html = Volt::test('console.roles.index')->html();
-
-    expect($html)
-        ->toContain('What your app receives')
-        // The real claim names, and this environment's real role in them.
-        ->toContain('"roles"')
-        ->toContain('"permissions"')
-        ->toContain('Support agent')
-        // And the distinction that the page exists to make.
-        ->toContain('what the');
+    // THE SERVER HALF: the environment's own role, which the snippet is built from. The
+    // claim names are drawn by the page, so a request cannot see them — that half is held
+    // by tests/Browser/RolesTest.php, in a browser that actually renders it.
+    test()->get(route('roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('sample.role', 'Support agent')
+            ->where('sample.permissions', []));
 });
 
 /**
@@ -424,12 +430,11 @@ it('shows the issuer that discovery actually serves', function () {
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Issuer Check')
-        ->set('kind', 'web')
-        ->set('redirectUris', 'https://issuer.acme.test/cb')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Issuer Check',
+        'kind' => 'web',
+        'redirectUris' => 'https://issuer.acme.test/cb',
+    ])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Issuer Check')->firstOrFail();
 
@@ -437,14 +442,18 @@ it('shows the issuer that discovery actually serves', function () {
 
     expect($served)->toBeString()->not->toBeEmpty();
 
-    expect(Volt::test('console.clients.show', ['client' => $client->id])->html())
-        ->toContain($served);
+    expect(test()->get(route('clients.show', $client->id))->assertOk()->inertiaProps('issuer'))
+        ->toBe($served);
 
     // And the Settings page, which had a THIRD derivation of the same value —
     // `'https://'.request()->getHost()`, right for a tenant on its own subdomain and
     // right only by coincidence for the platform root, which keeps its configured
     // issuer whatever host answers.
-    expect(Volt::test('console.settings')->html())->toContain($served);
+    //
+    // Asserted on the PROP rather than on the rendered page: this one is exact, where
+    // "the document mentions the string somewhere" would also pass if the page printed
+    // the right issuer beside a wrong one.
+    expect(test()->get(route('settings'))->assertOk()->inertiaProps('issuer'))->toBe($served);
 });
 
 /**
@@ -457,21 +466,31 @@ it('lets an app’s scopes be edited without re-registering it', function () {
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Scope Edit')->set('kind', 'web')
-        ->set('redirectUris', 'https://scope.acme.test/cb')
-        ->call('create')->assertHasNoErrors();
+    registerApp([
+        'name' => 'Scope Edit',
+        'kind' => 'web',
+        'redirectUris' => 'https://scope.acme.test/cb',
+    ])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Scope Edit')->firstOrFail();
     $before = $client->client_id;
 
-    Volt::test('console.clients.show', ['client' => $client->id])
-        // Seeded from the record, split so a hand-typed key is not silently dropped.
-        ->assertSet('editScopes', fn (array $s): bool => in_array('openid', $s, true))
-        ->set('editScopes', ['openid', 'profile'])
-        ->set('editCustomScopes', 'tax.data, api.read')
-        ->call('saveDetails')
-        ->assertHasNoErrors();
+    // Seeded from the record, split so a hand-typed key is not silently dropped.
+    $showing = (array) test()->get(route('clients.show', $client->id))
+        ->assertOk()
+        ->inertiaProps('client');
+
+    expect($showing['scopes'] ?? [])->toContain('openid');
+
+    test()->from(route('clients.show', $client->id))
+        ->patch(route('clients.update', $client->id), [
+            'name' => $showing['name'],
+            'redirectUris' => $showing['redirectUris'],
+            'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
+            'scopes' => ['openid', 'profile'],
+            'customScopes' => 'tax.data, api.read',
+        ])
+        ->assertSessionHasNoErrors();
 
     $client->refresh();
 
@@ -492,18 +511,30 @@ it('keeps a custom scope through an unrelated edit', function () {
     owner();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Custom Scope')->set('kind', 'web')
-        ->set('redirectUris', 'https://custom.acme.test/cb')
-        ->set('customScopes', 'tax.data')
-        ->call('create')->assertHasNoErrors();
+    registerApp([
+        'name' => 'Custom Scope',
+        'kind' => 'web',
+        'redirectUris' => 'https://custom.acme.test/cb',
+        'customScopes' => 'tax.data',
+    ])->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Custom Scope')->firstOrFail();
 
-    Volt::test('console.clients.show', ['client' => $client->id])
-        ->set('editName', 'Custom Scope Renamed')
-        ->call('saveDetails')
-        ->assertHasNoErrors();
+    // The form as the page hands it back, with ONE field changed — which is what an
+    // unrelated edit is, and the only shape in which the custom key can be dropped.
+    $showing = (array) test()->get(route('clients.show', $client->id))
+        ->assertOk()
+        ->inertiaProps('client');
+
+    test()->from(route('clients.show', $client->id))
+        ->patch(route('clients.update', $client->id), [
+            'name' => 'Custom Scope Renamed',
+            'redirectUris' => $showing['redirectUris'],
+            'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
+            'scopes' => $showing['scopes'],
+            'customScopes' => $showing['customScopes'],
+        ])
+        ->assertSessionHasNoErrors();
 
     expect($client->refresh()->scopes)->toContain('tax.data');
 });
@@ -528,11 +559,11 @@ it('says on the roles page that roles are the groups a token carries', function 
         'source' => RoleSource::Manual,
     ]);
 
-    expect(Volt::test('console.roles.index')->html())
-        ->toContain('groups')
-        // The claim, with this environment's own role in it.
-        ->toContain('"groups"')
-        ->toContain('Support agent');
+    // Same split as above: the role the `groups` snippet is built from is the server's,
+    // the sentence about Kubernetes and Grafana is the page's. See tests/Browser/RolesTest.php.
+    test()->get(route('roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('sample.role', 'Support agent'));
 });
 
 /**
@@ -582,15 +613,15 @@ it('refuses an environment-owned SSO connection from the organization plane', fu
         'jwks_uri' => 'https://idp.rival/oauth2/keys',
     ])]);
 
-    Volt::test('console.connections.create')
-        ->set('environmentWide', true)
-        ->set('type', 'oidc')
-        ->set('name', 'Sneaky Okta')
-        ->set('issuer', 'https://idp.rival')
-        ->set('client_id', 'abc')
-        ->set('client_secret', 'shh')
-        ->set('signing_key', 'a-signing-key')
-        ->call('create');
+    createConnection([
+        'environmentWide' => true,
+        'type' => 'oidc',
+        'name' => 'Sneaky Okta',
+        'issuer' => 'https://idp.rival',
+        'client_id' => 'abc',
+        'client_secret' => 'shh',
+        'signing_key' => 'a-signing-key',
+    ]);
 
     expect(Connection::query()->where('name', 'Sneaky Okta')->exists())->toBeFalse();
 })->group('security');

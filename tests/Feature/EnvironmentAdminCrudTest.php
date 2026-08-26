@@ -47,10 +47,11 @@ use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -61,13 +62,20 @@ it('renders the user + org detail pages and edits a user profile', function (): 
     $user = app(Subjects::class)->create('jane@acme.example', 'Jane');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant A', slug: 'tenant-a'));
 
-    $this->get("/admin/users/{$user->id}")->assertOk()->assertSee('jane@acme.example');
-    $this->get("/admin/organizations/{$org->id}")->assertOk()->assertSee('Tenant A');
+    $this->get("/admin/users/{$user->id}")
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('user.email', 'jane@acme.example'));
 
-    Volt::test('environment.users.show', ['user' => $user->id])
-        ->set('editName', 'Jane Doe')
-        ->call('saveProfile')
-        ->assertHasNoErrors();
+    $this->get("/admin/organizations/{$org->id}")
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('organization.name', 'Tenant A'));
+
+    test()->from(route('environment.users.show', $user->id))
+        ->patch(route('environment.users.update', $user->id), [
+            'name' => 'Jane Doe',
+            'email' => 'jane@acme.example',
+        ])
+        ->assertSessionHasNoErrors();
 
     expect(User::query()->whereKey($user->id)->value('name'))->toBe('Jane Doe');
 });
@@ -76,10 +84,10 @@ it('deactivates and reactivates a user', function (): void {
     crudSetup();
     $user = app(Subjects::class)->create('bob@acme.example', 'Bob');
 
-    Volt::test('environment.users.show', ['user' => $user->id])->call('suspend');
+    test()->post(route('environment.users.deactivate', $user->id))->assertSessionHasNoErrors();
     expect(User::query()->whereKey($user->id)->value('status'))->toBe(UserStatus::Disabled);
 
-    Volt::test('environment.users.show', ['user' => $user->id])->call('reactivate');
+    test()->post(route('environment.users.reactivate', $user->id))->assertSessionHasNoErrors();
     expect(User::query()->whereKey($user->id)->value('status'))->toBe(UserStatus::Active);
 });
 
@@ -88,7 +96,7 @@ it('sends a password reset email from the user detail page', function (): void {
     Mail::fake();
     $user = app(Subjects::class)->create('reset@acme.example', 'Reset Me');
 
-    Volt::test('environment.users.show', ['user' => $user->id])->call('sendPasswordReset');
+    test()->post(route('environment.users.password-reset', $user->id))->assertSessionHasNoErrors();
 
     Mail::assertSent(PasswordResetMail::class);
 });
@@ -98,11 +106,7 @@ it('assigns a user to an organization', function (): void {
     $user = app(Subjects::class)->create('carol@acme.example', 'Carol');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant B', slug: 'tenant-b'));
 
-    Volt::test('environment.users.show', ['user' => $user->id])
-        ->set('assignOrgId', $org->id)
-        ->set('assignRole', 'member')
-        ->call('assignOrg')
-        ->assertHasNoErrors();
+    assignUserToOrganization($user->id, $org->id)->assertSessionHasNoErrors();
 
     expect(app(Memberships::class)->of($org->id, $user->id))->not->toBeNull();
 });
@@ -111,14 +115,11 @@ it('renames and soft-deletes an organization', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Old Name', slug: 'old-name'));
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->set('editName', 'New Name')
-        ->set('editSlug', 'new-name')
-        ->call('saveDetails')
-        ->assertHasNoErrors();
+    saveOrganization($org->id, 'New Name', 'new-name')->assertSessionHasNoErrors();
     expect(Organization::query()->whereKey($org->id)->value('name'))->toBe('New Name');
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])->call('deleteOrg');
+    test()->delete(route('environment.organizations.destroy', $org->id))
+        ->assertRedirect(route('environment.organizations'));
     expect(Organization::query()->whereKey($org->id)->value('status'))->toBe(OrganizationStatus::Deleted);
 });
 
@@ -127,11 +128,7 @@ it('adds a member to an organization by email', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant C', slug: 'tenant-c'));
     $user = app(Subjects::class)->create('dave@acme.example', 'Dave');
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->set('memberEmail', 'dave@acme.example')
-        ->set('memberRole', 'admin')
-        ->call('addMember')
-        ->assertHasNoErrors();
+    addOrganizationMember($org->id, ['role' => 'admin'])->assertSessionHasNoErrors();
 
     expect(app(Memberships::class)->of($org->id, $user->id)?->role?->value)->toBe('admin');
 });
@@ -217,11 +214,7 @@ it('sends an organization invitation and lists it as pending', function (): void
     Mail::fake();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant G', slug: 'tenant-g'));
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->set('inviteEmail', 'newbie@acme.example')
-        ->set('inviteRole', 'member')
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteOrganizationMember($org->id)->assertSessionHasNoErrors();
 
     Mail::assertSent(InvitationMail::class);
     expect(app(Invitations::class)->pending($org->id))->toHaveCount(1);
@@ -231,10 +224,9 @@ it('adds a verified domain to an organization', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant H', slug: 'tenant-h'));
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->set('newDomain', 'acme-h.com')
-        ->call('addDomain')
-        ->assertHasNoErrors();
+    test()->from(route('environment.organizations.show', $org->id))
+        ->post(route('environment.organizations.domains.store', $org->id), ['domain' => 'acme-h.com'])
+        ->assertSessionHasNoErrors();
 
     expect(VerifiedDomain::query()->where('organization_id', $org->id)->where('domain', 'acme-h.com')->exists())->toBeTrue();
 });
@@ -253,7 +245,7 @@ it('resets a user\'s two-factor factors', function (): void {
     // same as the vault and legacy-login two screens away.
     confirmEnvironmentStepUp();
 
-    Volt::test('environment.users.show', ['user' => $user->id])->call('resetMfa');
+    test()->post(route('environment.users.mfa', $user->id))->assertSessionHasNoErrors();
 
     expect(MfaFactor::query()->where('user_id', $user->id)->count())->toBe(0);
 
@@ -273,14 +265,14 @@ it('requires and stores client_secret for an OIDC connection created via the for
     $key = "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----";
 
     // The federation OIDC token exchange requires client_secret — the form must too.
-    Volt::test('console.connections.create')
-        ->set('type', 'oidc')
-        ->set('name', 'Okta OIDC')
-        ->set('issuer', 'https://okta.example')
-        ->set('client_id', 'abc')
-        ->set('signing_key', $key)
-        ->call('create')
-        ->assertHasErrors('client_secret');
+    createConnection([
+        'type' => 'oidc',
+        'name' => 'Okta OIDC',
+        'issuer' => 'https://okta.example',
+        'client_id' => 'abc',
+        'client_secret' => '',
+        'signing_key' => $key,
+    ], 'environment.connections')->assertSessionHasErrors('client_secret');
 
     // The authorization/token endpoints are completed from the issuer's discovery
     // document (SSRF-guarded) so the connection isn't left half-configured.
@@ -292,15 +284,14 @@ it('requires and stores client_secret for an OIDC connection created via the for
         'jwks_uri' => 'https://okta.example/oauth2/keys',
     ], 200)]);
 
-    Volt::test('console.connections.create')
-        ->set('type', 'oidc')
-        ->set('name', 'Okta OIDC')
-        ->set('issuer', 'https://okta.example')
-        ->set('client_id', 'abc')
-        ->set('client_secret', 's3cr3t-value')
-        ->set('signing_key', $key)
-        ->call('create')
-        ->assertHasNoErrors();
+    createConnection([
+        'type' => 'oidc',
+        'name' => 'Okta OIDC',
+        'issuer' => 'https://okta.example',
+        'client_id' => 'abc',
+        'client_secret' => 's3cr3t-value',
+        'signing_key' => $key,
+    ], 'environment.connections')->assertSessionHasNoErrors();
 
     $conn = Connection::query()->where('name', 'Okta OIDC')->firstOrFail();
     $config = app(Connections::class)->config($conn);
@@ -316,15 +307,14 @@ it('refuses an OIDC connection whose issuer has no reachable discovery document'
     config(['cbox-id.federation.verify_url' => false]);
     Http::fake(['badidp.example/.well-known/openid-configuration' => Http::response('nope', 404)]);
 
-    Volt::test('console.connections.create')
-        ->set('type', 'oidc')
-        ->set('name', 'Bad OIDC')
-        ->set('issuer', 'https://badidp.example')
-        ->set('client_id', 'abc')
-        ->set('client_secret', 's3cr3t')
-        ->set('signing_key', "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----")
-        ->call('create')
-        ->assertHasErrors('issuer');
+    createConnection([
+        'type' => 'oidc',
+        'name' => 'Bad OIDC',
+        'issuer' => 'https://badidp.example',
+        'client_id' => 'abc',
+        'client_secret' => 's3cr3t',
+        'signing_key' => "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----",
+    ], 'environment.connections')->assertSessionHasErrors('issuer');
 
     expect(Connection::query()->where('name', 'Bad OIDC')->exists())->toBeFalse();
 });
@@ -350,8 +340,12 @@ it('keeps the last owner when a demotion is attempted (no uncaught 500)', functi
     $user = app(Subjects::class)->create('soleowner@acme.example', 'Sole Owner');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Owner);
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->call('changeMemberRole', $user->id, 'member');
+    // REFUSED WITH A SENTENCE rather than a silent no-op or an uncaught 500: an
+    // organization must keep an owner, and somebody demoting the last one needs to be told
+    // that rather than watching nothing happen.
+    test()->from(route('environment.organizations.show', $org->id))
+        ->patch(route('environment.organizations.members.role', [$org->id, $user->id]), ['role' => 'member'])
+        ->assertSessionHasErrors(['role' => 'An organization must keep at least one owner.']);
 
     expect(app(Memberships::class)->of($org->id, $user->id)?->role?->value)->toBe('owner');
 });
@@ -370,11 +364,8 @@ it('rejects an out-of-environment organization for an inline-hook registration',
     // against, so the endpoint is not created at all rather than landing on whichever
     // organization a downstream default would have picked.
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('hook', HookPoint::TokenMinting->value)
-        ->set('url', 'https://example.com/hook')
-        ->call('register')
-        ->assertHasErrors('url');
+    registerHook(['url' => 'https://example.com/hook'], 'environment.hooks')
+        ->assertSessionHasErrors('url');
 
     expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 });
@@ -453,13 +444,12 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
     // takes its organization from the console scope rather than from a field. An app the
     // ENVIRONMENT owns is what this plane always registered — now it says so.
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Logout App')
-        ->set('environmentWide', true)
-        ->set('redirectUris', 'https://a.example/cb')
-        ->set('postLogoutRedirectUris', "https://a.example/signed-out\nhttps://a.example/bye")
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Logout App',
+        'environmentWide' => true,
+        'redirectUris' => 'https://a.example/cb',
+        'postLogoutRedirectUris' => "https://a.example/signed-out\nhttps://a.example/bye",
+    ], 'environment.clients')->assertSessionHasNoErrors();
 
     $client = Client::query()->where('name', 'Logout App')->firstOrFail();
     expect($client->post_logout_redirect_uris)->toBe([
@@ -468,11 +458,22 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
     ]);
 
     // …and the detail page round-trips the stored list back into the form and saves it.
-    Volt::test('console.clients.show', ['client' => $client->id])
-        ->assertSet('editPostLogoutRedirectUris', "https://a.example/signed-out\nhttps://a.example/bye")
-        ->set('editPostLogoutRedirectUris', 'https://a.example/farewell')
-        ->call('saveDetails')
-        ->assertHasNoErrors();
+    $showing = (array) test()->get(route('environment.clients.show', $client->id))
+        ->assertOk()
+        ->inertiaProps('client');
+
+    expect($showing['postLogoutRedirectUris'])
+        ->toBe("https://a.example/signed-out\nhttps://a.example/bye");
+
+    test()->from(route('environment.clients.show', $client->id))
+        ->patch(route('environment.clients.update', $client->id), [
+            'name' => $showing['name'],
+            'redirectUris' => $showing['redirectUris'],
+            'postLogoutRedirectUris' => 'https://a.example/farewell',
+            'scopes' => $showing['scopes'],
+            'customScopes' => $showing['customScopes'],
+        ])
+        ->assertSessionHasNoErrors();
 
     expect($client->refresh()->post_logout_redirect_uris)->toBe(['https://a.example/farewell']);
 });
@@ -481,13 +482,12 @@ it('refuses a cleartext post-logout redirect URI on a public host', function ():
     crudSetup();
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Insecure Logout App')
-        ->set('environmentWide', true)
-        ->set('redirectUris', 'https://a.example/cb')
-        ->set('postLogoutRedirectUris', 'http://a.example/signed-out')
-        ->call('create')
-        ->assertHasErrors('postLogoutRedirectUris');
+    registerApp([
+        'name' => 'Insecure Logout App',
+        'environmentWide' => true,
+        'redirectUris' => 'https://a.example/cb',
+        'postLogoutRedirectUris' => 'http://a.example/signed-out',
+    ], 'environment.clients')->assertSessionHasErrors('postLogoutRedirectUris');
 
     expect(Client::query()->where('name', 'Insecure Logout App')->exists())->toBeFalse();
 });
@@ -505,12 +505,14 @@ it('rotates and deletes an application', function (): void {
 
     confirmConsoleStepUp();
 
-    Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
+    test()->from(route('environment.clients.show', $client->id))
+        ->post(route('environment.clients.rotate', $client->id))
+        ->assertSessionHasNoErrors();
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))->not->toBe($before);
 
     // `deleteClient` and the organization plane's `delete` were one capability under two
-    // names; the merged component has one.
-    Volt::test('console.clients.show', ['client' => $client->id])->call('delete');
+    // names; the merged controller has one.
+    test()->delete(route('environment.clients.destroy', $client->id))->assertRedirect();
     expect(Client::query()->whereKey($client->id)->exists())->toBeFalse();
 });
 
@@ -554,12 +556,10 @@ it('adds a member with an RBAC access role from the organization screen', functi
     // An environment-wide manual role — the kind the Roles console authors.
     $role = app(Roles::class)->define(null, 'Team leads', 'Team leads across the org', null);
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->set('memberEmail', 'dan@acme.example')
-        ->set('memberRole', 'member')
-        ->set('memberAccessRoles', [$role->id])
-        ->call('addMember')
-        ->assertHasNoErrors();
+    addOrganizationMember($org->id, [
+        'email' => 'dan@acme.example',
+        'accessRoles' => [$role->id],
+    ])->assertSessionHasNoErrors();
 
     expect(RoleAssignment::query()
         ->where('organization_id', $org->id)->where('user_id', $user->id)->where('role_id', $role->id)
@@ -576,10 +576,18 @@ it('grants then revokes an access role for a member via the manage toggle', func
     $held = fn (): bool => RoleAssignment::query()
         ->where('organization_id', $org->id)->where('user_id', $user->id)->where('role_id', $role->id)->exists();
 
-    $c = Volt::test('environment.organizations.show', ['organization' => $org->id]);
-    $c->call('toggleAccessRole', $user->id, $role->id);
+    $set = fn (bool $granted) => test()->from(route('environment.organizations.show', $org->id))
+        ->post(route('environment.organizations.members.access', [$org->id, $user->id]), [
+            'role' => $role->id,
+            'granted' => $granted,
+        ]);
+
+    // AN EXPLICIT SET rather than a toggle: a retried request and the checkbox must not
+    // disagree about which state was asked for.
+    $set(true)->assertSessionHasNoErrors();
     expect($held())->toBeTrue();
-    $c->call('toggleAccessRole', $user->id, $role->id);
+
+    $set(false)->assertSessionHasNoErrors();
     expect($held())->toBeFalse();
 });
 
@@ -589,8 +597,11 @@ it('ignores an access-role id that is not assignable in the org (deny-by-default
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant E', slug: 'tenant-e'));
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->call('toggleAccessRole', $user->id, 'role_does_not_exist');
+    test()->from(route('environment.organizations.show', $org->id))
+        ->post(route('environment.organizations.members.access', [$org->id, $user->id]), [
+            'role' => 'role_does_not_exist',
+            'granted' => true,
+        ]);
 
     expect(RoleAssignment::query()->where('organization_id', $org->id)->where('user_id', $user->id)->exists())->toBeFalse();
 });
@@ -601,12 +612,8 @@ it('assigns a user to an org WITH access roles from the user screen', function (
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant F', slug: 'tenant-f'));
     $role = app(Roles::class)->define(null, 'Manager', null, null);
 
-    Volt::test('environment.users.show', ['user' => $user->id])
-        ->set('assignOrgId', $org->id)
-        ->set('assignRole', 'member')
-        ->set('assignAccessRoles', [$role->id])
-        ->call('assignOrg')
-        ->assertHasNoErrors();
+    assignUserToOrganization($user->id, $org->id, ['accessRoles' => [$role->id]])
+        ->assertSessionHasNoErrors();
 
     expect(RoleAssignment::query()
         ->where('organization_id', $org->id)->where('user_id', $user->id)->where('role_id', $role->id)
@@ -623,8 +630,14 @@ it('renders a member\'s assigned access role on the organization screen', functi
 
     $this->get("/admin/organizations/{$org->id}")
         ->assertOk()
-        ->assertSee('Access roles')  // the new RBAC surface label
-        ->assertSee('Team leads');   // the assigned role, rendered as a chip
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            // The role is OFFERED on the screen…
+            ->where('accessRoles', fn (Collection $roles): bool => $roles->pluck('name')->contains('Team leads'))
+            // …and this member is marked as holding it. Asserted on the membership row
+            // rather than on a chip somewhere on the page: a role listed in the catalogue
+            // but not joined to the member is exactly the bug this test exists to catch.
+            ->where('members', fn (Collection $rows): bool => $rows
+                ->firstWhere('userId', (string) $user->id)['accessRoleIds'] === [$role->id]));
 });
 
 it('scopes the org-detail member lookup to the roster, not every user in the environment', function (): void {
@@ -651,9 +664,12 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
         }
     });
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
+    test()->get(route('environment.organizations.show', $org->id))
         ->assertOk()
-        ->assertSee('Member 1');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'members',
+            fn (Collection $rows): bool => $rows->pluck('name')->contains('Member 1'),
+        ));
 
     // A users query scoped by `id in (…)` over exactly the roster exists — proving the
     // name lookup is bounded by the members, never an unbounded full-table select of
@@ -676,21 +692,27 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
 });
 
 /**
- * The eyebrow, in rendered HTML rather than in the resolver.
+ * The eyebrow, on a real request rather than in the resolver.
  *
  * The resolver is unit-tested a route at a time, which proves it can answer — not that
- * anything asks. This walks the whole chain: layout → page-header → ConsoleLocation →
- * ConsoleNavigation, on a real request, on the plane where the eyebrow was missing.
+ * anything asks. This walks the whole chain: shell → ConsoleLocation → ConsoleNavigation,
+ * on a real request, on the plane where the eyebrow was missing.
+ *
+ * `<PageHeader>` draws it from `shell.activeArea` and nothing else, so what a request has
+ * to carry is an ACTIVE AREA that resolves to a label — asserted as the pair rather than
+ * as a key, because a key present in `activeArea` and absent from `areas` renders no
+ * eyebrow at all, which is the failure this exists to catch. That the element is drawn
+ * from them is held in the browser suite, which is the only place that can see it.
  */
-it('renders the area name above the page title', function (): void {
+it('names the area this page belongs to, above its title', function (): void {
     crudSetup();
 
-    // Matched on the eyebrow element itself, not on the word: "People" is also the
-    // sidebar's own label for that area, so a bare assertSee passes with the eyebrow
-    // deleted — which is exactly what happened the first time this test was written.
     $this->get(route('environment.users'))
         ->assertOk()
-        ->assertSee('<p class="cbx-page-eyebrow">People</p>', escape: false);
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('shell.activeArea', fn (string $key): bool => $key !== '')
+            ->where('shell', fn (Collection $shell): bool => collect($shell['areas'])
+                ->firstWhere('key', $shell['activeArea'])['label'] === 'People'));
 });
 
 /**
@@ -711,16 +733,19 @@ it('renders one page of an organization roster, however many members it has', fu
         app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
     }
 
-    $page = Volt::test('environment.organizations.show', ['organization' => $org->id]);
-
-    // The roster is ordered by creation, so the first page holds members 1–25 and the
-    // last five are on the second. Asserted both ways round: the presence check is what
-    // stops this passing against a page that rendered nothing at all, and the absence
-    // check is the pagination.
-    $page->assertSee('member-1@populous.test')
-        ->assertDontSee('member-30@populous.test');
-
-    expect($page->html())->toContain('Next');
+    test()->get(route('environment.organizations.show', $org->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            /*
+             * The roster is ordered by creation, so the first page holds members 1–25 and
+             * the last five are on the second. Asserted both ways round: the presence check
+             * is what stops this passing against a page that rendered nothing at all, and
+             * the absence check is the pagination.
+             */
+            ->where('members', fn (Collection $rows): bool => $rows->pluck('email')->contains('member-1@populous.test'))
+            ->where('members', fn (Collection $rows): bool => $rows->pluck('email')->doesntContain('member-30@populous.test'))
+            ->where('members', fn (Collection $rows): bool => $rows->count() === 25)
+            ->where('pagination.total', 30));
 });
 
 /**
@@ -741,13 +766,15 @@ it('says where directory groups come from before any have arrived', function ():
 
     $directory = app(Directories::class)->register($org->id, 'Okta')->directory;
 
-    $html = Volt::test('console.directories.show', ['directory' => $directory->id])->html();
-
-    expect($html)
-        ->toContain('Group → role mapping')
-        ->toContain('No groups have arrived yet')
-        // The remedy names where the work happens, which is not here.
-        ->toContain('SCIM');
+    // Asserted on the PROPS, which is where "there is nothing yet" lives: an empty group
+    // list beside a SCIM endpoint to point a provider at is the whole of what this page
+    // has to say before the first sync.
+    test()->get(route('environment.directories.show', $directory->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('groups', [])
+            ->where('directory.scim', true)
+            ->where('scimBaseUrl', fn (string $url): bool => str_ends_with($url, '/scim/v2')));
 });
 
 /**
@@ -772,16 +799,15 @@ it('creates an SSO connection the environment owns', function (): void {
         'jwks_uri' => 'https://idp.corp/oauth2/keys',
     ])]);
 
-    Volt::test('console.connections.create')
-        ->set('environmentWide', true)
-        ->set('type', 'oidc')
-        ->set('name', 'Corporate Okta')
-        ->set('issuer', 'https://idp.corp')
-        ->set('client_id', 'abc')
-        ->set('client_secret', 'shh')
-        ->set('signing_key', 'a-signing-key')
-        ->call('create')
-        ->assertHasNoErrors();
+    createConnection([
+        'environmentWide' => true,
+        'type' => 'oidc',
+        'name' => 'Corporate Okta',
+        'issuer' => 'https://idp.corp',
+        'client_id' => 'abc',
+        'client_secret' => 'shh',
+        'signing_key' => 'a-signing-key',
+    ], 'environment.connections')->assertSessionHasNoErrors();
 
     $connection = Connection::query()->where('name', 'Corporate Okta')->firstOrFail();
 

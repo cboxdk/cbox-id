@@ -75,3 +75,77 @@ it('never declares a blank-padded CHAR column in a migration', function (): void
 
     expect($offenders)->toBe([]);
 });
+
+/**
+ * A COLUMN MUST BE WIDE ENOUGH FOR THE ID IT NAMES.
+ *
+ * `legacy_login_declarations.client_id` was declared `string('client_id', 26)` — the ULID
+ * width, copied from the three columns above it, which are genuinely ULIDs. A client id is
+ * not: the registry mints `'cid_'.Str::ulid()`, so every value it will ever hold is thirty
+ * characters. PostgreSQL refused the insert (`22001`), MySQL in strict mode refuses it too
+ * and without strict mode truncates the id to something that matches no client — and
+ * SQLite, which ignores declared widths entirely, said nothing at all. The feature was
+ * unusable on both engines anybody deploys on and green on the one the suite ran on.
+ *
+ * The floor is DERIVED from the mint rather than written down here, so a change to the
+ * prefix moves this test with it instead of leaving a number behind that used to be right.
+ */
+it('never declares an id column too narrow for the id it holds', function (): void {
+    /*
+     * The prefix, read off the code that mints it. A second prefixed id type would be
+     * found the same way and belongs in this map beside the first.
+     */
+    $registry = (string) File::get(base_path('vendor/cboxdk/laravel-id/src/OAuthServer/ClientRegistryService.php'));
+
+    expect(preg_match("/'client_id' => '([a-z]+_)'/", $registry, $mint))->toBe(
+        1,
+        'could not read the client id prefix off ClientRegistryService — has it moved?',
+    );
+
+    // The prefix plus a ULID. Named rather than inlined, because 26 is the number this
+    // whole file is about.
+    $widths = [
+        'client_id' => strlen($mint[1]) + 26,
+    ];
+
+    $offenders = [];
+
+    // The app's own migrations and the modules', which is the same scope as the sweep
+    // above. The framework's copy of this table is repaired by
+    // `2026_08_26_000100_widen_the_legacy_login_client_id`; what this stops is the app
+    // making the same mistake in a table of its own.
+    $roots = array_filter([
+        base_path('database'),
+        base_path('modules'),
+    ], 'is_dir');
+
+    $files = array_merge(...array_map(fn (string $root): array => File::allFiles($root), $roots));
+
+    foreach ($files as $file) {
+        if ($file->getExtension() !== 'php') {
+            continue;
+        }
+
+        $source = (string) $file->getContents();
+
+        foreach ($widths as $column => $minimum) {
+            if (preg_match_all("/->string\(\s*'{$column}'\s*,\s*(\d+)\s*\)/", $source, $found, PREG_SET_ORDER) === false) {
+                continue;
+            }
+
+            foreach ($found as $declaration) {
+                if ((int) $declaration[1] < $minimum) {
+                    $offenders[] = sprintf(
+                        '%s declares %s at %d, and an id of that kind is %d characters',
+                        $file->getRelativePathname(),
+                        $column,
+                        (int) $declaration[1],
+                        $minimum,
+                    );
+                }
+            }
+        }
+    }
+
+    expect($offenders)->toBe([], implode("\n", $offenders));
+});

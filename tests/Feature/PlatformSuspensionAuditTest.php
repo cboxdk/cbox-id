@@ -13,7 +13,6 @@ use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -32,13 +31,13 @@ it('records an audit event when an organization is suspended via the console', f
     [$audit, $op] = fakeAuditAndSignIn();
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-audit'));
 
-    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
+    toggleTenantOrganization($org->id)->assertSessionHasNoErrors();
 
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Suspended);
     $audit->assertRecorded('organization.suspended', fn (AuditEvent $e): bool => $e->actorId === $op->id && $e->targetId === $org->id);
 
     // Reactivating routes through the contract too, and is likewise audited.
-    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
+    toggleTenantOrganization($org->id);
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Active);
     $audit->assertRecorded('organization.reactivated');
 });
@@ -47,12 +46,12 @@ it('records an audit event when an operator is suspended via the console', funct
     [$audit, $me] = fakeAuditAndSignIn('me-audit@platform.test');
     $target = app(PlatformOperators::class)->create('target-audit@platform.test', 'a-strong-operator-pass', 'Target');
 
-    Volt::test('platform.operators')->call('toggleStatus', $target->id);
+    toggleOperator($target->id)->assertSessionHasNoErrors();
 
     expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('suspended');
     $audit->assertRecorded('operator.suspended', fn (AuditEvent $e): bool => $e->actorId === $me->id && $e->targetId === $target->id);
 
-    Volt::test('platform.operators')->call('toggleStatus', $target->id);
+    toggleOperator($target->id)->assertSessionHasNoErrors();
     expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('active');
     $audit->assertRecorded('operator.reactivated');
 });
@@ -75,10 +74,11 @@ it('surfaces the last-operator guard as a friendly message, not a 500', function
     $mock->shouldReceive('suspend')->andThrow(CannotSuspendLastOperator::make($target->id));
     app()->instance(PlatformOperators::class, $mock);
 
-    // No exception propagates (would be a 500) — the component handles it inline.
-    Volt::test('platform.operators')
-        ->call('toggleStatus', $target->id)
-        ->assertHasNoErrors();
+    // No exception propagates (would be a 500) — the page answers with the sentence, and
+    // the sentence says what the rule IS rather than that something went wrong.
+    toggleOperator($target->id)->assertSessionHasErrors([
+        'operator' => 'You cannot suspend the last active operator — the console would lock everyone out.',
+    ]);
 
     expect(PlatformOperator::query()->whereKey($target->id)->value('status')?->value)->toBe('active');
 });
@@ -86,9 +86,9 @@ it('surfaces the last-operator guard as a friendly message, not a 500', function
 it('refuses self-suspension without touching the audit trail', function (): void {
     [$audit, $me] = fakeAuditAndSignIn('self@platform.test');
 
-    Volt::test('platform.operators')
-        ->call('toggleStatus', $me->id)
-        ->assertHasNoErrors();
+    toggleOperator($me->id)->assertSessionHasErrors([
+        'operator' => 'You cannot suspend the operator you are currently signed in as.',
+    ]);
 
     expect(PlatformOperator::query()->whereKey($me->id)->value('status')?->value)->toBe('active');
     $audit->assertNotRecorded('operator.suspended');

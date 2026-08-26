@@ -11,7 +11,6 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -26,6 +25,10 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
  * isolation rather than trusting the scope in the abstract.
  */
 it('shows an environment admin only their own environment\'s audit trail', function (): void {
+    // The environment console lives at `/admin`, which 404s unless the deployment is
+    // multi-tenant — and two environments is the whole premise of this test.
+    multiTenantDeployment();
+
     // Victim environment, with an entry that must never be visible elsewhere.
     platformRootEnvironment();
     $victim = app(TenantProvisioner::class)->provision(new TenantBlueprint(
@@ -55,15 +58,16 @@ it('shows an environment admin only their own environment\'s audit trail', funct
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
     actAsEnvironmentAdmin($attacker->owner->id, $attacker->environment->id);
 
-    $actions = fn ($component) => collect($component->viewData('entries')->items())
-        ->pluck('action')
-        ->all();
+    $actions = function (array $query = []): array {
+        $props = test()->get(route('environment.audit', $query))->assertOk()->inertiaProps('entries');
 
-    expect($actions(Volt::test('console.audit')))->not->toContain('victim.secret_action');
+        return collect(is_array($props) ? $props : [])->pluck('action')->all();
+    };
 
-    // …and the search box is not an enumeration oracle either. Asserted on the DATA, not
-    // the rendered HTML: the search term is echoed back into the input's value, so a
+    expect($actions())->not->toContain('victim.secret_action');
+
+    // …and the search box is not an enumeration oracle either. Asserted on the PROPS, not
+    // the rendered page: the search term is echoed back into the input's value, so a
     // markup assertion would match the query string rather than a leaked row.
-    expect($actions(Volt::test('console.audit')->set('search', 'victim.secret_action')))
-        ->toBe([]);
+    expect($actions(['q' => 'victim.secret_action']))->toBe([]);
 });

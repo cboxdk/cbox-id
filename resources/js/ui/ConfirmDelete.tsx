@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import type { SharedProps } from '@/types';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
@@ -72,6 +72,15 @@ function Confirmation({
     const [typed, setTyped] = useState('');
     const matches = typed === name;
 
+    // The field's id, so the DISABLED CONFIRM BUTTON can point at the requirement.
+    //
+    // A disabled control is the other half of the mobile bug: the keyboard rewrote the
+    // token, the button stayed grey, and nothing on the screen was addressed to the person
+    // wondering why. `aria-describedby` puts the sentence on the button itself, where a
+    // screen reader reads it when the button is reached — a disabled button is not
+    // focusable, but it is still announced in browse mode, and this is what it says.
+    const field = useId();
+
     const confirm = (): void => {
         if (matches && !confirming) {
             onConfirm();
@@ -91,6 +100,7 @@ function Confirmation({
                     <Button
                         variant="danger"
                         disabled={!matches}
+                        aria-describedby={matches ? undefined : `${field}-hint`}
                         loading={confirming}
                         onClick={confirm}
                     >
@@ -113,16 +123,28 @@ function Confirmation({
             )}
 
             <Field
+                id={field}
                 label={
                     <>
                         Type <span className="mono">{name}</span> to confirm
                     </>
                 }
+                hint={`Exactly as shown — ${verb} stays disabled until it matches.`}
             >
                 <Input
                     value={typed}
                     onChange={(event) => setTyped(event.target.value)}
                     autoComplete="off"
+                    // THE MATCH IS EXACT, so the keyboard must not help.
+                    //
+                    // iOS capitalises the first letter of a text field by default and
+                    // autocorrect rewrites the token as it is typed — against a resource
+                    // named `acme-prod` that produces `Acme-prod`, which never matches, so
+                    // the confirm button never enables and the dialog cannot be completed
+                    // on a phone at all. Nothing about that failure tells the person why.
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     // The one autofocus in the design system, and it earns it: the dialog
                     // exists to make somebody type, focus is already inside it, and the
                     // rule this suppresses is about autofocus on PAGE LOAD — which moves a

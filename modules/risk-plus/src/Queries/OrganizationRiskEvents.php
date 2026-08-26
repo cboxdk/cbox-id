@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Builder;
  * organization under credential stuffing. A filter that fails to a blank screen rather
  * than to a refusal, and one resting on ambient state a security decision should not rest
  * on. The sibling devices module measured the same trap and writes it down at
- * `modules/devices/resources/views/livewire/devices/index.blade.php`; this module had
+ * `modules/devices/src/Http/Controllers/DeviceInventoryController.php`; this module had
  * copied the intent and not the mechanism.
  *
  * The `User` subquery below is deliberately left as a subquery: its scope is the

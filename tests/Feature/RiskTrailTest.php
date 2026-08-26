@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -52,14 +51,8 @@ it('keeps the decision after the request that produced it', function (): void {
     config(['risk.mode' => 'monitor']);
 
     // A bot-shaped signup: the honeypot a human never fills is filled.
-    Volt::test('auth.signup')
-        ->set('organization', 'Acme')
-        ->set('name', 'Definitely Human')
-        ->set('email', 'bot@example.com')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->set('website', 'http://spam.example')
-        ->call('register')
-        ->assertHasNoErrors();
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Definitely Human', 'email' => 'bot@example.com', 'password' => 'a-strong-unbreached-passphrase', 'website' => 'http://spam.example'])
+        ->assertSessionHasNoErrors();
 
     // The whole point: the evidence is still there once the request is over, without
     // a live tail. Read it back through a FRESH query, not the object that wrote it.
@@ -114,11 +107,7 @@ it('records exactly one decision per login attempt, though both decision predica
 
     app(Subjects::class)->create('dana@example.com', 'Dana Reeves', 'a-strong-password-1234');
 
-    Volt::test('auth.login')
-        ->set('email', 'dana@example.com')
-        ->set('password', 'a-strong-password-1234')
-        ->set('identified', true)
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])
         ->assertRedirect(route('dashboard'));
 
     expect(RiskDecision::query()->where('action', 'login')->count())->toBe(1);

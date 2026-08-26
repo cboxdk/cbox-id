@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleRoutes;
+use Cbox\Id\Whitelabel\Http\Controllers\BrandingController;
 
 /*
  * Both planes, one component — the middleware stacks live in ConsoleRoutes.
@@ -18,7 +19,16 @@ use App\Platform\Console\ConsoleRoutes;
 ConsoleRoutes::page(
     feature: 'whitelabel',
     uri: '/settings/branding',
-    component: 'whitelabel.branding',
+    component: [BrandingController::class, 'index'],
     name: 'whitelabel.branding',
+    environmentUri: '/branding',
+);
+
+ConsoleRoutes::action(
+    feature: 'whitelabel',
+    verb: 'post',
+    uri: '/settings/branding',
+    action: [BrandingController::class, 'save'],
+    name: 'whitelabel.branding.save',
     environmentUri: '/branding',
 );

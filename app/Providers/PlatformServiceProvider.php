@@ -4,29 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\AuthenticateEnvironmentAdmin;
-use App\Http\Middleware\AuthenticateOperator;
-use App\Http\Middleware\BlockDuringImpersonation;
-use App\Http\Middleware\EnforceImpersonationWindow;
-use App\Http\Middleware\EnforcePlane;
-use App\Http\Middleware\PointAtFirstRun;
-use App\Http\Middleware\PortalSession;
-use App\Http\Middleware\RedirectIfAuthenticated;
-use App\Http\Middleware\RequireConsoleAdmin;
-use App\Http\Middleware\RequireEnvironmentSudo;
-use App\Http\Middleware\RequireMultiTenant;
-use App\Http\Middleware\RequireSudo;
-use App\Http\Middleware\TargetEnvironment;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\BreachedPasswords;
+use App\Platform\Console\DashboardCards;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\FrontendApi\AppearanceConfig;
 use App\Platform\ImpersonationAwareAuditLog;
-use App\Platform\ImpersonationCallGuard;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\Install\Contracts\SetupTokens;
 use App\Platform\Install\DatabasePlatformInstaller;
@@ -54,7 +40,6 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Livewire;
 use Psr\Log\LoggerInterface;
 
 final class PlatformServiceProvider extends ServiceProvider
@@ -83,6 +68,13 @@ final class PlatformServiceProvider extends ServiceProvider
         //
         // Without this binding the whole feature is decorative: an operator could approve
         // a declaration and nothing would ever consult it.
+        /*
+         * ONE REGISTRY PER REQUEST. Every module pushes its dashboard card into this during
+         * boot; resolved fresh each time, each provider would fill its own copy and the page
+         * would read an empty one.
+         */
+        $this->app->singleton(DashboardCards::class);
+
         $this->app->singleton(LegacyCredentialSource::class, DeclaredCredentialSource::class);
 
         // Read once per request: three view components label themselves with the current
@@ -212,80 +204,22 @@ final class PlatformServiceProvider extends ServiceProvider
             TrustedHosts::forget();
         });
 
-        // Livewire only re-runs *persistent* middleware on /livewire/update, so the
-        // route-level auth guards must be registered here — in source, not via a
-        // vendored edit that `composer install` would silently revert. Without this
-        // the org console loses CurrentUser on every action, and a suspended
-        // operator keeps full powers because AuthenticateOperator never re-checks.
-        // EVERY route-level guard belongs here. A guard that is absent enforces on the
-        // first page load and then silently stops: the component's actions all POST to
-        // /livewire/update, where only this list re-runs. PersistentMiddlewareTest holds
-        // the invariant — it walks the real route table and fails on any app middleware
-        // guarding a web route that is missing here.
-        Livewire::addPersistentMiddleware([
-            // Ahead of Authenticate: a Livewire action on an impersonated page must
-            // also self-terminate once the time-box lapses, not just full loads.
-            EnforceImpersonationWindow::class,
-            Authenticate::class,
-            AuthenticateOperator::class,
-            // …and, once the authority holds, the plane the operator aimed the console
-            // at. A Livewire action on an operator page reads the same tenant data the
-            // page did, so it has to run in the same environment — without this the
-            // action runs in the HOST's environment and answers about a different plane
-            // than the one on screen. Listed AFTER the gate for the reason the route
-            // group orders them that way: the selection must not be ambient while the
-            // operator's own platform-root session is being resolved.
-            TargetEnvironment::class,
-            RedirectIfAuthenticated::class,
-            // The guest Admin Portal setup screen is Livewire too — keep its
-            // scoped-session guard on every /livewire/update, not just first load.
-            PortalSession::class,
-            // The environment control plane is a Livewire console: without this, its
-            // actions answered unauthenticated. The snapshot checksum is keyed on APP_KEY —
-            // identical on every tenant host — so a snapshot captured in one tenant could
-            // be replayed against another tenant's host. The account pages that used to
-            // need their own gate here are pages of the one console now, behind the
-            // subject session `platform.auth` already persists.
-            AuthenticateEnvironmentAdmin::class,
-            // Plane bulkheads and the step-up gate must hold per action too, or a retained
-            // snapshot bypasses sudo permanently once confirmed.
-            EnforcePlane::class,
-            // "Does this surface exist on this deployment?" is the same kind of question as
-            // "is this the right plane?", and it has to be re-asked per action for the same
-            // reason: the snapshot checksum is keyed on APP_KEY, so a snapshot of an
-            // environment-console component captured on a multi-tenant install can be POSTed
-            // to /livewire/update on a single-tenant one, where the page it came from 404s.
-            // The env-admin session gate refuses that too — this keeps the two independent.
-            RequireMultiTenant::class,
-            RequireSudo::class,
-            RequireEnvironmentSudo::class,
-            // "May this administrator change things here" — the question every Volt
-            // component asked in boot() because a route could not ask it for them. The
-            // pages carrying it are controllers, where the route stack answers it before
-            // the controller runs, so nothing on /livewire/update reaches it today. It is
-            // listed anyway: the exemption to justify is "a gate that does not have to
-            // hold", and this one does have to hold — for as long as any Volt page is
-            // still served, a page that gains this middleware must keep enforcing it on
-            // every action, not only on the first load.
-            RequireConsoleAdmin::class,
-            // Keeps the "an impersonator cannot plant persistence" property true for
-            // component actions, not just full page loads.
-            BlockDuringImpersonation::class,
-            // The first-run bulkhead. It runs in the global `web` group, so it already
-            // covers /livewire/update — but it is the gate that decides whether the
-            // screen which provisions the platform root exists at all, and this list is
-            // where that kind of decision is stated rather than inferred from grouping.
-            PointAtFirstRun::class,
-        ]);
-
-        // Make impersonation effectively READ-ONLY across the whole console. Route
-        // middleware can't see individual Livewire actions (all POSTed to one
-        // /livewire/update endpoint), so guard the `call` seam itself: while
-        // impersonating, every component action is refused (403) except a tight
-        // allowlist of read/navigation primitives. Deny-by-default — a new mutating
-        // action is blocked with no extra wiring, so no sink can be missed.
-        Livewire::listen('call', function (mixed $component, string $method): void {
-            app(ImpersonationCallGuard::class)->guard($method);
-        });
+        /*
+         * TWO LIVEWIRE REGISTRATIONS USED TO LIVE HERE, and both are gone with it.
+         *
+         * The first was the PERSISTENT-MIDDLEWARE list. Livewire re-ran only the middleware
+         * named there on `POST /livewire/update`, so every route-level guard in the app had
+         * to be repeated in one place — and a guard left out of it enforced on the first
+         * page load and then silently stopped. That is not a hazard a controller has: a
+         * ported page's every interaction is its own request through its own stack, so the
+         * stack IS the answer and there is no second list to keep in step with it.
+         *
+         * The second was a `call`-seam guard that made impersonation read-only. Route
+         * middleware could not see individual component actions — all of them POSTed to the
+         * one endpoint — so the guard hung off the seam and refused by method NAME, against
+         * an allowlist of read primitives. {@see \App\Http\Middleware\ReadOnlyWhileImpersonating}
+         * refuses on the HTTP VERB instead, which is deny-by-default rather than a list:
+         * a write added tomorrow is refused without anybody remembering it exists.
+         */
     }
 }

@@ -13,9 +13,9 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -24,6 +24,10 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 /** Provision an environment and act as its admin. */
 function paginationSetup(): string
 {
+    // The environment console lives at `/admin`, which 404s unless the deployment is
+    // multi-tenant — and the ported pages below are reached by request rather than driven.
+    multiTenantDeployment();
+
     platformRootEnvironment();
 
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
@@ -65,7 +69,12 @@ it('renders the audit feed without counting the whole table', function (): void 
         $audit->record(new AuditEvent(action: 'seed.event.'.$i, actorType: ActorType::System));
     }
 
-    $sql = sqlDuring(fn () => Volt::test('console.audit')->assertOk()->assertSee('seed.event.60'));
+    $sql = sqlDuring(function (): void {
+        $actions = collect((array) test()->get(route('environment.audit'))->assertOk()->inertiaProps('entries'))
+            ->pluck('action');
+
+        expect($actions)->toContain('seed.event.60');
+    });
 
     // `paginate()` runs a COUNT(*) over the filtered set to render page numbers. On a
     // table with no retention — it only ever grows — that is a full index scan of the
@@ -83,7 +92,7 @@ it('renders the audit feed without counting the whole table', function (): void 
 it('renders the user list without counting the whole table', function (): void {
     paginationSetup();
 
-    $sql = sqlDuring(fn () => Volt::test('environment.users.index')->assertOk());
+    $sql = sqlDuring(fn () => test()->get(route('environment.users'))->assertOk());
 
     // Same reasoning, made worse here by the search being a LEADING wildcard
     // (`LIKE "%term%"`), which no B-tree index can serve at any size.
@@ -104,12 +113,15 @@ it('still pages through the audit feed', function (): void {
         $audit->record(new AuditEvent(action: 'paged.event.'.$i, actorType: ActorType::System));
     }
 
+    $actions = fn (array $query = []): Collection => collect(
+        (array) test()->get(route('environment.audit', $query))->assertOk()->inertiaProps('entries'),
+    )->pluck('action');
+
     // Newest first, so page 1 holds the tail and page 2 reaches back.
-    Volt::test('console.audit')
-        ->assertSee('paged.event.40')
-        ->assertDontSee('paged.event.10')
-        ->call('setPage', 2)
-        ->assertSee('paged.event.10');
+    expect($actions())
+        ->toContain('paged.event.40')
+        ->not->toContain('paged.event.10')
+        ->and($actions(['page' => 2]))->toContain('paged.event.10');
 });
 
 it('labels a directory row with its organization without loading every organization', function (): void {
@@ -123,7 +135,12 @@ it('labels a directory row with its organization without loading every organizat
         app(Organizations::class)->create(new NewOrganization('Other '.$i, 'other-'.$i));
     }
 
-    $sql = sqlDuring(fn () => Volt::test('console.directories.index')->assertOk()->assertSee('Acme Corp'));
+    $sql = sqlDuring(function (): void {
+        $owners = collect((array) test()->get(route('environment.directories'))->assertOk()->inertiaProps('directories'))
+            ->pluck('owner');
+
+        expect($owners)->toContain('Acme Corp');
+    });
 
     // The label lookup must be constrained to the ids this page actually names. An
     // unbounded `Organization::pluck()` grows with the tenant count and is re-run on

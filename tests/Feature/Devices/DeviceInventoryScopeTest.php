@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -14,7 +15,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -47,11 +47,17 @@ it('shows an admin only their own organization devices', function (): void {
     $session = app(SessionManager::class)->start($mine->id, $acme->id, ['pwd']);
     app(CurrentUser::class)->set($mine, $session, $acme, MembershipRole::Admin);
 
-    Volt::test('devices.index')
-        ->assertOk()
-        // The positive control: without it, a page that shows nothing at all would pass.
-        ->assertSee('My Own Handset')
-        ->assertDontSee('Another Tenant Handset');
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS. The page is reached by a REQUEST now,
+    // and without this it answers a redirect to sign-in — which "does not show the other
+    // tenant's handset" passes happily.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    $names = collect((array) test()->get(route('devices.index'))->assertOk()->inertiaProps('devices'))
+        ->pluck('name');
+
+    // The positive control: without it, a page that shows nothing at all would pass.
+    expect($names)->toContain('My Own Handset')
+        ->and($names)->not->toContain('Another Tenant Handset');
 });
 
 function inventoryDevice(string $subjectId, string $name): void

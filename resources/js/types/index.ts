@@ -112,6 +112,21 @@ export interface Pagination {
     to: number;
 }
 
+/**
+ * `App\Http\Props\Shared\SimplePaginationProps`
+ *
+ * A page of a list whose total is deliberately not counted — see the PHP side for why.
+ * Separate from {@see Pagination} rather than a nullable-total version of it, so a
+ * component cannot promise a position the server never computed.
+ */
+export interface SimplePagination {
+    currentPage: number;
+    perPage: number;
+    /** Rows on THIS page. */
+    count: number;
+    hasMore: boolean;
+}
+
 /** `App\Http\Props\Shell\NavPageProps` */
 export interface NavPage {
     route: string;
@@ -156,12 +171,30 @@ export interface SwitchOption {
 }
 
 /** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */
+/**
+ * The environment console's acting tenant, and where to change it.
+ *
+ * NOT A LIST OF OPTIONS, unlike `Shell.organizations` beside it: that names the handful of
+ * organizations a person belongs to, and this names every tenant in the environment, which
+ * is unbounded. The chrome carries the current one and a URL to search.
+ */
+export interface ActingOrganization {
+    /** Null means the whole environment, unfiltered — the ordinary state, not a gap. */
+    id: string | null;
+    name: string | null;
+    searchUrl: string;
+    chooseUrl: string;
+    clearUrl: string;
+}
+
 export interface Shell {
     areas: NavArea[];
     activeArea: string | null;
     /** "Platform" for the pages about the whole install, null for a customer's own. */
     section: string | null;
     organizations: SwitchOption[];
+    /** Environment plane only; null on every other. */
+    actingOrganization: ActingOrganization | null;
     environments: SwitchOption[];
     isOperator: boolean;
     brandHref: string;

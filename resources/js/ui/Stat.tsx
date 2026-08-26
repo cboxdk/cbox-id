@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon } from './Icon';
@@ -17,7 +18,13 @@ export interface StatProps {
     tone?: StatTone;
     label: ReactNode;
     value: ReactNode;
-    /** Makes the whole tile a link. A clickable row, never a "View" button beside it. */
+    /**
+     * Makes the whole tile a link. A clickable row, never a "View" button beside it.
+     *
+     * An Inertia visit rather than a bare `<a>`: a console overview whose tiles reload the
+     * whole document throws away the shell and the scroll position, and is the one place a
+     * full page load is most visible — the tiles are the first thing anybody clicks.
+     */
     href?: string;
     className?: string;
 }
@@ -46,9 +53,9 @@ export function Stat({ icon, tone = 'info', label, value, href, className }: Sta
 
     if (href !== undefined) {
         return (
-            <a href={href} className={cn('cbx-stat', className)}>
+            <Link href={href} className={cn('cbx-stat', className)}>
                 {body}
-            </a>
+            </Link>
         );
     }
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Cbox\Console\Kit\ConsoleManager;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Compliance\Contracts\AuditExportSink;
 use Cbox\Id\Compliance\Testing\FakeAuditExportSink;
@@ -12,7 +12,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -59,9 +58,12 @@ it('renders a dashboard export card', function (): void {
     // console scope at all, and that is exactly what this assertion was measuring.
     actingAsRole(MembershipRole::Owner);
 
-    $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
+    // THE CARD AS DATA, not as a rendered string.
+    $card = collect(app(DashboardCards::class)->resolve())->firstWhere('key', 'compliance.exports');
 
-    expect($html)->toContain('Audit export')->toContain('pending');
+    expect($card)->not->toBeNull()
+        ->and($card->label)->toBe('Audit export')
+        ->and($card->value)->toContain('pending');
 });
 
 /**
@@ -79,6 +81,11 @@ it('renders a dashboard export card', function (): void {
  * is a narrower true rather than a weaker one.
  */
 it('verifies a window of the audit chain, not all of history', function (): void {
+    // The module's routes only exist where its feature is on, and this drives them by
+    // request. Said here rather than in a `beforeEach`, because the first test in this file
+    // is precisely the one that asserts the feature is OFF by default.
+    config(['compliance.enabled' => true]);
+
     [$actor, $org] = actingAsRole(MembershipRole::Owner);
 
     $log = app(AuditLog::class);
@@ -94,14 +101,19 @@ it('verifies a window of the audit chain, not all of history', function (): void
         }
     });
 
-    $page = Volt::test('compliance.audit');
+    // The badge is honest about being a window rather than claiming the whole chain — the
+    // page draws its sentence from this flag and from nothing else.
+    $windowed = (array) test()->get(route('compliance.audit'))->assertOk()->inertiaProps('verification');
 
-    // The badge is honest about being a window rather than claiming the whole chain.
-    $page->assertSee('The most recent')
-        ->assertSee('Verify the whole chain');
+    expect($windowed['whole'])->toBeFalse()
+        ->and($windowed['valid'])->toBeTrue();
 
-    // And asking for everything is a deliberate action, which then says so.
-    $page->call('verifyEverything')->assertSee('All ');
+    // And asking for everything is a deliberate act — a request of its own, not something
+    // the page does to itself while somebody types in a filter box.
+    $whole = (array) test()->get(route('compliance.audit', ['verifyAll' => 1]))->assertOk()->inertiaProps('verification');
+
+    expect($whole['whole'])->toBeTrue()
+        ->and($whole['count'])->toBeGreaterThan($windowed['count'] - 1);
 
     expect($rows)->toBeGreaterThan(0, 'the page read no audit rows at all — the assertion above is about an empty page');
 });

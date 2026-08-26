@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleRoutes;
+use Cbox\Id\RiskPlus\Http\Controllers\RiskEventsController;
 
 /*
  * Both planes, one component — the middleware stacks live in ConsoleRoutes.
@@ -15,6 +16,6 @@ use App\Platform\Console\ConsoleRoutes;
 ConsoleRoutes::page(
     feature: 'risk-plus',
     uri: '/security/risk-events',
-    component: 'risk-plus.events',
+    component: RiskEventsController::class,
     name: 'risk-plus.events',
 );

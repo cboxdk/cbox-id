@@ -178,9 +178,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'oauth/register',
             'oauth/register/*',
 
-            // /authorize over POST, which OIDC Core §3.1.2.1 makes mandatory. The POST
-            // comes cross-site from the relying party and carries no Laravel token; the
-            // component validates client, redirect_uri, scope and PKCE from scratch.
+            /*
+             * /authorize over POST, which OIDC Core §3.1.2.1 makes mandatory. The POST
+             * comes cross-site from the relying party and carries no Laravel token; the
+             * controller validates client, redirect_uri, scope and PKCE from scratch, and
+             * mints nothing on this request.
+             *
+             * THE PATH ONLY, not a wildcard under it. `oauth/authorize/{id}/approve` and
+             * `/deny` are same-origin posts from our own consent screen, they DO carry a
+             * token, and they are the two requests that actually issue a code — exempting
+             * them would hand any site a one-click authorization on behalf of whoever is
+             * signed in here.
+             */
             'oauth/authorize',
         ]);
 

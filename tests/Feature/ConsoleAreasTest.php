@@ -244,9 +244,21 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
         expect(str_contains($html, '<title>'.$label.' · '))->toBeTrue(
             "identity-platform › {$page->label}: the nav entry and the <title> disagree",
         );
-        expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
-            "identity-platform › {$page->label}: the nav entry and the <h1> disagree",
-        );
+        // The heading, asked the two ways the console currently answers — see
+        // {@see assertNavEntryLabelsMatchTheirPages()} for why an Inertia page has no
+        // <h1> in its response and what is asserted in its place.
+        $inertiaTitle = inertiaPageTitle($response);
+
+        if ($inertiaTitle !== null) {
+            expect($inertiaTitle)->toBe(
+                $page->label,
+                "identity-platform › {$page->label}: the nav entry and the page's stated title disagree",
+            );
+        } else {
+            expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+                "identity-platform › {$page->label}: the nav entry and the <h1> disagree",
+            );
+        }
 
         $checked++;
     }

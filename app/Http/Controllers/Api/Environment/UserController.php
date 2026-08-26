@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Environment;
 
 use App\Http\Controllers\Controller;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Exceptions\PolicyViolation;
 use Cbox\Id\Identity\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,7 +64,28 @@ final class UserController extends Controller
         $name = $request->filled('name') ? $request->string('name')->toString() : null;
         $password = $request->filled('password') ? $request->string('password')->toString() : null;
 
-        $subject = $subjects->create($email, $name, $password);
+        /*
+         * THE TENANT'S OWN PASSWORD POLICY, ANSWERED AS AN ANSWER.
+         *
+         * `min:8` above is this endpoint's only rule, and deliberately so: length, reuse,
+         * and the breach corpus are the ENVIRONMENT's settings, and duplicating them here
+         * would be a second opinion that drifts. {@see Subjects::create()} applies them at
+         * the credential primitive, which is the one place every door goes through.
+         *
+         * What was missing is what happens when it refuses. `PolicyViolation` is nobody's
+         * handler here, so an integration provisioning a user with a password the tenant's
+         * own policy rejects got a 500 — an opaque server error for an entirely expected
+         * outcome, with the reason on the floor. It is a 422 with the reason, like every
+         * other refusal this endpoint makes.
+         */
+        try {
+            $subject = $subjects->create($email, $name, $password);
+        } catch (PolicyViolation $violation) {
+            return response()->json([
+                'error' => 'password_policy',
+                'message' => $violation->getMessage(),
+            ], 422);
+        }
 
         $user = User::query()->find($subject->id);
 

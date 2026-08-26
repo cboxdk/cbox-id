@@ -8,7 +8,6 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Livewire\Volt\Volt;
 
 it('grants membership only after the invitee accepts the emailed link', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);
@@ -40,7 +39,9 @@ it('lets an admin revoke a pending invitation', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $pending = app(Invitations::class)->invite($org->id, 'revoke@acme.test', MembershipRole::Member);
 
-    Volt::test('members')->call('revokeInvitation', $pending->invitation->id);
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.invitations.revoke', $pending->invitation->id))
+        ->assertSessionHasNoErrors();
 
     expect(app(Invitations::class)->pending($org->id))->toBeEmpty();
 });

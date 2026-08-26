@@ -124,7 +124,18 @@ export function Switcher({
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger className="cbx-switcher-item flex items-center gap-2 rounded-lg px-2 py-1.5">
+            {/*
+                NAMED EXPLICITLY, because below the `sm` breakpoint the only thing left
+                inside this button is an `aria-hidden` initial tile and a chevron: the text
+                that named it lives in `hidden sm:block`, so on a phone the control that
+                decides which estate the whole console reads announced nothing at all. An
+                aria-label is right at every width — it says what the button DOES as well
+                as what it currently shows, which the visible text alone never did.
+            */}
+            <DropdownMenuTrigger
+                className="cbx-switcher-item flex items-center gap-2 rounded-lg px-2 py-1.5"
+                aria-label={`${heading} — currently ${label}`}
+            >
                 {trigger}
             </DropdownMenuTrigger>
 

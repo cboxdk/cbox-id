@@ -57,10 +57,10 @@ The gate is enforced in **two** places, never just the UI:
 
 1. **The screen** renders the upsell instead of the feature when the org isn't
    entitled (`App\Platform\Entitlements::entitled($orgId, 'sso'|'scim')`).
-2. **Every mutating action** (`create`, `activate`, `register`, `invite`, …) calls
+2. **Every mutating route** (`create`, `activate`, `register`, `invite`, …) calls
    a server-side `guardEntitled()` that `abort(403)`s **before** the admin check
-   runs — so a hand-crafted Livewire request from a non-entitled org is refused
-   even though the upsell screen itself is reachable.
+   runs — so a hand-crafted request from a non-entitled org is refused even
+   though the upsell screen itself is reachable.
 
 ## The Admin Portal setup link
 

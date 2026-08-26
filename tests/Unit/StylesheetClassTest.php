@@ -130,18 +130,25 @@ it('sizes touch controls at the threshold that stops iOS zooming, without disabl
  * the attribute is what gets guarded.
  */
 it('keeps the confirm-to-delete field typable on a mobile keyboard', function (): void {
-    $markup = (string) file_get_contents(
-        __DIR__.'/../../resources/views/components/confirm-delete.blade.php'
+    // THE COMPONENT, not the page. There is one type-to-confirm dialog in the console and
+    // every destructive action opens it, so this is the only place the attributes can be —
+    // which is the argument for the primitive existing at all.
+    $source = (string) file_get_contents(
+        __DIR__.'/../../resources/js/ui/ConfirmDelete.tsx'
     );
 
-    expect(str_contains($markup, 'autocapitalize="none"'))
+    expect(str_contains($source, 'autoCapitalize="none"'))
         ->toBeTrue('iOS capitalises the first letter, so the exact match can never succeed');
 
-    expect(str_contains($markup, 'autocorrect="off"'))
+    expect(str_contains($source, 'autoCorrect="off"'))
         ->toBeTrue('autocorrect rewrites the token as the person types it');
 
-    // A disabled button that explains nothing is the other half of the bug.
-    expect($markup)->toContain('aria-describedby');
+    expect(str_contains($source, 'spellCheck={false}'))
+        ->toBeTrue('a red squiggle under a resource name reads as an error the person made');
+
+    // A disabled button that explains nothing is the other half of the bug: the keyboard
+    // rewrote the token, the button stayed grey, and nothing said why.
+    expect($source)->toContain('aria-describedby');
 });
 
 /**

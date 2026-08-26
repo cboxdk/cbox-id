@@ -248,28 +248,17 @@ class ConsoleParityHealthCheck implements HealthCheck
             $name = $route->getName();
             $action = $route->getActionName();
 
-            // `Closure` is every Volt route and every inline one; there is nothing in it
-            // to compare, so those fall through to the source scan below.
+            /*
+             * `Closure` is an inline route, and there is nothing in one to compare — a
+             * closure has no handler name for the two planes to share. There used to be a
+             * source scan under this loop for the same reason: every Volt route registered
+             * a closure that captured its component name, so the only way to learn what
+             * served a page was to read `routes/web.php` and pull the name out of the
+             * registration. Every console page is a controller now, and the router knows
+             * exactly what serves each one.
+             */
             if (is_string($name) && $name !== '' && $action !== 'Closure') {
                 $handlers[$name] = $action;
-            }
-        }
-
-        $source = (string) file_get_contents(base_path('routes/web.php'));
-
-        // Volt::route('<path>', '<component>')…->name('<name>') — the chain may carry
-        // middleware between the two, so this spans to the statement's end rather than
-        // assuming one line.
-        preg_match_all(
-            "/Volt::route\(\s*'[^']*'\s*,\s*'([^']+)'\s*\)(.*?);/s",
-            $source,
-            $matches,
-            PREG_SET_ORDER,
-        );
-
-        foreach ($matches as [, $component, $chain]) {
-            if (preg_match("/->name\('([^']+)'\)/", $chain, $named) === 1) {
-                $handlers[$named[1]] = $component;
             }
         }
 

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:543eee9a-e3c6-4323-a631-b00ed8fa1b6a",
+    "serialNumber": "urn:uuid:3367d02e-66f4-4836-83f3-d28e99d08cc1",
     "version": 1,
     "metadata": {
         "tools": [
@@ -699,38 +699,6 @@
             "version": "7.8.1",
             "purl": "pkg:composer/league/uri-interfaces@7.8.1",
             "description": "Common tools for parsing and resolving RFC3987/RFC3986 URI",
-            "licenses": [
-                {
-                    "license": {
-                        "id": "MIT"
-                    }
-                }
-            ]
-        },
-        {
-            "type": "library",
-            "bom-ref": "pkg:composer/livewire/livewire@v4.3.3",
-            "group": "livewire",
-            "name": "livewire",
-            "version": "v4.3.3",
-            "purl": "pkg:composer/livewire/livewire@v4.3.3",
-            "description": "A front-end framework for Laravel.",
-            "licenses": [
-                {
-                    "license": {
-                        "id": "MIT"
-                    }
-                }
-            ]
-        },
-        {
-            "type": "library",
-            "bom-ref": "pkg:composer/livewire/volt@v1.10.5",
-            "group": "livewire",
-            "name": "volt",
-            "version": "v1.10.5",
-            "purl": "pkg:composer/livewire/volt@v1.10.5",
-            "description": "An elegantly crafted functional API for Laravel Livewire.",
             "licenses": [
                 {
                     "license": {

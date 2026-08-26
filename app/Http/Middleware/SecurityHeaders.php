@@ -63,14 +63,20 @@ final class SecurityHeaders
             'Permissions-Policy' => 'geolocation=(), microphone=(), camera=(), payment=()',
             'Content-Security-Policy' => implode('; ', array_values(array_filter([
                 "default-src 'self'",
-                // 'unsafe-eval' is required by Livewire's bundled Alpine; scripts
-                // are still same-origin only (no inline, no remote). Tightening to
-                // Alpine's CSP build is a follow-up.
+                /*
+                 * NO 'unsafe-eval'. It was here because Livewire's bundled Alpine
+                 * required it — Alpine evaluates its `x-` expressions with `new Function`,
+                 * which is `eval` as far as CSP is concerned, so every page in the console
+                 * had to permit dynamic code generation to render a dropdown. React
+                 * compiles its templates at build time and needs none of it, so the
+                 * directive went out with the last Volt page rather than staying as a
+                 * "follow-up" nobody would come back to.
+                 */
                 // The nonce is not for our own markup — this app emits no inline script.
                 // It is here because a CDN in front of us does: Cloudflare's JavaScript
                 // Detections injects `/cdn-cgi/challenge-platform/scripts/jsd/main` as an
                 // INLINE script after the response has left PHP, and a policy of
-                // `'self' 'unsafe-eval'` refuses it on every page the console serves.
+                // a bare `'self'` refuses it on every page the console serves.
                 //
                 // Cloudflare parses this header and copies the nonce onto the script it
                 // injects, which is why the value has to be in the HEADER — a nonce set
@@ -78,7 +84,7 @@ final class SecurityHeaders
                 // failing. The alternative is `'unsafe-inline'`, which would permit every
                 // inline script on every page in order to permit one, and pinning the
                 // hash instead breaks the day Cloudflare ships a new build of it.
-                "script-src 'self' 'unsafe-eval' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : '').$dev,
+                "script-src 'self' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : '').$dev,
                 "style-src 'self' 'unsafe-inline'".$dev,
                 // https: allows customer-hosted org logos on the branded login.
                 "img-src 'self' data: https:",

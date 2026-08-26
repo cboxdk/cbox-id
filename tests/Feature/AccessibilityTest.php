@@ -2,19 +2,6 @@
 
 declare(strict_types=1);
 
-use Cbox\Id\Identity\Contracts\MagicLink;
-use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
-use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
-use Cbox\Id\OAuthServer\Enums\ClientType;
-use Cbox\Id\OAuthServer\ValueObjects\NewClient;
-use Cbox\Id\Organization\Contracts\Invitations;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Cbox\Id\Platform\Contracts\Projects;
-use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 
@@ -55,6 +42,26 @@ function axeViolations(string $html): array
     // product came to look like coverage of all of it.
     expect(strlen($html))->toBeGreaterThan(2000, 'the page rendered no document to audit');
 
+    /*
+     * AND NOT A MOUNT POINT EITHER — the same failure wearing the size check's clothes.
+     *
+     * A ported page's response is `<div id="app" data-page="{…}">`, whose serialised props
+     * sail past the length floor above while containing no markup at all. Five environment
+     * pages sat in these datasets that way as they ported, reporting clean audits over a
+     * document with one element in it.
+     *
+     * So it is refused here rather than in each caller: every dataset in this file inherits
+     * the check, and the next plane to port cannot lose its coverage quietly. The page moves
+     * to tests/Browser/AccessibilityTest, where a real browser renders it — and computes the
+     * colour contrast jsdom cannot.
+     */
+    // ONE NEEDLE, NO MESSAGE. Pest's `toContain` is VARIADIC: a second argument is read as
+    // a second needle, and the negated form then asks "contains neither" — which a page
+    // containing the first happily satisfies. This check passed over three ported pages
+    // while it carried an explanatory message. If it fails, the page is client-rendered and
+    // belongs in tests/Browser/AccessibilityTest, where axe can see it.
+    expect($html)->not->toContain('data-page=');
+
     foreach (['axe-core', 'jsdom'] as $pkg) {
         expect(file_exists(base_path("node_modules/{$pkg}")))
             ->toBeTrue("node_modules/{$pkg} is missing — run `npm install`. This guard must never be skipped.");
@@ -72,7 +79,8 @@ function axeViolations(string $html): array
 }
 
 /*
- * THE PUBLIC AUTH PAGES ARE AUDITED IN A REAL BROWSER, in tests/Browser/AccessibilityTest.
+ * THE PUBLIC AUTH PAGES AND EVERY PORTED CONSOLE PAGE ARE AUDITED IN A REAL BROWSER, in
+ * tests/Browser/AccessibilityTest.
  *
  * They are client-rendered, so there is nothing in the response here but a mount point —
  * auditing it would audit an empty document and report no violations, which is exactly
@@ -83,80 +91,18 @@ function axeViolations(string $html): array
  * them.
  */
 
-it('has no WCAG 2.1 A/AA violations on the console pages', function (string $path): void {
-    // EVERYTHING IN THE ENVIRONMENT THE CONSOLE ACTUALLY READS.
-    //
-    // This fixture used to build its world in the ambient scope with no platform-root
-    // environment at all — a state no deployment is ever in. The console reads members
-    // and invitations inside `PlatformRoot::run()`, which returns null and does nothing
-    // when no root exists, so those reads answered empty no matter what was seeded. Every
-    // page below was audited against its own EMPTY state: the "Invited, not joined yet"
-    // panel never existed in the audited HTML, and no page ever had a second page, so no
-    // paginator was ever audited either. A guard green over markup it has never seen is a
-    // guard about nothing.
-    //
-    // The magic link is minted in here too. Minted outside, it looks for a subject that
-    // lives in this environment and does not find one — which signs nobody in, and every
-    // page below becomes a redirect to /login that axe reports no violations on.
-    platformRootEnvironment();
-
-    $org = app(PlatformRoot::class)->run(function () {
-        $subject = app(Subjects::class)->create('a11y@acme.test', 'A11y Admin', 'super-secret-1234');
-        $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y'));
-        app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
-
-        // A PRODUCT: the Identity-platform pages belong to a CUSTOMER, and an organization
-        // that owns none is refused them.
-        app(Projects::class)->createForOrganization($org->id, 'Acme');
-
-        // ROWS, so the audit sees the markup that renders rows: one invitation nobody has
-        // accepted, and one more member than a page holds.
-        app(Invitations::class)->invite($org->id, 'pending@acme.test', MembershipRole::Member, null);
-
-        foreach (range(1, 26) as $i) {
-            $member = app(Subjects::class)->create("a11y-member-{$i}@acme.test", "Member {$i}");
-            app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
-        }
-
-        return $org;
-    });
-
-    $token = app(PlatformRoot::class)->run(fn () => app(MagicLink::class)->request('a11y@acme.test'));
-
-    // A magic-link redemption establishes the platform session for later requests.
-    $this->get('/magic/'.$token);
-
-    $html = $this->get($path)->assertOk()->getContent();
-
-    // The audit is only worth anything if the page rendered the thing under audit. On
-    // /members that is the invitation panel and the pager, both of which were absent for
-    // the life of this test.
-    if ($path === '/members') {
-        expect($html)->toContain('Invited, not joined yet')
-            ->and($html)->toContain('Pagination Navigation');
-    }
-
-    expect(axeViolations($html))->toBe([]);
-})->with([
-    'dashboard' => '/dashboard',
-    'get-started' => '/get-started',
-    'usage' => '/usage',
-    'approvals' => '/approvals',
-    'members' => '/members',
-    'roles' => '/roles',
-    'connections' => '/connections',
-    'directories' => '/directories',
-    'provisioning' => '/provisioning',
-    'governance' => '/governance',
-    'sod-policies' => '/sod-policies',
-    'clients' => '/clients',
-    'webhooks' => '/webhooks',
-    'hooks' => '/hooks',
-    'audit' => '/audit',
-    'settings' => '/settings',
-    'appearance' => '/appearance',
-    'account' => '/account',
-]);
+/*
+ * AND THE LAST ONE HAS GONE TOO.
+ *
+ * `/account` was the final entry here. Its audit — with rows on every list, in both themes
+ * and at a phone width — is in tests/Browser/AccessibilityTest, where a real browser
+ * renders the page and computes the colour contrast jsdom cannot.
+ *
+ * What is LEFT in this file is not a page sweep at all: the token-contrast checks below
+ * compute WCAG ratios straight from the oklch design tokens, which is stronger than
+ * auditing a page that happens to use them — they fail the moment somebody edits a token,
+ * whether or not any page under test carries it. Those outlive the port.
+ */
 
 /*
 |--------------------------------------------------------------------------
@@ -316,6 +262,65 @@ it('renders selected text at WCAG AA in both themes', function (string $theme): 
  *
  * @return array<string, string> relative path => contents
  */
+/**
+ * Every React page, as source.
+ *
+ * @return array<string, string> repo-relative path => contents
+ */
+/**
+ * Everywhere in React a search filter can live: the pages, and the chrome drawn on all of
+ * them at once.
+ *
+ * The acting-organization picker is the reason this is not just `tsxPages()`. It is a
+ * search over every tenant in the environment, it sits in the topbar rather than on a page,
+ * and when it ported out of blade it left both populations at once — which the cross-walk
+ * below caught as a page that had simply disappeared.
+ *
+ * @return array<string, string> repo-relative path => contents
+ */
+function searchableReactSources(): array
+{
+    return tsxPages() + tsxSourcesUnder(base_path('resources/js/chrome'));
+}
+
+function tsxPages(): array
+{
+    return tsxSourcesUnder(base_path('resources/js/pages'));
+}
+
+/**
+ * Every React file under one directory, as source.
+ *
+ * Separate from {@see tsxPages()} because two different questions are asked of these
+ * files. "Does every PAGE have a landmark" is about pages; "does every search filter
+ * announce its result count" is about wherever a search filter IS — and one of them is in
+ * the CHROME, which is drawn on every page at once. A sweep that only knew about pages lost
+ * that control the moment it moved there.
+ *
+ * @return array<string, string> repo-relative path => contents
+ */
+function tsxSourcesUnder(string $root): array
+{
+    $out = [];
+
+    /** @var iterable<SplFileInfo> $files */
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+
+    foreach ($files as $file) {
+        if ($file->getExtension() !== 'tsx') {
+            continue;
+        }
+
+        $source = file_get_contents($file->getPathname());
+
+        if ($source !== false) {
+            $out[str_replace(base_path().'/', '', $file->getPathname())] = $source;
+        }
+    }
+
+    return $out;
+}
+
 function bladeViews(?string $under = null): array
 {
     $roots = [base_path('resources/views'.($under !== null ? '/'.$under : ''))];
@@ -399,12 +404,12 @@ it('labels every search filter and announces its result count', function (): voi
     // BOTH planes, so a sweep that only looked at `livewire/environment` would stop
     // covering a page the moment it was unified — silently losing coverage exactly where
     // the unification could have broken something.
-    $searchViews = bladeViews('livewire/environment') + bladeViews('livewire/console');
+    $searchViews = array_filter(
+        bladeViews('livewire/environment') + bladeViews('livewire/console'),
+        static fn (string $src): bool => str_contains($src, 'wire:model.live.debounce.300ms="search"'),
+    );
 
     foreach ($searchViews as $path => $src) {
-        if (! str_contains($src, 'wire:model.live.debounce.300ms="search"')) {
-            continue;
-        }
 
         preg_match('/<input[^>]*wire:model\.live\.debounce\.300ms="search"[^>]*>/', $src, $m);
 
@@ -419,11 +424,123 @@ it('labels every search filter and announces its result count', function (): voi
 
     expect($missingLabel)->toBe([]);
     expect($missingStatus)->toBe([]);
-    // Guard the sweep itself: if the search idiom is renamed, this must not silently pass.
-    expect(count(array_filter(
-        $searchViews,
-        static fn (string $s): bool => str_contains($s, 'wire:model.live.debounce.300ms="search"')
-    )))->toBe(17);
+
+    /*
+     * GUARD THE SWEEP, ACROSS BOTH STACKS.
+     *
+     * This used to be a bare count of Volt views, which meant it fell by one every time a
+     * searchable list was ported — and a falling number that has to be edited downwards is
+     * a guard that gets edited rather than read. Worse, the edit and a genuinely deleted
+     * announcement look identical.
+     *
+     * So it is a CROSS-WALK instead: how many searchable list pages this console has, in
+     * total, over the two stacks it currently spans. Porting one moves a page from the
+     * left side to the right and leaves the total alone; DELETING one moves the total, and
+     * that is the thing worth being told about. It only ever grows.
+     */
+    $ported = count(array_filter(
+        searchableReactSources(),
+        static fn (string $source): bool => str_contains($source, 'type="search"'),
+    ));
+
+    expect(count($missingLabel) + count($missingStatus))->toBe(0)
+        ->and(count($searchViews) + $ported)->toBeGreaterThanOrEqual(19);
+});
+
+/**
+ * THE SAME PROMISE, ON THE PAGES THAT NO LONGER HAVE A BLADE.
+ *
+ * The sweep above counts Volt views, so it loses a page every time one is ported — and it
+ * lost four of them silently before anybody noticed the announcement had gone with the
+ * markup. Four ported lists filtered on a debounced keystroke with nothing left to say
+ * "no matches": the count guard above went from 22 to 17 one page at a time, and each drop
+ * looked like progress.
+ *
+ * A SOURCE SWEEP, and it says so. It cannot see whether the element is rendered — for that
+ * see tests/Browser — but it is the same contract the blade sweep held, applied to the
+ * files that replaced those blades, and it is what stops the next port dropping this again.
+ *
+ * `<output>` rather than `<p role="status">`: it carries the role implicitly and is the
+ * element the platform already maps to it.
+ */
+/**
+ * Whether the element at `$offset` sits inside a `<Field label=…>`.
+ *
+ * Containment rather than proximity: the nearest `<Field` BEFORE it must not have been
+ * closed before it — otherwise a page with a labelled field further up would vouch for an
+ * unlabelled box lower down, which is exactly the thing this is supposed to catch.
+ */
+function insideLabelledField(string $src, int $offset): bool
+{
+    $open = strrpos(substr($src, 0, $offset), '<Field');
+
+    if ($open === false) {
+        return false;
+    }
+
+    $closedBetween = strpos($src, '</Field>', $open);
+
+    if ($closedBetween !== false && $closedBetween < $offset) {
+        return false;
+    }
+
+    // The opening tag itself, up to its `>`, is where the label lives.
+    $tag = substr($src, $open, (int) (strpos($src, '>', $open) ?: $open) - $open);
+
+    return str_contains($tag, 'label=');
+}
+
+it('labels every ported search filter and announces its result count', function (): void {
+    $missingLabel = [];
+    $missingStatus = [];
+    $searched = [];
+
+    foreach (searchableReactSources() as $path => $src) {
+        if (! str_contains($src, 'type="search"')) {
+            continue;
+        }
+
+        $searched[] = $path;
+
+        /*
+         * Lazy to the first `/>`, and NOT `[^>]*` — a JSX attribute value contains `>`
+         * every time it holds an arrow function, so a character class stopping at `>`
+         * matched three characters of `onChange={(event) =` and reported every page as
+         * unlabelled. `=>` is not `/>`, so this stops exactly where the element does.
+         */
+        preg_match_all('/<Input\b(.*?)\/>/s', $src, $inputs, PREG_OFFSET_CAPTURE);
+
+        foreach ($inputs[0] as [$input, $offset]) {
+            if (! str_contains($input, 'type="search"')) {
+                continue;
+            }
+
+            /*
+             * EITHER SPELLING COUNTS, because both produce a labelled control and one of
+             * them produces a better one. A bare filter box carries `aria-label`; a box
+             * inside a `<Field label=…>` gets a real `<label>` wired to it by id, which is
+             * what a screen reader announces AND what a sighted person can click. This
+             * used to demand `aria-label` alone and reported the properly-labelled page
+             * as the broken one.
+             */
+            if (str_contains($input, 'aria-label=')) {
+                continue;
+            }
+
+            if (! insideLabelledField($src, $offset)) {
+                $missingLabel[] = $path;
+            }
+        }
+
+        if (! str_contains($src, '<output')) {
+            $missingStatus[] = $path;
+        }
+    }
+
+    expect($missingLabel)->toBe([]);
+    expect($missingStatus)->toBe([]);
+    // Guard the sweep itself: a renamed idiom must not make this pass by matching nothing.
+    expect($searched)->not->toBe([]);
 });
 
 it('never leaves an input labelled by placeholder alone', function (): void {
@@ -480,19 +597,6 @@ it('guards every irreversible delete with type-to-confirm', function (): void {
     expect($offenders)->toBe([]);
 });
 
-it('gives the identifier-first password step focus and an announcement', function (string $view): void {
-    // HTML autofocus only fires at document parse, and Livewire morphs this step in —
-    // focus stayed on <body> and all three live regions were empty.
-    $src = file_get_contents(base_path("resources/views/livewire/{$view}.blade.php"));
-
-    expect($src)->toContain('x-init="$el.focus()"');
-    expect($src)->toMatch('/role="status" aria-live="polite"[^>]*>\s*@if \(\$identified\)/');
-    // The password input must NOT rely on autofocus, which is the bug being fixed.
-    expect($src)->toMatch('/<input[^>]*type="password"(?:(?!>)[\s\S])*?>/');
-    preg_match('/<input[^>]*type="password"(?:(?!>)[\s\S])*?>/', $src, $pw);
-    expect($pw[0])->not->toContain('autofocus');
-})->with(['auth/login']);
-
 it('gives every environment detail page a real h2 outline', function (): void {
     // 24 pages skipped h1 -> h3 because section headers were weighted <p>.
     $flat = [];
@@ -526,133 +630,68 @@ it('gives every environment detail page a real h2 outline', function (): void {
  * and it was reading out a paragraph.
  */
 it('keeps the help popover out of the page heading', function (): void {
-    $header = (string) file_get_contents(base_path('resources/views/components/page-header.blade.php'));
+    $header = (string) file_get_contents(base_path('resources/js/ui/PageHeader.tsx'));
 
-    // The h1 must be a single line with nothing but the title in it.
-    expect($header)->toMatch('/<h1 class="cbx-page-title">\{\{ \$title \}\}<\/h1>/');
+    // The h1 must be a single element with nothing but the page's title in it. Nested, the
+    // heading's accessible name became "Members What is Members? Members are the people
+    // who…" — on the one landmark a screen-reader user navigates the page by.
+    expect($header)->toMatch('/<h1 className="cbx-page-title">\{title \?\? stated\}<\/h1>/');
 
-    $between = (string) preg_replace('/^.*<h1 class="cbx-page-title">|<\/h1>.*$/s', '', $header);
+    $between = (string) preg_replace('/^.*<h1 className="cbx-page-title">|<\/h1>.*$/s', '', $header);
 
-    // No message argument: `toContain` is variadic, so a second string is another
-    // needle and `not->toContain` passes as soon as one is missing. The `toMatch` above
-    // carries the real assertion, but a guard that cannot fail is worse than none.
-    expect($between)->not->toContain('x-help');
+    // No message argument: `toContain` is variadic, so a second string is another needle
+    // and `not->toContain` passes as soon as one is missing. The `toMatch` above carries
+    // the real assertion, but a guard that cannot fail is worse than none.
+    expect($between)->not->toContain('<Help');
 });
 
-/**
- * And the popover is a disclosure, not a dialog: it never takes focus, traps nothing and
- * restores nothing, so `role="dialog"` made screen readers announce and manage it as
- * something it is not.
- */
-it('does not claim to be a dialog', function (): void {
-    $help = (string) file_get_contents(base_path('resources/views/components/help.blade.php'));
-
-    // Strip Blade comments first: the docblock explaining WHY the role was removed
-    // contains the string, and a check that cannot tell markup from prose would fail on
-    // its own explanation.
-    $markup = (string) preg_replace('/\{\{--.*?--\}\}/s', '', $help);
-
-    expect($markup)->not->toContain('role="dialog"')
-        // The button-to-panel relationship that IS correct must still be there.
-        ->and($markup)->toContain('aria-controls')
-        ->and($markup)->toContain('aria-expanded');
-});
-
-/**
- * THE OTHER TWO CONSOLE PLANES, which this guard has never opened.
+/*
+ * "IT DOES NOT CLAIM TO BE A DIALOG" STOOD HERE, and it has moved rather than gone.
  *
- * It swept eighteen ORGANIZATION-plane pages and stopped there, while the
- * environment-admin console (`/admin/*`) and the operator console (`/platform/*`) are
- * whole planes of their own — the ones an administrator lives in all day. A guard that
- * covers a third of the product and reads as "accessibility is tested" is the shape this
- * repository has been bitten by before: the suite cannot see whether a control is drawn,
- * so the plane nobody sweeps is the plane a defect survives on.
+ * The blade help panel put `role="dialog"` on a div that took no focus, trapped nothing
+ * and restored nothing, so a screen reader announced a dialog its user could neither enter
+ * nor leave. This read the blade file for the string, which is all a source-grep can do.
+ *
+ * The port is a Radix popover, and a popover IS a non-modal dialog — it takes focus, closes
+ * on Escape and hands focus back — so asserting the role's ABSENCE would now assert the
+ * wrong thing. What is worth holding is the behaviour the old markup only claimed to have,
+ * and that needs a rendered DOM: see `resources/js/ui/Help.test.tsx`, which opens the
+ * popover, reaches its link, presses Escape and checks where focus landed. Run by
+ * `npm run test`, which the CI workflow and the Phase-9 gate both call.
  */
-it('has no WCAG 2.1 A/AA violations on the environment console', function (string $route): void {
-    multiTenantDeployment();
-    actAsEnvironmentAdminOfATenant();
-    confirmEnvironmentStepUp();
 
-    // A PENDING REQUEST, so the approvals queue renders its rows rather than its empty
-    // state. Every route in this dataset is audited against a freshly provisioned tenant
-    // with nothing in it, so most of them audit an empty list — this is the one whose row
-    // markup changed, and it was green over markup that never rendered.
-    if ($route === 'environment.approvals') {
-        $client = app(ClientRegistry::class)->register(new NewClient(
-            name: 'Agent',
-            type: ClientType::Confidential,
-            redirectUris: [],
-            scopes: ['openid'],
-        ));
-
-        $subject = app(Subjects::class)->create('agent-user@a11y.test', 'Agent User');
-
-        app(BackchannelAuthentication::class)->request($client->client, ['openid'], $subject->id);
-    }
-
-    $html = $this->get(route($route))->assertOk()->getContent();
-
-    if ($route === 'environment.approvals') {
-        expect($html)->toContain('is requesting access');
-    }
-
-    expect(axeViolations($html))->toBe([]);
-})->with([
-    'home' => 'environment.home',
-    'organizations' => 'environment.organizations',
-    'users' => 'environment.users',
-    'roles' => 'environment.roles',
-    'permissions' => 'environment.permissions',
-    'connections' => 'environment.connections',
-    'directories' => 'environment.directories',
-    'provisioning' => 'environment.provisioning',
-    'clients' => 'environment.clients',
-    'frontend-keys' => 'environment.frontend-keys',
-    'legacy-login' => 'environment.legacy-login',
-    'webhooks' => 'environment.webhooks',
-    'hooks' => 'environment.hooks',
-    'audit' => 'environment.audit',
-    'audit-streams' => 'environment.audit-streams',
-    'governance' => 'environment.governance',
-    'sod-policies' => 'environment.sod-policies',
-    'auth-policy' => 'environment.auth-policy',
-    'settings' => 'environment.settings',
-    'appearance' => 'environment.appearance',
-    'sso-providers' => 'environment.sso-providers',
-    'social-providers' => 'environment.social-providers',
-    'vault' => 'environment.vault',
-    'analytics' => 'environment.analytics',
-    'approvals' => 'environment.approvals',
-])->group('ux');
-
-it('has no WCAG 2.1 A/AA violations on the operator console', function (string $route): void {
-    actAsOperator('a11y-op@platform.test');
-
-    $html = $this->get(route($route))->assertOk()->getContent();
-
-    expect(axeViolations($html))->toBe([]);
-})->with([
-    'customers' => 'platform.customers',
-    'organizations' => 'platform.organizations',
-    'environments' => 'platform.environments',
-    'operators' => 'platform.operators',
-    'usage' => 'platform.usage',
-    'search' => 'platform.search',
-])->group('ux');
-
-/**
- * And the page a person opens to find a session they do not recognise — added in this
- * review pass, and exactly the kind of page that must be readable by somebody who cannot
- * see it.
+/*
+ * THE ENVIRONMENT CONSOLE IS AUDITED IN A REAL BROWSER, in tests/Browser.
+ *
+ * It had a sweep of its own here, and the sweep shrank one page at a time as that plane
+ * ported — until the last of them went and it had nothing left to audit. It is deleted
+ * rather than left pointing at whatever page happens still to be Volt: `axeViolations()`
+ * refuses to audit a mount point, so the alternative was a guard that fails for a reason
+ * that has nothing to do with accessibility.
+ *
+ * What replaced it is strictly better rather than merely equivalent. jsdom has no layout
+ * engine and no cascade, so this bridge disables `color-contrast` — the single rule this
+ * design system's tokens are most carefully tuned for, and the one that has actually
+ * regressed here before. A real browser computes it.
  */
-it('has no WCAG 2.1 A/AA violations on sessions & activity', function (): void {
-    $subject = app(Subjects::class)->create('a11y-activity@acme.test', 'A11y', 'super-secret-1234');
-    $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-a11y-activity'));
-    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
-    $this->get('/magic/'.app(MagicLink::class)->request('a11y-activity@acme.test'));
+/*
+ * THE OPERATOR CONSOLE'S OWN SWEEP IS GONE FROM HERE.
+ *
+ * All eight of its pages have ported, so every one of them answers this sweep with a mount
+ * point — a document axe finds nothing wrong with because there is nothing in it. Keeping
+ * the dataset would have been the exact failure `axeViolations()` refuses on: coverage that
+ * reads as green while auditing one `<div>`.
+ *
+ * The coverage moved to tests/Browser/AccessibilityTest, which runs axe against the drawn
+ * page and computes the colour contrast jsdom cannot — and it audits MORE than this did:
+ * the two detail pages, and lists with rows on them rather than empty states.
+ */
 
-    $html = $this->get('/account/activity')->assertOk()->getContent();
-
-    expect(axeViolations($html))->toBe([]);
-})->group('ux');
+/*
+ * SESSIONS & ACTIVITY has ported too, and its audit moved to tests/Browser for the same
+ * reason as the operator plane's: this sweep would be auditing a mount point. It is the
+ * page a person opens to find a session they do not recognise — exactly the kind that must
+ * be readable by somebody who cannot see it — so it is audited with rows on every one of
+ * its three lists, in both themes and at a phone width.
+ */

@@ -30,9 +30,10 @@ use Cbox\Id\RiskPlus\Models\RiskEvent;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Models\BrandProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -313,7 +314,14 @@ it('refuses every module page to a browser holding no admin session at all', fun
  */
 it('shows an organization admin their own members\' risk events and nobody else\'s', function (): void {
     everyModuleFeatureOn();
-    platformRootEnvironment();
+
+    /*
+     * NO `platformRootEnvironment()`. It was here while this test drove the component
+     * directly and never issued a request; the page is reached by REQUEST now, and pinning
+     * the root while the fixture builds everything in the ambient scope leaves the console's
+     * own guard unable to resolve the session — so every page answered a redirect to
+     * sign-in, which an assertion about what the page does NOT show passes happily.
+     */
 
     // The acting admin's OWN organization — actingAsRole() creates one and pins
     // CurrentUser to it, so the fixture has to hang the member off THAT org. It used to
@@ -334,14 +342,15 @@ it('shows an organization admin their own members\' risk events and nobody else\
         'reasons' => ['stranger'], 'email' => 'stranger@elsewhere.test',
     ]);
 
-    $html = Volt::test('risk-plus.events')->html();
+    $reasons = collect((array) test()->get(route('risk-plus.events'))->assertOk()->inertiaProps('events'))
+        ->flatMap(fn (array $event): array => $event['reasons']);
 
     // BOTH halves, and the positive one is the half that was missing. A filter built on a
-    // tenant-scoped subquery matched nothing at all, so the page rendered "No elevated
-    // risk events yet" to an organization under credential stuffing — and passed a test
-    // that only asked whether the stranger was absent.
-    expect($html)->toContain('zarquon')
-        ->and($html)->not->toContain('stranger');
+    // tenant-scoped subquery matched nothing at all, so the page rendered "No elevated risk
+    // events yet" to an organization under credential stuffing — and passed a test that only
+    // asked whether the stranger was absent.
+    expect($reasons)->toContain('zarquon')
+        ->and($reasons)->not->toContain('stranger');
 })->group('security');
 
 /**
@@ -357,7 +366,10 @@ it('shows an environment administrator the whole risk feed', function (): void {
         'reasons' => ['stranger'], 'email' => 'stranger@elsewhere.test',
     ]);
 
-    $this->get(route('environment.risk-plus.events'))->assertOk()->assertSee('stranger');
+    $reasons = collect((array) $this->get(route('environment.risk-plus.events'))->assertOk()->inertiaProps('events'))
+        ->flatMap(fn (array $event): array => $event['reasons']);
+
+    expect($reasons)->toContain('stranger');
 })->group('security');
 
 /**
@@ -367,7 +379,9 @@ it('shows an environment administrator the whole risk feed', function (): void {
  */
 it('shows an organization admin only their own members\' devices', function (): void {
     everyModuleFeatureOn();
-    platformRootEnvironment();
+    // No `platformRootEnvironment()`: these pages are reached by REQUEST now, and pinning
+    // the root while the fixture builds in the ambient scope leaves the console's own guard
+    // unable to resolve the session — every page then answers a redirect to sign-in.
 
     [$subjectId, $org] = actingAsRole(MembershipRole::Owner);
 
@@ -376,9 +390,11 @@ it('shows an organization admin only their own members\' devices', function (): 
     enrolledHandset($subjectId, 'Mine');
     enrolledHandset($stranger->id, 'Zarquon');
 
-    $html = Volt::test('devices.index')->html();
+    $names = collect((array) test()->get(route('devices.index'))->assertOk()->inertiaProps('devices'))
+        ->pluck('name');
 
-    expect($html)->toContain('Mine')->not->toContain('Zarquon');
+    expect($names)->toContain('Mine')
+        ->and($names)->not->toContain('Zarquon');
 })->group('security');
 
 /**
@@ -391,7 +407,9 @@ it('shows an organization admin only their own members\' devices', function (): 
  */
 it('reaches a device that falls past the first page', function (): void {
     everyModuleFeatureOn();
-    platformRootEnvironment();
+    // No `platformRootEnvironment()`: these pages are reached by REQUEST now, and pinning
+    // the root while the fixture builds in the ambient scope leaves the console's own guard
+    // unable to resolve the session — every page then answers a redirect to sign-in.
 
     [$subjectId] = actingAsRole(MembershipRole::Owner);
 
@@ -403,11 +421,13 @@ it('reaches a device that falls past the first page', function (): void {
         enrolledHandset($subjectId, 'Recent '.$i, lastSeenAt: now()->subMinutes($i));
     }
 
-    $page = Volt::test('devices.index');
+    $names = fn (array $query = []): Collection => collect(
+        (array) test()->get(route('devices.index', $query))->assertOk()->inertiaProps('devices')
+    )->pluck('name');
 
-    expect($page->html())->not->toContain('Ancient');
-
-    expect($page->set('paginators.page', 2)->html())->toContain('Ancient');
+    expect($names())->not->toContain('Ancient')
+        // …and it is REACHABLE, which is the whole claim: the list is paged, not cut.
+        ->and($names(['page' => 2]))->toContain('Ancient');
 });
 
 /**
@@ -415,9 +435,12 @@ it('reaches a device that falls past the first page', function (): void {
  *
  * `Console::context()->organizationId()` answers null whenever no SUBJECT is signed in —
  * which on the environment plane is ALWAYS — so the connectors pages read the
- * environment-wide branch even after an administrator narrowed to one organization. The
- * page says which it is doing, so the copy is what pins it: cheap, and it fails for the
- * right reason rather than needing four kinds of connector seeded to notice.
+ * environment-wide branch even after an administrator narrowed to one organization.
+ *
+ * Asserted on the flag the page's copy is DERIVED from, rather than on the copy. It was the
+ * sentence before, because the sentence was cheap and failed for the right reason; the flag
+ * is the same fact one step earlier, and it does not move when somebody edits the wording.
+ * The page saying it out loud is held in tests/Browser.
  */
 it('narrows connectors to the organization an environment administrator chose', function (): void {
     everyModuleFeatureOn();
@@ -425,8 +448,7 @@ it('narrows connectors to the organization an environment administrator chose', 
 
     $this->get(route('environment.connectors.connections'))
         ->assertOk()
-        ->assertSee('for this organization')
-        ->assertDontSee('in this environment');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('wholeEnvironment', false));
 })->group('security');
 
 it('shows the whole environment\'s connectors when none is chosen', function (): void {
@@ -435,7 +457,7 @@ it('shows the whole environment\'s connectors when none is chosen', function ():
 
     $this->get(route('environment.connectors.connections'))
         ->assertOk()
-        ->assertSee('in this environment');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('wholeEnvironment', true));
 })->group('security');
 
 /**
@@ -474,7 +496,10 @@ it('reads the acting organization\'s audit chain and no other', function (): voi
 /** The same page, the other door — an organization admin sees their own chain only. */
 it('reads an organization admin\'s own audit chain and no other', function (): void {
     everyModuleFeatureOn();
-    platformRootEnvironment();
+    // No `platformRootEnvironment()`: these pages are reached by REQUEST now, and pinning
+    // the root while the fixture builds in the ambient scope leaves the console's own guard
+    // unable to resolve the session — every page then answers a redirect to sign-in, which a
+    // "does not show the other tenant" assertion passes happily.
 
     [, $org] = actingAsRole(MembershipRole::Owner);
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'audit-org-other'));
@@ -491,9 +516,11 @@ it('reads an organization admin\'s own audit chain and no other', function (): v
         organizationId: $other->id,
     ));
 
-    expect(Volt::test('compliance.audit')->html())
-        ->toContain('ours.happened')
-        ->not->toContain('zarquon.happened');
+    $actions = collect((array) test()->get(route('compliance.audit'))->assertOk()->inertiaProps('entries'))
+        ->pluck('action');
+
+    expect($actions)->toContain('ours.happened')
+        ->and($actions)->not->toContain('zarquon.happened');
 })->group('security');
 
 /**
@@ -502,7 +529,10 @@ it('reads an organization admin\'s own audit chain and no other', function (): v
  */
 it('keeps the environment-wide export history off the organization plane', function (): void {
     everyModuleFeatureOn();
-    platformRootEnvironment();
+    // No `platformRootEnvironment()`: these pages are reached by REQUEST now, and pinning
+    // the root while the fixture builds in the ambient scope leaves the console's own guard
+    // unable to resolve the session — every page then answers a redirect to sign-in, which a
+    // "does not show the other tenant" assertion passes happily.
     actingAsRole(MembershipRole::Owner);
 
     AuditExportRun::query()->create([
@@ -511,9 +541,12 @@ it('keeps the environment-wide export history off the organization plane', funct
         'sink' => 'Acme\\ZarquonSink', 'started_at' => now(), 'finished_at' => now(),
     ]);
 
-    expect(Volt::test('compliance.exports')->html())
-        ->not->toContain('Zarquon')
-        ->not->toContain('Recent export runs');
+    // BOTH: the rows are not sent, and the page is told not to draw the section at all —
+    // a page that shipped the rows and merely hid them would satisfy only the second.
+    $page = test()->get(route('compliance.data-exports'))->assertOk();
+
+    expect($page->inertiaProps('showsRuns'))->toBeFalse()
+        ->and($page->inertiaProps('runs'))->toBe([]);
 })->group('security');
 
 it('shows the export history to the administrator who owns the environment', function (): void {
@@ -526,7 +559,10 @@ it('shows the export history to the administrator who owns the environment', fun
         'sink' => 'Acme\\ZarquonSink', 'started_at' => now(), 'finished_at' => now(),
     ]);
 
-    $this->get(route('environment.compliance.data-exports'))->assertOk()->assertSee('Zarquon');
+    $page = $this->get(route('environment.compliance.data-exports'))->assertOk();
+
+    expect($page->inertiaProps('showsRuns'))->toBeTrue()
+        ->and(collect((array) $page->inertiaProps('runs'))->pluck('sink'))->toContain('ZarquonSink');
 })->group('security');
 
 /*
@@ -538,10 +574,7 @@ it('shows the export history to the administrator who owns the environment', fun
 it('edits the environment default when no organization is chosen', function (): void {
     moduleEnvironmentAdmin('brand-default', chooseOrganization: false);
 
-    Volt::test('whitelabel.branding')
-        ->set('appName', 'Environment Wide')
-        ->call('save')
-        ->assertHasNoErrors();
+    saveBranding(['appName' => 'Environment Wide'], environmentPlane: true)->assertSessionHasNoErrors();
 
     $profile = app(BrandProfiles::class)->forEnvironment();
 
@@ -552,10 +585,7 @@ it('edits the environment default when no organization is chosen', function (): 
 it('edits the chosen organization\'s profile and leaves the environment default alone', function (): void {
     $organizationId = moduleEnvironmentAdmin('brand-org');
 
-    Volt::test('whitelabel.branding')
-        ->set('appName', 'Just This Tenant')
-        ->call('save')
-        ->assertHasNoErrors();
+    saveBranding(['appName' => 'Just This Tenant'], environmentPlane: true)->assertSessionHasNoErrors();
 
     expect(app(BrandProfiles::class)->forOrganization((string) $organizationId)?->app_name)->toBe('Just This Tenant')
         ->and(app(BrandProfiles::class)->forEnvironment())->toBeNull();
@@ -566,15 +596,15 @@ it('edits the chosen organization\'s profile and leaves the environment default 
  * organization admin must not be able to reach the row every other tenant inherits.
  */
 it('never lets an organization admin write the environment default', function (): void {
-    platformRootEnvironment();
+    // No `platformRootEnvironment()`: these pages are reached by REQUEST now, and pinning
+    // the root while the fixture builds in the ambient scope leaves the console's own guard
+    // unable to resolve the session — every page then answers a redirect to sign-in, which a
+    // "does not show the other tenant" assertion passes happily.
     actingAsRole(MembershipRole::Owner);
 
     BrandProfile::query()->create(['organization_id' => null, 'app_name' => 'Environment Wide']);
 
-    Volt::test('whitelabel.branding')
-        ->set('appName', 'Hijacked')
-        ->call('save')
-        ->assertHasNoErrors();
+    saveBranding(['appName' => 'Hijacked'])->assertSessionHasNoErrors();
 
     expect(app(BrandProfiles::class)->forEnvironment()?->app_name)->toBe('Environment Wide');
 })->group('security');

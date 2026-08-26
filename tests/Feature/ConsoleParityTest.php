@@ -8,8 +8,10 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\ManifestFetcher;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Enums\RoleSource;
 use Cbox\Id\AccessControl\Manifest\DeclaredRole;
 use Cbox\Id\AccessControl\Manifest\Manifest;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
@@ -64,9 +66,12 @@ use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
 use Cbox\LaravelSiem\Enums\Destination as SiemDestination;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
+use Inertia\Support\SessionKey;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 /**
@@ -110,23 +115,34 @@ function anEnvironmentAdminActingOn(string $slug = 'tenant-parity'): string
     return $orgId;
 }
 
-it('serves access reviews from one component on the environment plane', function (): void {
+it('serves access reviews from one controller on the environment plane', function (): void {
     anEnvironmentAdminActingOn();
 
-    $this->get(route('environment.governance'))->assertOk()->assertSee('Access reviews');
-    $this->get(route('environment.governance.create'))->assertOk();
+    $this->get(route('environment.governance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/access-reviews/index')
+            ->where('title', 'Access reviews'));
+
+    $this->get(route('environment.governance.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/access-reviews/create'));
 })->group('security');
 
-it('serves access reviews from the same component on the organization plane', function (): void {
+it('serves access reviews from the same controller on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
     // losing it: a campaign URL is something you send to a reviewer.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.governance.index')->assertOk()->assertSee('Access reviews');
-    Volt::test('console.governance.create')->assertOk();
+    $this->get(route('governance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/access-reviews/index')
+            ->where('title', 'Access reviews'));
+
+    $this->get(route('governance.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/access-reviews/create'));
 
     // And the routable shape exists on this plane, which is the half that was missing:
     // the organization console had one page and no campaign URL to send anyone.
@@ -140,10 +156,7 @@ it('takes the organization from the scope rather than a field on the form', func
     // differently in each.
     $orgId = anEnvironmentAdminActingOn('tenant-scoped');
 
-    Volt::test('console.governance.create')
-        ->set('name', 'Q3 review')
-        ->call('open')
-        ->assertHasNoErrors();
+    openAccessReview([], 'environment.governance')->assertSessionHasNoErrors();
 
     expect(CertificationCampaign::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
@@ -152,10 +165,10 @@ it('refuses to open a review before an organization is chosen', function (): voi
     anEnvironmentAdminActingOn('tenant-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.governance.create')
-        ->set('name', 'Q3 review')
-        ->call('open')
-        ->assertHasErrors('name');
+    openAccessReview([], 'environment.governance')->assertSessionHasErrors('name');
+
+    // Refused rather than landed on whichever organization a downstream default picked.
+    expect(CertificationCampaign::query()->exists())->toBeFalse();
 })->group('security');
 
 /*
@@ -167,24 +180,35 @@ it('refuses to open a review before an organization is chosen', function (): voi
 | "All organizations" option on its form. The merge is the union of all of it.
 */
 
-it('serves outbound sync from one component on the environment plane', function (): void {
+it('serves outbound sync from one controller on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-sync');
 
-    $this->get(route('environment.provisioning'))->assertOk()->assertSee('Sync users out');
-    $this->get(route('environment.provisioning.create'))->assertOk();
+    $this->get(route('environment.provisioning'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/outbound-sync/index')
+            ->where('title', 'Sync users out'));
+
+    $this->get(route('environment.provisioning.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/outbound-sync/create'));
 })->group('security');
 
-it('serves outbound sync from the same component on the organization plane', function (): void {
+it('serves outbound sync from the same controller on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
     // losing it: a connection URL is something you send to whoever runs the app it
     // provisions.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.provisioning.index')->assertOk()->assertSee('Sync users out');
-    Volt::test('console.provisioning.create')->assertOk();
+    $this->get(route('provisioning'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/outbound-sync/index')
+            ->where('title', 'Sync users out'));
+
+    $this->get(route('provisioning.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/outbound-sync/create'));
 
     expect(Route::has('provisioning.show'))->toBeTrue()
         ->and(Route::has('provisioning.create'))->toBeTrue();
@@ -194,13 +218,7 @@ it('registers an outbound connection against the organization from the scope', f
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = anEnvironmentAdminActingOn('tenant-sync-scoped');
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Downstream')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'bearer')
-        ->set('secret', 'tok_123')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerOutboundSync([], 'environment.provisioning')->assertSessionHasNoErrors();
 
     expect(ProvisioningConnection::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
@@ -210,13 +228,7 @@ it('refuses to register an outbound connection before an organization is chosen'
     anEnvironmentAdminActingOn('tenant-sync-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Downstream')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'bearer')
-        ->set('secret', 'tok_123')
-        ->call('create')
-        ->assertHasErrors('name');
+    registerOutboundSync([], 'environment.provisioning')->assertSessionHasErrors('name');
 
     expect(ProvisioningConnection::query()->exists())->toBeFalse();
 })->group('security');
@@ -228,14 +240,10 @@ it('keeps environment-wide registration on the environment plane', function (): 
     config(['cbox-id.provisioning.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-sync-wide');
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Everything')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'bearer')
-        ->set('secret', 'tok_123')
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertHasNoErrors();
+    registerOutboundSync([
+        'name' => 'Everything',
+        'environmentWide' => true,
+    ], 'environment.provisioning')->assertSessionHasNoErrors();
 
     expect(ProvisioningConnection::query()->whereNull('organization_id')->exists())->toBeTrue();
 })->group('security');
@@ -252,17 +260,18 @@ it('runs the whole outbound lifecycle on the environment plane', function (): vo
         'tok_123',
     )->connection;
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])
-        ->call('pause')
-        ->assertHasNoErrors();
+    $from = route('environment.provisioning.show', $connection->id);
+
+    test()->from($from)->post(route('environment.provisioning.toggle', $connection->id))
+        ->assertRedirect($from);
     expect($connection->fresh()->status)->toBe(ConnectionStatus::Paused);
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])
-        ->call('resume')
-        ->assertHasNoErrors();
+    test()->from($from)->post(route('environment.provisioning.toggle', $connection->id))
+        ->assertRedirect($from);
     expect($connection->fresh()->status)->toBe(ConnectionStatus::Active);
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])->call('deleteConnection');
+    test()->delete(route('environment.provisioning.destroy', $connection->id))
+        ->assertRedirect(route('environment.provisioning'));
     expect(ProvisioningConnection::query()->whereKey($connection->id)->exists())->toBeFalse();
 })->group('security');
 
@@ -278,26 +287,37 @@ it('runs the whole outbound lifecycle on the environment plane', function (): vo
 | all of it.
 */
 
-it('serves inline hooks from one component on the environment plane', function (): void {
+it('serves inline hooks from one controller on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-hooks');
 
-    $this->get(route('environment.hooks'))->assertOk()->assertSee('Inline hooks');
+    $this->get(route('environment.hooks'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/hooks/index')
+            ->where('title', 'Inline hooks'));
+
     confirmConsoleStepUp();
-    $this->get(route('environment.hooks.create'))->assertOk();
+    $this->get(route('environment.hooks.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/hooks/create'));
 })->group('security');
 
-it('serves inline hooks from the same component on the organization plane', function (): void {
+it('serves inline hooks from the same controller on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
     // losing it: the reveal-once signing secret needs somewhere to land that is not the
     // row you just submitted.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.hooks.index')->assertOk()->assertSee('Inline hooks');
+    $this->get(route('hooks'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/hooks/index')
+            ->where('title', 'Inline hooks'));
+
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')->assertOk();
+    $this->get(route('hooks.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/hooks/create'));
 
     expect(Route::has('hooks.show'))->toBeTrue()
         ->and(Route::has('hooks.create'))->toBeTrue();
@@ -310,18 +330,25 @@ it('offers every hook point on both planes', function (): void {
     // from one console and present in the other, with nothing saying so.
     $expected = array_map(fn (HookPoint $point): string => $point->label(), HookPoint::cases());
 
+    $offered = fn (AssertableInertia $page): bool => $page->toArray()['props']['points'] !== null;
+
     anEnvironmentAdminActingOn('tenant-hookpoints');
     confirmConsoleStepUp();
-    $environment = Volt::test('console.hooks.create');
+    $this->get(route('environment.hooks.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'points',
+            fn (Collection $points): bool => $points->pluck('label')->all() === $expected,
+        ));
 
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
-    $organization = Volt::test('console.hooks.create');
-
-    foreach ($expected as $label) {
-        $environment->assertSee($label);
-        $organization->assertSee($label);
-    }
+    $this->get(route('hooks.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'points',
+            fn (Collection $points): bool => $points->pluck('label')->all() === $expected,
+        ));
 })->group('security');
 
 it('registers a hook against the organization from the scope', function (): void {
@@ -329,10 +356,7 @@ it('registers a hook against the organization from the scope', function (): void
     $orgId = anEnvironmentAdminActingOn('tenant-hooks-scoped');
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/token')
-        ->call('register')
-        ->assertHasNoErrors();
+    registerHook([], 'environment.hooks')->assertSessionHasNoErrors();
 
     expect(ExternalActionEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
@@ -343,10 +367,7 @@ it('refuses to register a hook before an organization is chosen', function (): v
     session()->forget(ConsoleScope::SELECTION_KEY);
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/token')
-        ->call('register')
-        ->assertHasErrors('url');
+    registerHook([], 'environment.hooks')->assertSessionHasErrors('url');
 
     expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 })->group('security');
@@ -358,11 +379,10 @@ it('keeps environment-wide hook registration on the environment plane', function
     anEnvironmentAdminActingOn('tenant-hooks-wide');
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/everyone')
-        ->set('environmentWide', true)
-        ->call('register')
-        ->assertHasNoErrors();
+    registerHook([
+        'url' => 'https://hooks.example.test/everyone',
+        'environmentWide' => true,
+    ], 'environment.hooks')->assertSessionHasNoErrors();
 
     expect(ExternalActionEndpoint::query()->whereNull('organization_id')->exists())->toBeTrue();
 })->group('security');
@@ -376,11 +396,10 @@ it('refuses environment-wide registration from the organization plane', function
     actingAsRole(MembershipRole::Owner);
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/everyone')
-        ->set('environmentWide', true)
-        ->call('register')
-        ->assertForbidden();
+    registerHook([
+        'url' => 'https://hooks.example.test/everyone',
+        'environmentWide' => true,
+    ])->assertForbidden();
 
     expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 })->group('security');
@@ -392,35 +411,43 @@ it('runs the whole hook lifecycle on the environment plane', function (): void {
     $endpoint = app(ExternalActions::class)
         ->register(HookPoint::TokenMinting, 'https://hooks.example.test/token', $orgId)->endpoint;
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('pause')->assertHasNoErrors();
+    $from = route('environment.hooks.show', $endpoint->id);
+
+    test()->from($from)->post(route('environment.hooks.toggle', $endpoint->id))->assertSessionHasNoErrors();
     expect($endpoint->fresh()?->status)->toBe(ActionEndpointStatus::Paused);
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('activate')->assertHasNoErrors();
+    test()->from($from)->post(route('environment.hooks.toggle', $endpoint->id))->assertSessionHasNoErrors();
     expect($endpoint->fresh()?->status)->toBe(ActionEndpointStatus::Active);
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('remove')->assertHasNoErrors();
+    test()->delete(route('environment.hooks.destroy', $endpoint->id))
+        ->assertRedirect(route('environment.hooks'));
     expect(ExternalActionEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 })->group('security');
 
-it('offers dismissing the revealed secret on the environment plane too', function (): void {
-    // Only the organization console had this. Dropping it in the merge would have left a
-    // live credential on screen with no way to clear it — on the plane whose
-    // administrator holds every organization in the environment.
+it('reveals the signing secret on the environment plane too', function (): void {
+    // Only the organization console showed this at all. Dropping it in the merge would
+    // have meant registering an endpoint on the plane whose administrator holds every
+    // organization here, and never being given the secret it minted.
     config(['cbox-id.external_actions.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-hooks-secret');
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/token')
-        ->call('register')
-        ->assertHasNoErrors();
+    registerHook([], 'environment.hooks')->assertSessionHasNoErrors();
 
     $endpoint = ExternalActionEndpoint::query()->firstOrFail();
+    $revealed = session()->get(SessionKey::FLASH_DATA)['newSecret'] ?? '';
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])
-        ->assertSee('Copy this signing secret now')
-        ->call('dismissSecret')
-        ->assertDontSee('Copy this signing secret now');
+    expect($revealed)->toMatch('/[0-9a-f]{64}/');
+
+    // ONCE. Dismissing it is the browser's own affordance — by then the secret is already
+    // off the server — and is held in tests/Browser/HooksTest.php.
+    test()->get(route('environment.hooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('newSecret', $revealed));
+
+    test()->get(route('environment.hooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->missingFlash('newSecret'));
 })->group('security');
 
 /*
@@ -433,23 +460,34 @@ it('offers dismissing the revealed secret on the environment plane too', functio
 | no violations report anywhere. The merge is the union of all of it.
 */
 
-it('serves role conflicts from one component on the environment plane', function (): void {
+it('serves role conflicts from one controller on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-sod');
 
-    $this->get(route('environment.sod-policies'))->assertOk()->assertSee('Role conflicts');
-    $this->get(route('environment.sod-policies.create'))->assertOk();
+    $this->get(route('environment.sod-policies'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/role-conflicts/index')
+            ->where('title', 'Role conflicts'));
+
+    $this->get(route('environment.sod-policies.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/role-conflicts/create'));
 })->group('security');
 
-it('serves role conflicts from the same component on the organization plane', function (): void {
+it('serves role conflicts from the same controller on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
     // losing it: a rule URL is something you send to whoever owns the control.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.sod-policies.index')->assertOk()->assertSee('Role conflicts');
-    Volt::test('console.sod-policies.create')->assertOk();
+    $this->get(route('sod-policies'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/role-conflicts/index')
+            ->where('title', 'Role conflicts'));
+
+    $this->get(route('sod-policies.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/role-conflicts/create'));
 
     expect(Route::has('sod-policies.show'))->toBeTrue()
         ->and(Route::has('sod-policies.create'))->toBeTrue();
@@ -460,11 +498,8 @@ it('defines a rule against the organization from the scope', function (): void {
     $a = app(Roles::class)->define($orgId, 'create-po');
     $b = app(Roles::class)->define($orgId, 'approve-pay');
 
-    Volt::test('console.sod-policies.create')
-        ->set('name', 'PO vs pay')
-        ->set('roleIds', [$a->id, $b->id])
-        ->call('define')
-        ->assertHasNoErrors();
+    defineRoleConflict(['roles' => [$a->id, $b->id]], 'environment.sod-policies')
+        ->assertSessionHasNoErrors();
 
     expect(SodPolicy::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
@@ -475,11 +510,8 @@ it('refuses to define a rule before an organization is chosen', function (): voi
     $b = app(Roles::class)->define($orgId, 'approve-pay');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.sod-policies.create')
-        ->set('name', 'PO vs pay')
-        ->set('roleIds', [$a->id, $b->id])
-        ->call('define')
-        ->assertHasErrors('name');
+    defineRoleConflict(['roles' => [$a->id, $b->id]], 'environment.sod-policies')
+        ->assertSessionHasErrors('name');
 
     expect(SodPolicy::query()->exists())->toBeFalse();
 })->group('security');
@@ -492,46 +524,48 @@ it('keeps environment-wide rules on the environment plane', function (): void {
     $a = app(Roles::class)->define($orgId, 'create-po');
     $b = app(Roles::class)->define($orgId, 'approve-pay');
 
-    Volt::test('console.sod-policies.create')
-        ->set('name', 'Everywhere')
-        ->set('roleIds', [$a->id, $b->id])
-        ->set('environmentWide', true)
-        ->call('define')
-        ->assertHasNoErrors();
+    defineRoleConflict([
+        'name' => 'Everywhere',
+        'roles' => [$a->id, $b->id],
+        'environmentWide' => true,
+    ], 'environment.sod-policies')->assertSessionHasNoErrors();
 
     expect(SodPolicy::query()->whereNull('organization_id')->exists())->toBeTrue();
 })->group('security');
 
 it('refuses an organization admin a rule that binds every organization', function (): void {
     // Forged, not clicked: the checkbox is not rendered on this plane, so the refusal has
-    // to live in define() — an organization admin writing an environment-wide rule would
-    // be legislating for organizations that are not theirs.
+    // to live in the controller — an organization admin writing an environment-wide rule
+    // would be legislating for organizations that are not theirs.
     [, $org] = actingAsRole(MembershipRole::Owner);
     $a = app(Roles::class)->define($org->id, 'create-po');
     $b = app(Roles::class)->define($org->id, 'approve-pay');
 
-    Volt::test('console.sod-policies.create')
-        ->set('name', 'Everywhere')
-        ->set('roleIds', [$a->id, $b->id])
-        ->set('environmentWide', true)
-        ->call('define')
-        ->assertHasErrors('environmentWide');
+    defineRoleConflict([
+        'name' => 'Everywhere',
+        'roles' => [$a->id, $b->id],
+        'environmentWide' => true,
+    ])->assertSessionHasErrors('environmentWide');
 
     expect(SodPolicy::query()->exists())->toBeFalse();
 })->group('security');
 
 it('gives the organization plane the evaluate and delete it never had', function (): void {
-    // Both actions existed only on the environment plane. An organization's own rule is
-    // its own to evaluate and to remove — the environment-wide one still is not.
+    // Both existed only on the environment plane. An organization's own rule is its own to
+    // evaluate and to remove — the environment-wide one still is not.
     [, $org] = actingAsRole(MembershipRole::Owner);
     $a = app(Roles::class)->define($org->id, 'create-po');
     $b = app(Roles::class)->define($org->id, 'approve-pay');
     $policy = app(SegregationOfDuties::class)->definePolicy($org->id, 'PO vs pay', [$a->id, $b->id]);
 
-    Volt::test('console.sod-policies.show', ['policy' => $policy->id])
-        ->call('scan')
-        ->assertHasNoErrors()
-        ->call('remove');
+    $this->get(route('sod-policies.show', ['policy' => $policy->id, 'scan' => 1]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('scannable', true)
+            ->where('scanned', true));
+
+    $this->delete(route('sod-policies.destroy', $policy->id))
+        ->assertRedirect(route('sod-policies'));
 
     expect(SodPolicy::query()->whereKey($policy->id)->exists())->toBeFalse();
 })->group('security');
@@ -545,16 +579,23 @@ it('shows an organization the environment-wide rule it cannot change', function 
     $b = app(Roles::class)->define($org->id, 'approve-pay');
     $policy = app(SegregationOfDuties::class)->definePolicy(null, 'Env-wide PO vs pay', [$a->id, $b->id]);
 
-    Volt::test('console.sod-policies.show', ['policy' => $policy->id])
-        ->assertSee('Env-wide PO vs pay')
-        ->assertSee('Managed for the environment')
-        ->assertDontSee('Delete rule');
+    $this->get(route('sod-policies.show', $policy->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('rule.name', 'Env-wide PO vs pay')
+            // No owner and no switch: it binds every organization here, and this one is
+            // not entitled to turn it off — which would let them grant themselves the very
+            // pair it forbids.
+            ->where('rule.owner', null)
+            ->where('mayChange', false));
 
-    // And forged, not merely unrendered.
-    expect(fn () => Volt::test('console.sod-policies.show', ['policy' => $policy->id])->call('remove'))
-        ->toThrow(ModelNotFoundException::class);
+    // And forged, not merely unrendered — the write set is a query, so the id matches
+    // nothing in it.
+    $this->delete(route('sod-policies.destroy', $policy->id))->assertNotFound();
+    $this->post(route('sod-policies.toggle', $policy->id))->assertNotFound();
 
-    expect(SodPolicy::query()->whereKey($policy->id)->exists())->toBeTrue();
+    expect(SodPolicy::query()->whereKey($policy->id)->exists())->toBeTrue()
+        ->and(SodPolicy::query()->whereKey($policy->id)->value('active'))->toBeTrue();
 })->group('security');
 
 it('refuses an organization admin with no organization at all', function (): void {
@@ -566,13 +607,14 @@ it('refuses an organization admin with no organization at all', function (): voi
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    Volt::test('console.sod-policies.index')->assertForbidden();
+    $this->get(route('sod-policies'))->assertForbidden();
 })->group('security');
 
 it('refuses an organization admin another organization\'s rule', function (): void {
     // The environment plane resolved a rule anywhere in the environment, which is right
-    // for an administrator who holds it. Serving the same component to an organization
+    // for an administrator who holds it. Serving the same controller to an organization
     // admin would have handed them every other organization's rules by id.
     [, $org] = actingAsRole(MembershipRole::Owner);
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sod'));
@@ -580,13 +622,17 @@ it('refuses an organization admin another organization\'s rule', function (): vo
     $second = app(Roles::class)->define($other->id, 'approve-pay');
     $policy = app(SegregationOfDuties::class)->definePolicy($other->id, 'Not yours', [$role->id, $second->id]);
 
-    expect(fn () => Volt::test('console.sod-policies.show', ['policy' => $policy->id]))
-        ->toThrow(ModelNotFoundException::class);
+    $this->get(route('sod-policies.show', $policy->id))->assertNotFound();
 
-    Volt::test('console.sod-policies.index')->assertDontSee('Not yours');
+    $this->get(route('sod-policies'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'rules',
+            fn (Collection $rules): bool => $rules->pluck('name')->doesntContain('Not yours'),
+        ));
 
-    expect(fn () => Volt::test('console.sod-policies.index')->call('toggle', $policy->id))
-        ->toThrow(ModelNotFoundException::class);
+    $this->post(route('sod-policies.toggle', $policy->id))->assertNotFound();
+    $this->delete(route('sod-policies.destroy', $policy->id))->assertNotFound();
 })->group('security');
 
 /*
@@ -617,21 +663,27 @@ function anAuditEntry(string $action, ?string $organizationId = null): void
  *
  * @return list<string>
  */
-function auditActions(mixed $component): array
+function auditActions(string $route, array $query = []): array
 {
-    return collect($component->viewData('entries')->items())->pluck('action')->all();
+    $props = test()->get(route($route, $query))->assertOk()->inertiaProps('entries');
+
+    return collect(is_array($props) ? $props : [])->pluck('action')->all();
 }
 
 it('serves the activity log from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-audit');
 
-    $this->get(route('environment.audit'))->assertOk()->assertSee('Activity log');
+    $this->get(route('environment.audit'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/audit'));
 })->group('security');
 
 it('serves the activity log from the same component on the organization plane', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.audit')->assertOk()->assertSee('Activity log');
+    $this->get(route('audit'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/audit'));
 })->group('security');
 
 it('scopes the trail to the organization the environment console is acting on', function (): void {
@@ -643,7 +695,7 @@ it('scopes the trail to the organization the environment console is acting on', 
     anAuditEntry('mine.recorded', $orgId);
     anAuditEntry('theirs.recorded', $other);
 
-    expect(auditActions(Volt::test('console.audit')))
+    expect(auditActions('environment.audit'))
         ->toContain('mine.recorded')
         ->not->toContain('theirs.recorded');
 })->group('security');
@@ -661,13 +713,13 @@ it('never shows an organization admin another organization\'s trail', function (
     anAuditEntry('environment.recorded');
 
     // Not the other organization's, and not the control plane's own either.
-    expect(auditActions(Volt::test('console.audit')))
+    expect(auditActions('audit'))
         ->toContain('mine.recorded')
         ->not->toContain('theirs.recorded')
         ->not->toContain('environment.recorded');
 
     // And the search box is not an enumeration oracle around the scope.
-    expect(auditActions(Volt::test('console.audit')->set('search', 'theirs.recorded')))->toBe([]);
+    expect(auditActions('audit', ['q' => 'theirs.recorded']))->toBe([]);
 })->group('security');
 
 it('keeps the whole-environment trail on the environment plane', function (): void {
@@ -681,7 +733,7 @@ it('keeps the whole-environment trail on the environment plane', function (): vo
     anAuditEntry('theirs.recorded', $other);
     anAuditEntry('environment.recorded');
 
-    expect(auditActions(Volt::test('console.audit')))
+    expect(auditActions('environment.audit'))
         ->toContain('mine.recorded')
         ->toContain('theirs.recorded')
         ->toContain('environment.recorded');
@@ -697,9 +749,11 @@ it('refuses the activity log to an organization admin with no organization at al
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
 
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     anAuditEntry('environment.recorded');
 
-    Volt::test('console.audit')->assertForbidden();
+    $this->get(route('audit'))->assertForbidden();
 })->group('security');
 
 it('offers both planes both of the filters they used to have one each of', function (): void {
@@ -716,7 +770,7 @@ it('offers both planes both of the filters they used to have one each of', funct
     anAuditEntry('client.rotated', $orgId);
 
     // The organization plane's action filter, now on the environment plane.
-    expect(auditActions(Volt::test('console.audit')->set('actionFilter', 'client')))
+    expect(auditActions('environment.audit', ['action' => 'client']))
         ->toBe(['client.rotated']);
 
     // The environment plane's search — which matches the TARGET type too, the half an
@@ -730,7 +784,7 @@ it('offers both planes both of the filters they used to have one each of', funct
     ));
     anAuditEntry('client.rotated', $org->id);
 
-    expect(auditActions(Volt::test('console.audit')->set('search', 'directory')))
+    expect(auditActions('audit', ['q' => 'directory']))
         ->toBe(['member.added']);
 })->group('security');
 
@@ -752,9 +806,13 @@ it('offers both planes both of the filters they used to have one each of', funct
 it('serves webhooks from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-webhooks');
 
-    $this->get(route('environment.webhooks'))->assertOk()->assertSee('Webhooks');
+    $this->get(route('environment.webhooks'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/webhooks/index'));
     confirmConsoleStepUp();
-    $this->get(route('environment.webhooks.create'))->assertOk();
+    $this->get(route('environment.webhooks.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/webhooks/create'));
 })->group('security');
 
 it('serves webhooks from the same component on the organization plane', function (): void {
@@ -764,12 +822,13 @@ it('serves webhooks from the same component on the organization plane', function
     // row you just submitted.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.webhooks.index')->assertOk()->assertSee('Webhooks');
+    $this->get(route('webhooks'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/webhooks/index'));
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')->assertOk();
+    $this->get(route('webhooks.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/webhooks/create'));
 
     expect(Route::has('webhooks.show'))->toBeTrue()
         ->and(Route::has('webhooks.create'))->toBeTrue();
@@ -783,16 +842,17 @@ it('offers the same event catalogue on both planes', function (): void {
     // telling their systems what happened — and nothing on the page said so.
     anEnvironmentAdminActingOn('tenant-webhook-events');
     confirmConsoleStepUp();
-    $environment = Volt::test('console.webhooks.create');
+    $environment = $this->get(route('environment.webhooks.create'))->assertOk()->inertiaProps('events');
 
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
-    $organization = Volt::test('console.webhooks.create');
+    $organization = $this->get(route('webhooks.create'))->assertOk()->inertiaProps('events');
 
-    foreach (WebhookEventCatalogue::EVENTS as $event) {
-        $environment->assertSee($event);
-        $organization->assertSee($event);
-    }
+    // The whole catalogue, and the SAME catalogue — asserted as a set rather than by
+    // looking for each string somewhere in a document, which would also pass for a page
+    // that listed them and then offered a shorter set to submit.
+    expect($environment)->toBe(WebhookEventCatalogue::EVENTS)
+        ->and($organization)->toBe(WebhookEventCatalogue::EVENTS);
 
     // The seven the organization console had are a subset of what it offers now, so the
     // assertion above cannot pass by having quietly shrunk the environment plane's list.
@@ -804,11 +864,12 @@ it('registers an endpoint against the organization from the scope', function ():
     $orgId = anEnvironmentAdminActingOn('tenant-webhooks-scoped');
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://hooks.example.test/events')
-        ->set('eventTypes', ['user.created'])
-        ->call('create')
-        ->assertHasNoErrors();
+    $this->from(route('environment.webhooks.create'))
+        ->post(route('environment.webhooks.store'), [
+            'url' => 'https://hooks.example.test/events',
+            'eventTypes' => ['user.created'],
+        ])
+        ->assertSessionHasNoErrors();
 
     expect(WebhookEndpoint::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
@@ -819,11 +880,12 @@ it('refuses to register an endpoint before an organization is chosen', function 
     session()->forget(ConsoleScope::SELECTION_KEY);
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://hooks.example.test/events')
-        ->set('eventTypes', ['user.created'])
-        ->call('create')
-        ->assertHasErrors('url');
+    $this->from(route('environment.webhooks.create'))
+        ->post(route('environment.webhooks.store'), [
+            'url' => 'https://hooks.example.test/events',
+            'eventTypes' => ['user.created'],
+        ])
+        ->assertSessionHasErrors('url');
 
     expect(WebhookEndpoint::query()->exists())->toBeFalse();
 })->group('security');
@@ -837,12 +899,13 @@ it('keeps environment-wide webhook registration on the environment plane', funct
     anEnvironmentAdminActingOn('tenant-webhooks-wide');
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://hooks.example.test/everyone')
-        ->set('eventTypes', ['user.created'])
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertHasNoErrors();
+    $this->from(route('environment.webhooks.create'))
+        ->post(route('environment.webhooks.store'), [
+            'url' => 'https://hooks.example.test/everyone',
+            'eventTypes' => ['user.created'],
+            'environmentWide' => true,
+        ])
+        ->assertSessionHasNoErrors();
 
     expect(WebhookEndpoint::query()->whereNull('organization_id')->exists())->toBeTrue();
 })->group('security');
@@ -850,17 +913,18 @@ it('keeps environment-wide webhook registration on the environment plane', funct
 it('refuses environment-wide webhook registration from the organization plane', function (): void {
     // A platform-wide endpoint receives every tenant's events in this environment —
     // members joining, sign-ins failing, roles changing — so one minted by a tenant is a
-    // subscription to the other tenants. The checkbox is not rendered for them; the
-    // property is still client-settable, so the refusal is in the action.
+    // subscription to the other tenants. The checkbox is not rendered for them; the field
+    // is still POSTable, so the refusal is in the controller.
     config(['cbox-id.webhooks.verify_url' => false]);
     actingAsRole(MembershipRole::Owner);
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://hooks.example.test/everyone')
-        ->set('eventTypes', ['user.created'])
-        ->set('environmentWide', true)
-        ->call('create')
+    $this->from(route('webhooks.create'))
+        ->post(route('webhooks.store'), [
+            'url' => 'https://hooks.example.test/everyone',
+            'eventTypes' => ['user.created'],
+            'environmentWide' => true,
+        ])
         ->assertForbidden();
 
     expect(WebhookEndpoint::query()->exists())->toBeFalse();
@@ -875,19 +939,21 @@ it('runs the whole webhook lifecycle on the environment plane', function (): voi
 
     confirmConsoleStepUp();
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->set('editUrl', 'https://hooks.example.test/events-v2')
-        ->set('editEvents', ['user.created', 'user.updated'])
-        ->call('saveSubscription')
-        ->call('pause')
-        ->call('resume')
-        ->call('rotateSecret')
-        ->assertHasNoErrors();
+    $from = route('environment.webhooks.show', $endpoint->id);
+
+    $this->from($from)->patch(route('environment.webhooks.update', $endpoint->id), [
+        'url' => 'https://hooks.example.test/events-v2',
+        'eventTypes' => ['user.created', 'user.updated'],
+    ])->assertSessionHasNoErrors();
+
+    $this->from($from)->post(route('environment.webhooks.pause', $endpoint->id))->assertRedirect();
+    $this->from($from)->post(route('environment.webhooks.resume', $endpoint->id))->assertRedirect();
+    $this->from($from)->post(route('environment.webhooks.rotate', $endpoint->id))->assertRedirect();
 
     expect($endpoint->fresh()?->url)->toBe('https://hooks.example.test/events-v2')
         ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Active);
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->call('deleteEndpoint');
+    $this->from($from)->delete(route('environment.webhooks.destroy', $endpoint->id));
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 })->group('security');
 
@@ -902,29 +968,29 @@ it('gives the organization plane the resume, rotate, edit and delete it never ha
         ->register($org->id, 'https://hooks.example.test/mine', ['user.created'])->endpoint;
     $sealed = $endpoint->secret_encrypted;
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->set('editUrl', 'https://hooks.example.test/mine-v2')
-        ->set('editEvents', ['user.created', 'role.assigned'])
-        ->call('saveSubscription')
-        ->call('pause')
-        ->assertHasNoErrors();
+    $from = route('webhooks.show', $endpoint->id);
+
+    $this->from($from)->patch(route('webhooks.update', $endpoint->id), [
+        'url' => 'https://hooks.example.test/mine-v2',
+        'eventTypes' => ['user.created', 'role.assigned'],
+    ])->assertSessionHasNoErrors();
+
+    $this->from($from)->post(route('webhooks.pause', $endpoint->id))->assertRedirect();
 
     expect($endpoint->fresh()?->url)->toBe('https://hooks.example.test/mine-v2')
         ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Paused);
 
     confirmConsoleStepUp();
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->call('resume')
-        ->call('rotateSecret')
-        ->assertHasNoErrors();
+    $this->from($from)->post(route('webhooks.resume', $endpoint->id))->assertRedirect();
+    $this->from($from)->post(route('webhooks.rotate', $endpoint->id))->assertRedirect();
 
     // The rotation has to have re-keyed the endpoint, not merely returned without error:
     // a rotate that silently did nothing leaves a leaked secret verifying deliveries.
     expect($endpoint->fresh()?->status)->toBe(EndpointStatus::Active)
         ->and($endpoint->fresh()?->secret_encrypted)->not->toBe($sealed);
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->call('deleteEndpoint');
+    $this->from($from)->delete(route('webhooks.destroy', $endpoint->id));
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 })->group('security');
 
@@ -942,26 +1008,31 @@ it('refuses an organization admin another organization\'s endpoint', function ()
         ->register($other->id, 'https://hooks.example.test/not-yours', ['user.created'])->endpoint;
     $sealed = $theirs->secret_encrypted;
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page. mount() resolves through the
-    // same scoped lookup, so the deep link is refused before any action is reachable.
-    Volt::test('console.webhooks.show', ['webhook' => $theirs->id])->assertNotFound();
+    // The deep link is refused: the page resolves its endpoint through the same scoped
+    // lookup every action uses, so there is nothing to reach.
+    $this->get(route('webhooks.show', $theirs->id))->assertNotFound();
 
-    Volt::test('console.webhooks.index')->assertDontSee('not-yours');
+    $this->get(route('webhooks'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('endpoints', fn (Collection $endpoints): bool => $endpoints
+                ->pluck('url')
+                ->every(fn (string $url): bool => ! str_contains($url, 'not-yours'))));
 
-    // And forged, not merely refused at the door. `endpointId` is a public property, so
-    // it is client-settable: mount a page this administrator IS allowed and then point it
-    // at the other organization's endpoint. Every read and every mutation re-resolves
-    // through the same scoped lookup, so the round trip that carries the forged id is
-    // refused before any of them reaches the row — which is also why the actions cannot
-    // be driven from here afterwards: there is no snapshot left to call against.
-    $mine = app(WebhookRegistry::class)
-        ->register($org->id, 'https://hooks.example.test/mine', ['user.created'])->endpoint;
+    // AND EVERY WRITE, not merely the page. Under Volt the forged id had to be smuggled
+    // into a snapshot; here it is simply the URL, which is the plainer version of the
+    // same attack — and each of these is its own request with its own resolution, so
+    // each one has to refuse on its own.
+    foreach (['pause', 'resume', 'rotate'] as $action) {
+        $this->post(route('webhooks.'.$action, $theirs->id))->assertNotFound();
+    }
 
-    Volt::test('console.webhooks.show', ['webhook' => $mine->id])
-        ->set('endpointId', $theirs->id)
-        ->assertNotFound();
+    $this->patch(route('webhooks.update', $theirs->id), [
+        'url' => 'https://hooks.example.test/hijacked',
+        'eventTypes' => ['user.created'],
+    ])->assertNotFound();
+
+    $this->delete(route('webhooks.destroy', $theirs->id))->assertNotFound();
 
     // The refusal has to be the endpoint's survival, not just an unhappy response.
     expect($theirs->fresh()?->secret_encrypted)->toBe($sealed)
@@ -982,17 +1053,22 @@ it('shows an organization the environment-wide endpoint it cannot change', funct
         ->registerForEnvironment('https://hooks.example.test/everyone', ['user.created'])->endpoint;
     $sealed = $endpoint->secret_encrypted;
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->assertSee('hooks.example.test/everyone')
-        ->assertSee('Your operator manages it')
-        ->assertDontSee('Rotate secret')
-        ->assertDontSee('Delete endpoint')
-        ->assertDontSee('Recent deliveries');
+    $this->get(route('webhooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('endpoint.url', 'https://hooks.example.test/everyone')
+            // The controls are not offered rather than offered and refused…
+            ->where('mayManage', false)
+            // …and the delivery log is withheld: for a platform-wide endpoint it is a
+            // record of what happened in every OTHER organization here.
+            ->where('deliveries', []));
 
     // And forged, not merely unrendered.
-    foreach (['rotateSecret', 'deleteEndpoint', 'pause'] as $action) {
-        Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->call($action)->assertForbidden();
+    foreach (['rotate', 'pause'] as $action) {
+        $this->post(route('webhooks.'.$action, $endpoint->id))->assertForbidden();
     }
+
+    $this->delete(route('webhooks.destroy', $endpoint->id))->assertForbidden();
 
     expect($endpoint->fresh()?->secret_encrypted)->toBe($sealed)
         ->and($endpoint->fresh()?->status)->toBe(EndpointStatus::Active);
@@ -1009,46 +1085,65 @@ it('refuses a webhook page to an organization admin with no organization at all'
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
 
-    Volt::test('console.webhooks.index')->assertForbidden();
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
+    $this->get(route('webhooks'))->assertForbidden();
 
     // The detail page too, and it is the one that matters: an unscoped lookup there hands
-    // a member with no organization every endpoint in the environment by id — and
-    // rotateSecret over each of them.
+    // a member with no organization every endpoint in the environment by id — and the
+    // secret rotation over each of them.
     $endpoint = app(WebhookRegistry::class)
         ->register($org->id, 'https://hooks.example.test/theirs', ['user.created'])->endpoint;
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])->assertForbidden();
+    $this->get(route('webhooks.show', $endpoint->id))->assertForbidden();
+    $this->post(route('webhooks.rotate', $endpoint->id))->assertForbidden();
 })->group('security');
 
-it('keeps the revealed signing secret out of the wire snapshot on both planes', function (): void {
-    // The secret is shown once and Dismiss is what clears it — the organization console
-    // had that and the environment console did not, so a live credential stayed on screen
-    // until the next navigation. And it is held in a PROTECTED property: a public one is
-    // dehydrated into the wire:snapshot embedded in the DOM, where it outlives the
-    // dismissal it is supposed to obey.
+it('reveals the signing secret exactly once, and never into the history entry', function (): void {
+    /*
+     * SHOWN ONCE, and the mechanism is the point.
+     *
+     * Under Volt this was a protected property, because a public one is dehydrated into
+     * the `wire:snapshot` embedded in the DOM, where it outlived the dismissal it was
+     * supposed to obey. The Inertia shape has the same hazard wearing different clothes:
+     * page props are written into the browser's HISTORY ENTRY, so a secret passed as a
+     * prop is retrievable by pressing Back long after the page that showed it has gone.
+     *
+     * The flash channel is not persisted into history, which is why the credential goes
+     * there — and why the second request below must carry nothing at all.
+     */
     config(['cbox-id.webhooks.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-webhooks-secret');
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://hooks.example.test/events')
-        ->set('eventTypes', ['user.created'])
-        ->call('create')
-        ->assertHasNoErrors();
+    $this->from(route('environment.webhooks.create'))
+        ->post(route('environment.webhooks.store'), [
+            'url' => 'https://hooks.example.test/events',
+            'eventTypes' => ['user.created'],
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('newSecret');
+
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $secret = is_array($flash) ? ($flash['newSecret'] ?? null) : null;
+
+    expect($secret)->toBeString()->not->toBe('');
 
     $endpoint = WebhookEndpoint::query()->firstOrFail();
-    $secret = (string) session('newSecret');
-    expect($secret)->not->toBe('');
 
-    $page = Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->assertSee('Copy this signing secret now')
-        ->assertSee($secret);
+    // The page that shows it carries it on the flash channel and NOT in its props.
+    // Read off the PAGE OBJECT rather than the session: by the time this request has
+    // finished the flash is spent, which is exactly the property being relied on.
+    $revealed = $this->get(route('environment.webhooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('newSecret', $secret));
 
-    expect($page->snapshot['data'] ?? [])->not->toContain($secret);
+    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain((string) $secret);
 
-    $page->call('dismissSecret')
-        ->assertDontSee('Copy this signing secret now')
-        ->assertDontSee($secret);
+    // …and the next visit carries nothing. One-shot is what makes "copy it now" true.
+    $this->get(route('environment.webhooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertiaFlashMissing('newSecret');
 })->group('security');
 
 /*
@@ -1062,23 +1157,34 @@ it('keeps the revealed signing secret out of the wire snapshot on both planes', 
 | all of it.
 */
 
-it('serves roles from one component on the environment plane', function (): void {
+it('serves roles from one controller on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-roles');
 
-    $this->get(route('environment.roles'))->assertOk()->assertSee('Roles');
-    $this->get(route('environment.roles.create'))->assertOk();
+    $this->get(route('environment.roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/roles/index')
+            ->where('title', 'Roles'));
+
+    $this->get(route('environment.roles.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/roles/create'));
 })->group('security');
 
-it('serves roles from the same component on the organization plane', function (): void {
+it('serves roles from the same controller on the organization plane', function (): void {
     // The organization plane gained the routable shape rather than the environment plane
     // losing it: a role URL is something you send to whoever owns the access.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.roles.index')->assertOk()->assertSee('Roles');
-    Volt::test('console.roles.create')->assertOk();
+    $this->get(route('roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/roles/index')
+            ->where('title', 'Roles'));
+
+    $this->get(route('roles.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/roles/create'));
 
     expect(Route::has('roles.show'))->toBeTrue()
         ->and(Route::has('roles.create'))->toBeTrue();
@@ -1087,10 +1193,7 @@ it('serves roles from the same component on the organization plane', function ()
 it('defines a role against the organization from the scope', function (): void {
     $orgId = anEnvironmentAdminActingOn('tenant-roles-scoped');
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Manager')
-        ->call('create')
-        ->assertHasNoErrors();
+    defineRole([], 'environment.roles')->assertSessionHasNoErrors();
 
     expect(Role::query()->where('organization_id', $orgId)->where('name', 'Manager')->exists())->toBeTrue();
 })->group('security');
@@ -1099,10 +1202,7 @@ it('refuses to define a role before an organization is chosen', function (): voi
     anEnvironmentAdminActingOn('tenant-roles-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Manager')
-        ->call('create')
-        ->assertHasErrors('name');
+    defineRole([], 'environment.roles')->assertSessionHasErrors('name');
 
     expect(Role::query()->where('name', 'Manager')->exists())->toBeFalse();
 })->group('security');
@@ -1114,26 +1214,20 @@ it('keeps environment-wide role definition on the environment plane', function (
     // in the environment, so it survives as its own explicit choice on this plane alone.
     anEnvironmentAdminActingOn('tenant-roles-wide');
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Everywhere')
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertHasNoErrors();
+    defineRole(['name' => 'Everywhere', 'environmentWide' => true], 'environment.roles')
+        ->assertSessionHasNoErrors();
 
     expect(Role::query()->whereNull('organization_id')->where('name', 'Everywhere')->exists())->toBeTrue();
 })->group('security');
 
 it('refuses an organization admin a role that binds every organization', function (): void {
     // Forged, not clicked: the checkbox is not rendered on this plane, so the refusal has
-    // to live in create() — an environment-wide role can be assigned inside organizations
-    // that are not this administrator's.
+    // to live in the controller — an environment-wide role can be assigned inside
+    // organizations that are not this administrator's.
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.roles.create')
-        ->set('name', 'Everywhere')
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertHasErrors('environmentWide');
+    defineRole(['name' => 'Everywhere', 'environmentWide' => true])
+        ->assertSessionHasErrors('environmentWide');
 
     expect(Role::query()->where('name', 'Everywhere')->exists())->toBeFalse();
 })->group('security');
@@ -1145,16 +1239,21 @@ it('gives the organization plane the rename, re-permission and delete it never h
     $role = app(Roles::class)->define($org->id, 'Support');
     $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->set('editName', 'Support Renamed')
-        ->call('saveDetails')
-        ->call('togglePermission', $permission->id)
-        ->assertHasNoErrors();
+    $this->from(route('roles.show', $role->id))
+        ->patch(route('roles.update', $role->id), ['name' => 'Support Renamed', 'description' => ''])
+        ->assertSessionHasNoErrors();
+
+    setRolePermission($role->id, $permission->id, true)->assertSessionHasNoErrors();
 
     expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed')
         ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
 
-    Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole');
+    // And back off again — the revoke half, which this plane never had at all.
+    setRolePermission($role->id, $permission->id, false);
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
+
+    $this->delete(route('roles.destroy', $role->id))->assertRedirect(route('roles'));
 
     expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
 })->group('security');
@@ -1165,11 +1264,27 @@ it('gives the environment plane the catalog grant it never had', function (): vo
     // could not add a permission to one of its organizations' roles at all.
     $orgId = anEnvironmentAdminActingOn('tenant-roles-grant');
     $role = app(Roles::class)->define($orgId, 'Support');
-    Permission::query()->create(['name' => 'reports:view']);
+    $permission = Permission::query()->create(['name' => 'reports:view']);
 
-    Volt::test('console.roles.index')->call('grant', $role->id, 'reports:view');
+    setRolePermission($role->id, $permission->id, true, 'environment.roles');
 
     expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
+})->group('security');
+
+it('offers the environment plane the picker its own detail page would honour', function (): void {
+    // The list's picker was a query of its own, narrower than the detail page's
+    // catalogue: on this plane a permission the role's own page would grant was missing
+    // from the row, and an environment-wide role could be composed on one page and not
+    // the other. One rule now — the row carries what the detail page offers.
+    anEnvironmentAdminActingOn('tenant-roles-picker');
+    $role = app(Roles::class)->define(null, 'Env-wide support');
+    Permission::query()->create(['name' => 'reports:view']);
+
+    $this->get(route('environment.roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('roles.0.mayCompose', true)
+            ->where('roles.0.offerable.0.name', 'reports:view'));
 })->group('security');
 
 it('renders the editor on the environment plane rather than a read-only shell', function (): void {
@@ -1180,42 +1295,48 @@ it('renders the editor on the environment plane rather than a read-only shell', 
     anEnvironmentAdminActingOn('tenant-roles-editor');
     $role = app(Roles::class)->define(null, 'Support');
 
-    $this->get(route('environment.roles'))->assertOk()->assertSee('New role');
+    $this->get(route('environment.roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('mayAdminister', true));
+
     $this->get(route('environment.roles.show', $role->id))
         ->assertOk()
-        ->assertSee('Save changes')
-        ->assertSee('Delete role');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/roles/show')
+            ->where('readOnly', false));
 })->group('security');
 
 it('refuses an organization admin another organization\'s role', function (): void {
     // The environment plane resolved a role on its primary key alone, which is right for
-    // an administrator who holds the environment. Serving the same component to a tenant
+    // an administrator who holds the environment. Serving the same controller to a tenant
     // would have handed them every other tenant's roles by id — readable, renameable and
     // deletable, with every holder of the role losing its access.
     [, $org] = actingAsRole(MembershipRole::Owner);
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-roles'));
     $foreign = app(Roles::class)->define($other->id, 'Not yours');
-    $own = app(Roles::class)->define($org->id, 'Mine');
+    app(Roles::class)->define($org->id, 'Mine');
 
-    expect(fn () => Volt::test('console.roles.show', ['role' => $foreign->id]))
-        ->toThrow(ModelNotFoundException::class);
+    $this->get(route('roles.show', $foreign->id))->assertNotFound();
 
-    Volt::test('console.roles.index')->assertDontSee('Not yours');
+    $this->get(route('roles'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'roles',
+            fn (Collection $rows): bool => $rows->pluck('name')->doesntContain('Not yours'),
+        ));
 
-    // And forged past the URL: roleId is a public property the browser re-sends, so the
-    // page has to re-resolve it inside the gate on EVERY request rather than trust the id
-    // it was mounted with. (The write gate itself is proven below, on the environment-wide
-    // role an organization can legitimately mount and still may not change.)
-    expect(fn () => Volt::test('console.roles.show', ['role' => $own->id])
-        ->set('roleId', $foreign->id)
-        ->call('deleteRole'))
-        ->toThrow(ModelNotFoundException::class);
+    // And forged past the page: the id arrives in the URL of every mutation, so each one
+    // re-resolves it inside the gate rather than trusting what it was handed.
+    $this->delete(route('roles.destroy', $foreign->id))->assertNotFound();
+    $this->patch(route('roles.update', $foreign->id), ['name' => 'Taken', 'description' => ''])->assertNotFound();
 
-    expect(Role::query()->whereKey($foreign->id)->exists())->toBeTrue();
+    expect(Role::query()->whereKey($foreign->id)->value('name'))->toBe('Not yours');
 
     // The catalog grant is scoped the same way — the picker is not rendered for a role
-    // that is not this organization's, and the action refuses one anyway.
-    Volt::test('console.roles.index')->call('grant', $foreign->id, 'reports:view');
+    // that is not this organization's, and the endpoint refuses one anyway.
+    $permission = Permission::query()->create(['name' => 'reports:view']);
+    setRolePermission($foreign->id, $permission->id, true)->assertNotFound();
+
     expect(DB::table('role_permission')->where('role_id', $foreign->id)->count())->toBe(0);
 })->group('security');
 
@@ -1227,32 +1348,80 @@ it('shows an organization the environment-wide role it cannot change', function 
     actingAsRole(MembershipRole::Owner);
     $role = app(Roles::class)->define(null, 'Env-wide support');
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->assertSee('Env-wide support')
-        ->assertSee('Managed for the environment')
-        ->assertDontSee('Delete role');
+    $this->get(route('roles.show', $role->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('role.name', 'Env-wide support')
+            // Read-only, and NOT because an app declares it — the two say different
+            // sentences on the page, and only one of them is true here.
+            ->where('readOnly', true)
+            ->where('declaredByApp', false));
 
-    expect(fn () => Volt::test('console.roles.show', ['role' => $role->id])->call('deleteRole'))
-        ->toThrow(ModelNotFoundException::class);
+    $this->delete(route('roles.destroy', $role->id))->assertNotFound();
 
     expect(Role::query()->whereKey($role->id)->exists())->toBeTrue();
+})->group('security');
+
+it('refuses everyone the role an app declares', function (): void {
+    // An app-declared role is the declaring app's source of truth on BOTH planes, so the
+    // refusal cannot be the organization fence — an environment administrator passes that
+    // and must still be refused. 403 rather than 404: this role is legitimately visible,
+    // it is simply not anybody's here to change.
+    anEnvironmentAdminActingOn('tenant-roles-manifest');
+    $role = app(Roles::class)->define(null, 'App-owned');
+    $role->forceFill(['source' => RoleSource::Manifest])->save();
+
+    $this->get(route('environment.roles.show', $role->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('readOnly', true)
+            ->where('declaredByApp', true));
+
+    $this->patch(route('environment.roles.update', $role->id), ['name' => 'Taken', 'description' => ''])
+        ->assertForbidden();
+    $this->delete(route('environment.roles.destroy', $role->id))->assertForbidden();
+
+    expect(Role::query()->whereKey($role->id)->value('name'))->toBe('App-owned');
 })->group('security');
 
 it('never lets a tenant tick a permission its apps kept internal', function (): void {
     // tenant_assignable is how an app publishes a key WITHOUT offering it to the tenants
     // that use it. The organization plane honoured that in its catalog picker; the
     // environment plane's permission editor — which this plane now has — never had to,
-    // because its administrator holds the environment. Enforced in the action, because a
-    // checkbox that is not drawn is not a gate.
+    // because its administrator holds the environment. Enforced in the controller,
+    // because a checkbox that is not drawn is not a gate.
     [, $org] = actingAsRole(MembershipRole::Owner);
     $role = app(Roles::class)->define($org->id, 'Support');
     $internal = Permission::query()->create(['name' => 'billing:refund', 'tenant_assignable' => false]);
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->assertDontSee('billing:refund')
-        ->call('togglePermission', $internal->id);
+    $this->get(route('roles.show', $role->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'catalog',
+            fn (Collection $rows): bool => $rows->pluck('name')->doesntContain('billing:refund'),
+        ));
 
-    Volt::test('console.roles.index')->call('grant', $role->id, 'billing:refund');
+    setRolePermission($role->id, $internal->id, true);
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
+})->group('security');
+
+it('never lets a role hold another app\'s key', function (): void {
+    // A role scoped to one app may hold that app's permissions and the unscoped ones. The
+    // catalogue this administrator may assign from is wider than that — it spans every app
+    // in reach — so the fence is on the WRITE, not on the list the picker was drawn from.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $mine = app(ClientRegistry::class)->register(new NewClient('Mine', organizationId: $org->id));
+    $theirs = app(ClientRegistry::class)->register(new NewClient('Theirs', organizationId: $org->id));
+
+    $role = app(Roles::class)->define($org->id, 'Support', null, $mine->client->client_id);
+    $foreign = Permission::query()->create([
+        'name' => 'theirs:read',
+        'client_id' => $theirs->client->client_id,
+        'tenant_assignable' => true,
+    ]);
+
+    setRolePermission($role->id, $foreign->id, true);
 
     expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
 })->group('security');
@@ -1266,8 +1435,9 @@ it('refuses an organization admin with no organization at all a roles page', fun
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-roles'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    Volt::test('console.roles.index')->assertForbidden();
+    $this->get(route('roles'))->assertForbidden();
 })->group('security');
 
 /*
@@ -1299,9 +1469,15 @@ it('serves apps from the same component on the organization plane', function ():
     // Driven at the component, because actingAsRole() populates CurrentUser the way the
     // middleware would rather than minting a session cookie — an HTTP request would just
     // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.clients.index')->assertOk()->assertSee('API keys');
+    $this->get(route('clients'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/clients/index')
+            ->where('title', 'Apps & API keys'));
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')->assertOk();
+    $this->get(route('clients.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/clients/create'));
 
     expect(Route::has('clients.show'))->toBeTrue()
         ->and(Route::has('clients.create'))->toBeTrue();
@@ -1314,11 +1490,10 @@ it('registers an app against the organization from the scope', function (): void
     $orgId = anEnvironmentAdminActingOn('tenant-apps-scoped');
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Support Portal')
-        ->set('redirectUris', 'https://portal.example.test/callback')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Support Portal',
+        'redirectUris' => 'https://portal.example.test/callback',
+    ], 'environment.clients')->assertSessionHasNoErrors();
 
     expect(Client::query()->where('organization_id', $orgId)->where('name', 'Support Portal')->exists())->toBeTrue();
 })->group('security');
@@ -1328,11 +1503,13 @@ it('refuses to register an app before an organization is chosen', function (): v
     session()->forget(ConsoleScope::SELECTION_KEY);
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Support Portal')
-        ->set('redirectUris', 'https://portal.example.test/callback')
-        ->call('create')
-        ->assertHasErrors('name');
+    // Refused outright rather than reported on a field: with no organization resolved
+    // there is nowhere for this app to land, and a downstream default picking one would
+    // register it against a tenant nobody named.
+    registerApp([
+        'name' => 'Support Portal',
+        'redirectUris' => 'https://portal.example.test/callback',
+    ], 'environment.clients')->assertForbidden();
 
     expect(Client::query()->where('name', 'Support Portal')->exists())->toBeFalse();
 })->group('security');
@@ -1346,12 +1523,11 @@ it('keeps environment-owned registration on the environment plane', function ():
     anEnvironmentAdminActingOn('tenant-apps-wide');
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Platform Console')
-        ->set('environmentWide', true)
-        ->set('redirectUris', 'https://console.example.test/callback')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Platform Console',
+        'environmentWide' => true,
+        'redirectUris' => 'https://console.example.test/callback',
+    ], 'environment.clients')->assertSessionHasNoErrors();
 
     expect(Client::query()->whereNull('organization_id')->where('name', 'Platform Console')->exists())->toBeTrue();
 })->group('security');
@@ -1363,12 +1539,11 @@ it('refuses environment-owned registration from the organization plane', functio
     actingAsRole(MembershipRole::Owner);
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Everyone\'s App')
-        ->set('environmentWide', true)
-        ->set('redirectUris', 'https://everyone.example.test/callback')
-        ->call('create')
-        ->assertForbidden();
+    registerApp([
+        'name' => 'Everyone\'s App',
+        'environmentWide' => true,
+        'redirectUris' => 'https://everyone.example.test/callback',
+    ])->assertForbidden();
 
     expect(Client::query()->whereNull('organization_id')->exists())->toBeFalse();
 })->group('security');
@@ -1392,13 +1567,23 @@ it('gives the organization plane the edit and rotate it never had', function ():
 
     confirmConsoleStepUp();
 
-    Volt::test('console.clients.show', ['client' => $client->id])
-        ->set('editName', 'Support Portal (EU)')
-        ->set('editRedirectUris', 'https://eu.portal.example.test/callback')
-        ->call('saveDetails')
-        ->assertHasNoErrors()
-        ->call('rotateSecret')
-        ->assertHasNoErrors();
+    $showing = (array) $this->get(route('clients.show', $client->id))
+        ->assertOk()
+        ->inertiaProps('client');
+
+    $this->from(route('clients.show', $client->id))
+        ->patch(route('clients.update', $client->id), [
+            'name' => 'Support Portal (EU)',
+            'redirectUris' => 'https://eu.portal.example.test/callback',
+            'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
+            'scopes' => $showing['scopes'],
+            'customScopes' => $showing['customScopes'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->from(route('clients.show', $client->id))
+        ->post(route('clients.rotate', $client->id))
+        ->assertSessionHasNoErrors();
 
     $fresh = $client->fresh();
 
@@ -1431,13 +1616,15 @@ it('gives the environment plane the roles manifest it never had', function (): v
         organizationId: $orgId,
     ))->client;
 
-    Volt::test('console.clients.show', ['client' => $client->id])
-        ->call('openManifest')
-        ->set('editManifestUrl', 'https://portal.example.test/.well-known/cbox-authz')
-        ->call('saveManifestUrl')
-        ->assertHasNoErrors()
-        ->call('syncNow')
-        ->assertHasNoErrors();
+    $this->from(route('environment.clients.show', $client->id))
+        ->put(route('environment.clients.manifest', $client->id), [
+            'manifestUrl' => 'https://portal.example.test/.well-known/cbox-authz',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->from(route('environment.clients.show', $client->id))
+        ->post(route('environment.clients.sync', $client->id))
+        ->assertSessionHasNoErrors();
 
     expect($client->fresh()?->manifest_url)->toBe('https://portal.example.test/.well-known/cbox-authz')
         ->and(Role::query()->where('client_id', $client->client_id)->where('key', 'support')->exists())->toBeTrue();
@@ -1463,12 +1650,19 @@ it('refuses an organization admin another organization\'s app', function (): voi
 
     $before = Client::query()->whereKey($client->id)->value('secret_hash');
 
-    Volt::test('console.clients.index')->assertDontSee('Not Yours');
+    $this->get(route('clients'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('clients', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->doesntContain('Not Yours')));
 
-    // 404 rather than 403: the caller was not entitled to learn the app exists. The
-    // refusal is at mount, so rotateSecret and delete are unreachable by construction —
-    // there is no component to call them on, forged id or not.
-    Volt::test('console.clients.show', ['client' => $client->id])->assertNotFound();
+    // 404 rather than 403: the caller was not entitled to learn the app exists. And EVERY
+    // write asked directly, because each is its own request now — a refusal on the page
+    // that would have drawn the button is not a refusal of the button.
+    $this->get(route('clients.show', $client->id))->assertNotFound();
+    $this->post(route('clients.rotate', $client->id))->assertNotFound();
+    $this->delete(route('clients.destroy', $client->id))->assertNotFound();
 
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))->toBe($before)
         ->and(Client::query()->whereKey($client->id)->exists())->toBeTrue();
@@ -1491,14 +1685,15 @@ it('shows an organization the platform app it cannot change', function (): void 
         firstParty: true,
     ))->client;
 
-    Volt::test('console.clients.show', ['client' => $client->id])
+    $this->get(route('clients.show', $client->id))
         ->assertOk()
-        ->assertSee('Cbox Billing')
-        ->assertSee('Your operator manages it')
-        ->assertDontSee('Delete app');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('client.name', 'Cbox Billing')
+            // The controls are not offered rather than offered and refused.
+            ->where('mayManage', false));
 
-    Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret')->assertForbidden();
-    Volt::test('console.clients.show', ['client' => $client->id])->call('delete')->assertForbidden();
+    $this->post(route('clients.rotate', $client->id))->assertForbidden();
+    $this->delete(route('clients.destroy', $client->id))->assertForbidden();
 
     expect(Client::query()->whereKey($client->id)->exists())->toBeTrue();
 })->group('security');
@@ -1512,29 +1707,49 @@ it('refuses an organization admin with no organization at all an app list', func
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-apps'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    Volt::test('console.clients.index')->assertForbidden();
+    $this->get(route('clients'))->assertForbidden();
 })->group('security');
 
-it('offers dismissing the revealed client secret on both planes', function (): void {
-    // The secret is minted once and shown once. The organization plane could clear the
-    // banner and the environment plane could too — but on different pages, from different
-    // state, and only one of them held the plaintext out of the wire snapshot.
+it('reveals a new app\'s secret exactly once, and never into the history entry', function (): void {
+    /*
+     * The secret is minted once and shown once, and WHERE it travels is the whole of it.
+     *
+     * Under Volt this was a protected property, because a public one is dehydrated into
+     * the `wire:snapshot` embedded in the DOM and outlives the banner's dismissal. The
+     * Inertia shape has the same hazard wearing different clothes: page props are written
+     * into the browser's HISTORY ENTRY, so a secret passed as a prop is retrievable by
+     * pressing Back long after the page that showed it has gone.
+     *
+     * The flash channel is not persisted into history — which is why the credential goes
+     * there, and why the second visit below must carry nothing at all.
+     */
     $orgId = anEnvironmentAdminActingOn('tenant-apps-secret');
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Secretive App')
-        ->set('redirectUris', 'https://secretive.example.test/callback')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Secretive App',
+        'redirectUris' => 'https://secretive.example.test/callback',
+    ], 'environment.clients')->assertSessionHasNoErrors()->assertInertiaFlash('revealedSecret');
 
     $client = Client::query()->where('name', 'Secretive App')->firstOrFail();
 
-    Volt::test('console.clients.show', ['client' => $client->id])
-        ->assertSee('csec_')
-        ->call('dismissSecret')
-        ->assertDontSee('csec_');
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $secret = is_array($flash) ? ($flash['revealedSecret'] ?? null) : null;
+
+    expect($secret)->toBeString()->toStartWith('csec_');
+
+    $revealed = $this->get(route('environment.clients.show', $client->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('revealedSecret', $secret));
+
+    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain('csec_');
+
+    // …and the next visit carries nothing. One-shot is what makes "copy it now" true.
+    $this->get(route('environment.clients.show', $client->id))
+        ->assertOk()
+        ->assertInertiaFlashMissing('revealedSecret');
 
     expect($client->organization_id)->toBe($orgId);
 })->group('security');
@@ -1552,30 +1767,28 @@ it('holds an unverified organization admin back from registering an app, and onl
     $orgId = anEnvironmentAdminActingOn('tenant-apps-unverified');
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Env Admin App')
-        ->set('redirectUris', 'https://envadmin.example.test/callback')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerApp([
+        'name' => 'Env Admin App',
+        'redirectUris' => 'https://envadmin.example.test/callback',
+    ], 'environment.clients')->assertSessionHasNoErrors();
 
     expect(Client::query()->where('organization_id', $orgId)->where('name', 'Env Admin App')->exists())->toBeTrue();
 
     actingAsRole(MembershipRole::Owner, emailVerified: false);
 
     confirmConsoleStepUp();
-    Volt::test('console.clients.create')
-        ->set('name', 'Unverified App')
-        ->set('redirectUris', 'https://unverified.example.test/callback')
-        ->call('create')
-        ->assertForbidden();
+    registerApp([
+        'name' => 'Unverified App',
+        'redirectUris' => 'https://unverified.example.test/callback',
+    ])->assertForbidden();
 
     expect(Client::query()->where('name', 'Unverified App')->exists())->toBeFalse();
 })->group('security');
 
-it('never dehydrates a revealed client secret into the wire snapshot', function (): void {
-    // A public property would be serialized into the wire:snapshot embedded in the DOM —
-    // and stay there, in the browser's memory and in any HTML capture, long after the
-    // banner was dismissed. The hooks merge had to fix exactly this.
+it('never writes a rotated client secret into the page props', function (): void {
+    // The same property as the reveal above, on the OTHER way a plaintext appears. A
+    // rotation is where an administrator is most likely to be sharing a screen, and a
+    // secret in props is a secret in the history entry.
     anEnvironmentAdminActingOn('tenant-apps-snapshot');
 
     $client = app(ClientRegistry::class)->register(new NewClient(
@@ -1589,13 +1802,17 @@ it('never dehydrates a revealed client secret into the wire snapshot', function 
 
     confirmConsoleStepUp();
 
-    $component = Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
+    $this->from(route('environment.clients.show', $client->id))
+        ->post(route('environment.clients.rotate', $client->id))
+        ->assertInertiaFlash('revealedSecret');
 
-    $secret = (string) preg_replace('/\s+/', ' ', $component->html());
-    expect($secret)->toContain('csec_');
+    $revealed = $this->get(route('environment.clients.show', $client->id))->assertOk();
 
-    // The snapshot is the JSON blob Livewire round-trips; the plaintext must not be in it.
-    expect(json_encode($component->snapshot))->not->toContain('csec_');
+    // On the flash channel, which the client does not persist into history…
+    $revealed->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('revealedSecret'));
+
+    // …and NOT in the props, which it does.
+    expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain('csec_');
 })->group('security');
 
 /*
@@ -1616,15 +1833,21 @@ it('serves sync users in from one component on the environment plane', function 
 
     $this->get(route('environment.directories'))
         ->assertOk()
-        ->assertSee('Sync users in')
-        // The view half. Rewiring only the PHP leaves an environment administrator a
-        // read-only shell: the buttons were gated on CurrentUser::isAdmin(), a question
-        // only the organization plane can answer, so on this plane they simply vanish.
-        ->assertSee('New directory')
-        ->assertSee('Invite your IT admin');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/directories/index')
+            ->where('title', 'Sync users in')
+            // The view half. Rewiring only the PHP leaves an environment administrator a
+            // read-only shell: the controls were gated on `CurrentUser::isAdmin()`, a
+            // question only the organization plane can answer, so on this plane they
+            // simply vanished. `mayAdminister` is asked of the SCOPE, which answers on
+            // both.
+            ->where('mayAdminister', true)
+            ->where('entitled', true));
 
     confirmConsoleStepUp();
-    $this->get(route('environment.directories.create'))->assertOk();
+    $this->get(route('environment.directories.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/directories/create'));
 })->group('security');
 
 it('serves sync users in from the same component on the organization plane', function (): void {
@@ -1634,12 +1857,15 @@ it('serves sync users in from the same component on the organization plane', fun
     // identity provider.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.directories.index')->assertOk()->assertSee('Sync users in');
+    $this->get(route('directories'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/directories/index')
+            ->where('title', 'Sync users in'));
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')->assertOk();
+    $this->get(route('directories.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/directories/create'));
 
     expect(Route::has('directories.show'))->toBeTrue()
         ->and(Route::has('directories.create'))->toBeTrue();
@@ -1659,15 +1885,22 @@ it('offers SCIM and both pull providers on both planes', function (): void {
 
     anEnvironmentAdminActingOn('tenant-dir-providers');
     confirmConsoleStepUp();
-    $environment = Volt::test('console.directories.create');
+    $environment = collect((array) $this->get(route('environment.directories.create'))
+        ->assertOk()
+        ->inertiaProps('providers'))->pluck('label');
 
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
-    $organization = Volt::test('console.directories.create');
+    $organization = collect((array) $this->get(route('directories.create'))
+        ->assertOk()
+        ->inertiaProps('providers'))->pluck('label');
 
+    // The same set on both planes, asserted as a set rather than by looking for each
+    // label somewhere in a document — which would also pass for a page that named a
+    // provider it did not offer.
     foreach ($expected as $label) {
-        $environment->assertSee($label);
-        $organization->assertSee($label);
+        expect($environment)->toContain($label)
+            ->and($organization)->toContain($label);
     }
 })->group('security');
 
@@ -1680,11 +1913,11 @@ it('shows each pull provider its own directory guide, on both planes', function 
     // rather than the OAuth client they had in front of them.
     anEnvironmentAdminActingOn('tenant-dir-guide');
     confirmConsoleStepUp();
-    $planes = [Volt::test('console.directories.create')];
+    $planes = [(array) $this->get(route('environment.directories.create'))->assertOk()->inertiaProps('providers')];
 
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
-    $planes[] = Volt::test('console.directories.create');
+    $planes[] = (array) $this->get(route('directories.create'))->assertOk()->inertiaProps('providers');
 
     foreach ([DirectoryProvider::GoogleWorkspace, DirectoryProvider::MicrosoftEntra] as $provider) {
         $template = ProviderCatalog::forDirectory($provider);
@@ -1692,19 +1925,16 @@ it('shows each pull provider its own directory guide, on both planes', function 
 
         expect($setup)->not->toBeNull($provider->value.' has no catalogue entry to show');
 
-        foreach ($planes as $component) {
-            $rendered = $component->set('provider', $provider->value);
+        foreach ($planes as $providers) {
+            $offered = collect($providers)->firstWhere('value', $provider->value);
 
-            $rendered->assertSee($setup->documentationUrl, false);
-
-            foreach ($setup->setupSteps as $step) {
-                $rendered->assertSee($step);
-            }
-
-            // And it is the DIRECTORY guide, not the sign-in one. Both exist for this
-            // provider and they describe unrelated jobs; showing the wrong one is worse
-            // than showing none, because it is followed to the end before it fails.
-            $rendered->assertDontSee($template->setupSteps[0]);
+            expect($offered['setup']['docs'] ?? null)->toBe($setup->documentationUrl)
+                ->and($offered['setup']['steps'] ?? [])->toBe($setup->setupSteps)
+                // And it is the DIRECTORY guide, not the sign-in one. Both exist for this
+                // provider and they describe unrelated jobs; showing the wrong one is
+                // worse than showing none, because it is followed to the end before it
+                // fails.
+                ->and($offered['setup']['steps'] ?? [])->not->toContain($template->setupSteps[0]);
         }
     }
 })->group('security');
@@ -1716,10 +1946,7 @@ it('registers a directory against the organization from the scope', function ():
     $orgId = anEnvironmentAdminActingOn('tenant-dir-scoped');
 
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')
-        ->set('name', 'Acme Okta SCIM')
-        ->call('register')
-        ->assertHasNoErrors();
+    registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')->assertSessionHasNoErrors();
 
     expect(Directory::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 })->group('security');
@@ -1729,10 +1956,9 @@ it('refuses to register a directory before an organization is chosen', function 
     session()->forget(ConsoleScope::SELECTION_KEY);
 
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')
-        ->set('name', 'Acme Okta SCIM')
-        ->call('register')
-        ->assertHasErrors('name');
+    // Refused outright rather than reported on a field: with no organization resolved
+    // there is nowhere for this directory to land.
+    registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')->assertForbidden();
 
     expect(Directory::query()->exists())->toBeFalse();
 })->group('security');
@@ -1746,10 +1972,13 @@ it('tells an unchosen environment administrator to pick an organization, not to 
     anEnvironmentAdminActingOn('tenant-dir-unentitled');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.directories.index')
+    $this->get(route('environment.directories'))
         ->assertOk()
-        ->assertSee('Choose an organization in the bar above')
-        ->assertDontSee('Enterprise feature');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            // Two different problems with two different fixes, and the props say which:
+            // nothing is chosen, so nothing is unentitled yet.
+            ->where('organizationChosen', false)
+            ->where('entitled', false));
 })->group('security');
 
 it('connects a pull directory on the environment plane', function (): void {
@@ -1763,15 +1992,14 @@ it('connects a pull directory on the environment plane', function (): void {
     ]));
 
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')
-        ->set('provider', DirectoryProvider::GoogleWorkspace->value)
-        ->set('googleServiceAccountJson', (string) json_encode([
+    connectDirectory([
+        'provider' => DirectoryProvider::GoogleWorkspace->value,
+        'googleServiceAccountJson' => (string) json_encode([
             'client_email' => 'sync@acme.iam.gserviceaccount.com',
             'private_key' => '-----BEGIN PRIVATE KEY-----key-----END PRIVATE KEY-----',
-        ]))
-        ->set('googleAdminEmail', 'admin@acme.test')
-        ->call('connectPull')
-        ->assertHasNoErrors();
+        ]),
+        'googleAdminEmail' => 'admin@acme.test',
+    ], 'environment.directories')->assertSessionHasNoErrors();
 
     $directory = Directory::query()->where('organization_id', $orgId)->firstOrFail();
 
@@ -1789,13 +2017,12 @@ it('refuses a pull directory whose credentials the provider rejects', function (
     ]));
 
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')
-        ->set('provider', DirectoryProvider::MicrosoftEntra->value)
-        ->set('entraTenantId', 'tenant')
-        ->set('entraClientId', 'client')
-        ->set('entraClientSecret', 'shh')
-        ->call('connectPull')
-        ->assertSee('Could not connect to');
+    connectDirectory([
+        'provider' => DirectoryProvider::MicrosoftEntra->value,
+        'entraTenantId' => 'tenant',
+        'entraClientId' => 'client',
+        'entraClientSecret' => 'shh',
+    ], 'environment.directories')->assertSessionHasErrors('credentials');
 
     expect(Directory::query()->exists())->toBeFalse();
 })->group('security');
@@ -1809,40 +2036,47 @@ it('gives the organization plane the lifecycle it never had', function (): void 
 
     confirmConsoleStepUp();
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])
-        ->set('editName', 'HR Renamed')
-        ->call('saveName')
-        ->call('regenerateToken')
-        ->call('toggleStatus')
-        ->assertHasNoErrors();
+    $from = route('directories.show', $directory->id);
+
+    $this->from($from)->patch(route('directories.update', $directory->id), ['name' => 'HR Renamed'])
+        ->assertSessionHasNoErrors();
+    $this->from($from)->post(route('directories.rotate', $directory->id))->assertRedirect();
+    $this->from($from)->post(route('directories.toggle', $directory->id))->assertRedirect();
 
     $directory->refresh();
     expect($directory->name)->toBe('HR Renamed')
         ->and($directory->bearer_token_hash)->not->toBe($originalHash)
         ->and($directory->status)->toBe(DirectoryStatus::Paused);
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])->call('deleteDirectory');
+    $this->delete(route('directories.destroy', $directory->id))->assertRedirect();
     expect(Directory::query()->whereKey($directory->id)->exists())->toBeFalse();
 })->group('security');
 
-it('offers dismissing the revealed bearer token on both planes', function (): void {
-    // Only the organization console had a Dismiss. The banner holds a live credential in
-    // plaintext, and the environment plane — whose administrator holds every
-    // organization in the environment — had no way to take it off the screen.
+it('reveals a directory bearer token exactly once, on both planes', function (): void {
+    /*
+     * Only the organization console had a Dismiss, and the banner holds a live credential
+     * in plaintext — the environment plane, whose administrator holds every organization
+     * here, had no way to take it off the screen.
+     *
+     * There is nothing to dismiss now, which is the stronger answer: the token rides the
+     * flash channel, so it is on the ONE render that follows the mint and gone from the
+     * next. A dismissal was a control that had to be pressed for the credential to leave.
+     */
     anEnvironmentAdminActingOn('tenant-dir-token');
 
     confirmConsoleStepUp();
-    Volt::test('console.directories.create')
-        ->set('name', 'Acme Okta SCIM')
-        ->call('register')
-        ->assertHasNoErrors();
+    registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')
+        ->assertInertiaFlash('newToken');
 
     $directory = Directory::query()->firstOrFail();
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])
-        ->assertSee('Copy this now')
-        ->call('dismissToken')
-        ->assertDontSee('Copy this now');
+    $this->get(route('environment.directories.show', $directory->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('newToken'));
+
+    $this->get(route('environment.directories.show', $directory->id))
+        ->assertOk()
+        ->assertInertiaFlashMissing('newToken');
 })->group('security');
 
 it('refuses an organization admin another organization\'s directory', function (): void {
@@ -1857,9 +2091,16 @@ it('refuses an organization admin another organization\'s directory', function (
     $directory = app(Directories::class)->register($other->id, 'Not yours')->directory;
     $originalHash = $directory->bearer_token_hash;
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])->assertNotFound();
+    $this->get(route('directories.show', $directory->id))->assertNotFound();
+    $this->post(route('directories.rotate', $directory->id))->assertNotFound();
+    $this->delete(route('directories.destroy', $directory->id))->assertNotFound();
 
-    Volt::test('console.directories.index')->assertDontSee('Not yours');
+    $this->get(route('directories'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('directories', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->doesntContain('Not yours')));
 
     expect($directory->fresh()?->bearer_token_hash)->toBe($originalHash);
 })->group('security');
@@ -1880,8 +2121,12 @@ it('refuses a group mapping that belongs to another directory', function (): voi
     ]);
     $role = app(Roles::class)->define($org->id, 'Engineer');
 
-    Volt::test('console.directories.show', ['directory' => $mine->id])
-        ->call('mapGroup', $foreign->id, $role->id)
+    $this->from(route('directories.show', $mine->id))
+        ->post(route('directories.map', $mine->id), [
+            'group' => $foreign->id,
+            'role' => $role->id,
+            'mapped' => true,
+        ])
         ->assertNotFound();
 
     expect(GroupRoleMapping::query()->exists())->toBeFalse();
@@ -1896,8 +2141,9 @@ it('refuses an organization admin with no organization at all a directories page
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-dir'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    Volt::test('console.directories.index')->assertForbidden();
+    $this->get(route('directories'))->assertForbidden();
 })->group('security');
 
 /*
@@ -1937,11 +2183,14 @@ it('serves single sign-on from the same component on the organization plane', fu
     // provider.
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.connections.index')->assertOk()->assertSee('Single sign-on');
-    Volt::test('console.connections.create')->assertOk();
+    $this->get(route('connections'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/connections/index')
+            ->where('title', 'Single sign-on'));
+    $this->get(route('connections.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('console/connections/create'));
 
     expect(Route::has('connections.show'))->toBeTrue()
         ->and(Route::has('connections.create'))->toBeTrue();
@@ -1953,16 +2202,7 @@ it('creates a connection against the organization from the scope', function (): 
     // differently in each.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-scoped');
 
-    Volt::test('console.connections.create')
-        ->set('type', 'saml')
-        ->set('name', 'Acme Okta')
-        ->set('idp_entity_id', 'https://idp.corp/metadata')
-        ->set('idp_sso_url', 'https://idp.corp/sso')
-        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
-        ->set('sp_entity_id', 'https://sp.acme/metadata')
-        ->set('sp_acs_url', 'https://sp.acme/acs')
-        ->call('create')
-        ->assertHasNoErrors();
+    createConnection(['name' => 'Acme Okta'], 'environment.connections')->assertSessionHasNoErrors();
 
     expect(Connection::query()->where('organization_id', $orgId)->where('name', 'Acme Okta')->exists())->toBeTrue();
 })->group('security');
@@ -1971,16 +2211,9 @@ it('refuses to create a connection before an organization is chosen', function (
     anEnvironmentAdminActingOn('tenant-sso-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.connections.create')
-        ->set('type', 'saml')
-        ->set('name', 'Acme Okta')
-        ->set('idp_entity_id', 'https://idp.corp/metadata')
-        ->set('idp_sso_url', 'https://idp.corp/sso')
-        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
-        ->set('sp_entity_id', 'https://sp.acme/metadata')
-        ->set('sp_acs_url', 'https://sp.acme/acs')
-        ->call('create')
-        ->assertHasErrors('name');
+    // Refused outright rather than reported on a field: with no organization resolved
+    // there is nowhere for this connection to land.
+    createConnection(['name' => 'Acme Okta'], 'environment.connections')->assertForbidden();
 
     expect(Connection::query()->exists())->toBeFalse();
 })->group('security');
@@ -1993,19 +2226,25 @@ it('gives the organization plane the edit, disable and delete it never had', fun
     [, $org] = actingAsRole(MembershipRole::Owner);
     $connection = aSamlConnection($org->id);
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->set('editName', 'Corporate SAML (renamed)')
-        ->call('saveConfig')
-        ->assertHasNoErrors();
+    $showing = (array) $this->get(route('connections.show', $connection->id))
+        ->assertOk()
+        ->inertiaProps('connection.config');
+
+    $from = route('connections.show', $connection->id);
+
+    $this->from($from)->patch(route('connections.update', $connection->id), [
+        ...$showing,
+        'name' => 'Corporate SAML (renamed)',
+    ])->assertSessionHasNoErrors();
     expect(Connection::query()->whereKey($connection->id)->value('name'))->toBe('Corporate SAML (renamed)');
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])->call('activate')->assertHasNoErrors();
+    $this->from($from)->post(route('connections.activate', $connection->id))->assertRedirect();
     expect($connection->fresh()?->isActive())->toBeTrue();
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])->call('disable')->assertHasNoErrors();
+    $this->from($from)->post(route('connections.disable', $connection->id))->assertRedirect();
     expect($connection->fresh()?->status)->toBe(Cbox\Id\Federation\Enums\ConnectionStatus::Inactive);
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])->call('deleteConnection');
+    $this->delete(route('connections.destroy', $connection->id))->assertRedirect();
     expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
 })->group('security');
 
@@ -2015,18 +2254,22 @@ it('gives the environment plane domain verification and the Admin Portal invite'
     // which is the thing that routes their people to the IdP at all.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
 
-    Volt::test('console.connections.index')
-        ->set('domain', 'ACME.com') // upper-case → normalized to lowercase
-        ->call('addDomain')
-        ->assertHasNoErrors();
+    // Upper-case → normalized to lowercase.
+    $this->from(route('environment.connections'))
+        ->post(route('environment.connections.domains.store'), ['domain' => 'ACME.com'])
+        ->assertSessionHasNoErrors();
 
     expect(VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->exists())->toBeTrue();
 
-    $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
-    // Asserted through the RENDER, not through the wire: portalUrl is a protected
-    // property precisely so it never enters the Livewire snapshot, and a test that could
-    // still read it off the wire would be testing that the fix is absent.
-    $component->assertSee('/setup/', escape: false);
+    // The portal link rides on the FLASH CHANNEL, not in props: it admits its holder to
+    // this tenant's SSO setup with no account at all.
+    $this->from(route('environment.connections'))
+        ->post(route('environment.connections.invite'))
+        ->assertInertiaFlash('portalUrl');
+
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+
+    expect(is_array($flash) ? ($flash['portalUrl'] ?? '') : '')->toContain('/setup/');
 })->group('security');
 
 it('attributes an Admin Portal link to the environment administrator who minted it', function (): void {
@@ -2036,7 +2279,9 @@ it('attributes an Admin Portal link to the environment administrator who minted 
     $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
     $actor = app(ConsoleScope::class)->actorId();
 
-    Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
+    $this->from(route('environment.connections'))
+        ->post(route('environment.connections.invite'))
+        ->assertSessionHasNoErrors();
 
     expect($actor)->not->toBe('')
         ->and(AdminPortalLink::query()->where('organization_id', $orgId)->value('created_by'))->toBe($actor);
@@ -2057,8 +2302,17 @@ it('refuses an organization admin another organization\'s connection', function 
     // page never yields a snapshot, so saveConfig cannot be reached to be refused. Every
     // later read re-resolves through the same scoped query rather than trusting the id
     // the mount accepted.
-    Volt::test('console.connections.show', ['connection' => $theirs->id])->assertStatus(404);
-    Volt::test('console.connections.index')->assertDontSee('Not yours');
+    $this->get(route('connections.show', $theirs->id))->assertNotFound();
+    $this->patch(route('connections.update', $theirs->id), ['name' => 'Hijacked'])->assertNotFound();
+    $this->post(route('connections.activate', $theirs->id))->assertNotFound();
+    $this->delete(route('connections.destroy', $theirs->id))->assertNotFound();
+
+    $this->get(route('connections'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('connections', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->doesntContain('Not yours')));
 
     expect(Connection::query()->whereKey($theirs->id)->value('name'))->toBe('Not yours');
 })->group('security');
@@ -2070,9 +2324,9 @@ it('refuses another organization\'s domain to an organization admin', function (
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso-domains'));
     $foreign = app(DomainVerification::class)->add($other->id, 'foreign.example');
 
-    Volt::test('console.connections.index')->call('verifyDomain', $foreign->id)->assertForbidden();
-    Volt::test('console.connections.index')->call('toggleCapture', $foreign->id)->assertForbidden();
-    Volt::test('console.connections.index')->call('removeDomain', $foreign->id)->assertForbidden();
+    $this->post(route('connections.domains.verify', $foreign->id))->assertForbidden();
+    $this->post(route('connections.domains.capture', $foreign->id))->assertForbidden();
+    $this->delete(route('connections.domains.destroy', $foreign->id))->assertForbidden();
 
     expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();
 })->group('security');
@@ -2089,12 +2343,16 @@ it('keeps the whole-environment connection overview on the environment plane', f
 
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.connections.index')
-        ->assertSee('First IdP')
-        ->assertSee('Second IdP')
-        // Domain verification and the portal invite belong to ONE organization, so they
-        // wait for a choice rather than acting on whichever the page happened to load.
-        ->assertSee('Choose an organization');
+    $this->get(route('environment.connections'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('connections', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->contains('First IdP') && $rows->pluck('name')->contains('Second IdP'))
+            // Domain verification and the portal invite belong to ONE organization, so
+            // they wait for a choice rather than acting on whichever the page loaded.
+            ->where('needsOrganization', true)
+            ->where('domains', []));
 })->group('security');
 
 it('refuses single sign-on to an organization admin with no organization at all', function (): void {
@@ -2106,8 +2364,9 @@ it('refuses single sign-on to an organization admin with no organization at all'
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-sso'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    Volt::test('console.connections.index')->assertForbidden();
+    $this->get(route('connections'))->assertForbidden();
 })->group('security');
 
 /*
@@ -2125,14 +2384,43 @@ it('refuses single sign-on to an organization admin with no organization at all'
 it('serves appearance from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-appearance');
 
-    $this->get(route('environment.appearance'))->assertOk()->assertSee('Live preview');
+    $this->get(route('environment.appearance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/appearance')
+            // The plane that holds the environment, and the only one offered the choice.
+            ->where('mayThemeEnvironment', true));
 })->group('security');
 
 it('serves appearance from the same component on the organization plane', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.appearance')->assertOk()->assertSee('Live preview');
+    $this->get(route('appearance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/appearance')
+            ->where('mayThemeEnvironment', false));
 })->group('security');
+
+/**
+ * Press Save in the theme editor, on the named plane.
+ *
+ * The logo travels BESIDE the theme, because it is not part of the typed appearance: the
+ * colours, radius and font are sanitized by `Appearance::fromArray()`, and a URL this
+ * server will render into an `<img src>` on an unauthenticated page is a different kind of
+ * value with a different rule.
+ *
+ * @param  array<string, mixed>  $theme
+ */
+function saveAppearance(string $plane, array $theme, bool $environmentDefault = false): TestResponse
+{
+    unset($theme['logo'], $theme['name']);
+
+    return test()->from(route($plane))->post(route($plane.'.update'), [
+        'theme' => $theme,
+        'environmentDefault' => $environmentDefault,
+    ]);
+}
 
 it('still themes the environment default when the environment console saves', function (): void {
     // The landing state on this plane, unchanged by the merge. Retargeting it at whichever
@@ -2144,7 +2432,9 @@ it('still themes the environment default when the environment console saves', fu
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    Volt::test('console.appearance')->call('save', $theme);
+    saveAppearance('environment.appearance', $theme, environmentDefault: true)
+        ->assertRedirect(route('environment.appearance'))
+        ->assertSessionHasNoErrors();
 
     expect(Environment::query()->find($environmentId)?->settings['appearance']['light']['primary'])->toBe('#00aa88')
         ->and(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
@@ -2159,9 +2449,9 @@ it('lets the environment console theme the organization it is acting on instead'
     $theme = Appearance::fromPreset('warm')->toArray();
     $theme['light']['primary'] = '#123456';
 
-    Volt::test('console.appearance')
-        ->set('environmentDefault', false)
-        ->call('save', $theme);
+    saveAppearance('environment.appearance', $theme)
+        ->assertRedirect(route('environment.appearance'))
+        ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->settings['appearance']['light']['primary'])->toBe('#123456')
         ->and(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
@@ -2174,9 +2464,7 @@ it('refuses to theme an organization before one is chosen', function (): void {
     $orgId = anEnvironmentAdminActingOn('tenant-appearance-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.appearance')
-        ->set('environmentDefault', false)
-        ->call('save', Appearance::fromPreset('warm')->toArray())
+    saveAppearance('environment.appearance', Appearance::fromPreset('warm')->toArray())
         ->assertForbidden();
 
     expect(app(Organizations::class)->find($orgId)?->settings['appearance'] ?? null)->toBeNull();
@@ -2192,10 +2480,7 @@ it('refuses an organization admin the environment default theme', function (): v
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    Volt::test('console.appearance')
-        ->set('environmentDefault', true)
-        ->call('save', $theme)
-        ->assertForbidden();
+    saveAppearance('appearance', $theme, environmentDefault: true)->assertForbidden();
 
     expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)->toBeNull();
 })->group('security');
@@ -2207,12 +2492,12 @@ it('refuses an unreadable environment default, which only the organization plane
     anEnvironmentAdminActingOn('tenant-appearance-contrast');
     $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
 
-    Volt::test('console.appearance')->call('save', [
+    saveAppearance('environment.appearance', [
         'radius' => '0.5rem',
         'font' => 'system',
         'light' => ['primary' => '#3b6fd4', 'background' => '#101014', 'foreground' => '#141418', 'muted' => '#16161a'],
         'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
-    ]);
+    ], environmentDefault: true)->assertSessionHasErrors('theme');
 
     expect(Environment::query()->find($environmentId)?->settings['appearance'] ?? null)
         ->toBeNull('an unreadable environment default was saved');
@@ -2223,7 +2508,9 @@ it('does not offer the environment default to an organization admin', function (
     // someone the server will refuse.
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.appearance')->assertDontSee('Environment default');
+    $this->get(route('appearance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('mayThemeEnvironment', false));
 })->group('security');
 
 it('does offer it to the administrator who holds the environment', function (): void {
@@ -2235,7 +2522,9 @@ it('does offer it to the administrator who holds the environment', function (): 
     // half would still be standing when the environment half ran.
     anEnvironmentAdminActingOn('tenant-appearance-view');
 
-    Volt::test('console.appearance')->assertSee('Environment default');
+    $this->get(route('environment.appearance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('mayThemeEnvironment', true));
 })->group('security');
 
 /*
@@ -2257,14 +2546,21 @@ it('serves settings from one component on the environment plane', function (): v
 
     $this->get(route('environment.settings'))
         ->assertOk()
-        ->assertSee('Integration')
-        ->assertSee('Environment ID');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/settings')
+            // The integration block, and the environment's own identity beside it.
+            ->where('discovery', fn (string $url): bool => str_ends_with($url, '/.well-known/openid-configuration'))
+            ->whereNot('environmentRecord', null));
 })->group('security');
 
 it('serves settings from the same component on the organization plane', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.settings')->assertOk()->assertSee('Organization');
+    $this->get(route('settings'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/settings')
+            ->whereNot('organization', null));
 })->group('security');
 
 it('gives the environment plane the rename it never had', function (): void {
@@ -2272,10 +2568,9 @@ it('gives the environment plane the rename it never had', function (): void {
     // a typo in one's name without signing into that organization's own console.
     $orgId = anEnvironmentAdminActingOn('tenant-settings-rename');
 
-    Volt::test('console.settings')
-        ->set('orgName', 'Renamed Co')
-        ->call('rename')
-        ->assertHasNoErrors();
+    $this->patch(route('environment.settings.rename'), ['name' => 'Renamed Co'])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($orgId)?->name)->toBe('Renamed Co');
 })->group('security');
@@ -2288,7 +2583,7 @@ it('attributes the rename to the subject who made it, on either plane', function
     $orgId = anEnvironmentAdminActingOn('tenant-settings-actor');
     $subjectId = app(EnvironmentAdminAuth::class)->subjectId();
 
-    Volt::test('console.settings')->set('orgName', 'Attributed Co')->call('rename');
+    $this->patch(route('environment.settings.rename'), ['name' => 'Attributed Co']);
 
     expect(AuditEntry::query()->where('action', 'organization.renamed')->value('actor_id'))
         ->toBe($subjectId)
@@ -2300,9 +2595,7 @@ it('refuses a rename before an organization is chosen', function (): void {
     anEnvironmentAdminActingOn('tenant-settings-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('console.settings')
-        ->set('orgName', 'Nobody In Particular')
-        ->call('rename')
+    $this->patch(route('environment.settings.rename'), ['name' => 'Nobody In Particular'])
         ->assertForbidden();
 
     expect(AuditEntry::query()->where('action', 'organization.renamed')->exists())->toBeFalse();
@@ -2314,7 +2607,7 @@ it('renames the organization the console is acting on and no other', function ()
     $orgId = anEnvironmentAdminActingOn('tenant-settings-scoped');
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-settings'));
 
-    Volt::test('console.settings')->set('orgName', 'Only Mine')->call('rename');
+    $this->patch(route('environment.settings.rename'), ['name' => 'Only Mine']);
 
     expect(app(Organizations::class)->find($orgId)?->name)->toBe('Only Mine')
         ->and(app(Organizations::class)->find($other->id)?->name)->toBe('Other Co');
@@ -2326,9 +2619,11 @@ it('gives the organization plane the integration details it never had', function
     // already served unauthenticated, so this publishes nothing new.
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.settings')
-        ->assertSee('Integration')
-        ->assertSee('/.well-known/openid-configuration');
+    $this->get(route('settings'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('discovery', fn (string $url): bool => str_ends_with($url, '/.well-known/openid-configuration'))
+            ->where('issuer', fn (string $url): bool => $url !== '' && ! str_ends_with($url, '/')));
 })->group('security');
 
 it('keeps the environment\'s own identity off the organization plane', function (): void {
@@ -2344,9 +2639,16 @@ it('keeps the environment\'s own identity off the organization plane', function 
 
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('console.settings')
-        ->assertDontSee('Environment ID')
-        ->assertDontSee($environment->name);
+    $this->get(route('settings'))
+        ->assertOk()
+        // The prop itself, not the rendered page: under Inertia the props ARE the page,
+        // and an absent block is the only thing that keeps the record off this plane.
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('environmentRecord', null))
+        // Its ID, not its NAME. The shell names the realm on every page in it — that is
+        // the sandbox badge's whole job — so asserting the name is absent would be
+        // asserting the chrome is missing. The id is the control plane's own identifier
+        // and belongs to no tenant's page.
+        ->assertDontSee($environment->id);
 })->group('security');
 
 it('serves social sign-in on the environment plane, not only the organization one', function (): void {
@@ -2357,20 +2659,36 @@ it('serves social sign-in on the environment plane, not only the organization on
 
     $this->get(route('environment.social-providers'))
         ->assertOk()
-        ->assertSee('Social sign-in')
-        ->assertSee('GitHub')
-        ->assertSee('Apple');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/social-providers')
+            // The catalogue is offered here, which is the claim: the same page, on the
+            // plane whose owner could not reach it.
+            ->where('available', fn (Collection $rows): bool => $rows->pluck('name')->contains('GitHub'))
+            ->where('available', fn (Collection $rows): bool => $rows->pluck('name')->contains('Apple'))
+            // …and its writes point at THIS plane's routes, which is the half a shared
+            // component gets wrong: a form posting to the other plane's URL.
+            ->where('storeHref', route('environment.social-providers.store')));
+
+    expect($orgId)->not->toBe('');
 })->group('security');
 
 it('refuses to enable a provider before an organization is chosen', function (): void {
     anEnvironmentAdminActingOn('tenant-social-unchosen');
     session()->forget(ConsoleScope::SELECTION_KEY);
 
-    Volt::test('social-providers')
-        ->call('choose', 'github')
-        ->set('clientId', 'gh')
-        ->set('clientSecret', 'gh')
-        ->call('enable')
+    // The READ renders — the page has to, or the acting-organization picker in the console
+    // header is unreachable and the administrator can never choose one. The WRITE is what
+    // must refuse, and it does so by demanding an organization rather than by silently
+    // writing to none.
+    $this->get(route('environment.social-providers'))->assertOk();
+
+    test()->from(route('environment.social-providers'))
+        ->post(route('environment.social-providers.store'), [
+            'provider' => 'github',
+            'clientId' => 'gh',
+            'clientSecret' => 'gh',
+            'parameters' => [],
+        ])
         ->assertForbidden();
 })->group('security');
 
@@ -2390,23 +2708,30 @@ it('serves sign-in rules from one component on the environment plane', function 
 
     $this->get(route('environment.auth-policy'))
         ->assertOk()
-        ->assertSee('Sign-in rules')
-        // The environment's half: the baseline, and what each organization ends up with.
-        ->assertSee('Per organization');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/auth-policy')
+            ->where('title', 'Sign-in rules')
+            // The environment's half: the baseline, and what each organization ends up
+            // with. The table is a PROP, so its presence is the fact rather than a word
+            // in a document.
+            ->where('onEnvironmentPlane', true)
+            ->whereNot('organizations', null));
 })->group('security');
 
 it('serves sign-in rules from the same component on the organization plane', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    // Driven at the component, because actingAsRole() populates CurrentUser the way the
-    // middleware would rather than minting a session cookie — an HTTP request would just
-    // bounce to sign-in and prove nothing about the page.
-    Volt::test('console.auth-policy')
+    $this->get(route('auth-policy'))
         ->assertOk()
-        ->assertSee('Sign-in rules')
-        // …and the organization's half is the override, not the environment's baseline
-        // table: a tenant admin has no business reading every other tenant's policy.
-        ->assertDontSee('Per organization');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/auth-policy')
+            ->where('title', 'Sign-in rules')
+            // …and the organization's half is the override, not the environment's
+            // baseline table: a tenant administrator has no business reading every other
+            // tenant's policy, so the rows are not withheld from the markup — they are
+            // never fetched.
+            ->where('onEnvironmentPlane', false)
+            ->where('organizations', null));
 
     expect(Route::has('auth-policy'))->toBeTrue();
 })->group('security');
@@ -2425,13 +2750,7 @@ it('stamps a stream created on the organization plane with that organization', f
     [, $org] = actingAsRole(MembershipRole::Owner);
 
     confirmConsoleStepUp();
-    Volt::test('console.audit-streams.create')
-        ->set('name', 'Acme Splunk')
-        ->set('destination', 'generic_json')
-        ->set('endpointUrl', 'https://siem.acme.example/collector')
-        ->set('auth', 'none')
-        ->call('create')
-        ->assertHasNoErrors();
+    createLogStream()->assertSessionHasNoErrors();
 
     expect(AuditStream::query()->value('organization_id'))->toBe($org->id);
 })->group('security');
@@ -2440,13 +2759,10 @@ it('keeps the environment-wide stream on the environment plane, where the operat
     anEnvironmentAdminActingOn('tenant-streams-wide');
 
     confirmConsoleStepUp();
-    Volt::test('console.audit-streams.create')
-        ->set('name', 'Operator Splunk')
-        ->set('destination', 'generic_json')
-        ->set('endpointUrl', 'https://siem.operator.example/collector')
-        ->set('auth', 'none')
-        ->call('create')
-        ->assertHasNoErrors();
+    createLogStream([
+        'name' => 'Operator Splunk',
+        'endpointUrl' => 'https://siem.operator.example/collector',
+    ], 'environment.audit-streams')->assertSessionHasNoErrors();
 
     // Null is the environment's own: it receives everything, which is what makes it the
     // operator's compliance shipping and not a tenant's.
@@ -2458,13 +2774,7 @@ it('shows an organization only the streams it owns, never the environment’s', 
 
     // The tenant's own, made the way the console makes it.
     confirmConsoleStepUp();
-    Volt::test('console.audit-streams.create')
-        ->set('name', 'Acme Splunk')
-        ->set('destination', 'generic_json')
-        ->set('endpointUrl', 'https://siem.acme.example/collector')
-        ->set('auth', 'none')
-        ->call('create')
-        ->assertHasNoErrors();
+    createLogStream()->assertSessionHasNoErrors();
 
     // And the environment's own, which only the operator can make — written directly
     // because the organization plane has no way to express it, which is the point.
@@ -2476,10 +2786,20 @@ it('shows an organization only the streams it owns, never the environment’s', 
         SiemAuthScheme::None,
     );
 
-    $listed = Volt::test('console.audit-streams.index')->viewData('streams');
+    /*
+     * OWNED, not delivered. The organization is DELIVERED the environment's own stream's
+     * attention and must never manage it — a list built from the delivery relation would
+     * show a tenant the operator's SIEM endpoint with a pause button beside it.
+     */
+    test()->get(route('audit-streams'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'streams',
+            fn (Collection $streams): bool => $streams->pluck('name')->all() === ['Acme Splunk']
+                && $streams->pluck('id')->doesntContain($operators->stream->id),
+        ));
 
-    expect($listed->pluck('organization_id')->all())->toBe([$org->id])
-        ->and($listed->pluck('id')->all())->not->toContain($operators->stream->id);
+    expect(AuditStream::query()->where('name', 'Acme Splunk')->value('organization_id'))->toBe($org->id);
 })->group('security');
 
 it('404s a stream belonging to the environment when a tenant asks for it by id', function (): void {
@@ -2495,6 +2815,11 @@ it('404s a stream belonging to the environment when a tenant asks for it by id',
 
     // The id is not a secret — it is in the operator's own URL bar — so guessing it must
     // not be the control. Ownership is.
-    Volt::test('console.audit-streams.show', ['stream' => $operators->stream->id])
-        ->assertStatus(404);
+    test()->get(route('audit-streams.show', $operators->stream->id))->assertNotFound();
+
+    // And every mutation resolves the id inside the same ownership fence.
+    test()->post(route('audit-streams.toggle', $operators->stream->id))->assertNotFound();
+    test()->delete(route('audit-streams.destroy', $operators->stream->id))->assertNotFound();
+
+    expect(AuditStream::query()->whereKey($operators->stream->id)->value('enabled'))->toBeTrue();
 })->group('security');

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Shared;
 
 use App\Http\Props\Prop;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * A page of a longer list, and enough about the rest of it to move around.
@@ -32,9 +32,15 @@ final readonly class PaginationProps implements Prop
     ) {}
 
     /**
-     * The concrete paginator, not the contract: the contract's value type is invariant,
-     * so a `LengthAwarePaginator<int, WebhookEndpoint>` is not one of `<int, mixed>` and
-     * every call site would have to widen its own type to pass one.
+     * THE CONTRACT, and generic over what it paginates.
+     *
+     * Generic because the value type is invariant: a `LengthAwarePaginator<int, Membership>`
+     * is not one of `<int, mixed>`, so a non-generic signature would force every call site
+     * to widen its own type just to hand one over.
+     *
+     * The contract rather than the concrete class because both reach this: a page that
+     * paginates a query gets Eloquent's, and a page that asks a repository gets whatever
+     * that repository returns. Only contract methods are read below.
      *
      * @template TValue
      *

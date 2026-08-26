@@ -9,7 +9,7 @@ use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 // Guarded so they coexist with the same helpers in the other workspace test files.
 beforeEach(function (): void {
@@ -26,25 +26,41 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
     ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account, 'environment' => $env] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    $page = Volt::test('console.environment-domains')
-        ->set('selectedEnvironment', $env->id)
-        ->set('newDomain', 'id.acme.com')
-        ->call('request');
+    $on = fn (): string => route('environment-domains', ['environment' => $env->id]);
 
-    // The exact TXT record to publish is now shown.
+    test()->from($on())
+        ->post(route('environment-domains.store'), [
+            'environment' => $env->id,
+            'domain' => 'id.acme.com',
+        ])
+        ->assertSessionHasNoErrors();
+
     $challenge = app(EnvironmentDomains::class)->challenge($env->id);
     expect($challenge)->not->toBeNull()
         ->and($challenge->recordName)->toBe('_cbox-id-challenge.id.acme.com');
-    $page->assertSee($challenge->recordName)->assertSee($challenge->recordValue);
 
-    // Not verified until the record is live.
-    $page->call('verify');
+    // THE EXACT RECORD TO PUBLISH, on the page. Somebody is about to copy three values
+    // into a DNS panel in another tab, so this is the whole content of this state.
+    test()->get($on())
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('challenge.recordName', $challenge->recordName)
+            ->where('challenge.recordValue', $challenge->recordValue));
+
+    // Not verified until the record is live — and the refusal says what to DO rather than
+    // implying the domain needs correcting.
+    test()->from($on())
+        ->post(route('environment-domains.verify'), ['environment' => $env->id])
+        ->assertSessionHasErrors(['verify' => 'The DNS TXT record isn\'t visible yet. DNS can take a few minutes to propagate — try again shortly.']);
+
     expect($env->fresh()->domain)->toBeNull();
-    $page->assertSee('visible yet');
 
-    // Publish the record and verify: the domain is promoted + the event is logged.
+    // Publish the record and verify: the domain is promoted and the event is logged.
     $this->dns->publish($challenge->recordName, $challenge->recordValue);
-    $page->call('verify');
+
+    test()->from($on())
+        ->post(route('environment-domains.verify'), ['environment' => $env->id])
+        ->assertSessionHasNoErrors();
 
     expect($env->fresh()->domain)->toBe('id.acme.com')
         ->and(app(PlatformRoot::class)->run(fn (): bool => AuditEntry::query()->where('scope', $account->id)
@@ -55,11 +71,12 @@ it('surfaces a validation error for a platform-reserved domain', function (): vo
     ['member' => $owner, 'subjectId' => $ownerSubjectId, 'environment' => $env] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.environment-domains')
-        ->set('selectedEnvironment', $env->id)
-        ->set('newDomain', 'acme.cboxid.com')
-        ->call('request')
-        ->assertHasErrors('newDomain');
+    test()->from(route('environment-domains', ['environment' => $env->id]))
+        ->post(route('environment-domains.store'), [
+            'environment' => $env->id,
+            'domain' => 'acme.cboxid.com',
+        ])
+        ->assertSessionHasErrors('domain');
 
     expect(app(EnvironmentDomains::class)->challenge($env->id))->toBeNull();
 });
@@ -69,9 +86,9 @@ it('removes a verified domain, falling back to the default issuer', function ():
     $env->update(['domain' => 'id.acme.com']);
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.environment-domains')
-        ->set('selectedEnvironment', $env->id)
-        ->call('remove');
+    test()->from(route('environment-domains', ['environment' => $env->id]))
+        ->delete(route('environment-domains.destroy'), ['environment' => $env->id])
+        ->assertSessionHasNoErrors();
 
     expect($env->fresh()->domain)->toBeNull();
 });
@@ -88,12 +105,15 @@ it('refuses the domains page to a member who cannot manage environments', functi
 /**
  * A member must not be able to read another account's domain challenge.
  *
- * `selectedEnvironment` is live-bound and unlocked. Every WRITE on this page funnels
- * through guard(), and the verified-domain read is constrained by the accessible id
- * list — but the challenge read passed the raw property to a service that resolves it
- * with a bare `Environment::find()`. `Environment` is the tenancy root and carries no
- * scope of its own, so the value came back: another account's unannounced domain, and
- * the `cbox-id-domain-verification=…` TXT record that proves ownership of it.
+ * The environment id is whatever the browser says — a live-bound Livewire property once, a
+ * query parameter now — and the bug was that the READ did not go through the same
+ * resolution as the writes. Every write funnelled through a reachability guard and the
+ * verified-domain read was constrained by the accessible id list, but the CHALLENGE read
+ * passed the raw value to a service that resolves it with a bare `Environment::find()`.
+ * `Environment` is the tenancy root and carries no scope of its own, so the value came
+ * back: another account's unannounced domain, and the `cbox-id-domain-verification=…` TXT
+ * record that proves ownership of it. A bogus id 500'd rather than 404'd, which was its
+ * own tell.
  */
 it('does not leak another account domain challenge through the selected environment', function (): void {
     $mine = provisionAccount('mine@acme.example');
@@ -104,17 +124,34 @@ it('does not leak another account domain challenge through the selected environm
 
     signInAsMember($mine['subjectId']);
 
-    $component = Volt::test('console.environment-domains')
-        ->set('selectedEnvironment', $theirs['environment']->id);
+    /*
+     * NAMED IN THE URL, which is exactly the shape that used to leak: the id was a live-
+     * bound property then and it is a query parameter now, and either way it is whatever
+     * the browser says. What must hold is that an id outside the reachable set never
+     * reaches a service that resolves it unscoped.
+     */
+    test()->get(route('environment-domains', ['environment' => $theirs['environment']->id]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('challenge', null)
+            // …and the page fell back to one that IS theirs rather than rendering a blank
+            // form addressed at somebody else's environment.
+            ->where('selected', $mine['environment']->id));
 
-    expect($component->viewData('challenge'))
-        ->toBeNull('a member read another account domain-verification challenge');
+    // And no write reaches it either.
+    test()->post(route('environment-domains.verify'), ['environment' => $theirs['environment']->id])
+        ->assertForbidden();
+    test()->delete(route('environment-domains.destroy'), ['environment' => $theirs['environment']->id])
+        ->assertForbidden();
+
+    expect(app(EnvironmentDomains::class)->challenge($theirs['environment']->id))
+        ->not->toBeNull('a foreign write cleared another account\'s pending domain');
 
     // Positive control: their own environment still resolves one.
     app(EnvironmentDomains::class)->request($mine['environment']->id, 'id.acme.example');
 
-    expect(Volt::test('console.environment-domains')
-        ->set('selectedEnvironment', $mine['environment']->id)
-        ->viewData('challenge'))
-        ->not->toBeNull('the page stopped showing a member their own challenge');
+    test()->get(route('environment-domains', ['environment' => $mine['environment']->id]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('challenge.domain', 'id.acme.example'));
 });

@@ -126,6 +126,10 @@ export async function registerPasskey(name: string, base = '/passkeys'): Promise
         ...options,
         challenge: dec(options.challenge),
         user: { ...options.user, id: dec(options.user.id) },
+        // The spread is the point: each descriptor is copied with its base64url id decoded
+        // to the ArrayBuffer WebAuthn requires. Mutating the parsed options in place — what
+        // the lint rule suggests — would leave the caller holding a half-decoded object.
+        // oxlint-disable-next-line no-map-spread
         excludeCredentials: (options.excludeCredentials ?? []).map((entry) => ({
             ...entry,
             id: dec(entry.id),
@@ -165,6 +169,8 @@ export async function signInWithPasskey(base = '/passkeys'): Promise<string | nu
     const publicKey: PublicKeyCredentialRequestOptions = {
         ...options,
         challenge: dec(options.challenge),
+        // Copied rather than mutated, for the reason given in registerPasskey().
+        // oxlint-disable-next-line no-map-spread
         allowCredentials: (options.allowCredentials ?? []).map((entry) => ({
             ...entry,
             id: dec(entry.id),

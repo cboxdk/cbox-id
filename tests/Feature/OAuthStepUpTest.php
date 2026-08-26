@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
@@ -17,7 +18,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 /**
  * `max_age` and `acr_values` are the two controls OpenID Connect gives a relying party
@@ -46,6 +47,9 @@ function stepUpUser(array $amr = ['pwd'], ?int $sessionAgeSeconds = null): array
         $session->save();
     }
 
+    // The request session too: these drive real requests now, and one arriving without it
+    // is bounced to sign-in — where every refusal below is true for the wrong reason.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return [$subject->id, $org];
@@ -56,6 +60,7 @@ function stepUpReauthenticate(string $subjectId, Organization $org, array $amr =
 {
     $subject = app(Subjects::class)->find($subjectId);
     $session = app(SessionManager::class)->start($subjectId, $org->id, $amr);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return (int) $session->created_at?->getTimestamp();
@@ -86,10 +91,10 @@ function stepUpParams(string $clientId, array $extra = []): array
     return array_merge([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
         'code_challenge' => Base64Url::encode(hash('sha256', STEP_UP_VERIFIER, true)),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
     ], $extra);
 }
@@ -98,7 +103,7 @@ it('forces a re-authentication when the session is older than max_age', function
     [, $org] = stepUpUser(sessionAgeSeconds: 86_400); // signed in yesterday
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0']))
         ->assertRedirect(route('accounts.add'));
 });
 
@@ -106,11 +111,13 @@ it('does not disturb a session that is younger than max_age', function () {
     [, $org] = stepUpUser(sessionAgeSeconds: 60);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '3600']))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '3600']))
+        ->assertOk()
         // "Undisturbed" means the consent screen — not a bounce to re-authentication.
-        ->assertSee('wants to access your Cbox ID account');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->has('approveHref'));
 });
 
 /**
@@ -125,7 +132,7 @@ it('issues an id_token carrying the FRESH auth_time after a max_age re-authentic
     $staleAuthTime = (int) app(CurrentUser::class)->session()?->created_at?->getTimestamp();
 
     // 1. The stale session is turned away.
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0']))
         ->assertRedirect(route('accounts.add'));
 
     // 2. The user signs in again; add-another-account starts a fresh session.
@@ -133,14 +140,9 @@ it('issues an id_token carrying the FRESH auth_time after a max_age re-authentic
     expect($freshAuthTime)->toBeGreaterThan($staleAuthTime);
 
     // 3. The resumed request now passes and mints a code.
-    $component = Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSee('wants to access your Cbox ID account');
+    $props = consentScreen(stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']));
 
-    $component->call('approve');
-
-    parse_str((string) parse_url((string) $component->effects['redirect'], PHP_URL_QUERY), $query);
+    parse_str((string) parse_url((string) leftFor(answerConsent($props)), PHP_URL_QUERY), $query);
     expect($query['code'] ?? null)->toBeString();
 
     // 4. Exchange it and read the id_token the relying party actually receives.
@@ -172,7 +174,7 @@ it('accepts a session created seconds ago when max_age is 0', function () {
     [$subjectId, $org] = stepUpUser(sessionAgeSeconds: 86_400);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0']))
         ->assertRedirect(route('accounts.add'));
 
     stepUpReauthenticate($subjectId, $org);
@@ -180,18 +182,12 @@ it('accepts a session created seconds ago when max_age is 0', function () {
     // The redirect back from the sign-in screen is never instantaneous.
     $this->travelTo(now()->addSeconds(5));
 
-    // assertRenderedNotRedirected(), never assertNoRedirect(): a mount-time redirect is
-    // an HTTP response rather than a Livewire effect here, and assertNoRedirect() only
-    // inspects the effect — it is silent about exactly the failure this test exists to
-    // catch. The minted code in the callback query is the second, positive proof that
-    // the request survived both gates.
-    $component = Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null);
+    // The CONSENT SCREEN, not a bounce: a 200 with a client on it is the only shape that
+    // says both gates were survived. The minted code in the callback query below is the
+    // second, positive proof.
+    $props = consentScreen(stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']));
 
-    $component->call('approve')->assertSet('error', null);
-
-    parse_str((string) parse_url((string) $component->effects['redirect'], PHP_URL_QUERY), $query);
+    parse_str((string) parse_url((string) leftFor(answerConsent($props)), PHP_URL_QUERY), $query);
 
     expect($query['code'] ?? null)->toBeString()
         ->and($query['error'] ?? null)->toBeNull();
@@ -207,9 +203,19 @@ it('still refuses a session older than the max_age skew allowance', function () 
 
     stepUpReauthenticate($subjectId, $org);
 
-    $this->travelTo(now()->addHour());
+    /*
+     * THE SESSION IS AGED, not the clock.
+     *
+     * Moving the clock forward an hour would expire the session outright, and the request
+     * would be answered with a bounce to sign-in — true, but for a different reason than
+     * this test is named for, and it would go on passing with the skew allowance deleted.
+     * What is under test is a LIVE session whose authentication is old.
+     */
+    $session = app(CurrentUser::class)->session();
+    $session->created_at = now()->subHour();
+    $session->save();
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']))
         ->assertRedirect(stepUpErrorUrl('login_required', 'The existing authentication is older than the requested max_age.'));
 });
 
@@ -217,7 +223,7 @@ it('returns login_required rather than sign-in UI when max_age is unmet under pr
     [, $org] = stepUpUser(sessionAgeSeconds: 86_400);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0', 'prompt' => 'none']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0', 'prompt' => 'none']))
         ->assertRedirect(stepUpErrorUrl('login_required', 'The existing authentication is older than the requested max_age.'));
 });
 
@@ -230,7 +236,7 @@ it('refuses rather than issuing a stale code when the resumed request is still t
     [, $org] = stepUpUser(sessionAgeSeconds: 86_400);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0', 'reauthed' => '1']))
         ->assertRedirect(stepUpErrorUrl('login_required', 'The existing authentication is older than the requested max_age.'));
 });
 
@@ -238,7 +244,7 @@ it('steps up when acr_values asks for aal2 and the session used one factor', fun
     [, $org] = stepUpUser(['pwd']);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
+    authorizeRequest(stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
         ->assertRedirect(route('accounts.add'));
 });
 
@@ -246,11 +252,11 @@ it('authorizes without interruption when the session already meets aal2', functi
     [, $org] = stepUpUser(['pwd', 'mfa']);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
+    authorizeRequest(stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->missing('error'))
         // "Without interruption" = the consent screen, not a bounce to a second factor.
-        ->assertSee('wants to access your Cbox ID account');
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('client'));
 });
 
 it('never issues an aal1 token to a client that demanded aal2', function () {
@@ -259,7 +265,7 @@ it('never issues an aal1 token to a client that demanded aal2', function () {
 
     // Re-authenticated and STILL single-factor: refuse, do not downgrade silently.
     // RFC 9470 §3 — "authenticated, but not strongly enough".
-    Volt::test('oauth.consent', stepUpParams($clientId, [
+    authorizeRequest(stepUpParams($clientId, [
         'acr_values' => 'urn:cbox-id:aal2',
         'reauthed' => '1',
     ]))->assertRedirect(stepUpErrorUrl(
@@ -277,18 +283,18 @@ it('ignores an acr_values naming only classes this server does not assert', func
 
     // acr_values is an ordered list of ACCEPTABLE classes, so a value another IdP
     // understands must not turn into a refusal here.
-    Volt::test('oauth.consent', stepUpParams($clientId, ['acr_values' => 'urn:example:loa3']))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
+    authorizeRequest(stepUpParams($clientId, ['acr_values' => 'urn:example:loa3']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->missing('error'))
         // Ignored, not refused: the request proceeds to the ordinary consent screen.
-        ->assertSee('wants to access your Cbox ID account');
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('client'));
 });
 
 it('carries the step-up requirement across the re-authentication round trip', function () {
     [, $org] = stepUpUser(sessionAgeSeconds: 86_400);
     $clientId = stepUpClient($org->id);
 
-    Volt::test('oauth.consent', stepUpParams($clientId, ['max_age' => '30', 'acr_values' => 'urn:cbox-id:aal2']))
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '30', 'acr_values' => 'urn:cbox-id:aal2']))
         ->assertRedirect(route('accounts.add'));
 
     // A requirement dropped on the way through the login screen is no requirement at
@@ -301,18 +307,17 @@ it('carries the step-up requirement across the re-authentication round trip', fu
         ->and($resume)->toContain('reauthed=1');
 });
 
-it('re-asserts the requirement at approve() time, not only at mount()', function () {
+it('re-asserts the requirement at issue time, not only when the page is drawn', function () {
     [$subjectId, $org] = stepUpUser(['pwd', 'mfa']);
     $clientId = stepUpClient($org->id);
 
-    // mount() is satisfied by the aal2 session, so the consent screen renders.
-    $component = Volt::test('oauth.consent', stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSee('wants to access your Cbox ID account');
+    // The render is satisfied by the aal2 session, so the consent screen appears.
+    $props = consentScreen(stepUpParams($clientId, ['acr_values' => 'urn:cbox-id:aal2']));
 
-    // The active session is swapped for a weaker one between rendering and approving.
+    // The active session is swapped for a weaker one between rendering and approving —
+    // a tab left open across a re-authentication is exactly how this happens.
     stepUpReauthenticate($subjectId, $org, ['pwd']);
 
-    $component->call('approve')->assertSet('error', 'This application requires a more recent or stronger sign-in. Please start again.');
+    expect(consentRefusal(answerConsent($props)->assertOk()))
+        ->toBe('This application requires a more recent or stronger sign-in. Please start again.');
 });

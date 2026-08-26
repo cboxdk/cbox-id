@@ -7,7 +7,7 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -25,7 +25,7 @@ beforeEach(function (): void {
 it('serves the first-run screen while the platform is empty', function (): void {
     $this->get('/first-run')
         ->assertOk()
-        ->assertSee('Set up Cbox ID');
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('auth/first-run'));
 });
 
 it('publishes the setup token to the server, and never to the page', function (): void {
@@ -36,7 +36,12 @@ it('publishes the setup token to the server, and never to the page', function ()
     expect($token)->not->toBeNull()
         ->and($token)->toHaveLength(64);
 
-    // The whole point of the token is that reaching the page is not enough to have it.
+    /*
+     * The whole point of the token is that reaching the page is not enough to have it.
+     * Asserted over the whole DOCUMENT rather than over the props: on a ported page the
+     * props are serialised into it, so the document is the superset — a value absent from
+     * the body is absent from both.
+     */
     $this->get('/first-run')->assertDontSee((string) $token);
 });
 
@@ -65,13 +70,7 @@ it('leaves back-channel and machine surfaces alone while empty', function (): vo
 });
 
 it('refuses a wrong setup token, and provisions nothing', function (): void {
-    Volt::test('first-run')
-        ->set('token', str_repeat('a', 64))
-        ->set('name', 'Root')
-        ->set('email', 'root@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('claim')
-        ->assertHasErrors('token');
+    claimDeployment(['token' => str_repeat('a', 64)])->assertSessionHasErrors('token');
 
     expect(app(PlatformOperators::class)->exists())->toBeFalse()
         ->and(Environment::query()->count())->toBe(0);
@@ -81,13 +80,7 @@ it('refuses an absent setup token — no token issued is not a wildcard', functi
     // The token file is gone (spent, or never written because the disk is read-only).
     app(SetupTokens::class)->forget();
 
-    Volt::test('first-run')
-        ->set('token', '')
-        ->set('name', 'Root')
-        ->set('email', 'root@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('claim')
-        ->assertHasErrors('token');
+    claimDeployment(['token' => ''])->assertSessionHasErrors('token');
 
     expect(app(PlatformOperators::class)->exists())->toBeFalse();
 });
@@ -95,17 +88,10 @@ it('refuses an absent setup token — no token issued is not a wildcard', functi
 it('installs the platform, spends the token, and hands over to the sign-in door', function (): void {
     $token = app(SetupTokens::class)->issue();
 
-    Volt::test('first-run')
-        ->set('token', $token)
-        ->set('name', 'Root Operator')
-        ->set('email', 'root@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->set('environmentName', 'Production')
-        ->call('claim')
-        // Handed on to a real door either way: straight into the console when the
-        // credential it just created authenticates, and to the sign-in page when it
-        // cannot yet. What it must never do is mint a session out of the setup token.
-        ->assertRedirect();
+    // Handed on to a real door either way: straight into the console when the credential
+    // it just created authenticates, and to the sign-in page when it cannot yet. What it
+    // must never do is mint a session out of the setup token.
+    claimDeployment(['token' => $token])->assertRedirect();
 
     expect(app(PlatformOperators::class)->findByEmail('root@acme.example'))->not->toBeNull()
         ->and(Environment::query()->where('is_default', true)->count())->toBe(1)
@@ -118,16 +104,16 @@ it('installs the platform, spends the token, and hands over to the sign-in door'
 
 it('refuses to claim a platform that was installed while the form was open', function (): void {
     $token = app(SetupTokens::class)->issue();
-    $screen = Volt::test('first-run')
-        ->set('token', $token)
-        ->set('name', 'Root')
-        ->set('email', 'root@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase');
 
-    // Someone else claimed it between the render and the submit.
+    $this->get('/first-run')->assertOk();
+
+    // Someone else claimed it between the render and the submit. The emptiness check is
+    // re-asked on the WRITE, not inherited from the render — which is the whole point:
+    // the render happened on another request, and everything this endpoint may do rests
+    // on the platform still being empty.
     app(PlatformOperators::class)->create('faster@acme.example', 'a-strong-unbreached-passphrase', 'Faster');
 
-    $screen->call('claim')->assertNotFound();
+    claimDeployment(['token' => $token])->assertNotFound();
 
     expect(app(PlatformOperators::class)->findByEmail('root@acme.example'))->toBeNull();
 });

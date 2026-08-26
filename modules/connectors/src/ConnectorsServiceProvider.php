@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Connectors;
 
+use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Connectors\Analytics\NullConnectorAnalytics;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
@@ -16,10 +18,7 @@ use Cbox\Id\Federation\Contracts\Connections as FederationConnections;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
-use Throwable;
 
 /**
  * The Cbox ID connectors module. It plugs a unified connector catalog and a per-organization connections
@@ -59,7 +58,6 @@ class ConnectorsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'connectors');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/connectors.php');
 
         // Console — present whenever the plugin is installed and not switched off.
@@ -91,7 +89,7 @@ class ConnectorsServiceProvider extends ServiceProvider
             order: 20,
         );
 
-        Console::dashboardCard(fn (): string => $this->connectorsCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->connectorsCard(), 8);
     }
 
     /**
@@ -107,23 +105,30 @@ class ConnectorsServiceProvider extends ServiceProvider
      * never "this person's organization could not be resolved". The connectors pages
      * document not making this mistake; the module's own provider was making it.
      */
-    private function connectorsCard(): string
+    /**
+     * DATA, NOT MARKUP — the console draws the card. A throw is caught by the registry and
+     * the card is simply absent.
+     */
+    private function connectorsCard(): ?DashboardCardProps
     {
-        try {
-            $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
+        $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
 
-            if ($organizationId === null) {
-                return '';
-            }
-
-            $count = $this->app->make(ConnectionsOverview::class)->activeCount($organizationId);
-        } catch (Throwable) {
-            return '';
+        if ($organizationId === null) {
+            return null;
         }
 
-        return $this->app->make(ViewFactory::class)
-            ->make('connectors::components.connectors-card', ['count' => $count])
-            ->render();
+        $count = $this->app->make(ConnectionsOverview::class)->activeCount($organizationId);
+
+        return new DashboardCardProps(
+            key: 'connectors.active',
+            label: 'Active connectors',
+            value: number_format($count),
+            caption: null,
+            icon: 'connections',
+            tone: 'info',
+            linkLabel: 'View connections',
+            linkHref: route('connectors.connections'),
+        );
     }
 
     private function connectorsEnabled(): bool

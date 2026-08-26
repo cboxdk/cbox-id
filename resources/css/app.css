@@ -457,16 +457,21 @@
     }
     .btn-danger {
         background: transparent;
-        color: var(--destructive);
+        /* --destructive-strong, NOT --destructive, and at rest rather than only on hover.
+           The hover rule below already had to swap to it because the soft wash slides under
+           the label and drops it to 3.94:1 — and a tinted ROW does exactly the same thing
+           without any hover at all: on the current session's --accent-soft band this button
+           measured 4.19:1, under the 4.5:1 a 12px label needs. A button cannot know what it
+           is sitting on, so the resting colour is the one that survives being sat on
+           something. Both themes define the token as the readable end of the ramp — darker
+           in light, lighter in dark — so this raises contrast in both. */
+        color: var(--destructive-strong);
         /* Same reason as .btn-secondary: transparent fill, so the stroke is the whole
            boundary. 40% was 1.89:1 / 1.85:1 on --card; 80% is 3.65:1 / 3.78:1. */
         border-color: color-mix(in oklch, var(--destructive) 80%, transparent);
     }
     .btn-danger:hover:not(:disabled) {
         background: var(--destructive-soft);
-        /* The label sits at 4.72:1 on --card but only 3.94:1 once the soft wash slides
-           under it on hover — so the colour has to move with the background. */
-        color: var(--destructive-strong);
     }
     .btn-lg {
         height: 42px;
@@ -659,6 +664,18 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        /* A CONTAINING BLOCK FOR ITS OWN `.sr-only`.
+         *
+         * `.sr-only` is `position: absolute`, so with no positioned ancestor it anchors to
+         * the initial containing block — and its static position inside a wide table is
+         * hundreds of pixels to the right. Every table here is wrapped in `overflow-x-auto`
+         * and scrolls inside its panel, but that clipped 1px span escaped the wrapper and
+         * stretched the DOCUMENT: at a phone width the whole console scrolled sideways,
+         * from a `<th><span class="sr-only">Actions</span></th>`.
+         *
+         * `relative` with no offsets changes nothing that is drawn. It only stops the span
+         * measuring itself against the page. */
+        position: relative;
     }
     .table th {
         text-align: left;

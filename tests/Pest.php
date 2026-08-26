@@ -49,15 +49,16 @@ use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
+use Cbox\Id\SamlIdp\Enums\NameIdFormat;
+use Cbox\Id\SamlIdp\Models\ServiceProvider;
+use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
-use Livewire\Features\SupportTesting\PersistentMiddleware;
-use Livewire\Features\SupportTesting\Testable;
-use Livewire\Mechanisms\HandleRequests\HandleRequests;
-use PHPUnit\Framework\Assert as PHPUnit;
+use Inertia\Support\SessionKey;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
@@ -65,41 +66,6 @@ uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 // Pest 4 browser tests (real Chromium via Playwright) — boot the full app the same
 // way, so `visit()` drives the running application with its middleware and DB.
 uses(TestCase::class, RefreshDatabase::class)->in('Browser');
-
-/**
- * Assert the component actually RENDERED — it did not redirect, at mount OR afterwards.
- *
- * USE THIS INSTEAD OF `assertNoRedirect()`. Livewire's own `assertNoRedirect()` is
- * VACUOUS for a redirect issued in `mount()`, and that asymmetry is a trap:
- *
- *   - `assertNoRedirect()` inspects ONLY the Livewire EFFECT payload
- *     (`$this->effects['redirect']`).
- *   - A redirect issued during `mount()` of a `Volt::test(...)` / `Livewire::test(...)`
- *     is an INITIAL render, not a Livewire message — it surfaces as an HTTP 302 on the
- *     underlying response and never reaches the effects array.
- *   - So `assertNoRedirect()` passes, silently, on a component that redirected at mount.
- *   - `assertRedirect()` does NOT have this hole: it falls back to the response when the
- *     request is not a Livewire request. Only the negative form is blind.
- *
- * A `max_age` P0 in the OAuth consent screen survived a test written to catch it for
- * exactly this reason. This macro closes both halves: HTTP 200 on the response (mount
- * rendered a page rather than a 302) AND no redirect effect (no action redirected).
- *
- * It still only says "nothing bad happened" — always pair it with a positive assertion
- * about what SHOULD have rendered or been set.
- */
-Testable::macro('assertRenderedNotRedirected', function (): Testable {
-    /** @var Testable $this */
-    $this->assertStatus(200);
-
-    PHPUnit::assertArrayNotHasKey(
-        'redirect',
-        $this->effects,
-        'Component performed a redirect, but the test expected it to render.'
-    );
-
-    return $this;
-});
 
 /**
  * Stand up the PLATFORM-ROOT environment ("tenant 1"), the environment account members
@@ -323,8 +289,29 @@ function addMember(string $organizationId, MembershipRole $role, string $email, 
  * a membership carries authority and not identity, so the subject is what the caller has
  * and what this needs. `ProvisionedTenant::$owner` is that subject.
  */
-function actAsEnvironmentAdmin(string $subjectId, string $environmentId): void
+function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $emailVerified = true): void
 {
+    /*
+     * VERIFIED BY DEFAULT, for the same reason {@see actingAsRole()} states: an established
+     * administrator of an established environment HAS confirmed their address. The
+     * alternative — every fixture unverified — means the moment a rule is written about
+     * unverified accounts, dozens of unrelated tests start exercising it by accident, and
+     * the fixture rather than the rule gets blamed. Pass false to test the rule on purpose.
+     *
+     * Marked in the platform root because the acting member is an ACCOUNT subject, and the
+     * environment context this helper runs under is the tenant's — which is not where that
+     * subject lives.
+     */
+    if ($emailVerified) {
+        app(PlatformRoot::class)->run(function () use ($subjectId): void {
+            $subject = app(Subjects::class)->find($subjectId);
+
+            if ($subject !== null) {
+                app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
+            }
+        });
+    }
+
     app(EnvironmentAdminAuth::class)->establish($subjectId, $environmentId);
 }
 
@@ -359,6 +346,1070 @@ function signInAsMember(string $subjectId): void
 |
 | Pest.php is loaded by every worker, so anything here is always available.
 */
+
+/**
+ * Register an app the way the console's form does: every field, not only the changed one.
+ *
+ * The create page is a form over a WHOLE registration — the kind decides the client type,
+ * the grants and whether a redirect URI is even asked for — so a submission carrying one
+ * field is a submission this console cannot produce.
+ *
+ * `redirectUris` is EMPTY by default rather than plausible. A CLI has no callback URL, and
+ * a helper that quietly supplied one would store it on every app a test registers, so the
+ * assertion "this kind has no redirect URIs" would be about the helper.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function registerApp(array $changes = [], string $plane = 'clients'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'Test App',
+        'kind' => 'web',
+        'type' => 'confidential',
+        'grantAuthorizationCode' => true,
+        'grantClientCredentials' => false,
+        'scopes' => ['openid', 'profile', 'email', 'offline_access'],
+        'customScopes' => '',
+        'redirectUris' => '',
+        'postLogoutRedirectUris' => '',
+        'manifestUrl' => '',
+        'firstParty' => false,
+        'environmentWide' => false,
+        ...$changes,
+    ]);
+}
+
+/**
+ * Sign in the way the form does: one POST to the shipped controller.
+ *
+ * `from(route('login'))` is not decoration. Every refusal on this path is a `back()` with
+ * the message on the `email` field, so without a referer the redirect lands on `/` and
+ * `assertRedirect(route('login'))` becomes a test about the default. It is stated here
+ * once rather than at ninety call sites.
+ *
+ * @param  array<string, mixed>  $credentials
+ */
+function attemptLogin(array $credentials = []): TestResponse
+{
+    return test()->from(route('login'))->post(route('login.attempt'), [
+        'email' => 'dana@acme.test',
+        'password' => 'supersecret123',
+        ...$credentials,
+    ]);
+}
+
+/**
+ * Register the way the form does.
+ *
+ * @param  array<string, mixed>  $fields
+ */
+function attemptSignup(array $fields = []): TestResponse
+{
+    return test()->from(route('signup'))->post(route('signup.register'), [
+        'organization' => 'Acme',
+        'name' => 'New Person',
+        'email' => 'new@acme.test',
+        'password' => 'a-strong-unbreached-passphrase',
+        /*
+         * The two bot signals the form carries, at their HUMAN values: an empty honeypot,
+         * and a form that was on screen long enough to be filled in by hand. Omitting them
+         * would make every test here a test of the missing-signal path rather than of what
+         * it is about — and `renderedAt` absent scores as "implausibly fast".
+         */
+        'website' => '',
+        'renderedAt' => now()->getTimestamp() - 30,
+        ...$fields,
+    ]);
+}
+
+/**
+ * Add an existing user to an organization the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+/**
+ * Set an end-user's password from the environment console.
+ *
+ * Every consequence is an explicit field — the form has no hidden defaults, so neither
+ * does this: a test that only says "set a password" would be silently choosing temporary,
+ * reveal, and sign-out-everywhere on the caller's behalf.
+ */
+function setUserPassword(string $userId, array $changes = []): TestResponse
+{
+    return test()->from(route('environment.users.show', $userId))
+        ->post(route('environment.users.password', $userId), [
+            'password' => 'a-strong-unbreached-passphrase',
+            'reason' => 'Locked out after losing their phone',
+            'mode' => 'temporary',
+            'delivery' => 'reveal',
+            'revoke' => 'sessions_and_tokens',
+            'expiryHours' => 24,
+            ...$changes,
+        ]);
+}
+
+/** Invite somebody to the acting organization's own roster. */
+function inviteToDirectory(array $changes = []): TestResponse
+{
+    return test()->from(route('directory.members'))
+        ->post(route('directory.members.invite'), [
+            'email' => 'newbie@acme.test',
+            'role' => 'member',
+            'accessRoles' => [],
+            ...$changes,
+        ]);
+}
+
+/**
+ * Grant or revoke one access role for a member of the acting organization.
+ *
+ * An explicit set rather than a toggle, so a retried request and the checkbox cannot
+ * disagree about which state was asked for.
+ */
+function setDirectoryAccessRole(string $userId, string $roleId, bool $granted): TestResponse
+{
+    return test()->from(route('directory.members'))
+        ->post(route('directory.members.access', $userId), [
+            'role' => $roleId,
+            'granted' => $granted,
+        ]);
+}
+
+/**
+ * Enable a social sign-in provider through the console form.
+ *
+ * Every field the form states, because the form states them all — a partial payload would
+ * let a test pass against a controller that silently kept a value it should have replaced.
+ */
+function enableSocialProvider(array $changes = []): TestResponse
+{
+    $provider = $changes['provider'] ?? 'github';
+
+    return test()->from(route('social-providers', ['provider' => $provider]))
+        ->post(route('social-providers.store'), [
+            'provider' => $provider,
+            'clientId' => 'gh-client',
+            'clientSecret' => 'gh-secret',
+            'parameters' => [],
+            ...$changes,
+        ]);
+}
+
+/**
+ * Save branding at whichever altitude the console scope resolves.
+ *
+ * Every field the form states, because the form states them all — the palette included, so
+ * a test that only sets a name cannot pass against a controller that dropped the colours.
+ */
+function saveBranding(array $changes = [], bool $environmentPlane = false): TestResponse
+{
+    $name = $environmentPlane ? 'environment.whitelabel.branding' : 'whitelabel.branding';
+
+    return test()->from(route($name))
+        ->post(route($name.'.save'), [
+            'palette' => [],
+            'appName' => 'Acme Identity',
+            'emailFromName' => '',
+            'emailTemplate' => '',
+            ...$changes,
+        ]);
+}
+
+/** Suspend or reactivate a platform operator from the roster. */
+function toggleOperator(string $operatorId): TestResponse
+{
+    return test()->from(route('platform.operators'))
+        ->post(route('platform.operators.toggle', $operatorId));
+}
+
+/** Create a new operator from the roster page. */
+function createOperator(array $changes = []): TestResponse
+{
+    return test()->from(route('platform.operators'))
+        ->post(route('platform.operators.store'), [
+            'name' => 'Grace Hopper',
+            'email' => 'grace@platform.test',
+            'password' => 'a-strong-unbreached-passphrase',
+            ...$changes,
+        ]);
+}
+
+/**
+ * A value the server put on the INERTIA FLASH CHANNEL, which is where every credential
+ * shown once travels.
+ *
+ * Not a prop, and that is the whole point: props are serialised into the browser's history
+ * entry, so a secret there is readable by pressing Back long after the page that showed it
+ * has gone. The flash is written into the session and spent by the next render.
+ */
+function flashed(string $key): mixed
+{
+    /** @var array<string, mixed> $flash */
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+
+    return $flash[$key] ?? null;
+}
+
+/**
+ * The device-approval screen, as props.
+ *
+ * @return array{client: array<string, mixed>|null, me: array<string, mixed>}
+ */
+function deviceScreen(array $query = []): array
+{
+    /** @var array{client: array<string, mixed>|null, me: array<string, mixed>} $props */
+    $props = (array) test()->get(route('device', $query))->assertOk()->inertiaProps();
+
+    return $props;
+}
+
+/** Resolve a TYPED device code to the app behind it. */
+function lookUpDeviceCode(string $code): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('device'))
+        ->post(route('device.lookup'), ['userCode' => $code]));
+}
+
+/** Approve the device request this session has consented to. */
+function approveDevice(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.approve')));
+}
+
+/** Deny it, so the device stops polling. */
+function denyDevice(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.deny')));
+}
+
+/**
+ * A person's own trusted devices, as props.
+ *
+ * @return array{enrolment: array<string, mixed>|null, appStoreUrl: string|null, devices: list<array<string, mixed>>}
+ */
+function myDevices(): array
+{
+    /** @var array{enrolment: array<string, mixed>|null, appStoreUrl: string|null, devices: list<array<string, mixed>>} $props */
+    $props = (array) test()->get(route('devices.mine'))->assertOk()->inertiaProps();
+
+    return $props;
+}
+
+/** Remove one of the reader's own handsets. */
+function removeOwnDevice(string $deviceId): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('devices.mine'))
+        ->delete(route('devices.mine.destroy', $deviceId)));
+}
+
+/**
+ * An authorization request, exactly as a relying party sends one.
+ *
+ * A real request, not a mounted component: `/authorize` is a PROTOCOL surface, and half of
+ * what it has to get right — the redirect it answers with, the error it returns to the
+ * client, the middleware that resolves the acting subject — only exists on a request.
+ */
+function authorizeRequest(array $params = []): TestResponse
+{
+    return test()->get(route('oauth.authorize', [
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => pkceChallenge(),
+        'code_challenge_method' => 'S256',
+        ...$params,
+    ]));
+}
+
+/**
+ * The consent screen's props, for a request that reached it.
+ *
+ * @return array<string, mixed>
+ */
+function consentScreen(array $params = []): array
+{
+    return (array) authorizeRequest($params)->assertOk()->inertiaProps();
+}
+
+/**
+ * Answer a consent screen the way its buttons do.
+ *
+ * THE URL COMES FROM THE PAGE, and that is the point: the validated request lives in the
+ * session under an opaque id, and the id is the only part of it the browser is given. A
+ * test that built this URL itself would be inventing the one thing an attacker cannot.
+ */
+function answerConsent(array $props, string $answer = 'approve'): TestResponse
+{
+    $href = $props[$answer.'Href'] ?? null;
+
+    expect($href)->toBeString('the consent screen offered no '.$answer.' control');
+
+    return inertiaRequest(fn (): TestResponse => test()->from(route('oauth.authorize'))->post($href));
+}
+
+/**
+ * Where a response sends the browser, whichever way it says so.
+ *
+ * An ordinary request leaving for the relying party gets a 302 with a `Location`. An
+ * INERTIA visit gets a 409 with `X-Inertia-Location` — the protocol's own "leave the app"
+ * answer, because the client library cannot follow a cross-origin 302 with `fetch`. Both
+ * are the same event, and a test that only understood one of them would pass on the
+ * consent-skip path while the Approve button was broken, or the reverse.
+ */
+function leftFor(TestResponse $response): ?string
+{
+    return $response->headers->get('X-Inertia-Location')
+        ?? $response->headers->get('Location');
+}
+
+/**
+ * The refusal a consent screen is carrying, whichever way it was asked for.
+ *
+ * A plain request gets the rendered document, and `inertiaProps()` reads the props out of
+ * it. An INERTIA visit gets the page object as JSON, which that helper cannot read — it
+ * looks for a view. Both are the same page; this asks it the same question either way.
+ */
+function consentRefusal(TestResponse $response): ?string
+{
+    $json = $response->headers->get('content-type');
+
+    if (is_string($json) && str_contains($json, 'json')) {
+        $error = $response->json('props.error');
+
+        return is_string($error) ? $error : null;
+    }
+
+    $error = $response->inertiaProps('error');
+
+    return is_string($error) ? $error : null;
+}
+
+/** Add a domain from the Admin Portal's setup screen. */
+function addPortalDomain(string $domain): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('portal.setup'))
+        ->post(route('portal.domains.store'), ['domain' => $domain]));
+}
+
+/** Create an SSO connection from the Admin Portal. Defaults to a complete SAML one. */
+function createPortalConnection(array $changes = []): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('portal.setup'))
+        ->post(route('portal.connections.store'), [
+            'type' => 'saml',
+            'connName' => 'Bound Co',
+            'idp_entity_id' => 'https://idp.corp/metadata',
+            'idp_sso_url' => 'https://idp.corp/sso',
+            'idp_x509cert' => '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----',
+            'sp_entity_id' => 'https://sp.acme/metadata',
+            'sp_acs_url' => 'https://sp.acme/acs',
+            ...$changes,
+        ]));
+}
+
+/** Register a SCIM directory — the one credential the portal mints. */
+function registerPortalDirectory(string $name = 'Acme Okta SCIM'): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('portal.setup'))
+        ->post(route('portal.directories.store'), ['dirName' => $name]));
+}
+
+/** Close the setup link. */
+function finishPortalSetup(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('portal.setup'))
+        ->post(route('portal.finish')));
+}
+
+/** Claim an unclaimed deployment, the way the first-run form does. */
+function claimDeployment(array $changes = []): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('first-run'))
+        ->post(route('first-run.claim'), [
+            'token' => '',
+            'name' => 'Root Operator',
+            'email' => 'root@acme.example',
+            'password' => 'a-strong-unbreached-passphrase',
+            'environmentName' => 'Production',
+            'organizationName' => '',
+            ...$changes,
+        ]));
+}
+
+/**
+ * A person's own security page, as props.
+ *
+ * @return array<string, mixed>
+ */
+function accountSecurity(): array
+{
+    return (array) test()->get(route('account'))->assertOk()->inertiaProps();
+}
+
+/**
+ * Make ONE request shaped like the one the console actually makes.
+ *
+ * `X-Inertia` is not decoration: middleware branches on it. `RequireSudo` answers an
+ * Inertia visit with a REDIRECT to the step-up — which the client follows and renders —
+ * and answers a bare fetch with a 403 JSON body, because the passkey ceremony endpoints
+ * cannot follow a redirect. A test that posts without the header exercises the branch no
+ * page in this product takes.
+ *
+ * SCOPED TO THE ONE CALL, which is why this takes a closure rather than returning a
+ * pre-headed client. `withHeaders()` merges into the test instance's DEFAULT headers, so a
+ * flag set for a POST outlives it — and the next plain GET is then answered as an Inertia
+ * visit, whose body is a JSON page object rather than the document the caller expected.
+ *
+ * @param  Closure(): TestResponse  $call
+ */
+function inertiaRequest(Closure $call): TestResponse
+{
+    test()->withHeader('X-Inertia', 'true');
+
+    try {
+        return $call();
+    } finally {
+        test()->withoutHeader('X-Inertia');
+    }
+}
+
+/** Rename yourself from the security page. The one write there that needs no step-up. */
+function saveOwnProfile(array $changes = []): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))
+        ->patch(route('account.profile.update'), ['displayName' => 'Ada Lovelace', ...$changes]));
+}
+
+/** Change your own password. */
+function changeOwnPassword(array $changes = []): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))
+        ->post(route('account.password.update'), [
+            'currentPassword' => 'a-strong-unbreached-passphrase',
+            'newPassword' => 'an-even-stronger-unbreached-passphrase',
+            'newPasswordConfirmation' => 'an-even-stronger-unbreached-passphrase',
+            ...$changes,
+        ]));
+}
+
+/** Begin TOTP enrolment — the secret and its QR arrive on the flash channel. */
+function beginMfaEnrolment(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))->post(route('account.mfa.enrol')));
+}
+
+/** Confirm the six digits an authenticator shows. */
+function confirmMfaEnrolment(string $code): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))->post(route('account.mfa.confirm'), ['code' => $code]));
+}
+
+/** Mint a new set of recovery codes. */
+function regenerateRecoveryCodes(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))->post(route('account.mfa.recovery-codes')));
+}
+
+/** Remove one of the reader's own passkeys. */
+function removeOwnPasskey(string $passkeyId): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))->delete(route('account.passkeys.destroy', $passkeyId)));
+}
+
+/** Disconnect a linked social account. */
+function unlinkSocialProvider(string $provider): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))->delete(route('account.social.destroy', $provider)));
+}
+
+/** Sign out every session but this one, from the security page. */
+function signOutOtherSessions(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account'))->post(route('account.sessions.revoke-others')));
+}
+
+/**
+ * A person's own sessions, connected applications and recent activity, as props.
+ *
+ * @return array{sessions: list<array<string, mixed>>, applications: list<array<string, mixed>>, activity: list<array<string, mixed>>}
+ */
+function accountActivity(): array
+{
+    /** @var array{sessions: list<array<string, mixed>>, applications: list<array<string, mixed>>, activity: list<array<string, mixed>>} $props */
+    $props = (array) test()->get(route('account.activity'))->assertOk()->inertiaProps();
+
+    return $props;
+}
+
+/** Sign one of the reader's own sessions out. */
+function revokeOwnSession(string $sessionId): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account.activity'))
+        ->post(route('account.sessions.revoke', $sessionId)));
+}
+
+/** Sign out every session except the one making the request. */
+function revokeOtherOwnSessions(): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account.activity'))
+        ->post(route('account.sessions.revoke-others')));
+}
+
+/** Withdraw one application's access to the reader's account. */
+function withdrawApplication(string $clientId): TestResponse
+{
+    return inertiaRequest(fn (): TestResponse => test()->from(route('account.activity'))
+        ->delete(route('account.applications.destroy', $clientId)));
+}
+
+/**
+ * The platform's tenant tree for the targeted plane, as props.
+ *
+ * @return array{organizations: list<array<string, mixed>>, all: list<array<string, mixed>>, search: string}
+ */
+function platformOrganizations(array $query = []): array
+{
+    /** @var array{organizations: list<array<string, mixed>>, all: list<array<string, mixed>>, search: string} $props */
+    $props = (array) test()->get(route('platform.organizations', $query))->assertOk()->inertiaProps();
+
+    return $props;
+}
+
+/** One tenant's own detail page, as props. */
+function platformOrganization(string $organizationId): array
+{
+    return (array) test()->get(route('platform.organization', $organizationId))->assertOk()->inertiaProps();
+}
+
+/** Create a tenant in the targeted plane, the way the list's form does. */
+function createTenantOrganization(array $changes = []): TestResponse
+{
+    return test()->from(route('platform.organizations'))
+        ->post(route('platform.organizations.store'), [
+            'name' => 'Acme Inc',
+            'type' => 'customer',
+            'parentId' => '',
+            ...$changes,
+        ]);
+}
+
+/** Suspend or reactivate a tenant, from the list or from its own page. */
+function toggleTenantOrganization(string $organizationId): TestResponse
+{
+    return test()->from(route('platform.organization', $organizationId))
+        ->post(route('platform.organizations.toggle', $organizationId));
+}
+
+/** Move a tenant under another, or to the top level with a blank parent. */
+function reparentOrganization(string $organizationId, ?string $parentId): TestResponse
+{
+    return test()->from(route('platform.organizations'))
+        ->post(route('platform.organizations.reparent', $organizationId), [
+            'parentId' => $parentId ?? '',
+        ]);
+}
+
+/**
+ * The platform's flat environment list, as props.
+ *
+ * @return array{environments: list<array<string, mixed>>, activeId: string|null, search: string, pagination: array<string, mixed>}
+ */
+function platformEnvironments(array $query = []): array
+{
+    /** @var array{environments: list<array<string, mixed>>, activeId: string|null, search: string, pagination: array<string, mixed>} $props */
+    $props = (array) test()->get(route('platform.environments', $query))->assertOk()->inertiaProps();
+
+    return $props;
+}
+
+/** Create an isolation plane from the platform environment list. */
+function createPlatformEnvironment(array $changes = []): TestResponse
+{
+    return test()->from(route('platform.environments'))
+        ->post(route('platform.environments.store'), [
+            'name' => 'Staging',
+            'domain' => '',
+            ...$changes,
+        ]);
+}
+
+/** Point the operator console at another plane, the way the list's Target control does. */
+function targetPlatformEnvironment(string $environmentId): TestResponse
+{
+    return test()->from(route('platform.environments'))
+        ->post(route('platform.environment.switch'), ['environment' => $environmentId]);
+}
+
+/**
+ * The platform's customer list, as props.
+ *
+ * @return array{customers: list<array<string, mixed>>, pagination: array<string, mixed>, search: string}
+ */
+function platformCustomers(array $query = []): array
+{
+    /** @var array{customers: list<array<string, mixed>>, pagination: array<string, mixed>, search: string} $props */
+    $props = (array) test()->get(route('platform.customers', $query))->assertOk()->inertiaProps();
+
+    return $props;
+}
+
+/** One customer's own page, as props. */
+function platformCustomer(string $organizationId): array
+{
+    return (array) test()->get(route('platform.customers.show', $organizationId))->assertOk()->inertiaProps();
+}
+
+/** Onboard a customer the way the list's form does. */
+function createCustomer(array $changes = []): TestResponse
+{
+    return test()->from(route('platform.customers'))
+        ->post(route('platform.customers.store'), [
+            'name' => 'Northwind',
+            'ownerName' => 'Ada Lovelace',
+            'ownerEmail' => 'owner@northwind.example',
+            'environmentLimit' => 2,
+            ...$changes,
+        ]);
+}
+
+/** Suspend or reactivate a customer, from either the list or its own page. */
+function toggleCustomer(string $organizationId): TestResponse
+{
+    return test()->from(route('platform.customers.show', $organizationId))
+        ->post(route('platform.customers.toggle', $organizationId));
+}
+
+/** Point the console at one of a customer's own environments, and stay on the customer. */
+function targetCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
+{
+    return test()->from(route('platform.customers.show', $organizationId))
+        ->post(route('platform.customers.target', [$organizationId, $environmentId]));
+}
+
+/** Target one of a customer's environments AND open the tenants inside it. */
+function openCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
+{
+    return test()->from(route('platform.customers.show', $organizationId))
+        ->post(route('platform.customers.open', [$organizationId, $environmentId]));
+}
+
+/** Bootstrap a plane with its first organization and an owner admin. */
+function provisionEnvironmentAdmin(string $environmentId, array $changes = []): TestResponse
+{
+    return test()->from(route('platform.environments'))
+        ->post(route('platform.environments.provision', $environmentId), [
+            'orgName' => 'Acme Inc',
+            'adminName' => 'Ada Lovelace',
+            'adminEmail' => 'admin@acme.test',
+            'adminPassword' => 'a-strong-admin-pass',
+            ...$changes,
+        ]);
+}
+
+/**
+ * The platform's cross-plane search, as props.
+ *
+ * @return array{term: string, ready: bool, organizations: list<array<string, mixed>>, users: list<array<string, mixed>>}
+ */
+function platformSearch(string $term = ''): array
+{
+    $query = $term === '' ? [] : ['term' => $term];
+
+    return (array) test()->get(route('platform.search', $query))->assertOk()->inertiaProps();
+}
+
+/** A downstream SAML service provider in the current environment. */
+function registerServiceProvider(array $changes = []): ServiceProvider
+{
+    return app(ServiceProviders::class)->register(new NewServiceProvider(
+        entityId: $changes['entityId'] ?? 'https://sp/meta',
+        acsUrl: $changes['acsUrl'] ?? 'https://sp/acs',
+        nameIdFormat: NameIdFormat::cases()[0],
+        nameIdAttribute: $changes['nameIdAttribute'] ?? 'email',
+        attributeMappings: $changes['attributeMappings'] ?? [],
+        certificate: $changes['certificate'] ?? null,
+        wantAuthnRequestsSigned: $changes['wantAuthnRequestsSigned'] ?? false,
+    ));
+}
+
+/**
+ * Save a SAML application's whole configuration.
+ *
+ * Every field, because the form states every field — a partial payload would let a test
+ * pass against a controller that silently kept the value it was supposed to replace.
+ */
+function saveServiceProvider(string $providerId, array $changes = []): TestResponse
+{
+    return test()->from(route('environment.sso-providers.show', $providerId))
+        ->patch(route('environment.sso-providers.update', $providerId), [
+            'entityId' => 'https://sp/meta',
+            'acsUrl' => 'https://sp/acs',
+            'nameIdFormat' => NameIdFormat::cases()[0]->value,
+            'nameIdAttribute' => 'email',
+            'attributeMappings' => [],
+            'wantAuthnRequestsSigned' => false,
+            'certificate' => '',
+            ...$changes,
+        ]);
+}
+
+/**
+ * Grant or clear a role EVERYWHERE in the environment, from a user's page.
+ *
+ * An explicit set rather than a toggle, so a retried request and the checkbox cannot
+ * disagree about which state was asked for.
+ */
+function setEnvironmentRole(string $userId, string $roleId, bool $granted): TestResponse
+{
+    return test()->from(route('environment.users.show', $userId))
+        ->post(route('environment.users.roles', $userId), [
+            'role' => $roleId,
+            'granted' => $granted,
+        ]);
+}
+
+/** Add an end-user to an organization from that USER's page (the mirror of the org one). */
+function assignUserToOrganization(string $userId, string $organizationId, array $changes = []): TestResponse
+{
+    return test()->from(route('environment.users.show', $userId))
+        ->post(route('environment.users.organizations.store', $userId), [
+            'organization' => $organizationId,
+            'role' => 'member',
+            'accessRoles' => [],
+            ...$changes,
+        ]);
+}
+
+function addOrganizationMember(string $organizationId, array $changes = []): TestResponse
+{
+    return test()->from(route('environment.organizations.show', $organizationId))
+        ->post(route('environment.organizations.members.store', $organizationId), [
+            'email' => 'dave@acme.example',
+            'role' => 'member',
+            'accessRoles' => [],
+            ...$changes,
+        ]);
+}
+
+/**
+ * Invite somebody into an organization the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function inviteOrganizationMember(string $organizationId, array $changes = []): TestResponse
+{
+    return test()->from(route('environment.organizations.show', $organizationId))
+        ->post(route('environment.organizations.invitations.store', $organizationId), [
+            'email' => 'newbie@acme.example',
+            'role' => 'member',
+            'accessRoles' => [],
+            ...$changes,
+        ]);
+}
+
+/** Save an organization's details the way the form does. */
+function saveOrganization(string $organizationId, string $name, string $slug): TestResponse
+{
+    return test()->from(route('environment.organizations.show', $organizationId))
+        ->patch(route('environment.organizations.update', $organizationId), [
+            'name' => $name,
+            'slug' => $slug,
+            'metadata' => [],
+        ]);
+}
+
+/** Approve the declared legacy-login endpoint, the way the confirm dialog does. */
+function approveLegacyLogin(): TestResponse
+{
+    return test()->from(route('environment.legacy-login'))
+        ->post(route('environment.legacy-login.approve'));
+}
+
+/** Probe the declared legacy-login endpoint with one address. */
+function probeLegacyLogin(string $email): TestResponse
+{
+    return test()->from(route('environment.legacy-login'))
+        ->post(route('environment.legacy-login.probe'), ['email' => $email]);
+}
+
+/**
+ * Issue a publishable key the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function issueFrontendKey(array $changes = []): TestResponse
+{
+    return test()->from(route('environment.frontend-keys'))
+        ->post(route('environment.frontend-keys.store'), [
+            'name' => 'Marketing site',
+            'mode' => 'test',
+            'origins' => 'https://acme.test',
+            ...$changes,
+        ]);
+}
+
+/**
+ * An environment the signed-in member may actually mint a key against.
+ *
+ * ASKED OF THE PAGE rather than guessed from the table. Reachability is
+ * `accessibleEnvironmentIds()` resolved in the platform root, and a test that picked the
+ * first row of `environments` would be asserting about the fixture's ordering — and would
+ * pass or fail for reasons that have nothing to do with the gate under test.
+ */
+function reachableEnvironmentId(): string
+{
+    $environments = test()->get(route('environment-keys'))->assertOk()->inertiaProps('environments');
+
+    expect($environments)->toBeArray()->not->toBeEmpty(
+        'the signed-in member reaches no environment, so this test cannot be about the step-up',
+    );
+
+    return (string) $environments[0]['id'];
+}
+
+/**
+ * Issue an environment management-plane key the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function issueEnvironmentKey(string $environmentId, array $changes = []): TestResponse
+{
+    return test()->from(route('environment-keys'))->post(route('environment-keys.store'), [
+        'environment' => $environmentId,
+        'name' => 'Provisioner',
+        'scopes' => ['users:read'],
+        ...$changes,
+    ]);
+}
+
+/**
+ * Create a SIEM export stream the way the form does.
+ *
+ * `secret` is EMPTY by default, which on the HMAC scheme is what asks for a generated
+ * signing key — the path the form advertises and the one worth exercising.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function createLogStream(array $changes = [], string $plane = 'audit-streams'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'Acme Splunk',
+        'destination' => 'generic_json',
+        'endpointUrl' => 'https://siem.acme.example/collector',
+        'scheme' => 'none',
+        'secret' => '',
+        ...$changes,
+    ]);
+}
+
+/**
+ * Register an outbound SCIM connection the way the form does.
+ *
+ * `tokenUrl`/`clientId`/`scope` are EMPTY by default rather than plausible: they belong to
+ * one auth scheme, and a helper that supplied them would make "a bearer target writes no
+ * auth config" an assertion about the helper.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function registerOutboundSync(array $changes = [], string $plane = 'provisioning'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'Downstream',
+        'baseUrl' => 'https://scim.example.test/v2',
+        'scheme' => 'bearer',
+        'secret' => 'tok_123',
+        'environmentWide' => false,
+        'tokenUrl' => '',
+        'clientId' => '',
+        'scope' => '',
+        ...$changes,
+    ]);
+}
+
+/**
+ * Seal a downstream credential the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function storeVaultSecret(array $changes = [], string $plane = 'vault'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'openai',
+        'provider' => 'openai',
+        'secret' => 'sk-live-x',
+        ...$changes,
+    ]);
+}
+
+/**
+ * Define a role-conflict rule the way the form does.
+ *
+ * `roles` has no default: a rule is ABOUT the roles it names, so a helper that supplied a
+ * pair would make every test here a test of the helper's pair.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function defineRoleConflict(array $changes = [], string $plane = 'sod-policies'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'PO vs pay',
+        'description' => '',
+        'roles' => [],
+        'environmentWide' => false,
+        ...$changes,
+    ]);
+}
+
+/**
+ * Open an access review the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function openAccessReview(array $changes = [], string $plane = 'governance'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'Q3 review',
+        ...$changes,
+    ]);
+}
+
+/** Certify or revoke one item on a review, the way the row's two buttons do. */
+function decideAccessItem(string $campaignId, string $itemId, string $decision, string $plane = 'governance'): TestResponse
+{
+    return test()->from(route($plane.'.show', $campaignId))
+        ->post(route($plane.'.item', ['campaign' => $campaignId, 'item' => $itemId]), [
+            'decision' => $decision,
+        ]);
+}
+
+/**
+ * Register an inline hook the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function registerHook(array $changes = [], string $plane = 'hooks'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'point' => 'token_minting',
+        'url' => 'https://hooks.example.test/token',
+        'environmentWide' => false,
+        ...$changes,
+    ]);
+}
+
+/**
+ * Author a manual permission the way the form does.
+ *
+ * `tenantAssignable` defaults TRUE because that is what the form ticks — the shared tier's
+ * whole reason for the checkbox is that a key is offered to tenants unless somebody says
+ * otherwise, and a helper defaulting it false would make every test about the exception.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function createPermission(array $changes = [], string $plane = 'permissions'): TestResponse
+{
+    return test()->from(route($plane))->post(route($plane.'.store'), [
+        'name' => 'invoices:create',
+        'description' => '',
+        'tenantAssignable' => true,
+        ...$changes,
+    ]);
+}
+
+/**
+ * Define a role the way the form does.
+ *
+ * `permissions` is EMPTY by default rather than plausible: composing a role from the
+ * declared catalogue is a separate act with its own gate — `tenant_assignable` — and a
+ * helper that quietly ticked a key would put it on every role a test creates, so
+ * "this role holds nothing it was not given" would be an assertion about the helper.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function defineRole(array $changes = [], string $plane = 'roles'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'Manager',
+        'description' => '',
+        'app' => '',
+        'environmentWide' => false,
+        'permissions' => [],
+        ...$changes,
+    ]);
+}
+
+/**
+ * Grant or revoke one permission on a role, the way both the detail page's checkbox and
+ * the list's picker do.
+ */
+function setRolePermission(string $roleId, string $permissionId, bool $granted, string $plane = 'roles'): TestResponse
+{
+    return test()->from(route($plane.'.show', $roleId))->post(route($plane.'.permissions', $roleId), [
+        'permission' => $permissionId,
+        'granted' => $granted,
+    ]);
+}
+
+/**
+ * Create an SSO connection the way the form does: the whole config, not one field.
+ *
+ * Which fields are required follows from the PROTOCOL — a SAML connection needs an entity
+ * id, a sign-on URL and a certificate; an OIDC one needs an issuer, a client id, a secret
+ * and a key — so a helper that carried only what a test changed would be submitting a form
+ * this console cannot produce.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function createConnection(array $changes = [], string $plane = 'connections'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'name' => 'Corporate SAML',
+        'type' => 'saml',
+        'environmentWide' => false,
+        'idp_entity_id' => 'https://idp.corp/metadata',
+        'idp_sso_url' => 'https://idp.corp/sso',
+        'idp_x509cert' => '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----',
+        'sp_entity_id' => 'https://sp.acme/metadata',
+        'sp_acs_url' => 'https://sp.acme/acs',
+        ...$changes,
+    ]);
+}
+
+/**
+ * Register a SCIM directory the way the form does.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function registerDirectory(array $changes = [], string $plane = 'directories'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.store'), [
+        'provider' => 'scim',
+        'name' => 'HR directory',
+        ...$changes,
+    ]);
+}
+
+/**
+ * Connect an API-pull directory — the other half of the same page.
+ *
+ * A SEPARATE ENDPOINT from the one above, because they are separate acts: registering
+ * MINTS a token this platform hands over, connecting SEALS credentials it will then use.
+ * One button chooses between them from the provider, and the tests follow the same seam.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function connectDirectory(array $changes = [], string $plane = 'directories'): TestResponse
+{
+    return test()->from(route($plane.'.create'))->post(route($plane.'.connect'), [
+        'provider' => 'google_workspace',
+        'googleServiceAccountJson' => '',
+        'googleAdminEmail' => '',
+        'entraTenantId' => '',
+        'entraClientId' => '',
+        'entraClientSecret' => '',
+        ...$changes,
+    ]);
+}
 
 /** A valid PAM justification for the impersonation start POST. */
 const IMPERSONATION_REASON = 'Investigating support ticket #4271';
@@ -580,6 +1631,12 @@ function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = Membership
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS. `CurrentUser` is resolved state for
+    // code already inside the process, which is all a Livewire component ever needed; a
+    // ported page is reached by a REQUEST, and without this every one of them answers a
+    // redirect to /login — which an assertion about a WRITE not happening passes.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $org->id;
 }
 
@@ -631,6 +1688,16 @@ function fakePasskeys(?string $authenticateAs): void
  */
 function actAsEnvironmentAdminOfATenant(): string
 {
+    /*
+     * MULTI-TENANT, said out loud. The environment console lives under `/admin`, which is
+     * gated on a member administering one of their organization's environments — and a
+     * single-tenant install has one environment that belongs to nobody, so the whole prefix
+     * 404s on that shape ({@see \App\Http\Middleware\RequireMultiTenant}). It did not
+     * matter while these pages were driven at the component; every one of them is a request
+     * now, and without this each answers 404 rather than the page under test.
+     */
+    multiTenantDeployment();
+
     $tenant = provisionAccount();
 
     serveOnTestHost($tenant['environment']);
@@ -792,93 +1859,6 @@ function confirmConsoleStepUp(): void
     app(ConsoleScope::class)->plane() === ConsolePlane::Environment
         ? app(EnvironmentSudo::class)->confirm()
         : app(Sudo::class)->confirm();
-}
-
-/**
- * Drive a component action through the REAL Livewire update endpoint.
- *
- * WHY THIS EXISTS. `Volt::test()` and `Livewire::test()` invoke the component directly:
- * they never route, and {@see PersistentMiddleware}
- * short-circuits for anything that is not the update endpoint, so NO route middleware runs
- * — persistent or otherwise. Every write test against a `sudo`-gated page was therefore
- * passing with the gate removed, and the suite could not tell. Nothing in this repository
- * had ever POSTed to the endpoint, so there was no path that ran the middleware at all.
- *
- * @param  list<mixed>  $params
- * @param  array<string, mixed>  $updates  form state to send with the call, as `wire:model`
- *                                         does — the properties a person would have typed
- *                                         before pressing the button
- */
-function livewireUpdate(string $pageUrl, string $component, string $method, array $params = [], array $updates = []): TestResponse
-{
-    $page = test()->get($pageUrl);
-    $page->assertSuccessful();
-
-    return replaySnapshot($pageUrl, snapshotFor((string) $page->getContent(), $component), $method, $params, $updates);
-}
-
-/**
- * The wire:snapshot of ONE named component, exactly as rendered.
- *
- * Lifted verbatim rather than rebuilt: it carries the HMAC checksum Livewire verifies
- * before it will hydrate anything, and a re-encoded copy of the decoded array does not
- * survive that check. Reading the string out of the DOM is also what a browser does.
- *
- * By name, because a console page renders several components — the organization switcher
- * and the rail among them — and the first is never the one under test.
- */
-function snapshotFor(string $html, string $component): string
-{
-    preg_match_all('/wire:snapshot="([^"]*)"/', $html, $matches);
-
-    $snapshot = null;
-
-    foreach ($matches[1] as $encoded) {
-        $candidate = html_entity_decode($encoded, ENT_QUOTES);
-        $decoded = json_decode($candidate, true);
-
-        if (is_array($decoded) && (($decoded['memo']['name'] ?? null) === $component)) {
-            $snapshot = $candidate;
-        }
-    }
-
-    PHPUnit::assertNotNull($snapshot, "No `{$component}` component was rendered on that page.");
-
-    return (string) $snapshot;
-}
-
-/**
- * POST a captured snapshot back, as the browser holding it would.
- *
- * Separate from {@see livewireUpdate()} so a test can capture a snapshot in one state and
- * replay it in another — which is the shape of the threat the persistent-middleware list
- * exists for: a page rendered while a step-up window was open must not go on acting once
- * it has closed.
- *
- * `$updates` is how a CREATE page is driven: its action mints nothing until the form is
- * filled, so a test that sends no properties proves only that validation runs. Livewire
- * applies these before the call, exactly as the browser sends `wire:model` state.
- *
- * @param  list<mixed>  $params
- * @param  array<string, mixed>  $updates
- */
-function replaySnapshot(string $pageUrl, string $snapshot, string $method, array $params = [], array $updates = []): TestResponse
-{
-    // Same ORIGIN as the page. The endpoint's PATH is Livewire's to choose — it is
-    // anonymised per application key, so a hardcoded `/livewire/update` simply 404s.
-    $origin = (string) preg_replace('#^(https?://[^/]+).*$#', '$1', $pageUrl);
-
-    return test()->withHeaders(['X-Livewire' => ''])->postJson(
-        $origin.app(HandleRequests::class)->getUpdateUri(),
-        [
-            '_token' => csrf_token(),
-            'components' => [[
-                'snapshot' => $snapshot,
-                'updates' => $updates === [] ? (object) [] : $updates,
-                'calls' => [['path' => '', 'method' => $method, 'params' => $params]],
-            ]],
-        ],
-    );
 }
 
 /**

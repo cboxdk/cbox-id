@@ -15,6 +15,7 @@ use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
+use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
@@ -55,33 +56,40 @@ beforeEach(function (): void {
 });
 
 /**
- * The vault, which had the gate but no test that ran it.
+ * The vault, whose every route is behind the step-up — reads included.
  *
- * The snapshot is captured WITH the window open and replayed after it closes, which is
- * both the only way to reach the page (its route middleware gates the GET too) and the
- * precise threat the persistent-middleware list exists for: a retained snapshot must not
- * keep working once the confirmation lapses, or the step-up is a one-time formality for
- * the life of the session.
+ * The Livewire version of this had to capture a component snapshot with the window open
+ * and replay it after the window closed, because the write was a POST to `/livewire/update`
+ * with no route of its own: the threat was a retained snapshot outliving the confirmation.
+ * Each write has its own route now, so the threat is the ordinary one — a request arriving
+ * after the window lapses — and so is the test.
+ *
+ * READS TOO, which is the half a write-only gate would miss. The list names the downstream
+ * providers this organization integrates with and the detail page names the clients
+ * authorized to lease each credential; both are worth a fresh password on their own, and
+ * gating only the writes would leave the inventory open to a borrowed session.
  */
-it('refuses a vault write on a snapshot whose step-up window has closed', function (): void {
+it('refuses every vault route once the step-up window has closed', function (): void {
     $secret = app(SecretVault::class)->store('K', 'stripe', 'sk_x');
-    $url = route('environment.vault.show', ['secret' => $secret->id]);
 
     app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
+    $this->get(route('environment.vault.show', $secret->id))->assertSuccessful();
 
-    // The window closes — the administrator walks away, the 15 minutes lapse — while the
-    // page, and the snapshot embedded in it, are still sitting in the browser.
+    // The window closes — the administrator walks away, the fifteen minutes lapse.
     app(EnvironmentSudo::class)->forget();
 
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.vault.show');
-
-    replaySnapshot($url, $snapshot, 'revoke')
-        ->assertForbidden()
-        ->assertJsonPath('sudo', route('environment.sudo'));
+    $this->get(route('environment.vault'))->assertRedirect(route('environment.sudo'));
+    $this->get(route('environment.vault.show', $secret->id))->assertRedirect(route('environment.sudo'));
+    $this->post(route('environment.vault.revoke', $secret->id))->assertRedirect(route('environment.sudo'));
+    $this->post(route('environment.vault.rotate', $secret->id), ['secret' => 'sk_new'])
+        ->assertRedirect(route('environment.sudo'));
+    $this->post(route('environment.vault.grants.store', $secret->id), ['client' => 'agent-1'])
+        ->assertRedirect(route('environment.sudo'));
 
     expect(VaultSecret::query()->whereKey($secret->id)->value('revoked_at'))
-        ->toBeNull('a replayed snapshot revoked a secret with no live step-up');
+        ->toBeNull('a vault write went through with no live step-up')
+        ->and(VaultGrant::query()->where('secret_id', $secret->id)->exists())
+        ->toBeFalse('a client was authorized to lease a secret with no live step-up');
 })->group('security');
 
 it('allows a vault write while the step-up window is open', function (): void {
@@ -89,11 +97,8 @@ it('allows a vault write while the step-up window is open', function (): void {
 
     app(EnvironmentSudo::class)->confirm();
 
-    livewireUpdate(
-        route('environment.vault.show', ['secret' => $secret->id]),
-        'console.vault.show',
-        'revoke',
-    )->assertSuccessful();
+    $this->post(route('environment.vault.revoke', $secret->id))
+        ->assertRedirect(route('environment.vault'));
 
     expect(VaultSecret::query()->whereKey($secret->id)->value('revoked_at'))->not->toBeNull();
 })->group('security');
@@ -119,16 +124,18 @@ it('refuses to rotate an app secret with no step-up, and rotates with one', func
     $before = Client::query()->whereKey($client->id)->value('secret_hash');
 
     // Refused: sent to the step-up rather than answered with a credential.
-    livewireUpdate($url, 'console.clients.show', 'rotateSecret')
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
+    test()->from($url)
+        ->post(route('environment.clients.rotate', ['client' => $client->id]))
+        ->assertRedirect(route('environment.sudo'));
 
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))
         ->toBe($before, 'an app secret was rotated with no step-up');
 
     app(EnvironmentSudo::class)->confirm();
 
-    livewireUpdate($url, 'console.clients.show', 'rotateSecret')->assertSuccessful();
+    test()->from($url)
+        ->post(route('environment.clients.rotate', ['client' => $client->id]))
+        ->assertRedirect($url);
 
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))->not->toBe($before);
 })->group('security');
@@ -141,16 +148,18 @@ it('refuses to rotate a SCIM bearer token with no step-up, and rotates with one'
     $url = route('environment.directories.show', ['directory' => $directory->id]);
     $before = $directory->bearer_token_hash;
 
-    livewireUpdate($url, 'console.directories.show', 'regenerateToken')
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
+    test()->from($url)
+        ->post(route('environment.directories.rotate', ['directory' => $directory->id]))
+        ->assertRedirect(route('environment.sudo'));
 
     expect($directory->fresh()?->bearer_token_hash)
         ->toBe($before, 'a live SCIM bearer token was minted with no step-up');
 
     app(EnvironmentSudo::class)->confirm();
 
-    livewireUpdate($url, 'console.directories.show', 'regenerateToken')->assertSuccessful();
+    test()->from($url)
+        ->post(route('environment.directories.rotate', ['directory' => $directory->id]))
+        ->assertRedirect($url);
 
     expect($directory->fresh()?->bearer_token_hash)->not->toBe($before);
 })->group('security');
@@ -204,27 +213,26 @@ it('refuses to register an app with no step-up, and registers with one', functio
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-newapp'));
     session()->put(ConsoleScope::SELECTION_KEY, $org->id);
 
-    $url = route('environment.clients.create');
+    /*
+     * THE WRITE, ASKED DIRECTLY. The create page asks for the step-up at the door too, but
+     * that half is a courtesy to the person; the half that ENFORCES is the one in front of
+     * the write, and it is the only one a crafted POST ever meets.
+     */
     $form = [
         'name' => 'Support Portal',
         'redirectUris' => 'https://portal.tenant.example/callback',
     ];
 
-    app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.clients.create');
     app(EnvironmentSudo::class)->forget();
 
-    replaySnapshot($url, $snapshot, 'create', [], $form)
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
+    registerApp($form, 'environment.clients')->assertRedirect(route('environment.sudo'));
 
     expect(Client::query()->where('name', 'Support Portal')->exists())
         ->toBeFalse('an app secret was minted with no step-up, by registering the app instead of rotating it');
 
     app(EnvironmentSudo::class)->confirm();
 
-    replaySnapshot($url, $snapshot, 'create', [], $form)->assertSuccessful();
+    registerApp($form, 'environment.clients')->assertSessionHasNoErrors();
 
     expect(Client::query()->where('name', 'Support Portal')->exists())->toBeTrue();
 })->group('security');
@@ -234,24 +242,17 @@ it('refuses to register a SCIM directory with no step-up, and registers with one
     grantFeature($org->id, 'scim');
     session()->put(ConsoleScope::SELECTION_KEY, $org->id);
 
-    $url = route('environment.directories.create');
-    $form = ['provider' => 'scim', 'name' => 'Okta'];
-
-    app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.directories.create');
     app(EnvironmentSudo::class)->forget();
 
-    replaySnapshot($url, $snapshot, 'register', [], $form)
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
+    registerDirectory(['name' => 'Okta'], 'environment.directories')
+        ->assertRedirect(route('environment.sudo'));
 
     expect(Directory::query()->where('name', 'Okta')->exists())
         ->toBeFalse('a SCIM bearer token was minted with no step-up');
 
     app(EnvironmentSudo::class)->confirm();
 
-    replaySnapshot($url, $snapshot, 'register', [], $form)->assertSuccessful();
+    registerDirectory(['name' => 'Okta'], 'environment.directories')->assertSessionHasNoErrors();
 
     expect(Directory::query()->where('name', 'Okta')->exists())->toBeTrue();
 })->group('security');
@@ -289,65 +290,57 @@ it('refuses to register an inline hook with no step-up, and registers with one',
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-inline'));
     session()->put(ConsoleScope::SELECTION_KEY, $org->id);
 
-    $url = route('environment.hooks.create');
-    $form = [
-        'hook' => 'token_minting',
-        'url' => 'https://inline.example.test/hook',
-    ];
+    $url = 'https://inline.example.test/hook';
 
-    app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.hooks.create');
-    app(EnvironmentSudo::class)->forget();
+    /*
+     * POSTED DIRECTLY, without visiting the form first. That is the attack this gate exists
+     * to refuse: the create PAGE asks for the step-up at the door, and a gate that only
+     * lived there would be satisfied by never opening the door.
+     *
+     * The Livewire version of this had to replay a component snapshot to reach the action
+     * at all — the write was a POST to `/livewire/update` with no route of its own. It has
+     * one now, so the attack is the ordinary one and so is the assertion.
+     */
+    registerHook(['url' => $url], 'environment.hooks')->assertRedirect(route('environment.sudo'));
 
-    replaySnapshot($url, $snapshot, 'register', [], $form)
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('environment.sudo'));
-
-    expect(ExternalActionEndpoint::query()->where('url', $form['url'])->exists())
+    expect(ExternalActionEndpoint::query()->where('url', $url)->exists())
         ->toBeFalse('an endpoint was planted inside the sign-in path with no step-up');
 
     app(EnvironmentSudo::class)->confirm();
 
-    replaySnapshot($url, $snapshot, 'register', [], $form)->assertSuccessful();
+    registerHook(['url' => $url], 'environment.hooks')->assertSessionHasNoErrors();
 
-    expect(ExternalActionEndpoint::query()->where('url', $form['url'])->exists())->toBeTrue();
+    expect(ExternalActionEndpoint::query()->where('url', $url)->exists())->toBeTrue();
 })->group('security');
 
 /**
- * The log-stream create page, which is gated on the ROUTE rather than in the component.
+ * The log-stream create page, gated on the ROUTE rather than inside the page.
  *
- * It is the environment plane's own page rather than one of the merged pair-per-plane
- * components, so `env.sudo` names the plane outright instead of asking ConsoleStepUp to
- * infer it — and the refusal therefore looks like the vault's: a 403 carrying where to
- * step up, not a redirect effect. Same property, different messenger.
+ * The Livewire version had to capture a snapshot with the window open and replay it after
+ * the window closed, because the write was a POST to `/livewire/update`. The write has its
+ * own route now, so the attack is the plain one — post the form without ever opening the
+ * page — and the assertion is the plain one too.
+ *
+ * BOTH THE FORM AND THE SUBMIT. Gating only the GET would be satisfied by never opening
+ * the door, and gating only the POST would show somebody a form they cannot submit.
  */
 it('refuses to register a log stream with no step-up, and registers with one', function (): void {
     config(['siem.http.verify_url' => false]);
 
-    $url = route('environment.audit-streams.create');
-    $form = [
-        'name' => 'SIEM',
-        'destination' => 'generic_json',
-        'endpointUrl' => 'https://siem.example.test/ingest',
-        'auth' => 'hmac',
-    ];
+    createLogStream(['name' => 'SIEM', 'scheme' => 'hmac'], 'environment.audit-streams')
+        ->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.audit-streams.create');
-    app(EnvironmentSudo::class)->forget();
-
-    replaySnapshot($url, $snapshot, 'create', [], $form)
-        ->assertForbidden()
-        ->assertJsonPath('sudo', route('environment.sudo'));
+    $this->get(route('environment.audit-streams.create'))->assertRedirect(route('environment.sudo'));
 
     expect(LogStream::query()->where('name', 'SIEM')->exists())
         ->toBeFalse('a log-stream signing key was minted with no step-up');
 
     app(EnvironmentSudo::class)->confirm();
 
-    replaySnapshot($url, $snapshot, 'create', [], $form)->assertSuccessful();
+    $this->get(route('environment.audit-streams.create'))->assertSuccessful();
+
+    createLogStream(['name' => 'SIEM', 'scheme' => 'hmac'], 'environment.audit-streams')
+        ->assertSessionHasNoErrors();
 
     expect(LogStream::query()->where('name', 'SIEM')->exists())->toBeTrue();
 })->group('security');
@@ -364,19 +357,14 @@ it('tells the administrator why the step-up appeared', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-why'));
     session()->put(ConsoleScope::SELECTION_KEY, $org->id);
 
-    $url = route('environment.clients.create');
-
-    app(EnvironmentSudo::class)->confirm();
-    $page = $this->get($url)->assertSuccessful();
-    $snapshot = snapshotFor((string) $page->getContent(), 'console.clients.create');
     app(EnvironmentSudo::class)->forget();
 
     // A form that would otherwise have succeeded: the step-up is asked LAST, after every
     // refusal, so a half-filled one is answered with validation errors and never reaches it.
-    replaySnapshot($url, $snapshot, 'create', [], [
+    registerApp([
         'name' => 'Support Portal',
         'redirectUris' => 'https://portal.tenant.example/callback',
-    ])->assertSuccessful();
+    ], 'environment.clients')->assertRedirect(route('environment.sudo'));
 
     // The REASON prop, not the rendered sentence. The step-up page draws it in the
     // browser, and the fallback wording ("This is a protected action.") belongs to the

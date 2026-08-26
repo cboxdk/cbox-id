@@ -11,10 +11,14 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.tsx',
-                // TRANSITIONAL. The Volt layouts still @vite this one, and they still
-                // serve most of the console until the last page is ported. It goes when
-                // they do — see the Livewire removal phase; nothing in app.tsx imports it.
-                'resources/js/app.js',
+                /*
+                 * The error pages' own entry. They are Blade rather than React, and
+                 * deliberately: an error page has to render when the application is broken,
+                 * which is exactly when booting a router and hydrating a page component is
+                 * least likely to work. Two controls, forty lines, and nothing in app.tsx
+                 * imports it.
+                 */
+                'resources/js/errors.ts',
             ],
             refresh: [
                 // The Inertia root view and the few blade surfaces that survive it

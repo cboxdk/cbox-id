@@ -37,9 +37,18 @@ it('offers a return link for a return_to that matches a registered redirect host
         new NewClient('Acme App', redirectUris: ['https://app.acme.com/callback'], organizationId: $orgId)
     );
 
-    $this->get('/account?return_to='.urlencode('https://app.acme.com/dashboard'))
+    // Asked of the PROP the link is drawn from: the server decides both whether there is a
+    // return at all and what host it names, and that decision is the whole security
+    // property here — a page-text match would also pass on a link the server refused and
+    // the bundle happened to render from the query string.
+    $returnTo = $this->get('/account?return_to='.urlencode('https://app.acme.com/dashboard'))
         ->assertOk()
-        ->assertSee('Return to app.acme.com');
+        ->inertiaProps('returnTo');
+
+    expect($returnTo)->toBe([
+        'url' => 'https://app.acme.com/dashboard',
+        'host' => 'app.acme.com',
+    ]);
 });
 
 it('refuses a well-formed https return_to to an UNREGISTERED host (open-redirect fix)', function (): void {
@@ -48,17 +57,20 @@ it('refuses a well-formed https return_to to an UNREGISTERED host (open-redirect
     // A perfectly valid https URL — but no client in this environment redirects to
     // evil.example.com, so it must NOT be offered as a "return" link (the phishing
     // pivot the host allowlist closes).
-    $this->get('/account?return_to='.urlencode('https://evil.example.com/phish'))
+    expect($this->get('/account?return_to='.urlencode('https://evil.example.com/phish'))
         ->assertOk()
-        ->assertDontSee('Return to', false);
+        ->inertiaProps('returnTo'))->toBeNull();
 });
 
 it('never renders a return link for a malformed/unsafe return_to', function (string $unsafe): void {
     signInUserHttp();
 
-    $this->get('/account?return_to='.urlencode($unsafe))
+    // NULL, not merely absent from the document. The page draws the link from this prop and
+    // from nothing else, so a null here is the refusal — and a text match would also pass
+    // on a page that rendered the link somewhere this assertion did not look.
+    expect($this->get('/account?return_to='.urlencode($unsafe))
         ->assertOk()
-        ->assertDontSee('Return to', false);
+        ->inertiaProps('returnTo'))->toBeNull();
 })->with([
     'javascript:alert(1)',
     'data:text/html,evil',

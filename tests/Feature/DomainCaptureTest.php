@@ -9,7 +9,6 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 uses(InteractsWithFederation::class);
 
@@ -22,12 +21,7 @@ it('refuses a password signup for a captured domain and redirects to SSO', funct
     $domain = $this->makeVerifiedDomain($org->id, 'acme.com');
     app(DomainVerification::class)->setCapture($domain->id, true);
 
-    Volt::test('auth.signup')
-        ->set('organization', 'New Co')
-        ->set('name', 'Jane')
-        ->set('email', 'jane@acme.com')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('register')
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'New Co', 'name' => 'Jane', 'email' => 'jane@acme.com', 'password' => 'a-strong-unbreached-passphrase'])
         ->assertRedirect(url('/sso/oidc/'.$connection->id.'/redirect'));
 
     // No local account was minted — the capture gate bit before creation.
@@ -40,12 +34,7 @@ it('allows a password signup for a verified but non-captured domain', function (
     $this->makeConnection($org->id, ConnectionType::Oidc, 'Acme IdP', active: true);
     $this->makeVerifiedDomain($org->id, 'acme.com');
 
-    Volt::test('auth.signup')
-        ->set('organization', 'New Co')
-        ->set('name', 'Jane')
-        ->set('email', 'jane@acme.com')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('register')
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'New Co', 'name' => 'Jane', 'email' => 'jane@acme.com', 'password' => 'a-strong-unbreached-passphrase'])
         ->assertRedirect(route('dashboard'));
 
     expect(app(Subjects::class)->findByEmail('jane@acme.com'))->not->toBeNull();

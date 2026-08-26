@@ -6,15 +6,16 @@ use App\Mail\InvitationMail;
 use App\Mail\MagicLinkMail;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
 
 it('emails a single-use magic link', function () {
     Mail::fake();
 
-    Volt::test('auth.login')
-        ->set('email', 'someone@acme.test')
-        ->call('sendMagicLink')
-        ->assertSet('magicSent', true);
+    test()->from(route('login'))->post(route('login.magic-link'), ['email' => 'someone@acme.test'])
+        // THE SAME NEUTRAL CONFIRMATION either way — the flash names the address it was
+        // sent to, and its presence is the confirmation. A refusal here would report
+        // whether the address is registered to anybody who asked.
+        ->assertRedirect(route('login'))
+        ->assertSessionHasNoErrors();
 
     Mail::assertSent(MagicLinkMail::class, fn (MagicLinkMail $mail) => $mail->hasTo('someone@acme.test'));
 });
@@ -23,11 +24,7 @@ it('emails an invitation when an admin invites a member', function () {
     Mail::fake();
     actingAsRole(MembershipRole::Owner);
 
-    Volt::test('members')
-        ->set('inviteEmail', 'invitee@acme.test')
-        ->set('inviteRole', 'member')
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteToDirectory(['email' => 'invitee@acme.test'])->assertSessionHasNoErrors();
 
     Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('invitee@acme.test'));
 });

@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Mail\MagicLinkMail;
 use App\Mail\OrganizationInviteMail;
-use App\Mail\PasswordResetMail;
 use App\Platform\MailLinks;
 use App\Platform\TrustedHosts;
 use Cbox\Id\Organization\Contracts\Invitations;
@@ -19,7 +17,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -90,46 +87,58 @@ it('is genuinely poisonable — route() follows the Host header', function (): v
     expect(route('password.request'))->toContain('evil.example');
 });
 
-it('never mails a reset link on a Host this deployment does not serve', function (): void {
+it('refuses a poisoned Host outright, so no reset link is ever minted on it', function (): void {
     $account = accountPlaneMember();
     Mail::fake();
+
+    /*
+     * THE OUTER DEFENCE, asserted where it actually sits.
+     *
+     * This used to poison the URL generator in-process and then invoke the component
+     * directly, because a Livewire action never travelled over a Host at all. Sent as a
+     * real request, the poisoned Host is refused by host resolution before any controller
+     * runs — so the interesting fact is not that the minted link is clean, it is that
+     * nothing was minted. Asserting the mail's contents here would have been asserting
+     * against a mail that is never sent, which passes for the wrong reason.
+     */
+    test()->withServerVariables(['HTTP_HOST' => 'evil.example'])
+        ->post('/forgot-password', ['email' => $account->owner->email])
+        ->assertNotFound();
+
+    Mail::assertNothingSent();
+});
+
+it('refuses a poisoned Host outright, so no magic link is ever minted on it', function (): void {
+    $account = accountPlaneMember();
+    Mail::fake();
+
+    // The worse half of the pair: a magic link carries a BEARER token in its path, so a
+    // poisoned origin needs no replay trick — one click hands the token over.
+    test()->withServerVariables(['HTTP_HOST' => 'evil.example'])
+        ->post('/login/magic-link', ['email' => $account->owner->email])
+        ->assertNotFound();
+
+    Mail::assertNothingSent();
+});
+
+it('mints on the deployment host when the request host resolves to nothing', function (): void {
+    // THE INNER HALF, at the seam that does the work.
+    //
+    // Asserted here rather than end-to-end, because the outer refusal above means an
+    // unresolvable host never reaches a controller at all — so an end-to-end version
+    // would be asserting about a mail that is never sent, and would pass with this
+    // fallback deleted. The two tests below hold the other direction: a host this
+    // deployment DOES serve keeps minting its own links.
+    multiTenantDeployment('cboxid.com');
+    platformRootEnvironment();
 
     poisonRequestHost('http://evil.example/forgot-password');
 
-    Volt::test('auth.forgot-password')
-        ->set('email', $account->owner->email)
-        ->call('sendResetLink')
-        ->assertHasNoErrors();
-
-    Mail::assertSent(PasswordResetMail::class, function (PasswordResetMail $mail): bool {
-        expect($mail->url)
-            ->not->toContain('evil.example')
-            ->and($mail->url)->toStartWith((string) config('app.url'));
-
-        return true;
-    });
-});
-
-it('never mails a magic link on a Host this deployment does not serve', function (): void {
-    $account = accountPlaneMember();
-    Mail::fake();
-
-    poisonRequestHost('http://evil.example/login');
-
-    Volt::test('auth.login')
-        ->set('email', $account->owner->email)
-        ->call('sendMagicLink')
-        ->assertHasNoErrors();
-
-    // The magic link is the worse half of the pair: it carries a BEARER token in the
-    // path, so a poisoned origin needs no replay trick — one click hands the token over.
-    Mail::assertSent(MagicLinkMail::class, function (MagicLinkMail $mail): bool {
-        expect($mail->url)
-            ->not->toContain('evil.example')
-            ->and($mail->url)->toStartWith((string) config('app.url'));
-
-        return true;
-    });
+    expect(route('password.request'))->toContain('evil.example')
+        ->and(app(MailLinks::class)->route('password.request'))
+        ->not->toContain('evil.example')
+        ->and(app(MailLinks::class)->route('password.request'))
+        ->toStartWith((string) config('app.url'));
 });
 
 it('refuses a signed invitation link replayed with a foreign Host', function (): void {

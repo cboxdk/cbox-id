@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\InvitationRoleGrant;
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
@@ -16,10 +17,10 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -35,6 +36,10 @@ function sodEnforcementOrg(): array
     app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($admin->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($admin, $session, $org, MembershipRole::Owner);
+
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN — the conflict-rules
+    // pages are requests now, and without this each one answers a redirect to /login.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
     return [$org->id, $member->id];
 }
@@ -63,9 +68,10 @@ it('refuses a role grant that would complete a toxic combination, and names both
     app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs payment', [$createPo->id, $approvePay->id]);
     app(Roles::class)->assign($orgId, $memberId, $createPo->id);
 
-    Volt::test('members')
-        ->call('toggleRole', $memberId, $approvePay->id)
-        ->assertDispatched('toast', message: 'Blocked by "PO vs payment": "Approve payment" cannot be held together with "Create purchase order".', severity: 'error');
+    // THE REFUSAL NAMES BOTH ROLES AND THE POLICY. "Blocked by a policy" tells the admin
+    // nothing they can act on; this tells them which pair is forbidden and by what.
+    setDirectoryAccessRole($memberId, $approvePay->id, true)
+        ->assertSessionHasErrors(['role' => 'Blocked by "PO vs payment": "Approve payment" cannot be held together with "Create purchase order".']);
 
     expect(RoleAssignment::query()->where('user_id', $memberId)->where('role_id', $approvePay->id)->exists())->toBeFalse();
 });
@@ -76,7 +82,7 @@ it('still allows a grant with no conflict', function (): void {
 
     app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs payment', [$createPo->id, $approvePay->id]);
 
-    Volt::test('members')->call('toggleRole', $memberId, $approvePay->id);
+    setDirectoryAccessRole($memberId, $approvePay->id, true)->assertSessionHasNoErrors();
 
     expect(RoleAssignment::query()->where('user_id', $memberId)->where('role_id', $approvePay->id)->exists())->toBeTrue();
 });
@@ -89,7 +95,7 @@ it('still allows REVOKING a role even where a policy applies', function (): void
     app(Roles::class)->assign($orgId, $memberId, $createPo->id);
 
     // Taking a role AWAY can never complete a forbidden combination.
-    Volt::test('members')->call('toggleRole', $memberId, $createPo->id);
+    setDirectoryAccessRole($memberId, $createPo->id, false)->assertSessionHasNoErrors();
 
     expect(RoleAssignment::query()->where('user_id', $memberId)->where('role_id', $createPo->id)->exists())->toBeFalse();
 });
@@ -101,7 +107,7 @@ it('enforces an ENVIRONMENT-WIDE policy on a grant too', function (): void {
     app(SegregationOfDuties::class)->definePolicy(null, 'Env-wide PO vs payment', [$createPo->id, $approvePay->id]);
     app(Roles::class)->assign($orgId, $memberId, $createPo->id);
 
-    Volt::test('members')->call('toggleRole', $memberId, $approvePay->id);
+    setDirectoryAccessRole($memberId, $approvePay->id, true)->assertSessionHasErrors('role');
 
     expect(RoleAssignment::query()->where('user_id', $memberId)->where('role_id', $approvePay->id)->exists())->toBeFalse();
 });
@@ -119,12 +125,8 @@ it('refuses an invitation whose chosen access roles are themselves a toxic combi
 
     app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs payment', [$createPo->id, $approvePay->id]);
 
-    Volt::test('members')
-        ->set('inviteEmail', 'newbie@acme.test')
-        ->set('inviteRole', 'member')
-        ->set('inviteAccessRoles', [$createPo->id, $approvePay->id])
-        ->call('invite')
-        ->assertHasErrors('inviteAccessRoles');
+    inviteToDirectory(['accessRoles' => [$createPo->id, $approvePay->id]])
+        ->assertSessionHasErrors('accessRoles');
 
     expect(InvitationRoleGrant::query()->where('email', 'newbie@acme.test')->exists())->toBeFalse();
     Mail::assertNothingSent();
@@ -137,12 +139,7 @@ it('accepts an invitation whose chosen access roles do not conflict', function (
 
     app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs payment', [$createPo->id, $approvePay->id]);
 
-    Volt::test('members')
-        ->set('inviteEmail', 'newbie@acme.test')
-        ->set('inviteRole', 'member')
-        ->set('inviteAccessRoles', [$createPo->id])
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteToDirectory(['accessRoles' => [$createPo->id]])->assertSessionHasNoErrors();
 
     expect(InvitationRoleGrant::query()->where('email', 'newbie@acme.test')->count())->toBe(1);
 });
@@ -191,10 +188,10 @@ it('does not let an org admin deactivate an environment-wide policy', function (
 
     $envWide = app(SegregationOfDuties::class)->definePolicy(null, 'Env-wide PO vs payment', [$createPo->id, $approvePay->id]);
 
-    // A forged Livewire call, not just a hidden button: the id resolves to nothing
-    // within the org's own scope, so it 404s (deny-by-default) instead of toggling.
-    expect(fn () => Volt::test('console.sod-policies.index')->call('toggle', $envWide->id))
-        ->toThrow(ModelNotFoundException::class);
+    // A TYPED URL, not just a hidden button: the id resolves to nothing within this
+    // organization's own write set, so it 404s (deny-by-default) instead of toggling.
+    test()->post(route('sod-policies.toggle', $envWide->id))->assertNotFound();
+    test()->delete(route('sod-policies.destroy', $envWide->id))->assertNotFound();
 
     expect(SodPolicy::query()->whereKey($envWide->id)->value('active'))->toBeTrue();
 });
@@ -205,12 +202,17 @@ it('shows an environment-wide policy as read-only rather than hiding it', functi
 
     app(SegregationOfDuties::class)->definePolicy(null, 'Env-wide PO vs payment', [$createPo->id, $approvePay->id]);
 
-    // The org must SEE what constrains it; it just cannot change it.
-    Volt::test('console.sod-policies.index')
-        ->assertSee('Env-wide PO vs payment')
-        ->assertSee('Environment-wide')
-        ->assertSee('Managed for the environment')
-        ->assertDontSee('Deactivate');
+    // The org must SEE what constrains it; it just cannot change it. Both halves are one
+    // prop — a row drawn with `mayChange` false is a row with no switch on it.
+    test()->get(route('sod-policies'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'rules',
+            fn (Collection $rules): bool => $rules
+                ->firstWhere('name', 'Env-wide PO vs payment') !== null
+                && $rules->firstWhere('name', 'Env-wide PO vs payment')['mayChange'] === false
+                && $rules->firstWhere('name', 'Env-wide PO vs payment')['owner'] === null,
+        ));
 });
 
 it('still lets an org admin toggle its own policy', function (): void {
@@ -219,7 +221,8 @@ it('still lets an org admin toggle its own policy', function (): void {
 
     $own = app(SegregationOfDuties::class)->definePolicy($orgId, 'Our PO vs payment', [$createPo->id, $approvePay->id]);
 
-    Volt::test('console.sod-policies.index')->call('toggle', $own->id);
+    test()->from(route('sod-policies'))->post(route('sod-policies.toggle', $own->id))
+        ->assertSessionHasNoErrors();
 
     expect(SodPolicy::query()->whereKey($own->id)->value('active'))->toBeFalse();
 });
@@ -241,21 +244,46 @@ it('still lets an org admin toggle its own policy', function (): void {
 it('routes every console role grant through the segregation-of-duties gate', function (): void {
     $offenders = [];
 
-    $views = array_merge(
-        glob(resource_path('views/livewire/*.blade.php')) ?: [],
-        glob(resource_path('views/livewire/*/*.blade.php')) ?: [],
-        glob(resource_path('views/livewire/*/*/*.blade.php')) ?: [],
+    /*
+     * THE GRANT SURFACES ARE CONTROLLERS. This swept `views/livewire/**` — where the
+     * console's logic lived — and that directory is gone, so it was reporting a clean
+     * sweep over nothing. Same rule, same question, asked of where the code went; the
+     * module controllers are included because a module ships its own grant surface and
+     * nobody enforcing this rule goes looking in one.
+     */
+    $sources = array_merge(
+        (array) glob(app_path('Http/Controllers/*.php')),
+        (array) glob(app_path('Http/Controllers/*/*.php')),
+        (array) glob(base_path('modules/*/src/Http/Controllers/*.php')),
+        (array) glob(base_path('modules/*/src/Http/Controllers/*/*.php')),
     );
 
-    foreach ($views as $file) {
+    // Guard the guard: an empty sweep is a passing sweep, and the directory has moved once
+    // already.
+    expect(count($sources))->toBeGreaterThan(40, 'the grant sweep found almost no controllers; did they move?');
+
+    foreach ($sources as $file) {
+        if (! is_string($file)) {
+            continue;
+        }
+
         $source = (string) file_get_contents($file);
 
         // The membership verb is a different thing — belonging, not an RBAC grant — and
         // has its own rules. This is about `Roles::assign()`.
         // Call-level, not file-level: a file that imports the service and still has one
-        // raw call left is exactly the half-migration this is meant to catch.
-        if (str_contains($source, '$roles->assign(')) {
-            $offenders[] = str_replace(resource_path('views/livewire/'), '', $file);
+        // raw call left is exactly the half-migration this is meant to catch. Matched on
+        // the CALL rather than on a variable name, because a controller injects the
+        // service by type and may call it anything.
+        /*
+         * `Roles::assign()` BY ITS SIGNATURE, not by the variable it is called on. A
+         * controller injects the service by type and may name it anything, and the file
+         * next door calls `$passwords->assign(new AdminPasswordAssignment(…))` — a
+         * different verb entirely, which a name-shaped match reported as a role grant.
+         * The `GrantSource` argument is what makes this call the one under the rule.
+         */
+        if (preg_match('/->assign\([^;]*GrantSource::/s', $source) === 1) {
+            $offenders[] = str_replace(base_path().'/', '', $file);
         }
     }
 

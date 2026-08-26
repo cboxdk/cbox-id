@@ -11,7 +11,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Models\PlatformOperator;
-use Livewire\Volt\Volt;
 
 uses(InteractsWithTenancy::class);
 
@@ -45,33 +44,37 @@ it('finds organizations and users across every environment, each labelled with i
 
     // A single search reaches BOTH planes (proving cross-environment reach via the
     // EnvironmentContext::withoutScope escape inside the component's with()).
-    Volt::test('platform.search')
-        ->set('term', 'acme')
-        ->assertSee('Acme Alpha')
-        ->assertSee('Acme Beta')
-        ->assertSee('alpha@acme.test')
-        ->assertSee('beta@acme.test')
-        // Each result carries its own plane label.
-        ->assertSee('Plane A')
-        ->assertSee('Plane B');
+    $results = platformSearch('acme');
+
+    $organizations = collect($results['organizations']);
+    $users = collect($results['users']);
+
+    expect($organizations->pluck('name'))->toContain('Acme Alpha')
+        ->and($organizations->pluck('name'))->toContain('Acme Beta')
+        ->and($users->pluck('email'))->toContain('alpha@acme.test')
+        ->and($users->pluck('email'))->toContain('beta@acme.test')
+        // Each result carries its OWN plane label — a cross-plane list where every row said
+        // the same plane would be the same bug as one that reached only one plane.
+        ->and($organizations->pluck('plane')->unique()->sort()->values()->all())->toBe(['Plane A', 'Plane B'])
+        ->and($users->pluck('plane')->unique()->sort()->values()->all())->toBe(['Plane A', 'Plane B']);
 });
 
 it('shows a hint instead of querying for a short term', function (): void {
     searchOperatorSignIn();
 
-    Volt::test('platform.search')
-        ->assertViewHas('ready', false)
-        ->set('term', 'a')
-        ->assertViewHas('ready', false)
-        ->set('term', 'ab')
-        ->assertViewHas('ready', true);
+    expect(platformSearch()['ready'])->toBeFalse()
+        ->and(platformSearch('a')['ready'])->toBeFalse()
+        ->and(platformSearch('ab')['ready'])->toBeTrue();
 });
 
-it('refuses a non-operator request with a 404', function (): void {
-    // Nobody with operator authority — boot()'s per-request re-check aborts every request,
-    // and it answers 404 exactly as the route gate does: a 403 from a page that only staff
-    // may see is itself the disclosure.
-    Volt::test('platform.search')->assertStatus(404);
+it('refuses a signed-in non-operator with a 404', function (): void {
+    // 404 rather than 403: a refusal from a page only staff may see is itself the
+    // disclosure. Asked of a real person who is signed in and simply does not run this
+    // deployment — an anonymous request is a different refusal, and PlatformUsageTest holds
+    // the pair.
+    actingAsRole(MembershipRole::Owner);
+
+    test()->get(route('platform.search'))->assertNotFound();
 });
 
 it('treats a literal underscore as text, not a LIKE wildcard', function (): void {
@@ -87,10 +90,10 @@ it('treats a literal underscore as text, not a LIKE wildcard', function (): void
 
     searchOperatorSignIn();
 
-    Volt::test('platform.search')
-        ->set('term', 'ab_cd')
-        ->assertSee('Underscore Target')
-        ->assertDontSee('Wildcard Trap');
+    $names = collect(platformSearch('ab_cd')['organizations'])->pluck('name');
+
+    expect($names)->toContain('Underscore Target ab_cd')
+        ->and($names)->not->toContain('Wildcard Trap abXcd');
 });
 
 it('jumps to a result in another plane by first re-pointing the console at its environment', function (): void {
@@ -124,11 +127,13 @@ it('jumps from a user result to that user\'s organization in its plane', functio
         return $org->id;
     });
 
-    // The user's result exposes its org, and the org's plane is resolved for the jump.
-    Volt::test('platform.search')
-        ->set('term', 'gamma@acme.test')
-        ->assertSee('gamma@acme.test')
-        ->assertSee('Gamma Org');
+    // The user's result exposes its org, and the row carries the JUMP for it — a user is
+    // not a page, so the row opens the organization they belong to, in that org's own plane.
+    $user = collect(platformSearch('gamma@acme.test')['users'])->firstWhere('email', 'gamma@acme.test');
+
+    expect($user)->not->toBeNull()
+        ->and(collect($user['organizations'])->pluck('name')->all())->toBe(['Gamma Org'])
+        ->and($user['href'])->toBe(route('platform.search.jump', $orgId));
 
     $this->get(route('platform.search.jump', $orgId))
         ->assertRedirect(route('platform.organization', $orgId))

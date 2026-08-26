@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -243,18 +244,69 @@ it('exempts the SAML POST bindings in both directions', function (): void {
  * report — so clicking around a console whose session had expired did nothing at all.
  * No error, no prompt, no redirect. The page had simply stopped working.
  */
-it('answers an expired Livewire request with something the browser can act on', function (): void {
-    // No session: exactly the state an idle-expired console is in on its next click.
-    // Provisioned but signed OUT — exactly the state an idle-expired console is in on
-    // its next click. Without this the first-run guard answers before auth is reached.
+/**
+ * AN EXPIRED CONSOLE HAS TO SAY SO.
+ *
+ * The bug this was written for: a Livewire fetch FOLLOWED the 302 to the sign-in page and
+ * got back a 200 carrying HTML it could not parse, so there was no error to report and no
+ * redirect to make. Clicking around a console whose session had expired did nothing at
+ * all — no prompt, no error, no clue except that the page had quietly stopped working.
+ * It reached that state because two clocks disagree: the session COOKIE outlives the
+ * platform session RECORD, so the CSRF token is still valid and there is no 419 either.
+ *
+ * Two clients ask now, and they need different answers. Both are asserted, because the
+ * seam that broke is the one where a client cannot act on what it is handed.
+ */
+it('sends an expired Inertia visit to a sign-in page it can actually render', function (): void {
+    // Provisioned but signed OUT — exactly the state an idle-expired console is in on its
+    // next click. Without this the first-run guard answers before auth is reached.
     installedDeployment();
 
-    $response = $this->withHeaders(['X-Livewire' => 'true'])->get('/settings');
+    $version = (string) app(HandleInertiaRequests::class)->version(request());
+
+    // A REAL INERTIA VISIT. The version header matters: without it the adapter answers 409
+    // for a version mismatch before the auth guard is ever consulted, and this test would
+    // pass on a response that says nothing about sessions.
+    $headers = [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => $version,
+        'X-Requested-With' => 'XMLHttpRequest',
+        'Accept' => 'text/html, application/xhtml+xml',
+    ];
+
+    $this->withHeaders($headers)->get('/settings')->assertRedirect(route('login'));
+
+    /*
+     * AND THE PAGE IT NAMES ANSWERS AS INERTIA, which is the half the old test could not
+     * express and the half that fails silently. Inertia's client follows the redirect
+     * itself; if what comes back is an ordinary HTML document it throws instead of
+     * rendering, and the console is as stuck as it was under Livewire. So the follow-up is
+     * made here rather than assumed.
+     */
+    $login = $this->withHeaders($headers)->get(route('login'));
+
+    $login->assertOk();
+
+    expect($login->headers->get('X-Inertia'))->toBe('true')
+        ->and($login->json('component'))->toBe('auth/login');
+})->group('security');
+
+/**
+ * The ceremony endpoints — passkey enrolment, the frontend API — are plain fetches, and a
+ * fetch cannot follow a redirect into a sign-in FORM. They are told where to go instead.
+ */
+it('answers an expired fetch with a status and a destination', function (): void {
+    installedDeployment();
+
+    $response = $this->withHeaders([
+        'Accept' => 'application/json',
+        'X-Requested-With' => 'XMLHttpRequest',
+    ])->get('/settings');
 
     expect($response->getStatusCode())->toBe(401);
 
-    // And it names where to go, so the front end can offer "Sign in" rather than a
-    // reload that only reaches the login page by a redirect nobody sees.
+    // And it names where to go, so the front end can offer "Sign in" rather than a reload
+    // that only reaches the login page by a redirect nobody sees.
     expect($response->json('redirect'))->toContain('/login');
 })->group('security');
 

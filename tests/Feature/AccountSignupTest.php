@@ -11,7 +11,6 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 // Signup screens the password against HaveIBeenPwned — keep it offline.
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
@@ -40,12 +39,7 @@ function seedRootEnvironment(): Environment
 it('provisions an account and member on a Tier 2 signup, holding the environment back', function (): void {
     seedRootEnvironment();
 
-    Volt::test('auth.signup')
-        ->set('organization', 'Acme')
-        ->set('name', 'Dana Reeves')
-        ->set('email', 'dana@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('register')
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Dana Reeves', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase'])
         ->assertRedirect(route('projects'));
 
     // The owner is a SUBJECT in the platform root, and their organization is reached
@@ -79,15 +73,22 @@ it('provisions an account and member on a Tier 2 signup, holding the environment
 it('refuses a second workspace for an email that already has one', function (): void {
     seedRootEnvironment();
 
-    $register = fn () => Volt::test('auth.signup')
-        ->set('organization', 'Acme')
-        ->set('name', 'Dana')
-        ->set('email', 'dana@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('register');
+    $register = fn () => test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Dana', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase']);
 
     $register()->assertRedirect(route('projects'));
-    $register()->assertHasErrors('email');
+
+    /*
+     * SIGNED OUT FIRST, because registering established a session and the guest-only gate
+     * on `/signup` would otherwise turn the second attempt away before the address is
+     * looked at — a refusal, but not this one. The claim here is about the ADDRESS, so the
+     * request has to reach the check that reads it.
+     *
+     * It did not matter while this drove the component directly, where no route middleware
+     * ran at all.
+     */
+    test()->post(route('logout'));
+
+    $register()->assertSessionHasErrors('email');
 
     // Only one customer ever created for the email. Counted in the ROOT, where customers
     // live: the ambient scope would answer zero and the assertion would pass on nothing.

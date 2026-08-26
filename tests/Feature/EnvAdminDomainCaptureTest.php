@@ -8,7 +8,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -31,8 +30,11 @@ it('refuses to enable capture on a domain that is not verified', function (): vo
 
     expect($domain->isVerified())->toBeFalse();
 
-    Volt::test('environment.organizations.show', ['organization' => $org->id])
-        ->call('toggleCapture', $domain->id);
+    // REFUSED, and told why. Capture on an unproven domain lets an organization claim
+    // addresses it does not own, so the answer is a sentence rather than a silent no-op.
+    test()->from(route('environment.organizations.show', $org->id))
+        ->post(route('environment.organizations.domains.capture', [$org->id, $domain->id]))
+        ->assertSessionHasErrors(['domain' => 'Verify the domain before turning capture on.']);
 
     expect(VerifiedDomain::query()->whereKey($domain->id)->value('capture'))->toBeFalsy();
 });
@@ -44,12 +46,13 @@ it('allows capture once the domain is verified, and allows turning it back off',
     $domain = app(DomainVerification::class)->add($org->id, 'proven.test');
     VerifiedDomain::query()->whereKey($domain->id)->update(['verified_at' => now()]);
 
-    $page = Volt::test('environment.organizations.show', ['organization' => $org->id]);
+    $capture = fn () => test()->from(route('environment.organizations.show', $org->id))
+        ->post(route('environment.organizations.domains.capture', [$org->id, $domain->id]));
 
-    $page->call('toggleCapture', $domain->id);
+    $capture()->assertSessionHasNoErrors();
     expect(VerifiedDomain::query()->whereKey($domain->id)->value('capture'))->toBeTruthy();
 
     // Turning it OFF must never be blocked — removing a claim can only be safe.
-    $page->call('toggleCapture', $domain->id);
+    $capture()->assertSessionHasNoErrors();
     expect(VerifiedDomain::query()->whereKey($domain->id)->value('capture'))->toBeFalsy();
 });

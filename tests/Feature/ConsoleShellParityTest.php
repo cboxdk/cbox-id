@@ -12,46 +12,48 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\File;
 
 /**
- * THE TWO CONSOLE SHELLS MUST FRAME A PAGE THE SAME WAY.
+ * THE CONSOLE SHELLS MUST FRAME A PAGE THE SAME WAY.
  *
- * The console was built twice, and most of what survived the fold is chrome: two layouts
- * that take the same contract and render the same shared components at different sizes.
- * Measured before this test: the organization shell framed its content at 72rem with
- * `p-6 lg:p-8`, the environment shell at `max-w-5xl` (64rem) with `px-5 py-8`.
+ * The console was built twice, and most of what survived the fold is chrome: layouts that
+ * take the same contract and render the same shared components at different sizes.
+ * Measured when this test was written: the organization shell framed its content at 72rem
+ * with `p-6 lg:p-8`, the environment shell at `max-w-5xl` (64rem) with `px-5 py-8` — one
+ * page, two widths, a table that fits on one plane and wraps on the other.
  *
- * That was invisible while the two planes had two sets of pages. It stopped being
- * invisible when the pages became shared: `permissions`, `audit-streams`, `usage` and the
- * twenty capability pages are ONE component each now, so a width difference is one page
- * with two layouts — a table that fits on one plane and wraps on the other.
+ * THE PAIR HAS CHANGED but the hazard has not. Both planes are framed by ONE React layout
+ * now, so they cannot disagree with each other; what they CAN disagree with is the blade
+ * shell still framing the pages that have not ported, which sit in the same console behind
+ * the same rail. A person clicking between them sees the seam.
  *
  * Asserted on the container declaration itself rather than by rendering, because the
  * failure is a static difference between two files and this names it precisely when it
  * reappears. A rendered assertion would report "something looks wrong" instead.
  */
-it('frames content identically in both console shells', function (): void {
-    $shells = [
-        'organization' => resource_path('views/components/layouts/app.blade.php'),
-        'environment' => resource_path('views/components/layouts/environment.blade.php'),
-    ];
-
-    $containers = [];
-
-    foreach ($shells as $plane => $path) {
-        preg_match('#<main[^>]*>\s*(?:\{\{--.*?--\}\}\s*)*<div([^>]*)>#s', File::get($path), $m);
-
-        expect($m)->not->toBeEmpty("could not find the content container in the {$plane} shell");
-
-        // Normalise attribute order and whitespace — the assertion is about the frame the
-        // reader sees, not about how the attributes happen to be typed.
-        $attrs = preg_split('/\s+/', trim($m[1])) ?: [];
-        sort($attrs);
-        $containers[$plane] = implode(' ', $attrs);
-    }
-
-    expect($containers['environment'])->toBe(
-        $containers['organization'],
-        'the two console shells frame the same shared pages differently',
+/**
+ * THE PARITY PARTNER IS GONE, and the constant it was checked against is what remains.
+ *
+ * This compared the React shell's content container to `layouts/app.blade.php`'s, because
+ * for the length of the port two shells framed the same pages and a reader moving between
+ * a ported and an unported one would have seen the column change width under them. There
+ * is one shell now. Comparing it to nothing would pass forever, so what is asserted is the
+ * frame ITSELF: one padding scale, one maximum width, stated once.
+ *
+ * The numbers are not arbitrary and are not this test's to choose — `72rem` is the reading
+ * measure the console's tables and forms are laid out against, and `p-6 lg:p-8` is the
+ * gutter every page sits in. They are here so that changing them is a decision somebody
+ * makes rather than a class somebody edits.
+ */
+it('frames every page at the console one width and padding', function (): void {
+    preg_match(
+        '#<main[^>]*>\s*(?:\{/\*.*?\*/\}\s*)*<div([^>]*)>#s',
+        File::get(base_path('resources/js/layouts/ConsoleLayout.tsx')),
+        $container,
     );
+
+    expect($container)->not->toBeEmpty('could not find the content container in the console shell');
+
+    expect($container[1])->toContain('p-6 lg:p-8')
+        ->and($container[1])->toContain('72rem');
 })->group('ux');
 
 /**
@@ -80,15 +82,22 @@ it('emits the shared mobile navigation on the organization plane', function (): 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
+    /*
+     * ASKED OF THE SERVER, on the plane that is now React.
+     *
+     * The markers this looked for — `data-cbox-mobile-nav`, the bottom-bar classes — were
+     * the blade component's, and the bottom bar is one React component inside a shared
+     * layout now, so BOTH planes draw it or neither does. What the server still decides,
+     * and what the bug was, is whether this plane is handed the nav the bar is built from:
+     * a bottom bar with nothing in it is the same missing control by a shorter route.
+     *
+     * That it is DRAWN from these areas is held in tests/Browser, which is the only place
+     * that can see it.
+     */
+    $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
 
-    // THE SHARED COMPONENT'S OWN MARKERS. `Open navigation` is the organization shell's
-    // sub-nav toggle, not the bottom bar — asserting on it looked like coverage of
-    // `<x-mobile-nav>` and was coverage of something only this plane has, which is how the
-    // test below could claim two planes while visiting one.
-    expect($html)->toContain('data-cbox-mobile-nav')
-        ->and($html)->toContain('lg:hidden fixed bottom-0')
-        ->and($html)->toContain('Open menu');
+    expect($shell['areas'])->not->toBe([])
+        ->and($shell['activeArea'])->not->toBeNull();
 })->group('ux');
 
 /**
@@ -105,9 +114,52 @@ it('emits the shared mobile navigation on the environment plane too', function (
     multiTenantDeployment();
     actAsEnvironmentAdminOfATenant();
 
-    $html = (string) $this->get(route('environment.home'))->assertOk()->getContent();
+    /*
+     * THE SAME SHELL, asked of the SERVER rather than of the markup.
+     *
+     * Both planes render one React `ConsoleLayout` now, and the bottom bar is one component
+     * inside it — so "does this plane draw it" is no longer a question about this response,
+     * which carries a mount point. What the server still decides, and what the bug was, is
+     * whether this plane is handed the NAV THE BAR IS BUILT FROM: the environment shell
+     * returned its own payload and could return an empty one, and a bottom bar with nothing
+     * in it is the same missing control by a shorter route.
+     *
+     * That it is DRAWN from these areas is held in tests/Browser, which is the only place
+     * that can see it.
+     */
+    $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
 
-    expect($html)->toContain('data-cbox-mobile-nav')
-        ->and($html)->toContain('lg:hidden fixed bottom-0')
-        ->and($html)->toContain('Open menu');
+    expect($shell['areas'])->not->toBe([])
+        ->and($shell['activeArea'])->not->toBeNull();
 })->group('ux');
+
+/**
+ * BOTH PLANES HAND THE CHROME A PERSON.
+ *
+ * `auth.user` is what the layout reads to decide whether the console has a FRAME at all —
+ * a rail, a sub-nav, a bottom bar, an account menu, a way to sign out. It is built from the
+ * subject session, and a subject belongs to one environment's user pool, so an account
+ * member administering a tenant's environment is not in it: on that plane the prop answered
+ * "guest", and every page rendered as a bare document with no navigation on it.
+ *
+ * Nothing went red. The pages were all 200 and their own props were all correct — the
+ * chrome is a SHARED prop, and no page's test looks at it. This is that test.
+ */
+it('names the acting person on both planes, so the console has a frame', function (string $plane): void {
+    if ($plane === 'environment') {
+        multiTenantDeployment();
+        actAsEnvironmentAdminOfATenant();
+        $page = test()->get(route('environment.home'));
+    } else {
+        [$subjectId] = actingAsRole(MembershipRole::Owner);
+        expect($subjectId)->not->toBe('');
+        $page = test()->get(route('dashboard'));
+    }
+
+    $user = $page->assertOk()->inertiaProps('auth.user');
+
+    expect($user)->not->toBeNull('this plane renders with no navigation at all')
+        // Named, not merely present: the account menu and the rail's own item are labelled
+        // with it, and a blank one is a control nobody can find.
+        ->and((string) $user['name'])->not->toBe('');
+})->with(['organization', 'environment'])->group('ux');

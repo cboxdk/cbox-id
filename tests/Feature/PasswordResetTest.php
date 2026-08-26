@@ -12,7 +12,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
 
 beforeEach(function () {
     Mail::fake();
@@ -31,10 +30,12 @@ function resetAccount(string $email = 'dana@acme.test'): string
 it('emails a reset link for a known account and resets the password end-to-end', function () {
     $subjectId = resetAccount();
 
-    Volt::test('auth.forgot-password')
-        ->set('email', 'dana@acme.test')
-        ->call('sendResetLink')
-        ->assertSet('sent', true);
+    // The SAME confirmation either way, and it rides the flash channel because it names
+    // the address it was sent to — a value that must not be written into the browser's
+    // history entry alongside the page props.
+    test()->from(route('password.request'))->post(route('password.email'), ['email' => 'dana@acme.test'])
+        ->assertRedirect(route('password.request'))
+        ->assertSessionHasNoErrors();
 
     Mail::assertSent(PasswordResetMail::class);
 
@@ -46,39 +47,49 @@ it('emails a reset link for a known account and resets the password end-to-end',
         return true;
     });
 
-    Volt::test('auth.reset-password', ['token' => $raw])
-        ->set('password', 'brand-new-password-5678')
-        ->set('password_confirmation', 'brand-new-password-5678')
-        ->call('resetPassword')
+    expect($raw)->toBeString();
+
+    // THE TOKEN IS THE FORM'S, not the session's: it arrives in the URL of the page the
+    // mail points at and is posted back with the new password. Nothing here resolves the
+    // subject from it before the reset — doing so would make this page an
+    // account-existence oracle.
+    test()->from(route('password.reset', $raw))
+        ->post(route('password.update'), [
+            'token' => $raw,
+            'password' => 'brand-new-password-5678',
+            'password_confirmation' => 'brand-new-password-5678',
+        ])
         ->assertRedirect(route('login'));
 
     expect(app(Subjects::class)->verifyPassword($subjectId, 'brand-new-password-5678'))->toBeTrue();
 });
 
 it('shows the same confirmation and sends no mail for an unknown email (anti-enumeration)', function () {
-    Volt::test('auth.forgot-password')
-        ->set('email', 'nobody@acme.test')
-        ->call('sendResetLink')
-        ->assertSet('sent', true);
+    test()->from(route('password.request'))->post(route('password.email'), ['email' => 'nobody@acme.test'])
+        ->assertRedirect(route('password.request'))
+        // THE SAME ANSWER as for a known address, which is the whole point: a refusal
+        // here would report that the address is unknown to anybody who asked.
+        ->assertSessionHasNoErrors();
 
     Mail::assertNothingSent();
 });
 
 it('rejects an invalid reset token', function () {
-    Volt::test('auth.reset-password', ['token' => 'pwr_bogus'])
-        ->set('password', 'brand-new-password-5678')
-        ->set('password_confirmation', 'brand-new-password-5678')
-        ->call('resetPassword')
-        ->assertHasErrors('password');
+    test()->from(route('password.reset', 'pwr_bogus'))
+        ->post(route('password.update'), [
+            'token' => 'pwr_bogus',
+            'password' => 'brand-new-password-5678',
+            'password_confirmation' => 'brand-new-password-5678',
+        ])
+        // THE REASON, not merely "an error on the password field" — a policy refusal and a
+        // rejected token both land there, and only one of them is what this is about.
+        ->assertSessionHasErrors([
+            'password' => 'This reset link is invalid or has expired. Request a new one.',
+        ]);
 });
 
 it('signup sends an email-verification link, and the link verifies the address', function () {
-    Volt::test('auth.signup')
-        ->set('organization', 'Acme Inc.')
-        ->set('name', 'Dana')
-        ->set('email', 'newbie@acme.test')
-        ->set('password', 'supersecret1234')
-        ->call('register')
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme Inc.', 'name' => 'Dana', 'email' => 'newbie@acme.test', 'password' => 'supersecret1234'])
         ->assertRedirect(route('dashboard'));
 
     $raw = null;

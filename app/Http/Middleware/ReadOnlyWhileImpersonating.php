@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\Impersonation;
-use App\Platform\ImpersonationCallGuard;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,18 +36,17 @@ final class ReadOnlyWhileImpersonating
      * is a worse failure than any write this refuses. Signing out has to work for the same
      * reason: it is the other door.
      *
-     * `livewire/update` is TRANSITIONAL. The pages that have not been ported still post
-     * their actions there, and {@see ImpersonationCallGuard} still holds
-     * that endpoint to its own allowlist. It goes when the last Volt page does, and this
-     * list is then two entries.
+     * TWO ENTRIES, and it should stay two. `livewire/update` stood here while pages were
+     * still being ported — the guard that held that endpoint to an allowlist of read
+     * primitives is gone with the endpoint. Anything added here is a write an impersonating
+     * operator may perform as the person they are impersonating, so it needs to be a door
+     * out or it needs a very good reason.
      *
      * @var list<string>
      */
     private const ALWAYS_ALLOWED = [
         'impersonation/exit',
         'logout',
-        'livewire/update',
-        'livewire/update/*',
     ];
 
     /**

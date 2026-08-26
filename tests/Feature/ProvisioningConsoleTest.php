@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -14,7 +15,8 @@ use Cbox\Id\Provisioning\Enums\AuthScheme;
 use Cbox\Id\Provisioning\Enums\ConnectionStatus;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Collection;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -32,6 +34,7 @@ function provAdmin(MembershipRole $role = MembershipRole::Owner): string
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
     return $org->id;
 }
@@ -52,13 +55,7 @@ it('registers a provisioning connection', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = provAdmin();
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Downstream')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'bearer')
-        ->set('secret', 'tok_123')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerOutboundSync()->assertSessionHasNoErrors();
 
     expect(ProvisioningConnection::query()->where('organization_id', $orgId)->exists())->toBeTrue();
 });
@@ -68,9 +65,9 @@ it('pauses a connection', function (): void {
     $orgId = provAdmin();
     $connection = provConnection($orgId);
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])
-        ->call('pause')
-        ->assertHasNoErrors();
+    test()->from(route('provisioning.show', $connection->id))
+        ->post(route('provisioning.toggle', $connection->id))
+        ->assertRedirect(route('provisioning.show', $connection->id));
 
     expect($connection->fresh()->status)->toBe(ConnectionStatus::Paused);
 });
@@ -82,14 +79,18 @@ it('resumes and deletes a connection from the organization plane', function (): 
     $orgId = provAdmin();
     $connection = provConnection($orgId);
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])
-        ->call('pause')
-        ->call('resume')
-        ->assertHasNoErrors();
+    $from = route('provisioning.show', $connection->id);
 
+    // Twice, because the endpoint reads the state it is moving FROM off the record — one
+    // call would pass on an implementation that only ever paused.
+    test()->from($from)->post(route('provisioning.toggle', $connection->id))->assertRedirect($from);
+    expect($connection->fresh()->status)->toBe(ConnectionStatus::Paused);
+
+    test()->from($from)->post(route('provisioning.toggle', $connection->id))->assertRedirect($from);
     expect($connection->fresh()->status)->toBe(ConnectionStatus::Active);
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])->call('deleteConnection');
+    test()->delete(route('provisioning.destroy', $connection->id))
+        ->assertRedirect(route('provisioning'));
 
     expect(ProvisioningConnection::query()->whereKey($connection->id)->exists())->toBeFalse();
 });
@@ -105,9 +106,14 @@ it('hides another organization\'s connection from the detail page', function ():
     $otherOrg = app(Organizations::class)->create(new NewOrganization('Rival', 'rival-prov'));
     $theirs = provConnection($otherOrg->id, 'Rival downstream');
 
-    Volt::test('console.provisioning.show', ['sync' => $theirs->id])->assertNotFound();
+    test()->get(route('provisioning.show', $theirs->id))->assertNotFound();
 
-    expect(ProvisioningConnection::query()->whereKey($theirs->id)->exists())->toBeTrue();
+    // And every mutation resolves the id inside the same fence rather than trusting it.
+    test()->post(route('provisioning.toggle', $theirs->id))->assertNotFound();
+    test()->delete(route('provisioning.destroy', $theirs->id))->assertNotFound();
+
+    expect(ProvisioningConnection::query()->whereKey($theirs->id)->exists())->toBeTrue()
+        ->and($theirs->fresh()->status)->toBe(ConnectionStatus::Active);
 });
 
 it('hides an environment-wide connection from the detail page', function (): void {
@@ -119,7 +125,11 @@ it('hides an environment-wide connection from the detail page', function (): voi
 
     $platformWide = provConnection(null, 'Env-wide');
 
-    Volt::test('console.provisioning.show', ['sync' => $platformWide->id])->assertNotFound();
+    test()->get(route('provisioning.show', $platformWide->id))->assertNotFound();
+    test()->post(route('provisioning.toggle', $platformWide->id))->assertNotFound();
+    test()->delete(route('provisioning.destroy', $platformWide->id))->assertNotFound();
+
+    expect(ProvisioningConnection::query()->whereKey($platformWide->id)->exists())->toBeTrue();
 });
 
 it('refuses to register an environment-wide connection from the organization plane', function (): void {
@@ -129,14 +139,7 @@ it('refuses to register an environment-wide connection from the organization pla
     config(['cbox-id.provisioning.verify_url' => false]);
     provAdmin();
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Everything')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'bearer')
-        ->set('secret', 'tok_123')
-        ->set('environmentWide', true)
-        ->call('create')
-        ->assertForbidden();
+    registerOutboundSync(['name' => 'Everything', 'environmentWide' => true])->assertForbidden();
 
     expect(ProvisioningConnection::query()->whereNull('organization_id')->exists())->toBeFalse();
 })->group('security');
@@ -150,17 +153,18 @@ it('lists only the acting organization\'s connections', function (): void {
     provConnection($otherOrg->id, 'Theirs');
     provConnection(null, 'Env-wide');
 
-    Volt::test('console.provisioning.index')
+    test()->get(route('provisioning'))
         ->assertOk()
-        ->assertSee('Mine')
-        ->assertDontSee('Theirs')
-        ->assertDontSee('Env-wide');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'connections',
+            fn (Collection $rows): bool => $rows->pluck('name')->all() === ['Mine'],
+        ));
 })->group('security');
 
 it('forbids a non-admin member', function (): void {
     provAdmin(MembershipRole::Member);
 
-    Volt::test('console.provisioning.index')->assertForbidden();
+    test()->get(route('provisioning'))->assertForbidden();
 });
 
 /**
@@ -180,16 +184,13 @@ it('stores what an OAuth2 client-credentials target needs to authenticate', func
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = provAdmin();
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Downstream')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'oauth2_client_credentials')
-        ->set('tokenUrl', 'https://scim.example.test/oauth/token')
-        ->set('clientId', 'scim-provisioner')
-        ->set('scope', 'scim:write')
-        ->set('secret', 'cs_123')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerOutboundSync([
+        'scheme' => 'oauth2_client_credentials',
+        'tokenUrl' => 'https://scim.example.test/oauth/token',
+        'clientId' => 'scim-provisioner',
+        'scope' => 'scim:write',
+        'secret' => 'cs_123',
+    ])->assertSessionHasNoErrors();
 
     $connection = ProvisioningConnection::query()->where('organization_id', $orgId)->firstOrFail();
 
@@ -204,13 +205,12 @@ it('refuses to register a client-credentials target with nowhere to fetch a toke
 
     // The alternative is what shipped: an Active connection that can never complete a
     // single push, failing on a schedule, with no field anywhere to correct it.
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Downstream')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'oauth2_client_credentials')
-        ->set('secret', 'cs_123')
-        ->call('create')
-        ->assertHasErrors(['tokenUrl', 'clientId']);
+    registerOutboundSync([
+        'scheme' => 'oauth2_client_credentials',
+        'secret' => 'cs_123',
+    ])->assertSessionHasErrors(['tokenUrl', 'clientId']);
+
+    expect(ProvisioningConnection::query()->exists())->toBeFalse();
 });
 
 /**
@@ -221,14 +221,10 @@ it('leaves the auth config empty for a bearer target', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = provAdmin();
 
-    Volt::test('console.provisioning.create')
-        ->set('name', 'Bearer one')
-        ->set('baseUrl', 'https://scim.example.test/v2')
-        ->set('scheme', 'bearer')
-        ->set('tokenUrl', 'https://ignored.example.test/token')
-        ->set('secret', 'tok_123')
-        ->call('create')
-        ->assertHasNoErrors();
+    registerOutboundSync([
+        'name' => 'Bearer one',
+        'tokenUrl' => 'https://ignored.example.test/token',
+    ])->assertSessionHasNoErrors();
 
     expect(ProvisioningConnection::query()->where('organization_id', $orgId)->firstOrFail()->auth_config)->toBe([]);
 });

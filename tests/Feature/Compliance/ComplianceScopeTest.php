@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 use Cbox\Id\Compliance\Dsr\SubjectDataExport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Exceptions\MethodNotFoundException;
-use Livewire\Volt\Volt;
 use Tests\Support\InteractsWithAuditTrail;
 
 uses(RefreshDatabase::class, InteractsWithAuditTrail::class);
+
+/*
+ * The module's routes only exist where its feature is switched on, so a test that drives
+ * them by REQUEST has to say so — the pages were driven at the component before, which
+ * needed no route at all.
+ */
+beforeEach(fn () => config(['compliance.enabled' => true]));
 
 /**
  * The compliance module's own pages, tested for the thing they got wrong: they guard on
@@ -27,35 +32,38 @@ it('shows an admin only their own organization\'s trail, whatever they send', fu
     $this->recordAudit('theirs.event', 'org_someone_else', 'user_1');
     $this->recordAudit('system.event', null, 'user_1');
 
-    $component = Volt::test('compliance.audit');
-    $actions = fn (): array => array_map(fn ($entry): string => $entry->action, $component->viewData('entries'));
+    $actions = fn (array $query = []): array => collect(
+        (array) test()->get(route('compliance.audit', $query))->assertOk()->inertiaProps('entries')
+    )->pluck('action')->all();
 
-    // Setting up an organization audits itself, so assert on what must NOT be there
-    // rather than on an exact list — the guarantee is "nothing from another chain".
+    // Setting up an organization audits itself, so assert on what must NOT be there rather
+    // than on an exact list — the guarantee is "nothing from another chain".
     expect($actions())->toContain('mine.event')
         ->and($actions())->not->toContain('theirs.event')
         ->and($actions())->not->toContain('system.event');
 
-    // The property is gone, so Livewire refuses to set it at all — but assert on the
-    // OUTPUT rather than the exception, because the guarantee is "you see your own
-    // trail", not "this particular property does not exist".
-    try {
-        $component->set('organizationId', 'org_someone_else');
-    } catch (Throwable) {
-        // Expected: there is nothing to set.
-    }
+    /*
+     * WHATEVER THEY SEND. The organization used to be a bound property, and the page is a
+     * request now — so the shape of the attempt changed and the property did not: a query
+     * parameter naming somebody else's chain must be read as nothing at all.
+     *
+     * Asserted on the OUTPUT rather than on a refusal, because the guarantee is "you see
+     * your own trail", not "this particular parameter is rejected" — a page that started
+     * honouring it would be caught here whatever it called the field.
+     *
+     * NO MESSAGE ARGUMENT on the negated check. `toContain` is variadic and takes no
+     * message, so a string passed second is read as a SECOND NEEDLE — and `not->toContain`
+     * passes the moment any needle is absent. That is how this half of the test once proved
+     * nothing at all.
+     *
+     * A positive control beside it, because "does not contain another tenant's event" is
+     * also satisfied by a page that rendered nothing — which is how a broken read path looks
+     * identical to a correctly-scoped one.
+     */
+    $crafted = $actions(['organizationId' => 'org_someone_else', 'organization' => 'org_someone_else']);
 
-    // NO MESSAGE ARGUMENT. `toContain` is variadic and takes no message, so a string
-    // passed second is read as a SECOND NEEDLE — and `not->toContain` passes the moment
-    // any needle is absent. The message never appears in the haystack, so the assertion
-    // was unconditionally green and this half of the test proved nothing. Verified:
-    // `expect('contains the needle')->not->toContain('needle', 'a message')` passes.
-    //
-    // A positive control beside it, because "does not contain another tenant's event" is
-    // also satisfied by a page that rendered nothing at all — which is how a broken read
-    // path would look identical to a correctly-scoped one.
-    expect($actions())->not->toContain('theirs.event')
-        ->and($actions())->toContain('mine.event');
+    expect($crafted)->not->toContain('theirs.event')
+        ->and($crafted)->toContain('mine.event');
 });
 
 /**
@@ -73,15 +81,28 @@ it('offers no environment-wide export or retention action on an org-scoped page'
     $orgId = gateAdmin('scope-ops');
     grantFeature($orgId, 'compliance');
 
-    $component = Volt::test('compliance.exports');
-
-    foreach (['runExport', 'applyRetention'] as $method) {
-        expect(fn () => $component->call($method))->toThrow(MethodNotFoundException::class);
+    /*
+     * ASKED FOR, not grepped. "The method does not exist" was a claim about one class; the
+     * claim that matters is that no ROUTE performs either — a controller action added under
+     * any name would satisfy the old test and still let one tenant's admin move every other
+     * tenant's export cursor.
+     */
+    foreach (['run-export', 'export', 'retention', 'apply-retention'] as $path) {
+        test()->post('/compliance/exports/'.$path)->assertNotFound();
     }
 
-    // And nothing in the markup invites the click either.
-    $component->assertDontSee('wire:click="runExport"', escape: false)
-        ->assertDontSee('wire:click="applyRetention"', escape: false);
+    // And the page offers nothing to click: the only write it carries is the data-subject
+    // export, which IS bounded by an organization.
+    $props = (array) test()->get(route('compliance.data-exports'))->assertOk()->inertiaProps();
+
+    $urls = array_keys(array_filter(
+        $props,
+        static fn (mixed $value, string $key): bool => str_ends_with($key, 'Href'),
+        ARRAY_FILTER_USE_BOTH,
+    ));
+
+    expect($urls)->toBe(['downloadHref'])
+        ->and($props['downloadHref'])->toBe(route('compliance.data-exports.download'));
 });
 
 /**

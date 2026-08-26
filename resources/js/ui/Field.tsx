@@ -65,6 +65,15 @@ export interface FieldProps {
      */
     error?: string | null;
     required?: boolean;
+    /**
+     * Say so on the label rather than leaving it to be inferred from its absence.
+     *
+     * A form where most fields are needed and one is not reads, without this, as a form
+     * where every field is needed — so people fill in the one they could have skipped, or
+     * stall on it. Marked in words, not with punctuation: "*" for required has a
+     * screen-reader-only expansion here for the same reason.
+     */
+    optional?: boolean;
     className?: string;
     children: ReactNode;
 }
@@ -88,6 +97,7 @@ export function Field({
     hint,
     error,
     required = false,
+    optional = false,
     className,
     children,
 }: FieldProps) {
@@ -128,6 +138,14 @@ export function Field({
                                     *
                                 </span>
                                 <span className="sr-only">(required)</span>
+                            </>
+                        )}
+                        {optional && (
+                            <>
+                                {' '}
+                                <span style={{ color: 'var(--faint)', fontWeight: 400 }}>
+                                    (optional)
+                                </span>
                             </>
                         )}
                     </label>

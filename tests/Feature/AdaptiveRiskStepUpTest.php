@@ -13,7 +13,6 @@ use Cbox\Risk\Enums\Outcome;
 use Cbox\Risk\ValueObjects\RiskAssessment;
 use Cbox\Risk\ValueObjects\RiskContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -44,11 +43,7 @@ it('steps up with an emailed code on an elevated-risk password login', function 
     $channel = new FakeOtpChannel;
     app(OtpChannels::class)->register('email', $channel);
 
-    Volt::test('auth.login')
-        ->set('email', 'risky@example.com')
-        ->set('password', 'a-strong-password-1234')
-        ->set('identified', true)
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'risky@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])
         ->assertRedirect(route('login.step-up')); // interstitial, not the dashboard
 
     // A step-up code was emailed, and no full session was established yet.
@@ -64,15 +59,11 @@ it('establishes the session (amr: otp) once the step-up code is verified', funct
     $channel = new FakeOtpChannel;
     app(OtpChannels::class)->register('email', $channel);
 
-    Volt::test('auth.login')
-        ->set('email', 'risky2@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login')->assertRedirect(route('login.step-up'));
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'risky2@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])->assertRedirect(route('login.step-up'));
 
     $code = (string) $channel->codeFor('risky2@example.com');
 
-    Volt::test('auth.otp-step-up')
-        ->set('code', $code)
-        ->call('verify')
+    test()->from(route('login.step-up'))->post(route('login.step-up.verify'), ['code' => $code])
         ->assertRedirect(route('dashboard'));
 
     $session = Session::query()->where('user_id', $subjectId)->latest()->first();
@@ -89,14 +80,10 @@ it('rejects a wrong step-up code', function (): void {
     $channel = new FakeOtpChannel;
     app(OtpChannels::class)->register('email', $channel);
 
-    Volt::test('auth.login')
-        ->set('email', 'risky3@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'risky3@example.com', 'password' => 'a-strong-password-1234', 'identified' => true]);
 
-    Volt::test('auth.otp-step-up')
-        ->set('code', '000000')
-        ->call('verify')
-        ->assertHasErrors('code');
+    test()->from(route('login.step-up'))->post(route('login.step-up.verify'), ['code' => '000000'])
+        ->assertSessionHasErrors('code');
 
     expect(session()->has('cbox.session'))->toBeFalse();
 });
@@ -109,11 +96,9 @@ it('resends a fresh step-up code', function (): void {
     $channel = new FakeOtpChannel;
     app(OtpChannels::class)->register('email', $channel);
 
-    Volt::test('auth.login')
-        ->set('email', 'resend@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login')->assertRedirect(route('login.step-up'));
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'resend@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])->assertRedirect(route('login.step-up'));
 
-    Volt::test('auth.otp-step-up')->call('resend')->assertHasNoErrors();
+    test()->from(route('login.step-up'))->post(route('login.step-up.resend'), [])->assertSessionHasNoErrors();
 
     $channel->assertDeliveredCount(2); // original + resend
 });
@@ -127,18 +112,14 @@ it('clears a dangling step-up handle once a full session is established (hygiene
     app(OtpChannels::class)->register('email', $channel);
 
     // A risky login for the victim leaves an otp_pending handle in the session.
-    Volt::test('auth.login')
-        ->set('email', 'victim@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login')->assertRedirect(route('login.step-up'));
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'victim@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])->assertRedirect(route('login.step-up'));
 
     expect(app(PlatformAuth::class)->pendingOtpStepUp(request()))->not->toBeNull();
 
     // A different, low-risk login in the same browser session establishes cleanly...
     makePasswordUser('other@example.com');
     stubRiskOutcome(Outcome::Allow);
-    Volt::test('auth.login')
-        ->set('email', 'other@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login')->assertRedirect(route('dashboard'));
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'other@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])->assertRedirect(route('dashboard'));
 
     // ...and the victim's dangling step-up handle is gone.
     expect(app(PlatformAuth::class)->pendingOtpStepUp(request()))->toBeNull();
@@ -149,9 +130,7 @@ it('does not step up in monitor mode (scores but does not act)', function (): vo
     stubRiskOutcome(Outcome::StepUp);
     makePasswordUser('mon@example.com');
 
-    Volt::test('auth.login')
-        ->set('email', 'mon@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'mon@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])
         ->assertRedirect(route('dashboard')); // straight in — only observed
 });
 
@@ -160,10 +139,8 @@ it('hard-blocks a Reject password login under enforcement', function (): void {
     stubRiskOutcome(Outcome::Reject);
     makePasswordUser('rej@example.com');
 
-    Volt::test('auth.login')
-        ->set('email', 'rej@example.com')->set('password', 'a-strong-password-1234')->set('identified', true)
-        ->call('login')
-        ->assertHasErrors('email');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'rej@example.com', 'password' => 'a-strong-password-1234', 'identified' => true])
+        ->assertSessionHasErrors('email');
 });
 
 it('hard-blocks a Reject magic-link redemption before consuming the token', function (): void {

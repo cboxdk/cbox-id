@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -16,7 +17,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -33,7 +33,11 @@ function signInMemberAs(MembershipRole $role, string $email): string
     $subject = app(Subjects::class)->create($email, 'Device Owner', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-mine-'.Str::lower(Str::random(6))));
     app(Memberships::class)->add($org->id, $subject->id, $role);
+    // The request session too, not only CurrentUser: this page is a request now, and one
+    // arriving without a session is redirected to the door — where "no device was removed"
+    // is true for entirely the wrong reason.
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
     return $subject->id;
@@ -57,12 +61,14 @@ function myDevice(string $subjectId, string $name): Device
 it('lets a plain member enrol — the code is personal, not org administration', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-enrol@acme.test');
 
-    Volt::test('devices.mine')
-        ->assertOk()
-        ->assertSee('Add a phone')
+    $enrolment = myDevices()['enrolment'];
+
+    expect($enrolment)->not->toBeNull()
         // The scheme the app actually registers, so a scan resolves to it.
-        ->assertSee('com.cboxid.authenticator://connect', escape: false)
-        ->assertSee('<svg', escape: false);
+        ->and($enrolment['uri'])->toStartWith('com.cboxid.authenticator://connect')
+        // …and the QR encodes THAT code, as an image the page can draw without injecting
+        // markup into itself.
+        ->and($enrolment['qr'])->toStartWith('data:image/svg+xml;base64,');
 });
 
 it('provisions the authenticator client itself on first view — no command required', function (): void {
@@ -70,7 +76,7 @@ it('provisions the authenticator client itself on first view — no command requ
 
     expect(AuthenticatorClient::find())->toBeNull();
 
-    Volt::test('devices.mine')->assertOk();
+    myDevices();
 
     // Enabling the feature is a config change; nothing asks anyone for a CLI.
     expect(AuthenticatorClient::find())->not->toBeNull();
@@ -79,10 +85,10 @@ it('provisions the authenticator client itself on first view — no command requ
 it('never mints a second client on later views', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-idempotent@acme.test');
 
-    Volt::test('devices.mine')->assertOk();
+    myDevices();
     $first = AuthenticatorClient::find()?->client_id;
 
-    Volt::test('devices.mine')->assertOk();
+    myDevices();
 
     // A second client would silently strand every handset enrolled against the first.
     expect(Client::query()->where('name', AuthenticatorClient::NAME)->count())->toBe(1)
@@ -108,7 +114,7 @@ it('never mints a second client on later views', function (): void {
 it('carries a subject-bound single-use token and no durable credential', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-secret@acme.test');
 
-    $uri = Volt::test('devices.mine')->instance()->enrolmentUri();
+    $uri = myDevices()['enrolment']['uri'];
 
     expect($uri)->toContain('connect?host=')
         // The credential it DOES carry, stated rather than denied.
@@ -129,15 +135,21 @@ it('carries a subject-bound single-use token and no durable credential', functio
  * the QR does; what changed is that nothing renders it for a shoulder to read.
  */
 it('offers the enrolment link as a control rather than as printed text', function (): void {
+    /*
+     * ASKED OF THE PAGE'S SOURCE, which is where the decision now lives. The URI reaches
+     * the bundle as a prop either way — that is unavoidable, and the QR carries it too —
+     * so what can be lost is the page rendering it as a TEXT NODE, and that is a property
+     * of this component and of nothing else.
+     */
     signInMemberAs(MembershipRole::Member, 'member-linktext@acme.test');
 
-    $component = Volt::test('devices.mine');
-    $uri = $component->instance()->enrolmentUri();
-    $html = $component->assertOk()->html();
+    $source = (string) file_get_contents(base_path('modules/devices/resources/js/pages/mine.tsx'));
 
-    expect($html)->toContain('href="'.e($uri).'"')
-        // Never as a text node — the old `<p class="mono">{{ $uri }}</p>`.
-        ->and((bool) preg_match('/>\s*'.preg_quote(e($uri), '/').'/', $html))->toBeFalse();
+    // The href, and only the href.
+    expect($source)->toContain('href={enrolment.uri}');
+
+    // Never `{enrolment.uri}` on its own between tags — the old `<p class="mono">{{ $uri }}</p>`.
+    expect((bool) preg_match('/>\s*\{enrolment\.uri\}/', $source))->toBeFalse();
 });
 
 /**
@@ -148,13 +160,16 @@ it('offers the enrolment link as a control rather than as printed text', functio
 it('gives a phone something to tap and does not ask it to scan itself', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-mobile@acme.test');
 
-    $html = Volt::test('devices.mine')->assertOk()->html();
+    // Both halves are drawn by the component, so both are asked of it — and that they are
+    // actually DRAWN at a phone width is held in tests/Browser, which is the only place
+    // that can see a breakpoint.
+    $source = (string) file_get_contents(base_path('modules/devices/resources/js/pages/mine.tsx'));
 
     // The tap target is the primary action below the `sm` breakpoint…
-    expect($html)->toContain('Open the Cbox ID app')
-        // …and the QR is withheld there rather than rendered uselessly. Asserted on the
-        // class that hides it, because the SVG is present in the DOM either way.
-        ->and($html)->toContain('hidden sm:block');
+    expect($source)->toContain('Open the Cbox ID app');
+
+    // …and the QR is withheld there rather than rendered uselessly.
+    expect($source)->toContain('hidden sm:block');
 });
 
 /**
@@ -165,14 +180,13 @@ it('gives a phone something to tap and does not ask it to scan itself', function
 it('links to the app store only when the deployment names one', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-store@acme.test');
 
-    expect(Volt::test('devices.mine')->assertOk()->html())->not->toContain('Get the app');
+    // NULL, not an empty string: the page draws the line from this prop and from nothing
+    // else, so a null is the absence and an empty string would be a link to nowhere.
+    expect(myDevices()['appStoreUrl'])->toBeNull();
 
     config()->set('id-devices.app_store_url', 'https://apps.example.test/cbox-id');
 
-    $html = Volt::test('devices.mine')->assertOk()->html();
-
-    expect($html)->toContain('Get the app')
-        ->and($html)->toContain('https://apps.example.test/cbox-id');
+    expect(myDevices()['appStoreUrl'])->toBe('https://apps.example.test/cbox-id');
 });
 
 it('shows only the caller own devices', function (): void {
@@ -182,19 +196,17 @@ it('shows only the caller own devices', function (): void {
     $mine = signInMemberAs(MembershipRole::Member, 'me@acme.test');
     myDevice($mine, 'My Own Phone');
 
-    Volt::test('devices.mine')
-        ->assertOk()
-        ->assertSee('My Own Phone')
-        ->assertDontSee('Someone Elses Phone');
+    $names = collect(myDevices()['devices'])->pluck('name');
+
+    expect($names)->toContain('My Own Phone')
+        ->and($names)->not->toContain('Someone Elses Phone');
 });
 
 it('removes an own device', function (): void {
     $mine = signInMemberAs(MembershipRole::Member, 'remover@acme.test');
     $device = myDevice($mine, 'Old Phone');
 
-    Volt::test('devices.mine')
-        ->call('remove', $device->id)
-        ->assertOk();
+    removeOwnDevice($device->id)->assertSessionHasNoErrors();
 
     expect(Device::query()->whereKey($device->id)->exists())->toBeFalse();
 });
@@ -205,8 +217,8 @@ it('cannot remove another user device', function (): void {
 
     signInMemberAs(MembershipRole::Member, 'attacker@acme.test');
 
-    Volt::test('devices.mine')->call('remove', $device->id);
+    // 404 — someone else's device is treated exactly like a missing one, and stays put.
+    removeOwnDevice($device->id)->assertNotFound();
 
-    // Someone else's device is treated exactly like a missing one — and stays put.
     expect(Device::query()->whereKey($device->id)->exists())->toBeTrue();
 });

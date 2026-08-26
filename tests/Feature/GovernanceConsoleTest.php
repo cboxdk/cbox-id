@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Enums\AccessKind;
@@ -15,7 +16,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -26,6 +27,10 @@ function govAdmin(MembershipRole $role = MembershipRole::Owner): string
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN — without it every
+    // request below answers a redirect to /login rather than the page under test.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
     return $org->id;
 }
@@ -38,7 +43,7 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
     // Open a review from the console. One component now serves both planes, and the
     // routable index/new/show shape won over the single page — a campaign URL is
     // something you send to a reviewer.
-    Volt::test('console.governance.create')->set('name', 'Q3 review')->call('open')->assertHasNoErrors();
+    openAccessReview()->assertSessionHasNoErrors();
 
     $campaign = CertificationCampaign::query()->where('organization_id', $orgId)->firstOrFail();
     $items = app(AccessReviews::class)->itemsFor($campaign->id);
@@ -48,10 +53,15 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
     $roleItem = collect($items)->firstWhere(fn ($i) => $i->access_type === AccessKind::Role);
 
     // Revoke the role item, then close — the underlying role assignment is removed.
-    Volt::test('console.governance.show', ['campaign' => $campaign->id])
-        ->call('revoke', $roleItem->id)
-        ->call('close', $campaign->id)
-        ->assertHasNoErrors();
+    decideAccessItem($campaign->id, $roleItem->id, 'revoked')->assertSessionHasNoErrors();
+
+    // RECORDED, NOT APPLIED — that is the whole shape of a review, and a test that only
+    // checked the end state could not tell the two apart.
+    expect(app(Roles::class)->assignmentsForSubject($orgId, 'engineer-1'))->not->toBe([]);
+
+    test()->from(route('governance.show', $campaign->id))
+        ->post(route('governance.close', $campaign->id))
+        ->assertSessionHasNoErrors();
 
     expect(app(Roles::class)->assignmentsForSubject($orgId, 'engineer-1'))->toBe([]);
 });
@@ -59,7 +69,7 @@ it('opens a review that snapshots access, and applies a revoke on close', functi
 it('forbids a non-admin member', function (): void {
     govAdmin(MembershipRole::Member);
 
-    Volt::test('console.governance.index')->assertForbidden();
+    test()->get(route('governance'))->assertForbidden();
 });
 
 /**
@@ -76,32 +86,75 @@ it('reviews a page of a campaign at a time, at a flat query cost', function (): 
     $orgId = govAdmin();
     $role = app(Roles::class)->define($orgId, 'engineer');
 
-    // Forty people holding the role, so both the item count and the distinct-subject
-    // count exceed a page — a fixture inside one page would pass against either defect.
-    foreach (range(1, 40) as $i) {
-        $subject = app(Subjects::class)->create("reviewee-{$i}@acme.test", "Reviewee {$i}");
-        app(Roles::class)->assign($orgId, $subject->id, $role->id);
+    // A SMALL CAMPAIGN AND A LARGE ONE, in the same organization and the same request
+    // shape. What this guards is that the page's cost does not scale with the size of the
+    // snapshot — an absolute ceiling would be a number about the middleware stack, which
+    // has nothing to do with the defect and moves every time the console gains a banner.
+    $small = openReviewOver($orgId, $role->id, people: 3, name: 'Small review');
+    $large = openReviewOver($orgId, $role->id, people: 40, name: 'Big review');
+
+    $cost = function (string $campaignId): int {
+        // Warm first: a cold render pays for schema and config reads that have nothing to
+        // do with this page, and comparing a cold render against a warm one measures the
+        // wrong thing.
+        test()->get(route('governance.show', $campaignId))->assertOk();
+
+        $queries = 0;
+        DB::listen(function () use (&$queries): void {
+            $queries++;
+        });
+
+        test()->get(route('governance.show', $campaignId))->assertOk();
+
+        return $queries;
+    };
+
+    $smallCost = $cost($small);
+    $largeCost = $cost($large);
+
+    $page = test()->get(route('governance.show', $large))->assertOk();
+
+    /** @var list<array<string, mixed>> $rows */
+    $rows = (array) $page->inertiaProps('items');
+    $names = array_column($rows, 'subject');
+
+    fwrite(STDERR, "\n  access review: {$smallCost} queries at 4 items, {$largeCost} at 41\n");
+
+    /*
+     * ROWS FIRST, THEN QUERIES — the trap the member roster fell into for months. A page
+     * that renders nothing is always cheap.
+     *
+     * Twenty-five of forty-one on screen: the snapshot is ordered by id, so the first page
+     * holds the earliest-created assignments and the fortieth is not among them.
+     */
+    expect($rows)->toHaveCount(25)
+        ->and($names)->toContain('Reviewee 1')
+        ->and($names)->not->toContain('Reviewee 40')
+        ->and($largeCost - $smallCost)->toBeLessThan(
+            3,
+            "the review page costs queries per item: {$smallCost} at 4 items, {$largeCost} at 41",
+        );
+});
+
+/**
+ * A campaign over `people` holders of one role, plus the admin's own membership.
+ *
+ * @return string the campaign id
+ */
+function openReviewOver(string $organizationId, string $roleId, int $people, string $name): string
+{
+    foreach (range(1, $people) as $i) {
+        $subject = app(Subjects::class)->create(
+            Str::slug($name)."-reviewee-{$i}@acme.test",
+            "Reviewee {$i}",
+        );
+        app(Roles::class)->assign($organizationId, $subject->id, $roleId);
     }
 
-    Volt::test('console.governance.create')->set('name', 'Big review')->call('open')->assertHasNoErrors();
-    $campaign = CertificationCampaign::query()->where('organization_id', $orgId)->firstOrFail();
+    openAccessReview(['name' => $name])->assertSessionHasNoErrors();
 
-    // Warm: a first render pays for schema and config reads that have nothing to do with
-    // this page, and comparing a cold render against a warm one measures the wrong thing.
-    Volt::test('console.governance.show', ['campaign' => $campaign->id])->assertOk();
-
-    $queries = 0;
-    DB::listen(function () use (&$queries): void {
-        $queries++;
-    });
-
-    $page = Volt::test('console.governance.show', ['campaign' => $campaign->id]);
-
-    // Twenty-five rows on screen out of forty-one, and a flat cost to draw them — the
-    // row count is what stops this passing against a page that rendered nothing.
-    // The subject labels are names, and the snapshot is ordered by id — so the first
-    // page holds the earliest-created assignments and the fortieth is not among them.
-    expect($page->html())->toContain('Reviewee 1')
-        ->and($page->html())->not->toContain('Reviewee 40')
-        ->and($queries)->toBeLessThan(15);
-});
+    return (string) CertificationCampaign::query()
+        ->where('organization_id', $organizationId)
+        ->where('name', $name)
+        ->value('id');
+}

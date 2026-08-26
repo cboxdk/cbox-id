@@ -7,6 +7,7 @@ use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
@@ -83,21 +84,19 @@ it('keeps every nav label identical to its page title', function (): void {
         'audit' => 'Activity log',
     ];
 
-    // A capability that serves BOTH console planes lives at
-    // `livewire/console/<name>/index` instead of a single `livewire/<route>` page. The
-    // promise the nav label makes is the same either way, so the sweep follows the
-    // component rather than losing the page the moment it is merged.
-    $mergedViews = [
-        'audit' => 'console/audit',
-        'clients' => 'console/clients/index',
-        'connections' => 'console/connections/index',
-        'directories' => 'console/directories/index',
-        'hooks' => 'console/hooks/index',
-        'provisioning' => 'console/provisioning/index',
-        'sod-policies' => 'console/sod-policies/index',
-        'vault' => 'console/vault/index',
-    ];
-
+    /*
+     * EVERY PAGE IN THIS LIST IS CHECKED BEHAVIOURALLY NOW.
+     *
+     * Half of this sweep used to read a Volt blade for two literal strings, because under
+     * Volt the tab title and the page heading were written twice and could drift apart. A
+     * controller states the title once and `<PageHeader>` renders that same prop as the
+     * h1, so they cannot disagree — and `ConsoleAreasTest` asserts the SERVED value
+     * against this same nav label, which is the behavioural version of what was checked
+     * here by reading a file.
+     *
+     * The nav label half stays here, because that is what this test is named for: the
+     * promise "Stored tokens" in the sidebar makes about the page it opens.
+     */
     $labels = [];
 
     foreach (Console::nav()->areas() as $area) {
@@ -106,14 +105,29 @@ it('keeps every nav label identical to its page title', function (): void {
         }
     }
 
+    $checkedElsewhere = [];
+
     foreach ($expected as $route => $label) {
         expect($labels[$route] ?? null)->toBe($label);
 
-        $view = file_get_contents(resource_path('views/livewire/'.($mergedViews[$route] ?? $route).'.blade.php'));
+        // ROUTED TO A CONTROLLER, which is what "checked elsewhere" means: the served
+        // title comes from one place, so the heading and the tab cannot disagree. A page
+        // that fell back to a closure would drop out of this list and fail below.
+        expect(Route::has($route))->toBeTrue("no route named {$route}");
 
-        expect($view)->toContain("['title' => '{$label}']")
-            ->and($view)->toContain("<x-page-header title=\"{$label}\"");
+        if (Route::getRoutes()->getByName($route)?->getActionName() !== 'Closure') {
+            $checkedElsewhere[] = $route;
+        }
     }
+
+    // …and named, so this list shrinking is a decision somebody made rather than a sweep
+    // quietly losing its subject.
+    sort($checkedElsewhere);
+
+    expect($checkedElsewhere)->toBe([
+        'audit', 'clients', 'connections', 'directories', 'hooks',
+        'provisioning', 'sod-policies', 'vault',
+    ]);
 });
 
 /**

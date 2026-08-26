@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu, AccountMenuLink } from '@/chrome/AccountMenu';
+import { ActingOrganization } from '@/chrome/ActingOrganization';
 import { ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { MobileNav } from '@/chrome/MobileNav';
@@ -87,7 +88,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
         return (
             <TooltipProvider>
                 <Head title={title} />
-            <RouteAnnouncer />
+                <RouteAnnouncer />
                 <Toaster />
                 <main id="main-content" className="canvas-gradient">
                     {children}
@@ -156,15 +157,26 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                 <div className="flex flex-col min-w-0 flex-1">
                     <header className="cbx-topbar">
                         <div className="flex items-center gap-2 min-w-0">
-                            <Switcher
-                                heading="Switch organization"
-                                label={organization?.name ?? 'No organization'}
-                                caption={organization?.role ?? 'Member'}
-                                initial={(organization?.name ?? 'C').charAt(0).toUpperCase()}
-                                options={shell.organizations}
-                                action={switchOrganization.url()}
-                                field="organization"
-                            />
+                            {/*
+                                TWO DIFFERENT QUESTIONS, and only one of them is asked on
+                                any given plane. The account plane asks which of MY
+                                organizations I am in — a handful, so a menu of options.
+                                The environment plane asks which TENANT of this environment
+                                I am acting on — unbounded, so a search.
+                            */}
+                            {shell.actingOrganization !== null ? (
+                                <ActingOrganization acting={shell.actingOrganization} />
+                            ) : (
+                                <Switcher
+                                    heading="Switch organization"
+                                    label={organization?.name ?? 'No organization'}
+                                    caption={organization?.role ?? 'Member'}
+                                    initial={(organization?.name ?? 'C').charAt(0).toUpperCase()}
+                                    options={shell.organizations}
+                                    action={switchOrganization.url()}
+                                    field="organization"
+                                />
+                            )}
 
                             {/*
                                 WHICH ESTATE THIS CONSOLE IS POINTED AT. Only for whoever
@@ -188,9 +200,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                                         options={shell.environments}
                                         action={switchEnvironment.url()}
                                         field="environment"
-                                        openLabel={(option) =>
-                                            `Open ${option.label}'s own console`
-                                        }
+                                        openLabel={(option) => `Open ${option.label}'s own console`}
                                     />
                                 </>
                             )}
@@ -215,10 +225,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                     </header>
 
                     <main id="main-content" className="flex-1 overflow-y-auto canvas-gradient">
-                        <div
-                            className="p-6 lg:p-8 mx-auto w-full"
-                            style={{ maxWidth: '72rem' }}
-                        >
+                        <div className="p-6 lg:p-8 mx-auto w-full" style={{ maxWidth: '72rem' }}>
                             {children}
                         </div>
                     </main>

@@ -70,13 +70,24 @@ final class AppearanceCss
             "--primary:{$p};",
             "--primary-foreground:{$on};",
             "--accent:{$p};",
-            // The same brand colour, walked along its own hue until it is legible as
-            // TEXT on the tenant's background. --accent is picked to look right as a
-            // button fill; used as a link or an icon colour it can sit near 3:1, which
-            // fails AA for body text. Without this the token fell through to the
-            // platform's default blue on every white-labeled page — readable, but not
-            // the customer's colour, which is worse than the contrast bug it fixed.
-            '--accent-strong:'.Color::readableOn($p, $bg).';',
+            /*
+             * The same brand colour, walked along its own hue until it is legible as TEXT.
+             *
+             * --accent is picked to look right as a button fill; used as a link or an icon
+             * colour it can sit near 3:1, which fails AA for body text. Without this the
+             * token fell through to the platform's default blue on every white-labeled page
+             * — readable, but not the customer's colour, which is worse than the contrast
+             * bug it fixed.
+             *
+             * WALKED AGAINST --accent-soft, NOT THE BACKGROUND. `.btn-secondary` is
+             * --accent-strong ON the soft fill, and that fill is the harder ground in BOTH
+             * modes: a 12% wash of the brand colour moves the ground toward the very hue
+             * the text is. Targeting the plain background left the default preset's
+             * "Continue with SSO" at 4.38:1 on every hosted sign-in page — under AA, on the
+             * button a tenant's users press first, and invisible to a sweep that could not
+             * compute contrast.
+             */
+            '--accent-strong:'.Color::readableOn($p, Color::mix($p, $bg, 0.12)).';',
             "--ring:{$p};",
             "--accent-foreground:{$on};",
             "--accent-soft:color-mix(in srgb,{$p} 12%,transparent);",
@@ -88,7 +99,16 @@ final class AppearanceCss
             "--secondary:color-mix(in srgb,{$fg} 6%,{$bg});",
             "--secondary-foreground:{$fg};",
             "--muted-foreground:{$mu};",
-            "--faint:color-mix(in srgb,{$mu} 65%,{$bg});",
+            /*
+             * The quietest text on the page, with a FLOOR under it.
+             *
+             * A blind 65% wash of the muted tone reads beautifully and, for the default
+             * preset, measures 2.79:1 — well under AA for the 11px metadata this token
+             * exists to carry. The wash still sets the intent; `readableOn` then walks it
+             * back only as far as it must, so a palette with room keeps its hierarchy and
+             * one without it becomes legible instead of pretty.
+             */
+            '--faint:'.Color::readableOn(Color::mix($mu, $bg, 0.65), $bg).';',
             "--border:color-mix(in srgb,{$fg} 14%,{$bg});",
 
             // Ground-derived tokens the branded pages actually reach. Omitting them was

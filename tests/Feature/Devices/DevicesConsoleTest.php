@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -16,7 +17,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -40,6 +40,10 @@ function signInAs(MembershipRole $role): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS: the page is a REQUEST now, and without
+    // this every one of these tests would be asserting against a redirect to sign-in.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $subject->id;
 }
 
@@ -60,26 +64,36 @@ it('refuses an ordinary member', function (): void {
     $subjectId = signInAs(MembershipRole::Member);
     consoleDevice($subjectId, 'Secret Handset');
 
-    Volt::test('devices.index')->assertForbidden();
+    test()->get(route('devices.index'))->assertForbidden();
 });
 
 it('lets an admin read the inventory', function (): void {
     $subjectId = signInAs(MembershipRole::Admin);
     consoleDevice($subjectId, 'Admin Handset');
 
-    Volt::test('devices.index')
-        ->assertOk()
-        ->assertSee('Admin Handset');
+    expect(collect((array) test()->get(route('devices.index'))->assertOk()->inertiaProps('devices'))->pluck('name'))
+        ->toContain('Admin Handset');
 });
 
-it('re-checks authorization on every render, not only on mount', function (): void {
+it('re-checks authorization on every request, not only on the first', function (): void {
     $subjectId = signInAs(MembershipRole::Admin);
     consoleDevice($subjectId, 'Admin Handset');
 
-    $page = Volt::test('devices.index')->assertOk();
+    test()->get(route('devices.index'))->assertOk();
 
-    // Demoted mid-session: the next hydration must not keep serving the inventory from
-    // the authorization decision made at mount.
+    /*
+     * DEMOTED MID-SESSION. Under Livewire this was the `boot()`-versus-`mount()` distinction
+     * — a page already open kept re-rendering from the decision made at mount. A ported page
+     * has no such state: every render is its own request through the full stack, so the
+     * property is free. It is asserted anyway, because it is the property that matters and
+     * the mechanism that guarantees it has just changed underneath it.
+     */
+    app(Memberships::class)->changeRole(
+        (string) app(CurrentUser::class)->organizationId(),
+        $subjectId,
+        MembershipRole::Member,
+    );
+
     app(CurrentUser::class)->set(
         app(Subjects::class)->find($subjectId),
         app(CurrentUser::class)->session(),
@@ -87,7 +101,7 @@ it('re-checks authorization on every render, not only on mount', function (): vo
         MembershipRole::Member,
     );
 
-    $page->call('$refresh')->assertForbidden();
+    test()->get(route('devices.index'))->assertForbidden();
 });
 
 it('is a fleet inventory, not an enrolment surface', function (): void {
@@ -96,10 +110,11 @@ it('is a fleet inventory, not an enrolment surface', function (): void {
     // Enrolment is personal and lives under My account, where every user can reach it.
     // The admin page points there instead of duplicating the code — and it does NOT
     // provision the OAuth client as a side effect of an inventory read.
-    Volt::test('devices.index')
-        ->assertOk()
-        ->assertSee('My account')
-        ->assertDontSee('com.cboxid.authenticator://connect', escape: false);
+    // Enrolment is personal and lives under My account, where every user can reach it: the
+    // admin page POINTS there rather than duplicating the flow — and it does not provision
+    // the OAuth client as a side effect of an inventory read.
+    $page = test()->get(route('devices.index'))->assertOk();
 
-    expect(AuthenticatorClient::find())->toBeNull();
+    expect($page->inertiaProps('personalPage'))->toBe(route('devices.mine'))
+        ->and(AuthenticatorClient::find())->toBeNull();
 });

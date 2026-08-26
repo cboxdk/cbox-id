@@ -6,7 +6,6 @@ namespace App\Platform\Console;
 
 use App\Http\Middleware\EnforceImpersonationWindow;
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 
 /**
  * How a module routes a console page — on both planes, at one component.
@@ -27,7 +26,7 @@ use Livewire\Volt\Volt;
 final class ConsoleRoutes
 {
     /**
-     * Route a console page on BOTH planes, at the same Volt component.
+     * Route a console page on BOTH planes, from the same controller.
      *
      * @param  string  $feature  the console-kit feature; the page 404s where it is off,
      *                           on both planes, so a disabled module has no reachable URL
@@ -35,11 +34,9 @@ final class ConsoleRoutes
      * @param  string  $uri  the organization plane's path
      * @param  string  $name  the organization plane's route name; the environment plane's
      *                        is that with an `environment.` prefix
-     * @param  string|class-string  $component  the page. A CONTROLLER CLASS renders it
-     *                                          through Inertia; a dotted string is a Volt
-     *                                          component, which is how the pages that
-     *                                          have not been ported yet still route. The
-     *                                          second form goes when the last of them does.
+     * @param  array{0: class-string, 1: string}|class-string  $component  the page's controller — an
+     *                                                                     invokable class, or a [class, method]
+     *                                                                     pair — rendered through Inertia
      * @param  string|null  $environmentUri  the environment plane's path under `/admin`,
      *                                       when the two planes spell it differently (as
      *                                       the merged core capabilities do — `/connections`
@@ -48,7 +45,7 @@ final class ConsoleRoutes
     public static function page(
         string $feature,
         string $uri,
-        string $component,
+        array|string $component,
         string $name,
         ?string $environmentUri = null,
     ): void {
@@ -87,7 +84,10 @@ final class ConsoleRoutes
      * subject inside the environment they administer, so there is no "my devices" for
      * them to be shown: the page would render an empty shell that could never fill.
      */
-    public static function organizationPage(string $feature, string $uri, string $component, string $name): void
+    /**
+     * @param  array{0: class-string, 1: string}|class-string  $component
+     */
+    public static function organizationPage(string $feature, string $uri, array|string $component, string $name): void
     {
         Route::middleware([
             'web',
@@ -106,18 +106,89 @@ final class ConsoleRoutes
     }
 
     /**
-     * Register the GET, whichever kind of page this is.
+     * Route a console ACTION on both planes — a write a page performs on itself.
      *
-     * TRANSITIONAL, and the only place in the app that has to know both kinds exist. A
-     * console page is a controller; the Volt branch is here so the pages still waiting to
-     * be ported keep routing through the same middleware stacks as the ported ones —
-     * which is what lets the move happen page by page with the suite green the whole way
-     * rather than only at the ends. It goes when the last Volt component does.
+     * Under Volt there was nothing to register: every mutation was a component method
+     * reached through one shared endpoint, which is exactly why the impersonation guard had
+     * to live at that seam rather than on a route. A ported page's write is its own request
+     * with its own verb, so it needs its own route on each plane — and it needs the SAME
+     * middleware the page it belongs to carries, which is the whole reason this sits beside
+     * {@see page()} rather than being spelled out in each module.
+     *
+     * @param  string  $verb  post|patch|put|delete
+     * @param  array{0: class-string, 1: string}|class-string  $action  a controller action
      */
-    private static function get(string $uri, string $component): \Illuminate\Routing\Route
+    public static function action(
+        string $feature,
+        string $verb,
+        string $uri,
+        array|string $action,
+        string $name,
+        ?string $environmentUri = null,
+    ): void {
+        self::organizationAction($feature, $verb, $uri, $action, $name);
+
+        Route::middleware([
+            'web',
+            'plane:environment',
+            'multi.tenant',
+            'env.admin',
+            'console.feature:'.$feature,
+        ])->prefix('admin')->group(function () use ($verb, $environmentUri, $uri, $action, $name): void {
+            self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.'.$name);
+        });
+    }
+
+    /**
+     * Route a console ACTION on the ORGANIZATION plane only.
+     *
+     * The write half of {@see organizationPage()}, and it exists for the same reason: a
+     * page whose every read is keyed to the signed-in SUBJECT has no meaning on the
+     * environment plane, where an administrator is a control-plane identity rather than a
+     * subject inside the environment. Registering its write there anyway would put a door
+     * on a corridor with no room behind it — reachable, refused for the wrong reason, and
+     * one more URL for a sweep to have to explain.
+     *
+     * @param  string  $verb  post|patch|put|delete
+     * @param  array{0: class-string, 1: string}|class-string  $action  a controller action
+     */
+    public static function organizationAction(
+        string $feature,
+        string $verb,
+        string $uri,
+        array|string $action,
+        string $name,
+    ): void {
+        Route::middleware([
+            'web',
+            'plane:console',
+            EnforceImpersonationWindow::class,
+            'platform.auth',
+            'console.feature:'.$feature,
+        ])->group(function () use ($verb, $uri, $action, $name): void {
+            self::verb($verb, $uri, $action)->name($name);
+        });
+    }
+
+    /**
+     * One route, at the verb this action uses.
+     *
+     * `Route::match()` rather than the dynamic `Route::{$verb}()` the facade would accept: a
+     * variable method on a facade is untyped all the way down, so nothing could tell that
+     * what came back was a route to name.
+     *
+     * @param  array{0: class-string, 1: string}|class-string  $action
+     */
+    private static function verb(string $verb, string $uri, array|string $action): \Illuminate\Routing\Route
     {
-        return class_exists($component)
-            ? Route::get($uri, $component)
-            : Volt::route($uri, $component);
+        return Route::match([$verb], $uri, $action);
+    }
+
+    /**
+     * @param  array{0: class-string, 1: string}|class-string  $component
+     */
+    private static function get(string $uri, array|string $component): \Illuminate\Routing\Route
+    {
+        return Route::get($uri, $component);
     }
 }

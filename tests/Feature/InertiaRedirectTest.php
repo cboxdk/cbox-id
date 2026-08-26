@@ -27,20 +27,48 @@ beforeEach(function (): void {
     installedDeployment();
 });
 
-it('answers a sign-in with a location response, because the dashboard is not an Inertia page', function (): void {
+it('answers a redirect to a page Volt still serves with a location response', function (): void {
+    // THE CASE THIS MIDDLEWARE EXISTS FOR, asked of a page that is still Volt.
+    //
+    // It used to be asked of the sign-in, because the dashboard was one — and the dashboard
+    // is React now, so that case moved to the test below. Repointing rather than deleting:
+    // the hazard is unchanged while ANY page is still served by a closure, and this goes
+    // when the last of them does, along with the middleware's Volt half.
+    $target = collect(app('router')->getRoutes()->getRoutes())
+        ->first(fn ($route): bool => $route->getActionName() === 'Closure'
+            && in_array('GET', $route->methods(), true)
+            && ! str_contains((string) $route->uri(), '{'));
+
+    expect($target)->not->toBeNull('no Volt page is left — delete this case and the middleware half it covers');
+
+    $response = $this->withHeader('X-Inertia', 'true')
+        ->post(route('password.email'), ['email' => 'nobody@acme.test'], ['Referer' => url($target->uri())]);
+
+    // 409 + the header, NOT a 302: the client turns this into a real navigation, which is
+    // the only thing that can render a page it does not own.
+    $response->assertStatus(409)->assertHeader('X-Inertia-Location', url($target->uri()));
+})->group('security');
+
+/**
+ * AND A SIGN-IN IS AN ORDINARY REDIRECT AGAIN, because the dashboard it lands on is a page
+ * this client owns.
+ *
+ * This is the case that used to need the location response, and the reason the middleware
+ * decides from the DESTINATION rather than from the controller: nobody edited the sign-in
+ * when the dashboard ported, and it went back to being a plain 302 by itself.
+ */
+it('leaves a sign-in as a plain redirect now that the dashboard is a React page', function (): void {
     $subject = app(Subjects::class)->create('redirect@acme.test', 'Ada', 'a-strong-unbreached-passphrase');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-redirect'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
-    $response = $this->withHeader('X-Inertia', 'true')->post(route('login.attempt'), [
-        'email' => 'redirect@acme.test',
-        'password' => 'a-strong-unbreached-passphrase',
-    ]);
-
-    // 409 + the header, NOT a 302: the client turns this into a real navigation, which is
-    // the only thing that can render a page it does not own.
-    $response->assertStatus(409)
-        ->assertHeader('X-Inertia-Location', route('dashboard'));
+    $this->withHeader('X-Inertia', 'true')
+        ->post(route('login.attempt'), [
+            'email' => 'redirect@acme.test',
+            'password' => 'a-strong-unbreached-passphrase',
+        ])
+        ->assertStatus(302)
+        ->assertRedirect(route('dashboard'));
 
     expect(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
 })->group('security');

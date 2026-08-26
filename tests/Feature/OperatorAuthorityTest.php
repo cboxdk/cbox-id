@@ -25,7 +25,6 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
-use Livewire\Volt\Volt;
 use Tests\TestCase;
 
 /** The organization the signed-up owner belongs to, read in the platform root. */
@@ -157,11 +156,21 @@ it('gives the platform pages to an operator, in the same rail', function (): voi
         ->and(railRoutes())->toContain('platform.environments')
         ->and(railRoutes())->toContain('platform.operators');
 
-    $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
+    /*
+     * ON THE PAGE ITSELF, read off the shell it is framed by. Asserted on the nav rather
+     * than on the document: the areas are serialised into the response either way, with the
+     * slashes escaped, so a substring check over the HTML was matching — or failing to —
+     * for reasons that had nothing to do with the rail.
+     */
+    $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
 
-    expect($html)->toContain(route('platform.customers'))
-        ->and($html)->toContain(route('platform.operators'))
-        ->and($html)->toContain(route('dashboard'));
+    $hrefs = collect($shell['areas'])->pluck('href');
+
+    expect($hrefs)->toContain(route('platform.customers'))
+        ->and($hrefs)->toContain(route('platform.operators'))
+        // …and a customer area beside them, which is the whole claim: one rail, both
+        // altitudes, no second shell to change into.
+        ->and($hrefs)->toContain(route('dashboard'));
 })->group('security');
 
 /**
@@ -401,12 +410,14 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // that answers, because asserting only where they were sent is what let a 403 pass for
     // a landing — the redirect was always issued, and it was the arrival that refused.
     nextRequest();
-    $this->followingRedirects()->get(route('projects'))
-        ->assertSuccessful()
-        ->assertSee('belong to an organization here yet', escape: false)
-        // The way out. Nothing rendered one before: the account rail needed nav areas and
-        // this person had none, and the mobile sheet is `lg:hidden`.
-        ->assertSee(route('logout'), escape: false);
+    $landing = $this->followingRedirects()->get(route('projects'))->assertSuccessful();
+
+    expect((string) $landing->inertiaProps('greeting'))->toContain('belong to an organization here yet')
+        // THE WAY OUT. Nothing rendered one before: the account rail needed nav areas and
+        // this person had none, and the mobile sheet is `lg:hidden`. The account menu draws
+        // it from the shared auth prop, so a person with no areas still gets one — and
+        // tests/Browser is where its being drawn is held.
+        ->and($landing->inertiaProps('auth.user'))->not->toBeNull();
 
     // The same for the one other page a signed-in person is routinely sent to.
     nextRequest();
@@ -435,13 +446,16 @@ it('lands an account-less operator on the console they actually have', function 
 
     app(PlatformOperators::class)->create('lonely@cbox.test', 'a-strong-unbreached-passphrase', 'Lonely');
 
-    $page = Volt::test('auth.login')
-        ->set('email', 'lonely@cbox.test')
-        ->call('continue')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login');
+    // TWO REQUESTS, because it is two steps: the identifier is answered first and the
+    // password only after this deployment has decided that a password is what it wants.
+    test()->from(route('login'))->post(route('login.identify'), ['email' => 'lonely@cbox.test']);
 
-    expect($page->errors()->all())->toBe([]);
+    test()->from(route('login'))
+        ->post(route('login.attempt'), [
+            'email' => 'lonely@cbox.test',
+            'password' => 'a-strong-unbreached-passphrase',
+        ])
+        ->assertSessionHasNoErrors();
 
     // One console, one landing. The proof is that the landing SERVES them: asserting only
     // where they were sent is what let the loop ship, because the redirect was always
@@ -476,13 +490,15 @@ it('lands an account member in the console too', function (): void {
     // and could assume which — a door served everywhere cannot, and must not.
     platformRootDeployment();
 
-    $page = Volt::test('auth.login')
-        ->set('email', $member->email)
-        ->call('continue')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login');
+    test()->from(route('login'))->post(route('login.identify'), ['email' => $member->email]);
 
-    expect($page->effects['redirect'] ?? '')->toBe(route('dashboard'));
+    test()->from(route('login'))
+        ->post(route('login.attempt'), [
+            'email' => $member->email,
+            'password' => 'a-strong-unbreached-passphrase',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('dashboard'));
 
     // …and what they OWN is what puts the Identity platform area in front of them, rather
     // than which door they came through. There was a second door for exactly this, and it
@@ -602,14 +618,20 @@ it('keeps the no-access landing reachable under an environment-wide MFA mandate'
     expect(app(MfaMandate::class)->requiresEnrolment($subject->id))
         ->toBeTrue('fixture: the mandate does not bind this subject, so nothing is being tested');
 
+    /*
+     * The one action always available to somebody who cannot satisfy the hold. WHERE they
+     * come to rest is the security page — the one page the mandate leaves reachable,
+     * because it is where enrolment lives — and the property being asserted is that the
+     * chain terminates on a page that has a way out at all.
+     *
+     * ASKED OF THE PROPS. The sign-out URL used to be in the response body; on a ported
+     * page it is a serialised prop, so a document match would fail for a page that offers
+     * the way out perfectly well — and, worse, would pass on any page that happened to
+     * mention the URL.
+     */
     nextRequest();
-    arrivalWithin($this, route('dashboard'))
-        ->assertSuccessful()
-        // The one action always available to somebody who cannot satisfy the hold. WHERE
-        // they come to rest is the security page — the one page the mandate leaves
-        // reachable, because it is where enrolment lives — and the property being asserted
-        // is that the chain terminates on a page that has a way out at all.
-        ->assertSee(route('logout'), escape: false);
+    expect(hasWayOut(arrivalWithin($this, route('dashboard'))->assertSuccessful()))
+        ->toBeTrue('the mandate left this person on a page with no way to sign out');
 
     // An Identity platform page enters the same cycle — this persona owns no identity
     // providers, so it turns them around too — and it is asserted with the same bound
@@ -618,7 +640,26 @@ it('keeps the no-access landing reachable under an environment-wide MFA mandate'
     // matters is that the chain terminates on a page with a way out, which is the whole
     // property the account console's `no-access` page existed for.
     nextRequest();
-    arrivalWithin($this, route('projects'))
-        ->assertSuccessful()
-        ->assertSee(route('logout'), escape: false);
+    expect(hasWayOut(arrivalWithin($this, route('projects'))->assertSuccessful()))
+        ->toBeTrue('the mandate left this person on a page with no way to sign out');
 })->group('security');
+
+/**
+ * Whether the page a person landed on can offer them a sign-out.
+ *
+ * The control lives in the account menu, and the menu is drawn from the shared AUTH prop
+ * rather than from the navigation — deliberately, so that having no organization, and
+ * therefore no nav areas, cannot take it away. A page that renders with `auth.user` null
+ * falls through to the shell's frameless branch and has no chrome at all, which is exactly
+ * the state this asserts against.
+ *
+ * The URL itself is built on the client, so it is not a prop to look for; that the menu
+ * actually draws a sign-out is held in tests/Browser, which is the only place that can see
+ * it.
+ */
+function hasWayOut(TestResponse $response): bool
+{
+    $auth = (array) $response->inertiaProps('auth');
+
+    return ($auth['user'] ?? null) !== null;
+}

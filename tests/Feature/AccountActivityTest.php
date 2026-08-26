@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use App\Platform\DeviceLabel;
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
@@ -18,7 +19,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -40,6 +40,11 @@ function signedInPerson(string $email = 'ada@acme.test'): array
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Member);
 
+    // "Sign out everywhere else" is behind a step-up — it is the account-wide lever, and
+    // the one a borrowed unlocked laptop would pull. Held open here so these tests are
+    // about the revocations rather than about the gate, which SudoTest owns.
+    app(Sudo::class)->confirm();
+
     return [$subject->id, $org->id, $session->id];
 }
 
@@ -48,14 +53,16 @@ it('shows every session a person holds, not just a count of them', function (): 
 
     app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], '198.51.100.7', 'Mozilla/5.0 (iPhone) Safari/604');
 
-    $page = Volt::test('account.activity');
+    $sessions = collect(accountActivity()['sessions']);
 
-    $page->assertSee('Chrome on macOS')
-        ->assertSee('Safari on iPhone')
+    expect($sessions->pluck('label'))->toContain('Chrome on macOS')
+        ->and($sessions->pluck('label'))->toContain('Safari on iPhone')
         // The address is what somebody actually recognises, or does not.
-        ->assertSee('203.0.113.10')
-        ->assertSee('198.51.100.7')
-        ->assertSee('This device');
+        ->and($sessions->pluck('ip'))->toContain('203.0.113.10')
+        ->and($sessions->pluck('ip'))->toContain('198.51.100.7')
+        // …and exactly one row is the browser doing the asking, which is the question
+        // standing in the way of every other one on this page.
+        ->and($sessions->where('isCurrent', true)->pluck('id')->all())->toBe([$currentId]);
 });
 
 /**
@@ -68,15 +75,19 @@ it('signs out one session and leaves the rest alone', function (): void {
 
     $other = app(SessionManager::class)->start($subjectId, $orgId, ['pwd'], '198.51.100.7', 'Firefox');
 
-    Volt::test('account.activity')->call('revokeSession', $other->id);
+    revokeOwnSession($other->id)->assertSessionHasNoErrors();
 
     expect(app(SessionManager::class)->active($other->id))->toBeNull()
         ->and(app(SessionManager::class)->active($currentId))->not->toBeNull();
 });
 
 /**
- * A COMPONENT ACTION IS A POST ANYBODY SIGNED IN CAN MAKE, and an id rendered on a page is
- * an id from the client. Somebody else's session id must do nothing at all.
+ * AN ID ON A PAGE IS AN ID FROM THE CLIENT. Under Volt this was a component action — a
+ * POST to the one shared endpoint that anybody signed in could make. It is its own route
+ * now and the id is a route parameter, which changes nothing about the danger: somebody
+ * else's session id must do nothing at all.
+ *
+ * 404, not 403: another person's session is not a control this reader is failing to press.
  */
 it('refuses to sign out a session belonging to somebody else', function (): void {
     signedInPerson();
@@ -87,7 +98,7 @@ it('refuses to sign out a session belonging to somebody else', function (): void
     // Back to the first person, holding their own session.
     [$subjectId, $orgId, $currentId] = signedInPerson('ada2@acme.test');
 
-    Volt::test('account.activity')->call('revokeSession', $strangers->id);
+    revokeOwnSession($strangers->id)->assertNotFound();
 
     expect(app(SessionManager::class)->active($strangers->id))->not->toBeNull();
 })->group('security');
@@ -98,7 +109,7 @@ it('signs out everywhere else without signing out the browser asking', function 
     $a = app(SessionManager::class)->start($subjectId, $orgId, ['pwd']);
     $b = app(SessionManager::class)->start($subjectId, $orgId, ['pwd']);
 
-    Volt::test('account.activity')->call('signOutEverywhereElse');
+    revokeOtherOwnSessions()->assertSessionHasNoErrors();
 
     expect(app(SessionManager::class)->active($a->id))->toBeNull()
         ->and(app(SessionManager::class)->active($b->id))->toBeNull()
@@ -119,14 +130,16 @@ it('shows an application holding a grant, and withdraws exactly that one', funct
     $tokens->issue($cli, $subjectId, $orgId, ['openid', 'offline_access']);
     $kept = $tokens->issue($other, $subjectId, $orgId, ['openid']);
 
-    $page = Volt::test('account.activity');
+    $applications = collect(accountActivity()['applications']);
 
-    $page->assertSee('Acme CLI')
-        ->assertSee('Acme Web')
-        // Worth saying out loud: this one keeps working when nobody is there.
-        ->assertSee('Works when you are away');
+    expect($applications->pluck('name'))->toContain('Acme CLI')
+        ->and($applications->pluck('name'))->toContain('Acme Web')
+        // Worth saying out loud, and asked of the row rather than of the page: this one
+        // keeps working when nobody is there.
+        ->and($applications->firstWhere('name', 'Acme CLI')['actsOffline'])->toBeTrue()
+        ->and($applications->firstWhere('name', 'Acme Web')['actsOffline'])->toBeFalse();
 
-    $page->call('revokeApplication', $cli->client_id);
+    withdrawApplication($cli->client_id)->assertSessionHasNoErrors();
 
     $remaining = app(RefreshTokens::class)->connectedApplications($subjectId);
 
@@ -142,7 +155,7 @@ it('never shows one person another person\'s applications', function (): void {
 
     signedInPerson('ada3@acme.test');
 
-    Volt::test('account.activity')->assertDontSee('Mallory CLI');
+    expect(collect(accountActivity()['applications'])->pluck('name'))->not->toContain('Mallory CLI');
 })->group('security');
 
 /**
@@ -152,11 +165,13 @@ it('never shows one person another person\'s applications', function (): void {
 it('shows the account events a person needs to recognise, in their own words', function (): void {
     signedInPerson();
 
-    Volt::test('account.activity')
-        // `user.session_started` is written by the session manager on every sign-in.
-        ->assertSee('Signed in')
-        // And not the machine name for it.
-        ->assertDontSee('user.session_started');
+    $labels = collect(accountActivity()['activity'])->pluck('label');
+
+    // `user.session_started` is written by the session manager on every sign-in, and the
+    // page carries the WORDS rather than the machine name — the translation is the server's,
+    // so this is where it is held.
+    expect($labels)->toContain('Signed in')
+        ->and($labels)->not->toContain('user.session_started');
 });
 
 it('shows nobody else\'s activity', function (): void {
@@ -164,28 +179,29 @@ it('shows nobody else\'s activity', function (): void {
 
     signedInPerson('ada4@acme.test');
 
-    $html = Volt::test('account.activity')->html();
+    $mine = collect(accountActivity()['activity'])->pluck('id');
 
-    // THE ENTRY IDS, because the page never renders a subject id anywhere. This asserted
-    // `not->toContain($strangerId)` and so could not fail: delete the ownership predicate
-    // and every person sees every other person's sign-ins, lockouts and passkey
-    // enrolments, while the assertion stays green because the id it looked for was never
-    // in the document either way.
-    //
-    // Each row carries `wire:key="activity-<audit entry id>"`, so the entries themselves
-    // are identifiable in the markup — which makes the stranger's OWN rows the thing to
-    // look for.
+    // THE ENTRY IDS. This asserted `not->toContain($strangerId)` over the rendered HTML and
+    // so could not fail: delete the ownership predicate and every person sees every other
+    // person's sign-ins, lockouts and passkey enrolments, while the assertion stays green
+    // because the subject id it looked for was never in the document either way. The rows
+    // carry their own entry id, so the stranger's OWN entries are the thing to look for.
     $strangerEntries = AuditEntry::query()
         ->where('actor_id', $strangerId)
         ->pluck('id')
         ->all();
 
     // The fixture has to have produced some, or this proves nothing.
-    expect($strangerEntries)->not->toBeEmpty();
+    expect($strangerEntries)->not->toBeEmpty()
+        // And the reader has to have some of their own, or an empty list would satisfy
+        // every assertion below.
+        ->and($mine)->not->toBeEmpty();
 
+    // ONE NEEDLE, NO MESSAGE: `toContain` is variadic, so a message argument is read as a
+    // second needle and the negated form then asks "contains neither" — which a list
+    // containing the first satisfies happily.
     foreach ($strangerEntries as $entryId) {
-        expect(str_contains($html, 'activity-'.$entryId))
-            ->toBeFalse('the page rendered another person\'s activity row');
+        expect($mine)->not->toContain($entryId);
     }
 })->group('security');
 
@@ -217,8 +233,14 @@ it('says a client sent no browser name rather than calling it unknown', function
 it('dates every activity row', function (): void {
     signedInPerson();
 
-    $html = Volt::test('account.activity')->html();
+    $rows = collect(accountActivity()['activity']);
 
-    // A time element with a real datetime, not the placeholder.
-    expect($html)->toMatch('/<time[^>]+datetime="\d{4}-\d{2}-\d{2}T/');
+    expect($rows)->not->toBeEmpty();
+
+    // A REAL TIMESTAMP on every row, not the em dash `created_at` produced. The page draws
+    // its `<time datetime=…>` from this and from nothing else.
+    foreach ($rows as $row) {
+        expect($row['atIso'])->toMatch('/^\d{4}-\d{2}-\d{2}T/')
+            ->and($row['at'])->toBeString();
+    }
 });

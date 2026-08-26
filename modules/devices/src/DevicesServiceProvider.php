@@ -30,7 +30,6 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -147,7 +146,6 @@ class DevicesServiceProvider extends ServiceProvider
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'devices');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/devices.php');
 
         // Security alerts take the opposite trade to approvals: they ride the ordinary

@@ -19,9 +19,13 @@ export interface HelpProps {
  * tooltip closes the moment the pointer leaves, so a link inside one is unreachable, and
  * none of it exists at all on a touch screen.
  *
- * A DISCLOSURE rather than a dialog. It takes no focus on open, traps nothing and
- * restores nothing — the person reading it has not left the page, and moving their focus
- * to explain a word would be the interruption the explanation exists to avoid.
+ * NON-MODAL, and the distinction is the whole of what its predecessor got wrong. The
+ * blade panel put `role="dialog"` on a div that took no focus, trapped nothing and
+ * restored nothing: a screen reader announced a dialog its user could neither enter nor
+ * leave. This one is what it says it is — focus moves in so the link is reachable, Escape
+ * closes it, focus goes back to the trigger, and the page underneath stays interactive
+ * because nothing is trapped. Held in `Help.test.tsx`, which is a rendered DOM rather
+ * than a grep for the attribute.
  *
  * The copy comes from the server, resolved from {@see \App\Platform\Help\HelpTopic}. It
  * has to be identical wherever the same concept surfaces — a page header, an empty state

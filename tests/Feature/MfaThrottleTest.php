@@ -13,7 +13,6 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -58,24 +57,18 @@ beforeEach(function (): void {
 it('stops grinding the TOTP code, and keeps refusing after the budget is spent', function (): void {
     [$subjectId, $secret] = subjectWithTotp();
 
-    Volt::test('auth.login')
-        ->set('email', 'mfa@acme.test')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->set('identified', true)
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'mfa@acme.test', 'password' => 'a-strong-unbreached-passphrase', 'identified' => true])
         ->assertRedirect(route('mfa'));
 
-    $screen = Volt::test('auth.mfa');
-
     for ($attempt = 0; $attempt < 6; $attempt++) {
-        $screen->set('code', '000000')->call('verify');
+        test()->from(route('mfa'))->post(route('mfa.verify'), ['code' => '000000']);
     }
 
     // The real code, and it must NOT get through: this is the assertion the throttle
     // exists for, and the one a message-only test would miss.
-    $screen->set('code', app(TotpAuthenticator::class)->codeAt($secret, time()))
-        ->call('verify')
-        ->assertHasErrors('code');
+    test()->from(route('mfa'))
+        ->post(route('mfa.verify'), ['code' => app(TotpAuthenticator::class)->codeAt($secret, time())])
+        ->assertSessionHasErrors('code');
 
     expect(session()->has('cbox.session'))
         ->toBeFalse('a correct code was accepted after the attempt budget was spent');
@@ -88,23 +81,17 @@ it('stops grinding recovery codes on the same budget', function (): void {
 
     $codes = app(Mfa::class)->generateRecoveryCodes($subjectId);
 
-    Volt::test('auth.login')
-        ->set('email', 'recovery@acme.test')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->set('identified', true)
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'recovery@acme.test', 'password' => 'a-strong-unbreached-passphrase', 'identified' => true])
         ->assertRedirect(route('mfa'));
 
-    $screen = Volt::test('auth.mfa');
-
     for ($attempt = 0; $attempt < 6; $attempt++) {
-        $screen->set('recoveryCode', 'not-a-real-recovery-code')->call('useRecoveryCode');
+        test()->from(route('mfa'))->post(route('mfa.recover'), ['recoveryCode' => 'not-a-real-recovery-code']);
     }
 
     // A genuine, unused recovery code — still refused.
-    $screen->set('recoveryCode', $codes[0])
-        ->call('useRecoveryCode')
-        ->assertHasErrors('recoveryCode');
+    test()->from(route('mfa'))
+        ->post(route('mfa.recover'), ['recoveryCode' => $codes[0]])
+        ->assertSessionHasErrors('recoveryCode');
 
     expect(session()->has('cbox.session'))
         ->toBeFalse('a valid recovery code was accepted after the attempt budget was spent');
@@ -128,12 +115,18 @@ it('rate-limits the second factor on every plane that checks one', function (): 
     $verifiers = [];
     $checked = 0;
 
-    // THE MODULES TOO. Seven in-tree module view trees sat outside this walk, and a module
-    // shipping a step-up screen is exactly the "new plane added without one" this test
-    // exists to catch.
+    /*
+     * WHEREVER THE SCREENS LIVE — which, now the port is done, is controllers.
+     *
+     * This walked Volt views only, and three of the four planes it names were already
+     * controllers: it found ONE of them and reported a clean house. The floor below is
+     * what caught that, which is the entire reason the floor is here. The Volt roots are
+     * gone with the directories; the module controllers stay, because a module shipping a
+     * step-up screen is exactly the "new plane added without one" this exists to catch.
+     */
     $roots = array_merge(
-        [base_path('resources/views/livewire')],
-        array_filter((array) glob(base_path('modules/*/resources/views/livewire')), 'is_dir'),
+        [base_path('app/Http/Controllers')],
+        array_filter((array) glob(base_path('modules/*/src/Http/Controllers')), 'is_dir'),
     );
 
     foreach ($roots as $root) {
@@ -159,7 +152,24 @@ it('rate-limits the second factor on every plane that checks one', function (): 
 
             $checked++;
 
-            if (! str_contains($source, 'RateLimiter')) {
+            /*
+             * BOUNDED, by any mechanism this codebase actually uses — not by one class name.
+             *
+             * `RateLimiter` is the hosted form's answer: a bucket keyed on the identity and
+             * the caller. The embedded Frontend API cannot use it as the whole answer,
+             * because a cross-origin page carries no session and the pending state IS the
+             * ticket — so the budget lives on that row and `claimAttempt()` spends it
+             * atomically, before the code is checked, keyed to the publishable key that
+             * minted it. That is a bound on guesses against ONE pending sign-in, which is
+             * the thing being protected here.
+             *
+             * Named rather than excluded by path: a new screen may legitimately use either,
+             * and the question is whether the guesses are counted at all.
+             */
+            $bounded = str_contains($source, 'RateLimiter')
+                || str_contains($source, '->claimAttempt(');
+
+            if (! $bounded) {
                 $verifiers[] = str_replace(base_path().'/', '', $file->getPathname());
             }
         }

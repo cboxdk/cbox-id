@@ -19,7 +19,6 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -107,149 +106,158 @@ it('puts the customer first in the platform rail, above the environments inside 
 it('walks an operator from an account down to every environment its projects own', function (): void {
     $estate = acmeEstate();
 
-    $html = (string) $this->get(route('platform.customers.show', $estate['organization']->id))
-        ->assertSuccessful()->getContent();
+    $props = platformCustomer($estate['organization']->id);
+
+    $projects = collect($props['projects']);
+    $slugs = $projects->pluck('environments')->flatten(1)->pluck('slug');
 
     // The heading is the customer, and both projects are named under it — including the
     // second one, whose environment is the row a flat list renders as an unexplained
     // "Production".
-    expect($html)->toContain('<h1 class="cbx-page-title">Acme</h1>')
-        ->and($html)->toContain('Billing Portal')
-        ->and($html)->toContain($estate['staging']->slug)
-        ->and($html)->toContain($estate['portal']->slug)
-        ->and($html)->toContain($estate['production']->slug)
-        // The team is here too — an account with nobody on it is a provisioning failure
-        // an operator should be able to see.
-        ->and($html)->toContain('estate-owner@acme.example');
+    expect($props['customer']['name'])->toBe('Acme')
+        ->and($projects->pluck('name'))->toContain('Billing Portal')
+        ->and($slugs)->toContain($estate['staging']->slug)
+        ->and($slugs)->toContain($estate['portal']->slug)
+        ->and($slugs)->toContain($estate['production']->slug)
+        // The team is here too — an account with nobody on it is a provisioning failure an
+        // operator should be able to see.
+        ->and(collect($props['members'])->pluck('email'))->toContain('estate-owner@acme.example');
 });
 
 it('takes its eyebrow and its lit rail entry from the nav registry, without writing either', function (): void {
     $estate = acmeEstate();
 
-    $html = (string) $this->get(route('platform.customers.show', $estate['organization']->id))
-        ->assertSuccessful()->getContent();
+    $props = platformCustomer($estate['organization']->id);
 
-    // `platform.customers.show` is a CHILD of `platform.customers`, so NavPage::owns() finds
-    // it and both the eyebrow and the rail resolve with no hand-written label. This is the
-    // whole reason the route is not called `platform.account`.
-    expect($html)->toContain('<p class="cbx-page-eyebrow">Platform</p>')
-        ->and($html)->toContain(' · Platform · ')
-        ->and($html)->not->toContain(' · Workspace · ');
+    /*
+     * `platform.customers.show` is a CHILD of `platform.customers`, so NavPage::owns() finds
+     * it and both the eyebrow and the lit rail entry resolve with no hand-written label.
+     * This is the whole reason the route is not called `platform.account`.
+     *
+     * Asserted as the PAIR — an active area whose key resolves to a label — rather than as
+     * a rendered `<p>`: the eyebrow is drawn by `<PageHeader>` from `shell.activeArea` and
+     * from nothing else, and an activeArea absent from `areas` renders no eyebrow at all,
+     * which is the failure this exists to catch. That the element is drawn is held in the
+     * browser suite, which is the only place that can see it.
+     */
+    $shell = (array) $props['shell'];
+    $area = collect($shell['areas'])->firstWhere('key', $shell['activeArea']);
+
+    expect($area)->not->toBeNull('the page named an area the rail does not have')
+        ->and($area['label'])->toBe('Platform');
+
+    // …and the section is in the tab title, which is the server's and not the bundle's.
+    expect((string) test()->get(route('platform.customers.show', $estate['organization']->id))->getContent())
+        ->toContain(' · Platform · ')
+        ->not->toContain(' · Workspace · ');
 });
 
 it('makes every count on the accounts list a link to the account it counts', function (): void {
     $estate = acmeEstate();
 
-    $html = (string) $this->get(route('platform.customers'))->assertSuccessful()->getContent();
-    $href = route('platform.customers.show', $estate['organization']->id);
+    $row = collect(platformCustomers()['customers'])->firstWhere('id', $estate['organization']->id);
 
-    // The finding in one assertion: this page computed three counts per account and had
-    // no route() call in it, so all three were dead ends.
-    expect(substr_count($html, 'href="'.$href.'"'))->toBeGreaterThanOrEqual(4)
-        ->and($html)->toContain('2 projects on Acme')
-        ->and($html)->toContain('3 environments on Acme');
+    // The finding, as the row: this page computed three counts per account and had no
+    // route() call in it at all, so all three were dead ends. The destination is carried
+    // once and the page hangs every count on it.
+    expect($row['href'])->toBe(route('platform.customers.show', $estate['organization']->id))
+        ->and($row['projects'])->toBe(2)
+        ->and($row['environments'])->toBe(3);
 });
 
 it('points the console at an environment from the account page and stays on the account', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['organization']->id);
 
-    livewireUpdate($url, 'platform.customer', 'target', [$estate['portal']->id])
-        ->assertSuccessful();
+    targetCustomerEnvironment($estate['organization']->id, $estate['portal']->id)
+        ->assertRedirect(route('platform.customers.show', $estate['organization']->id));
 
     expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBe($estate['portal']->slug);
 });
 
 it('opens an environment straight onto the tenants inside it', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['organization']->id);
 
     // Two steps that were only ever available as two pages: switch on the flat list, then
     // find Organizations in the rail.
-    livewireUpdate($url, 'platform.customer', 'open', [$estate['staging']->id])
-        ->assertSuccessful()
-        ->assertJsonPath('components.0.effects.redirect', route('platform.organizations'));
+    openCustomerEnvironment($estate['organization']->id, $estate['staging']->id)
+        ->assertRedirect(route('platform.organizations'));
 
     expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBe($estate['staging']->slug);
 });
 
 /**
  * The ownership predicate on the two targeting actions, exercised through the REAL
- * endpoint — `Volt::test()` never routes, so it cannot tell you whether a crafted update
- * request gets through.
+ * endpoint. Both take an environment id straight off the request, and without the
+ * predicate either one would repoint the console at any environment on the install.
  */
 it('refuses to repoint the console at an environment this account does not own', function (): void {
     $estate = acmeEstate();
     $stranger = anUnattachedEnvironment();
+    $organizationId = $estate['organization']->id;
 
-    $url = route('platform.customers.show', $estate['organization']->id);
-
-    livewireUpdate($url, 'platform.customer', 'target', [$stranger->id])->assertNotFound();
-    livewireUpdate($url, 'platform.customer', 'open', [$stranger->id])->assertNotFound();
+    targetCustomerEnvironment($organizationId, $stranger->id)->assertNotFound();
+    openCustomerEnvironment($organizationId, $stranger->id)->assertNotFound();
 
     // Including the platform root, which is the one an operator would most regret
     // repointing at by accident from a customer's page.
-    livewireUpdate($url, 'platform.customer', 'target', [platformRootEnvironment()->id])->assertNotFound();
+    targetCustomerEnvironment($organizationId, platformRootEnvironment()->id)->assertNotFound();
 
     expect(session()->get(OperatorEnvironment::SESSION_KEY))->toBeNull();
 })->group('security');
 
 it('suspends and reactivates the account from its own page, reversibly', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['organization']->id);
 
-    livewireUpdate($url, 'platform.customer', 'toggleStatus')->assertSuccessful();
+    toggleCustomer($estate['organization']->id)->assertSessionHasNoErrors();
     expect(Organization::query()->whereKey($estate['organization']->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
-    livewireUpdate($url, 'platform.customer', 'toggleStatus')->assertSuccessful();
+    // …and the page SAYS so, or the button is a database write nothing reflects.
+    expect(platformCustomer($estate['organization']->id)['customer']['active'])->toBeFalse();
+
+    toggleCustomer($estate['organization']->id)->assertSessionHasNoErrors();
     expect(Organization::query()->whereKey($estate['organization']->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
 
 /**
- * The refusal, run the way it can actually be attacked: a snapshot captured while the
- * operator had authority is exactly what a retained browser tab holds after it is gone,
- * and it reaches every public method on the component without a fresh page load.
+ * THE REFUSAL, RUN THE WAY IT CAN ACTUALLY BE ATTACKED.
  *
- * `AuthenticateOperator` is on the persistent-middleware list, so it re-runs here and
- * answers first — which is the point of that list and why this asserts a redirect rather
- * than the component's own 404. The component's own guard is asserted separately below,
- * where nothing else can be answering.
+ * This used to replay a Livewire snapshot captured while the operator had authority —
+ * exactly what a retained browser tab holds after that authority is gone, and it reached
+ * every public method on the component without a fresh page load. Under Inertia there is no
+ * snapshot and no shared update endpoint: each action is its own route with its own stack,
+ * so the equivalent attack is the retained tab POSTing to those routes, which is what this
+ * does. Every one of them must refuse, and nothing may change.
  */
-it('refuses every action on a snapshot whose operator authority is gone', function (): void {
+it('refuses every write on this page once the operator authority is gone', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['organization']->id);
+    $organizationId = $estate['organization']->id;
 
-    $snapshot = snapshotFor(
-        (string) $this->get($url)->assertSuccessful()->getContent(),
-        'platform.customer',
-    );
+    $this->get(route('platform.customers.show', $organizationId))->assertSuccessful();
 
     forgetSubjectSession();
     nextRequest();
 
-    // `login`, not `workspace.login` — the suite's baseline is a single-host install, so
-    // an operator's sign-in is the root one (see AuthenticateOperator::signInRoute()).
-    $this->get($url)->assertRedirect(route('login'));
+    // `login`, not `workspace.login` — the suite's baseline is a single-host install, so an
+    // operator's sign-in is the root one (see AuthenticateOperator::signInRoute()).
+    $this->get(route('platform.customers.show', $organizationId))->assertRedirect(route('login'));
 
-    replaySnapshot($url, $snapshot, 'toggleStatus')->assertRedirect(route('login'));
-    replaySnapshot($url, $snapshot, 'target', [$estate['portal']->id])->assertRedirect(route('login'));
-    replaySnapshot($url, $snapshot, 'open', [$estate['portal']->id])->assertRedirect(route('login'));
+    toggleCustomer($organizationId)->assertRedirect(route('login'));
+    targetCustomerEnvironment($organizationId, $estate['portal']->id)->assertRedirect(route('login'));
+    openCustomerEnvironment($organizationId, $estate['portal']->id)->assertRedirect(route('login'));
 
-    expect(Organization::query()->whereKey($estate['organization']->id)->value('status'))->toBe(OrganizationStatus::Active)
+    expect(Organization::query()->whereKey($organizationId)->value('status'))->toBe(OrganizationStatus::Active)
         ->and(session()->get(OperatorEnvironment::SESSION_KEY))->toBeNull();
 })->group('security');
 
 /**
- * The component's OWN guard, isolated.
- *
- * `Volt::test()` bypasses routing entirely — no `AuthenticateOperator`, no persistent
- * middleware — so this is the one place where the `abort_unless` in boot() is the only
- * thing that can be answering. That is also why the check lives in boot() rather than
- * mount(): Livewire re-runs mount only on the initial GET.
+ * And the same for a session that IS signed in and simply is not an operator's — a
+ * different answer from the one above, and deliberately: no session at all is a step the
+ * visitor can take, while a session that is not an operator's must 404 rather than confirm
+ * that this deployment has a staff console at that address.
  */
-it('refuses an account owner who is not an operator, on the component itself', function (): void {
+it('refuses an account owner who is not an operator, on the reads and on the writes', function (): void {
     $estate = acmeEstate();
-    $url = route('platform.customers.show', $estate['organization']->id);
+    $organizationId = $estate['organization']->id;
 
     // Provisioned BEFORE the session is dropped: nextRequest() ends the request, and with
     // it the ambient environment a subject has to be written into.
@@ -264,31 +272,40 @@ it('refuses an account owner who is not an operator, on the component itself', f
     nextRequest();
     signInAsMember($outsider->user_id);
 
-    // Somebody else's account, and a 404 rather than a 403: a 403 would confirm to any
-    // account holder that this deployment has a staff console at that address.
-    $this->get($url)->assertNotFound();
+    $this->get(route('platform.customers.show', $organizationId))->assertNotFound();
 
-    Volt::test('platform.customer', ['organization' => $estate['organization']->id])->assertStatus(404);
+    // EVERY WRITE TOO. Under Livewire these shared one endpoint and the page had to re-ask
+    // in boot(); each is now its own route, which is what makes asking them one by one the
+    // honest test rather than a formality.
+    toggleCustomer($organizationId)->assertNotFound();
+    targetCustomerEnvironment($organizationId, $estate['portal']->id)->assertNotFound();
+    openCustomerEnvironment($organizationId, $estate['portal']->id)->assertNotFound();
+
+    expect(Organization::query()->whereKey($organizationId)->value('status'))->toBe(OrganizationStatus::Active);
 })->group('security');
 
 it('gives every environment its lineage on the flat list, and names the two that have none', function (): void {
     $estate = acmeEstate();
     anUnattachedEnvironment();
 
-    $html = (string) $this->get(route('platform.environments'))->assertSuccessful()->getContent();
+    $rows = collect(platformEnvironments()['environments']);
 
     // "Production" is a name half the customers on an install will have. Both of Acme's
     // productions are qualified, and the one under the second project names its project.
-    expect($html)->toContain('Acme / Production')
-        ->and($html)->toContain('Acme / Staging')
-        ->and($html)->toContain('Billing Portal')
+    expect($rows->pluck('qualifiedName'))->toContain('Acme / Production')
+        ->and($rows->pluck('qualifiedName'))->toContain('Acme / Staging')
+        // …and the second project is NAMED under the owner, which is the only thing that
+        // tells two identically-named productions of the same customer apart.
+        ->and($rows->pluck('lineage.projectName'))->toContain('Billing Portal')
         // …and the two rows with no account are named for what they are, rather than
-        // rendered as a blank cell that reads like a broken join.
-        ->and($html)->toContain('Platform root')
-        ->and($html)->toContain('Unattached')
-        // The account name in the column is a link into the account, so the flat list is
-        // a way INTO the hierarchy rather than a place it disappears.
-        ->and($html)->toContain(route('platform.customers.show', $estate['organization']->id));
+        // handed to the page as a blank owner that reads like a broken join.
+        ->and($rows->pluck('lineage.owner'))->toContain('Platform root')
+        ->and($rows->pluck('lineage.owner'))->toContain('Unattached');
+
+    // The account name in the column is a link into the account, so the flat list is a way
+    // INTO the hierarchy rather than a place it disappears.
+    expect($rows->pluck('lineage.organizationHref')->filter()->unique()->values()->all())
+        ->toBe([route('platform.customers.show', $estate['organization']->id)]);
 });
 
 it('names the owner in the target switcher, on every console page', function (): void {
@@ -297,9 +314,15 @@ it('names the owner in the target switcher, on every console page', function ():
     nextRequest();
 
     // The chrome control that decides which estate every subsequent read comes from used
-    // to say "Production" and nothing else.
-    expect((string) $this->get(route('platform.customers'))->assertSuccessful()->getContent())
-        ->toContain('Acme / Production');
+    // to say "Production" and nothing else. Read off the shared shell prop, which is where
+    // every console page on both planes gets the switcher from — so this is one assertion
+    // about all of them rather than about the page it happens to be made on.
+    $options = collect((array) $this->get(route('platform.customers'))->assertSuccessful()->inertiaProps('shell.environments'));
+
+    expect($options->pluck('label'))->toContain('Acme / Production')
+        // And the CURRENT one is the one just targeted, or the label above could belong to
+        // any row in the menu.
+        ->and($options->firstWhere('current', true)['label'])->toBe('Acme / Production');
 });
 
 it('answers lineage for the platform root and for an orphan without inventing an owner', function (): void {

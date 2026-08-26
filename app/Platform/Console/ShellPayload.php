@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Http\Props\Shell\ActingOrganizationProps;
 use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellProps;
@@ -171,6 +172,10 @@ final readonly class ShellPayload
                 ? 'Platform'
                 : null,
             organizations: $this->switchableOrganizations(),
+            // The account plane's switcher above already names the one organization a
+            // member acts in, and choosing another is the authorization this plane exists
+            // to withhold.
+            actingOrganization: null,
             environments: $this->targetEnvironments(),
             isOperator: $this->scope->isPlatformOperator(),
             brandHref: route('dashboard'),
@@ -202,6 +207,23 @@ final readonly class ShellPayload
             // the topbar. A second word in the tab title would say nothing.
             section: null,
             organizations: [],
+            /*
+             * THE CONTROL THAT DECIDES WHAT EVERY PAGE HERE MEANS.
+             *
+             * Every read in this console is written as
+             * `when($id !== null, fn ($q) => $q->where('organization_id', $id))`, so this
+             * selection is the difference between "the whole environment" and "one tenant".
+             * Without the control an administrator who had chosen one could never get back
+             * — signing out was the only way — which is exactly the one-way door
+             * {@see ConsoleScope::clearOrganization()} was written to close.
+             */
+            actingOrganization: new ActingOrganizationProps(
+                id: $this->scope->organizationId(),
+                name: $this->scope->organizationName(),
+                searchUrl: route('environment.acting-organization.search'),
+                chooseUrl: route('environment.acting-organization.choose'),
+                clearUrl: route('environment.acting-organization.clear'),
+            ),
             environments: [],
             isOperator: false,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,

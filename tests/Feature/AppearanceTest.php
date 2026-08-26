@@ -24,7 +24,8 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Illuminate\Testing\TestResponse;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -128,9 +129,45 @@ if (! function_exists('signInOrg')) {
     }
 }
 
+/**
+ * Press Save in the theme editor.
+ *
+ * The logo travels BESIDE the theme rather than inside it, because it is not part of the
+ * typed appearance: `Appearance::fromArray()` sanitizes colours, radius and font, and a
+ * URL this server will render into an `<img src>` on an unauthenticated page is a
+ * different kind of value with a different rule.
+ *
+ * @param  array<string, mixed>  $theme
+ */
+function saveTheme(array $theme, ?string $route = null, bool $environmentDefault = false): TestResponse
+{
+    $logo = $theme['logo'] ?? null;
+    unset($theme['logo'], $theme['name']);
+
+    $route ??= 'appearance';
+
+    return test()->from(route($route))
+        ->post(route($route.'.update'), [
+            'theme' => $theme,
+            'logo' => is_string($logo) ? $logo : null,
+            'environmentDefault' => $environmentDefault,
+        ])
+        // BACK TO THE EDITOR, named. A bare `assertRedirect()` would also accept the
+        // bounce to /login that an unauthenticated fixture produces — and then every
+        // assertion about the write not happening passes for the wrong reason.
+        ->assertRedirect(route($route));
+}
+
 it('renders the editor for an admin', function (): void {
     signInOrg(MembershipRole::Admin);
-    $this->get(route('appearance'))->assertOk()->assertSee('Live preview');
+    $this->get(route('appearance'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/appearance')
+            ->where('hasTarget', true)
+            // The organization plane may not theme the environment default, and the
+            // control that would let it is not offered rather than offered and refused.
+            ->where('mayThemeEnvironment', false));
 });
 
 it('refuses the editor for a non-admin member', function (): void {
@@ -145,7 +182,7 @@ it('persists a saved theme to org settings and keeps brand_color in sync', funct
     $theme['light']['primary'] = '#123456';
     $theme['logo'] = 'https://acme.com/logo.svg';
 
-    Volt::test('console.appearance')->call('save', $theme);
+    saveTheme($theme)->assertSessionHasNoErrors();
 
     $settings = app(Organizations::class)->find($org->id)->settings;
     expect($settings['appearance']['preset'])->toBe('warm')
@@ -159,7 +196,7 @@ it('rejects a non-https logo on save', function (): void {
 
     $theme = Appearance::fromPreset('cbox')->toArray();
     $theme['logo'] = 'http://insecure.example/logo.png';
-    Volt::test('console.appearance')->call('save', $theme);
+    saveTheme($theme)->assertSessionHasNoErrors();
 
     expect(app(Organizations::class)->find($org->id)->settings['brand_logo_url'])->toBeNull();
 });
@@ -199,6 +236,10 @@ if (! function_exists('appearanceEnvSetup')) {
             ownerPassword: 'a-strong-unbreached-passphrase',
         ));
 
+        // The environment console is `/admin`, which 404s unless the deployment is
+        // multi-tenant.
+        multiTenantDeployment();
+
         serveOnTestHost($r->environment);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
         actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
@@ -213,7 +254,7 @@ it('saves an environment-level theme and applies it to the hosted sign-in', func
     $theme = Appearance::fromPreset('midnight')->toArray();
     $theme['light']['primary'] = '#00aa88';
 
-    Volt::test('console.appearance')->call('save', $theme);
+    saveTheme($theme, 'environment.appearance', environmentDefault: true)->assertSessionHasNoErrors();
 
     // Persisted onto the environment…
     expect(Environment::find($envId)->settings['appearance']['light']['primary'])->toBe('#00aa88');
@@ -329,7 +370,7 @@ it('refuses to save a theme whose text cannot be read on its background', functi
         'dark' => ['primary' => '#3b6fd4', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a0a0a0'],
     ];
 
-    Volt::test('console.appearance')->call('save', $unreadable);
+    saveTheme($unreadable)->assertSessionHasErrors('theme');
 
     $settings = app(Organizations::class)->find(app(CurrentUser::class)->organizationId() ?? '')?->settings ?? [];
 
@@ -339,12 +380,12 @@ it('refuses to save a theme whose text cannot be read on its background', functi
 it('saves a legible one', function (): void {
     gateAdmin('contrast-ok');
 
-    Volt::test('console.appearance')->call('save', [
+    saveTheme([
         'radius' => '0.5rem',
         'font' => 'system',
         'light' => ['primary' => '#1e40af', 'background' => '#ffffff', 'foreground' => '#111111', 'muted' => '#5a5a5a'],
         'dark' => ['primary' => '#8fa8e0', 'background' => '#1e1e21', 'foreground' => '#f5f5f5', 'muted' => '#a8a8a8'],
-    ]);
+    ])->assertSessionHasNoErrors();
 
     $settings = app(Organizations::class)->find(app(CurrentUser::class)->organizationId() ?? '')?->settings ?? [];
 

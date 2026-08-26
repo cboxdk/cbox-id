@@ -40,6 +40,35 @@ final class HandleInertiaRequests extends Middleware
     protected $rootView = 'app';
 
     /**
+     * THE NAMES THE CHROME OWNS.
+     *
+     * Inertia merges shared props and page props into one bag, and the page wins. So a
+     * controller that happens to call one of its own props `environment` does not add a
+     * prop — it REPLACES the environment the sandbox banner and the realm badge read, and
+     * the chrome throws while the page itself is perfectly correct. That is what took the
+     * settings page down: it sent the environment RECORD it is about under the same name
+     * as the environment the shell draws.
+     *
+     * Enumerated here rather than derived from {@see self::share()} because deriving it
+     * would mean building every shared prop — including the ones that read the database —
+     * to answer a question about names.
+     *
+     * @var list<string>
+     */
+    public const SHARED_KEYS = [
+        'app',
+        'theme',
+        'auth',
+        'brand',
+        'environment',
+        'impersonation',
+        'flash',
+        'shell',
+        // Inertia's own, from `parent::share()`.
+        'errors',
+    ];
+
+    /**
      * The asset version. A deployment that changes the built bundle makes every open tab
      * do a hard navigation on its next visit rather than mounting new props into an old
      * bundle — which is the failure mode that produces "it works after a refresh".

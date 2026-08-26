@@ -17,7 +17,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -29,47 +28,61 @@ function signIn(): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
+    // AND THE SESSION KEY THE GUARD READS ON THE WAY IN. `CurrentUser` is resolved state
+    // for code already inside the process, which is all a Livewire component ever needed.
+    // The step-up screen is a REQUEST now, and without this it answers a redirect to
+    // sign-in — so a test asserting the password was refused would be asserting against a
+    // bounce to /login.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $subject->id;
 }
 
 it('redirects a sensitive action to sudo when not recently confirmed', function (): void {
     signIn();
 
-    Volt::test('account')
-        ->call('regenerateRecoveryCodes')
-        ->assertRedirect(route('sudo'));
+    regenerateRecoveryCodes()->assertRedirect(route('sudo'));
 
-    expect(session()->get('sudo.intended'))->toBe(route('account'));
+    /*
+     * …and it remembers where to send them back to: the PAGE, taken from the referer,
+     * rather than the POST endpoint — otherwise re-entering a password would land somebody
+     * on an action by GET and earn them a 405.
+     *
+     * ROOT-RELATIVE, which is the middleware's own invariant: the value is what sudo later
+     * redirects to, so keeping only the path is what stops a crafted referer turning the
+     * step-up into an open redirect.
+     */
+    expect(session()->get('sudo.intended'))->toBe('/account');
 });
 
 it('performs the sensitive action once sudo is confirmed', function (): void {
     signIn();
     app(Sudo::class)->confirm(); // fresh step-up
 
-    // 2FA must be enabled for recovery codes; enable it inline first (sudo is
-    // already fresh above, so the now-gated enable/confirm proceed).
-    $component = Volt::test('account')->call('enable');
-    $secret = $component->get('secret');
-    $component->set('code', app(TotpAuthenticator::class)->codeAt($secret, time()))->call('confirm');
+    // 2FA must be enabled for recovery codes; enable it inline first (sudo is already
+    // fresh above, so the gated enrol/confirm proceed).
+    beginMfaEnrolment();
+    confirmMfaEnrolment(app(TotpAuthenticator::class)->codeAt(flashed('mfaSecret'), time()))
+        ->assertSessionHasNoErrors();
 
-    $component->call('regenerateRecoveryCodes')->assertHasNoErrors();
+    regenerateRecoveryCodes()->assertSessionHasNoErrors();
 
-    expect($component->get('recoveryCodes'))->toHaveCount(10);
+    expect(flashed('recoveryCodes'))->toHaveCount(10);
 });
 
 it('sends TOTP enrollment through sudo when not recently confirmed', function (): void {
     signIn();
 
-    // enrollTotp overwrites any existing secret — it must not run from a stale
-    // session. Without a fresh step-up, the action redirects to re-auth.
-    Volt::test('account')->call('enable')->assertRedirect(route('sudo'));
+    // enrollTotp overwrites any existing secret — it must not run from a stale session.
+    // Without a fresh step-up, the route redirects to re-auth.
+    beginMfaEnrolment()->assertRedirect(route('sudo'));
 });
 
 it('sends provider unlink through sudo when not recently confirmed', function (): void {
     $id = signIn();
     app(Subjects::class)->link($id, new FederatedPrincipal('social:google', 'google|1'));
 
-    Volt::test('account')->call('unlinkProvider', 'google')->assertRedirect(route('sudo'));
+    unlinkSocialProvider('google')->assertRedirect(route('sudo'));
 });
 
 it('refuses to unlink a user\'s only sign-in method', function (): void {
@@ -78,13 +91,15 @@ it('refuses to unlink a user\'s only sign-in method', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme2', 'acme-social'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['sso']);
+    // The request session too, not only CurrentUser: without it the POST below arrives
+    // signed out and is redirected to the door, where "no unlink happened" is true for
+    // entirely the wrong reason.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
     app(Subjects::class)->link($subject->id, new FederatedPrincipal('social:google', 'google|1'));
     app(Sudo::class)->confirm();
 
-    Volt::test('account')
-        ->call('unlinkProvider', 'google')
-        ->assertHasErrors('unlink');
+    unlinkSocialProvider('google')->assertSessionHasErrors('unlink');
 
     // The identity is still linked — the guard blocked the lockout.
     expect(app(Subjects::class)->linkedIdentities($subject->id))->toHaveCount(1);
@@ -95,9 +110,7 @@ it('allows unlinking when another sign-in method remains', function (): void {
     app(Subjects::class)->link($id, new FederatedPrincipal('social:google', 'google|1'));
     app(Sudo::class)->confirm();
 
-    Volt::test('account')
-        ->call('unlinkProvider', 'google')
-        ->assertHasNoErrors();
+    unlinkSocialProvider('google')->assertSessionHasNoErrors();
 
     expect(app(Subjects::class)->linkedIdentities($id))->toBeEmpty();
 });
@@ -105,17 +118,17 @@ it('allows unlinking when another sign-in method remains', function (): void {
 it('confirms sudo with the correct password and clears it otherwise', function (): void {
     signIn();
 
-    Volt::test('auth.sudo')
-        ->set('password', 'wrong')
-        ->call('confirm')
-        ->assertHasErrors('password');
+    // Wrong password first — otherwise "it confirmed" is indistinguishable from "it
+    // confirms for anybody who loads the form".
+    test()->from(route('sudo'))
+        ->post(route('sudo.confirm'), ['password' => 'wrong'])
+        ->assertSessionHasErrors('password');
 
     expect(app(Sudo::class)->confirmed())->toBeFalse();
 
-    Volt::test('auth.sudo')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('confirm')
-        ->assertHasNoErrors();
+    test()->from(route('sudo'))
+        ->post(route('sudo.confirm'), ['password' => 'a-strong-unbreached-passphrase'])
+        ->assertSessionHasNoErrors();
 
     expect(app(Sudo::class)->confirmed())->toBeTrue();
 });
@@ -252,17 +265,15 @@ it('confirms an environment step-up against the administrator\'s platform-root p
 
     // Wrong password first — otherwise "it confirmed" is indistinguishable from "it
     // confirms for anyone who loads the form".
-    Volt::test('environment.sudo')
-        ->set('password', 'not-the-password')
-        ->call('confirm')
-        ->assertHasErrors('password');
+    test()->from(route('environment.sudo'))
+        ->post(route('environment.sudo.confirm'), ['password' => 'not-the-password'])
+        ->assertSessionHasErrors('password');
 
     expect(app(EnvironmentSudo::class)->confirmed())->toBeFalse();
 
-    Volt::test('environment.sudo')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('confirm')
-        ->assertHasNoErrors();
+    test()->from(route('environment.sudo'))
+        ->post(route('environment.sudo.confirm'), ['password' => 'a-strong-unbreached-passphrase'])
+        ->assertSessionHasNoErrors();
 
     expect(app(EnvironmentSudo::class)->confirmed())->toBeTrue()
         // The administrator is a subject of the PLATFORM ROOT, not of the environment

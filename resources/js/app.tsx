@@ -15,6 +15,19 @@ import type { SharedProps } from '@/types';
 
 const pages = import.meta.glob<{ default: ResolvedComponent }>('./pages/**/*.tsx');
 
+/**
+ * AND THE MODULES' OWN PAGES, under the namespace they already use for views.
+ *
+ * A module ships its routes, its service provider and its blade views together; its React
+ * pages belong beside them for the same reason. `connectors::connections` resolves to
+ * `modules/connectors/resources/js/pages/connections.tsx`, which is the exact spelling
+ * blade's `connectors::components.…` already uses — so there is one namespace convention in
+ * this repository rather than two.
+ */
+const modulePages = import.meta.glob<{ default: ResolvedComponent }>(
+    '../../modules/*/resources/js/pages/**/*.tsx',
+);
+
 void createInertiaApp<SharedProps>({
     /**
      * The server names a page the way the file tree spells it — `console/webhooks/show`
@@ -23,11 +36,18 @@ void createInertiaApp<SharedProps>({
      * guessing which of the hundred pages failed.
      */
     resolve: (name) => {
-        const page = pages[`./pages/${name}.tsx`];
+        const [namespace, path] = name.includes('::') ? name.split('::') : [null, name];
+
+        const page =
+            namespace === null
+                ? pages[`./pages/${path}.tsx`]
+                : modulePages[`../../modules/${namespace}/resources/js/pages/${path}.tsx`];
 
         if (page === undefined) {
             throw new Error(
-                `Inertia page "${name}" has no component. Expected resources/js/pages/${name}.tsx.`,
+                namespace === null
+                    ? `Inertia page "${name}" has no component. Expected resources/js/pages/${path}.tsx.`
+                    : `Inertia page "${name}" has no component. Expected modules/${namespace}/resources/js/pages/${path}.tsx.`,
             );
         }
 

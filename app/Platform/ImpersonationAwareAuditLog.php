@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Providers\PlatformServiceProvider;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Models\AuditCheckpoint;
@@ -22,7 +23,7 @@ use Cbox\Id\Kernel\Audit\ValueObjects\ChainVerification;
  * "operator X, acting as user Y, did Z": the normal `actorId` stays the impersonated
  * subject, and `context.impersonated_by` names the operator behind the session.
  *
- * Read-only impersonation ({@see ImpersonationCallGuard}) means there are few, if
+ * Read-only impersonation ({@see ReadOnlyWhileImpersonating}) means there are few, if
  * any, in-window mutation events to attribute — but this makes the guarantee
  * total: anything that does get recorded during the window carries both identities,
  * with no per-call-site wiring to forget.

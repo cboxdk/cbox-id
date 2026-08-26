@@ -12,7 +12,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Invitation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -21,12 +20,7 @@ it('parks chosen access roles at invite time', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $role = app(Roles::class)->define($org->id, 'Editor');
 
-    Volt::test('members')
-        ->set('inviteEmail', 'newbie@acme.test')
-        ->set('inviteRole', 'member')
-        ->set('inviteAccessRoles', [$role->id])
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteToDirectory(['accessRoles' => [$role->id]])->assertSessionHasNoErrors();
 
     expect(InvitationRoleGrant::query()
         ->where('organization_id', $org->id)
@@ -140,16 +134,13 @@ it('does not hand a later invitation the roles a revoked one had parked', functi
     $privileged = app(Roles::class)->define($org->id, 'Finance Admin');
 
     // Invited with a privileged role, then thought better of.
-    Volt::test('members')
-        ->set('inviteEmail', 'newbie@acme.test')
-        ->set('inviteRole', 'member')
-        ->set('inviteAccessRoles', [$privileged->id])
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteToDirectory(['accessRoles' => [$privileged->id]])->assertSessionHasNoErrors();
 
     $first = Invitation::query()->where('email', 'newbie@acme.test')->firstOrFail();
 
-    Volt::test('members')->call('revokeInvitation', $first->id);
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.invitations.revoke', $first->id))
+        ->assertSessionHasNoErrors();
 
     // Invited again, this time as a plain member with no access roles at all. Through the
     // service rather than the console because only it hands back the RAW token — the row
@@ -173,17 +164,14 @@ it('clears the parked roles at the moment of revocation', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $role = app(Roles::class)->define($org->id, 'Editor');
 
-    Volt::test('members')
-        ->set('inviteEmail', 'newbie@acme.test')
-        ->set('inviteRole', 'member')
-        ->set('inviteAccessRoles', [$role->id])
-        ->call('invite')
-        ->assertHasNoErrors();
+    inviteToDirectory(['accessRoles' => [$role->id]])->assertSessionHasNoErrors();
 
     $invitation = Invitation::query()->where('email', 'newbie@acme.test')->firstOrFail();
     expect(InvitationRoleGrant::query()->where('invitation_id', $invitation->id)->exists())->toBeTrue();
 
-    Volt::test('members')->call('revokeInvitation', $invitation->id);
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.invitations.revoke', $invitation->id))
+        ->assertSessionHasNoErrors();
 
     expect(InvitationRoleGrant::query()->where('invitation_id', $invitation->id)->exists())->toBeFalse();
 })->group('security');
