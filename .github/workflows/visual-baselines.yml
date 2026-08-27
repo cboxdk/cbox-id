@@ -16,6 +16,11 @@ name: Visual baselines
 
 on:
   workflow_dispatch:
+  # TEMPORARY, and removed in the commit that lands the baselines. `workflow_dispatch`
+  # only works once the workflow is on the default branch, which is a chicken and an egg
+  # the first time — so it runs on pushes to its own branch until it can be dispatched.
+  push:
+    branches: [chore/visual-baselines-linux]
 
 jobs:
   baselines:
