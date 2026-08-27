@@ -31,7 +31,9 @@ Thumbs.db
 /resources/js/routes
 /resources/js/wayfinder
 
-# A failing browser test writes the page it was looking at here, which is the first thing
-# to open when one goes red. Removed again on a green run, so this only matters after a
-# failure — and a screenshot of a broken console is not a thing to commit.
+
+# Pest writes the page it was looking at here when a browser test fails. The BASELINES it
+# compares against live in `tests/.pest/snapshots` and ARE committed — a visual regression
+# test with no committed baseline is a test that passes on every machine for the first
+# time, forever.
 /tests/Browser/Screenshots
