@@ -12,7 +12,6 @@ use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -33,13 +32,8 @@ beforeEach(function (): void {
 });
 
 it('stands up the whole customer from the operator console', function (): void {
-    Volt::test('platform.customers')
-        ->set('newName', 'Northwind')
-        ->set('newOwnerName', 'Ada Lovelace')
-        ->set('newOwnerEmail', 'ada@northwind.example')
-        ->set('newEnvironmentLimit', 5)
-        ->call('create')
-        ->assertHasNoErrors();
+    createCustomer(['ownerEmail' => 'ada@northwind.example', 'environmentLimit' => 5])
+        ->assertSessionHasNoErrors();
 
     app(PlatformRoot::class)->run(function (): void {
         $organization = Organization::query()->where('name', 'Northwind')->first();
@@ -76,12 +70,7 @@ it('stands up the whole customer from the operator console', function (): void {
  * own.
  */
 it('emails the owner a link instead of choosing their password', function (): void {
-    Volt::test('platform.customers')
-        ->set('newName', 'Northwind')
-        ->set('newOwnerName', 'Ada Lovelace')
-        ->set('newOwnerEmail', 'ada@northwind.example')
-        ->call('create')
-        ->assertHasNoErrors();
+    createCustomer(['ownerEmail' => 'ada@northwind.example'])->assertSessionHasNoErrors();
 
     Mail::assertSent(PasswordResetMail::class, fn ($mail): bool => $mail->hasTo('ada@northwind.example'));
 })->group('security');
@@ -92,12 +81,11 @@ it('reuses the identity an address already holds rather than minting a second', 
     // email). Creating unconditionally would fail provisioning outright for them.
     ['subjectId' => $existing] = provisionAccount('shared@cbox.test');
 
-    Volt::test('platform.customers')
-        ->set('newName', 'Second Company')
-        ->set('newOwnerName', 'Same Person')
-        ->set('newOwnerEmail', 'shared@cbox.test')
-        ->call('create')
-        ->assertHasNoErrors();
+    createCustomer([
+        'name' => 'Second Company',
+        'ownerName' => 'Same Person',
+        'ownerEmail' => 'shared@cbox.test',
+    ])->assertSessionHasNoErrors();
 
     app(PlatformRoot::class)->run(function () use ($existing): void {
         $owner = app(Subjects::class)->findByEmail('shared@cbox.test');
@@ -112,30 +100,24 @@ it('reuses the identity an address already holds rather than minting a second', 
 it('refuses to create a customer for anyone who is not an operator', function (): void {
     ['subjectId' => $memberSubjectId] = provisionAccount('plain@acme.example');
 
-    // THE OPERATOR'S OWN SNAPSHOT, REPLAYED BY SOMEBODY ELSE — which is the attack the
-    // page's `boot()` guard exists for and the only way to reach the action at all. A
-    // Livewire action is its own HTTP entry point: the component is rehydrated from a
-    // snapshot the caller supplies, so a guard that ran only on the initial render would
-    // leave the write wide open to anyone who had ever seen the page, or been handed a
-    // snapshot by someone who had.
-    //
-    // Testing it by mounting the component as a member proves nothing: the mount 404s and
-    // the harness never produces a snapshot to act on, so the assertion passes on the
-    // page's absence rather than on the action's guard.
-    $url = route('platform.customers');
-    $snapshot = snapshotFor((string) test()->get($url)->assertSuccessful()->getContent(), 'platform.customers');
-
+    /*
+     * THE WRITE, ASKED DIRECTLY — which under Livewire took a replayed snapshot to reach at
+     * all. A Livewire action was its own HTTP entry point into a component rehydrated from
+     * a snapshot the caller supplied, so the page's guard had to be re-asked in `boot()`
+     * and a test that merely mounted the component as a member proved nothing: the mount
+     * 404'd and the harness never produced a snapshot to act on.
+     *
+     * The create is its own route with its own middleware stack now, so the attack and the
+     * test are the same thing: POST it as somebody who is not an operator.
+     */
     signInAsMember($memberSubjectId);
 
-    // 404 rather than 403, on the page and on the action alike: the operator console is a
+    // 404 rather than 403, on the page and on the write alike: the operator console is a
     // staff surface, and a 403 confirms to a stranger that the page exists.
-    $this->get($url)->assertNotFound();
+    $this->get(route('platform.customers'))->assertNotFound();
 
-    replaySnapshot($url, $snapshot, 'create', [], [
-        'newName' => 'Should Not Exist',
-        'newOwnerName' => 'Nobody',
-        'newOwnerEmail' => 'nobody@example.test',
-    ])->assertNotFound();
+    createCustomer(['name' => 'Should Not Exist', 'ownerEmail' => 'nobody@example.test'])
+        ->assertNotFound();
 
     app(PlatformRoot::class)->run(function (): void {
         expect(Organization::query()->where('name', 'Should Not Exist')->exists())->toBeFalse();
@@ -145,9 +127,8 @@ it('refuses to create a customer for anyone who is not an operator', function ()
 })->group('security');
 
 it('refuses a blank form rather than provisioning an unnamed customer', function (): void {
-    Volt::test('platform.customers')
-        ->call('create')
-        ->assertHasErrors(['newName', 'newOwnerEmail', 'newOwnerName']);
+    createCustomer(['name' => '', 'ownerEmail' => '', 'ownerName' => ''])
+        ->assertSessionHasErrors(['name', 'ownerEmail', 'ownerName']);
 
     Mail::assertNothingSent();
 });

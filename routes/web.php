@@ -2,19 +2,78 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AccountActivityController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\Auth\AccountsController;
+use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\Auth\InvitationAcceptController;
+use App\Http\Controllers\Auth\LinkConfirmController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\MfaController;
+use App\Http\Controllers\Auth\OtpStepUpController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\SignupController;
+use App\Http\Controllers\Auth\SudoController;
+use App\Http\Controllers\Console\AccessReviewController;
+use App\Http\Controllers\Console\AccountSettingsController;
+use App\Http\Controllers\Console\ActingOrganizationController;
+use App\Http\Controllers\Console\AgentApprovalController;
+use App\Http\Controllers\Console\ApiKeyController;
+use App\Http\Controllers\Console\AppearanceController;
+use App\Http\Controllers\Console\AuditController;
+use App\Http\Controllers\Console\AuthPolicyController;
+use App\Http\Controllers\Console\ClientController;
+use App\Http\Controllers\Console\ConnectionController;
+use App\Http\Controllers\Console\DashboardController;
+use App\Http\Controllers\Console\DirectoryController;
+use App\Http\Controllers\Console\DirectoryMemberController;
+use App\Http\Controllers\Console\EnvironmentDomainController;
+use App\Http\Controllers\Console\EnvironmentHomeController;
+use App\Http\Controllers\Console\EnvironmentKeyController;
+use App\Http\Controllers\Console\EnvironmentOrganizationController;
+use App\Http\Controllers\Console\EnvironmentUserController;
+use App\Http\Controllers\Console\FrontendKeyController;
+use App\Http\Controllers\Console\GetStartedController;
+use App\Http\Controllers\Console\HookController;
+use App\Http\Controllers\Console\LegacyLoginController;
+use App\Http\Controllers\Console\LogStreamController;
+use App\Http\Controllers\Console\MemberController;
+use App\Http\Controllers\Console\MyApprovalController;
+use App\Http\Controllers\Console\OperatorRosterController;
+use App\Http\Controllers\Console\OutboundSyncController;
+use App\Http\Controllers\Console\PermissionController;
+use App\Http\Controllers\Console\PlatformCustomerController;
+use App\Http\Controllers\Console\PlatformEnvironmentController;
+use App\Http\Controllers\Console\PlatformOrganizationController;
+use App\Http\Controllers\Console\PlatformSearchController;
+use App\Http\Controllers\Console\PlatformUsageController;
+use App\Http\Controllers\Console\ProjectController;
+use App\Http\Controllers\Console\RoleConflictController;
+use App\Http\Controllers\Console\RoleController;
+use App\Http\Controllers\Console\ServiceProviderController;
+use App\Http\Controllers\Console\SettingsController;
+use App\Http\Controllers\Console\SocialProviderController;
+use App\Http\Controllers\Console\UsageController;
+use App\Http\Controllers\Console\VaultController;
+use App\Http\Controllers\Console\WebhookController;
+use App\Http\Controllers\Dev\DesignSystemController;
+use App\Http\Controllers\DeviceApprovalController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Controllers\FirstRunController;
 use App\Http\Controllers\FrontendApi\PasskeySignInController;
 use App\Http\Controllers\FrontendApi\SecondFactorController;
 use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MagicLinkController;
+use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
+use App\Http\Controllers\PortalSetupController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\Sso\OAuth2CallbackController;
@@ -33,7 +92,6 @@ use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment as ApiResolveEnvironment;
 use Cbox\Id\FrontendApi\Http\Middleware\AuthenticateFrontendApi;
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 
 // EMBEDDED SIGN-IN — registered at the TOP LEVEL, deliberately outside every group.
 //
@@ -70,11 +128,30 @@ if (config('cbox-id.frontend_api.enabled') === true) {
         // Passkeys, in the two requests WebAuthn needs. The challenge travels as an opaque
         // handle rather than in a session cookie, for the same reason everything else here
         // does: the caller is on somebody else's origin.
-        Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'options'])
+        Route::match(['post', 'options'], '/sign-in/passkey/options', [PasskeySignInController::class, 'challenge'])
             ->name('frontend.sign-in.passkey.options');
         Route::match(['post', 'options'], '/sign-in/passkey', PasskeySignInController::class)
             ->name('frontend.sign-in.passkey');
     });
+}
+
+/*
+ * THE DESIGN SYSTEM GALLERY. Every primitive the console is built from, drawn on one
+ * page in both themes and at every breakpoint.
+ *
+ * It is registered ONLY on a local install, and that is the whole of its access control
+ * — there is nothing here to authorize, because there is nothing here but the components
+ * themselves rendering static sample data. `local` is a claim a developer's machine makes
+ * about itself and a built image never does; DesignSystemRouteTest holds that the route
+ * is absent in every other environment, so this cannot become a door by accident.
+ *
+ * `web` only — no plane gate, no auth. It has no session to read and nothing to leak, and
+ * gating it on a plane would 404 it on exactly the host somebody is developing against.
+ */
+if (app()->environment('local')) {
+    Route::middleware('web')
+        ->get('/dev/design-system', DesignSystemController::class)
+        ->name('dev.design-system');
 }
 
 /*
@@ -88,7 +165,8 @@ if (config('cbox-id.frontend_api.enabled') === true) {
  * have no door at all. The gate here is possession of the setup token, which does not
  * depend on any of the state being bootstrapped.
  */
-Volt::route('/first-run', 'first-run')->name('first-run');
+Route::get('/first-run', [FirstRunController::class, 'show'])->name('first-run');
+Route::post('/first-run', [FirstRunController::class, 'claim'])->name('first-run.claim');
 
 /*
  * The apex — one destination, because there is one console.
@@ -190,7 +268,8 @@ Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)
  * environment. In the single-tenant shape the gate is a no-op and it is a Tier-1 join.
  */
 Route::middleware(['plane:account', 'platform.guest'])->group(function (): void {
-    Volt::route('/signup', 'auth.signup')->name('signup');
+    Route::get('/signup', [SignupController::class, 'show'])->name('signup');
+    Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');
 });
 
 /*
@@ -205,15 +284,30 @@ Route::middleware(['plane:account', 'platform.guest'])->group(function (): void 
  * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
 Route::middleware(['plane:console', 'platform.guest'])->group(function (): void {
-    Volt::route('/login', 'auth.login')->name('login');
-    Volt::route('/o/{slug}/login', 'auth.login')->name('login.branded');
+    Route::get('/login', [LoginController::class, 'show'])->name('login');
+    // Identifier-first: the address alone, so its home realm can be discovered before a
+    // password form is drawn. A server step, because the domain map is the server's.
+    Route::post('/login/identify', [LoginController::class, 'identify'])->name('login.identify');
+    Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
+    Route::post('/login/magic-link', [LoginController::class, 'magicLink'])->name('login.magic-link');
+
+    // The branded door: same page, painted in one organization's colours.
+    Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
     Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
     // authenticated subject, but a credential change must be a provable no-op).
-    Volt::route('/forgot-password', 'auth.forgot-password')->middleware(BlockDuringImpersonation::class)->name('password.request');
-    Volt::route('/reset-password/{token}', 'auth.reset-password')->middleware(BlockDuringImpersonation::class)->name('password.reset');
+    Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+        Route::get('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+        Route::post('/forgot-password', [PasswordResetController::class, 'send'])->name('password.email');
+        Route::get('/reset-password/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
+        // The token travels in the BODY here, not the path. A password in a form whose
+        // action carries the token would put both in the same request either way, but a
+        // token in a URL is also in the browser's history and in any referrer the page
+        // emits — and this one is a live credential until it is spent.
+        Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+    });
 
     // Passkey (WebAuthn) sign-in — no session required; the assertion is the proof.
     Route::post('/passkeys/login/options', [PasskeyController::class, 'loginOptions'])->name('passkeys.login.options');
@@ -225,13 +319,18 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
 });
 
 // The MFA challenge sits between password and a full session, so it is neither
-// fully guest nor fully authenticated.
-Volt::route('/mfa', 'auth.mfa')->name('mfa');
+// fully guest nor fully authenticated. The pending sign-in in the session is the
+// authorization; there is no guard here that could ask a better question.
+Route::get('/mfa', [MfaController::class, 'show'])->name('mfa');
+Route::post('/mfa', [MfaController::class, 'verify'])->name('mfa.verify');
+Route::post('/mfa/recovery', [MfaController::class, 'recover'])->name('mfa.recover');
 
 // The adaptive-risk step-up (emailed one-time code) sits in the same interstitial
 // state: primary auth passed, but an elevated risk assessment demands a second
 // factor before the session is established.
-Volt::route('/login/step-up', 'auth.otp-step-up')->name('login.step-up');
+Route::get('/login/step-up', [OtpStepUpController::class, 'show'])->name('login.step-up');
+Route::post('/login/step-up', [OtpStepUpController::class, 'verify'])->name('login.step-up.verify');
+Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->name('login.step-up.resend');
 
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
@@ -262,42 +361,49 @@ Route::post('/impersonation/exit', [ImpersonationController::class, 'exit'])->na
  * The component authenticates for itself: prompt=none answers the client, anything else
  * redirects to sign-in with the intended URL preserved.
  */
-$authorize = Volt::route('/oauth/authorize', 'oauth.consent')
-    // `platform.auth:optional` RESOLVES the signed-in subject without requiring one.
-    // Removing the middleware outright was wrong: CurrentUser is populated only there,
-    // so check() was permanently false and NO authorization code could be issued.
-    // BlockDuringImpersonation because this endpoint MINTS CREDENTIALS. Every other
-    // credential-establishing route carries it — password reset, invitation, email
-    // verification, sudo, org switch, passkey registration, social connect — and this
-    // one issues the longest-lived credential of the set: a refresh token that
-    // outlives both the impersonation window and the operator's session, attributed
-    // to the person being impersonated.
+Route::match(['get', 'post'], '/oauth/authorize', [OAuthConsentController::class, 'show'])
+    /*
+     * ONE ROUTE, BOTH METHODS. OIDC Core §3.1.2.1: "The Authorization Server MUST support
+     * the use of the HTTP GET and POST methods." Form-POST is how a client sends a
+     * `request` object, a `claims` payload or a long `login_hint` that will not survive a
+     * URL length limit, and it is exercised by the OpenID basic-certification suite.
+     *
+     * The POST is CSRF-exempt by definition — it arrives cross-site from the relying party,
+     * which has no Laravel token to send — and nothing is minted on it: the controller
+     * re-validates client, redirect_uri, scope and PKCE from scratch on either method, and
+     * approving is a separate request of its own.
+     *
+     * `platform.auth:optional` RESOLVES the signed-in subject without requiring one.
+     * Removing the middleware outright was wrong: CurrentUser is populated only there, so
+     * check() was permanently false and NO authorization code could be issued.
+     *
+     * BlockDuringImpersonation because this endpoint MINTS CREDENTIALS. Every other
+     * credential-establishing route carries it — password reset, invitation, email
+     * verification, sudo, org switch, passkey registration, social connect — and this one
+     * issues the longest-lived credential of the set: a refresh token that outlives both
+     * the impersonation window and the operator's session, attributed to the person being
+     * impersonated.
+     */
     ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
     ->name('oauth.authorize');
 
 /*
- * The SAME component over POST. OIDC Core §3.1.2.1: "The Authorization Server MUST
- * support the use of the HTTP GET and POST methods." Volt::route registers GET only, so
- * a form-POST to /authorize answered 405 — and form-POST is how a client sends a
- * `request` object, a `claims` payload or a long `login_hint` that will not survive a
- * URL length limit. It is also exercised by the OpenID basic-certification suite.
+ * The two answers, each its own route.
  *
- * CSRF-exempt by definition: the POST arrives cross-site from the relying party, which
- * has no Laravel token to send. Nothing is minted on this request — the component
- * re-validates client, redirect_uri, scope and PKCE from scratch, exactly as it does on
- * the GET path.
+ * Under Volt these were component methods on the shared update endpoint, which is exactly
+ * why the impersonation guard had to hang off Livewire's `call` event — and why it could
+ * not see the consent-skip path, which reaches issuance from `mount()`. Both are ordinary
+ * requests now, and the id in the URL names one PENDING request held server-side: the
+ * browser never receives the client, the redirect URI, the scopes or the challenge, so it
+ * cannot influence any of them.
  */
-$consentAction = $authorize->getAction('uses');
-
-if (! is_string($consentAction) && ! is_callable($consentAction)) {
-    // Volt builds this action itself; if its shape ever changes, the POST binding must
-    // be rebuilt deliberately rather than silently registering something unroutable.
-    throw new RuntimeException('The Volt route action is no longer a callable — /oauth/authorize POST needs updating.');
-}
-
-Route::post('/oauth/authorize', $consentAction)
+Route::post('/oauth/authorize/{authorization}/approve', [OAuthConsentController::class, 'approve'])
     ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
-    ->name('oauth.authorize.post');
+    ->name('oauth.authorize.approve');
+
+Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::class, 'deny'])
+    ->middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->name('oauth.authorize.deny');
 
 /*
  * Admin Portal — a single-use setup link. An external IT admin opens it with
@@ -314,8 +420,34 @@ Route::post('/oauth/authorize', $consentAction)
  * on another host, root included.
  */
 Route::middleware('plane:console')->group(function (): void {
-    Route::view('/setup/expired', 'portal.expired')->name('portal.expired');
-    Volt::route('/setup', 'portal.setup')->middleware('portal.session')->name('portal.setup');
+    Route::get('/setup/expired', [PortalSetupController::class, 'expired'])->name('portal.expired');
+
+    /*
+     * "All set", OUTSIDE the portal session — because finishing ENDS that session. A
+     * completion that re-rendered the setup screen would be answered by the middleware's
+     * bounce to the expired page, which is the wrong sentence for somebody who has just
+     * succeeded.
+     */
+    Route::get('/setup/done', [PortalSetupController::class, 'done'])->name('portal.done');
+
+    Route::middleware('portal.session')->group(function (): void {
+        Route::get('/setup', [PortalSetupController::class, 'show'])->name('portal.setup');
+
+        /*
+         * Each write its own route, and each re-asks the session AND the link's scope — a
+         * link scoped to SCIM must not be able to add a domain by forming the request.
+         * Under Volt all of these arrived at `/livewire/update`, which is why the component
+         * had to open every action with the same guard by hand.
+         */
+        Route::post('/setup/domains', [PortalSetupController::class, 'addDomain'])->name('portal.domains.store');
+        Route::post('/setup/domains/{domain}/verify', [PortalSetupController::class, 'verifyDomain'])->name('portal.domains.verify');
+        Route::delete('/setup/domains/{domain}', [PortalSetupController::class, 'removeDomain'])->name('portal.domains.destroy');
+        Route::post('/setup/connections', [PortalSetupController::class, 'createConnection'])->name('portal.connections.store');
+        Route::post('/setup/connections/{connection}/activate', [PortalSetupController::class, 'activateConnection'])->name('portal.connections.activate');
+        Route::post('/setup/directories', [PortalSetupController::class, 'registerDirectory'])->name('portal.directories.store');
+        Route::post('/setup/finish', [PortalSetupController::class, 'finish'])->name('portal.finish');
+    });
+
     Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
 });
 
@@ -330,40 +462,102 @@ Route::middleware('plane:console')->group(function (): void {
  * (`plane:environment`); those are different questions and are now asked as such.
  */
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth'])->group(function (): void {
-    Volt::route('/dashboard', 'dashboard')->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
 
     // The guided first run. Deliberately NOT in the nav registry: it is where a fresh
     // organization is sent once, and where the dashboard checklist links back to —
     // an entry that would sit there dead for the rest of the org's life is clutter.
-    Volt::route('/get-started', 'get-started')->name('get-started');
+    Route::get('/get-started', [GetStartedController::class, 'index'])->name('get-started');
+    Route::post('/get-started/dismiss', [GetStartedController::class, 'dismiss'])->name('get-started.dismiss');
 
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
-    Volt::route('/accounts', 'auth.accounts')->name('accounts');
-    Volt::route('/accounts/add', 'auth.login')->name('accounts.add');
+    Route::get('/accounts', [AccountsController::class, 'index'])->name('accounts');
+    // A POST, because it moves the session. A GET that changes who you are is a GET any
+    // image tag on any page can make.
+    Route::post('/accounts', [AccountsController::class, 'switchTo'])->name('accounts.switch');
+    /*
+     * The SAME sign-in page, for somebody already signed in.
+     *
+     * It is the login controller and not a page of its own because "add another account"
+     * IS a sign-in — the only difference is what the session does with the result, which
+     * is a decision the sign-in POST makes rather than one the form has to know.
+     */
+    Route::get('/accounts/add', [LoginController::class, 'show'])->name('accounts.add');
 
     // The forced password change. Inside the authenticated group on purpose: the hold
     // that sends people here (see {@see \App\Http\Middleware\Authenticate}) exempts this
     // one route, so it is reachable only by someone who is signed in and owes a change.
-    Volt::route('/password/change', 'auth.change-password')->name('password.change');
+    Route::get('/password/change', [ChangePasswordController::class, 'edit'])->name('password.change');
+    Route::post('/password/change', [ChangePasswordController::class, 'update'])->name('password.change.update');
 
     // The social link confirmation. Same shape as the password hold above and for the
     // same reason: reachable only by someone signed in who has an identity waiting on
     // their answer, and exempt from the hold so the redirect cannot loop.
-    Volt::route('/link/confirm', 'auth.link-confirm')->name('link.confirm');
+    Route::get('/link/confirm', [LinkConfirmController::class, 'show'])->name('link.confirm');
+    Route::post('/link/confirm', [LinkConfirmController::class, 'connect'])->name('link.connect');
+    Route::post('/link/decline', [LinkConfirmController::class, 'decline'])->name('link.decline');
 
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
-    Volt::route('/account', 'account')->name('account');
+    Route::get('/account', [AccountController::class, 'show'])->name('account');
+
+    /*
+     * EVERY WRITE ON THAT PAGE EXCEPT THE NAME IS BEHIND `sudo`, ON THE ROUTE.
+     *
+     * Under Volt each action opened with a private `requiresSudo()` call, because every one
+     * of them arrived at `/livewire/update` where route middleware could not distinguish
+     * them. There is a route per write now, so the gate is the stack's — strictly stronger,
+     * and impossible to forget in a new action.
+     *
+     * The display name is deliberately outside it: a name is not a credential and changing
+     * it grants nothing, so making somebody re-enter their password to fix a typo would be
+     * charging for nothing.
+     */
+    Route::patch('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+
+    Route::middleware('sudo')->group(function (): void {
+        Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
+        Route::post('/account/two-factor/enrol', [AccountController::class, 'enrolMfa'])->name('account.mfa.enrol');
+        Route::post('/account/two-factor/confirm', [AccountController::class, 'confirmMfa'])->name('account.mfa.confirm');
+        Route::post('/account/two-factor/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.mfa.recovery-codes');
+        Route::delete('/account/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
+        Route::delete('/account/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
+    });
 
     // WHERE YOU ARE SIGNED IN, AND WHAT CAN ACT AS YOU. Its own page rather than a fourth
     // section on `/account`: that page is about the credentials you hold — password,
     // passkeys, 2FA — and this is about what is currently holding YOU. A person arrives
     // here with a different question ("is any of this not me?") and usually in a hurry.
-    Volt::route('/account/activity', 'account.activity')->name('account.activity');
+    Route::get('/account/activity', [AccountActivityController::class, 'index'])->name('account.activity');
 
-    Volt::route('/usage', 'usage')->name('usage');
+    // The three levers on that page, each its own route. Under Volt they shared
+    // `/livewire/update` with every other action in the console, which is why each had to
+    // re-derive the acting subject and re-check the target by hand; they still resolve
+    // their target against the signed-in subject, because a route parameter is the
+    // client's too.
+    Route::post('/account/sessions/{session}/revoke', [AccountActivityController::class, 'revokeSession'])
+        ->name('account.sessions.revoke');
+    /*
+     * BEHIND `sudo`, unlike its two neighbours, and the difference is the blast radius.
+     *
+     * Signing out ONE session is targeted and costs its owner a sign-in; withdrawing one
+     * application's grant costs it a re-approval. This ends every other session at once —
+     * the account-wide lever — which is exactly what somebody at a borrowed, unlocked
+     * laptop would pull to lock the real owner out while keeping the tab in front of them.
+     *
+     * The account page has always gated its copy of this button; the two pages share one
+     * route now, so they share one answer, and it is the stricter one.
+     */
+    Route::post('/account/sessions/revoke-others', [AccountActivityController::class, 'revokeOtherSessions'])
+        ->middleware('sudo')
+        ->name('account.sessions.revoke-others');
+    Route::delete('/account/applications/{client}', [AccountActivityController::class, 'revokeApplication'])
+        ->name('account.applications.destroy');
+
+    Route::get('/usage', [UsageController::class, 'index'])->name('usage');
     // THE TENANT DIRECTORY — everyone who can sign in to this organization, plus the
     // invitations nobody has accepted. Its own URI, because it is not the same page as
     // the administrator roster below.
@@ -374,7 +568,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // and — because two nav pages then named the same route — clicking "People" in the
     // rail lit up "Identity platform" instead, with an eyebrow to match and "Roles"
     // missing from the sub-nav.
-    Volt::route('/directory/members', 'members')->name('directory.members');
+    Route::get('/directory/members', [DirectoryMemberController::class, 'index'])->name('directory.members');
+    Route::post('/directory/members/invitations', [DirectoryMemberController::class, 'invite'])->name('directory.members.invite');
+    Route::delete('/directory/members/invitations/{invitation}', [DirectoryMemberController::class, 'revokeInvitation'])->name('directory.members.invitations.revoke');
+    Route::patch('/directory/members/{member}/role', [DirectoryMemberController::class, 'changeRole'])->name('directory.members.role');
+    Route::post('/directory/members/{member}/access', [DirectoryMemberController::class, 'setAccessRole'])->name('directory.members.access');
+    Route::delete('/directory/members/{member}', [DirectoryMemberController::class, 'remove'])->name('directory.members.remove');
 
     /*
      * IDENTITY PLATFORM — what an organization has because it OWNS identity providers.
@@ -391,17 +590,43 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * and it is what the rail reads, so on `acme.cboxid.com` the area is simply absent
      * rather than gated: the same mechanism that already drops an area with no pages.
      */
-    Volt::route('/projects', 'console.projects.index')->name('projects');
-    Volt::route('/projects/new', 'console.projects.create')->name('projects.create');
-    Volt::route('/projects/{project}', 'console.projects.show')->name('projects.show');
+    Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
+    Route::get('/projects/new', [ProjectController::class, 'create'])->name('projects.create');
+    Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+    // Before `/projects/{project}`, so the literal segment is never read as an id.
+    Route::post('/projects/verification/resend', [ProjectController::class, 'resendVerification'])
+        ->name('projects.verification.resend');
+    Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    Route::patch('/projects/{project}', [ProjectController::class, 'rename'])->name('projects.rename');
+    Route::post('/projects/{project}/environments', [ProjectController::class, 'storeEnvironment'])
+        ->name('projects.environments.store');
+    Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
+    Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
 
     // Open an environment → signed handoff → its own admin console (no second login).
     Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
 
-    Volt::route('/members', 'console.members')->name('members');
-    Volt::route('/api-keys', 'console.api-keys')->name('api-keys');
-    Volt::route('/environment-keys', 'console.environment-keys')->name('environment-keys');
-    Volt::route('/environment-domains', 'console.environment-domains')->name('environment-domains');
+    Route::get('/members', [MemberController::class, 'index'])->name('members');
+    Route::post('/members/invitations', [MemberController::class, 'invite'])->name('members.invite');
+    Route::post('/members/invitations/{invitation}/resend', [MemberController::class, 'resendInvite'])
+        ->name('members.invitations.resend');
+    Route::delete('/members/invitations/{invitation}', [MemberController::class, 'revokeInvite'])
+        ->name('members.invitations.revoke');
+    Route::patch('/members/{member}/role', [MemberController::class, 'changeRole'])->name('members.role');
+    Route::put('/members/{member}/access', [MemberController::class, 'saveAccess'])->name('members.access');
+    Route::post('/members/{member}/transfer-ownership', [MemberController::class, 'makeOwner'])
+        ->name('members.transfer-ownership');
+    Route::delete('/members/{member}', [MemberController::class, 'removeMember'])->name('members.remove');
+    Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api-keys');
+    Route::post('/api-keys', [ApiKeyController::class, 'store'])->name('api-keys.store');
+    Route::delete('/api-keys/{key}', [ApiKeyController::class, 'destroy'])->name('api-keys.destroy');
+    Route::get('/environment-keys', [EnvironmentKeyController::class, 'index'])->name('environment-keys');
+    Route::post('/environment-keys', [EnvironmentKeyController::class, 'store'])->name('environment-keys.store');
+    Route::delete('/environment-keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('environment-keys.destroy');
+    Route::get('/environment-domains', [EnvironmentDomainController::class, 'index'])->name('environment-domains');
+    Route::post('/environment-domains', [EnvironmentDomainController::class, 'store'])->name('environment-domains.store');
+    Route::post('/environment-domains/verify', [EnvironmentDomainController::class, 'verify'])->name('environment-domains.verify');
+    Route::delete('/environment-domains', [EnvironmentDomainController::class, 'destroy'])->name('environment-domains.destroy');
     // Retired into Logs › Activity log, which reads the SAME hash-chained entries scoped
     // to the same organization — and reads them better: two filters and a search against
     // this page's one, plus a help topic, and it already served both console planes. Two
@@ -416,21 +641,36 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // socket a third-party plugin would use — so a deployment that does not bill, or an
     // operator who turns the module off, has no route rather than a route that 404s
     // somewhere deeper. See modules/billing.
-    Volt::route('/organization-settings', 'console.organization-settings')->name('organization-settings');
+    Route::get('/organization-settings', [AccountSettingsController::class, 'edit'])->name('organization-settings');
+    Route::patch('/organization-settings', [AccountSettingsController::class, 'update'])->name('organization-settings.update');
     // Single sign-on: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — a connection
     // URL is something you send to whoever runs the identity provider — and this plane
     // gains the edit, disable and delete it never had, while domain verification and the
     // Admin Portal invite come with it onto the environment plane.
-    Volt::route('/connections', 'console.connections.index')->name('connections');
-    Volt::route('/connections/new', 'console.connections.create')->name('connections.create');
-    Volt::route('/connections/{connection}', 'console.connections.show')->name('connections.show');
+    Route::get('/connections', [ConnectionController::class, 'index'])->name('connections');
+    Route::post('/connections/invite', [ConnectionController::class, 'invite'])->name('connections.invite');
+    Route::post('/connections/domains', [ConnectionController::class, 'addDomain'])->name('connections.domains.store');
+    Route::post('/connections/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('connections.domains.verify');
+    Route::post('/connections/domains/{domain}/capture', [ConnectionController::class, 'toggleCapture'])->name('connections.domains.capture');
+    Route::delete('/connections/domains/{domain}', [ConnectionController::class, 'removeDomain'])->name('connections.domains.destroy');
+    Route::get('/connections/new', [ConnectionController::class, 'create'])->name('connections.create');
+    Route::post('/connections/import', [ConnectionController::class, 'importMetadata'])->name('connections.import');
+    Route::post('/connections', [ConnectionController::class, 'store'])->name('connections.store');
+    Route::get('/connections/{connection}', [ConnectionController::class, 'show'])->name('connections.show');
+    Route::patch('/connections/{connection}', [ConnectionController::class, 'update'])->name('connections.update');
+    Route::post('/connections/{connection}/activate', [ConnectionController::class, 'activate'])->name('connections.activate');
+    Route::post('/connections/{connection}/disable', [ConnectionController::class, 'disable'])->name('connections.disable');
+    Route::post('/connections/{connection}/require-sso', [ConnectionController::class, 'requireSso'])->name('connections.require-sso');
+    Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
 
     // The provider catalogue — Google, GitHub, Apple and the rest, per tenant. A sibling
     // of Single sign-on rather than a section inside it: connecting the company's own
     // identity provider and offering consumer accounts as buttons are different jobs,
     // done by different people, at different times.
-    Volt::route('/social-providers', 'social-providers')->name('social-providers');
+    Route::get('/social-providers', [SocialProviderController::class, 'index'])->name('social-providers');
+    Route::post('/social-providers', [SocialProviderController::class, 'store'])->name('social-providers.store');
+    Route::delete('/social-providers/{connection}', [SocialProviderController::class, 'destroy'])->name('social-providers.destroy');
 
     // Sync users in (inbound directories): the SAME components the environment plane
     // serves. The routable index/new/show shape wins over the organization plane's single
@@ -438,116 +678,209 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // and the reveal-once bearer token needs somewhere to land that is not the row you
     // just submitted. This plane gains rename, pause, rotate and delete with it; the
     // environment plane gains the two pull providers it never had.
-    Volt::route('/directories', 'console.directories.index')->name('directories');
-    Volt::route('/directories/new', 'console.directories.create')->name('directories.create');
-    Volt::route('/directories/{directory}', 'console.directories.show')->name('directories.show');
+    Route::get('/directories', [DirectoryController::class, 'index'])->name('directories');
+    Route::post('/directories/invite', [DirectoryController::class, 'invite'])->name('directories.invite');
+    Route::get('/directories/new', [DirectoryController::class, 'create'])->name('directories.create');
+    Route::post('/directories', [DirectoryController::class, 'store'])->name('directories.store');
+    Route::post('/directories/connect', [DirectoryController::class, 'connect'])->name('directories.connect');
+    Route::get('/directories/{directory}', [DirectoryController::class, 'show'])->name('directories.show');
+    Route::patch('/directories/{directory}', [DirectoryController::class, 'update'])->name('directories.update');
+    Route::post('/directories/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('directories.rotate');
+    Route::post('/directories/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('directories.toggle');
+    Route::post('/directories/{directory}/map', [DirectoryController::class, 'map'])->name('directories.map');
+    Route::delete('/directories/{directory}', [DirectoryController::class, 'destroy'])->name('directories.destroy');
     // Roles: the SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page — a role URL is something you
     // send to whoever owns the access — and this plane gains rename, delete and permission
     // editing with it, none of which a tenant admin could do to their own roles before.
-    Volt::route('/roles', 'console.roles.index')->name('roles');
-    // The same component the environment plane routes at `environment.permissions`. It
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles');
+    // The same controller the environment plane routes at `environment.permissions`. It
     // was environment-only, so an organization administrator could assign roles without
-    // ever seeing the permissions those roles are made of.
-    Volt::route('/permissions', 'console.permissions.index')->name('permissions');
-    Volt::route('/roles/new', 'console.roles.create')->name('roles.create');
-    Volt::route('/roles/{role}', 'console.roles.show')->name('roles.show');
+    // ever seeing the permissions those roles are made of. What the two planes AUTHOR
+    // differs and the plane decides it: a manual permission written here belongs to the
+    // acting organization alone, one written there is shared with every tenant.
+    Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions');
+    Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store');
+    Route::patch('/permissions/{permission}', [PermissionController::class, 'update'])->name('permissions.update');
+    Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
+    Route::get('/roles/new', [RoleController::class, 'create'])->name('roles.create');
+    Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
+    Route::patch('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    // Grant or revoke ONE permission, said explicitly rather than toggled. Both the
+    // detail page's checkbox and the list's picker post here, and a toggle turns a
+    // double-click — or a retried request — into a silent flip back.
+    Route::post('/roles/{role}/permissions', [RoleController::class, 'permissions'])->name('roles.permissions');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     // Apps & API keys (OAuth clients): the SAME components the environment plane serves.
     // The routable index/new/show shape wins over the organization plane's single page —
     // an app has a lifecycle worth linking to, and the reveal-once client secret needs
     // somewhere to land that is not the form you just submitted. This plane gains editing
     // an app's details and rotating its secret with it; the other gains the roles manifest.
-    Volt::route('/clients', 'console.clients.index')->name('clients');
+    Route::get('/clients', [ClientController::class, 'index'])->name('clients');
     // Publishable keys and the legacy-login declaration are NOT here, and that is the
     // one deliberate exception to "a capability belongs to both planes". Both are owned
     // by the environment and have no organization column, so on this plane every
     // organization's administrator would be administering every other organization's —
     // revoking their keys, or approving where the whole environment's passwords are sent.
     // They live on the environment plane alone; see ConsoleScope::assertMayAdministerEnvironment().
-    Volt::route('/clients/new', 'console.clients.create')->name('clients.create');
-    Volt::route('/clients/{client}', 'console.clients.show')->name('clients.show');
+    Route::get('/clients/new', [ClientController::class, 'create'])->name('clients.create');
+    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
+    Route::get('/clients/{client}', [ClientController::class, 'show'])->name('clients.show');
+    Route::patch('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
+    Route::put('/clients/{client}/manifest', [ClientController::class, 'saveManifest'])->name('clients.manifest');
+    Route::post('/clients/{client}/sync', [ClientController::class, 'sync'])->name('clients.sync');
+    Route::post('/clients/{client}/rotate', [ClientController::class, 'rotate'])->name('clients.rotate');
+    Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
     // Webhooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page with its inline
     // form, and this plane gains resume, secret rotation, subscription editing and delete
     // with it — a tenant admin who paused an endpoint previously had no way to start it
     // again, and none at all to re-key one whose secret had leaked.
-    Volt::route('/webhooks', 'console.webhooks.index')->name('webhooks');
-    Volt::route('/webhooks/new', 'console.webhooks.create')->name('webhooks.create');
-    Volt::route('/webhooks/{webhook}', 'console.webhooks.show')->name('webhooks.show');
+    /*
+     * Webhooks — list, create, detail, and the five mutations the detail page offers.
+     *
+     * Each write is its OWN route now rather than an action on one component posted to a
+     * shared endpoint, which is what lets the console-wide guards — the impersonation
+     * read-only rule, the step-ups — be enforced by middleware instead of by every page
+     * remembering to ask. See {@see \App\Http\Controllers\Console\WebhookController}.
+     */
+    Route::middleware('console.admin')->group(function (): void {
+        Route::get('/webhooks', [WebhookController::class, 'index'])->name('webhooks');
+        Route::get('/webhooks/new', [WebhookController::class, 'create'])->name('webhooks.create');
+        Route::post('/webhooks', [WebhookController::class, 'store'])->name('webhooks.store');
+        Route::get('/webhooks/{webhook}', [WebhookController::class, 'show'])->name('webhooks.show');
+        Route::patch('/webhooks/{webhook}', [WebhookController::class, 'update'])->name('webhooks.update');
+        Route::post('/webhooks/{webhook}/pause', [WebhookController::class, 'pause'])->name('webhooks.pause');
+        Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('webhooks.resume');
+        Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('webhooks.rotate');
+        Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('webhooks.destroy');
+    });
     // Activity log: the SAME component the environment plane serves. The row scoping is
     // what differs per plane and the component asks ConsoleScope for it — an
     // organization's trail is never another's.
-    Volt::route('/audit', 'console.audit')->name('audit');
+    Route::get('/audit', [AuditController::class, 'index'])->name('audit');
     // Log streaming was environment-plane-only. It ships an environment's audit trail to
     // a SIEM, which is a compliance obligation the organization carries — so the plane
     // that answers for compliance could not see, let alone configure, the shipping.
-    Volt::route('/log-streaming', 'console.audit-streams.index')->name('audit-streams');
-    Volt::route('/log-streaming/new', 'console.audit-streams.create')->middleware('sudo')->name('audit-streams.create');
-    Volt::route('/log-streaming/{stream}', 'console.audit-streams.show')->name('audit-streams.show');
+    Route::get('/log-streaming', [LogStreamController::class, 'index'])->name('audit-streams');
+    // Creation behind the step-up, because it mints a signing key and points a copy of the
+    // audit trail somewhere new. The rest of the page is ordinary reading.
+    Route::get('/log-streaming/new', [LogStreamController::class, 'create'])->middleware('sudo')->name('audit-streams.create');
+    Route::post('/log-streaming', [LogStreamController::class, 'store'])->middleware('sudo')->name('audit-streams.store');
+    Route::get('/log-streaming/{stream}', [LogStreamController::class, 'show'])->name('audit-streams.show');
+    Route::post('/log-streaming/{stream}/toggle', [LogStreamController::class, 'toggle'])->name('audit-streams.toggle');
+    Route::delete('/log-streaming/{stream}', [LogStreamController::class, 'destroy'])->name('audit-streams.destroy');
     // Settings: the SAME component the environment plane serves. The organization's own
     // record is on both planes, bounded by whichever organization the scope resolves; the
     // environment's identity is on the environment plane alone.
-    Volt::route('/settings', 'console.settings')->name('settings');
+    Route::get('/settings', [SettingsController::class, 'show'])->name('settings');
+    Route::patch('/settings', [SettingsController::class, 'rename'])->name('settings.rename');
     // Appearance: the SAME component the environment plane serves. What is being
     // themed — an organization's own sign-in, or the environment default every
     // organization inherits — is an explicit choice on the page, offered on the
     // environment plane alone.
-    Volt::route('/appearance', 'console.appearance')->name('appearance');
+    Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance');
+    Route::post('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
     // Sign-in rules: the SAME component the environment plane serves, and the half of
     // this pair that never existed. `AuthPolicies::setForOrganization()` had no caller
     // anywhere in the product while both sign-in doors enforced what it writes, so a
     // tenant could be governed by a per-organization policy that nobody — not even the
     // operator — had a way to author.
-    Volt::route('/sign-in-rules', 'console.auth-policy')->name('auth-policy');
+    Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('auth-policy');
+    Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('auth-policy.update');
+    Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('auth-policy.inherit');
 
     // Access governance (IGA): certification reviews + Segregation-of-Duties policies.
     // The SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page: a campaign URL is something
     // you send to a reviewer, and losing it would be a real regression.
-    Volt::route('/governance', 'console.governance.index')->name('governance');
-    Volt::route('/governance/new', 'console.governance.create')->name('governance.create');
-    Volt::route('/governance/{campaign}', 'console.governance.show')->name('governance.show');
-    Volt::route('/sod-policies', 'console.sod-policies.index')->name('sod-policies');
-    Volt::route('/sod-policies/new', 'console.sod-policies.create')->name('sod-policies.create');
-    Volt::route('/sod-policies/{policy}', 'console.sod-policies.show')->name('sod-policies.show');
+    Route::get('/governance', [AccessReviewController::class, 'index'])->name('governance');
+    Route::get('/governance/new', [AccessReviewController::class, 'create'])->name('governance.create');
+    Route::post('/governance', [AccessReviewController::class, 'store'])->name('governance.store');
+    Route::get('/governance/{campaign}', [AccessReviewController::class, 'show'])->name('governance.show');
+    // One decision endpoint rather than certify and revoke as separate routes: they are
+    // one act with two answers, and a reviewer moves between them.
+    Route::post('/governance/{campaign}/items/{item}', [AccessReviewController::class, 'item'])->name('governance.item');
+    Route::post('/governance/{campaign}/close', [AccessReviewController::class, 'close'])->name('governance.close');
+    Route::get('/sod-policies', [RoleConflictController::class, 'index'])->name('sod-policies');
+    Route::get('/sod-policies/new', [RoleConflictController::class, 'create'])->name('sod-policies.create');
+    Route::post('/sod-policies', [RoleConflictController::class, 'store'])->name('sod-policies.store');
+    Route::get('/sod-policies/{policy}', [RoleConflictController::class, 'show'])->name('sod-policies.show');
+    // Activate and deactivate as ONE endpoint: two states, and the record already knows
+    // which it is in.
+    Route::post('/sod-policies/{policy}/toggle', [RoleConflictController::class, 'toggle'])->name('sod-policies.toggle');
+    Route::delete('/sod-policies/{policy}', [RoleConflictController::class, 'destroy'])->name('sod-policies.destroy');
 
     // Outbound SCIM provisioning connections (push users OUT to downstream apps).
     // The SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page with its inline form, and
     // this plane gains resume and delete with it — a tenant admin who paused a
     // connection previously had no way to start it again from their own console.
-    Volt::route('/provisioning', 'console.provisioning.index')->name('provisioning');
-    Volt::route('/provisioning/new', 'console.provisioning.create')->name('provisioning.create');
-    Volt::route('/provisioning/{sync}', 'console.provisioning.show')->name('provisioning.show');
+    Route::get('/provisioning', [OutboundSyncController::class, 'index'])->name('provisioning');
+    Route::get('/provisioning/new', [OutboundSyncController::class, 'create'])->name('provisioning.create');
+    Route::post('/provisioning', [OutboundSyncController::class, 'store'])->name('provisioning.store');
+    Route::get('/provisioning/{sync}', [OutboundSyncController::class, 'show'])->name('provisioning.show');
+    // Pause and resume as ONE endpoint: two states, and the record already knows which it
+    // is in.
+    Route::post('/provisioning/{sync}/toggle', [OutboundSyncController::class, 'toggle'])->name('provisioning.toggle');
+    Route::delete('/provisioning/{sync}', [OutboundSyncController::class, 'destroy'])->name('provisioning.destroy');
 
     // AI token vault — the SAME components the environment plane serves, on the routable
     // index/new/show shape. Storing, rotating and granting a downstream credential is
     // sensitive, so every page is behind the sudo step-up gate — as is its mirror on the
     // environment plane, which for a long time had no step-up at all.
-    Volt::route('/vault', 'console.vault.index')->middleware('sudo')->name('vault');
-    Volt::route('/vault/new', 'console.vault.create')->middleware('sudo')->name('vault.create');
-    Volt::route('/vault/{secret}', 'console.vault.show')->middleware('sudo')->name('vault.show');
+    /*
+     * EVERY ROUTE BEHIND THE STEP-UP, reads included. The list names the downstream
+     * providers this organization integrates with and the detail page names the clients
+     * authorized to lease each credential — both are worth a fresh password on their own,
+     * and gating only the writes would leave the inventory open to a borrowed session.
+     */
+    Route::middleware('sudo')->group(function (): void {
+        Route::get('/vault', [VaultController::class, 'index'])->name('vault');
+        Route::get('/vault/new', [VaultController::class, 'create'])->name('vault.create');
+        Route::post('/vault', [VaultController::class, 'store'])->name('vault.store');
+        Route::get('/vault/{secret}', [VaultController::class, 'show'])->name('vault.show');
+        Route::post('/vault/{secret}/rotate', [VaultController::class, 'rotate'])->name('vault.rotate');
+        Route::post('/vault/{secret}/grants', [VaultController::class, 'grant'])->name('vault.grants.store');
+        Route::delete('/vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('vault.grants.destroy');
+        Route::post('/vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('vault.revoke');
+    });
     // Inline hooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — an endpoint
     // has a lifecycle worth linking to, and the one-time signing secret needs somewhere
     // to land that is not the row you just submitted.
-    Volt::route('/hooks', 'console.hooks.index')->name('hooks');
-    Volt::route('/hooks/new', 'console.hooks.create')->name('hooks.create');
-    Volt::route('/hooks/{hook}', 'console.hooks.show')->name('hooks.show');
+    Route::get('/hooks', [HookController::class, 'index'])->name('hooks');
+    Route::get('/hooks/new', [HookController::class, 'create'])->name('hooks.create');
+    Route::post('/hooks', [HookController::class, 'store'])->name('hooks.store');
+    Route::get('/hooks/{hook}', [HookController::class, 'show'])->name('hooks.show');
+    // Pause and resume as ONE endpoint. There are two states and the record already knows
+    // which it is in, so a posted intent would only add a way for the button and the row
+    // to disagree about what is being asked for.
+    Route::post('/hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('hooks.toggle');
+    Route::delete('/hooks/{hook}', [HookController::class, 'destroy'])->name('hooks.destroy');
 
     // SIEM audit-stream export.
 
     // Agent approvals (OIDC CIBA): where a signed-in user approves/denies a
     // backchannel request an agent started on their behalf.
-    Volt::route('/approvals', 'approvals')->name('approvals');
+    Route::get('/approvals', [MyApprovalController::class, 'index'])->name('approvals');
+    Route::post('/approvals/{request}/approve', [MyApprovalController::class, 'approve'])->name('approvals.approve');
+    Route::post('/approvals/{request}/deny', [MyApprovalController::class, 'deny'])->name('approvals.deny');
 
     // RFC 8628 device grant: where a signed-in user approves a device's user_code.
-    Volt::route('/device', 'device')->name('device');
+    Route::get('/device', [DeviceApprovalController::class, 'show'])->name('device');
+    Route::post('/device/lookup', [DeviceApprovalController::class, 'lookup'])->name('device.lookup');
+    Route::post('/device/approve', [DeviceApprovalController::class, 'approve'])->name('device.approve');
+    Route::post('/device/deny', [DeviceApprovalController::class, 'deny'])->name('device.deny');
 
     // Step-up re-authentication ("sudo mode") gate for sensitive actions. Blocked
     // while impersonating: an impersonator must never be able to clear the gate
     // that protects credential changes.
-    Volt::route('/sudo', 'auth.sudo')->middleware(BlockDuringImpersonation::class)->name('sudo');
+    Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+        Route::get('/sudo', [SudoController::class, 'show'])->name('sudo');
+        Route::post('/sudo', [SudoController::class, 'confirm'])->name('sudo.confirm');
+    });
 
     // Blocked while impersonating: the subject session is pinned to the one org the
     // operator was authorized to enter. Pivoting to another of the subject's orgs
@@ -612,76 +945,172 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // and `cbox-id:doctor` both already name and refuse to install into.
         Route::get('/login', fn () => redirect()->route('environment.home'))->name('admin.login');
 
-        Volt::route('/', 'environment.home')->name('environment.home');
+        Route::get('/', [EnvironmentHomeController::class, 'index'])->name('environment.home');
+
+        /*
+         * WHICH TENANT THIS CONSOLE IS ACTING ON — chrome rather than a page, so it has no
+         * screen of its own. The search is a JSON endpoint because the set is unbounded and
+         * the control has to stay bounded whatever it does.
+         */
+        Route::get('/acting-organization', [ActingOrganizationController::class, 'search'])->name('environment.acting-organization.search');
+        Route::post('/acting-organization', [ActingOrganizationController::class, 'choose'])->name('environment.acting-organization.choose');
+        Route::delete('/acting-organization', [ActingOrganizationController::class, 'clear'])->name('environment.acting-organization.clear');
 
         // Organizations — routable list → create → detail (deep-linkable).
-        Volt::route('/organizations', 'environment.organizations.index')->name('environment.organizations');
-        Volt::route('/organizations/new', 'environment.organizations.create')->name('environment.organizations.create');
-        Volt::route('/organizations/{organization}', 'environment.organizations.show')->name('environment.organizations.show');
+        Route::get('/organizations', [EnvironmentOrganizationController::class, 'index'])->name('environment.organizations');
+        Route::get('/organizations/new', [EnvironmentOrganizationController::class, 'create'])->name('environment.organizations.create');
+        Route::post('/organizations', [EnvironmentOrganizationController::class, 'store'])->name('environment.organizations.store');
+        Route::get('/organizations/{organization}', [EnvironmentOrganizationController::class, 'show'])->name('environment.organizations.show');
+        Route::patch('/organizations/{organization}', [EnvironmentOrganizationController::class, 'update'])->name('environment.organizations.update');
+        Route::post('/organizations/{organization}/suspend', [EnvironmentOrganizationController::class, 'suspend'])->name('environment.organizations.suspend');
+        Route::post('/organizations/{organization}/reactivate', [EnvironmentOrganizationController::class, 'reactivate'])->name('environment.organizations.reactivate');
+        Route::delete('/organizations/{organization}', [EnvironmentOrganizationController::class, 'destroy'])->name('environment.organizations.destroy');
 
-        // Users — routable list → create → detail.
-        Volt::route('/users', 'environment.users.index')->name('environment.users');
-        Volt::route('/users/new', 'environment.users.create')->name('environment.users.create');
-        Volt::route('/users/{user}', 'environment.users.show')->name('environment.users.show');
+        // The roster. Every id is in the URL of its own mutation, so each one re-resolves
+        // the member INSIDE the organization rather than trusting the page it came from.
+        Route::post('/organizations/{organization}/members', [EnvironmentOrganizationController::class, 'addMember'])->name('environment.organizations.members.store');
+        Route::patch('/organizations/{organization}/members/{member}/role', [EnvironmentOrganizationController::class, 'changeMemberRole'])->name('environment.organizations.members.role');
+        Route::post('/organizations/{organization}/members/{member}/access', [EnvironmentOrganizationController::class, 'setAccessRole'])->name('environment.organizations.members.access');
+        Route::delete('/organizations/{organization}/members/{member}', [EnvironmentOrganizationController::class, 'removeMember'])->name('environment.organizations.members.remove');
+
+        Route::post('/organizations/{organization}/invitations', [EnvironmentOrganizationController::class, 'invite'])->name('environment.organizations.invitations.store');
+        Route::delete('/organizations/{organization}/invitations/{invitation}', [EnvironmentOrganizationController::class, 'revokeInvitation'])->name('environment.organizations.invitations.revoke');
+
+        Route::post('/organizations/{organization}/domains', [EnvironmentOrganizationController::class, 'addDomain'])->name('environment.organizations.domains.store');
+        Route::post('/organizations/{organization}/domains/{domain}/verify', [EnvironmentOrganizationController::class, 'verifyDomain'])->name('environment.organizations.domains.verify');
+        Route::post('/organizations/{organization}/domains/{domain}/capture', [EnvironmentOrganizationController::class, 'toggleCapture'])->name('environment.organizations.domains.capture');
+        Route::delete('/organizations/{organization}/domains/{domain}', [EnvironmentOrganizationController::class, 'removeDomain'])->name('environment.organizations.domains.remove');
+
+        // Users — routable list → create → detail. Every lifecycle action names the user
+        // in its own URL, so each one re-resolves them through the environment-scoped
+        // model rather than trusting the page that drew the button.
+        Route::get('/users', [EnvironmentUserController::class, 'index'])->name('environment.users');
+        Route::get('/users/new', [EnvironmentUserController::class, 'create'])->name('environment.users.create');
+        Route::post('/users', [EnvironmentUserController::class, 'store'])->name('environment.users.store');
+        Route::get('/users/{user}', [EnvironmentUserController::class, 'show'])->name('environment.users.show');
+        Route::patch('/users/{user}', [EnvironmentUserController::class, 'update'])->name('environment.users.update');
+
+        Route::post('/users/{user}/password', [EnvironmentUserController::class, 'setPassword'])->name('environment.users.password');
+        Route::post('/users/{user}/password-reset', [EnvironmentUserController::class, 'sendPasswordReset'])->name('environment.users.password-reset');
+        Route::post('/users/{user}/verification', [EnvironmentUserController::class, 'resendVerification'])->name('environment.users.verification');
+        Route::post('/users/{user}/verify', [EnvironmentUserController::class, 'markVerified'])->name('environment.users.verify');
+        Route::post('/users/{user}/two-factor/reset', [EnvironmentUserController::class, 'resetMfa'])->name('environment.users.mfa');
+        Route::post('/users/{user}/deactivate', [EnvironmentUserController::class, 'deactivate'])->name('environment.users.deactivate');
+        Route::post('/users/{user}/reactivate', [EnvironmentUserController::class, 'reactivate'])->name('environment.users.reactivate');
+
+        Route::delete('/users/{user}/sessions', [EnvironmentUserController::class, 'revokeAllSessions'])->name('environment.users.sessions.revoke-all');
+        Route::delete('/users/{user}/sessions/{session}', [EnvironmentUserController::class, 'revokeSession'])->name('environment.users.sessions.revoke');
+
+        Route::post('/users/{user}/organizations', [EnvironmentUserController::class, 'assignOrganization'])->name('environment.users.organizations.store');
+        Route::patch('/users/{user}/organizations/{organization}/role', [EnvironmentUserController::class, 'changeMembershipRole'])->name('environment.users.organizations.role');
+        Route::post('/users/{user}/organizations/{organization}/access', [EnvironmentUserController::class, 'setAccessRole'])->name('environment.users.organizations.access');
+        Route::delete('/users/{user}/organizations/{organization}', [EnvironmentUserController::class, 'removeMembership'])->name('environment.users.organizations.remove');
+
+        Route::post('/users/{user}/roles', [EnvironmentUserController::class, 'setEnvironmentRole'])->name('environment.users.roles');
 
         // SSO connections — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
-        Volt::route('/single-sign-on', 'console.connections.index')->name('environment.connections');
+        Route::get('/single-sign-on', [ConnectionController::class, 'index'])->name('environment.connections');
+        Route::post('/single-sign-on/invite', [ConnectionController::class, 'invite'])->name('environment.connections.invite');
+        Route::post('/single-sign-on/domains', [ConnectionController::class, 'addDomain'])->name('environment.connections.domains.store');
+        Route::post('/single-sign-on/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('environment.connections.domains.verify');
+        Route::post('/single-sign-on/domains/{domain}/capture', [ConnectionController::class, 'toggleCapture'])->name('environment.connections.domains.capture');
+        Route::delete('/single-sign-on/domains/{domain}', [ConnectionController::class, 'removeDomain'])->name('environment.connections.domains.destroy');
 
         // The SAME component the organization plane serves. It shipped on one plane only
         // — reachable, but not by the person who owns the environment, who holds an
         // account session rather than a subject one and would have had to impersonate one
         // of their own users to reach their own feature.
-        Volt::route('/social-sign-in', 'social-providers')->name('environment.social-providers');
-        Volt::route('/single-sign-on/new', 'console.connections.create')->name('environment.connections.create');
-        Volt::route('/single-sign-on/{connection}', 'console.connections.show')->name('environment.connections.show');
+        Route::get('/social-sign-in', [SocialProviderController::class, 'index'])->name('environment.social-providers');
+        Route::post('/social-sign-in', [SocialProviderController::class, 'store'])->name('environment.social-providers.store');
+        Route::delete('/social-sign-in/{connection}', [SocialProviderController::class, 'destroy'])->name('environment.social-providers.destroy');
+        Route::get('/single-sign-on/new', [ConnectionController::class, 'create'])->name('environment.connections.create');
+        Route::post('/single-sign-on/import', [ConnectionController::class, 'importMetadata'])->name('environment.connections.import');
+        Route::post('/single-sign-on', [ConnectionController::class, 'store'])->name('environment.connections.store');
+        Route::get('/single-sign-on/{connection}', [ConnectionController::class, 'show'])->name('environment.connections.show');
+        Route::patch('/single-sign-on/{connection}', [ConnectionController::class, 'update'])->name('environment.connections.update');
+        Route::post('/single-sign-on/{connection}/activate', [ConnectionController::class, 'activate'])->name('environment.connections.activate');
+        Route::post('/single-sign-on/{connection}/disable', [ConnectionController::class, 'disable'])->name('environment.connections.disable');
+        Route::post('/single-sign-on/{connection}/require-sso', [ConnectionController::class, 'requireSso'])->name('environment.connections.require-sso');
+        Route::delete('/single-sign-on/{connection}', [ConnectionController::class, 'destroy'])->name('environment.connections.destroy');
 
-        // Login methods (SAML service providers) — routable list → create → detail.
-        Volt::route('/login-methods', 'environment.sso-providers.index')->name('environment.sso-providers');
-        Volt::route('/login-methods/new', 'environment.sso-providers.create')->name('environment.sso-providers.create');
-        Volt::route('/login-methods/{provider}', 'environment.sso-providers.show')->name('environment.sso-providers.show');
+        // SAML applications (downstream service providers) — routable list → create →
+        // detail. The URL keeps its old spelling so existing links still resolve.
+        Route::get('/login-methods', [ServiceProviderController::class, 'index'])->name('environment.sso-providers');
+        Route::get('/login-methods/new', [ServiceProviderController::class, 'create'])->name('environment.sso-providers.create');
+        Route::post('/login-methods', [ServiceProviderController::class, 'store'])->name('environment.sso-providers.store');
+        Route::get('/login-methods/{provider}', [ServiceProviderController::class, 'show'])->name('environment.sso-providers.show');
+        Route::patch('/login-methods/{provider}', [ServiceProviderController::class, 'update'])->name('environment.sso-providers.update');
+        Route::delete('/login-methods/{provider}', [ServiceProviderController::class, 'destroy'])->name('environment.sso-providers.destroy');
 
         // Sync users in — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
-        Volt::route('/directories', 'console.directories.index')->name('environment.directories');
-        Volt::route('/directories/new', 'console.directories.create')->name('environment.directories.create');
-        Volt::route('/directories/{directory}', 'console.directories.show')->name('environment.directories.show');
+        Route::get('/directories', [DirectoryController::class, 'index'])->name('environment.directories');
+        Route::post('/directories/invite', [DirectoryController::class, 'invite'])->name('environment.directories.invite');
+        Route::get('/directories/new', [DirectoryController::class, 'create'])->name('environment.directories.create');
+        Route::post('/directories', [DirectoryController::class, 'store'])->name('environment.directories.store');
+        Route::post('/directories/connect', [DirectoryController::class, 'connect'])->name('environment.directories.connect');
+        Route::get('/directories/{directory}', [DirectoryController::class, 'show'])->name('environment.directories.show');
+        Route::patch('/directories/{directory}', [DirectoryController::class, 'update'])->name('environment.directories.update');
+        Route::post('/directories/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('environment.directories.rotate');
+        Route::post('/directories/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('environment.directories.toggle');
+        Route::post('/directories/{directory}/map', [DirectoryController::class, 'map'])->name('environment.directories.map');
+        Route::delete('/directories/{directory}', [DirectoryController::class, 'destroy'])->name('environment.directories.destroy');
 
         // Outbound sync (provisioning connections) — routable list → create → detail.
-        Volt::route('/outbound-sync', 'console.provisioning.index')->name('environment.provisioning');
-        Volt::route('/outbound-sync/new', 'console.provisioning.create')->name('environment.provisioning.create');
-        Volt::route('/outbound-sync/{sync}', 'console.provisioning.show')->name('environment.provisioning.show');
+        Route::get('/outbound-sync', [OutboundSyncController::class, 'index'])->name('environment.provisioning');
+        Route::get('/outbound-sync/new', [OutboundSyncController::class, 'create'])->name('environment.provisioning.create');
+        Route::post('/outbound-sync', [OutboundSyncController::class, 'store'])->name('environment.provisioning.store');
+        Route::get('/outbound-sync/{sync}', [OutboundSyncController::class, 'show'])->name('environment.provisioning.show');
+        Route::post('/outbound-sync/{sync}/toggle', [OutboundSyncController::class, 'toggle'])->name('environment.provisioning.toggle');
+        Route::delete('/outbound-sync/{sync}', [OutboundSyncController::class, 'destroy'])->name('environment.provisioning.destroy');
 
         // Roles — routable list → create → detail (permission editor), on the merged
         // component. The route names are what the two planes disagree on, and both are
         // preserved.
-        Volt::route('/roles', 'console.roles.index')->name('environment.roles');
-        Volt::route('/roles/new', 'console.roles.create')->name('environment.roles.create');
-        Volt::route('/roles/{role}', 'console.roles.show')->name('environment.roles.show');
+        Route::get('/roles', [RoleController::class, 'index'])->name('environment.roles');
+        Route::get('/roles/new', [RoleController::class, 'create'])->name('environment.roles.create');
+        Route::post('/roles', [RoleController::class, 'store'])->name('environment.roles.store');
+        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('environment.roles.show');
+        Route::patch('/roles/{role}', [RoleController::class, 'update'])->name('environment.roles.update');
+        Route::post('/roles/{role}/permissions', [RoleController::class, 'permissions'])->name('environment.roles.permissions');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('environment.roles.destroy');
 
         // Permissions — the catalog roles draw from. App-declared permissions arrive
         // via an app's manifest (SDK/API); manual ones are authored here for orgs that
         // don't run an SDK integration.
-        Volt::route('/permissions', 'console.permissions.index')->name('environment.permissions');
+        Route::get('/permissions', [PermissionController::class, 'index'])->name('environment.permissions');
+        Route::post('/permissions', [PermissionController::class, 'store'])->name('environment.permissions.store');
+        Route::patch('/permissions/{permission}', [PermissionController::class, 'update'])->name('environment.permissions.update');
+        Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('environment.permissions.destroy');
 
         // Access reviews (certification campaigns) — routable list → create → detail.
-        Volt::route('/access-reviews', 'console.governance.index')->name('environment.governance');
-        Volt::route('/access-reviews/new', 'console.governance.create')->name('environment.governance.create');
-        Volt::route('/access-reviews/{campaign}', 'console.governance.show')->name('environment.governance.show');
+        Route::get('/access-reviews', [AccessReviewController::class, 'index'])->name('environment.governance');
+        Route::get('/access-reviews/new', [AccessReviewController::class, 'create'])->name('environment.governance.create');
+        Route::post('/access-reviews', [AccessReviewController::class, 'store'])->name('environment.governance.store');
+        Route::get('/access-reviews/{campaign}', [AccessReviewController::class, 'show'])->name('environment.governance.show');
+        Route::post('/access-reviews/{campaign}/items/{item}', [AccessReviewController::class, 'item'])->name('environment.governance.item');
+        Route::post('/access-reviews/{campaign}/close', [AccessReviewController::class, 'close'])->name('environment.governance.close');
 
         // Conflict rules (segregation-of-duties) — routable list → create → detail.
-        Volt::route('/conflict-rules', 'console.sod-policies.index')->name('environment.sod-policies');
-        Volt::route('/conflict-rules/new', 'console.sod-policies.create')->name('environment.sod-policies.create');
-        Volt::route('/conflict-rules/{policy}', 'console.sod-policies.show')->name('environment.sod-policies.show');
+        Route::get('/conflict-rules', [RoleConflictController::class, 'index'])->name('environment.sod-policies');
+        Route::get('/conflict-rules/new', [RoleConflictController::class, 'create'])->name('environment.sod-policies.create');
+        Route::post('/conflict-rules', [RoleConflictController::class, 'store'])->name('environment.sod-policies.store');
+        Route::get('/conflict-rules/{policy}', [RoleConflictController::class, 'show'])->name('environment.sod-policies.show');
+        Route::post('/conflict-rules/{policy}/toggle', [RoleConflictController::class, 'toggle'])->name('environment.sod-policies.toggle');
+        Route::delete('/conflict-rules/{policy}', [RoleConflictController::class, 'destroy'])->name('environment.sod-policies.destroy');
 
         // Apps & API keys (OAuth clients) — routable list → create → detail, on the
         // merged component. The URLs keep their old spelling so existing links and
         // bookmarks still resolve; the route names are what the two planes disagree on,
         // and both are preserved.
-        Volt::route('/applications', 'console.clients.index')->name('environment.clients');
-        Volt::route('/frontend-keys', 'console.frontend-keys')->name('environment.frontend-keys');
+        Route::get('/applications', [ClientController::class, 'index'])->name('environment.clients');
+        Route::get('/frontend-keys', [FrontendKeyController::class, 'index'])->name('environment.frontend-keys');
+        Route::post('/frontend-keys', [FrontendKeyController::class, 'store'])->name('environment.frontend-keys.store');
+        Route::put('/frontend-keys/{key}/origins', [FrontendKeyController::class, 'origins'])->name('environment.frontend-keys.origins');
+        Route::delete('/frontend-keys/{key}', [FrontendKeyController::class, 'destroy'])->name('environment.frontend-keys.destroy');
         // Behind sudo, like the token vault and log-stream creation: the button on this
         // page decides where every un-migrated address and the password typed with it is
         // sent. The design deliberately put a person in the loop, and a person who has
@@ -696,22 +1125,44 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // to `/sudo`, which resolves the subject under the ambient tenant scope, finds
         // nothing, and bounces to the tenant end-user login. There is no path from there
         // back. The vault two lines below has said this since the planes merged.
-        Volt::route('/legacy-login', 'console.legacy-login')->middleware('env.sudo')->name('environment.legacy-login');
-        Volt::route('/applications/new', 'console.clients.create')->name('environment.clients.create');
-        Volt::route('/applications/{client}', 'console.clients.show')->name('environment.clients.show');
+        Route::middleware('env.sudo')->group(function (): void {
+            Route::get('/legacy-login', [LegacyLoginController::class, 'show'])->name('environment.legacy-login');
+            Route::post('/legacy-login/probe', [LegacyLoginController::class, 'probe'])->name('environment.legacy-login.probe');
+            Route::post('/legacy-login/approve', [LegacyLoginController::class, 'approve'])->name('environment.legacy-login.approve');
+            Route::post('/legacy-login/revoke', [LegacyLoginController::class, 'revoke'])->name('environment.legacy-login.revoke');
+        });
+        Route::get('/applications/new', [ClientController::class, 'create'])->name('environment.clients.create');
+        Route::post('/applications', [ClientController::class, 'store'])->name('environment.clients.store');
+        Route::get('/applications/{client}', [ClientController::class, 'show'])->name('environment.clients.show');
+        Route::patch('/applications/{client}', [ClientController::class, 'update'])->name('environment.clients.update');
+        Route::put('/applications/{client}/manifest', [ClientController::class, 'saveManifest'])->name('environment.clients.manifest');
+        Route::post('/applications/{client}/sync', [ClientController::class, 'sync'])->name('environment.clients.sync');
+        Route::post('/applications/{client}/rotate', [ClientController::class, 'rotate'])->name('environment.clients.rotate');
+        Route::delete('/applications/{client}', [ClientController::class, 'destroy'])->name('environment.clients.destroy');
 
         // Webhooks — routable list → create → detail, on the merged component. The URLs
         // are unchanged so existing links and bookmarks still resolve; the route names
         // are what the two planes disagree on, and both are preserved.
-        Volt::route('/webhooks', 'console.webhooks.index')->name('environment.webhooks');
-        Volt::route('/webhooks/new', 'console.webhooks.create')->name('environment.webhooks.create');
-        Volt::route('/webhooks/{webhook}', 'console.webhooks.show')->name('environment.webhooks.show');
+        Route::middleware('console.admin')->group(function (): void {
+            Route::get('/webhooks', [WebhookController::class, 'index'])->name('environment.webhooks');
+            Route::get('/webhooks/new', [WebhookController::class, 'create'])->name('environment.webhooks.create');
+            Route::post('/webhooks', [WebhookController::class, 'store'])->name('environment.webhooks.store');
+            Route::get('/webhooks/{webhook}', [WebhookController::class, 'show'])->name('environment.webhooks.show');
+            Route::patch('/webhooks/{webhook}', [WebhookController::class, 'update'])->name('environment.webhooks.update');
+            Route::post('/webhooks/{webhook}/pause', [WebhookController::class, 'pause'])->name('environment.webhooks.pause');
+            Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('environment.webhooks.resume');
+            Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('environment.webhooks.rotate');
+            Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('environment.webhooks.destroy');
+        });
         // Inline hooks — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
-        Volt::route('/event-hooks', 'console.hooks.index')->name('environment.hooks');
-        Volt::route('/event-hooks/new', 'console.hooks.create')->name('environment.hooks.create');
-        Volt::route('/event-hooks/{hook}', 'console.hooks.show')->name('environment.hooks.show');
+        Route::get('/event-hooks', [HookController::class, 'index'])->name('environment.hooks');
+        Route::get('/event-hooks/new', [HookController::class, 'create'])->name('environment.hooks.create');
+        Route::post('/event-hooks', [HookController::class, 'store'])->name('environment.hooks.store');
+        Route::get('/event-hooks/{hook}', [HookController::class, 'show'])->name('environment.hooks.show');
+        Route::post('/event-hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('environment.hooks.toggle');
+        Route::delete('/event-hooks/{hook}', [HookController::class, 'destroy'])->name('environment.hooks.destroy');
 
         // Token vault — routable list → create → detail, on the merged component. The URL
         // keeps its old spelling so existing links and bookmarks still resolve; the route
@@ -722,9 +1173,16 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // in the environment, and the identical actions on the organization plane have
         // always demanded a fresh password. The asymmetry meant the more privileged door
         // was the one with no step-up behind it.
-        Volt::route('/stored-tokens', 'console.vault.index')->middleware('env.sudo')->name('environment.vault');
-        Volt::route('/stored-tokens/new', 'console.vault.create')->middleware('env.sudo')->name('environment.vault.create');
-        Volt::route('/stored-tokens/{secret}', 'console.vault.show')->middleware('env.sudo')->name('environment.vault.show');
+        Route::middleware('env.sudo')->group(function (): void {
+            Route::get('/stored-tokens', [VaultController::class, 'index'])->name('environment.vault');
+            Route::get('/stored-tokens/new', [VaultController::class, 'create'])->name('environment.vault.create');
+            Route::post('/stored-tokens', [VaultController::class, 'store'])->name('environment.vault.store');
+            Route::get('/stored-tokens/{secret}', [VaultController::class, 'show'])->name('environment.vault.show');
+            Route::post('/stored-tokens/{secret}/rotate', [VaultController::class, 'rotate'])->name('environment.vault.rotate');
+            Route::post('/stored-tokens/{secret}/grants', [VaultController::class, 'grant'])->name('environment.vault.grants.store');
+            Route::delete('/stored-tokens/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('environment.vault.grants.destroy');
+            Route::post('/stored-tokens/{secret}/revoke', [VaultController::class, 'revoke'])->name('environment.vault.revoke');
+        });
 
         // Step-up re-authentication for this plane. Inside the env-admin group — only an
         // administrator has anything to step up FROM — but never behind `env.sudo` itself,
@@ -734,11 +1192,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // missing: an impersonator must never be able to CLEAR the gate that protects
         // credential changes. Clearing it here would have opened the widest of the three
         // planes, where one confirmation covers every tenant in the environment.
-        Volt::route('/sudo', 'environment.sudo')->middleware(BlockDuringImpersonation::class)->name('environment.sudo');
+        Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+            Route::get('/sudo', [SudoController::class, 'showEnvironment'])->name('environment.sudo');
+            Route::post('/sudo', [SudoController::class, 'confirmEnvironment'])->name('environment.sudo.confirm');
+        });
 
         // Activity log — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
-        Volt::route('/audit', 'console.audit')->name('environment.audit');
+        Route::get('/audit', [AuditController::class, 'index'])->name('environment.audit');
 
         // Log streaming (SIEM) — routable list → create → detail.
         //
@@ -751,26 +1212,34 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // the session, which answers "organization" for a browser that happens to hold a
         // subject session on this host. Naming the plane here is the only way to be sure
         // the widest of the three windows is the one that has to be open.
-        Volt::route('/log-streaming', 'console.audit-streams.index')->name('environment.audit-streams');
-        Volt::route('/log-streaming/new', 'console.audit-streams.create')->middleware('env.sudo')->name('environment.audit-streams.create');
-        Volt::route('/log-streaming/{stream}', 'console.audit-streams.show')->name('environment.audit-streams.show');
+        Route::get('/log-streaming', [LogStreamController::class, 'index'])->name('environment.audit-streams');
+        Route::get('/log-streaming/new', [LogStreamController::class, 'create'])->middleware('env.sudo')->name('environment.audit-streams.create');
+        Route::post('/log-streaming', [LogStreamController::class, 'store'])->middleware('env.sudo')->name('environment.audit-streams.store');
+        Route::get('/log-streaming/{stream}', [LogStreamController::class, 'show'])->name('environment.audit-streams.show');
+        Route::post('/log-streaming/{stream}/toggle', [LogStreamController::class, 'toggle'])->name('environment.audit-streams.toggle');
+        Route::delete('/log-streaming/{stream}', [LogStreamController::class, 'destroy'])->name('environment.audit-streams.destroy');
         // The SHARED usage page — `environment.analytics` was the primitive version of it
         // over the same counters. Route name kept so existing links and the rail entry
         // keep working; only the component behind it changes.
-        Volt::route('/analytics', 'usage')->name('environment.analytics');
-        Volt::route('/approvals', 'environment.approvals')->name('environment.approvals');
+        Route::get('/analytics', [UsageController::class, 'index'])->name('environment.analytics');
+        Route::get('/approvals', [AgentApprovalController::class, 'index'])->name('environment.approvals');
+        Route::post('/approvals/{request}/deny', [AgentApprovalController::class, 'deny'])->name('environment.approvals.deny');
         // Settings — the merged component. The route NAME is preserved on both planes;
         // only the component behind it is now shared.
-        Volt::route('/settings', 'console.settings')->name('environment.settings');
+        Route::get('/settings', [SettingsController::class, 'show'])->name('environment.settings');
+        Route::patch('/settings', [SettingsController::class, 'rename'])->name('environment.settings.rename');
         // Sign-in rules — the merged component. This plane writes the BASELINE every
         // organization inherits; the organization plane writes one organization's
         // override. Same page, same controls, different level — which is the only
         // difference there has ever been between the two, and until now the organization
         // half of it had no surface at all.
-        Volt::route('/sign-in-rules', 'console.auth-policy')->name('environment.auth-policy');
+        Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('environment.auth-policy');
+        Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('environment.auth-policy.update');
+        Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('environment.auth-policy.inherit');
         // Appearance — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
-        Volt::route('/appearance', 'console.appearance')->name('environment.appearance');
+        Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.appearance');
+        Route::post('/appearance', [AppearanceController::class, 'update'])->name('environment.appearance.update');
 
         // Step into a subject's session for support (env-admin actor). Authorized in
         // the controller by env-scoped membership; owners/admins refused; reason required.
@@ -824,10 +1293,13 @@ Route::prefix('platform')->group(function (): void {
     // TargetEnvironment comes last: the console's chosen plane must not be ambient while
     // the operator's own (platform-root) session is being looked up.
     Route::middleware(['platform.auth:optional', AuthenticateOperator::class, TargetEnvironment::class])->group(function (): void {
-        Volt::route('/', 'platform.environments')->name('platform.environments');
-        Volt::route('/usage', 'platform.usage')->name('platform.usage');
-        Volt::route('/search', 'platform.search')->name('platform.search');
-        Volt::route('/customers', 'platform.customers')->name('platform.customers');
+        Route::get('/', [PlatformEnvironmentController::class, 'index'])->name('platform.environments');
+        Route::post('/environments', [PlatformEnvironmentController::class, 'store'])->name('platform.environments.store');
+        Route::post('/environments/{environment}/provision', [PlatformEnvironmentController::class, 'provision'])->name('platform.environments.provision');
+        Route::get('/usage', PlatformUsageController::class)->name('platform.usage');
+        Route::get('/search', PlatformSearchController::class)->name('platform.search');
+        Route::get('/customers', [PlatformCustomerController::class, 'index'])->name('platform.customers');
+        Route::post('/customers', [PlatformCustomerController::class, 'store'])->name('platform.customers.store');
 
         // `platform.customers.show`, not `platform.account`. The console derives both the
         // eyebrow above the page title and the lit rail entry from the route name by the
@@ -835,10 +1307,18 @@ Route::prefix('platform')->group(function (): void {
         // page named as a CHILD of its list gets "Platform" over its heading and keeps
         // Accounts lit in the rail without a single hand-written label. `platform.organization`
         // predates that rule and has to pass its own eyebrow; this one does not.
-        Volt::route('/customers/{organization}', 'platform.customer')->name('platform.customers.show');
-        Volt::route('/organizations', 'platform.organizations')->name('platform.organizations');
-        Volt::route('/organizations/{organization}', 'platform.organization')->name('platform.organization');
-        Volt::route('/operators', 'platform.operators')->name('platform.operators');
+        Route::get('/customers/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.customers.show');
+        Route::post('/customers/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.customers.toggle');
+        Route::post('/customers/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.customers.target');
+        Route::post('/customers/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.customers.open');
+        Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
+        Route::post('/organizations', [PlatformOrganizationController::class, 'store'])->name('platform.organizations.store');
+        Route::get('/organizations/{organization}', [PlatformOrganizationController::class, 'show'])->name('platform.organization');
+        Route::post('/organizations/{organization}/status', [PlatformOrganizationController::class, 'toggle'])->name('platform.organizations.toggle');
+        Route::post('/organizations/{organization}/parent', [PlatformOrganizationController::class, 'reparent'])->name('platform.organizations.reparent');
+        Route::get('/operators', [OperatorRosterController::class, 'index'])->name('platform.operators');
+        Route::post('/operators', [OperatorRosterController::class, 'store'])->name('platform.operators.store');
+        Route::post('/operators/{operator}/status', [OperatorRosterController::class, 'toggle'])->name('platform.operators.toggle');
         // Retired: it enrolled an operator TOTP factor nothing verified. A permanent
         // redirect rather than a deletion, because operators have this bookmarked and the
         // honest destination exists — their own account security, which the sign-in path
@@ -882,9 +1362,17 @@ Route::middleware('plane:console')->group(function (): void {
     // Guest-accessible but gated by a signed URL (the token IS the signature; no token
     // table needed). The invitee sets their password and is signed in. The component
     // locks the token so it cannot be swapped after the signed load.
-    Volt::route('/invite/{token}/accept', 'auth.accept-invite')
+    Route::get('/invite/{token}/accept', [InvitationAcceptController::class, 'show'])
         ->middleware('signed')
         ->name('organization.invite.accept');
+
+    // SIGNED TOO, and not as belt-and-braces. The token is the whole credential, and the
+    // signature on the page above is what stops a guessed one being tried — so a write
+    // that accepted a bare token would hand back exactly what that signature refuses.
+    // The form posts to a URL signed on the page it was rendered from.
+    Route::post('/invite/{token}/accept', [InvitationAcceptController::class, 'store'])
+        ->middleware('signed')
+        ->name('organization.invite.accept.store');
 });
 
 /*

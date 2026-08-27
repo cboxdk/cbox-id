@@ -56,12 +56,19 @@ class PasskeySignInController
     /**
      * Hand out a challenge for the browser to sign.
      *
+     * NOT named `options`, though the URI still is — that path is published in the
+     * Frontend API and in the SDKs, so it does not move. The METHOD name did, because
+     * this route is registered for `['post', 'options']` (the CORS preflight a
+     * cross-origin caller sends first), and a controller action sharing a name with an
+     * HTTP verb on its own route is ambiguous to read and ambiguous to generate typed
+     * clients from.
+     *
      * `allowCredentials` is deliberately empty: this is a discoverable-credential flow, so
      * the authenticator offers whichever passkey it holds for this relying party and the
      * page never has to say who is signing in. Asking for an email first — to look up
      * which credentials exist — would be the enumeration oracle in a new costume.
      */
-    public function options(Request $request): JsonResponse
+    public function challenge(Request $request): JsonResponse
     {
         $key = $request->attributes->get('cbox_publishable_key');
 

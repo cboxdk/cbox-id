@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Inertia\Support\SessionKey;
 
 uses(RefreshDatabase::class);
 
@@ -29,6 +31,14 @@ uses(RefreshDatabase::class);
  * that carried them. `/sudo`, `/account` and the subject passkey ceremony are the ones
  * that remain, and they have their own coverage in SudoTest and PasskeyCeremonyTest.
  */
+/** The environment the provisioned account owns — the one its owner can reach. */
+function provisionedEnvironmentId(): string
+{
+    return (string) app(PlatformRoot::class)->run(
+        fn (): mixed => Environment::query()->orderBy('created_at')->value('id'),
+    );
+}
+
 function signInMember(): string
 {
     // The platform root FIRST. An account provisioned without one is in the
@@ -50,9 +60,8 @@ function signInMember(): string
 it('redirects account API key minting to sudo when not recently confirmed', function (): void {
     signInMember();
 
-    Volt::test('console.api-keys')
-        ->set('newKeyName', 'ci')
-        ->call('createKey')
+    test()->from(route('api-keys'))
+        ->post(route('api-keys.store'), ['name' => 'ci', 'role' => 'developer'])
         ->assertRedirect(route('sudo'));
 
     expect(session()->get('sudo.intended'))->toBe(route('api-keys'));
@@ -62,26 +71,35 @@ it('mints an account API key once the step-up is confirmed', function (): void {
     signInMember();
     app(Sudo::class)->confirm();
 
-    $component = Volt::test('console.api-keys')
-        ->set('newKeyName', 'ci')
-        ->set('newKeyRole', 'developer')
-        ->call('createKey')
-        ->assertHasNoErrors();
+    test()->from(route('api-keys'))
+        ->post(route('api-keys.store'), ['name' => 'ci', 'role' => 'developer'])
+        ->assertRedirect(route('api-keys'))
+        ->assertSessionHasNoErrors()
+        // ON THE FLASH CHANNEL, not in props: props are written into the browser's
+        // history entry, and a full-authority credential there is readable by pressing
+        // Back long after the page that showed it has gone.
+        ->assertInertiaFlash('freshKey');
 
-    // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
-    // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
-    expect($component->viewData('freshKey'))->toBeString()->not->toBe('');
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+
+    expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)
+        ->toBeString()
+        ->toStartWith('cbid_org_');
 });
 
 it('redirects environment key minting to sudo when not recently confirmed', function (): void {
     signInMember();
 
-    Volt::test('console.environment-keys')
-        ->set('newKeyName', 'ci')
-        ->call('createKey')
+    // A REACHABLE environment, because the reachability check runs BEFORE the step-up —
+    // authorization first, so a member who may not mint anything is refused outright
+    // rather than handed a password prompt and then refused in silence once they have
+    // typed it.
+    issueEnvironmentKey(reachableEnvironmentId(), ['name' => 'ci'])
         ->assertRedirect(route('sudo'));
 
-    expect(session()->get('sudo.intended'))->toBe(route('environment-keys'));
+    expect(session()->get('sudo.intended'))->toBe(route('environment-keys'))
+        ->and(EnvironmentApiKey::query()->where('name', 'ci')->exists())
+        ->toBeFalse('an environment key was minted with no step-up');
 });
 
 /**
@@ -98,18 +116,18 @@ it('requires the step-up to revoke an account key, not just to mint one', functi
     // Mint with sudo confirmed, then drop back to an unconfirmed session — the shape a
     // stolen cookie has.
     app(Sudo::class)->confirm();
-    $keyId = Volt::test('console.api-keys')
-        ->set('newKeyName', 'automation')
-        ->call('createKey')
-        ->viewData('keys')
-        ->first()?->id;
+    test()->from(route('api-keys'))
+        ->post(route('api-keys.store'), ['name' => 'automation', 'role' => 'developer'])
+        ->assertSessionHasNoErrors();
+
+    $keyId = OrganizationApiKey::query()->where('name', 'automation')->value('id');
 
     expect($keyId)->toBeString();
 
     session()->forget(Sudo::SESSION_KEY);
 
-    Volt::test('console.api-keys')
-        ->call('revokeKey', $keyId)
+    test()->from(route('api-keys'))
+        ->delete(route('api-keys.destroy', $keyId))
         ->assertRedirect(route('sudo'));
 
     expect(OrganizationApiKey::query()->whereKey($keyId)->value('revoked_at'))

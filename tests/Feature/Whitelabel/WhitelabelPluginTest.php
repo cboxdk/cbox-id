@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Cbox\Console\Kit\ConsoleManager;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +35,9 @@ it('registers the gated branding route', function (): void {
 });
 
 it('contributes a branding dashboard card', function (): void {
-    $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
+    // THE CARD AS DATA, not as a rendered string.
+    $card = collect(app(DashboardCards::class)->resolve())->firstWhere('key', 'whitelabel.branding');
 
-    expect($html)->toContain('Branding');
+    expect($card)->not->toBeNull()
+        ->and($card->label)->toBe('Branding');
 });

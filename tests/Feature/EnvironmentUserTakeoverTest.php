@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\MfaFactor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -18,10 +17,11 @@ uses(RefreshDatabase::class);
  * reasoning that the more privileged door should not be the one without one. This was
  * that door: an admin's browser left open on a desk was the whole attack.
  *
- * Worse, `$userId` was a plain public property. Livewire lets the browser set those on
- * every subsequent request, so the component could be retargeted after mount: open your
- * own page, post `userId=<somebody else>` alongside `setPassword`, and the page acts on
- * them.
+ * Worse, the target was a plain public component property. Livewire lets the browser set
+ * those on every subsequent request, so the page could be retargeted after mount: open
+ * your own page, post `userId=<somebody else>` alongside `setPassword`, and the page acts
+ * on them. It is a route parameter now, which cannot be retargeted at all — but the same
+ * question has a new shape, and the last test here asks it.
  */
 function takeoverTarget(): string
 {
@@ -33,17 +33,13 @@ it('will not set a password without a fresh credential', function (): void {
     $victim = takeoverTarget();
 
     // No confirmEnvironmentStepUp() — this is an admin whose session is merely open.
-    Volt::test('environment.users.show', ['user' => $victim])
-        ->set('pwPassword', 'a-strong-unbreached-passphrase')
-        ->set('pwReason', 'because I can')
-        ->set('pwMode', 'permanent')
-        ->set('pwDelivery', 'reveal')
-        ->set('pwRevoke', 'none')
-        ->set('pwExpiryHours', 0)
-        ->call('setPassword');
+    setUserPassword($victim, ['mode' => 'permanent', 'revoke' => 'nothing', 'expiryHours' => 0])
+        ->assertRedirect(route('environment.sudo'));
 
-    // The redirect to the step-up is the refusal; nothing was issued.
-    expect(session()->has('newSecret'))->toBeFalse();
+    // The redirect to the step-up is the refusal; nothing was issued, and — the part that
+    // matters — the victim's credential is untouched.
+    expect(session()->has('issuedPassword'))->toBeFalse()
+        ->and(app(Subjects::class)->verifyPassword($victim, 'a-strong-unbreached-passphrase'))->toBeFalse();
 })->group('security');
 
 it('will not reset two-factor without a fresh credential', function (): void {
@@ -56,7 +52,8 @@ it('will not reset two-factor without a fresh credential', function (): void {
         'confirmed_at' => now(),
     ]);
 
-    Volt::test('environment.users.show', ['user' => $victim])->call('resetMfa');
+    test()->post(route('environment.users.mfa', $victim))
+        ->assertRedirect(route('environment.sudo'));
 
     expect(MfaFactor::query()->where('user_id', $victim)->count())->toBe(1);
 })->group('security');
@@ -66,34 +63,36 @@ it('will not mark an address verified without a fresh credential', function (): 
     crudSetup();
     $victim = takeoverTarget();
 
-    Volt::test('environment.users.show', ['user' => $victim])->call('markVerified');
+    test()->post(route('environment.users.verify', $victim))
+        ->assertRedirect(route('environment.sudo'));
 
     expect(app(Subjects::class)->find($victim)?->emailVerified)->toBeFalse();
 })->group('security');
 
-it('cannot be retargeted at another account through the wire', function (): void {
-    // #[Locked]: the route parameter decides whose account this page is, and Livewire
-    // refuses an update that touches it. Without it, one crafted request re-points the
-    // whole component — every action above included.
+/**
+ * WHOSE ACCOUNT THIS IS, is the URL's answer and nothing else's.
+ *
+ * The Livewire shape of this bug was a public property the browser could re-set after
+ * mount. The route parameter that replaced it cannot be retargeted — but the password rule
+ * validates against THE USER'S OWN POLICY, so a body field claiming to name a different
+ * user would be the same bug wearing different clothes: the password checked against one
+ * person's rules and written to another's account.
+ *
+ * So the request reads the target from the route, and this holds that a body field of the
+ * same name changes nothing about who is acted on.
+ */
+it('acts on the user in the URL, never one named in the body', function (): void {
     crudSetup();
     $mine = takeoverTarget();
     $victim = app(Subjects::class)->create('other-victim@acme.example', 'Other')->id;
 
-    // Caught rather than expect()->toThrow(): Pest reads a second argument to toThrow as
-    // the message only for a concrete class, and Throwable is an interface — the
-    // assertion silently became "the message contains the word Throwable", which the real
-    // message does not. The message is the point here: it names the property, so a rename
-    // that quietly drops the attribute fails rather than passing on some other error.
-    $caught = null;
+    confirmEnvironmentStepUp();
 
-    try {
-        Volt::test('environment.users.show', ['user' => $mine])->set('userId', $victim);
-    } catch (Throwable $e) {
-        $caught = $e;
-    }
+    setUserPassword($mine, ['user' => $victim, 'userId' => $victim])
+        ->assertSessionHasNoErrors();
 
-    expect($caught?->getMessage())->toContain('Cannot update locked property')
-        ->and($caught?->getMessage())->toContain('userId');
+    expect(app(Subjects::class)->verifyPassword($mine, 'a-strong-unbreached-passphrase'))->toBeTrue()
+        ->and(app(Subjects::class)->verifyPassword($victim, 'a-strong-unbreached-passphrase'))->toBeFalse();
 })->group('security');
 
 it('still does the work once the step-up is confirmed', function (): void {
@@ -103,7 +102,7 @@ it('still does the work once the step-up is confirmed', function (): void {
 
     confirmEnvironmentStepUp();
 
-    Volt::test('environment.users.show', ['user' => $victim])->call('markVerified');
+    test()->post(route('environment.users.verify', $victim))->assertSessionHasNoErrors();
 
     expect(app(Subjects::class)->find($victim)?->emailVerified)->toBeTrue();
 })->group('security');

@@ -9,8 +9,7 @@ use Cbox\Risk\ValueObjects\RiskAssessment;
 use Cbox\Risk\ValueObjects\RiskContext;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Features\SupportTesting\Testable;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 /**
  * The CAPTCHA is RISK-TRIGGERED, not universal: it appears only on a signup the scorer
@@ -21,6 +20,10 @@ const SITEVERIFY = 'challenges.cloudflare.com/turnstile/v0/siteverify';
 
 beforeEach(function (): void {
     Mail::fake();
+
+    // A deployment that has been installed. `/signup` on a bare install redirects to
+    // first-run, and that 302 is not the refusal any of these tests is about.
+    installedDeployment();
 
     // Risk outcomes are only acted on under enforcement.
     config(['risk.mode' => 'enforce']);
@@ -48,24 +51,6 @@ function scoreEvery(Outcome $outcome): void
     });
 }
 
-/**
- * @param  array<string, mixed>  $overrides
- */
-function attemptSignup(array $overrides = []): Testable
-{
-    $component = Volt::test('auth.signup')
-        ->set('organization', 'Acme')
-        ->set('name', 'Dana Reeves')
-        ->set('email', 'dana@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase');
-
-    foreach ($overrides as $property => $value) {
-        $component->set($property, $value);
-    }
-
-    return $component->call('register');
-}
-
 /** HIBP is faked everywhere; Turnstile's answer is the parameter. */
 function fakeHttp(bool $captchaPasses): void
 {
@@ -79,12 +64,16 @@ it('refuses a challenged signup that carries no CAPTCHA token, with a field erro
     fakeHttp(captchaPasses: true); // irrelevant — no token means Cloudflare is never asked
     scoreEvery(Outcome::Challenge);
 
-    $component = attemptSignup();
+    attemptSignup(['email' => 'dana@acme.example'])
+        ->assertRedirect(route('signup'))
+        ->assertSessionHasErrors('email');
 
-    $component->assertHasErrors('email')
-        ->assertRenderedNotRedirected()
-        // The widget is now on the page, so the human can actually satisfy the demand.
-        ->assertSet('challenged', true);
+    // THE WIDGET IS NOW ON THE PAGE, so the human can actually satisfy the demand. On the
+    // flash channel and read from the page the redirect lands on: a refusal that demanded
+    // a CAPTCHA without drawing one is a door with no handle.
+    test()->get(route('signup'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('challenged', true));
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->toBeNull();
     Mail::assertNothingSent();
@@ -95,7 +84,8 @@ it('lets a challenged signup through once the CAPTCHA token verifies', function 
     fakeHttp(captchaPasses: true);
     scoreEvery(Outcome::Challenge);
 
-    attemptSignup(['turnstileToken' => 'a-widget-token'])->assertHasNoErrors();
+    attemptSignup(['email' => 'dana@acme.example', 'turnstileToken' => 'a-widget-token'])
+        ->assertSessionHasNoErrors();
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->not->toBeNull();
 
@@ -111,9 +101,9 @@ it('refuses a challenged signup whose token Cloudflare rejects', function (): vo
     fakeHttp(captchaPasses: false);
     scoreEvery(Outcome::Challenge);
 
-    attemptSignup(['turnstileToken' => 'a-replayed-token'])
-        ->assertHasErrors('email')
-        ->assertRenderedNotRedirected();
+    attemptSignup(['email' => 'dana@acme.example', 'turnstileToken' => 'a-replayed-token'])
+        ->assertRedirect(route('signup'))
+        ->assertSessionHasErrors('email');
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->toBeNull();
     Mail::assertNothingSent();
@@ -123,7 +113,10 @@ it('never challenges a low-risk signup', function (): void {
     fakeHttp(captchaPasses: false); // would refuse if it were ever consulted
     scoreEvery(Outcome::Allow);
 
-    attemptSignup()->assertHasNoErrors()->assertSet('challenged', false);
+    // NOT CHALLENGED, which is proved by the two facts either side of it: the account
+    // exists, and Cloudflare was never consulted. There is no page left to read the flash
+    // off — registering signs the person in, and `/signup` is guest-only.
+    attemptSignup(['email' => 'dana@acme.example'])->assertSessionHasNoErrors();
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->not->toBeNull();
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'siteverify'));
@@ -136,7 +129,10 @@ it('is inert when no Turnstile keys are configured', function (): void {
 
     // Same challenged outcome as the first test — but with no keys, signup behaves
     // exactly as it did before the feature existed.
-    attemptSignup()->assertHasNoErrors()->assertSet('challenged', false);
+    // NOT CHALLENGED, which is proved by the two facts either side of it: the account
+    // exists, and Cloudflare was never consulted. There is no page left to read the flash
+    // off — registering signs the person in, and `/signup` is guest-only.
+    attemptSignup(['email' => 'dana@acme.example'])->assertSessionHasNoErrors();
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->not->toBeNull();
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'siteverify'));
@@ -145,11 +141,10 @@ it('is inert when no Turnstile keys are configured', function (): void {
 it('opens the CSP to Cloudflare only when Turnstile is configured', function (): void {
     $csp = fn (): string => (string) $this->get('/login')->headers->get('Content-Security-Policy');
 
-    // Asserted per-directive rather than as one contiguous string. The original spelled
-    // out `script-src 'self' 'unsafe-eval' https://challenges.cloudflare.com` verbatim,
-    // so adding an unrelated source to the SAME directive — the CSP nonce Cloudflare's
-    // JavaScript Detections needs — failed a test about Turnstile. What matters here is
-    // which sources the directive names, not what order they sit in.
+    // Asserted per-directive rather than as one contiguous string. The original spelled the
+    // whole directive out verbatim, so adding an unrelated source to it — the CSP nonce
+    // Cloudflare's JavaScript Detections needs — failed a test about Turnstile. What matters
+    // here is which sources the directive names, not what order they sit in.
     $scriptSrc = fn (): string => collect(explode(';', $csp()))
         ->map(fn (string $part): string => trim($part))
         ->first(fn (string $part): bool => str_starts_with($part, 'script-src ')) ?? '';
@@ -160,7 +155,15 @@ it('opens the CSP to Cloudflare only when Turnstile is configured', function ():
     config(['services.turnstile.site_key' => null, 'services.turnstile.secret_key' => null]);
 
     expect($scriptSrc())->toContain("'self'")
-        ->and($scriptSrc())->toContain("'unsafe-eval'")
+        /*
+         * AND NOT 'unsafe-eval', which this used to assert was present. It was there for
+         * Livewire's bundled Alpine, which evaluates its `x-` expressions with
+         * `new Function` — `eval` as far as CSP is concerned — so every console page had to
+         * permit dynamic code generation to render a dropdown. React compiles its templates
+         * at build time, so the directive went out with the last Volt page. Asserted rather
+         * than merely dropped: this is the kind of thing that comes back by accident.
+         */
+        ->and($scriptSrc())->not->toContain('unsafe-eval')
         ->and($csp())->not->toContain('cloudflare')
         ->and($csp())->not->toContain('frame-src');
 });

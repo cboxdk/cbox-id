@@ -10,8 +10,9 @@ use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -23,12 +24,10 @@ beforeEach(function (): void {
 it('creates a key with its origins from the console', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    Volt::test('console.frontend-keys')
-        ->set('name', 'Marketing site')
-        ->set('mode', 'live')
-        ->set('origins', "https://acme.test\nhttps://www.acme.test")
-        ->call('create')
-        ->assertHasNoErrors();
+    issueFrontendKey([
+        'mode' => 'live',
+        'origins' => "https://acme.test\nhttps://www.acme.test",
+    ])->assertSessionHasNoErrors();
 
     $key = PublishableKey::query()->firstOrFail();
 
@@ -43,11 +42,8 @@ it('creates a key with its origins from the console', function (): void {
 it('refuses the whole list on the field when one origin is unusable', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    Volt::test('console.frontend-keys')
-        ->set('name', 'Site')
-        ->set('origins', "https://good.test\nnot-an-origin")
-        ->call('create')
-        ->assertHasErrors('origins');
+    issueFrontendKey(['name' => 'Site', 'origins' => "https://good.test\nnot-an-origin"])
+        ->assertSessionHasErrors('origins');
 
     expect(PublishableKey::query()->count())->toBe(0);
 });
@@ -55,11 +51,10 @@ it('refuses the whole list on the field when one origin is unusable', function (
 it('refuses plain http away from loopback, and says why', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    Volt::test('console.frontend-keys')
-        ->set('name', 'Site')
-        ->set('origins', 'http://acme.test')
-        ->call('create')
-        ->assertHasErrors('origins');
+    issueFrontendKey(['name' => 'Site', 'origins' => 'http://acme.test'])
+        ->assertSessionHasErrors('origins');
+
+    expect(PublishableKey::query()->count())->toBe(0);
 });
 
 it('revokes a key so pages holding it stop working', function (): void {
@@ -67,7 +62,9 @@ it('revokes a key so pages holding it stop working', function (): void {
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    Volt::test('console.frontend-keys')->call('revoke', $key->id);
+    test()->from(route('environment.frontend-keys'))
+        ->delete(route('environment.frontend-keys.destroy', $key->id))
+        ->assertSessionHasNoErrors();
 
     expect(PublishableKey::query()->find($key->id)?->isActive())->toBeFalse();
 });
@@ -83,27 +80,43 @@ it('keeps showing the key in full, because it is not a secret', function (): voi
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    Volt::test('console.frontend-keys')->assertSee($key->key);
+    test()->get(route('environment.frontend-keys'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'keys',
+            fn (Collection $keys): bool => $keys->pluck('key')->contains($key->key),
+        ));
 });
 
 /**
- * The gate is in boot(), so it fires while the component is being MOUNTED — before any
- * action. Livewire reports that as a broken snapshot rather than as the authorization
- * error underneath, so the assertion is on the outcome that matters: a member who may not
- * administer never gets a usable component, and no key is created.
+ * The refusal is now an ordinary one, and can be asserted as one.
+ *
+ * Under Volt the gate fired while the component was being MOUNTED, and Livewire reported
+ * that as a broken snapshot rather than as the authorization error underneath — so the
+ * test had to swallow whichever exception arrived and assert only that no key existed.
+ * A request either carries the capability or it does not.
  */
 it('refuses a member who may not administer', function (): void {
+    /*
+     * A DEPLOYMENT THAT SERVES THE PAGE, then somebody acting as a tenant on it. The route
+     * has to exist for the refusal to be about authorization: `/admin` 404s outright on a
+     * single-tenant install, and on a multi-tenant one it 404s unless an environment claims
+     * the host — both are different answers to different questions.
+     */
+    actAsEnvironmentAdminOfATenant();
     actingAsRole(MembershipRole::Member);
 
-    try {
-        Volt::test('console.frontend-keys')
-            ->set('name', 'Sneaky')
-            ->set('origins', 'https://acme.test')
-            ->call('create');
-    } catch (Throwable) {
-        // Either the authorization exception or Livewire's report of it — both mean
-        // refused, and asserting on which one would be asserting on Livewire's internals.
-    }
+    /*
+     * BOUNCED, not shown. The plane middleware answers first: somebody holding an
+     * organization session at an environment-plane URL is sent through the open-environment
+     * handoff, which is where a person in that state belongs — and which refuses in turn if
+     * the environment is not theirs. The scope's own `assertMayAdministerEnvironment()` is
+     * the second layer behind it, and is what the write below meets.
+     */
+    test()->get(route('environment.frontend-keys'))
+        ->assertRedirectContains('/open/');
+
+    issueFrontendKey(['name' => 'Sneaky'])->assertRedirectContains('/open/');
 
     expect(PublishableKey::query()->count())->toBe(0);
 });
@@ -160,12 +173,19 @@ it('edits a key allow-list without minting a new key', function (): void {
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    Volt::test('console.frontend-keys')
-        ->call('edit', $key->id)
-        ->assertSet('editOrigins', 'https://acme.test')
-        ->set('editOrigins', "https://acme.test\nhttps://staging.acme.test")
-        ->call('saveOrigins')
-        ->assertHasNoErrors();
+    // The current list reaches the page, which is what the edit form opens with.
+    test()->get(route('environment.frontend-keys'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'keys',
+            fn (Collection $keys): bool => $keys->firstWhere('id', $key->id)['origins'] === ['https://acme.test'],
+        ));
+
+    test()->from(route('environment.frontend-keys'))
+        ->put(route('environment.frontend-keys.origins', $key->id), [
+            'origins' => "https://acme.test\nhttps://staging.acme.test",
+        ])
+        ->assertSessionHasNoErrors();
 
     expect($key->fresh()?->origins()->pluck('origin')->all())
         ->toBe(['https://acme.test', 'https://staging.acme.test']);
@@ -176,11 +196,11 @@ it('refuses the whole edited list when one origin is unusable, and says which', 
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    Volt::test('console.frontend-keys')
-        ->call('edit', $key->id)
-        ->set('editOrigins', "https://acme.test\nhttps://acme.test/app")
-        ->call('saveOrigins')
-        ->assertHasErrors('editOrigins');
+    test()->from(route('environment.frontend-keys'))
+        ->put(route('environment.frontend-keys.origins', $key->id), [
+            'origins' => "https://acme.test\nhttps://acme.test/app",
+        ])
+        ->assertSessionHasErrors('origins');
 
     // Unchanged: a list that half-applied would be a key that works in half the places
     // somebody just told it to.
@@ -197,17 +217,18 @@ it('is absent from the organization console rather than present and refusing', f
         ->and(Route::has('environment.frontend-keys'))->toBeTrue();
 });
 
-it('refuses an organization administrator who reaches the component directly', function (): void {
+it('refuses an organization administrator who types the environment URL', function (): void {
+    /*
+     * There is no organization-plane route, so the only way to reach this at all is the
+     * environment plane's URL — and the scope refuses somebody acting as a tenant on it.
+     * The deployment has to serve that URL first, or the refusal is the prefix's.
+     */
+    actAsEnvironmentAdminOfATenant();
     actingAsRole(MembershipRole::Owner);
 
-    try {
-        Volt::test('console.frontend-keys')
-            ->set('name', 'Theirs')
-            ->set('origins', 'https://theirs.test')
-            ->call('create');
-    } catch (Throwable) {
-        // The scope refuses on this plane before the action runs.
-    }
+    test()->get(route('environment.frontend-keys'))->assertRedirectContains('/open/');
+    issueFrontendKey(['name' => 'Theirs', 'origins' => 'https://theirs.test'])
+        ->assertRedirectContains('/open/');
 
     expect(PublishableKey::query()->count())->toBe(0);
 });
@@ -224,18 +245,12 @@ it('refuses an organization administrator who reaches the component directly', f
  * Asserted through a real parse rather than by eye: this is exactly the class of defect a
  * suite cannot see, because every Livewire assertion in this file passes either way.
  */
-it('keeps the key table outside the create form', function (): void {
-    actAsEnvironmentAdminOfATenant();
-
-    app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
-
-    $html = Volt::test('console.frontend-keys')->set('creating', true)->html();
-
-    $document = new DOMDocument;
-    $document->loadHTML('<!doctype html><html lang="en"><body>'.$html.'</body></html>', LIBXML_NOERROR);
-
-    $xpath = new DOMXPath($document);
-
-    expect($xpath->query('//form//table')?->length)->toBe(0, 'the key table parsed as part of the create form')
-        ->and($xpath->query('//table')?->length)->toBe(1, 'the key table did not render at all');
-});
+/*
+ * The create form and the key list are SIBLINGS, which used to need saying because they
+ * were not: the list rendered inside the form element, so a browser treated every control
+ * on every key as part of the submission — Enter anywhere reached the wrong handler, and
+ * the form's own reset cleared fields that belonged to other keys.
+ *
+ * It is structural, so it can only be checked where structure exists. See
+ * tests/Browser/FrontendKeysTest.php.
+ */

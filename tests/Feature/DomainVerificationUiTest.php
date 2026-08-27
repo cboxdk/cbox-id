@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
@@ -15,7 +16,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Livewire\Volt\Volt;
+use Illuminate\Testing\TestResponse;
+use Inertia\Support\SessionKey;
 
 uses(InteractsWithFederation::class);
 
@@ -40,6 +42,11 @@ function ssoAdmin(string $slug, bool $entitled = true): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
+    // AND THE SESSION KEY THE GUARD READS ON THE WAY IN. Every action below is a request
+    // now, and without this each one answers a redirect to /login — which an assertion
+    // about a write NOT happening passes.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     if ($entitled) {
         app(EntitlementWriter::class)->set(
             $org->id,
@@ -51,29 +58,44 @@ function ssoAdmin(string $slug, bool $entitled = true): string
     return $org->id;
 }
 
+/** Add a domain the way the form does. */
+function addDomain(string $domain): TestResponse
+{
+    return test()->from(route('connections'))
+        ->post(route('connections.domains.store'), ['domain' => $domain]);
+}
+
+/** Press Verify or the capture toggle on one domain row. */
+function domainAction(string $id, string $action): TestResponse
+{
+    return test()->from(route('connections'))
+        ->post(route('connections.domains.'.$action, $id));
+}
+
 it('lets an entitled admin add a domain and reveals its DNS challenge', function () {
     $orgId = ssoAdmin('dom-add');
 
-    $component = Volt::test('console.connections.index')
-        ->set('domain', 'ACME.com') // upper-case → normalized to lowercase
-        ->call('addDomain')
-        ->assertHasNoErrors();
+    // Upper-case → normalized to lowercase.
+    addDomain('ACME.com')->assertSessionHasNoErrors();
 
     $record = VerifiedDomain::query()->where('organization_id', $orgId)->where('domain', 'acme.com')->first();
 
+    // The challenge rides back on the FLASH CHANNEL: it is the answer to one action, shown
+    // once so the administrator can publish the TXT record, and re-issued rather than
+    // re-read if it is lost.
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $dns = is_array($flash) ? ($flash['dns'] ?? null) : null;
+
     expect($record)->not->toBeNull()
-        ->and($component->get('dnsToken'))->toBe($record->verification_token)
-        ->and($component->get('dnsHost'))->toBe('_cbox-id-challenge.acme.com')
-        ->and($component->get('dnsDomain'))->toBe('acme.com');
+        ->and($dns['token'] ?? null)->toBe($record->verification_token)
+        ->and($dns['host'] ?? null)->toBe('_cbox-id-challenge.acme.com')
+        ->and($dns['domain'] ?? null)->toBe('acme.com');
 });
 
 it('rejects a malformed domain', function () {
     $orgId = ssoAdmin('dom-bad');
 
-    Volt::test('console.connections.index')
-        ->set('domain', 'not a domain')
-        ->call('addDomain')
-        ->assertHasErrors('domain');
+    addDomain('not a domain')->assertSessionHasErrors('domain');
 });
 
 it('surfaces a friendly error when the domain is already claimed by another org', function () {
@@ -82,19 +104,16 @@ it('surfaces a friendly error when the domain is already claimed by another org'
 
     ssoAdmin('dom-claim-b'); // now acting as a different org's admin
 
-    Volt::test('console.connections.index')
-        ->set('domain', 'acme.com')
-        ->call('addDomain')
-        ->assertHasErrors('domain');
+    addDomain('acme.com')->assertSessionHasErrors('domain');
 });
 
 it('refuses every domain action for a non-entitled org', function () {
     ssoAdmin('dom-deny', entitled: false);
 
-    Volt::test('console.connections.index')->set('domain', 'acme.com')->call('addDomain')->assertForbidden();
-    Volt::test('console.connections.index')->call('verifyDomain', 'vd_x')->assertForbidden();
-    Volt::test('console.connections.index')->call('toggleCapture', 'vd_x')->assertForbidden();
-    Volt::test('console.connections.index')->call('removeDomain', 'vd_x')->assertForbidden();
+    addDomain('acme.com')->assertForbidden();
+    domainAction('vd_x', 'verify')->assertForbidden();
+    domainAction('vd_x', 'capture')->assertForbidden();
+    test()->from(route('connections'))->delete(route('connections.domains.destroy', 'vd_x'))->assertForbidden();
 });
 
 it('verifies a domain when the TXT record is present', function () {
@@ -106,13 +125,9 @@ it('verifies a domain when the TXT record is present', function () {
     $record = $domains->add($orgId, 'acme.com');
     $dns->publish($domains->challengeHost('acme.com'), $record->verification_token);
 
-    Volt::test('console.connections.index')
-        ->call('verifyDomain', $record->id)
-        ->assertHasNoErrors()
-        // The confirmation is dispatched to the layout's toast now, not rendered into
-        // the component — Livewire never re-rendered the layout on an action, so a
-        // flash from a non-redirecting action displayed nothing at all.
-        ->assertDispatched('toast', message: 'Domain verified.');
+    domainAction($record->id, 'verify')
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status', 'Domain verified.');
 
     expect($record->refresh()->isVerified())->toBeTrue();
 });
@@ -124,12 +139,8 @@ it('flashes a not-found message when the TXT record is missing', function () {
     $this->fakeDns();
     $record = app(DomainVerification::class)->add($orgId, 'acme.com');
 
-    Volt::test('console.connections.index')
-        ->call('verifyDomain', $record->id)
-        ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
-            (string) ($params['message'] ?? ''),
-            'DNS can take a few minutes',
-        ));
+    domainAction($record->id, 'verify')
+        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'DNS can take a few minutes'));
 
     expect($record->refresh()->isVerified())->toBeFalse();
 });
@@ -141,11 +152,11 @@ it('toggles capture only on a verified domain', function () {
     $pending = app(DomainVerification::class)->add($orgId, 'pending.com');
 
     // Verified → capture flips on.
-    Volt::test('console.connections.index')->call('toggleCapture', $verified->id)->assertHasNoErrors();
+    domainAction($verified->id, 'capture')->assertSessionHasNoErrors();
     expect($verified->refresh()->capture)->toBeTrue();
 
     // Pending → refused (deny-by-default: capture requires proven ownership).
-    Volt::test('console.connections.index')->call('toggleCapture', $pending->id)->assertForbidden();
+    domainAction($pending->id, 'capture')->assertForbidden();
     expect($pending->refresh()->capture)->toBeFalse();
 });
 
@@ -156,9 +167,9 @@ it('refuses acting on another org\'s domain id (cross-org tampering)', function 
     $orgB = app(Organizations::class)->create(new NewOrganization('B', 'dom-b'));
     $foreign = app(DomainVerification::class)->add($orgB->id, 'foreign.com');
 
-    Volt::test('console.connections.index')->call('verifyDomain', $foreign->id)->assertForbidden();
-    Volt::test('console.connections.index')->call('toggleCapture', $foreign->id)->assertForbidden();
-    Volt::test('console.connections.index')->call('removeDomain', $foreign->id)->assertForbidden();
+    domainAction($foreign->id, 'verify')->assertForbidden();
+    domainAction($foreign->id, 'capture')->assertForbidden();
+    test()->from(route('connections'))->delete(route('connections.domains.destroy', $foreign->id))->assertForbidden();
 
     // Untouched.
     expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();

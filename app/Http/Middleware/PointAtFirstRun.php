@@ -61,10 +61,11 @@ final class PointAtFirstRun
     /**
      * Whether this request is a person asking for a page.
      *
-     * `livewire/*` is excluded even though it is a browser request: it is the first-run
-     * screen's OWN action channel, and redirecting it would break the form that fixes
-     * the condition being detected. The component re-checks emptiness and the setup
-     * token on every action, so nothing is being trusted to the route alone.
+     * SAFE METHODS ONLY, which is what makes this list short. The first-run screen's own
+     * form posts, and a POST is never pointed anywhere — redirecting it would break the
+     * form that fixes the condition being detected. `livewire/*` used to be excluded here
+     * for exactly that reason, because every console action arrived at one GET-shaped
+     * endpoint; there is no such channel now, and a write is refused by its verb.
      */
     private function pointable(Request $request): bool
     {
@@ -73,7 +74,6 @@ final class PointAtFirstRun
         }
 
         return ! $request->is(
-            'livewire/*',
             'api/*',
             '.well-known/*',
             'up',

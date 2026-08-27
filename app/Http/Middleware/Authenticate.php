@@ -18,7 +18,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Livewire\Livewire;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -219,9 +218,32 @@ final class Authenticate
         // password-change page instead of being answered with an OIDC error — and under
         // `require_par`, PAR is the ONLY legal way to send prompt=none, so the carve-out
         // was dead there entirely.
+        /*
+         * THE SUBMIT, NOT ONLY THE SCREEN.
+         *
+         * Each of these holds is ended by an action on the page it holds you on, and each
+         * of those actions is now its OWN route — `password.change.update`, `link.connect`,
+         * `link.decline`. Exempting only the GET names leaves the hold unsatisfiable: the
+         * form posts, this bounces it back to the form, and the person is on a page whose
+         * buttons cannot work. There is no way out of that loop, including signing out on
+         * a deployment where `logout` were ever dropped from this list.
+         *
+         * It read correctly while every action was a Livewire POST to `/livewire/update`
+         * carrying its component, because the route name the middleware saw was the
+         * PAGE's. One screen is several routes now, and a name-based allowlist has to name
+         * all of them — which is why these are matched with a wildcard rather than spelled
+         * out one at a time: the next action added to one of these screens is exempt by
+         * construction rather than by somebody remembering this list exists.
+         */
         return $request->routeIs(
-            'password.change', 'link.confirm', 'logout',
-            'oauth.authorize', 'oauth.authorize.post',
+            'password.change', 'password.change.*',
+            'link.confirm', 'link.connect', 'link.decline',
+            'logout',
+            // `oauth.authorize.*` covers the approve and deny endpoints along with the
+            // screen itself: they are the same act, split across three requests by the
+            // port, and a hold that let somebody reach the page but not answer it would
+            // strand the relying party's callback rather than protect anything.
+            'oauth.authorize', 'oauth.authorize.*',
         );
     }
 
@@ -272,7 +294,11 @@ final class Authenticate
         // /oauth/authorize?…) is returned to complete it after logging in.
         $redirect = redirect()->guest(route('login'));
 
-        if (Livewire::isLivewireRequest() || $request->expectsJson()) {
+        // An XHR — an Inertia visit or a plain fetch — cannot follow a cross-page redirect
+        // into a sign-in form, so it is told where to go instead. This used to name
+        // Livewire's own request check first; every such request is an ordinary
+        // `expectsJson()` one now.
+        if ($request->expectsJson()) {
             return new JsonResponse([
                 'message' => 'Your session has expired.',
                 'redirect' => route('login'),

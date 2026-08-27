@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -30,6 +31,7 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Inertia\Testing\AssertableInertia;
 
 /** The organization a provisioned owner belongs to, read in the platform root. */
 function ownerOrganizationOfSubject(string $subjectId): string
@@ -207,9 +209,11 @@ it('refuses a redeemed magic link, and ends the session the redemption started',
     // the component mounts the way it does in production.
     nextRequest();
     $this->get(route('login'))
-        ->assertSee('Acme Inc requires single sign-on')
-        ->assertSee('That sign-in link worked')
-        ->assertSee($startUrl);
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->hasFlash('mandate.organization', 'Acme Inc')
+            ->hasFlash('mandate.startUrl', $startUrl)
+            ->hasFlash('mandate.reason', RefusedFactor::MagicLink->sentence()));
 
     // Taken once: a refusal that survived would greet them again on their next visit.
     nextRequest();
@@ -241,9 +245,11 @@ it('refuses a passkey sign-in, and says the passkey worked', function (): void {
 
     nextRequest();
     $this->get(route('login'))
-        ->assertSee('Passkey Co requires single sign-on')
-        ->assertSee('Your passkey worked')
-        ->assertSee($startUrl);
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->hasFlash('mandate.organization', 'Passkey Co')
+            ->hasFlash('mandate.startUrl', $startUrl)
+            ->hasFlash('mandate.reason', RefusedFactor::Passkey->sentence()));
 })->group('security');
 
 it('lets an invitation be accepted under a mandate, and still refuses the session', function (): void {
@@ -265,9 +271,11 @@ it('lets an invitation be accepted under a mandate, and still refuses the sessio
 
     nextRequest();
     $this->get(route('login'))
-        ->assertSee('Invite Co requires single sign-on')
-        ->assertSee('Your invitation is accepted')
-        ->assertSee($startUrl);
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->hasFlash('mandate.organization', 'Invite Co')
+            ->hasFlash('mandate.startUrl', $startUrl)
+            ->hasFlash('mandate.reason', RefusedFactor::Invitation->sentence()));
 })->group('security');
 
 /*
@@ -288,8 +296,10 @@ it('refuses an account member\'s magic link while leaving the federated landing 
 
     nextRequest();
     $this->get(route('login'))
-        ->assertSee('Workspace Co requires single sign-on')
-        ->assertSee('That sign-in link worked');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->hasFlash('mandate.organization', 'Workspace Co')
+            ->hasFlash('mandate.reason', RefusedFactor::MagicLink->sentence()));
 
     // THE CONTROL, and the one that matters most: the door a mandate points AT must not
     // consult the mandate, or requiring SSO locks an organization out of the console it
@@ -320,11 +330,13 @@ it('activates an account invitation under a mandate, and still refuses the sessi
     $pending = app(PlatformRoot::class)->run(fn () => app(Invitations::class)
         ->invite($organizationId, 'workspace-invitee@acme.example', MembershipRole::Admin));
 
-    $url = URL::signedRoute('organization.invite.accept', ['token' => $pending->token]);
+    // A real POST to the signed write, which is how the page submits. The helper this
+    // replaces drove the component directly and never routed, so it could not have seen a
+    // signature requirement at all.
+    $accept = URL::signedRoute('organization.invite.accept.store', ['token' => $pending->token]);
 
-    livewireUpdate($url, 'auth.accept-invite', 'accept', updates: [
-        'password' => 'a-strong-unbreached-passphrase',
-    ])->assertOk();
+    $this->post($accept, ['password' => 'a-strong-unbreached-passphrase'])
+        ->assertRedirect(route('login'));
 
     // ACCEPTED, deliberately: the membership is created even though the session is refused.
     // An invitation nobody redeemed is one no SSO assertion can land on, so refusing the
@@ -337,6 +349,8 @@ it('activates an account invitation under a mandate, and still refuses the sessi
 
     nextRequest();
     $this->get(route('login'))
-        ->assertSee('Workspace Co requires single sign-on')
-        ->assertSee('Your invitation is accepted');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->hasFlash('mandate.organization', 'Workspace Co')
+            ->hasFlash('mandate.reason', RefusedFactor::Invitation->sentence()));
 })->group('security');

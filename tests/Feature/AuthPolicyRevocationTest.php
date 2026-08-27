@@ -21,7 +21,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -167,6 +167,10 @@ it('revokes nobody when an override restates a mandate the environment already i
  */
 it('ends the environment\'s sessions when the sign-in rules page mandates SSO', function (): void {
     platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
         ownerEmail: 'rules-owner@acme.example',
@@ -182,20 +186,25 @@ it('ends the environment\'s sessions when the sign-in rules page mandates SSO', 
     $tenantSession = aPasswordSession('tenant-user@acme.test');
     $adminSessionId = session(PlatformAuth::SESSION_KEY);
 
-    // TWO calls, and the first one deliberately writes nothing. The page holds a mandate
-    // that would end sessions on a confirmation step, because the alternative is a select
-    // and a Save button that sign an environment's users out with no warning that they
-    // were about to. `save()` alone must leave every session standing.
-    $page = Volt::test('console.auth-policy')
-        ->set('sso', 'required')
-        ->call('save')
-        ->assertHasNoErrors()
-        ->assertSet('confirmingTightening', true)
-        ->assertSee('This will sign people out of');
+    /*
+     * THE PAGE WARNS FIRST, and the fact it warns on is a prop.
+     *
+     * The alternative is a select and a Save button that sign an environment's users out
+     * with no warning that they were about to. The warning itself is a dialog in the
+     * browser now rather than a server round trip, so it is asserted where it can be seen
+     * — tests/Browser/SignInRulesTest — and what this holds is the two halves the server
+     * still owns: that it knows passwords currently work, and that writing ends them.
+     */
+    $current = (array) test()->get(route('environment.auth-policy'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('passwordsCurrentlyWork', true))
+        ->inertiaProps('policy');
 
     expect(isLive($tenantSession))->toBeTrue();
 
-    $page->call('confirmSave')->assertHasNoErrors()->assertSet('confirmingTightening', false);
+    test()->from(route('environment.auth-policy'))
+        ->put(route('environment.auth-policy.update'), [...$current, 'sso' => 'required'])
+        ->assertSessionHasNoErrors();
 
     expect(isLive($tenantSession))->toBeFalse();
 

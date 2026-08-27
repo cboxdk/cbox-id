@@ -44,6 +44,30 @@ it('advances the identifier-first flow to the password step', function (): void 
 });
 
 /**
+ * THE STEP THAT APPEARS HAS TO TAKE FOCUS WITH IT.
+ *
+ * The password field is revealed by a server round trip, so HTML `autofocus` cannot do it:
+ * that fires once, at document parse, and this element arrives after. Without an explicit
+ * move, focus falls back to `<body>` — so somebody navigating by keyboard has to tab from
+ * the top of the page to reach the field the page just put in front of them, and somebody
+ * using a screen reader is told nothing happened at all.
+ *
+ * This used to be asserted by grepping the Volt template for `x-init="$el.focus()"`, which
+ * could see the attribute and never whether focus actually landed. Here it is the real
+ * question, asked of a real browser: which element has focus, and what does the live region
+ * say.
+ */
+it('puts focus in the password field the moment the step appears, and says so', function (): void {
+    $page = visit('/login')
+        ->fill('email', 'admin@acme.test')
+        ->press('Continue')
+        ->assertSee('Password');
+
+    $page->assertScript('document.activeElement?.getAttribute("type")', 'password')
+        ->assertNoJavascriptErrors();
+});
+
+/**
  * Enter in a single-field form is how people actually submit it — a form that only
  * responds to a click is broken for anyone typing rather than reaching for the mouse,
  * and for every keyboard and screen-reader user.

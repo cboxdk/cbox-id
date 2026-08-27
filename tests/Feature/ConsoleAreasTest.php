@@ -17,6 +17,7 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
@@ -155,17 +156,57 @@ function assertNavEntryLabelsMatchTheirPages(array $entries, string $plane): int
             "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <title> disagree",
         );
 
-        // The h1 carries classes and whitespace, so match on its text rather than on
-        // a whole tag: this has to hold for a heading rendered by x-page-header and
-        // for one a page still writes itself.
-        expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
-            "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <h1> disagree",
-        );
+        // …AND THE HEADING ON THE PAGE.
+        //
+        // Two ways to ask, because the console has two kinds of page while the port runs.
+        //
+        // An INERTIA page renders its heading in the browser, so there is no <h1> in the
+        // response to read. What there is instead is the controller's own statement of
+        // what the page is called, in `data-page` — and that is the STRONGER thing to
+        // assert, because `<PageHeader>` takes its heading from that same prop: the tab
+        // title and the heading cannot disagree by construction, which is the drift this
+        // whole test exists to catch.
+        //
+        // A VOLT page still writes its own <h1>, so that half is scanned as before. It
+        // goes when the last of them does.
+        $inertiaTitle = inertiaPageTitle($response);
+
+        if ($inertiaTitle !== null) {
+            expect($inertiaTitle)->toBe(
+                $pageLabel,
+                "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the page's stated title disagree",
+            );
+        } else {
+            // The h1 carries classes and whitespace, so match on its text rather than on
+            // a whole tag.
+            expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+                "{$plane} › {$areaLabel} › {$pageLabel}: the nav entry and the <h1> disagree",
+            );
+        }
 
         $checked++;
     }
 
     return $checked;
+}
+
+/**
+ * The `title` prop of an Inertia page, or null when the response is not one.
+ *
+ * `inertiaProps()` is the package's own reader — it decodes the page object out of the
+ * response the same way the client does, so this cannot drift from however Inertia
+ * chooses to embed it.
+ */
+function inertiaPageTitle(TestResponse $response): ?string
+{
+    try {
+        $title = $response->inertiaProps('title');
+    } catch (Throwable) {
+        // Not an Inertia response at all: a Volt page, still.
+        return null;
+    }
+
+    return is_string($title) ? $title : null;
 }
 
 /**
@@ -203,9 +244,21 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
         expect(str_contains($html, '<title>'.$label.' · '))->toBeTrue(
             "identity-platform › {$page->label}: the nav entry and the <title> disagree",
         );
-        expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
-            "identity-platform › {$page->label}: the nav entry and the <h1> disagree",
-        );
+        // The heading, asked the two ways the console currently answers — see
+        // {@see assertNavEntryLabelsMatchTheirPages()} for why an Inertia page has no
+        // <h1> in its response and what is asserted in its place.
+        $inertiaTitle = inertiaPageTitle($response);
+
+        if ($inertiaTitle !== null) {
+            expect($inertiaTitle)->toBe(
+                $page->label,
+                "identity-platform › {$page->label}: the nav entry and the page's stated title disagree",
+            );
+        } else {
+            expect((bool) preg_match('/<h1[^>]*>\s*'.preg_quote($label, '/').'\s*</', $html))->toBeTrue(
+                "identity-platform › {$page->label}: the nav entry and the <h1> disagree",
+            );
+        }
 
         $checked++;
     }

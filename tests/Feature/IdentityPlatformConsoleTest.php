@@ -21,8 +21,10 @@ use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Livewire\Volt\Volt;
+use Inertia\Support\SessionKey;
+use Inertia\Testing\AssertableInertia;
 
 beforeEach(function (): void {
     // These render product pages, which presuppose an installed deployment.
@@ -71,9 +73,13 @@ it('renders the workspace home with the account\'s projects', function (): void 
     signInAsMember($memberSubjectId);
     $this->get(route('projects'))
         ->assertOk()
-        ->assertSee('Projects')
-        ->assertSee('Acme')          // the default project is named after the account
-        ->assertSee('1 of 2');       // 1 of 2 environments
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/projects/index')
+            // The default project is named after the account, and carries its real
+            // environment count against the plan's allowance.
+            ->where('projects.0.name', 'Acme')
+            ->where('projects.0.used', 1)
+            ->where('projects.0.limit', 2));
 });
 
 it('links each environment out to its own host-resolved URL on the project detail', function (): void {
@@ -86,8 +92,11 @@ it('links each environment out to its own host-resolved URL on the project detai
     signInAsMember($memberSubjectId);
     $this->get(route('projects.show', $project->id))
         ->assertOk()
-        ->assertSee('https://acme.cboxid.com')
-        ->assertSee('https://'.$staging->slug.'.cboxid.com');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/projects/show')
+            ->where('environments', fn (Collection $environments): bool => $environments
+                ->pluck('url')
+                ->all() === ['https://acme.cboxid.com', 'https://'.$staging->slug.'.cboxid.com']));
 });
 
 it('renders the members roster with the signed-in member marked', function (): void {
@@ -96,9 +105,13 @@ it('renders the members roster with the signed-in member marked', function (): v
     signInAsMember($memberSubjectId);
     $this->get(route('members'))
         ->assertOk()
-        ->assertSee('Members')
-        ->assertSee('dana@acme.example')
-        ->assertSee('You');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/members')
+            ->where('members.0.email', 'dana@acme.example')
+            // "You" is drawn from this, and it is the property worth pinning: a roster
+            // that cannot tell the reader which row is theirs is where somebody removes
+            // their own access.
+            ->where('members.0.isSelf', true));
 });
 
 it('renders billing with the real environment allowance', function (): void {
@@ -106,12 +119,17 @@ it('renders billing with the real environment allowance', function (): void {
     app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
     signInAsMember($memberSubjectId);
-    $this->get(route('billing'))
-        ->assertOk()
-        ->assertSee('Billing')
-        // 2 of 2 environments used — real figures, no fabricated usage.
-        ->assertSee('2 of 2')
-        ->assertSee('How pricing works');
+
+    // REAL FIGURES, no fabricated usage: two environments against an allowance of two,
+    // counted from the project's own environments. Asked of the row rather than of the
+    // sentence "2 of 2", which the page could render from anything.
+    $row = collect((array) $this->get(route('billing'))->assertOk()->inertiaProps('projects'))
+        ->firstWhere('id', $project->id);
+
+    expect($row['used'])->toBe(2)
+        ->and($row['limit'])->toBe(2)
+        // …and each row is a way INTO the project it bills for.
+        ->and($row['href'])->toBe(route('projects.show', $project->id));
 });
 
 it('guards the members and billing pages behind the account session', function (): void {
@@ -185,16 +203,21 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
     signInAsMember($ownerSubjectId);
     app(Sudo::class)->confirm();
 
-    $component = Volt::test('console.api-keys')
-        ->set('newKeyName', 'CI deploy')
-        ->set('newKeyRole', 'developer')
-        ->call('createKey')
-        ->assertHasNoErrors();
+    $this->from(route('api-keys'))
+        ->post(route('api-keys.store'), ['name' => 'CI deploy', 'role' => 'developer'])
+        ->assertSessionHasNoErrors()
+        // ONCE, and on the flash channel: props are written into the history entry, so a
+        // full-authority credential there is readable by pressing Back.
+        ->assertInertiaFlash('freshKey');
 
-    // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
-    // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
-    expect($component->viewData('freshKey'))->toStartWith('cbid_org_')
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+
+    expect(is_array($flash) ? ($flash['freshKey'] ?? null) : null)->toStartWith('cbid_org_')
         ->and(app(OrganizationApiKeys::class)->forOrganization($account->id))->toHaveCount(1);
+
+    // AND NOT AGAIN. The next render of the page carries no key at all — the flash is
+    // one-shot, which is the whole reason it is the channel this uses.
+    $this->get(route('api-keys'))->assertOk()->assertInertiaFlashMissing('freshKey');
 });
 
 it('redirects a non-manager away from API keys', function (): void {
@@ -213,10 +236,10 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     signInAsMember($ownerSubjectId);
     $members = app(Memberships::class);
 
-    Volt::test('console.members')->call('removeMember', $dev->id);
+    $this->delete(route('members.remove', $dev->id))->assertRedirect();
     expect(freshMembership($dev))->toBeNull();
 
-    Volt::test('console.members')->call('makeOwner', $admin->id);
+    $this->post(route('members.transfer-ownership', $admin->id))->assertRedirect();
     expect(freshMembership($admin)->role)->toBe(MembershipRole::Owner)
         ->and(freshMembership($owner)->role)->toBe(MembershipRole::Admin);
 });
@@ -227,13 +250,16 @@ it('scopes a member to specific environments via the access editor', function ()
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.members')
-        ->call('manageAccess', $dev->id)
-        ->assertSet('accessAll', true)
-        ->set('accessAll', false)
-        ->set('accessEnvIds', [$staging->id])
-        ->call('saveAccess')
-        ->assertSet('editingAccessFor', null);
+    // The editor opens over the URL, so what it shows is a prop this test can read —
+    // and what it shows is the grant as it stands, which is "everything" by default.
+    $this->get(route('members', ['editing' => $dev->id]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('editor.all', true));
+
+    $this->put(route('members.access', $dev->id), [
+        'all' => false,
+        'environmentIds' => [$staging->id],
+    ])->assertRedirect();
 
     $members = app(Memberships::class);
     expect(app(PlatformRoot::class)->run(fn (): array => $members->accessibleEnvironmentIds($dev->organization_id, $dev->user_id)))->toBe([$staging->id]);
@@ -279,9 +305,8 @@ it('404s a role change aimed at another customer\'s member', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.members')
-        ->call('changeRole', $theirs->id, MembershipRole::Admin->value)
-        ->assertStatus(404);
+    $this->patch(route('members.role', $theirs->id), ['role' => MembershipRole::Admin->value])
+        ->assertNotFound();
 
     expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer);
 })->group('security');
@@ -291,7 +316,7 @@ it('404s a member removal aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.members')->call('removeMember', $theirs->id)->assertStatus(404);
+    $this->delete(route('members.remove', $theirs->id))->assertNotFound();
 
     expect(freshMembership($theirs))->not->toBeNull();
 })->group('security');
@@ -302,8 +327,9 @@ it('404s an environment-access edit aimed at another account', function (): void
     signInAsMember($ownerSubjectId);
 
     // The READ half. It opened the editor on somebody else's member and disclosed which
-    // environments they reach.
-    Volt::test('console.members')->call('manageAccess', $theirs->id)->assertStatus(404);
+    // environments they reach — which is now a URL, so the refusal has to be on the page
+    // that honours it rather than on an action nobody calls any more.
+    $this->get(route('members', ['editing' => $theirs->id]))->assertNotFound();
 })->group('security');
 
 it('404s an environment-access SAVE aimed at another account', function (): void {
@@ -312,14 +338,13 @@ it('404s an environment-access SAVE aimed at another account', function (): void
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    // `editingAccessFor` is an ordinary public property, so the client sets it — the
-    // write half never had to go through `manageAccess()` at all.
-    Volt::test('console.members')
-        ->set('editingAccessFor', $theirs->id)
-        ->set('accessAll', false)
-        ->set('accessEnvIds', [$mine->id])
-        ->call('saveAccess')
-        ->assertStatus(404);
+    // The write half, asked directly. Opening the editor is a read the save does not
+    // depend on, so refusing only the read would leave this reachable by anyone who can
+    // form a URL.
+    $this->put(route('members.access', $theirs->id), [
+        'all' => false,
+        'environmentIds' => [$mine->id],
+    ])->assertNotFound();
 
     $members = app(Memberships::class);
     expect(freshMembership($theirs)->all_environments)->toBeTrue();
@@ -330,7 +355,7 @@ it('404s an ownership transfer aimed at another customer', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.members')->call('makeOwner', $theirs->id)->assertStatus(404);
+    $this->post(route('members.transfer-ownership', $theirs->id))->assertNotFound();
 
     $members = app(Memberships::class);
     expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer)
@@ -343,7 +368,9 @@ it('renames the account from settings and redirects non-managers', function (): 
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    Volt::test('console.organization-settings')->set('name', 'Renamed Co')->call('save')->assertHasNoErrors();
+    $this->from(route('organization-settings'))
+        ->patch(route('organization-settings.update'), ['name' => 'Renamed Co'])
+        ->assertSessionHasNoErrors();
     expect(app(PlatformRoot::class)->run(fn () => app(Organizations::class)->find($account->id))->name)->toBe('Renamed Co');
 
     // A developer can't reach settings.
@@ -373,18 +400,18 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
     signInAsMember($memberSubjectId);
 
     // The project's limit is 2, one used → adding one succeeds.
-    Volt::test('console.projects.show', ['project' => $project->id])
-        ->set('newEnvironment', 'Staging')
-        ->call('addEnvironment')
-        ->assertHasNoErrors();
+    $this->post(route('projects.environments.store', $project->id), [
+        'name' => 'Staging',
+        'type' => 'production',
+    ])->assertSessionHasNoErrors();
 
     expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 
     // The third is refused by the plan, with a friendly error rather than a throw.
-    Volt::test('console.projects.show', ['project' => $project->id])
-        ->set('newEnvironment', 'Dev')
-        ->call('addEnvironment')
-        ->assertHasErrors('newEnvironment');
+    $this->post(route('projects.environments.store', $project->id), [
+        'name' => 'Dev',
+        'type' => 'production',
+    ])->assertSessionHasErrors('name');
 
     expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 });
@@ -398,10 +425,10 @@ it('refuses a scoped member trying to add an environment to a project', function
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account->id, $devSubjectId, all: false, environmentIds: [$staging->id]));
     signInAsMember($devSubjectId);
 
-    Volt::test('console.projects.show', ['project' => $project->id])
-        ->set('newEnvironment', 'Sneaky')
-        ->call('addEnvironment')
-        ->assertForbidden();
+    $this->post(route('projects.environments.store', $project->id), [
+        'name' => 'Sneaky',
+        'type' => 'production',
+    ])->assertForbidden();
 
     expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 });
@@ -410,10 +437,10 @@ it('suspends and reactivates a project', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    Volt::test('console.projects.show', ['project' => $project->id])->call('suspend');
+    $this->post(route('projects.suspend', $project->id))->assertRedirect();
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('suspended');
 
-    Volt::test('console.projects.show', ['project' => $project->id])->call('reactivate');
+    $this->post(route('projects.reactivate', $project->id))->assertRedirect();
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('active');
 });
 
@@ -421,10 +448,8 @@ it('lets a member create a second project and drills into it empty', function ()
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    Volt::test('console.projects.create')
-        ->set('name', 'Product Two')
-        ->call('create')
-        ->assertHasNoErrors();
+    $this->post(route('projects.store'), ['name' => 'Product Two'])
+        ->assertSessionHasNoErrors();
 
     $project = Project::query()->where('name', 'Product Two')->firstOrFail();
 
@@ -432,8 +457,10 @@ it('lets a member create a second project and drills into it empty', function ()
     signInAsMember($memberSubjectId);
     $this->get(route('projects.show', $project->id))
         ->assertOk()
-        ->assertSee('Product Two')
-        ->assertSee('No environments yet');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/projects/show')
+            ->where('project.name', 'Product Two')
+            ->where('environments', []));
 });
 
 /**
@@ -448,25 +475,25 @@ it('lists every environment grouped under its project, each with an Open link', 
     signInAsMember($memberSubjectId);
     $this->get(route('projects'))
         ->assertOk()
-        ->assertSee('Acme')
-        // Both environments are on the launchpad itself...
-        ->assertSee('Production')
-        ->assertSee('Staging')
-        // ...each with its own open link, plus the project's settings entry point.
-        ->assertSee(route('environment.open', $staging->id), false)
-        ->assertSee(route('projects.show', $project->id), false);
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('projects.0.name', 'Acme')
+            // Both environments are on the launchpad itself...
+            ->where('projects.0.environments', fn (Collection $environments): bool => $environments
+                ->pluck('name')
+                ->all() === ['Production', 'Staging'])
+            // ...each with its own open link, plus the project's settings entry point.
+            ->where('projects.0.environments.1.openHref', route('environment.open', $staging->id))
+            ->where('projects.0.settingsHref', route('projects.show', $project->id)));
 });
 
 it('creates an environment inline from the launchpad', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    Volt::test('console.projects.index')
-        ->call('startCreate', $project->id)
-        ->set('newEnvironment', 'Staging')
-        ->set('newEnvironmentType', 'sandbox')
-        ->call('addEnvironment')
-        ->assertHasNoErrors();
+    $this->post(route('projects.environments.store', $project->id), [
+        'name' => 'Staging',
+        'type' => 'sandbox',
+    ])->assertSessionHasNoErrors();
 
     expect(Environment::query()->where('project_id', $project->id)->where('name', 'Staging')->exists())->toBeTrue();
 });
@@ -483,11 +510,10 @@ it('refuses an inline environment create for a project on another account', func
 
     signInAsMember($memberSubjectId);
 
-    Volt::test('console.projects.index')
-        ->call('startCreate', $other->project->id)
-        ->set('newEnvironment', 'Sneaky')
-        ->call('addEnvironment')
-        ->assertStatus(404);
+    $this->post(route('projects.environments.store', $other->project->id), [
+        'name' => 'Sneaky',
+        'type' => 'production',
+    ])->assertNotFound();
 
     expect(Environment::query()->where('project_id', $other->project->id)->where('name', 'Sneaky')->exists())->toBeFalse();
 });
@@ -537,7 +563,7 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
     // …and at the page, not only in the rail — a rail is not an authorization check. They
     // are an OWNER of their own organization, so this is the area refusing them rather
     // than the console.
-    Volt::test('billing')->assertRedirect(route('projects'));
+    test()->get(route('billing'))->assertRedirect(route('projects'));
 })->group('security');
 
 it('takes the area away from somebody who belongs to no organization', function (): void {
@@ -569,7 +595,7 @@ it('takes the area away from somebody who belongs to no organization', function 
         ->and(identityPlatformPages())->toBe([]);
 
     // And at the page too, because a rail is not an authorization check.
-    Volt::test('billing')->assertRedirect(route('projects'));
+    test()->get(route('billing'))->assertRedirect(route('projects'));
 })->group('security');
 
 it('takes the area away when the acting organization is not the person\'s own', function (): void {
@@ -760,7 +786,12 @@ it('refuses to re-role a customer\'s member from the environment roster', functi
 
     signInAsMember($ownerSubjectId);
 
-    Volt::test('members')->call('setRole', $targetSubjectId, MembershipRole::Admin->value);
+    // ASSERTED ON THE REFUSAL, and on the row. The fence names itself in the message, so
+    // "refused" is distinguishable from "did nothing" — which several other things in this
+    // write could also produce.
+    test()->from(route('directory.members'))
+        ->patch(route('directory.members.role', $targetSubjectId), ['role' => MembershipRole::Admin->value])
+        ->assertSessionHasErrors('role');
 
     // ONE ROW, and it did not move. The older version asserted on TWO — a member row and a
     // membership — because the defect it was written for was that they could disagree.
@@ -777,18 +808,16 @@ it('refuses to remove a customer\'s member from the environment roster', functio
 
     signInAsMember($ownerSubjectId);
 
-    // Asserted on the REFUSAL, not on the surviving membership.
+    // Asserted on the REFUSAL, not only on the surviving membership.
     //
     // The first version checked that the membership was still there — and it passed with
-    // the fence deleted, because several other things in `remove()` can also leave it
+    // the fence deleted, because several other things in this write can also leave it
     // standing. A test that cannot tell "refused" from "did nothing" is not a test of a
-    // refusal. The toast is dispatched by the fence and by nothing else.
-    Volt::test('members')
-        ->call('remove', $targetSubjectId)
-        ->assertDispatched('toast', fn (string $event, array $params): bool => str_contains(
-            (string) ($params['message'] ?? ''),
-            'Members',
-        ));
+    // refusal. The sentence names where the roster IS administered, and this fence is the
+    // only thing that says it.
+    test()->from(route('directory.members'))
+        ->delete(route('directory.members.remove', $targetSubjectId))
+        ->assertSessionHasErrors(['member' => 'This organization is a customer of this platform. Manage its members under Identity platform → Members.']);
 
     // …and the membership is still there, which is the outcome that matters: removing it
     // alone would take somebody off the roster of the customer they belong to, from a page

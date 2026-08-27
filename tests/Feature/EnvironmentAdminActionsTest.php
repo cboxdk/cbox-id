@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\EnvironmentSudo;
 use App\Platform\Impersonation;
 use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -13,6 +14,7 @@ use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
+use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
 use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -24,6 +26,7 @@ use Cbox\Id\Governance\Enums\CampaignStatus;
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Governance\Models\SodPolicy;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -39,21 +42,23 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
 use Cbox\Id\Provisioning\Enums\AuthScheme as ProvisioningAuthScheme;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
-use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\Models\ServiceProvider;
-use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Models\VaultGrant;
 use Cbox\Id\TokenVault\Models\VaultSecret;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
+use Cbox\Id\Webhooks\Enums\EndpointStatus;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
 use Cbox\LaravelSiem\Enums\Destination;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia;
 use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
@@ -87,22 +92,23 @@ it('exercises the connection detail mutating actions (saveConfig, activate, disa
         ['issuer' => 'https://okta.example', 'client_id' => 'a', 'client_secret' => 'b'],
     );
 
-    // The OIDC edit form binds issuer/client_id + a signing_key that is never prefilled,
-    // so a save must re-supply it or the page short-circuits with a field error.
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->set('editName', 'Okta Renamed')
-        ->set('issuer', 'https://okta.example/issuer')
-        ->set('client_id', 'client-abc')
-        ->set('signing_key', 'a-signing-key')
-        ->call('saveConfig')
-        ->call('activate')
-        ->call('disable')
-        ->assertHasNoErrors();
+    // The OIDC edit form carries issuer and client id, and a signing key that is never
+    // prefilled — a save must re-supply it or the write short-circuits with a field error.
+    $from = route('environment.connections.show', $connection->id);
+
+    $this->from($from)->patch(route('environment.connections.update', $connection->id), [
+        'name' => 'Okta Renamed',
+        'issuer' => 'https://okta.example/issuer',
+        'client_id' => 'client-abc',
+        'signing_key' => 'a-signing-key',
+    ])->assertSessionHasNoErrors();
+
+    $this->from($from)->post(route('environment.connections.activate', $connection->id))->assertRedirect();
+    $this->from($from)->post(route('environment.connections.disable', $connection->id))->assertRedirect();
 
     expect(Connection::query()->whereKey($connection->id)->value('name'))->toBe('Okta Renamed');
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->call('deleteConnection');
+    $this->delete(route('environment.connections.destroy', $connection->id))->assertRedirect();
     expect(Connection::query()->whereKey($connection->id)->exists())->toBeFalse();
 });
 
@@ -111,95 +117,187 @@ it('exercises the directory detail mutating actions (regenerateToken, toggleStat
     $orgId = makeOrg('dir-org');
     $directory = app(Directories::class)->register($orgId, 'HR')->directory;
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])
-        ->call('regenerateToken')
-        ->call('toggleStatus')
-        ->set('editName', 'HR Renamed')
-        ->call('saveName')
-        ->assertHasNoErrors();
+    $from = route('environment.directories.show', $directory->id);
+
+    $this->from($from)->post(route('environment.directories.rotate', $directory->id))->assertRedirect();
+    $this->from($from)->post(route('environment.directories.toggle', $directory->id))->assertRedirect();
+    $this->from($from)->patch(route('environment.directories.update', $directory->id), ['name' => 'HR Renamed'])
+        ->assertSessionHasNoErrors();
 
     expect(Directory::query()->whereKey($directory->id)->value('name'))->toBe('HR Renamed');
 
-    Volt::test('console.directories.show', ['directory' => $directory->id])
-        ->call('deleteDirectory');
+    $this->delete(route('environment.directories.destroy', $directory->id))->assertRedirect();
     expect(Directory::query()->whereKey($directory->id)->exists())->toBeFalse();
 });
 
-it('exercises the role detail mutating actions (saveDetails, togglePermission, delete)', function (): void {
+it('runs every role detail mutation over its own route', function (): void {
     crudSetup();
     $role = app(Roles::class)->define(null, 'Support');
-    // The roles page toggles a real, non-orphaned permission; the catalogue is global,
-    // so a directly-created Permission is picked up by togglePermission.
+    // A real, non-orphaned permission: the catalogue is global, so a directly-created
+    // Permission is one the environment plane may compose from.
     $permission = Permission::query()->create(['name' => 'reports:view', 'description' => 'View reports']);
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->set('editName', 'Support Renamed')
-        ->set('editDescription', 'Support staff')
-        ->call('saveDetails')
-        ->call('togglePermission', $permission->id)
-        ->assertHasNoErrors();
+    $from = route('environment.roles.show', $role->id);
 
-    expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed');
+    $this->from($from)->patch(route('environment.roles.update', $role->id), [
+        'name' => 'Support Renamed',
+        'description' => 'Support staff',
+    ])->assertSessionHasNoErrors();
 
-    Volt::test('console.roles.show', ['role' => $role->id])
-        ->call('deleteRole');
+    setRolePermission($role->id, $permission->id, true, 'environment.roles')->assertSessionHasNoErrors();
+
+    expect(Role::query()->whereKey($role->id)->value('name'))->toBe('Support Renamed')
+        ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
+
+    // And off again: grant and revoke are the same endpoint saying two different things,
+    // so exercising only one of them leaves half of it unrun.
+    setRolePermission($role->id, $permission->id, false, 'environment.roles');
+
+    expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(0);
+
+    $this->delete(route('environment.roles.destroy', $role->id))->assertRedirect(route('environment.roles'));
     expect(Role::query()->whereKey($role->id)->exists())->toBeFalse();
 });
 
-it('exercises the webhook detail mutating actions (saveSubscription, pause, resume, rotateSecret, delete)', function (): void {
+/**
+ * OVER HTTP, not through the component.
+ *
+ * `Volt::test()` invokes a component directly and never routes, so it kept passing after
+ * the routes stopped pointing at that component at all — a green test over a file nothing
+ * serves. Each mutation is its own request now, and each one runs the middleware stack
+ * that guards it.
+ */
+it('runs every webhook detail mutation over its own route', function (): void {
     crudSetup();
+    app(EnvironmentSudo::class)->confirm();
+
     $endpoint = app(WebhookRegistry::class)
         ->registerForEnvironment('https://example.com/wh', ['user.created'])->endpoint;
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->set('editUrl', 'https://example.com/wh-updated')
-        ->set('editEvents', ['user.created', 'user.updated'])
-        ->call('saveSubscription')
-        ->call('pause')
-        ->call('resume')
-        ->call('rotateSecret')
-        ->assertHasNoErrors();
+    $this->patch(route('environment.webhooks.update', ['webhook' => $endpoint->id]), [
+        'url' => 'https://example.com/wh-updated',
+        'eventTypes' => ['user.created', 'user.updated'],
+    ])->assertRedirect();
 
-    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('url'))->toBe('https://example.com/wh-updated');
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('url'))
+        ->toBe('https://example.com/wh-updated');
 
-    Volt::test('console.webhooks.show', ['webhook' => $endpoint->id])
-        ->call('deleteEndpoint');
+    $this->post(route('environment.webhooks.pause', ['webhook' => $endpoint->id]))->assertRedirect();
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('status'))
+        ->toBe(EndpointStatus::Paused);
+
+    $this->post(route('environment.webhooks.resume', ['webhook' => $endpoint->id]))->assertRedirect();
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('status'))
+        ->toBe(EndpointStatus::Active);
+
+    $sealed = WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted');
+    $this->post(route('environment.webhooks.rotate', ['webhook' => $endpoint->id]))->assertRedirect();
+    expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted'))
+        ->not->toBe($sealed);
+
+    $this->delete(route('environment.webhooks.destroy', ['webhook' => $endpoint->id]))
+        ->assertRedirect(route('environment.webhooks'));
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 });
 
-it('exercises the sso-provider detail mutating actions (save, remove)', function (): void {
+it('runs every SAML-application detail mutation over its own route', function (): void {
     crudSetup();
-    $sp = app(ServiceProviders::class)->register(new NewServiceProvider(
-        entityId: 'https://sp/meta',
-        acsUrl: 'https://sp/acs',
-        nameIdFormat: NameIdFormat::cases()[0],
-        nameIdAttribute: 'email',
-    ));
+    $sp = registerServiceProvider();
 
-    Volt::test('environment.sso-providers.show', ['provider' => $sp->id])
-        ->set('entity_id', 'https://sp/meta-updated')
-        ->call('save')
-        ->assertHasNoErrors();
+    saveServiceProvider($sp->id, ['entityId' => 'https://sp/meta-updated'])
+        ->assertSessionHasNoErrors();
 
     expect(ServiceProvider::query()->whereKey($sp->id)->value('entity_id'))->toBe('https://sp/meta-updated');
 
-    Volt::test('environment.sso-providers.show', ['provider' => $sp->id])
-        ->call('remove');
+    $this->delete(route('environment.sso-providers.destroy', $sp->id))
+        ->assertRedirect(route('environment.sso-providers'));
+
     expect(ServiceProvider::query()->whereKey($sp->id)->exists())->toBeFalse();
 });
 
-it('exercises the event-hook detail mutating actions (pause, activate, remove)', function (): void {
+/**
+ * @group security
+ *
+ * A SIGNED-REQUEST APPLICATION WITH NOTHING TO VERIFY AGAINST.
+ *
+ * The half-configured combination does not fail loudly: the flag says AuthnRequests are
+ * verified, and nothing verifies them — which is worse than never having turned it on,
+ * because the console then reports a protection that is not there.
+ */
+it('refuses signed requests with no certificate, and keeps the one on file', function (): void {
+    crudSetup();
+
+    // Refused at registration…
+    test()->from(route('environment.sso-providers.create'))
+        ->post(route('environment.sso-providers.store'), [
+            'entityId' => 'https://strict/meta',
+            'acsUrl' => 'https://strict/acs',
+            'nameIdFormat' => NameIdFormat::cases()[0]->value,
+            'nameIdAttribute' => 'email',
+            'attributeMappings' => [],
+            'wantAuthnRequestsSigned' => true,
+            'certificate' => '',
+        ])
+        ->assertSessionHasErrors('certificate');
+
+    expect(ServiceProvider::query()->where('entity_id', 'https://strict/meta')->exists())->toBeFalse();
+
+    // …and on the edit form, where a blank field means KEEP the certificate rather than
+    // remove it. Wiping it while the flag stayed on is the same defect by another route.
+    $sp = registerServiceProvider(['certificate' => '-----BEGIN CERTIFICATE-----on-file']);
+
+    saveServiceProvider($sp->id, [
+        'wantAuthnRequestsSigned' => true,
+        'certificate' => '',
+    ])->assertSessionHasNoErrors();
+
+    expect(ServiceProvider::query()->whereKey($sp->id)->value('certificate'))
+        ->toBe('-----BEGIN CERTIFICATE-----on-file');
+})->group('security');
+
+/**
+ * The attribute map, which used to be a textarea parsed with `explode('=', $line, 2)`.
+ *
+ * That parse dropped anything without an `=` in silence, so a typo in an attribute name
+ * looked exactly like a mapping nobody had typed — and the assertion went out missing a
+ * claim the application was waiting for. Rows cannot be mistyped that way; what they CAN
+ * be is half-filled, and a half-filled row must not become an empty claim.
+ */
+it('keeps only whole attribute mappings', function (): void {
+    crudSetup();
+    $sp = registerServiceProvider();
+
+    saveServiceProvider($sp->id, [
+        'attributeMappings' => [
+            ['key' => ' email ', 'value' => ' email '],
+            // An attribute mapped to nothing would emit an empty claim, which a service
+            // provider reads as "this person has no name" rather than "not configured".
+            ['key' => 'displayName', 'value' => ''],
+            ['key' => '', 'value' => 'name'],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect(ServiceProvider::query()->whereKey($sp->id)->value('attribute_mappings'))
+        ->toBe(['email' => 'email']);
+});
+
+it('runs every inline-hook detail mutation over its own route', function (): void {
     crudSetup();
     $hook = app(ExternalActions::class)
         ->registerForEnvironment(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
 
-    Volt::test('console.hooks.show', ['hook' => $hook->id])
-        ->call('pause')
-        ->call('activate')
-        ->assertHasNoErrors();
+    $from = route('environment.hooks.show', $hook->id);
 
-    Volt::test('console.hooks.show', ['hook' => $hook->id])
-        ->call('remove');
+    // Twice, because the endpoint reads the state it is moving FROM off the record — one
+    // call would pass on a toggle that only ever paused.
+    test()->from($from)->post(route('environment.hooks.toggle', $hook->id))->assertSessionHasNoErrors();
+    expect($hook->fresh()?->status)->toBe(ActionEndpointStatus::Paused);
+
+    test()->from($from)->post(route('environment.hooks.toggle', $hook->id))->assertSessionHasNoErrors();
+    expect($hook->fresh()?->status)->toBe(ActionEndpointStatus::Active);
+
+    test()->delete(route('environment.hooks.destroy', $hook->id))
+        ->assertRedirect(route('environment.hooks'));
     expect(ExternalActionEndpoint::query()->whereKey($hook->id)->exists())->toBeFalse();
 });
 
@@ -216,13 +314,25 @@ it('exercises the sod-policy detail mutating actions (scan, toggle, remove)', fu
     // carried — so it is chosen here, the way an administrator chooses it.
     app(ConsoleScope::class)->chooseOrganization($scanOrgId);
 
-    Volt::test('console.sod-policies.show', ['policy' => $policy->id])
-        ->call('scan')
-        ->call('toggle')
-        ->assertHasNoErrors();
+    // The scan is a READ, asked for by a query parameter rather than an action — it walks
+    // every grant in the organization, so it runs when somebody wants it rather than every
+    // time the page opens.
+    test()->get(route('environment.sod-policies.show', ['policy' => $policy->id, 'scan' => 1]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('scanned', true));
 
-    Volt::test('console.sod-policies.show', ['policy' => $policy->id])
-        ->call('remove');
+    $from = route('environment.sod-policies.show', $policy->id);
+
+    test()->from($from)->post(route('environment.sod-policies.toggle', $policy->id))
+        ->assertSessionHasNoErrors();
+    expect(SodPolicy::query()->whereKey($policy->id)->value('active'))->toBeFalse();
+
+    test()->from($from)->post(route('environment.sod-policies.toggle', $policy->id))
+        ->assertSessionHasNoErrors();
+    expect(SodPolicy::query()->whereKey($policy->id)->value('active'))->toBeTrue();
+
+    test()->delete(route('environment.sod-policies.destroy', $policy->id))
+        ->assertRedirect(route('environment.sod-policies'));
     expect(SodPolicy::query()->whereKey($policy->id)->exists())->toBeFalse();
 });
 
@@ -236,13 +346,15 @@ it('exercises the provisioning detail mutating actions (pause, resume, delete)',
         'secret',
     )->connection;
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])
-        ->call('pause')
-        ->call('resume')
-        ->assertHasNoErrors();
+    $from = route('environment.provisioning.show', $connection->id);
 
-    Volt::test('console.provisioning.show', ['sync' => $connection->id])
-        ->call('deleteConnection');
+    test()->from($from)->post(route('environment.provisioning.toggle', $connection->id))
+        ->assertRedirect($from);
+    test()->from($from)->post(route('environment.provisioning.toggle', $connection->id))
+        ->assertRedirect($from);
+
+    test()->delete(route('environment.provisioning.destroy', $connection->id))
+        ->assertRedirect(route('environment.provisioning'));
     expect(ProvisioningConnection::query()->whereKey($connection->id)->exists())->toBeFalse();
 });
 
@@ -262,9 +374,9 @@ it('exercises the governance detail mutating action (close)', function (): void 
     // note: certify() and revoke() require a seeded campaign item (a snapshotted role
     // assignment / membership for a subject in the org). A freshly opened campaign over
     // an empty org has no items, so only close() is exercised here.
-    Volt::test('console.governance.show', ['campaign' => $campaign->id])
-        ->call('close')
-        ->assertHasNoErrors();
+    test()->from(route('environment.governance.show', $campaign->id))
+        ->post(route('environment.governance.close', $campaign->id))
+        ->assertSessionHasNoErrors();
 
     expect(CertificationCampaign::query()->whereKey($campaign->id)->value('status'))
         ->toBe(CampaignStatus::Closed);
@@ -280,9 +392,7 @@ it('refuses to close a review before an organization is chosen', function (): vo
     crudSetup();
     $campaign = app(AccessReviews::class)->open(makeOrg('gov-unchosen'), 'Q4');
 
-    Volt::test('console.governance.show', ['campaign' => $campaign->id])
-        ->call('close')
-        ->assertForbidden();
+    test()->post(route('environment.governance.close', $campaign->id))->assertForbidden();
 
     expect(CertificationCampaign::query()->whereKey($campaign->id)->value('status'))
         ->toBe(CampaignStatus::Open);
@@ -302,20 +412,41 @@ it('exercises the vault detail mutating actions (startRotate, rotate, addGrant, 
     // The merged component — one page for both planes. It resolves the owner from the
     // CONSOLE'S scope rather than from the row, so with no organization chosen this acts
     // on the environment's own unowned secrets, which is what store() above created.
-    Volt::test('console.vault.show', ['secret' => $secret->id])
-        ->call('startRotate')
-        ->set('rotateSecret', 'sk_rotated_value')
-        ->call('rotate')
-        ->set('grantClient', $client->client_id)
-        ->call('addGrant')
-        ->call('revokeGrant', $client->client_id)
-        ->assertHasNoErrors();
+    /*
+     * THE STEP-UP WINDOW, opened deliberately. Every vault route is behind `env.sudo`,
+     * reads included, so without this each request below is a redirect to the step-up
+     * screen — and `assertSessionHasNoErrors()` is perfectly happy with one of those. The
+     * assertions therefore name where each redirect LANDS rather than merely that nothing
+     * errored; ConsoleStepUpTest is where the gate itself is proven.
+     */
+    confirmEnvironmentStepUp();
+
+    $from = route('environment.vault.show', $secret->id);
+
+    test()->from($from)->post(route('environment.vault.rotate', $secret->id), ['secret' => 'sk_rotated_value'])
+        ->assertRedirect($from);
+
+    // ROTATED, not merely accepted. The sealed value has to have actually changed, and the
+    // id has to be the same one — rotation keeps the sealing context stable, which is the
+    // whole reason it is not a delete-and-store.
+    expect(VaultSecret::query()->whereKey($secret->id)->value('rotated_at'))->not->toBeNull();
+
+    test()->from($from)->post(route('environment.vault.grants.store', $secret->id), ['client' => $client->client_id])
+        ->assertRedirect($from);
+
+    expect(VaultGrant::query()->where('secret_id', $secret->id)->whereNull('revoked_at')->exists())->toBeTrue();
+
+    test()->from($from)->delete(route('environment.vault.grants.destroy', [
+        'secret' => $secret->id,
+        'client' => $client->client_id,
+    ]))->assertRedirect($from);
 
     expect(VaultGrant::query()->where('secret_id', $secret->id)->whereNull('revoked_at')->exists())->toBeFalse();
 
     // revoke is a soft revoke (isRevoked), not a hard delete — the row stays but is sealed off.
-    Volt::test('console.vault.show', ['secret' => $secret->id])
-        ->call('revoke');
+    test()->post(route('environment.vault.revoke', $secret->id))
+        ->assertRedirect(route('environment.vault'));
+
     expect(VaultSecret::query()->whereKey($secret->id)->value('revoked_at'))->not->toBeNull();
 });
 
@@ -329,13 +460,18 @@ it('exercises the audit-stream detail mutating actions (disable, resume, delete)
         SiemAuthScheme::Bearer,
     )->stream;
 
-    Volt::test('console.audit-streams.show', ['stream' => $stream->id])
-        ->call('disable')
-        ->call('resume')
-        ->assertHasNoErrors();
+    $from = route('environment.audit-streams.show', $stream->id);
 
-    Volt::test('console.audit-streams.show', ['stream' => $stream->id])
-        ->call('deleteStream');
+    test()->from($from)->post(route('environment.audit-streams.toggle', $stream->id))
+        ->assertRedirect($from);
+    expect(AuditStream::query()->whereKey($stream->id)->value('enabled'))->toBeFalse();
+
+    test()->from($from)->post(route('environment.audit-streams.toggle', $stream->id))
+        ->assertRedirect($from);
+    expect(AuditStream::query()->whereKey($stream->id)->value('enabled'))->toBeTrue();
+
+    test()->delete(route('environment.audit-streams.destroy', $stream->id))
+        ->assertRedirect(route('environment.audit-streams'));
     expect(AuditStream::query()->whereKey($stream->id)->exists())->toBeFalse();
 });
 
@@ -354,6 +490,7 @@ it('exercises the audit-stream detail mutating actions (disable, resume, delete)
  * it likes.
  */
 it('refuses to add a user to an organization that is not live', function (string $status): void {
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -371,11 +508,8 @@ it('refuses to add a user to an organization that is not live', function (string
     $dead = app(Organizations::class)->create(new NewOrganization('Gone Ltd', 'gone-ltd-'.$status));
     $dead->forceFill(['status' => OrganizationStatus::from($status)])->save();
 
-    Volt::test('environment.users.show', ['user' => $subjectId])
-        ->set('assignOrgId', $dead->id)
-        ->set('assignRole', MembershipRole::Member->value)
-        ->call('assignOrg')
-        ->assertHasErrors('assignOrgId');
+    assignUserToOrganization($subjectId, $dead->id, ['role' => MembershipRole::Member->value])
+        ->assertSessionHasErrors('organization');
 
     expect(app(Memberships::class)->of($dead->id, $subjectId))->toBeNull();
 })->with(['suspended', 'deleted'])->group('security');
@@ -384,6 +518,7 @@ it('refuses to add a user to an organization that is not live', function (string
  * And it is not offered in the first place, so nobody is invited to try.
  */
 it('offers only live organizations in the add-to-organization picker', function (): void {
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -402,9 +537,13 @@ it('offers only live organizations in the add-to-organization picker', function 
     $dead = app(Organizations::class)->create(new NewOrganization('Gone Ltd', 'gone-ltd'));
     $dead->forceFill(['status' => OrganizationStatus::Deleted])->save();
 
-    $html = Volt::test('environment.users.show', ['user' => $subjectId])->html();
+    test()->get(route('environment.users.show', $subjectId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('joinableOrganizations', fn (Collection $rows): bool => $rows->pluck('label')->contains('Still Here'))
+            ->where('joinableOrganizations', fn (Collection $rows): bool => $rows->pluck('label')->doesntContain('Gone Ltd')));
 
-    expect($html)->toContain('Still Here')->not->toContain('Gone Ltd');
+    expect($live->status)->toBe(OrganizationStatus::Active);
 });
 
 /**
@@ -415,6 +554,7 @@ it('offers only live organizations in the add-to-organization picker', function 
  * no permissions, with no way to give them any short of inventing a membership.
  */
 it('grants a role everywhere from the user page, with no membership involved', function (): void {
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -430,8 +570,7 @@ it('grants a role everywhere from the user page, with no membership involved', f
     $subjectId = app(Subjects::class)->create('agent@acme.example', 'Agent', 'the-original-passphrase')->id;
     $support = app(Roles::class)->define(null, 'Support');
 
-    Volt::test('environment.users.show', ['user' => $subjectId])
-        ->call('toggleEnvironmentRole', $support->id);
+    setEnvironmentRole($subjectId, $support->id, true)->assertSessionHasNoErrors();
 
     expect(app(Roles::class)->everywhereFor($subjectId))->toBe([$support->id]);
 
@@ -440,9 +579,8 @@ it('grants a role everywhere from the user page, with no membership involved', f
     expect(app(AccessChecker::class)->forToken($subjectId, $result->organization->id, 'cid_any')->roles)
         ->toBe(['Support']);
 
-    // Toggling again takes it back everywhere at once.
-    Volt::test('environment.users.show', ['user' => $subjectId])
-        ->call('toggleEnvironmentRole', $support->id);
+    // Clearing it takes it back everywhere at once.
+    setEnvironmentRole($subjectId, $support->id, false)->assertSessionHasNoErrors();
 
     expect(app(Roles::class)->everywhereFor($subjectId))->toBe([]);
 });
@@ -455,6 +593,7 @@ it('grants a role everywhere from the user page, with no membership involved', f
  * a role they did not define and cannot see.
  */
 it('refuses to grant one organization’s role everywhere from the page', function (): void {
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -470,10 +609,9 @@ it('refuses to grant one organization’s role everywhere from the page', functi
     $subjectId = app(Subjects::class)->create('agent2@acme.example', 'Agent', 'the-original-passphrase')->id;
     $theirs = app(Roles::class)->define($result->organization->id, 'Billing admin');
 
-    // Called directly, because the button is never drawn for it — and a control that is
+    // Posted directly, because the control is never drawn for it — and a control that is
     // merely unrendered is not a control that is enforced.
-    Volt::test('environment.users.show', ['user' => $subjectId])
-        ->call('toggleEnvironmentRole', $theirs->id);
+    setEnvironmentRole($subjectId, $theirs->id, true);
 
     expect(app(Roles::class)->everywhereFor($subjectId))->toBe([]);
 })->group('security');
@@ -494,6 +632,7 @@ it('refuses to grant one organization’s role everywhere from the page', functi
 it('emails a sign-in link when an environment user is created', function (): void {
     Mail::fake();
 
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -506,13 +645,51 @@ it('emails a sign-in link when an environment user is created', function (): voi
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 
-    Volt::test('environment.users.create')
-        ->set('email', 'newcomer@acme.example')
-        ->set('name', 'Newcomer')
-        ->call('create');
+    test()->post(route('environment.users.store'), [
+        'email' => 'newcomer@acme.example',
+        'name' => 'Newcomer',
+        'sendLink' => true,
+    ])->assertSessionHasNoErrors();
 
     Mail::assertSent(MagicLinkMail::class, fn ($mail): bool => $mail->hasTo('newcomer@acme.example'));
 });
+
+/**
+ * @group security
+ *
+ * …and NOT from an administrator whose own address nobody has confirmed.
+ *
+ * This is the widest reach on the console: it puts a live, one-click sign-in link into an
+ * arbitrary inbox, over this platform's domain and signature. An unverified account is one
+ * somebody else may actually own, which is exactly the account not to hand a mailer to —
+ * so the gate that holds webhooks and OAuth clients holds this too, and harder.
+ */
+it('refuses to create a user for an administrator who has not confirmed their own address', function (): void {
+    Mail::fake();
+
+    multiTenantDeployment();
+    platformRootEnvironment();
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner-unverified@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id, emailVerified: false);
+
+    test()->post(route('environment.users.store'), [
+        'email' => 'stranger@elsewhere.example',
+        'sendLink' => true,
+    ])->assertForbidden();
+
+    // Neither the row nor the mail: a refusal that created the account and merely skipped
+    // the email would leave a stranger's address claimed inside this environment.
+    expect(User::query()->where('email', 'stranger@elsewhere.example')->exists())->toBeFalse();
+    Mail::assertNothingSent();
+})->group('security');
 
 /**
  * And the administrator can decline to send one — for an account created ahead of time —
@@ -522,6 +699,7 @@ it('emails a sign-in link when an environment user is created', function (): voi
 it('says so when a user is created with no way to sign in', function (): void {
     Mail::fake();
 
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -534,10 +712,10 @@ it('says so when a user is created with no way to sign in', function (): void {
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 
-    Volt::test('environment.users.create')
-        ->set('email', 'later@acme.example')
-        ->set('sendLink', false)
-        ->call('create');
+    test()->post(route('environment.users.store'), [
+        'email' => 'later@acme.example',
+        'sendLink' => false,
+    ])->assertSessionHasNoErrors();
 
     Mail::assertNothingSent();
 });
@@ -571,9 +749,11 @@ it('impersonates a user who belongs to no organization', function (): void {
 
     $subjectId = app(Subjects::class)->create('lonely@acme.example', 'Lonely', 'the-original-passphrase')->id;
 
-    // The control is offered rather than replaced by an instruction to invent a tenancy.
-    expect(Volt::test('environment.users.show', ['user' => $subjectId])->html())
-        ->toContain('Signed in as themselves, in no organization');
+    // The control is OFFERED rather than replaced by an instruction to invent a tenancy:
+    // this person is a member of nothing, and the page still lets support step in.
+    test()->get(route('environment.users.show', $subjectId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('memberships', []));
 
     $this->post(route('environment.impersonate', $subjectId), ['reason' => 'Cannot open reports'])
         ->assertRedirect();

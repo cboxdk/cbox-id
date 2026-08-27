@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\OrganizationInviteMail;
 use App\Platform\OrganizationActivity;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -13,7 +14,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -36,12 +37,24 @@ uses(RefreshDatabase::class);
  */
 function invitingOwner(): string
 {
-    // The environment the console's own pages run in. `PlatformRoot::run()` is a no-op
-    // returning null without one, so every read and write below would silently land in the
-    // ambient scope instead — which is a different environment from the one the page uses.
-    platformRootEnvironment();
+    /*
+     * The environment the console's own pages run in, AND the one this test lives in.
+     *
+     * `PlatformRoot::run()` is a no-op returning null without a root, so every read and
+     * write below would silently land in the ambient scope. Making it CURRENT matters just
+     * as much now that these are real requests: the member and their session are created
+     * in whatever environment is in context, and the guard on the way in looks for them in
+     * the root — so a mismatch is not a wrong answer, it is a redirect to /login.
+     */
+    app(EnvironmentContext::class)->set(platformRootEnvironment());
 
-    [, $org] = actingAsRole(MembershipRole::Owner);
+    [$subjectId, $org] = actingAsRole(MembershipRole::Owner);
+
+    // AND SIGNED IN OVER HTTP. `actingAsRole()` resolves the console's in-process state,
+    // which is all a Livewire component ever needed; every request below goes through the
+    // guard on the way in, and without this the whole file asserts against a redirect to
+    // /login.
+    signInAsMember($subjectId);
 
     // A PRODUCT, because the Identity-platform pages this roster lives on are refused to
     // an organization that owns none — without it the page renders a redirect and every
@@ -73,9 +86,12 @@ it('shows the invitations nobody has accepted', function (): void {
     $org = invitingOwner();
     inviteFrom($org, 'waiting@acme.test');
 
-    Volt::test('console.members')
-        ->assertSee('Invited, not joined yet')
-        ->assertSee('waiting@acme.test');
+    test()->get(route('members'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/members')
+            ->where('invitations.0.email', 'waiting@acme.test')
+            ->where('invitationCount', 1));
 });
 
 it('sends the invitation again with a fresh link', function (): void {
@@ -83,7 +99,8 @@ it('sends the invitation again with a fresh link', function (): void {
     $org = invitingOwner();
     $id = inviteFrom($org, 'waiting2@acme.test');
 
-    Volt::test('console.members')->call('resendInvite', $id);
+    test()->from(route('members'))->post(route('members.invitations.resend', $id))
+        ->assertRedirect(route('members'));
 
     Mail::assertSent(OrganizationInviteMail::class);
 
@@ -101,14 +118,15 @@ it('withdraws an invitation so its link stops working', function (): void {
     $org = invitingOwner();
     $id = inviteFrom($org, 'mistake@acme.test');
 
-    Volt::test('console.members')->call('revokeInvite', $id);
+    test()->from(route('members'))->delete(route('members.invitations.revoke', $id))
+        ->assertRedirect(route('members'));
 
     expect(pendingIn($org))->toHaveCount(0);
 });
 
 /**
- * A COMPONENT ACTION IS A POST ANYBODY SIGNED IN CAN MAKE, so an invitation id from
- * another organization must do nothing at all.
+ * THE ID IS OFF THE WIRE, so an invitation belonging to another organization must do
+ * nothing at all.
  */
 it('refuses to touch an invitation belonging to another organization', function (): void {
     $org = invitingOwner();
@@ -119,7 +137,8 @@ it('refuses to touch an invitation belonging to another organization', function 
 
     $theirs = inviteFrom($other->id, 'theirs@acme.test');
 
-    Volt::test('console.members')->call('revokeInvite', $theirs);
+    test()->from(route('members'))->delete(route('members.invitations.revoke', $theirs))
+        ->assertRedirect(route('members'));
 
     expect(pendingIn($other->id))->toHaveCount(1);
 
@@ -141,34 +160,34 @@ it('creates nothing when the invitation could not be sent', function (): void {
 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('the mail server refused it'));
 
-    $component = Volt::test('console.members')
-        ->set('inviteEmail', 'unreachable@acme.test')
-        ->set('inviteRole', 'member')
-        ->call('invite');
-
-    $component->assertHasErrors('inviteEmail');
+    test()->from(route('members'))
+        ->post(route('members.invite'), [
+            'email' => 'unreachable@acme.test',
+            'role' => 'member',
+        ])
+        ->assertSessionHasErrors('email');
 
     expect(pendingIn($org))->toHaveCount(0);
 });
 
 /**
- * A COMPONENT ACTION IS A POST ANYBODY SIGNED IN CAN REPEAT, and this one sends mail
- * inline off a sending domain shared with every other tenant. A held-down button was an
- * outbound flood billed to our reputation.
+ * THIS IS A POST ANYBODY SIGNED IN CAN REPEAT, and it sends mail inline off a sending
+ * domain shared with every other tenant. A held-down button was an outbound flood billed
+ * to our reputation.
  */
 it('sends at most one invitation mail a minute to the same address', function (): void {
     Mail::fake();
     $org = invitingOwner();
     $id = inviteFrom($org, 'flooded@acme.test');
 
-    $page = Volt::test('console.members');
-
-    $page->call('resendInvite', $id);
+    test()->from(route('members'))->post(route('members.invitations.resend', $id))
+        ->assertRedirect(route('members'));
 
     // The second attempt names the NEW invitation, because the first resend superseded
     // the one we started with — replaying against a stale id would be refused for the
     // wrong reason and the throttle would not be what this test measured.
-    $page->call('resendInvite', (string) pendingIn($org)->first()?->id);
+    test()->from(route('members'))->post(route('members.invitations.resend', (string) pendingIn($org)->first()?->id))
+        ->assertRedirect(route('members'));
 
     Mail::assertSentCount(1);
 });
@@ -187,7 +206,8 @@ it('keeps the invitation alive when a resend cannot be delivered', function (): 
 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('the mail server refused it'));
 
-    Volt::test('console.members')->call('resendInvite', $id);
+    test()->from(route('members'))->post(route('members.invitations.resend', $id))
+        ->assertRedirect(route('members'));
 
     expect(pendingIn($org))->toHaveCount(1);
 });

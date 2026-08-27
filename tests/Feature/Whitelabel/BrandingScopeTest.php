@@ -9,7 +9,6 @@ use Cbox\Id\Whitelabel\Assets\LocalBrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -31,11 +30,7 @@ it('writes branding to the admin own organization, not the environment default',
 
     [, $org] = actingAsRole(MembershipRole::Owner);
 
-    $component = Volt::test('whitelabel.branding')
-        ->set('appName', 'Acme Identity')
-        ->call('save');
-
-    $component->assertHasNoErrors();
+    saveBranding()->assertSessionHasNoErrors();
 
     $profiles = app(BrandProfiles::class);
 
@@ -57,13 +52,26 @@ it('writes branding to the admin own organization, not the environment default',
  * to environments the member can reach and verified by a DNS TXT record.
  */
 it('does not expose environment domain controls to an organization admin', function (): void {
-    $markup = (string) file_get_contents(
-        __DIR__.'/../../../modules/whitelabel/resources/views/livewire/whitelabel/branding.blade.php'
+    config(['console.features.whitelabel' => true]);
+
+    actingAsRole(MembershipRole::Owner);
+
+    /*
+     * ASKED OF THE PAGE, not of a file. The old spelling read the blade this page used to be
+     * and grepped it for three `wire:` attributes — a claim about markup that no longer
+     * exists, and one a controller could have contradicted freely. What the page OFFERS is
+     * the set of URLs it carries, and the only write among them is the branding save.
+     */
+    $props = (array) test()->get(route('whitelabel.branding'))->assertOk()->inertiaProps();
+
+    $urls = array_filter(
+        $props,
+        static fn (mixed $value, string $key): bool => str_ends_with($key, 'Href'),
+        ARRAY_FILTER_USE_BOTH,
     );
 
-    expect($markup)->not->toContain('ManageCustomDomain')
-        ->and($markup)->not->toContain('wire:click="clearDomain"')
-        ->and($markup)->not->toContain('wire:submit="saveDomain"');
+    expect(array_keys($urls))->toBe(['saveHref'])
+        ->and($urls['saveHref'])->toBe(route('whitelabel.branding.save'));
 });
 
 /**

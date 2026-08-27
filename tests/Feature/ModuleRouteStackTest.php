@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Route;
  *    claim — the console gate is a host question, not a no-op.
  *  - `EnforceImpersonationWindow` terminates an impersonation that has outlived its
  *    30-minute box. Without it, an impersonator keeps reading risk events, audit trails,
- *    analytics and connectors past the deadline — reads sit on ImpersonationCallGuard's
- *    allowlist, so nothing else refuses them.
+ *    analytics and connectors past the deadline — the impersonation read-only rule refuses
+ *    writes and lets every read through, so nothing else refuses them.
  *
  * Derived from the router rather than a hand-kept list, so the sixth module cannot ship
  * without them and have nobody notice.

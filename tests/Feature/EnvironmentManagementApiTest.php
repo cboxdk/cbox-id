@@ -15,7 +15,7 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
+use Inertia\Support\SessionKey;
 
 uses(RefreshDatabase::class);
 
@@ -143,15 +143,14 @@ it('lets an environment manager mint a scoped key for their environment in the c
     signInAsMember($result->owner->id);
     app(Sudo::class)->confirm();
 
-    $component = Volt::test('console.environment-keys')
-        ->set('newKeyName', 'Provisioner')
-        ->set('newKeyScopes', [EnvironmentApiScope::UsersWrite->value])
-        ->call('createKey')
-        ->assertHasNoErrors();
+    issueEnvironmentKey($result->environment->id, [
+        'scopes' => [EnvironmentApiScope::UsersWrite->value],
+    ])->assertSessionHasNoErrors();
 
-    // Read from view data, not get(): the plaintext key is a PROTECTED property so it is
-    // never dehydrated into the wire snapshot. Asserting on get() would now pass on null.
-    expect($component->viewData('freshKey'))->toStartWith('cbid_env_');
+    // Read from the FLASH bag, not from the props: the plaintext is a one-time reveal and
+    // props are written into the browser's history entry, so a full-authority credential
+    // there would be readable by pressing Back.
+    expect(session()->get(SessionKey::FLASH_DATA)['freshKey'] ?? '')->toStartWith('cbid_env_');
 
     $keys = app(EnvironmentApiKeys::class)->forEnvironment($result->environment->id);
     expect($keys)->toHaveCount(1)

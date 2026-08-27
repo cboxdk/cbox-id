@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use App\Platform\ScopeCatalog;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -14,7 +15,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Collection;
+use Inertia\Testing\AssertableInertia;
 
 /**
  * /authorize never checked the requested scopes against the client's registered set.
@@ -29,6 +31,9 @@ function scopeTestOrg(): string
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-scopes'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    // The request session too: these drive real requests now, and one arriving without
+    // it is bounced to sign-in — where every refusal below is true for the wrong reason.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return $org->id;
@@ -51,10 +56,10 @@ function scopeAuthorizeParams(string $clientId, string $scope): array
     return [
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => $scope,
         'state' => 'st',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
     ];
 }
@@ -63,7 +68,7 @@ it('returns invalid_scope to the client for a scope it is not registered for', f
     $orgId = scopeTestOrg();
     $clientId = scopeTestClient($orgId, ['openid', 'profile']);
 
-    Volt::test('oauth.consent', scopeAuthorizeParams($clientId, 'openid profile organizations offline_access'))
+    authorizeRequest(scopeAuthorizeParams($clientId, 'openid profile organizations offline_access'))
         ->assertRedirect(
             'https://app.test/cb?error=invalid_scope'
             .'&error_description='.urlencode('This application is not registered for the requested scope(s): organizations offline_access.')
@@ -75,11 +80,13 @@ it('authorizes normally when every requested scope is registered', function () {
     $orgId = scopeTestOrg();
     $clientId = scopeTestClient($orgId, ['openid', 'profile', 'email']);
 
-    Volt::test('oauth.consent', scopeAuthorizeParams($clientId, 'openid profile'))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSet('scopes', ['openid', 'profile'])
-        ->assertSee('wants to access your Cbox ID account');
+    authorizeRequest(scopeAuthorizeParams($clientId, 'openid profile'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->where('scopes', fn (Collection $rows): bool => $rows->pluck('scope')->all() === ['openid', 'profile'])
+            ->has('approveHref'));
 });
 
 it('does not constrain a client that registered no scopes at all', function () {
@@ -88,11 +95,13 @@ it('does not constrain a client that registered no scopes at all', function () {
 
     // Nothing was declared, so there is nothing to check against — and the issuer
     // already grants such a client nothing.
-    Volt::test('oauth.consent', scopeAuthorizeParams($clientId, 'openid email'))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSet('scopes', ['openid', 'email'])
-        ->assertSee('wants to access your Cbox ID account');
+    authorizeRequest(scopeAuthorizeParams($clientId, 'openid email'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->where('scopes', fn (Collection $rows): bool => $rows->pluck('scope')->all() === ['openid', 'email'])
+            ->has('approveHref'));
 });
 
 /**
@@ -113,9 +122,11 @@ it('authorizes a client registered for the organizations scope', function () {
     $orgId = scopeTestOrg();
     $clientId = scopeTestClient($orgId, ['openid', 'organizations']);
 
-    Volt::test('oauth.consent', scopeAuthorizeParams($clientId, 'openid organizations'))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSet('scopes', ['openid', 'organizations'])
-        ->assertSee('wants to access your Cbox ID account');
+    authorizeRequest(scopeAuthorizeParams($clientId, 'openid organizations'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->where('scopes', fn (Collection $rows): bool => $rows->pluck('scope')->all() === ['openid', 'organizations'])
+            ->has('approveHref'));
 });

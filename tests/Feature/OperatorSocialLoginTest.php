@@ -19,6 +19,7 @@ use Cbox\Ssrf\Contracts\UrlGuard;
 use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -465,8 +466,10 @@ it('refuses a social sign-in when the subject\'s organization mandates SSO', fun
 
     nextRequest();
     $this->get(route('login'))
-        ->assertSee('Directory Co requires single sign-on')
-        ->assertSee(url("/sso/oidc/{$connection->id}/redirect"));
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/login')
+            ->hasFlash('mandate.organization', 'Directory Co')
+            ->hasFlash('mandate.startUrl', url("/sso/oidc/{$connection->id}/redirect")));
 })->group('security');
 
 it('keeps the held identity labelled by the catalogue', function () {

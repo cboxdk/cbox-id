@@ -42,19 +42,32 @@ function railLinksFor(MembershipRole $role): array
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    $html = (string) test()->get(route('dashboard'))->assertOk()->getContent();
-
-    // The rail's own links, as rendered. Anchors only — a rail entry is an anchor, and
-    // reading them from the markup is what keeps this honest about what a person sees.
-    preg_match_all('#<a[^>]+href="(https?://[^"]+)"#i', $html, $matches);
+    /*
+     * THE RAIL THIS PERSON IS HANDED, read off the shell prop the rail is built from.
+     *
+     * It used to be scraped from the rendered anchors, which was the honest source while
+     * the shell was blade. It is one React component reading `shell.areas` now, so the
+     * anchors are not in the response at all — and a regex over a client-rendered page
+     * quietly returned nothing, which this function's own caller catches by refusing an
+     * empty list.
+     *
+     * Every AREA and every PAGE under it, because the two gates work at different
+     * granularities and it is the pages that refuse: an area a person may see can contain a
+     * page that answers 403, which is the whole class of bug this file exists to close.
+     */
+    $shell = (array) test()->get(route('dashboard'))->assertOk()->inertiaProps('shell');
 
     $host = parse_url((string) config('app.url'), PHP_URL_HOST);
 
-    return collect($matches[1])
+    return collect($shell['areas'])
+        ->flatMap(fn (array $area): array => [
+            $area['href'],
+            ...collect($area['pages'])->pluck('href')->all(),
+        ])
         ->filter(fn (string $href): bool => parse_url($href, PHP_URL_HOST) === $host)
         ->map(fn (string $href): string => (string) parse_url($href, PHP_URL_PATH))
-        // Logout is a POST target rendered as a link by the shell; opening it with GET
-        // proves nothing about authorization.
+        // Logout is a POST target the shell renders as a link; opening it with GET proves
+        // nothing about authorization.
         ->reject(fn (string $path): bool => str_contains($path, '/logout'))
         ->unique()
         ->values()
@@ -116,7 +129,13 @@ it('offers every environment-console page somewhere in its rail', function (): v
 
     // Detail and create pages hang off a list that IS on the rail — a rail entry per
     // route would be a menu nobody could read. The list pages are what must be reachable.
+    //
+    // GET ONLY. A page is something you navigate to; a POST, PATCH or DELETE is an action
+    // performed on one, and it has no rail entry for the same reason `environment.open`
+    // below has none. That distinction used to be free, because every console mutation
+    // was a Livewire action on a shared endpoint and had no route name of its own.
     $unreachable = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($route): bool => in_array('GET', $route->methods(), true))
         ->map(fn ($route): ?string => $route->getName())
         ->filter(fn (?string $name): bool => is_string($name)
             && str_starts_with($name, 'environment.')
@@ -130,6 +149,10 @@ it('offers every environment-console page somewhere in its rail', function (): v
                 // console from the account plane. It has no rail entry because it is not
                 // somewhere you navigate to.
                 'environment.open',
+                // CHROME, and the one GET in this console that is not a page at all: the
+                // acting-organization picker answers JSON for a control in the topbar. It
+                // is a GET because it is a read, not because it is somewhere to be.
+                'environment.acting-organization.search',
             ], true))
         ->reject(fn (string $name): bool => in_array($name, $railed, true))
         ->values()

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:b2618251-a09c-4a72-9b44-976b92bf53fe",
+    "serialNumber": "urn:uuid:f8609fa8-a6f8-41ca-b339-bb93b5ab591d",
     "version": 1,
     "metadata": {
         "tools": [
@@ -501,6 +501,22 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/inertiajs/inertia-laravel@v3.3.1",
+            "group": "inertiajs",
+            "name": "inertia-laravel",
+            "version": "v3.3.1",
+            "purl": "pkg:composer/inertiajs/inertia-laravel@v3.3.1",
+            "description": "The Laravel adapter for Inertia.js.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/laravel/framework@v13.24.0",
             "group": "laravel",
             "name": "framework",
@@ -555,6 +571,22 @@
             "version": "v3.0.2",
             "purl": "pkg:composer/laravel/tinker@v3.0.2",
             "description": "Powerful REPL for the Laravel framework.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/laravel/wayfinder@v0.1.21",
+            "group": "laravel",
+            "name": "wayfinder",
+            "version": "v0.1.21",
+            "purl": "pkg:composer/laravel/wayfinder@v0.1.21",
+            "description": "Generate TypeScript representations of your Laravel actions and routes.",
             "licenses": [
                 {
                     "license": {
@@ -667,38 +699,6 @@
             "version": "7.8.1",
             "purl": "pkg:composer/league/uri-interfaces@7.8.1",
             "description": "Common tools for parsing and resolving RFC3987/RFC3986 URI",
-            "licenses": [
-                {
-                    "license": {
-                        "id": "MIT"
-                    }
-                }
-            ]
-        },
-        {
-            "type": "library",
-            "bom-ref": "pkg:composer/livewire/livewire@v4.3.3",
-            "group": "livewire",
-            "name": "livewire",
-            "version": "v4.3.3",
-            "purl": "pkg:composer/livewire/livewire@v4.3.3",
-            "description": "A front-end framework for Laravel.",
-            "licenses": [
-                {
-                    "license": {
-                        "id": "MIT"
-                    }
-                }
-            ]
-        },
-        {
-            "type": "library",
-            "bom-ref": "pkg:composer/livewire/volt@v1.10.5",
-            "group": "livewire",
-            "name": "volt",
-            "version": "v1.10.5",
-            "purl": "pkg:composer/livewire/volt@v1.10.5",
-            "description": "An elegantly crafted functional API for Laravel Livewire.",
             "licenses": [
                 {
                     "license": {
@@ -827,6 +827,22 @@
                 {
                     "license": {
                         "id": "Apache-2.0"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/phpstan/phpdoc-parser@2.3.3",
+            "group": "phpstan",
+            "name": "phpdoc-parser",
+            "version": "2.3.3",
+            "purl": "pkg:composer/phpstan/phpdoc-parser@2.3.3",
+            "description": "PHPDoc parser with support for nullable, intersection and generic types",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
                     }
                 }
             ]
@@ -1121,11 +1137,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/console@v8.1.2",
+            "bom-ref": "pkg:composer/symfony/console@v8.1.5",
             "group": "symfony",
             "name": "console",
-            "version": "v8.1.2",
-            "purl": "pkg:composer/symfony/console@v8.1.2",
+            "version": "v8.1.5",
+            "purl": "pkg:composer/symfony/console@v8.1.5",
             "description": "Eases the creation of beautiful and testable command line interfaces",
             "licenses": [
                 {
@@ -1217,11 +1233,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/finder@v8.1.1",
+            "bom-ref": "pkg:composer/symfony/finder@v8.1.5",
             "group": "symfony",
             "name": "finder",
-            "version": "v8.1.1",
-            "purl": "pkg:composer/symfony/finder@v8.1.1",
+            "version": "v8.1.5",
+            "purl": "pkg:composer/symfony/finder@v8.1.5",
             "description": "Finds files and directories via an intuitive fluent interface",
             "licenses": [
                 {
@@ -1345,11 +1361,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/polyfill-intl-normalizer@v1.38.0",
+            "bom-ref": "pkg:composer/symfony/polyfill-intl-normalizer@v1.42.0",
             "group": "symfony",
             "name": "polyfill-intl-normalizer",
-            "version": "v1.38.0",
-            "purl": "pkg:composer/symfony/polyfill-intl-normalizer@v1.38.0",
+            "version": "v1.42.0",
+            "purl": "pkg:composer/symfony/polyfill-intl-normalizer@v1.42.0",
             "description": "Symfony polyfill for intl's Normalizer class and related functions",
             "licenses": [
                 {
@@ -1457,11 +1473,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/process@v8.1.0",
+            "bom-ref": "pkg:composer/symfony/process@v8.1.5",
             "group": "symfony",
             "name": "process",
-            "version": "v8.1.0",
-            "purl": "pkg:composer/symfony/process@v8.1.0",
+            "version": "v8.1.5",
+            "purl": "pkg:composer/symfony/process@v8.1.5",
             "description": "Executes commands in sub-processes",
             "licenses": [
                 {

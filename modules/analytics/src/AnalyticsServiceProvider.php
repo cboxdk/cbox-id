@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Analytics;
 
+use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Analytics\ClickHouse\ClickHouseConnection;
 use Cbox\Id\Analytics\Console\AnalyticsInstallCommand;
@@ -23,12 +25,9 @@ use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
-use Throwable;
 
 /**
  * The Cbox ID analytics module. It streams the platform's transactional-outbox domain events (the public
@@ -76,7 +75,6 @@ class AnalyticsServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'id-analytics');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/analytics.php');
 
         // The seam: project every delivered outbox event onto the bound sink.
@@ -108,7 +106,7 @@ class AnalyticsServiceProvider extends ServiceProvider
             order: 15,
         );
 
-        Console::dashboardCard(fn (): string => $this->loginsCard(), 4);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->loginsCard(), 4);
 
         if ($this->app->runningInConsole()) {
             $this->commands([AnalyticsInstallCommand::class]);
@@ -174,25 +172,37 @@ class AnalyticsServiceProvider extends ServiceProvider
      * ({@see ConsoleScope::organizationId()}), and a stat with no scope is not a
      * smaller answer, it is a different one.
      */
-    private function loginsCard(): string
+    /**
+     * DATA, NOT MARKUP. This returned a rendered HTML string with its own hand-drawn SVG;
+     * the console draws the card now, so every module's card looks like the console's.
+     * A throw is caught by the registry and the card is simply absent.
+     */
+    private function loginsCard(): ?DashboardCardProps
     {
-        try {
-            $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
+        $scope = $this->app->make(ConsoleScope::class);
+        $organizationId = $scope->organizationId();
 
-            if ($organizationId === null) {
-                return '';
-            }
-
-            $reader = $this->app->make(ReportReader::class);
-            $until = Carbon::now();
-            $logins = $reader->snapshot($organizationId, $until->copy()->subDay(), $until)['auth.login'] ?? 0;
-        } catch (Throwable) {
-            return '';
+        if ($organizationId === null) {
+            return null;
         }
 
-        return $this->app->make(ViewFactory::class)
-            ->make('id-analytics::components.analytics-card', ['logins' => $logins])
-            ->render();
+        $until = Carbon::now();
+        $logins = (int) ($this->app->make(ReportReader::class)
+            ->snapshot($organizationId, $until->copy()->subDay(), $until)['auth.login'] ?? 0);
+
+        return new DashboardCardProps(
+            key: 'analytics.logins',
+            label: 'Logins (24h)',
+            value: number_format($logins),
+            caption: null,
+            icon: 'chart',
+            tone: 'info',
+            linkLabel: 'View sign-in activity',
+            // Through the scope, so the card links to the page on whichever plane is
+            // rendering it. A hard-coded route name went unnoticed for as long as the
+            // dashboard was served on one plane only.
+            linkHref: route($scope->routeName('sign-in-activity')),
+        );
     }
 
     private function configString(string $key, string $default = ''): string

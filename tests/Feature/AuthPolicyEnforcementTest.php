@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\BreachedPasswords;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\PlatformAuth;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -22,7 +23,6 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -105,6 +105,10 @@ it('refuses password sign-in when ANY of the subject\'s organizations mandates S
 
 it('saves the environment baseline from the console and shows what each org gets', function (): void {
     platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
     $r = app(TenantProvisioner::class)->provision(
         new TenantBlueprint(
             organizationName: 'Acme',
@@ -121,13 +125,18 @@ it('saves the environment baseline from the console and shows what each org gets
 
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-'.uniqid()));
 
-    Volt::test('console.auth-policy')
-        ->set('minLength', 18)
-        ->set('mfa', 'required')
-        ->set('sso', 'preferred')
-        ->set('reuseHistory', 3)
-        ->call('save')
-        ->assertHasNoErrors();
+    $current = (array) $this->get(route('environment.auth-policy'))->assertOk()->inertiaProps('policy');
+
+    $this->from(route('environment.auth-policy'))
+        ->put(route('environment.auth-policy.update'), [
+            ...$current,
+            'minLength' => 18,
+            'mfa' => 'required',
+            'sso' => 'preferred',
+            'reuseHistory' => 3,
+        ])
+        ->assertRedirect(route('environment.auth-policy'))
+        ->assertSessionHasNoErrors();
 
     $effective = app(AuthPolicies::class)->resolve($org->id);
 
@@ -140,6 +149,10 @@ it('saves the environment baseline from the console and shows what each org gets
 
 it('refuses the sign-in rules page to a member without the env-admin capability', function (): void {
     platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
     $r = app(TenantProvisioner::class)->provision(
         new TenantBlueprint(
             organizationName: 'Acme',
@@ -158,7 +171,24 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
 
     actAsEnvironmentAdmin($viewer->user_id, $r->environment->id);
 
-    Volt::test('console.auth-policy')->assertForbidden();
+    /*
+     * REFUSED AT THE DOOR, which is a redirect rather than a 403 — and that is the
+     * console's own answer rather than a weaker one.
+     *
+     * `AuthenticateEnvironmentAdmin` turns away a session that does not hold the capability
+     * before the page is reached at all, and sends it somewhere it can be. The
+     * component-level test this replaces never met that middleware, so it saw the
+     * controller's 403; asking over HTTP asks the whole stack, and the whole stack answers
+     * first.
+     *
+     * WHERE it sends them is that middleware's business and changes with the deployment
+     * shape, so what is asserted is the property this test is about: they do not get the
+     * page.
+     */
+    $response = $this->get(route('environment.auth-policy'));
+
+    expect($response->status())->toBe(302)
+        ->and((string) $response->headers->get('Location'))->not->toContain('/sign-in-rules');
 });
 
 /**
@@ -178,11 +208,14 @@ it('neither offers nor accepts second-factor enrolment when the policy turns it 
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Off));
 
-    Volt::test('account')
-        ->assertSee('turned off two-factor authentication')
-        ->assertDontSee('Enable 2FA')
-        ->call('enable')
-        ->assertForbidden();
+    // Both halves, because only one of them is a control: the panel not being drawn is a
+    // styling decision, and the ENROLMENT ROUTE refusing is the rule. The page draws its
+    // sentence from this flag and from nothing else.
+    expect(accountSecurity()['twoFactor']['offered'])->toBeFalse();
+
+    app(Sudo::class)->confirm();
+
+    beginMfaEnrolment()->assertForbidden();
 });
 
 it('still offers it when the policy leaves it optional', function (): void {
@@ -190,7 +223,12 @@ it('still offers it when the policy leaves it optional', function (): void {
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Optional));
 
-    Volt::test('account')
-        ->assertSee('Enable 2FA')
-        ->assertDontSee('turned off two-factor authentication');
+    expect(accountSecurity()['twoFactor']['offered'])->toBeTrue();
+
+    app(Sudo::class)->confirm();
+
+    beginMfaEnrolment()->assertSessionHasNoErrors();
+
+    // …and the secret really was minted, or "offered" is a flag nothing acts on.
+    expect(flashed('mfaSecret'))->toBeString();
 });

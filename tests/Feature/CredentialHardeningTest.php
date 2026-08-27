@@ -12,7 +12,6 @@ use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 use Symfony\Component\Finder\Finder;
 
 uses(RefreshDatabase::class);
@@ -43,7 +42,10 @@ it('refuses to mint a secret for a client that signs its own assertions', functi
 
     expect($client->secret_hash)->toBeNull();
 
-    Volt::test('console.clients.show', ['client' => $client->id])->call('rotateSecret');
+    confirmEnvironmentStepUp();
+
+    test()->from(route('environment.clients.show', $client->id))
+        ->post(route('environment.clients.rotate', $client->id));
 
     expect($client->fresh()?->secret_hash)->toBeNull('rotation gave an asymmetric-only client a bearer secret');
 });
@@ -61,16 +63,34 @@ it('refuses to mint a secret for a client that signs its own assertions', functi
 it('meters MFA attempts per member, not per member and address', function (): void {
     $offenders = [];
 
-    foreach (Finder::create()->files()->in(base_path('resources/views/livewire'))->name('*.blade.php') as $file) {
+    /*
+     * THE CONTROLLERS, which is where the key is composed now — and the PATTERN follows the
+     * code too. This looked for `$key = 'mfa|' … . request()->ip()`, the shape a Volt
+     * component wrote; a ported controller returns the key from a method, so the old
+     * expression matched nothing at all and the sweep reported a clean run over code it
+     * could not see.
+     */
+    foreach (Finder::create()->files()->in(base_path('app/Http/Controllers'))->name('*.php') as $file) {
         $source = (string) file_get_contents((string) $file->getRealPath());
 
-        // The offending shape is CONCATENATION — appending the address to the key, so
-        // every new address is a new bucket. The subject plane's `?? request()->ip()` is
-        // a fallback for when there is no pending subject to key on at all, which is
-        // correct and must not be flagged: a check that cannot tell those apart would
-        // send someone to "fix" the one plane that had it right.
-        if (preg_match('/\$key = \'[a-z-]*mfa\|\'[^;]*\.\s*request\(\)->ip\(\)/', $source) === 1) {
-            $offenders[] = $file->getRelativePathname();
+        // Every expression that composes an MFA throttle key, however it is spelled.
+        preg_match_all("/'[a-z-]*mfa[a-z-]*\|'[^;]*/", $source, $matches);
+
+        foreach ($matches[0] as $expression) {
+            if (! str_contains($expression, '->ip()')) {
+                continue;
+            }
+
+            /*
+             * The offending shape is CONCATENATION — appending the address to the key, so
+             * every new address is a new bucket. `?? $request->ip()` is a FALLBACK for when
+             * there is no pending subject to key on at all, which is correct and must not
+             * be flagged: a check that cannot tell those apart would send somebody to "fix"
+             * the one plane that had it right.
+             */
+            if (! str_contains($expression, '??')) {
+                $offenders[] = $file->getRelativePathname();
+            }
         }
     }
 

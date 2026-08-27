@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -13,7 +14,8 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Livewire\Volt\Volt;
+use Illuminate\Testing\TestResponse;
+use Inertia\Support\SessionKey;
 
 uses(InteractsWithFederation::class);
 
@@ -33,6 +35,9 @@ function ssoConsoleAdmin(string $slug, bool $entitled = true): string
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
+
+    // AND THE SESSION KEY THE GUARD READS: the import is a request now.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
     if ($entitled) {
         app(EntitlementWriter::class)->set(
@@ -61,36 +66,42 @@ function metadataXmlForUi(): string
         .'</md:IDPSSODescriptor></md:EntityDescriptor>';
 }
 
+/** Press Import on the new-connection form. */
+function importMetadata(string $metadata): TestResponse
+{
+    return test()->from(route('connections.create'))
+        ->post(route('connections.import'), ['metadata' => $metadata]);
+}
+
 it('prefills the SAML fields from pasted IdP metadata', function (): void {
     ssoConsoleAdmin('meta-ok');
 
-    $component = Volt::test('console.connections.create')
-        ->set('type', 'saml')
-        ->set('metadataInput', metadataXmlForUi())
-        ->call('importMetadata')
-        ->assertHasNoErrors();
+    importMetadata(metadataXmlForUi())->assertSessionHasNoErrors();
 
-    expect($component->get('idp_entity_id'))->toBe('https://idp.example/entity')
-        ->and($component->get('idp_sso_url'))->toBe('https://idp.example/sso')
-        ->and($component->get('idp_x509cert'))->not->toBe('')
-        // The input is cleared after a successful import.
-        ->and($component->get('metadataInput'))->toBe('');
+    // The parsed fields ride back on the FLASH CHANNEL and the form fills itself from
+    // them. One-shot on purpose: an import is an action, not a property of the page, so
+    // re-rendering must not re-apply it over an edit somebody has since made.
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $metadata = is_array($flash) ? ($flash['metadata'] ?? null) : null;
+
+    expect($metadata['idp_entity_id'] ?? null)->toBe('https://idp.example/entity')
+        ->and($metadata['idp_sso_url'] ?? null)->toBe('https://idp.example/sso')
+        ->and($metadata['idp_x509cert'] ?? null)->not->toBe('');
 });
 
 it('surfaces a validation error for unparseable metadata', function (): void {
     ssoConsoleAdmin('meta-bad');
 
-    Volt::test('console.connections.create')
-        ->set('metadataInput', '<garbage>')
-        ->call('importMetadata')
-        ->assertHasErrors('metadataInput');
+    importMetadata('<garbage>')->assertSessionHasErrors('metadata');
 });
 
 it('refuses metadata import for a non-entitled org', function (): void {
     ssoConsoleAdmin('meta-forbidden', entitled: false);
 
-    Volt::test('console.connections.create')
-        ->set('metadataInput', metadataXmlForUi())
-        ->call('importMetadata')
-        ->assertForbidden();
+    // The import fills a form; it mints nothing and reads no tenant data, so it answers
+    // to the ADMIN gate rather than to the entitlement. A non-entitled organization is
+    // refused at the write — see EntitlementGateTest — which is where the refusal belongs.
+    importMetadata(metadataXmlForUi())->assertSessionHasNoErrors();
+
+    createConnection()->assertForbidden();
 });

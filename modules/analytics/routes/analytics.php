@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleRoutes;
+use Cbox\Id\Analytics\Http\Controllers\SignInActivityController;
 
 /*
  * One page, both planes, one component — the middleware stacks live in ConsoleRoutes.
@@ -25,7 +26,7 @@ use App\Platform\Console\ConsoleRoutes;
 ConsoleRoutes::page(
     feature: 'analytics',
     uri: '/analytics',
-    component: 'analytics.dashboard',
+    component: SignInActivityController::class,
     name: 'sign-in-activity',
     environmentUri: '/sign-in-activity',
 );

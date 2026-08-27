@@ -130,18 +130,25 @@ it('sizes touch controls at the threshold that stops iOS zooming, without disabl
  * the attribute is what gets guarded.
  */
 it('keeps the confirm-to-delete field typable on a mobile keyboard', function (): void {
-    $markup = (string) file_get_contents(
-        __DIR__.'/../../resources/views/components/confirm-delete.blade.php'
+    // THE COMPONENT, not the page. There is one type-to-confirm dialog in the console and
+    // every destructive action opens it, so this is the only place the attributes can be —
+    // which is the argument for the primitive existing at all.
+    $source = (string) file_get_contents(
+        __DIR__.'/../../resources/js/ui/ConfirmDelete.tsx'
     );
 
-    expect(str_contains($markup, 'autocapitalize="none"'))
+    expect(str_contains($source, 'autoCapitalize="none"'))
         ->toBeTrue('iOS capitalises the first letter, so the exact match can never succeed');
 
-    expect(str_contains($markup, 'autocorrect="off"'))
+    expect(str_contains($source, 'autoCorrect="off"'))
         ->toBeTrue('autocorrect rewrites the token as the person types it');
 
-    // A disabled button that explains nothing is the other half of the bug.
-    expect($markup)->toContain('aria-describedby');
+    expect(str_contains($source, 'spellCheck={false}'))
+        ->toBeTrue('a red squiggle under a resource name reads as an error the person made');
+
+    // A disabled button that explains nothing is the other half of the bug: the keyboard
+    // rewrote the token, the button stayed grey, and nothing said why.
+    expect($source)->toContain('aria-describedby');
 });
 
 /**
@@ -217,4 +224,95 @@ it('never hides a control behind a responsive display utility that cannot win', 
     }
 
     expect($offenders)->toBe([], "these render as display:none at every width — use :block, :flex or :inline-flex instead:\n".implode("\n", $offenders));
+});
+
+/**
+ * NO CLASS IN THE STYLESHEET THAT NOTHING WEARS.
+ *
+ * The port left eleven behind — `.cbx-sidebar`, `.cbx-toast`, `.cbx-flow*`,
+ * `.cbx-help-panel` and the rest — all of them Alpine-era primitives whose React
+ * replacements style themselves (the toast is `sonner` now, the help panel is a Radix
+ * popper). One of them said so in its own comment: "that class stays until the last Volt
+ * page that uses it is ported, and goes with it." The page was ported months before the
+ * class was, because nothing was watching.
+ *
+ * Dead CSS is not just weight. It is a reader finding two ways to build the same control
+ * and no way to tell which one is current — which is how `.cbx-help-panel` and
+ * `.cbx-help-content` came to exist at the same time, positioned by two incompatible
+ * mechanisms.
+ */
+// This suite does not boot the application, so `base_path()` is not available.
+define('REPO', dirname(__DIR__, 2));
+
+it('defines no cbx- class that nothing uses', function (): void {
+    $css = (string) file_get_contents(REPO.'/resources/css/app.css');
+
+    /*
+     * COMMENTS FIRST, and this test caught itself on it: the note explaining why
+     * `.cbx-help-panel` was removed names the class, so the sweep read its own epitaph as
+     * a live selector and reported the class it had just deleted. A check that cannot tell
+     * markup from prose fails on its own explanation.
+     */
+    $css = (string) preg_replace('#/\*.*?\*/#s', '', $css);
+
+    preg_match_all('/\.(cbx-[a-z0-9-]+)/', $css, $found);
+
+    $defined = array_values(array_unique($found[1]));
+
+    expect(count($defined))->toBeGreaterThan(50, 'the stylesheet sweep found almost no classes — did the file move?');
+
+    /*
+     * Everything that can wear one: the React tree, the two Blade documents left (the root
+     * view and the error pages), and PHP — a controller may name a class in a prop.
+     */
+    $roots = array_filter([
+        REPO.'/resources/js',
+        REPO.'/resources/views',
+        REPO.'/app',
+        ...array_filter((array) glob(REPO.'/modules/*/resources/js'), 'is_string'),
+        ...array_filter((array) glob(REPO.'/modules/*/src'), 'is_string'),
+    ], 'is_dir');
+
+    $markup = '';
+
+    foreach ($roots as $root) {
+        /** @var iterable<SplFileInfo> $files */
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+
+        foreach ($files as $file) {
+            $path = (string) $file;
+
+            // Wayfinder's generated route helpers are not markup and are gitignored.
+            if (str_contains($path, '/resources/js/actions/') || str_contains($path, '/resources/js/routes/')) {
+                continue;
+            }
+
+            if (preg_match('/\.(tsx|ts|php)$/', $path) === 1) {
+                $markup .= (string) file_get_contents($path);
+            }
+        }
+    }
+
+    $unused = [];
+
+    foreach ($defined as $class) {
+        if (str_contains($markup, $class)) {
+            continue;
+        }
+
+        /*
+         * A MODIFIER MAY BE BUILT RATHER THAN WRITTEN. `Dialog` composes
+         * `cbx-dialog--${size}`, so `cbx-dialog--sm` appears in no source file and is
+         * worn on every dialog in the console. Its stem does appear, which is the
+         * signal — and requiring the stem keeps this from degrading into "any class
+         * sharing a prefix with a used one is fine".
+         */
+        if (str_contains($class, '--') && str_contains($markup, strstr($class, '--', true).'--$')) {
+            continue;
+        }
+
+        $unused[] = $class;
+    }
+
+    expect($unused)->toBe([], "these classes are defined and worn by nothing:\n- ".implode("\n- ", $unused));
 });

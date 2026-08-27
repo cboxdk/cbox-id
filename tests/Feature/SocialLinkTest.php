@@ -10,7 +10,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 /**
  * Sign in through the real login component, then populate CurrentUser the way the
@@ -19,7 +19,7 @@ use Livewire\Volt\Volt;
  */
 function signInAndResolve(string $email, string $password = 'supersecret123'): void
 {
-    Volt::test('auth.login')->set('email', $email)->set('password', $password)->call('login');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => $email, 'password' => $password]);
 
     $sessionId = session()->get(PlatformAuth::SESSION_KEY);
     $session = app(SessionManager::class)->active(is_string($sessionId) ? $sessionId : '');
@@ -39,10 +39,7 @@ it('does not link a held identity until the user says so', function () {
     // Signing in proves control of THIS account — and that is all it proves. It used to
     // complete the link on its own whenever the addresses matched, which trusted the
     // provider's word for an address we had already decided not to trust.
-    Volt::test('auth.login')
-        ->set('email', 'dana@acme.test')
-        ->set('password', 'supersecret123')
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'supersecret123'])
         ->assertRedirect(route('dashboard'));
 
     expect(app(Subjects::class)->linkedIdentities($subject->id))->toBeEmpty();
@@ -57,7 +54,7 @@ it('links the held identity once the signed-in user confirms', function () {
 
     signInAndResolve('dana@acme.test');
 
-    Volt::test('auth.link-confirm')->call('connect');
+    test()->from(route('link.confirm'))->post(route('link.connect'), []);
 
     expect(collect(app(Subjects::class)->linkedIdentities($subject->id))
         ->contains(fn ($identity): bool => $identity->provider === 'social:google' && $identity->subject === 'g|1'))->toBeTrue();
@@ -72,7 +69,7 @@ it('links nothing when the user declines', function () {
     // "No, that wasn't me" — the answer someone gives when another person tried to sign
     // in using their address. It must leave the account exactly as it was, and it must
     // not leave the identity sitting there to be asked about again.
-    Volt::test('auth.link-confirm')->call('decline');
+    test()->from(route('link.confirm'))->post(route('link.decline'), []);
 
     expect(app(Subjects::class)->linkedIdentities($subject->id))->toBeEmpty()
         ->and(app(PlatformAuth::class)->pendingLink($subject->id))->toBeNull();
@@ -89,7 +86,7 @@ it('accepts an identity whose email differs from the account, because the user s
 
     signInAndResolve('dana@acme.test');
 
-    Volt::test('auth.link-confirm')->call('connect');
+    test()->from(route('link.confirm'))->post(route('link.connect'), []);
 
     expect(app(Subjects::class)->linkedIdentities($subject->id))->toHaveCount(1);
 });
@@ -147,9 +144,15 @@ it('shows connected accounts and lets a user disconnect one', function () {
     // Disconnecting is sensitive → confirm step-up. The account keeps its password,
     // so the last-factor guard allows the unlink.
     app(Sudo::class)->confirm();
-    Volt::test('account')
-        ->assertSee('Connected accounts')
-        ->call('unlinkProvider', 'google');
+
+    // The page OFFERS it — asked of the props rather than of the document, because a row
+    // that renders "Connected" without carrying a disconnect URL is a button that does
+    // nothing, and `assertSee('Connected accounts')` could not tell the two apart.
+    $google = collect(accountSecurity()['socialProviders'])->firstWhere('key', 'google');
+
+    expect($google['linked'])->toBeTrue();
+
+    unlinkSocialProvider('google')->assertSessionHasNoErrors();
 
     expect(app(Subjects::class)->linkedIdentities($id))->toBeEmpty();
 });
@@ -171,10 +174,7 @@ it('holds every authenticated page until the question is answered', function () 
     app(Subjects::class)->create('dana@acme.test', 'Dana', 'supersecret123');
     app(PlatformAuth::class)->startPendingLink(new FederatedPrincipal('social:google', 'g|1', 'dana@acme.test', 'Dana'));
 
-    Volt::test('auth.login')
-        ->set('email', 'dana@acme.test')
-        ->set('password', 'supersecret123')
-        ->call('login');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'supersecret123']);
 
     // Not a banner someone can scroll past. A half-made link is a question about who
     // may enter this account, and it gets answered before anything else happens.
@@ -183,12 +183,19 @@ it('holds every authenticated page until the question is answered', function () 
     // The screen itself must not be held, or the redirect loops and the account is
     // unreachable with no way to fix it — the failure mode the password hold already
     // taught us about.
-    // Rendered through the real stack — the question, the address it is about, and both
-    // answers. A hold that redirects to a screen nobody can act on is a lockout.
+    // Rendered through the real stack: the question, and the address it is about. A hold
+    // that redirects to a screen nobody can act on is a lockout.
+    //
+    // Asserted on the page's PROPS rather than on its text. The words are the page's to
+    // choose and it renders them in the browser, so scanning the response body for them
+    // would be scanning a mount point — and would fail the day somebody improves the
+    // copy, which is not a regression.
     $this->get(route('link.confirm'))
         ->assertOk()
-        ->assertSee('Connect Google?')
-        ->assertSee('dana@acme.test')
-        ->assertSee('Yes, connect Google')
-        ->assertSee("No, that wasn't me", escape: false);
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->component('auth/link-confirm')
+                ->where('provider', 'Google')
+                ->where('email', 'dana@acme.test'),
+        );
 })->group('security');

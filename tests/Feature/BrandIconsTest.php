@@ -49,19 +49,39 @@ it('offers apple-touch-icon at the size Apple actually asks for', function (): v
 });
 
 it('points every layout at the root paths rather than at /brand', function (): void {
-    // Five layouts, and before this they disagreed: two declared no apple-touch-icon at
-    // all, and the ones that did pointed into /brand — which a crawler that never reads
-    // the HTML will not find.
-    $layouts = glob(resource_path('views/components/layouts/*.blade.php')) ?: [];
+    /*
+     * ONE DOCUMENT HEAD NOW, and that is the finding this test would otherwise have
+     * stopped reporting. It swept `views/components/layouts/*.blade.php` — five layouts
+     * that disagreed with each other, two declaring no apple-touch-icon at all — and every
+     * one of them is gone: the console is a single Inertia root view, and the error pages
+     * have their own. A glob over a deleted directory returns an empty list, and an empty
+     * list passes.
+     */
+    $layouts = array_merge(
+        (array) glob(resource_path('views/*.blade.php')),
+        (array) glob(resource_path('views/errors/layout.blade.php')),
+    );
+
+    // Guard the guard: the sweep has lost its directory once already.
+    expect(count($layouts))->toBeGreaterThan(1, 'no document layouts were found — the sweep lost its subject');
+
     $missing = [];
 
+    $checked = 0;
+
     foreach ($layouts as $layout) {
+        if (! is_string($layout)) {
+            continue;
+        }
+
         $source = (string) file_get_contents($layout);
 
         // Only layouts that render a document head are in scope.
         if (! str_contains($source, 'rel="icon"')) {
             continue;
         }
+
+        $checked++;
 
         if (! str_contains($source, 'href="/favicon.ico"')
             || ! str_contains($source, 'href="/apple-touch-icon.png"')) {
@@ -70,4 +90,9 @@ it('points every layout at the root paths rather than at /brand', function (): v
     }
 
     expect($missing)->toBe([]);
+
+    // …and at least one layout was actually IN scope. The `rel="icon"` filter above is a
+    // scope test, so a head that stopped declaring icons entirely would skip itself and
+    // leave nothing to fail.
+    expect($checked)->toBeGreaterThan(0, 'no layout declares an icon at all');
 });

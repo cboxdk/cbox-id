@@ -16,7 +16,8 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Support\Carbon;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Collection;
+use Inertia\Testing\AssertableInertia;
 
 uses(InteractsWithTenancy::class);
 
@@ -81,28 +82,33 @@ it('sums headline totals and breaks them down per environment across every plane
 
     usageOperatorSignIn();
 
-    Volt::test('platform.usage')
+    $page = test()->get(route('platform.usage'))->assertOk();
+
+    $page
         // Totals sum across EVERY plane (proving EnvironmentContext::withoutScope) —
         // including the PLATFORM ROOT, which is a plane like any other and now holds the
         // operator themselves: a subject with a live session, because an operator is a
         // person who signed in rather than a row in a second credential table. Three
         // environments, four users, three active sessions; the two tenant planes below
         // are unchanged.
-        ->assertViewHas('totals', fn (array $t): bool => $t['environments'] === 3
-            && $t['organizations'] === 3
-            && $t['users'] === 4
-            && $t['sessions'] === 3)
-        // Per-environment breakdown shows each plane's own counts.
-        ->assertViewHas('breakdown', function (array $rows): bool {
-            $byName = collect($rows)->keyBy('name');
-            $a = $byName->get('Plane A');
-            $b = $byName->get('Plane B');
+        ->assertInertia(fn (AssertableInertia $inertia) => $inertia
+            ->where('totals', fn (Collection $t): bool => $t['environments'] === 3
+                && $t['organizations'] === 3
+                && $t['users'] === 4
+                && $t['sessions'] === 3)
+            // Per-environment breakdown shows each plane's own counts.
+            ->where('breakdown', function (Collection $rows): bool {
+                $byName = $rows->keyBy('name');
+                $a = $byName->get('Plane A');
+                $b = $byName->get('Plane B');
 
-            return $a !== null && $a['organizations'] === 2 && $a['users'] === 2 && $a['sessions'] === 1
-                && $b !== null && $b['organizations'] === 1 && $b['users'] === 1 && $b['sessions'] === 1;
-        })
-        ->assertSee('Plane A')
-        ->assertSee('Plane B');
+                return $a !== null && $a['organizations'] === 2 && $a['users'] === 2 && $a['sessions'] === 1
+                    && $b !== null && $b['organizations'] === 1 && $b['users'] === 1 && $b['sessions'] === 1;
+            })
+            // Both planes are NAMED, or the counts above could be describing a table with
+            // no rows in it.
+            ->where('breakdown', fn (Collection $rows): bool => $rows->pluck('name')->contains('Plane A'))
+            ->where('breakdown', fn (Collection $rows): bool => $rows->pluck('name')->contains('Plane B')));
 });
 
 it('ranks top organizations by member count across planes, each linking to its plane', function (): void {
@@ -129,25 +135,50 @@ it('ranks top organizations by member count across planes, each linking to its p
 
     usageOperatorSignIn();
 
-    Volt::test('platform.usage')
-        ->assertViewHas('topOrganizations', function (array $rows) use ($orgA1Id, $orgB1Id): bool {
-            $byId = collect($rows)->keyBy('id');
-            $a = $byId->get($orgA1Id);
-            $b = $byId->get($orgB1Id);
+    test()->get(route('platform.usage'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('topOrganizations', function (Collection $rows) use ($orgA1Id, $orgB1Id): bool {
+                $byId = $rows->keyBy('id');
+                $a = $byId->get($orgA1Id);
+                $b = $byId->get($orgB1Id);
 
-            // Cross-plane roll-up: both orgs present, correct member counts + planes,
-            // and the most-members org ranks first.
-            return $a !== null && $a['members'] === 2 && $a['plane'] === 'Plane A'
-                && $b !== null && $b['members'] === 1 && $b['plane'] === 'Plane B'
-                && $rows[0]['id'] === $orgA1Id;
-        })
-        // Each row links to the cross-plane jump route (opens in the right plane).
-        ->assertSee(route('platform.search.jump', $orgA1Id), escape: false);
+                // Cross-plane roll-up: both orgs present, correct member counts and planes,
+                // and the most-members org ranks first.
+                return $a !== null && $a['members'] === 2 && $a['plane'] === 'Plane A'
+                    && $b !== null && $b['members'] === 1 && $b['plane'] === 'Plane B'
+                    && $rows->first()['id'] === $orgA1Id;
+            })
+            // Each row carries the cross-plane JUMP route rather than the detail page: the
+            // tenant lives in another plane, and opening its page without re-pointing the
+            // console first is how a plane-scoped page 404s on a row that exists.
+            ->where('topOrganizations', fn (Collection $rows): bool => $rows
+                ->firstWhere('id', $orgA1Id)['href'] === route('platform.search.jump', $orgA1Id)));
 });
 
-it('refuses a non-operator request with a 404', function (): void {
-    // Nobody with operator authority — boot()'s per-request re-check aborts every request.
-    Volt::test('platform.usage')->assertStatus(404);
+it('refuses a non-operator request with a 404, and an anonymous one with a sign-in', function (): void {
+    /*
+     * TWO REFUSALS, and the difference between them is the point — it is spelled out on the
+     * route group and this is where it is checked.
+     *
+     * No session at all is a step the visitor can TAKE, so they are sent to sign in. A
+     * session that simply is not an operator's must 404 rather than confirm that this
+     * deployment has a staff console at that address.
+     *
+     * The component-driven version of this test could only ever see the second: it bypassed
+     * the middleware entirely, so the redirect it is now asserting had nothing to produce it.
+     */
+    // On an install with nothing in it that redirect lands on the installer rather than the
+    // sign-in page, which is the same answer one step earlier — so the world exists first.
+    actingAsRole(MembershipRole::Owner);
+    signOutOfConsole();
+
+    test()->get(route('platform.usage'))->assertRedirect(route('login'));
+
+    // And a real person, signed in, who does not run this deployment.
+    actingAsRole(MembershipRole::Admin);
+
+    test()->get(route('platform.usage'))->assertNotFound();
 });
 
 /*
@@ -202,22 +233,26 @@ it('shows the per-tenant usage panel with member, MFA, domain and sign-in metric
     $audit->record(AuditEvent::forUser('user.login', $userIds[0], $org->id));
     $audit->record(AuditEvent::forUser('user.login', $userIds[1], $org->id));
 
-    Volt::test('platform.organization', ['organization' => $org->id])
-        ->assertViewHas('usage', function (array $u): bool {
-            return $u['members'] === 4
-                && $u['mfaUsers'] === 2
-                && $u['mfaAdoption'] === 50
-                && $u['sessions'] === 1
-                && $u['domains'] === 1
-                && $u['signIns'] === 2;
-        })
-        ->assertSee('MFA adoption')
-        ->assertSee('50%')
-        ->assertSee('Sign-ins (30d)');
+    $usage = (array) platformOrganization($org->id)['usage'];
+
+    expect($usage['members'])->toBe(4)
+        // Two CONFIRMED factors out of four members. The third member's unconfirmed factor
+        // is the one that must not count — an enrolment nobody completed is not MFA.
+        ->and($usage['mfaUsers'])->toBe(2)
+        ->and($usage['mfaAdoption'])->toBe(50)
+        ->and($usage['sessions'])->toBe(1)
+        ->and($usage['domains'])->toBe(1)
+        ->and($usage['signIns'])->toBe(2);
 });
 
 it('refuses the per-tenant panel for a non-operator request with a 404', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
-    Volt::test('platform.organization', ['organization' => $org->id])->assertStatus(404);
-});
+    // A session that IS signed in and simply is not an operator's — 404 rather than 403,
+    // because a 403 confirms to any account holder that this deployment has a staff
+    // console at that address.
+    ['subjectId' => $subjectId] = provisionAccount('not-an-operator@acme.example');
+    signInAsMember($subjectId);
+
+    test()->get(route('platform.organization', $org->id))->assertNotFound();
+})->group('security');

@@ -6,10 +6,9 @@ namespace App\Http\Controllers;
 
 use App\Models\InvitationRoleGrant;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\GrantAccessRole;
 use App\Platform\PlatformAuth;
-use App\Platform\SodGuard;
 use App\Platform\SsoRefusal;
-use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Exceptions\GrantRefused;
 use Cbox\Id\AccessControl\Exceptions\UnknownRole;
@@ -33,7 +32,7 @@ use Illuminate\Http\Request;
  */
 final class InvitationController extends Controller
 {
-    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, Roles $roles, SodGuard $sod, AuditLog $audit): RedirectResponse
+    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, GrantAccessRole $access, AuditLog $audit): RedirectResponse
     {
         $invitation = $invitations->byToken($token);
 
@@ -68,12 +67,15 @@ final class InvitationController extends Controller
         // an earlier membership. A conflicting grant is skipped, not fatal: the person
         // still joins, and the governance screen reports what was withheld.
         foreach ($grants as $grant) {
-            if ($sod->refuse($invitation->organization_id, $subject->id, $grant->role_id) !== null) {
-                continue;
-            }
-
             try {
-                $roles->assign($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual);
+                // THROUGH THE GATE, not past it. This checked SoD itself and then called
+                // `Roles::assign()` raw — the same rule as {@see GrantAccessRole}, applied
+                // through a second signature, which is the drift the comment below already
+                // worried about. A refusal is skipped here exactly as it was: the person
+                // still joins, and the conflicting grant simply does not happen.
+                if ($access->grant($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual) !== null) {
+                    continue;
+                }
             } catch (UnknownRole|GrantRefused) {
                 // The role was retired or deleted between the invitation and the click —
                 // an app ships a manifest without it, or an admin removes it. Skipped for

@@ -1,0 +1,85 @@
+import { fileURLToPath, URL } from 'node:url';
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { wayfinder } from '@laravel/vite-plugin-wayfinder';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.tsx',
+                /*
+                 * The error pages' own entry. They are Blade rather than React, and
+                 * deliberately: an error page has to render when the application is broken,
+                 * which is exactly when booting a router and hydrating a page component is
+                 * least likely to work. Two controls, forty lines, and nothing in app.tsx
+                 * imports it.
+                 */
+                'resources/js/errors.ts',
+            ],
+            refresh: [
+                // The Inertia root view and the few blade surfaces that survive it
+                // (mail, errors, first-paint shells). Page markup lives in .tsx and is
+                // handled by React Fast Refresh, not by a full reload.
+                'resources/views/**',
+                'routes/**',
+                'app/Http/Middleware/HandleInertiaRequests.php',
+            ],
+        }),
+
+        react(),
+
+        tailwindcss(),
+
+        // Typed route helpers and form actions generated from routes/web.php. The point
+        // is that a renamed or removed route becomes a TypeScript error rather than a
+        // 404 somebody finds in production: nothing in resources/js spells a URL.
+        wayfinder({
+            formVariants: true,
+        }),
+    ],
+
+    // Mirrors `paths` in tsconfig.json. Both are needed and neither implies the other:
+    // TypeScript resolves the import for the checker, Vite resolves it for the bundle.
+    //
+    // An ARRAY, not an object, and the regex is why: Vite's object form does prefix
+    // replacement, so a bare `'@routes'` entry also swallowed `@routes/organization` and
+    // resolved it to `routes/index.ts/organization`. `/^@routes$/` matches the top-level
+    // index and nothing under it.
+    resolve: {
+        alias: [
+            {
+                find: /^@routes$/,
+                replacement: fileURLToPath(
+                    new URL('./resources/js/routes/index.ts', import.meta.url),
+                ),
+            },
+            {
+                find: /^@routes\//,
+                replacement: fileURLToPath(new URL('./resources/js/routes/', import.meta.url)),
+            },
+            {
+                find: /^@actions\//,
+                replacement: fileURLToPath(new URL('./resources/js/actions/', import.meta.url)),
+            },
+            {
+                find: /^@\//,
+                replacement: fileURLToPath(new URL('./resources/js/', import.meta.url)),
+            },
+        ],
+    },
+
+    server: {
+        watch: {
+            ignored: ['**/storage/framework/views/**'],
+        },
+    },
+
+    // No manualChunks. Every page is a dynamic import (`import.meta.glob` in app.tsx), so
+    // Rollup already emits one chunk per page plus a shared vendor chunk — which is the
+    // split that matters. Naming vendor chunks by hand produced an EMPTY `react` chunk,
+    // because React is reached through @inertiajs/react and had already been placed.
+});

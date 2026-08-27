@@ -163,8 +163,8 @@ widths.
 
 ## Notes
 
-- Server-rendered (Livewire + Volt), session-cookie auth, minimal JS — chosen
-  because this *is* the login surface. See the framework
+- Inertia + React over server-rendered props, session-cookie auth, no tokens in
+  the browser — chosen because this *is* the login surface. See the framework
   [security model](https://github.com/cboxdk/laravel-id/blob/main/docs/security/_index.md).
 - **Accessibility:** the auth and console pages pass an automated axe-core
   WCAG 2.1 A/AA audit (guarded by a regression test); keyboard-navigable with a

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
 use Cbox\Id\ExternalActions\Enums\HookPoint;
@@ -14,7 +15,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Inertia\Support\SessionKey;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -41,6 +43,12 @@ function hooksAdmin(MembershipRole $role = MembershipRole::Owner): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN. `CurrentUser` is
+    // resolved state for code already inside the process, which is all a Livewire
+    // component ever needed; a ported page is reached by a REQUEST, and without this every
+    // one of them answers a redirect to /login.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $org->id;
 }
 
@@ -49,11 +57,8 @@ it('registers a hook and reveals the signing secret once', function (): void {
     $orgId = hooksAdmin();
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('hook', 'token_minting')
-        ->set('url', 'https://hooks.example.test/token')
-        ->call('register')
-        ->assertHasNoErrors();
+    confirmConsoleStepUp();
+    registerHook()->assertSessionHasNoErrors();
 
     $endpoint = ExternalActionEndpoint::query()->where('organization_id', $orgId)->firstOrFail();
 
@@ -61,30 +66,57 @@ it('registers a hook and reveals the signing secret once', function (): void {
     // page as a one-time flash, held there in a PROTECTED prop (never dehydrated into
     // the wire snapshot) and surfaced only through the render. So assert the one-time
     // reveal on the rendered output rather than reaching into component state.
-    $component = Volt::test('console.hooks.show', ['hook' => $endpoint->id]);
-    $component->assertSee('Copy this signing secret now');
-    expect($component->html())->toMatch('/[0-9a-f]{64}/');
+    // Read BEFORE the page is loaded, because loading it is what spends the flash — and a
+    // real secret rather than the empty string a page would happily render.
+    $revealed = session()->get(SessionKey::FLASH_DATA)['newSecret'] ?? '';
+
+    expect($revealed)->toMatch('/[0-9a-f]{64}/');
+
+    /*
+     * ON THE FLASH CHANNEL, and that IS the security property rather than a detail of
+     * plumbing: page props are written into the browser's history entry, so a live
+     * credential there is retrievable by pressing Back.
+     *
+     * The SAME secret, not merely some value: the page has to receive the credential the
+     * registration actually minted, or the person copies something the endpoint will never
+     * be sent.
+     */
+    test()->get(route('hooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/hooks/show')
+            ->hasFlash('newSecret', $revealed));
 });
 
-it('dismisses the revealed secret', function (): void {
+it('reveals the secret once and never again', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     $orgId = hooksAdmin();
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/token')
-        ->call('register')
-        ->assertHasNoErrors();
+    confirmConsoleStepUp();
+    registerHook()->assertSessionHasNoErrors();
 
     $endpoint = ExternalActionEndpoint::query()->where('organization_id', $orgId)->firstOrFail();
 
     // Only the organization console offered this, and the banner shows a live credential
     // in plaintext — an administrator who has copied it needs it gone now, not at the
     // next navigation.
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])
-        ->assertSee('Copy this signing secret now')
-        ->call('dismissSecret')
-        ->assertDontSee('Copy this signing secret now');
+    test()->get(route('hooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('newSecret'));
+
+    /*
+     * THE SECOND LOAD HAS NOTHING. A reveal-once credential that survives a refresh is not
+     * revealed once — it is stored where the next person to open the tab can read it. The
+     * flash channel is what makes this true, and this is the assertion that says so.
+     *
+     * DISMISSING it is the reader's own affordance now: by the time anybody presses that
+     * button the secret is already off the server, so making the banner go is the whole
+     * job and it belongs in the browser. Held in tests/Browser/HooksTest.php.
+     */
+    test()->get(route('hooks.show', $endpoint->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->missingFlash('newSecret'));
 });
 
 it('pauses, activates then removes an endpoint', function (): void {
@@ -92,20 +124,22 @@ it('pauses, activates then removes an endpoint', function (): void {
     $orgId = hooksAdmin();
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('url', 'https://hooks.example.test/token')
-        ->call('register')
-        ->assertHasNoErrors();
+    confirmConsoleStepUp();
+    registerHook()->assertSessionHasNoErrors();
 
     $endpoint = ExternalActionEndpoint::query()->where('organization_id', $orgId)->firstOrFail();
+    $from = route('hooks.show', $endpoint->id);
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('pause')->assertHasNoErrors();
+    // ONE ENDPOINT, TWO ANSWERS. The state it moves to is read from the record rather than
+    // posted, so exercising it twice is what proves it reads the record at all — a toggle
+    // that always paused would pass a single call.
+    test()->from($from)->post(route('hooks.toggle', $endpoint->id))->assertSessionHasNoErrors();
     expect($endpoint->fresh()?->status)->toBe(ActionEndpointStatus::Paused);
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('activate')->assertHasNoErrors();
+    test()->from($from)->post(route('hooks.toggle', $endpoint->id))->assertSessionHasNoErrors();
     expect($endpoint->fresh()?->status)->toBe(ActionEndpointStatus::Active);
 
-    Volt::test('console.hooks.show', ['hook' => $endpoint->id])->call('remove')->assertHasNoErrors();
+    test()->delete(route('hooks.destroy', $endpoint->id))->assertRedirect(route('hooks'));
     expect(ExternalActionEndpoint::query()->whereKey($endpoint->id)->exists())->toBeFalse();
 });
 
@@ -122,7 +156,11 @@ it('404s an endpoint belonging to another organization in the same environment',
     $theirs = app(ExternalActions::class)
         ->register(HookPoint::TokenMinting, 'https://rival.example.test/token', $other->id)->endpoint;
 
-    Volt::test('console.hooks.show', ['hook' => $theirs->id])->assertStatus(404);
+    test()->get(route('hooks.show', $theirs->id))->assertNotFound();
+
+    // And every mutation resolves the id inside the same gate rather than trusting it.
+    test()->post(route('hooks.toggle', $theirs->id))->assertNotFound();
+    test()->delete(route('hooks.destroy', $theirs->id))->assertNotFound();
 })->group('security');
 
 /**
@@ -137,15 +175,19 @@ it('shows an environment-owned endpoint to a tenant admin without offering to ma
     $environmentWide = app(ExternalActions::class)
         ->registerForEnvironment(HookPoint::TokenMinting, 'https://operator.example.test/token')->endpoint;
 
-    Volt::test('console.hooks.show', ['hook' => $environmentWide->id])
+    test()->get(route('hooks.show', $environmentWide->id))
         ->assertOk()
-        ->assertSee('All organizations')
-        ->assertDontSee('Pause');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('hook.owner', null)
+            // The controls are not offered, rather than offered and refused.
+            ->where('mayManage', false));
 
-    // And the button being absent is not the guard: the action is client-callable.
-    Volt::test('console.hooks.show', ['hook' => $environmentWide->id])
-        ->call('pause')
-        ->assertForbidden();
+    // And the button being absent is not the guard: the route is typeable. 403 rather than
+    // 404 — this endpoint is legitimately visible here, it is simply not this
+    // administrator's to change, and answering "no such thing" would deny a row the page
+    // renders three lines above it.
+    test()->post(route('hooks.toggle', $environmentWide->id))->assertForbidden();
+    test()->delete(route('hooks.destroy', $environmentWide->id))->assertForbidden();
 
     expect($environmentWide->fresh()?->status)->toBe(ActionEndpointStatus::Active);
 })->group('security');
@@ -153,7 +195,7 @@ it('shows an environment-owned endpoint to a tenant admin without offering to ma
 it('forbids a non-admin member', function (): void {
     hooksAdmin(MembershipRole::Member);
 
-    Volt::test('console.hooks.index')->assertForbidden();
+    test()->get(route('hooks'))->assertForbidden();
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')->assertForbidden();
+    test()->get(route('hooks.create'))->assertForbidden();
 })->group('security');

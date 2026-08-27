@@ -10,7 +10,6 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -114,28 +113,63 @@ it('takes the platform pages away from a suspended operator in a session they al
 it('creates and freely targets environments — no identity guard', function (): void {
     actAsOperator();
 
-    Volt::test('platform.environments')->set('name', 'Staging')->call('create')->assertHasNoErrors();
+    createPlatformEnvironment(['name' => 'Staging'])->assertSessionHasNoErrors();
     $staging = Environment::query()->where('slug', 'staging')->first();
     expect($staging)->not->toBeNull();
 
     // Operators stand above every plane — switching just repoints the target, under the
     // operator-only environment key (never the end-user environment resolution).
-    Volt::test('platform.environments')->call('switchTo', $staging->id);
+    targetPlatformEnvironment($staging->id);
     expect(session(OperatorEnvironment::SESSION_KEY))->toBe('staging');
+
+    // And the list SAYS which plane it is aimed at, from the same key. Without this the
+    // switch above is a session write nothing on the page reflects.
+    expect(platformEnvironments()['activeId'])->toBe($staging->id);
+});
+
+/**
+ * A DOMAIN TYPED HERE IS RECORDED, NOT ROUTED.
+ *
+ * The per-environment issuer trusts a custom domain only once `domain_verified_at` is
+ * stamped, so writing `domain` at creation would route the host while discovery kept
+ * advertising the fallback issuer — a mismatch every conformant OIDC client rejects per
+ * RFC 8414 §3.3, which makes the plane silently unusable from the moment it exists.
+ */
+it('creates an environment without routing an unverified domain to it', function (): void {
+    actAsOperator();
+
+    createPlatformEnvironment(['name' => 'Acme Prod', 'domain' => 'id.acme.example'])
+        ->assertSessionHasNoErrors();
+
+    $environment = Environment::query()->where('slug', 'acme-prod')->first();
+
+    expect($environment)->not->toBeNull()
+        ->and($environment->domain)->toBeNull('an unverified domain was routed at creation');
+});
+
+it('refuses a domain already routed to another environment', function (): void {
+    actAsOperator();
+
+    Environment::query()->create([
+        'name' => 'Taken',
+        'slug' => 'taken',
+        'status' => 'active',
+        'domain' => 'id.acme.example',
+    ]);
+
+    // Cased differently, because a hostname is case-insensitive and the uniqueness check
+    // is not — this used to create a second environment claiming the same host.
+    createPlatformEnvironment(['name' => 'Clash', 'domain' => 'ID.Acme.Example'])
+        ->assertSessionHasErrors('domain');
+
+    expect(Environment::query()->where('slug', 'clash')->exists())->toBeFalse();
 });
 
 it('bootstraps a plane with its first organization and admin', function (): void {
     actAsOperator();
     $env = Environment::query()->create(['name' => 'Prod', 'slug' => 'prod', 'status' => 'active']);
 
-    Volt::test('platform.environments')
-        ->set('provisioningEnvId', $env->id)
-        ->set('orgName', 'Acme Inc')
-        ->set('adminName', 'Ada Lovelace')
-        ->set('adminEmail', 'admin@acme.test')
-        ->set('adminPassword', 'a-strong-admin-pass')
-        ->call('provisionAdmin')
-        ->assertHasNoErrors();
+    provisionEnvironmentAdmin($env->id)->assertSessionHasNoErrors();
 
     // The org and admin exist INSIDE the target plane.
     [$orgExists, $adminExists] = app(EnvironmentContext::class)->runAs($env, fn (): array => [
@@ -146,24 +180,83 @@ it('bootstraps a plane with its first organization and admin', function (): void
     expect($orgExists)->toBeTrue()->and($adminExists)->toBeTrue();
 });
 
+/**
+ * THE TARGET IS A ROUTE PARAMETER, and it is resolved unscoped.
+ *
+ * Under Volt it was a component property — retargetable from the browser after mount,
+ * which is why it had to be `#[Locked]`. An id that names nothing must 404 rather than
+ * provision into whichever plane the console happens to be sitting on.
+ */
+it('refuses to provision into an environment that does not exist', function (): void {
+    actAsOperator();
+
+    provisionEnvironmentAdmin('env_nothing_by_that_id')->assertNotFound();
+
+    expect(app(Subjects::class)->findByEmail('admin@acme.test'))->toBeNull();
+})->group('security');
+
+/**
+ * The password floor is the TARGET TENANT's, asked inside that plane.
+ *
+ * Asked on the operator console's own plane it would be the wrong policy — an operator
+ * provisioning into a strict tenant is bound by that tenant's rules, not by the platform
+ * root's — and the violation is reported against the field somebody can act on.
+ */
+it('holds a provisioned admin to the target plane password policy', function (): void {
+    actAsOperator();
+    $env = Environment::query()->create(['name' => 'Strict', 'slug' => 'strict', 'status' => 'active']);
+
+    provisionEnvironmentAdmin($env->id, ['adminPassword' => 'short'])
+        ->assertSessionHasErrors('adminPassword');
+
+    $exists = app(EnvironmentContext::class)->runAs(
+        $env,
+        fn (): bool => app(Subjects::class)->findByEmail('admin@acme.test') !== null,
+    );
+
+    expect($exists)->toBeFalse('a refused password still created the admin');
+});
+
+it('refuses a second admin on an address the target plane already holds', function (): void {
+    actAsOperator();
+    $env = Environment::query()->create(['name' => 'Prod', 'slug' => 'prod', 'status' => 'active']);
+
+    provisionEnvironmentAdmin($env->id)->assertSessionHasNoErrors();
+
+    // Uniqueness is PER-PLANE, so it can only be asked inside the target environment.
+    provisionEnvironmentAdmin($env->id, ['orgName' => 'Second Inc'])
+        ->assertSessionHasErrors('adminEmail');
+
+    $secondOrg = app(EnvironmentContext::class)->runAs(
+        $env,
+        fn (): bool => app(Organizations::class)->bySlug('second-inc') !== null,
+    );
+
+    expect($secondOrg)->toBeFalse();
+});
+
 it('creates operators and toggles their status, but never the current one', function (): void {
     $me = actAsOperator('me@platform.test');
 
-    Volt::test('platform.operators')
-        ->set('name', 'Grace')
-        ->set('email', 'grace@platform.test')
-        ->set('password', 'a-strong-operator-pass')
-        ->call('create')
-        ->assertHasNoErrors();
+    createOperator(['name' => 'Grace', 'email' => 'grace@platform.test'])
+        ->assertSessionHasNoErrors();
 
     $grace = app(PlatformOperators::class)->findByEmail('grace@platform.test');
     expect($grace)->not->toBeNull();
 
-    Volt::test('platform.operators')->call('toggleStatus', $grace->id);
+    toggleOperator($grace->id);
     expect(PlatformOperator::query()->whereKey($grace->id)->value('status')?->value)->toBe('suspended');
 
-    // Cannot suspend yourself mid-session — refused with a friendly message, and
-    // the account stays active (no self-lockout).
-    Volt::test('platform.operators')->call('toggleStatus', $me->id)->assertHasNoErrors();
+    // Cannot suspend yourself mid-session. THE REASON, not just the outcome: a refusal
+    // that merely left the row alone would pass here against a controller that silently
+    // did nothing at all, and the operator would be left pressing a dead button.
+    toggleOperator($me->id)->assertSessionHasErrors('operator');
     expect(PlatformOperator::query()->whereKey($me->id)->value('status')?->value)->toBe('active');
+
+    // …and the control is not drawn for your own row either, so the refusal above is the
+    // second door rather than the only one.
+    $rows = collect((array) test()->get(route('platform.operators'))->assertOk()->inertiaProps('operators'));
+
+    expect($rows->firstWhere('id', $me->id)['isSelf'])->toBeTrue()
+        ->and($rows->firstWhere('id', $grace->id)['isSelf'])->toBeFalse();
 });

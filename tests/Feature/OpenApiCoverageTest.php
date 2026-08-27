@@ -120,6 +120,16 @@ function undocumentedByDesign(): array
         // OAuth 2.0 / OIDC — RFC-specified. DEBT: no machine-readable contract yet.
         'GET /oauth/authorize',
         'POST /oauth/authorize',
+        /*
+         * The two answers the consent SCREEN posts to itself. Not a protocol surface at
+         * all: no relying party calls them, they take no parameters beyond the id of a
+         * request this same session already validated, and the RFC-described behaviour is
+         * the redirect they end in — which /oauth/authorize's own entry covers. They are
+         * here because the checker walks every route rather than because anybody chose to
+         * leave a contract undescribed.
+         */
+        'POST /oauth/authorize/{authorization}/approve',
+        'POST /oauth/authorize/{authorization}/deny',
         'POST /oauth/backchannel_authentication',
         'POST /oauth/decisions',
         'POST /oauth/device_authorization',

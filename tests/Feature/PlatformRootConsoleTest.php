@@ -119,19 +119,25 @@ it('lands a root subject who belongs to no organization on something real', func
 
     $response->assertSuccessful();
 
-    // A landing, not a shell. It says something true about a person who holds no
-    // membership rather than the old fallback — "here's what's happening across your
-    // organization" — which described something they do not have, and it offers the two
-    // things that ARE theirs.
-    // Asserted around the apostrophes rather than through them — the copy uses a straight
-    // `'`, which Blade escapes to `&#039;`, and matching the entity would pin the escaping
-    // rather than the sentence.
-    $response->assertSee('belong to an organization here yet', false)
-        ->assertSee('Manage security', false);
+    /*
+     * A LANDING, NOT A SHELL. It says something true about a person who holds no membership
+     * rather than the old fallback — "here's what's happening across your organization" —
+     * which described something they do not have, and it offers the things that ARE theirs.
+     *
+     * Asserted on the props the page is built from. The sentence is one of them; the
+     * controls beside it — "Manage security", the sign-out in the account menu — are drawn
+     * by the components from `isAdmin` and the shared `auth`, and tests/Browser is where
+     * their being DRAWN is held.
+     */
+    $props = $response->assertOk();
 
-    // …and a way out. The 403 that `workspace.no-access` was written to replace rendered
-    // on a layout with no rail, so there was no sign-out control on it at all.
-    $response->assertSee('Sign out', false);
+    expect((string) $props->inertiaProps('greeting'))->toContain('belong to an organization here yet')
+        ->and($props->inertiaProps('isAdmin'))->toBeFalse()
+        ->and($props->inertiaProps('organizationName'))->toBeNull()
+        // The two things that are theirs: their own security page, and — through the
+        // shared auth prop the account menu reads — a way out.
+        ->and((array) $props->inertiaProps('urls'))->toHaveKey('account')
+        ->and($props->inertiaProps('auth.user'))->not->toBeNull();
 });
 
 /**

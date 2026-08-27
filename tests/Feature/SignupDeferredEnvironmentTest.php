@@ -10,7 +10,7 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 /** The organization a signed-up owner belongs to, read in the platform root. */
 function ownerOrganizationId(string $subjectId): string
@@ -50,13 +50,8 @@ function rootForDeferredSignup(): Environment
 
 function signUpForWorkspace(string $email = 'dana@acme.example'): void
 {
-    Volt::test('auth.signup')
-        ->set('organization', 'Acme')
-        ->set('name', 'Dana Reeves')
-        ->set('email', $email)
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('register')
-        ->assertHasNoErrors();
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Dana Reeves', 'email' => $email, 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertSessionHasNoErrors();
 }
 
 it('provisions no environment until the owner verifies their email, then exactly one', function (): void {
@@ -93,12 +88,16 @@ it('tells the owner on the workspace launchpad why there is no environment yet',
     signUpForWorkspace();
 
     // Without this the page shows a project with no environments and no explanation.
-    // Asserted on the banner's OWN copy, not on the shared flash toast — the toast says
-    // something similar and would keep this test green with the banner gone.
+    // Asserted on the banner's OWN state, not on the shared flash toast — the toast says
+    // something similar and would keep this test green with the banner gone. `awaiting
+    // Verification` is the single prop that decides whether the way back exists at all,
+    // and the address beside it is what somebody searches their inbox for.
     $this->get(route('projects'))
         ->assertOk()
-        ->assertSee('is created the moment you open it')
-        ->assertSee('dana@acme.example');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/projects/index')
+            ->where('awaitingVerification', true)
+            ->where('verificationEmail', 'dana@acme.example'));
 });
 
 it('does not mint a second environment when the verification link is replayed', function (): void {

@@ -14,7 +14,7 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Route;
 
 /**
  * A social sign-in creates the account immediately, but the address on it is only a
@@ -31,44 +31,60 @@ use Livewire\Volt\Volt;
  * provisioning connection, a hook, an access review and a separation-of-duties policy
  * could each be created by an account whose address nobody had confirmed.
  */
-const CREATE_VERBS = ['create', 'register', 'open', 'define'];
-
 it('gates every subject-plane create action', function (): void {
-    // A source scan, because this gate cannot live in middleware: creation on this plane
-    // happens inside Livewire component methods, which all arrive over one endpoint, so
-    // a middleware could only hold every read too or catch nothing at all. The gate goes
-    // where the write is — and this test is the thing that notices when a new write does
-    // not have one. Without it the rule holds only for as long as everyone remembers it.
+    /*
+     * A SOURCE SCAN, because this gate cannot live in middleware: it is a rule about
+     * WRITES, and every console page mixes reads and writes behind the same authorization.
+     * The gate goes where the write is — and this test is the thing that notices when a
+     * new write does not have one. Without it the rule holds only while everyone
+     * remembers it.
+     *
+     * DERIVED FROM THE ROUTER, not from a directory. It used to walk
+     * the Volt console's create pages as well, and while the port ran
+     * that half emptied one page at a time — a sweep looking only there would have reported
+     * the same clean result for a codebase that had lost every gate as for one that kept
+     * them. There is nothing left in that directory, and nothing left to lose quietly.
+     */
     $ungated = [];
     $checked = 0;
 
-    // EVERY `*/create.blade.php` under the console, found rather than listed. A page added
-    // beside these is seen the day it lands.
-    $pages = array_filter(
-        (array) glob(base_path('resources/views/livewire/console/*/create.blade.php')),
-        'is_file',
-    );
+    /*
+     * A console route named `*.create` is a "new X" page, and the `store` on its controller
+     * is the write that page submits to. That is exactly the set the old glob held, so the
+     * rule and its verdicts survived the move.
+     */
+    foreach (Route::getRoutes()->getRoutes() as $route) {
+        $name = $route->getName();
 
-    foreach ($pages as $page) {
-        $source = (string) file_get_contents($page);
+        if ($name === null || ! str_ends_with($name, '.create') || $route->getActionName() === 'Closure') {
+            continue;
+        }
 
-        foreach (CREATE_VERBS as $verb) {
-            $start = mb_strpos($source, 'public function '.$verb.'(');
+        [$class] = explode('@', $route->getActionName());
 
-            if ($start === false) {
-                continue;
-            }
+        if (! class_exists($class) || ! method_exists($class, 'store')) {
+            continue;
+        }
 
-            $checked++;
+        $method = new ReflectionMethod($class, 'store');
+        $file = (string) $method->getFileName();
+        $source = (string) file_get_contents($file);
+        $body = implode("\n", array_slice(
+            explode("\n", $source),
+            $method->getStartLine() - 1,
+            $method->getEndLine() - $method->getStartLine() + 1,
+        ));
 
-            // The body up to the next method declaration. Crude on purpose: a gate placed
-            // anywhere in the method counts, a gate in a DIFFERENT method does not.
-            $next = mb_strpos($source, "\n    public function ", $start + 10);
-            $body = mb_substr($source, $start, ($next === false ? mb_strlen($source) : $next) - $start);
+        $label = str_replace(base_path().'/', '', $file).'::store()';
 
-            if (! str_contains($body, 'VerifiedEmailGate::class)->require(')) {
-                $ungated[] = str_replace(base_path().'/', '', $page).'::'.$verb.'()';
-            }
+        if (in_array($label, $ungated, true)) {
+            continue;
+        }
+
+        $checked++;
+
+        if (! str_contains($body, 'VerifiedEmailGate::class)->require(')) {
+            $ungated[] = $label;
         }
     }
 
@@ -77,10 +93,6 @@ it('gates every subject-plane create action', function (): void {
     expect($checked)->toBeGreaterThanOrEqual(9, 'the sweep stopped finding the pages it is meant to watch');
 
     // THE RULE, NOT A LIST: gate what confers REACH OR TRUST OUTSIDE THE TENANT.
-    //
-    // This test was called "gates every subject-plane create action" while checking four
-    // paths written by hand out of twelve. Deriving them made the rest visible, and the
-    // question then became which of those deserve the gate at all.
     //
     // GATED, because each one hands an unverified account something that acts beyond the
     // tenant: an OAuth client and an SSO connection are credentials other systems trust, a
@@ -98,11 +110,25 @@ it('gates every subject-plane create action', function (): void {
     //    nobody else, so gating them buys nothing and costs onboarding friction.
     //  - `audit-streams` — environment plane, where there is no subject session to ask
     //    about at all.
+    //  - `environment.organizations` — the environment plane's tenants. A tenant record
+    //    reaches nothing on its own: it is this customer's own bookkeeping of who their
+    //    customers are, the same shape as `projects` above, and the writes that DO reach
+    //    outward from it (inviting somebody by email, claiming a domain) are their own
+    //    endpoints rather than this one.
+    //
+    // `environment.users` is NOT on this list, and it is the reason to state the rule as a
+    // rule: it looked like bookkeeping too, and it is the widest reach on the console —
+    // creating a user sends a live sign-in link to an address the creator named.
+    //
+    // Each entry is one page. `projects` appeared twice while its blade was still on disk
+    // beside the controller that replaced it; the blade is deleted now, and the duplicate
+    // went with it exactly as this list said it would.
     $deliberatelyUngated = [
-        'resources/views/livewire/console/audit-streams/create.blade.php::create()',
-        'resources/views/livewire/console/governance/create.blade.php::open()',
-        'resources/views/livewire/console/projects/create.blade.php::create()',
-        'resources/views/livewire/console/sod-policies/create.blade.php::define()',
+        'app/Http/Controllers/Console/AccessReviewController.php::store()',
+        'app/Http/Controllers/Console/EnvironmentOrganizationController.php::store()',
+        'app/Http/Controllers/Console/LogStreamController.php::store()',
+        'app/Http/Controllers/Console/ProjectController.php::store()',
+        'app/Http/Controllers/Console/RoleConflictController.php::store()',
     ];
 
     sort($ungated);
@@ -119,10 +145,11 @@ it('refuses a create from an account whose address we have not confirmed', funct
     expect($me->emailVerified())->toBeFalse();
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://example.test/hook')
-        ->set('eventTypes', ['user.created'])
-        ->call('create')
+    test()->from(route('webhooks.create'))
+        ->post(route('webhooks.store'), [
+            'url' => 'https://example.test/hook',
+            'eventTypes' => ['user.created'],
+        ])
         ->assertForbidden();
 
     // The refusal has to be the absence of a webhook, not just an unhappy response.
@@ -140,11 +167,12 @@ it('allows the same create once the address is confirmed', function (): void {
     $me->refreshSubject(app(Subjects::class)->find($me->id()));
 
     confirmConsoleStepUp();
-    Volt::test('console.webhooks.create')
-        ->set('url', 'https://example.test/hook')
-        ->set('eventTypes', ['user.created'])
-        ->call('create')
-        ->assertHasNoErrors();
+    test()->from(route('webhooks.create'))
+        ->post(route('webhooks.store'), [
+            'url' => 'https://example.test/hook',
+            'eventTypes' => ['user.created'],
+        ])
+        ->assertSessionHasNoErrors();
 
     // Asserting the OBJECT, not the absence of errors: a create that silently did
     // nothing would satisfy assertHasNoErrors and leave the test above proving that
@@ -180,7 +208,10 @@ it('holds an unverified environment administrator back too', function (): void {
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($provisioned->environment->id));
-    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
+    // UNVERIFIED ON PURPOSE — this is the test that owns the rule, so it states the state
+    // rather than inheriting the helper's default. (Established admins are verified there,
+    // so that unrelated tests do not exercise this rule by accident.)
+    actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id, emailVerified: false);
 
     $scope = app(ConsoleScope::class);
     $actorId = $scope->actorId();

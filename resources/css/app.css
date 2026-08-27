@@ -457,16 +457,21 @@
     }
     .btn-danger {
         background: transparent;
-        color: var(--destructive);
+        /* --destructive-strong, NOT --destructive, and at rest rather than only on hover.
+           The hover rule below already had to swap to it because the soft wash slides under
+           the label and drops it to 3.94:1 — and a tinted ROW does exactly the same thing
+           without any hover at all: on the current session's --accent-soft band this button
+           measured 4.19:1, under the 4.5:1 a 12px label needs. A button cannot know what it
+           is sitting on, so the resting colour is the one that survives being sat on
+           something. Both themes define the token as the readable end of the ramp — darker
+           in light, lighter in dark — so this raises contrast in both. */
+        color: var(--destructive-strong);
         /* Same reason as .btn-secondary: transparent fill, so the stroke is the whole
            boundary. 40% was 1.89:1 / 1.85:1 on --card; 80% is 3.65:1 / 3.78:1. */
         border-color: color-mix(in oklch, var(--destructive) 80%, transparent);
     }
     .btn-danger:hover:not(:disabled) {
         background: var(--destructive-soft);
-        /* The label sits at 4.72:1 on --card but only 3.94:1 once the soft wash slides
-           under it on hover — so the colour has to move with the background. */
-        color: var(--destructive-strong);
     }
     .btn-lg {
         height: 42px;
@@ -659,6 +664,18 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        /* A CONTAINING BLOCK FOR ITS OWN `.sr-only`.
+         *
+         * `.sr-only` is `position: absolute`, so with no positioned ancestor it anchors to
+         * the initial containing block — and its static position inside a wide table is
+         * hundreds of pixels to the right. Every table here is wrapped in `overflow-x-auto`
+         * and scrolls inside its panel, but that clipped 1px span escaped the wrapper and
+         * stretched the DOCUMENT: at a phone width the whole console scrolled sideways,
+         * from a `<th><span class="sr-only">Actions</span></th>`.
+         *
+         * `relative` with no offsets changes nothing that is drawn. It only stops the span
+         * measuring itself against the page. */
+        position: relative;
     }
     .table th {
         text-align: left;
@@ -843,13 +860,8 @@
        exception does not apply, and at 27x18 it was under the floor on every page that
        carries a page header. */
     .cbx-help-link { border: 0; background: transparent; padding: 3px 0; min-height: 24px; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-    .cbx-help-panel { position: absolute; top: calc(100% + 8px); z-index: 70; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px; box-shadow: var(--shadow-popover); text-align: left; white-space: normal; }
-    .cbx-help-panel { left: 0; }
-    .cbx-help-panel.is-end { left: auto; right: 0; }
     .cbx-help-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--foreground); }
     .cbx-help-body { font-size: 13px; line-height: 1.55; color: var(--muted-foreground); }
-    .cbx-help-more { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; }
-    .cbx-help-more:hover { text-decoration: underline; }
 
     /* Empty state — not a shrug, a first task. The icon/title/body sit centred as
        before; `.cbx-empty-steps` adds the numbered "what to do" list, and
@@ -877,12 +889,6 @@
 
     /* Handshake / flow explainer — a row of numbered steps with arrows between,
      * used to show OAuth redirects visually. Wraps + arrows turn downward on narrow. */
-    .cbx-flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 12px; border-radius: var(--radius); border: 1px dashed var(--border-strong); background: color-mix(in oklch, var(--secondary) 60%, transparent); }
-    .cbx-flow-step { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 170px; font-size: 12.5px; line-height: 1.35; color: var(--foreground); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 9px 11px; }
-    .cbx-flow-step b { font-weight: 600; }
-    .cbx-flow-dot { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 9999px; font-size: 11px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-    .cbx-flow-arrow { display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); font-size: 15px; flex-shrink: 0; }
-    @media (max-width: 640px) { .cbx-flow-arrow { transform: rotate(90deg); width: 100%; } .cbx-flow-step { min-width: 0; } }
 
     /* Search trigger (⌘K) */
     .cbx-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: var(--radius-md); border: 1px solid var(--control-border); background: var(--card); font-size: 12px; color: var(--muted-foreground); cursor: pointer; transition: border-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease); }
@@ -898,8 +904,6 @@
     .cbx-switcher-item:hover { background: var(--secondary); }
 
     /* Sidebar (two-tier tier-2 subnav column) */
-    .cbx-sidebar { display: flex; flex-direction: column; width: var(--sidebar-w); box-sizing: border-box; flex-shrink: 0; border-right: 1px solid var(--sidebar-border); background: var(--sidebar); }
-    .cbx-sidebar-brand { display: flex; align-items: center; height: var(--topbar-h); padding: 0 16px; flex-shrink: 0; border-bottom: 1px solid color-mix(in oklch, var(--sidebar-border) 70%, transparent); }
     .cbx-nav { flex: 1; overflow-y: auto; padding: 16px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
     .cbx-nav-group { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 10px 4px; margin: 0; }
     /* Pages of an area, in the mobile sheet: indented under the group heading that
@@ -980,7 +984,6 @@
      * left-edge borders forbidden). */
     .cbx-subnav nav a.cbx-on { background: var(--accent-soft); font-weight: 600; color: var(--nav-active-fg); }
     .cbx-subnav nav a .cnt { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
-    .cbx-subnav-group { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-foreground); padding: 14px 8px 3px; margin: 0; }
     .cbx-subnav-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
     .cbx-subnav-toggle:hover { background: var(--sidebar-accent); color: var(--foreground); }
     .cbx-subnav.collapsed { width: 26px; cursor: pointer; }
@@ -995,50 +998,571 @@
  * rules. It is now the --nav-active-fg token, set per theme with the other tokens, so
  * the value exists once and the cascade does not depend on layer ordering. */
 
-/* ── Toast ─────────────────────────────────────────────────────────────────
-   The console's confirmation surface. Severity is a data attribute so the
-   colour and the ARIA politeness are driven by ONE value — an error can never
-   be styled as success while being announced politely, which is how a failed
-   action used to render green with a checkmark. */
+/* THE INERTIA ROOT.
+   `html` and `body` are `h-full`, and the app mounts into a div between them —
+   so without this the console shell computes 100% of a zero-height parent and
+   stops at the height of its content, leaving the rail and the second-tier
+   column floating above bare background on any page shorter than the viewport. */
+#app {
+    height: 100%;
+}
+
+/* ── Overlays, menus and form controls (Radix) ──────────────────────────────
+   The primitives the Volt console drew with Alpine and inline styles: dialogs,
+   menus, popovers, tooltips, switches, checkboxes, radios and the two select
+   shapes. Behaviour comes from Radix — focus trapping, roving tabindex,
+   type-ahead, `aria-expanded`, portalling, dismiss-on-outside — and the look
+   comes from here, in the same tokens as everything above it.
+
+   Every interactive boundary uses --control-border (>= 3:1, WCAG 2.2 SC 1.4.11),
+   never --border, which is the decorative hairline. */
 @layer components {
-    .cbx-toast {
+    /* The scrim. --overlay is always darkness, never a themed colour: a token that
+       inverted in dark mode is how the old confirm dialogs veiled the page in 45%
+       WHITE instead of dimming it. */
+    .cbx-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        background: var(--overlay);
+        animation: cbx-fade-in var(--dur-menu) var(--ease);
+    }
+
+    .cbx-dialog {
+        position: fixed;
+        z-index: 91;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: calc(100vw - 32px);
+        max-height: calc(100vh - 64px);
+        display: flex;
+        flex-direction: column;
+        background: var(--popover);
+        color: var(--card-foreground);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+        animation: cbx-dialog-in var(--dur-menu) var(--ease);
+    }
+    .cbx-dialog--sm { max-width: 24rem; }
+    .cbx-dialog--md { max-width: 32rem; }
+    .cbx-dialog--lg { max-width: 48rem; }
+
+    .cbx-dialog-hd {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 20px 0;
+    }
+    .cbx-dialog-title {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.3;
+        color: var(--foreground);
+        margin: 0;
+    }
+    .cbx-dialog-desc {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: var(--muted-foreground);
+        margin: 6px 0 0;
+    }
+    .cbx-dialog-body {
+        padding: 16px 20px;
+        overflow-y: auto;
+        /* The body is the only scrolling part, so a long form scrolls under a header and
+           footer that stay put — rather than the whole dialog scrolling its own actions
+           out of reach, which is what a max-height on the container alone does. */
+        flex: 1;
+    }
+    .cbx-dialog-ft {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        max-width: min(28rem, calc(100vw - 2rem));
-        padding: 0.7rem 0.9rem;
-        border: 1px solid;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-card);
-        font-size: 0.875rem;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 0 20px 18px;
+        flex-wrap: wrap;
+    }
+
+    /* An icon-only button — the dialog close, a row action. 28px clears WCAG 2.2
+       SC 2.5.8's 24px minimum on its own, and the coarse-pointer block below takes it
+       to 40px where a thumb is doing the pointing. */
+    .cbx-iconbtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        transition: background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+    }
+    .cbx-iconbtn:hover { background: var(--secondary); color: var(--foreground); }
+
+    /* ── Menus and select popups (one surface, three consumers) */
+    .cbx-menu {
+        z-index: 92;
+        min-width: 12rem;
+        max-height: min(24rem, var(--radix-popper-available-height, 24rem));
+        overflow-y: auto;
+        padding: 4px;
+        background: var(--popover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-popover);
+        animation: cbx-menu-in var(--dur-menu) var(--ease);
+    }
+    .cbx-menuitem {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        line-height: 1.35;
+        color: var(--foreground);
+        cursor: pointer;
+        user-select: none;
+        outline: none;
+    }
+    /* Radix and cmdk both drive the pointer/keyboard highlight through a data attribute
+       rather than :hover, which is what keeps the arrow-key selection and the mouse from
+       lighting up two different rows at once. */
+    .cbx-menuitem[data-highlighted],
+    .cbx-menuitem[data-selected='true'] {
+        background: var(--secondary);
+    }
+    .cbx-menuitem[data-disabled] { opacity: 0.5; cursor: not-allowed; }
+    .cbx-menuitem.is-destructive { color: var(--destructive-strong); }
+    .cbx-menuitem.is-destructive[data-highlighted] { background: var(--destructive-soft); }
+    .cbx-menuitem-hint {
+        display: block;
+        font-size: 11.5px;
+        color: var(--muted-foreground);
+        margin-top: 2px;
+    }
+    .cbx-menulabel {
+        padding: 6px 8px 4px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+    }
+    .cbx-menusep { height: 1px; margin: 4px -4px; background: var(--border); }
+
+    .cbx-popover {
+        z-index: 92;
+        background: var(--popover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-popover);
+        animation: cbx-menu-in var(--dur-menu) var(--ease);
+    }
+
+    .cbx-tooltip {
+        z-index: 93;
+        max-width: 18rem;
+        padding: 5px 8px;
+        border-radius: var(--radius-sm);
+        background: var(--foreground);
+        color: var(--background);
+        font-size: 12px;
         line-height: 1.4;
+        box-shadow: var(--shadow-md);
+        animation: cbx-menu-in 120ms var(--ease);
+    }
+    .cbx-tooltip-arrow { fill: var(--foreground); }
+
+    /* ── Switch */
+    .cbx-switch {
+        position: relative;
+        flex-shrink: 0;
+        width: 36px;
+        height: 20px;
+        padding: 0;
+        border: 1px solid var(--control-border);
+        border-radius: 9999px;
+        background: var(--input);
+        cursor: pointer;
+        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease);
+    }
+    .cbx-switch[data-state='checked'] { background: var(--primary); border-color: var(--primary); }
+    .cbx-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+    .cbx-switch-thumb {
+        display: block;
+        width: 16px;
+        height: 16px;
+        border-radius: 9999px;
         background: var(--card);
+        box-shadow: var(--shadow-xs);
+        transform: translateX(1px);
+        transition: transform var(--dur-hover) var(--ease);
+        will-change: transform;
+    }
+    .cbx-switch[data-state='checked'] .cbx-switch-thumb { transform: translateX(17px); }
+
+    /* ── Checkbox */
+    .cbx-check { display: flex; align-items: flex-start; gap: 9px; }
+    .cbx-check-box {
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        /* 2px of optical alignment with the 13px label's cap height beside it. */
+        margin-top: 2px;
+        padding: 0;
+        border: 1px solid var(--control-border);
+        border-radius: 4px;
+        background: var(--card);
+        color: var(--primary-foreground);
+        cursor: pointer;
+        transition: background-color var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease);
+    }
+    .cbx-check-box[data-state='checked'],
+    .cbx-check-box[data-state='indeterminate'] { background: var(--primary); border-color: var(--primary); }
+    .cbx-check-box:disabled { opacity: 0.5; cursor: not-allowed; }
+    .cbx-check-mark { display: grid; place-items: center; line-height: 0; }
+
+    /* THE TARGET IS BIGGER THAN THE BOX. A 16px checkbox is the size this design system
+       draws, and it is under WCAG 2.2 SC 2.5.8's 24px minimum — so the hit area is grown
+       to 24px with a pseudo-element while the drawing stays 16px. The label beside it is
+       clickable too, but a label is a SEPARATE target: it does not make this one bigger. */
+    .cbx-check-box::before,
+    .cbx-radio-box::before {
+        content: '';
+        position: absolute;
+        width: 24px;
+        height: 24px;
+    }
+    .cbx-check-box,
+    .cbx-radio-box { position: relative; }
+    .cbx-check-label { display: block; font-size: 13px; line-height: 1.4; color: var(--foreground); cursor: pointer; }
+    .cbx-check-hint { margin: 2px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted-foreground); }
+
+    /* ── Radio group */
+    .cbx-radios { display: flex; flex-direction: column; gap: 10px; }
+    .cbx-radio { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+    .cbx-radio-box {
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+        padding: 0;
+        border: 1px solid var(--control-border);
+        border-radius: 9999px;
+        background: var(--card);
+        cursor: pointer;
+        transition: border-color var(--dur-hover) var(--ease);
+    }
+    .cbx-radio-box[data-state='checked'] { border-color: var(--primary); }
+    .cbx-radio-box:disabled { opacity: 0.5; cursor: not-allowed; }
+    .cbx-radio-dot { display: block; width: 8px; height: 8px; border-radius: 9999px; background: var(--primary); }
+    .cbx-radio-label { display: block; font-size: 13px; line-height: 1.4; color: var(--foreground); }
+    .cbx-radio-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--muted-foreground); }
+
+    /* ── Select / combobox trigger. `.select` already supplies the box and the chevron;
+       this makes the trigger a flex row so a long value truncates instead of pushing the
+       chevron off the end. */
+    .cbx-select {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        text-align: left;
+    }
+    .cbx-select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cbx-select-value.is-placeholder,
+    .cbx-select [data-placeholder] { color: var(--muted-foreground); }
+
+    .cbx-combobox { width: var(--radix-popover-trigger-width); padding: 0; min-width: 14rem; }
+    .cbx-combobox [cmdk-list] { max-height: 16rem; overflow-y: auto; padding: 4px; }
+    .cbx-combobox-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted-foreground);
+    }
+    .cbx-combobox-search input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: var(--foreground);
+        font-size: 13px;
+        font-family: inherit;
+    }
+    .cbx-combobox-search input::placeholder { color: var(--muted-foreground); }
+    .cbx-combobox-empty { padding: 16px 12px; text-align: center; font-size: 13px; color: var(--muted-foreground); }
+
+    /* One focus answer for every control here, matching .input:focus above. Radix moves
+       focus with the keyboard only (`:focus-visible`), so clicking a switch does not
+       leave a ring behind — but tabbing to it always does. */
+    .cbx-iconbtn:focus-visible,
+    .cbx-switch:focus-visible,
+    .cbx-check-box:focus-visible,
+    .cbx-radio-box:focus-visible,
+    .cbx-select:focus-visible {
+        outline: none;
+        border-color: var(--ring);
+        box-shadow: 0 0 0 2px var(--ring);
     }
 
-    .cbx-toast[data-severity='success'] {
-        border-color: color-mix(in oklch, var(--success) 35%, transparent);
-        background: var(--success-soft);
-        color: var(--success-strong);
+    /* The help popover's PANEL, as Radix positions it.
+       There was a second one — `.cbx-help-panel`, carrying `position: absolute; top:
+       calc(100% + 8px); left: 0` — because that is how the Alpine version placed itself,
+       and a Radix popper positions its content with a transform: the two fight and the
+       panel lands in the corner of the viewport. It could not be reused, so it stayed
+       until the last Volt page using it was ported. That page is ported and it is gone. */
+    .cbx-help-content {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: max-content;
+        max-width: min(340px, calc(100vw - 32px));
+        padding: 12px 14px;
+        text-align: left;
+        white-space: normal;
     }
 
-    .cbx-toast[data-severity='error'] {
-        border-color: color-mix(in oklch, var(--destructive) 40%, transparent);
-        background: var(--destructive-soft);
-        color: var(--destructive-strong, var(--destructive));
+    /* WHAT AUTHORITY YOU ARE HOLDING, on every console page. The retired platform
+       shell said "Platform operator" under its brand and it was the only thing on
+       screen that did — on a console where one click suspends a customer. Folding
+       the section into the one console dropped it, because the topbar names the
+       ORGANIZATION you act for, which for an operator is their own employer. */
+    .cbx-operator-pill {
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 9999px;
+        background: var(--accent-soft);
+        color: var(--primary);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
     }
 
-    .cbx-toast-close {
-        margin-left: auto;
-        font-size: 1.1rem;
-        line-height: 1;
-        opacity: 0.65;
-        /* 24px minimum target (WCAG 2.2 SC 2.5.8). */
-        min-width: 24px;
-        min-height: 24px;
+    /* The command palette. Positioned high rather than centred: the list grows
+       downward as you type, and a centred box jumps under the cursor on the first
+       keystroke. */
+    .cbx-palette {
+        position: fixed;
+        z-index: 91;
+        left: 50%;
+        top: 12vh;
+        transform: translateX(-50%);
+        width: calc(100vw - 32px);
+        max-width: 34rem;
+        overflow: hidden;
+        background: var(--popover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+        animation: cbx-palette-in var(--dur-menu) var(--ease);
+    }
+    .cbx-palette [cmdk-list] { max-height: min(24rem, 60vh); overflow-y: auto; padding: 4px; }
+    @keyframes cbx-palette-in {
+        from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.985); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
     }
 
-    .cbx-toast-close:hover { opacity: 1; }
+    /* ── Mobile navigation (thumb zone) ────────────────────────────────────
+       The only always-visible control on a small screen is a bar pinned to the
+       BOTTOM of the viewport, inside the natural thumb arc — not a hamburger
+       stranded in the top-right corner. The sheet grows up from the same spot,
+       so the navigation opens where the thumb already is. */
+    .cbx-mobilebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 3.5rem;
+        padding: 0 16px;
+        padding-bottom: env(safe-area-inset-bottom);
+        box-sizing: content-box;
+        background: var(--sidebar);
+        border-top: 1px solid var(--sidebar-border);
+    }
+    .cbx-mobilebar-initial {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        border-radius: var(--radius-md);
+        background: var(--accent);
+        color: var(--accent-foreground);
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .cbx-mobilebar-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        height: 36px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .cbx-sheet {
+        position: fixed;
+        z-index: 91;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        max-height: 82vh;
+        background: var(--sidebar);
+        border-top: 1px solid var(--sidebar-border);
+        border-radius: 1rem 1rem 0 0;
+        box-shadow: var(--shadow-lg);
+        animation: cbx-sheet-in var(--dur-layout) var(--ease);
+    }
+    .cbx-sheet-hd { position: relative; display: flex; align-items: center; padding: 12px 16px 4px; flex-shrink: 0; }
+    .cbx-sheet-grab { display: block; margin: 0 auto; width: 36px; height: 4px; border-radius: 9999px; background: var(--sidebar-border); }
+    .cbx-sheet-close {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        display: grid;
+        place-items: center;
+        /* 40px, not 32: this is the one control that closes the sheet, and it is
+           reached by a thumb at the far end of its arc. */
+        width: 40px;
+        height: 40px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--muted-foreground);
+        cursor: pointer;
+    }
+    .cbx-sheet-slot { padding: 4px 12px 8px; flex-shrink: 0; border-bottom: 1px solid var(--sidebar-border); }
+    .cbx-sheet-nav { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 12px; }
+    .cbx-sheet-ft {
+        flex-shrink: 0;
+        padding: 12px;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--sidebar-border);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    @keyframes cbx-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+
+    /* ── Underline tabs. Filtering one view, never navigation — a tab that changes what
+       the page is ABOUT is a page with its own URL. The bottom border is on the LIST so
+       the rule runs the full width and the active tab sits on it, rather than each tab
+       drawing its own three-pixel stub. */
+    .cbx-tabs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .cbx-tabs::-webkit-scrollbar { display: none; }
+    .cbx-tab {
+        position: relative;
+        flex-shrink: 0;
+        padding: 8px 12px;
+        border: 0;
+        background: transparent;
+        color: var(--muted-foreground);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.3;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: color var(--dur-hover) var(--ease);
+    }
+    .cbx-tab:hover { color: var(--foreground); }
+    .cbx-tab[data-state='active'] { color: var(--nav-active-fg); }
+    .cbx-tab[data-state='active']::after {
+        content: '';
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        /* -1px so the indicator sits ON the list's rule rather than above it. */
+        bottom: -1px;
+        height: 2px;
+        border-radius: 2px 2px 0 0;
+        background: var(--nav-active-fg);
+    }
+    .cbx-tab:focus-visible {
+        outline: none;
+        border-radius: var(--radius-sm);
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+
+    @keyframes cbx-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes cbx-menu-in {
+        from { opacity: 0; transform: translateY(-2px) scale(0.98); }
+        to { opacity: 1; transform: none; }
+    }
+    @keyframes cbx-dialog-in {
+        from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
 }
+
+/* ── Toaster (sonner) ───────────────────────────────────────────────────────
+   Sonner owns the stack, the timers, the pause-on-hover and the live region; the
+   colours are ours, handed over through the variables it reads. Overriding the
+   variables rather than the rules means an upgrade cannot silently restore its
+   own palette, and the toast stays on-brand under a white-label theme because
+   these all resolve through the same tokens the rest of the console uses. */
+[data-sonner-toaster] {
+    --normal-bg: var(--popover);
+    --normal-text: var(--foreground);
+    --normal-border: var(--border);
+    --success-bg: var(--popover);
+    --success-text: var(--success-strong);
+    --success-border: color-mix(in oklch, var(--success) 30%, transparent);
+    --error-bg: var(--popover);
+    --error-text: var(--destructive-strong);
+    --error-border: color-mix(in oklch, var(--destructive) 30%, transparent);
+    --warning-bg: var(--popover);
+    --warning-text: var(--warning-strong);
+    --warning-border: color-mix(in oklch, var(--warning) 30%, transparent);
+    --border-radius: var(--radius-md);
+    font-family: var(--font-sans);
+}
+[data-sonner-toast] { box-shadow: var(--shadow-lg); }
+/* An error is worth a longer read than a confirmation. Sonner takes the duration
+   per toast, but the class is also the hook for anything that has to differ
+   visually — so the two live in one place rather than at every call site. */
+[data-sonner-toast].is-error { font-weight: 500; }
 
 /* ── Environment badge ─────────────────────────────────────────────────────
    Which realm am I acting in? Production is the one that must be unmistakable,
@@ -1114,6 +1638,14 @@
     .select {
         height: 38px;
     }
+
+    /* The same reasoning applied to the controls that arrived with the React layer.
+       SC 2.5.8's 24px is a MINIMUM, not a target: under a thumb, 40px is the size that
+       stops a person hitting the row behind the one they meant. */
+    .cbx-iconbtn { width: 40px; height: 40px; }
+    .cbx-menuitem { padding: 10px 10px; }
+    .cbx-check-box::before,
+    .cbx-radio-box::before { width: 40px; height: 40px; }
 }
 
 /* ── Narrow screens: stop laying two things side by side that do not fit ────

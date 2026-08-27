@@ -7,6 +7,8 @@ use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Devices\Http\Controllers\ApprovalController;
 use Cbox\Id\Devices\Http\Controllers\BootstrapController;
 use Cbox\Id\Devices\Http\Controllers\DeviceController;
+use Cbox\Id\Devices\Http\Controllers\DeviceInventoryController;
+use Cbox\Id\Devices\Http\Controllers\MyDevicesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 ConsoleRoutes::page(
     feature: 'devices',
     uri: '/sign-in/devices',
-    component: 'devices.index',
+    component: DeviceInventoryController::class,
     name: 'devices.index',
     environmentUri: '/trusted-devices',
 );
@@ -40,8 +42,26 @@ ConsoleRoutes::page(
 ConsoleRoutes::organizationPage(
     feature: 'devices',
     uri: '/account/devices',
-    component: 'devices.mine',
+    component: [MyDevicesController::class, 'index'],
     name: 'devices.mine',
+);
+
+/*
+ * Removing one of your OWN handsets.
+ *
+ * Its own route with its own verb, so the impersonation guard refuses it on the method —
+ * under Volt it was a component action on the shared update endpoint, which route
+ * middleware never saw.
+ *
+ * ORGANIZATION PLANE ONLY, matching the page above and for the same reason: an environment
+ * administrator has no handsets here to remove.
+ */
+ConsoleRoutes::organizationAction(
+    feature: 'devices',
+    verb: 'delete',
+    uri: '/account/devices/{device}',
+    action: [MyDevicesController::class, 'destroy'],
+    name: 'devices.mine.destroy',
 );
 
 /*

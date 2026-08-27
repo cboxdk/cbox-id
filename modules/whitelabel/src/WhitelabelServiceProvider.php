@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Whitelabel;
 
+use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Contracts\BrandingResolver;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -17,11 +19,10 @@ use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\CustomDomain\ManageCustomDomain;
 use Cbox\Ssrf\Contracts\UrlGuard;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory as ViewFactory;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
-use Throwable;
+use Illuminate\Support\Str;
 
 /**
  * The Cbox ID white-label module. It OVERRIDES
@@ -77,7 +78,6 @@ class WhitelabelServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'whitelabel');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/whitelabel.php');
 
         // Console — always present. This was a licence check when the module shipped as
@@ -101,24 +101,48 @@ class WhitelabelServiceProvider extends ServiceProvider
             order: 10,
         );
 
-        Console::dashboardCard(fn (): string => $this->brandCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): DashboardCardProps => $this->brandCard(), 8);
     }
 
     /**
      * Dashboard card summarizing the current tenant's branding. Empty (nothing
      * rendered) before migrations run or when branding cannot be resolved.
      */
-    private function brandCard(): string
+    /**
+     * DATA, NOT MARKUP — the console draws the card.
+     *
+     * ALWAYS PRESENT, unlike its four siblings: every one of those summarises something
+     * belonging to an organization and has nothing to say when none is selected, whereas
+     * branding is a property of the environment itself. A throw is caught by the registry
+     * and the card is simply absent.
+     *
+     * The one card whose subject IS a colour, which is why the shape carries a swatch: the
+     * tile is tinted with the tenant's own primary so the card shows the branding rather
+     * than only describing it.
+     */
+    private function brandCard(): DashboardCardProps
     {
-        try {
-            $branding = Console::branding();
-        } catch (Throwable) {
-            return '';
-        }
+        $branding = Console::branding();
+        $tokens = $branding->tokens();
+        $custom = ! $branding->isEmpty();
 
-        return $this->app->make(ViewFactory::class)
-            ->make('whitelabel::components.whitelabel.brand-card', ['branding' => $branding])
-            ->render();
+        return new DashboardCardProps(
+            key: 'whitelabel.branding',
+            label: 'Branding',
+            value: $branding->appName ?? 'Cbox ID default',
+            caption: $custom
+                ? count($tokens).' custom '.Str::plural('colour', count($tokens))
+                : 'Using the default theme',
+            icon: 'palette',
+            tone: $custom ? 'info' : 'neutral',
+            // Only when the page exists: this module registers its own route, and a card
+            // linking at a route nobody registered is a dashboard that 500s.
+            linkLabel: Route::has('whitelabel.branding') ? ($custom ? 'Edit branding' : 'Customize') : null,
+            linkHref: Route::has('whitelabel.branding') ? route('whitelabel.branding') : null,
+            swatch: is_string($tokens['--primary'] ?? null)
+                ? $tokens['--primary']
+                : (is_string($tokens['--accent'] ?? null) ? $tokens['--accent'] : null),
+        );
     }
 
     /**

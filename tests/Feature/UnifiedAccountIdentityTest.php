@@ -20,7 +20,7 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -111,17 +111,24 @@ it('holds the console door to the SSO mandate on the organization', function ():
 });
 
 it('is identifier-first: the door asks for an email before a password', function (): void {
-    platformRootEnvironment();
+    // A whole deployment, not merely a root environment: `/login` on an install with
+    // nothing provisioned redirects to first-run, and that 302 has nothing to do with
+    // whether the door is identifier-first.
+    unifiedSetup();
 
     // The ONE door. There was a second one for account members, identifier-first in its
     // own copy of this code, and this test existed twice for the same reason.
-    Volt::test('auth.login')
-        ->assertSee('Continue')
-        ->assertDontSee('Forgot password?')
-        ->set('email', 'owner@acme.example')
-        ->call('continue')
-        ->assertSet('identified', true)
-        ->assertSee('Forgot password?');
+    test()->from(route('login'))->post(route('login.identify'), ['email' => 'owner@acme.example'])
+        ->assertRedirect(route('login'));
+
+    // The identifier step was ACCEPTED — the page comes back holding the address and
+    // knowing it has one, which is what puts the password field in front of the person
+    // rather than the email field again.
+    test()->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->hasFlash('identified', true)
+            ->where('email', 'owner@acme.example'));
 });
 
 it('signs a member in from a magic link, and resolves the membership from the session', function (): void {

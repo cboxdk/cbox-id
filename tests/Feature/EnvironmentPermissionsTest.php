@@ -5,16 +5,19 @@ declare(strict_types=1);
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -49,22 +52,21 @@ it('renders the permissions page with both sources distinguished', function (): 
 
     $this->get('/admin/permissions')
         ->assertOk()
-        ->assertSee('Permissions')
-        ->assertSee('Manual')        // the manual-source badge + section
-        ->assertSee('App-declared')  // the synced section
-        ->assertSee('reports:read')
-        ->assertSee('app:action');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/permissions')
+            ->where('title', 'Permissions')
+            // Told apart by which LIST they arrive in, not by a badge in the markup: the
+            // page's whole job is that a key an app owns and a key somebody wrote here are
+            // never mistaken for each other.
+            ->where('mine', fn (Collection $rows): bool => $rows->pluck('name')->all() === ['reports:read'])
+            ->where('declared.0.permissions', fn (Collection $rows): bool => $rows->pluck('name')->all() === ['app:action']));
 });
 
 it('creates a manual permission (client_id null, source = manual)', function (): void {
     permSetup();
 
-    Volt::test('console.permissions.index')
-        ->set('name', 'invoices:create')
-        ->set('description', 'Create invoices')
-        ->set('tenantAssignable', true)
-        ->call('create')
-        ->assertHasNoErrors();
+    createPermission(['name' => 'invoices:create', 'description' => 'Create invoices'], 'environment.permissions')
+        ->assertSessionHasNoErrors();
 
     $perm = Permission::query()->where('name', 'invoices:create')->first();
     expect($perm)->not->toBeNull()
@@ -77,51 +79,66 @@ it('creates a manual permission (client_id null, source = manual)', function ():
 it('rejects a bad key format and a duplicate manual key', function (): void {
     $env = permSetup();
 
-    Volt::test('console.permissions.index')
-        ->set('name', 'not a key')
-        ->call('create')
-        ->assertHasErrors('name');
+    createPermission(['name' => 'not a key'], 'environment.permissions')->assertSessionHasErrors('name');
 
     Permission::query()->create(['client_id' => null, 'environment_id' => $env, 'name' => 'reports:read', 'tenant_assignable' => true]);
 
-    Volt::test('console.permissions.index')
-        ->set('name', 'reports:read')
-        ->call('create')
-        ->assertHasErrors('name');
+    createPermission(['name' => 'reports:read'], 'environment.permissions')->assertSessionHasErrors('name');
+
+    // And the same key in different case, which the DB unique never sees on a manual row:
+    // it is lower-cased on the way in, so this is a duplicate rather than a second key.
+    createPermission(['name' => 'Reports:Read'], 'environment.permissions')->assertSessionHasErrors('name');
+
+    expect(Permission::query()->where('name', 'like', '%eports:%ead')->count())->toBe(1);
 });
 
 it('edits and deletes a manual permission, cascading its role links', function (): void {
     $env = permSetup();
     $perm = Permission::query()->create(['client_id' => null, 'environment_id' => $env, 'name' => 'billing:manage', 'tenant_assignable' => true]);
+
+    // A REAL role holding it, so the delete goes through the path that records what it
+    // took away...
+    $role = app(Roles::class)->define(null, 'Billing');
+    app(Roles::class)->attachPermission($role->id, $perm->id);
+
+    // ...and a grant whose role no longer resolves, which the pivot allows because it
+    // carries no foreign key. The contract cannot revoke a grant on a role it refuses to
+    // load, so this is the row that used to be left pointing at a deleted permission.
     DB::table('role_permission')->insert(['role_id' => 'role_x', 'permission_id' => $perm->id]);
 
-    Volt::test('console.permissions.index')
-        ->call('startEdit', $perm->id)
-        ->set('editDescription', 'Manage billing')
-        ->set('editTenantAssignable', false)
-        ->call('saveEdit')
-        ->assertHasNoErrors();
+    test()->from(route('environment.permissions'))
+        ->patch(route('environment.permissions.update', $perm->id), [
+            'description' => 'Manage billing',
+            'tenantAssignable' => false,
+        ])
+        ->assertSessionHasNoErrors();
 
     $perm->refresh();
     expect($perm->description)->toBe('Manage billing')->and($perm->tenant_assignable)->toBeFalse();
 
-    Volt::test('console.permissions.index')->call('delete', $perm->id);
+    test()->delete(route('environment.permissions.destroy', $perm->id));
 
     expect(Permission::query()->whereKey($perm->id)->exists())->toBeFalse()
-        ->and(DB::table('role_permission')->where('permission_id', $perm->id)->exists())->toBeFalse();
+        ->and(DB::table('role_permission')->where('permission_id', $perm->id)->exists())->toBeFalse()
+        // THE RECORD THE RAW DELETE NEVER LEFT. Removing a key from every role that
+        // grants it is a change to privileged access, and it used to leave nothing on
+        // /audit and nothing for a SIEM.
+        ->and(AuditEntry::query()->where('action', 'role.permission_revoked')->count())->toBe(1);
 });
 
 it('refuses to edit or delete an APP-declared permission (the app owns it)', function (): void {
     permSetup();
     $app = Permission::query()->create(['client_id' => 'client_app_1', 'name' => 'app:action', 'tenant_assignable' => true]);
 
-    Volt::test('console.permissions.index')
-        ->call('startEdit', $app->id)
-        ->assertSet('editingId', null);
+    // 404 rather than 403: the write set is resolved as a QUERY — manual, in this
+    // environment, owned by this author — so an app-declared key is never a row a
+    // mutation here can reach, and there is nothing to refuse afterwards.
+    test()->patch(route('environment.permissions.update', $app->id), ['description' => 'Mine now'])
+        ->assertNotFound();
+    test()->delete(route('environment.permissions.destroy', $app->id))->assertNotFound();
 
-    Volt::test('console.permissions.index')->call('delete', $app->id);
-
-    expect(Permission::query()->whereKey($app->id)->exists())->toBeTrue();
+    expect(Permission::query()->whereKey($app->id)->exists())->toBeTrue()
+        ->and(Permission::query()->whereKey($app->id)->value('description'))->toBeNull();
 });
 
 // The confirmed P1: one environment's admin could see, edit, and DELETE another
@@ -138,18 +155,33 @@ it('isolates manual permissions to their authoring environment', function (): vo
     // A legacy platform-global (null-environment) manual permission, as pre-fix rows exist.
     $legacy = Permission::query()->create(['client_id' => null, 'environment_id' => null, 'name' => 'legacy:global', 'tenant_assignable' => true]);
 
-    // Switch to a DIFFERENT tenant's env-admin session.
+    /*
+     * Switch to a DIFFERENT tenant's env-admin session — and hand them the host with it.
+     *
+     * An environment is reached at its own domain, and the suite has one. Left on A, every
+     * request below would land on A's host carrying B's session and be redirected to open
+     * B's environment — a 302 that proves nothing about isolation. Releasing it first is
+     * what makes these requests B's administrator on B's console, which is the shape the
+     * isolation claim is about.
+     */
+    Environment::query()->whereKey($envA)->update(['domain' => null, 'domain_verified_at' => null]);
+
     permSetup('Beta', 'owner@beta.example');
 
     // B's console lists neither A's env-scoped permission nor the operator-global one.
-    Volt::test('console.permissions.index')
-        ->assertDontSee('secrets:rotate')
-        ->assertDontSee('legacy:global');
+    test()->get(route('environment.permissions'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('mine', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->intersect(['secrets:rotate', 'legacy:global'])
+                ->isEmpty()));
 
     // And B can neither edit nor delete either — the resolver is environment-scoped.
-    Volt::test('console.permissions.index')->call('startEdit', $permA->id)->assertSet('editingId', null);
-    Volt::test('console.permissions.index')->call('delete', $permA->id);
-    Volt::test('console.permissions.index')->call('delete', $legacy->id);
+    test()->patch(route('environment.permissions.update', $permA->id), ['description' => 'Mine now'])
+        ->assertNotFound();
+    test()->delete(route('environment.permissions.destroy', $permA->id))->assertNotFound();
+    test()->delete(route('environment.permissions.destroy', $legacy->id))->assertNotFound();
 
     // Both permissions — and A's role link — survive B's attempt untouched.
     expect(Permission::query()->withoutGlobalScopes()->whereKey($permA->id)->exists())->toBeTrue()
@@ -189,13 +221,23 @@ it('bounds the app-declared catalog and lets search reach past it', function ():
         'tenant_assignable' => true,
     ]);
 
-    $page = Volt::test('console.permissions.index');
+    test()->get(route('environment.permissions'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('declared.0.permissions', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->doesntContain('zebra:groom'))
+            // And the page is TOLD the list stopped, rather than it simply ending — the
+            // bound is worth nothing if it hides rows with no way back to them.
+            ->where('declaredShown', 50)
+            ->where('declaredTotal', 61));
 
-    $page->assertDontSee('zebra:groom')
-        // And it says the list stopped, rather than simply ending.
-        ->assertSee('Showing 50 of 61');
-
-    $page->set('search', 'zebra')->assertSee('zebra:groom');
+    test()->get(route('environment.permissions', ['q' => 'zebra']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('declared.0.permissions', fn (Collection $rows): bool => $rows
+                ->pluck('name')
+                ->contains('zebra:groom')));
 });
 
 /**
@@ -220,13 +262,19 @@ it('lists who holds a role, and how they hold it', function (): void {
     $roles->assignEverywhere($everywhere, $support->id);
     $roles->assign($org->id, $inOrg, $support->id);
 
-    $html = Volt::test('console.roles.show', ['role' => $support->id])->html();
-
-    expect($html)
-        ->toContain('Who holds this')
-        ->toContain('agent@acme.test')
-        ->toContain('member@acme.test')
-        // The two grants are not the same statement, and the page says which is which.
-        ->toContain('Everywhere')
-        ->toContain('Acme Tenant');
+    test()->get(route('environment.roles.show', $support->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/roles/show')
+            // The two grants are not the same statement, and the scope is what says which
+            // is which: null means every organization in the environment, including for
+            // somebody who belongs to none.
+            ->where('holders', fn (Collection $holders): bool => $holders
+                ->map(fn (array $holder): array => [$holder['email'], $holder['scope']])
+                ->sortBy(0)
+                ->values()
+                ->all() === [
+                    ['agent@acme.test', null],
+                    ['member@acme.test', 'Acme Tenant'],
+                ]));
 });

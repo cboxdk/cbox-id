@@ -11,7 +11,6 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 beforeEach(function (): void {
     // These render product pages, which presuppose an installed deployment.
@@ -31,12 +30,7 @@ function account(string $email = 'dana@acme.test', string $password = 'supersecr
 }
 
 it('signs up: creates org, owner and session, then lands on the dashboard', function () {
-    Volt::test('auth.signup')
-        ->set('organization', 'Acme Inc.')
-        ->set('name', 'Dana Reeves')
-        ->set('email', 'dana@acme.test')
-        ->set('password', 'supersecret123')
-        ->call('register')
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme Inc.', 'name' => 'Dana Reeves', 'email' => 'dana@acme.test', 'password' => 'supersecret123'])
         ->assertRedirect(route('dashboard'));
 
     $subject = app(Subjects::class)->findByEmail('dana@acme.test');
@@ -48,18 +42,14 @@ it('signs up: creates org, owner and session, then lands on the dashboard', func
 it('rejects signup when the email already exists', function () {
     account('taken@acme.test');
 
-    Volt::test('auth.signup')
-        ->set('organization', 'Dupe')->set('name', 'X')->set('email', 'taken@acme.test')->set('password', 'supersecret123')
-        ->call('register')
-        ->assertHasErrors('email');
+    test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Dupe', 'name' => 'X', 'email' => 'taken@acme.test', 'password' => 'supersecret123'])
+        ->assertSessionHasErrors('email');
 });
 
 it('logs in with a correct password', function () {
     account();
 
-    Volt::test('auth.login')
-        ->set('email', 'dana@acme.test')->set('password', 'supersecret123')
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'supersecret123'])
         ->assertRedirect(route('dashboard'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeTrue();
@@ -68,11 +58,9 @@ it('logs in with a correct password', function () {
 it('rejects a wrong password without starting a session', function () {
     account();
 
-    Volt::test('auth.login')
-        ->set('email', 'dana@acme.test')->set('password', 'nope')
-        ->call('login')
-        ->assertHasErrors('email')
-        ->assertRenderedNotRedirected();
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'nope'])
+        ->assertSessionHasErrors('email')
+        ->assertRedirect(route('login'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
@@ -84,9 +72,7 @@ it('routes a password login to MFA when the user has confirmed TOTP', function (
     $code = (new TotpAuthenticator)->codeAt($enrollment->secret, time());
     app(Mfa::class)->confirmTotp($subject->id, $code);
 
-    Volt::test('auth.login')
-        ->set('email', 'mfa@acme.test')->set('password', 'supersecret123')
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'mfa@acme.test', 'password' => 'supersecret123'])
         ->assertRedirect(route('mfa'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
@@ -96,21 +82,17 @@ it('throttles repeated failed password attempts', function () {
     account();
 
     foreach (range(1, 5) as $ignored) {
-        Volt::test('auth.login')->set('email', 'dana@acme.test')->set('password', 'wrong')->call('login');
+        test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'wrong']);
     }
 
-    Volt::test('auth.login')
-        ->set('email', 'dana@acme.test')->set('password', 'wrong')
-        ->call('login')
-        ->assertHasErrors('email');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'wrong'])
+        ->assertSessionHasErrors('email');
 
     // Even the correct password is blocked while throttled — turned away with the
     // lockout error, and no session started.
-    Volt::test('auth.login')
-        ->set('email', 'dana@acme.test')->set('password', 'supersecret123')
-        ->call('login')
-        ->assertRenderedNotRedirected()
-        ->assertHasErrors('email');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'supersecret123'])
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 });
@@ -122,7 +104,7 @@ it('redirects guests away from the console', function () {
 
 it('redirects authenticated users away from guest screens', function () {
     account();
-    Volt::test('auth.login')->set('email', 'dana@acme.test')->set('password', 'supersecret123')->call('login');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'dana@acme.test', 'password' => 'supersecret123']);
 
     $this->get('/login')->assertRedirect(route('dashboard'));
 });

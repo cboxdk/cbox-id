@@ -8,14 +8,14 @@ use Cbox\Id\Organization\Enums\OrganizationType;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
-// The operator console re-checks operator auth on every request (incl. Livewire
-// actions), so every test here operates as a signed-in operator.
+// Every route on this plane refuses a request that is not an operator's — the read and
+// each write alike — so every test here operates as a signed-in operator. The refusals
+// themselves live in PlatformOrganizationDetailTest.
 beforeEach(function (): void {
-    $op = actAsOperator('org-admin@platform.test');
+    actAsOperator('org-admin@platform.test');
 });
 
 it('creates organizations with a type and parent, laid out as a hierarchy', function (): void {
@@ -23,28 +23,29 @@ it('creates organizations with a type and parent, laid out as a hierarchy', func
         new NewOrganization('Reseller Co', 'reseller-co', OrganizationType::Reseller),
     );
 
-    Volt::test('platform.organizations')
-        ->set('name', 'Customer Co')
-        ->set('type', 'customer')
-        ->set('parentId', $reseller->id)
-        ->call('create')
-        ->assertHasNoErrors();
+    createTenantOrganization([
+        'name' => 'Customer Co',
+        'type' => 'customer',
+        'parentId' => $reseller->id,
+    ])->assertSessionHasNoErrors();
 
-    $rows = collect(Volt::test('platform.organizations')->viewData('rows'))->keyBy('name');
+    // The DEPTH is the assertion rather than the column: the page renders the tree, and a
+    // parent_id written without the closure rows would list the child as a root.
+    $rows = collect(platformOrganizations()['organizations'])->keyBy('name');
 
     expect($rows['Reseller Co']['depth'])->toBe(0)
         ->and($rows['Reseller Co']['type'])->toBe('reseller')
         ->and($rows['Customer Co']['depth'])->toBe(1)
-        ->and($rows['Customer Co']['parent_id'])->toBe($reseller->id);
+        ->and($rows['Customer Co']['parentId'])->toBe($reseller->id);
 });
 
 it('suspends and reactivates an organization', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme'));
 
-    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
+    toggleTenantOrganization($org->id)->assertSessionHasNoErrors();
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Suspended);
 
-    Volt::test('platform.organizations')->call('toggleStatus', $org->id);
+    toggleTenantOrganization($org->id);
     expect(Organization::query()->find($org->id)->status)->toBe(OrganizationStatus::Active);
 });
 
@@ -53,9 +54,13 @@ it('reparents an organization within the tree', function (): void {
     $a = $orgs->create(new NewOrganization('A', 'a'));
     $b = $orgs->create(new NewOrganization('B', 'b'));
 
-    Volt::test('platform.organizations')->call('reparent', $b->id, $a->id);
+    reparentOrganization($b->id, $a->id)->assertSessionHasNoErrors();
 
-    expect(Organization::query()->find($b->id)->parent_id)->toBe($a->id);
+    expect(Organization::query()->find($b->id)->parent_id)->toBe($a->id)
+        // …and the tree the page renders agrees, which is the half a parent_id alone does
+        // not prove.
+        ->and(collect(platformOrganizations()['organizations'])->firstWhere('id', $b->id)['depth'])
+        ->toBe(1);
 });
 
 it('refuses a reparent that would create a cycle', function (): void {
@@ -63,8 +68,12 @@ it('refuses a reparent that would create a cycle', function (): void {
     $parent = $orgs->create(new NewOrganization('Parent', 'parent'));
     $child = $orgs->create(new NewOrganization('Child', 'child', parentId: $parent->id));
 
-    // Making the parent a child of its own descendant would loop the tree.
-    Volt::test('platform.organizations')->call('reparent', $parent->id, $child->id);
+    /*
+     * Making the parent a child of its own descendant would loop the tree. `move()` guards
+     * the closure table itself, so nothing is corrupted either way — but the REFUSAL IS
+     * SAID: a control that appears to do nothing is one the operator presses again.
+     */
+    reparentOrganization($parent->id, $child->id)->assertSessionHasErrors('parentId');
 
     expect(Organization::query()->find($parent->id)->parent_id)->toBeNull();
 });

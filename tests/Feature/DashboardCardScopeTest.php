@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\DashboardCards;
 use App\Platform\CurrentUser;
 use Carbon\CarbonInterface;
 use Cbox\Console\Kit\Contracts\CurrentContext;
-use Cbox\Console\Kit\Contracts\SlotRegistry;
 use Cbox\Id\Analytics\Contracts\ReportReader;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -42,10 +43,34 @@ uses(RefreshDatabase::class);
  * another tenant's activity must not change what this admin sees, and their own must.
  */
 
-/** The dashboard's plugin-card row, rendered exactly as the Blade directive renders it. */
-function dashboardCards(): string
+/**
+ * The dashboard's module-card row, resolved exactly as the page resolves it.
+ *
+ * A LIST OF TYPED CARDS rather than a blob of HTML: the cards used to be rendered strings a
+ * module returned through a slot, and comparing rendered markup meant this security
+ * assertion could be relaxed by somebody fixing a typo. The identity below compares the
+ * data, which is what the property was always about.
+ *
+ * @return list<array<string, mixed>>
+ */
+function dashboardCards(): array
 {
-    return app(SlotRegistry::class)->render('console.dashboard.cards');
+    return array_map(
+        static fn (DashboardCardProps $card): array => $card->toArray(),
+        app(DashboardCards::class)->resolve(),
+    );
+}
+
+/** Whether a card with this label is on the row at all. */
+function hasDashboardCard(string $label): bool
+{
+    foreach (dashboardCards() as $card) {
+        if ($card['label'] === $label) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /** One flagged sign-in for an address. */
@@ -80,7 +105,7 @@ it('never lets another organization\'s activity move the dashboard cards', funct
 
     // Non-empty, or the two comparisons below would both hold trivially against a row
     // that renders nothing at all.
-    expect($baseline)->not->toBe('');
+    expect($baseline)->not->toBe([]);
 
     // ANOTHER TENANT in the same environment, busy: flagged sign-ins against one of their
     // members, and entries piling up in their audit chain waiting to be exported.
@@ -190,11 +215,11 @@ it('renders no connectors card until an environment administrator has chosen an 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
     actAsEnvironmentAdmin($provisioned->owner->id, $provisioned->environment->id);
 
-    // `str_contains` rather than `expect()->toContain()`: Pest reads a second argument to
+    // A named lookup rather than `expect()->toContain()`: Pest reads a second argument to
     // toContain() as ANOTHER NEEDLE, not as a failure message, so a negated call carrying
     // an explanatory string passes as soon as that string is absent — which it always is.
     // This assertion was written that way first and stayed green against the bug.
-    expect(str_contains(dashboardCards(), 'Active connectors'))->toBeFalse(
+    expect(hasDashboardCard('Active connectors'))->toBeFalse(
         'The connectors card counted something with no organization resolved — which is '
         .'the whole environment, every tenant included.',
     );
@@ -204,5 +229,5 @@ it('renders no connectors card until an environment administrator has chosen an 
     $organizationId = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'cards-tenant'))->id;
     app(ConsoleScope::class)->chooseOrganization($organizationId);
 
-    expect(str_contains(dashboardCards(), 'Active connectors'))->toBeTrue();
+    expect(hasDashboardCard('Active connectors'))->toBeTrue();
 })->group('security');

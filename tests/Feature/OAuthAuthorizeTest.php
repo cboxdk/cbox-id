@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -18,12 +19,17 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
-use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
-use Livewire\Volt\Volt;
+use Illuminate\Testing\TestResponse;
+use Inertia\Testing\AssertableInertia;
 
 /**
- * Populate CurrentUser as the Authenticate middleware would, then drive the
- * component directly.
+ * Sign somebody in the way a real request arrives signed in.
+ *
+ * BOTH HALVES. `CurrentUser::set()` is what the auth middleware populates and what the
+ * controller reads; the session key is what makes the middleware populate it on the NEXT
+ * request. This used to set only the first, which was enough for a component driven
+ * in-process and nothing at all to an HTTP request — /authorize would have answered every
+ * one of these as an unauthenticated caller and redirected to sign-in.
  *
  * @return array{0: string, 1: Organization}
  */
@@ -33,6 +39,7 @@ function actingAsConsentUser(): array
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-consent'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     return [$subject->id, $org];
@@ -56,48 +63,42 @@ it('renders an error state for an unknown client', function () {
     [, $org] = actingAsConsentUser();
     registerConsentClient($org->id);
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => 'does-not-exist',
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
     ])
-        ->assertRenderedNotRedirected()
-        ->assertSee('Authorization failed');
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('error', fn (?string $e): bool => $e !== null));
 });
 
 it('rejects a redirect_uri not registered to the client', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://evil.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
     ])
-        ->assertRenderedNotRedirected()
-        ->assertSee('Authorization failed');
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('error', fn (?string $e): bool => $e !== null));
 });
 
 it('routes prompt=login to add-another-account (no logout of the current one)', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
         'prompt' => 'login',
     ])->assertRedirect(route('accounts.add'));
 });
@@ -106,14 +107,12 @@ it('routes prompt=select_account to the account chooser', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
         'prompt' => 'select_account',
     ])->assertRedirect(route('accounts'));
 });
@@ -122,35 +121,34 @@ it('does not re-prompt once re-authenticated (loop guard)', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
         'prompt' => 'login',
         'reauthed' => '1',
     ])
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        // The consent screen itself is what "no re-prompt" looks like.
-        ->assertSee('wants to access your Cbox ID account');
+        ->assertOk()
+        // The consent screen itself is what "no re-prompt" looks like: it carries a client
+        // to authorize and an approve control, and no error.
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->has('approveHref'));
 });
 
 it('returns interaction_required on prompt=none when consent would be shown', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id); // third-party by default → needs consent
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
         'prompt' => 'none',
     ])->assertRedirect(
         // `iss` is REQUIRED here too (RFC 9207): a mix-up-hardened client checks it on
@@ -162,101 +160,129 @@ it('returns interaction_required on prompt=none when consent would be shown', fu
     );
 });
 
-it('locks validated request parameters so the browser cannot tamper with them between requests', function () {
+/**
+ * THE VALIDATED REQUEST IS NOT SOMETHING THE BROWSER HOLDS.
+ *
+ * This used to assert that Livewire refused to mutate a `#[Locked]` property — the lock
+ * that stood between a re-hydrated public property and an attacker swapping in an
+ * unregistered `redirect_uri` after validation, which is an open redirect and a code
+ * exfiltration.
+ *
+ * There are no properties now. The validated request lives in the session and the page
+ * carries an opaque id, so the same attack has nothing to aim at: the strongest thing the
+ * browser can do is post a DIFFERENT id, and the only ids that resolve are ones this same
+ * session pushed. Asserted by trying it — a foreign id, and an id from another session.
+ */
+it('never lets the browser name the request it is approving', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    $component = Volt::test('oauth.consent', [
+    $props = consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
-    ])->assertSet('error', null);
+    ]);
 
-    // #[Locked]: a redirect_uri (or scopes) validated in mount() cannot be mutated
-    // by a crafted Livewire update — the open-redirect / code-exfiltration vector.
-    expect(fn () => $component->set('redirectUri', 'https://evil.test/cb'))
-        ->toThrow(CannotUpdateLockedPropertyException::class);
+    // Nothing on the page names the client, the redirect target or the challenge in a form
+    // anything could post back: the id is the whole of what the browser is given.
+    expect($props)->not->toHaveKey('redirectUri')
+        ->and($props)->not->toHaveKey('codeChallenge')
+        ->and($props['approveHref'])->toBeString();
 
-    expect(fn () => $component->set('scopes', ['openid', 'admin']))
-        ->toThrow(CannotUpdateLockedPropertyException::class);
-});
+    // An id this session never pushed resolves to nothing, and mints nothing.
+    $refused = inertiaRequest(fn (): TestResponse => test()->from(route('oauth.authorize'))
+        ->post(route('oauth.authorize.approve', '01ffffffffffffffffffffffff')))
+        ->assertOk();
+
+    expect(consentRefusal($refused))->toBeString();
+
+    expect(AuthorizationCode::query()->count())->toBe(0);
+})->group('security');
 
 it('refuses to mint a code at approval if the client/redirect is no longer valid', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    $component = Volt::test('oauth.consent', [
+    $props = consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
-    ])->assertSet('error', null);
+    ]);
 
-    // Client deregistered between render and approval — approve() re-asserts the
-    // invariant instead of trusting mount(), so no code is issued.
+    // Client deregistered between the render and the approval — issuance re-asserts the
+    // invariant instead of trusting the render, so no code is minted.
     Client::query()->where('client_id', $clientId)->delete();
 
-    $component->call('approve');
-
-    expect($component->effects['redirect'] ?? null)->toBeNull()
-        ->and($component->get('error'))->not->toBeNull();
+    expect(consentRefusal(answerConsent($props)->assertOk()))->toBeString()
+        ->and(AuthorizationCode::query()->count())->toBe(0);
 });
 
-it('refuses to mint a code for a suspended organization', function () {
+/**
+ * A SUSPENDED ORGANIZATION IS REFUSED AT THE DOOR, before /authorize runs at all.
+ *
+ * This used to drive the component and assert that its own `OrganizationAccess` check
+ * answered at approval — which it had to, because a Volt action never met route
+ * middleware. Over a real request it never got that far even then: `Authenticate` asks
+ * {@see OrganizationAccess} of every authenticated request, /authorize included, so the
+ * component's copy was unreachable the whole time and the test could not see it.
+ *
+ * So this asks the door that answers, on the read AND on both writes — put one of them
+ * outside the stack and this fails, which is the only way the property can be lost.
+ */
+it('refuses a suspended organization the authorize endpoint', function () {
     $subject = app(Subjects::class)->create('susp-consent@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-susp-consent'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $org->update(['status' => OrganizationStatus::Suspended]);
     $org->refresh();
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
     $clientId = registerConsentClient($org->id);
 
-    $component = Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
-    ])->assertSet('error', null);
+    ])->assertForbidden();
 
-    $component->call('approve');
+    test()->post(route('oauth.authorize.approve', '01ffffffffffffffffffffffff'))->assertForbidden();
+    test()->post(route('oauth.authorize.deny', '01ffffffffffffffffffffffff'))->assertForbidden();
 
-    expect($component->effects['redirect'] ?? null)->toBeNull()
-        ->and($component->get('error'))->not->toBeNull();
-});
+    expect(AuthorizationCode::query()->count())->toBe(0);
+})->group('security');
 
 it('issues a code and redirects on approve for a valid request', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    $component = Volt::test('oauth.consent', [
+    $props = consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
-    ])
-        ->assertSet('error', null)
-        ->assertSee('Authorize App')
-        ->call('approve');
+    ]);
 
-    $redirect = $component->effects['redirect'] ?? null;
+    // The screen names the app asking, which is the whole reason it exists.
+    expect($props['client']['name'])->toBe('App');
 
-    expect($redirect)->not->toBeNull()
-        ->and($redirect)->toStartWith('https://app.test/cb?')
+    $redirect = leftFor(answerConsent($props));
+
+    expect($redirect)->toStartWith('https://app.test/cb?')
         ->and($redirect)->toContain('state=xyz')
         ->and($redirect)->toMatch('/[?&]code=/');
 });
@@ -280,10 +306,10 @@ function fpAuthorizeParams(string $clientId): array
     return [
         'client_id' => $clientId,
         'redirect_uri' => 'https://fp.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
     ];
 }
@@ -292,19 +318,16 @@ it('skips consent for a first-party client owned by the user\'s own org', functi
     [, $org] = actingAsConsentUser();
     $clientId = registerFirstPartyClient($org->id);
 
-    // No approve() call — mount() auto-issues and redirects for a first-party client.
-    Volt::test('oauth.consent', fpAuthorizeParams($clientId))
-        ->assertSet('error', null)
-        ->assertRedirect();
+    // Nothing is answered — the request itself issues and redirects for a first-party
+    // client owned by this person's own organization.
+    authorizeRequest(fpAuthorizeParams($clientId))->assertRedirect();
 });
 
 it('skips consent for a platform-owned first-party client', function () {
     actingAsConsentUser();
     $clientId = registerFirstPartyClient(null); // platform-owned (organization_id null)
 
-    Volt::test('oauth.consent', fpAuthorizeParams($clientId))
-        ->assertSet('error', null)
-        ->assertRedirect();
+    authorizeRequest(fpAuthorizeParams($clientId))->assertRedirect();
 });
 
 it('does NOT skip consent for a first-party client owned by a DIFFERENT org', function () {
@@ -313,28 +336,30 @@ it('does NOT skip consent for a first-party client owned by a DIFFERENT org', fu
     $clientId = registerFirstPartyClient($otherOrg->id); // owned by another tenant
 
     // Cross-org: never auto-skip — the consent screen must be shown, no code minted.
-    Volt::test('oauth.consent', fpAuthorizeParams($clientId))
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSee('wants to access your Cbox ID account');
+    authorizeRequest(fpAuthorizeParams($clientId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->has('approveHref'));
 });
 
 it('does NOT skip consent for a non-first-party client', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id); // first_party = false
 
-    Volt::test('oauth.consent', [
+    authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
     ])
-        ->assertRenderedNotRedirected()
-        ->assertSet('error', null)
-        ->assertSee('wants to access your Cbox ID account');
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('error')
+            ->has('client')
+            ->has('approveHref'));
 });
 
 /**
@@ -355,8 +380,8 @@ it('returns authorize errors to the client as a redirect, not a page', function 
     $base = [
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
         'state' => 'st-9',
     ];
@@ -408,8 +433,8 @@ it('accepts any port on a loopback redirect it registered', function (): void {
     $query = http_build_query([
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'http://127.0.0.1:59123/callback',  // a different port, next run
-        'response_type' => 'code',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
         'prompt' => 'none',
     ]);
@@ -435,8 +460,8 @@ it('does not float the port for a non-loopback host', function (): void {
     $query = http_build_query([
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test:8443/cb',
-        'response_type' => 'code',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
     ]);
 
@@ -462,28 +487,26 @@ it('resumes a pushed authorization request when PAR is required', function (): v
     $pushed = app(PushedAuthorizationRequests::class)->push($client, [
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'st-par',
         'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
         'prompt' => 'login',
     ]);
 
-    // prompt=login sends the user away to add an account; the resume URL it stores must
+    // prompt=login sends the person away to add an account; the resume URL it stores must
     // itself be a PAR request, or re-entry is refused.
-    $component = Volt::test('oauth.consent', [
+    test()->get(route('oauth.authorize', [
         'client_id' => $clientId,
         'request_uri' => $pushed['request_uri'],
-    ]);
+    ]))->assertRedirect(route('accounts.add'));
 
     $intended = session('url.intended');
 
     expect($intended)->toContain('request_uri=')
         // NOT the consumed one — a fresh single-use handle.
         ->and($intended)->not->toContain(urlencode($pushed['request_uri']));
-
-    $component->assertHasNoErrors();
 });
 
 /**
@@ -496,22 +519,19 @@ it('returns the RFC 9207 issuer when the user denies consent', function () {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    Volt::test('oauth.consent', [
+    $target = leftFor(answerConsent(consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid email',
         'state' => 'xyz',
         'code_challenge' => pkceChallenge(),
-        'code_challenge_method' => 'S256',
-    ])
-        ->assertSet('error', null)
-        ->call('deny')
-        ->assertRedirect(
-            'https://app.test/cb?error=access_denied'
-            .'&iss='.urlencode(app(IssuerResolver::class)->issuer())
-            .'&state=xyz'
-        );
+    ]), 'deny'));
+
+    expect($target)->toBe(
+        'https://app.test/cb?error=access_denied'
+        .'&iss='.urlencode(app(IssuerResolver::class)->issuer())
+        .'&state=xyz'
+    );
 });
 
 /**
@@ -525,20 +545,19 @@ it('binds the requested resource to the issued authorization code', function ():
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    $component = Volt::test('oauth.consent', [
+    $props = consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
-        'code_challenge_method' => 'S256',
         'resource' => 'https://mcp.acme.example',
     ]);
 
-    expect($component->get('resource'))->toBe('https://mcp.acme.example');
+    answerConsent($props);
 
-    $component->call('approve');
-
+    // ASKED OF THE CODE, not of a property. The resource never reaches the browser at all
+    // now — it is held with the rest of the validated request — so the only place it can be
+    // observed is the grant it was bound to, which is also the only place that matters.
     expect(AuthorizationCode::query()->latest('created_at')->first()?->resource)
         ->toBe('https://mcp.acme.example', 'the authorization was not bound to the resource it asked for');
 });
@@ -556,17 +575,13 @@ it('preserves a private-use scheme redirect exactly as registered', function ():
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id, ['com.cboxid.authenticator:/oauth/callback']);
 
-    $component = Volt::test('oauth.consent', [
+    $target = leftFor(answerConsent(consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'com.cboxid.authenticator:/oauth/callback',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'xyz',
         'code_challenge' => str_repeat('a', 43),
-        'code_challenge_method' => 'S256',
-    ])->call('approve');
-
-    $target = $component->effects['redirect'] ?? '';
+    ])));
 
     // One slash, as registered. Three means an authority we invented — and the client's
     // URL handler is listening for what it registered, not for what we rebuilt.
@@ -583,17 +598,15 @@ it('still builds an ordinary https redirect correctly', function (): void {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id, ['https://app.test/cb']);
 
-    $component = Volt::test('oauth.consent', [
+    $target = leftFor(answerConsent(consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'xyz',
         'code_challenge' => str_repeat('a', 43),
-        'code_challenge_method' => 'S256',
-    ])->call('approve');
+    ])));
 
-    expect($component->effects['redirect'] ?? '')->toStartWith('https://app.test/cb?');
+    expect($target)->toStartWith('https://app.test/cb?');
 });
 
 it('keeps a query the client registered rather than dropping it', function (): void {
@@ -603,17 +616,15 @@ it('keeps a query the client registered rather than dropping it', function (): v
     $uri = 'https://app.test/cb?tenant=acme';
     $clientId = registerConsentClient($org->id, [$uri]);
 
-    $component = Volt::test('oauth.consent', [
+    $target = leftFor(answerConsent(consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => $uri,
-        'response_type' => 'code',
         'scope' => 'openid',
         'code_challenge' => str_repeat('a', 43),
-        'code_challenge_method' => 'S256',
-    ])->call('approve');
+    ])));
 
-    expect($component->effects['redirect'] ?? '')->toContain('tenant=acme')
-        ->and($component->effects['redirect'] ?? '')->toContain('code=');
+    expect($target)->toContain('tenant=acme')
+        ->and($target)->toContain('code=');
 });
 
 it('carries a private-use scheme through a denial too', function (): void {
@@ -622,19 +633,16 @@ it('carries a private-use scheme through a denial too', function (): void {
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id, ['com.cboxid.authenticator:/oauth/callback']);
 
-    $component = Volt::test('oauth.consent', [
+    $target = leftFor(answerConsent(consentScreen([
         'client_id' => $clientId,
         'redirect_uri' => 'com.cboxid.authenticator:/oauth/callback',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'xyz',
         'code_challenge' => str_repeat('a', 43),
-        'code_challenge_method' => 'S256',
-    ])->call('deny');
+    ]), 'deny'));
 
-    expect($component->effects['redirect'] ?? '')
-        ->toStartWith('com.cboxid.authenticator:/oauth/callback?')
-        ->and($component->effects['redirect'] ?? '')->toContain('error=access_denied');
+    expect($target)->toStartWith('com.cboxid.authenticator:/oauth/callback?')
+        ->and($target)->toContain('error=access_denied');
 })->group('security');
 
 it('does not rewrite a private-use redirect onto our own host on the non-Livewire path', function (): void {
@@ -666,18 +674,15 @@ it('does not rewrite a private-use redirect onto our own host on the non-Livewir
     ));
 
     // A real session, so the middleware populates CurrentUser on the GET below.
-    Volt::test('auth.login')
-        ->set('email', 'native@acme.test')
-        ->set('password', 'supersecret123')
-        ->call('login');
+    test()->from(route('login'))->post(route('login.attempt'), ['email' => 'native@acme.test', 'password' => 'supersecret123']);
 
     $response = $this->get('/oauth/authorize?'.http_build_query([
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'com.cboxid.authenticator:/oauth/callback',
-        'response_type' => 'code',
         'scope' => 'openid',
         'state' => 'xyz',
         'code_challenge' => str_repeat('a', 43),
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
     ]));
 
@@ -716,13 +721,11 @@ it('carries the requested resource across the sign-in round trip', function (): 
     [, $org] = actingAsConsentUser();
     $clientId = registerConsentClient($org->id);
 
-    $component = Volt::test('oauth.consent', [
+    $component = authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'scope' => 'openid',
         'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
-        'code_challenge_method' => 'S256',
         'resource' => 'https://mcp.acme.example',
         // Forces the re-authentication branch, which is the one that rebuilds the URL.
         'prompt' => 'login',
@@ -761,8 +764,8 @@ it('refuses a code_challenge that is not an S256 digest, at the authorize endpoi
     $location = $this->get('/oauth/authorize?'.http_build_query([
         'client_id' => $registered->client->client_id,
         'redirect_uri' => 'https://app.test/cb',
-        'response_type' => 'code',
         'code_challenge' => 'abc',
+        'response_type' => 'code',
         'code_challenge_method' => 'S256',
     ]))->assertRedirect()->headers->get('Location');
 

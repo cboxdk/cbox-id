@@ -98,6 +98,26 @@ final class Color
         return $best;
     }
 
+    /**
+     * `$ratio` of `$color` laid over `$background`, as an opaque hex.
+     *
+     * The CSS twin of `color-mix(in srgb, $color N%, $background)`. It exists because
+     * several tokens are emitted as a `color-mix()` the browser resolves — and the
+     * contrast of the result is a question this side has to be able to ask BEFORE it
+     * emits, not one the stylesheet answers after nobody is looking.
+     */
+    public static function mix(string $color, string $background, float $ratio): string
+    {
+        [$r, $g, $b] = self::channels($color);
+        [$br, $bg, $bb] = self::channels($background);
+
+        return self::hex(
+            $r * $ratio + $br * (1 - $ratio),
+            $g * $ratio + $bg * (1 - $ratio),
+            $b * $ratio + $bb * (1 - $ratio),
+        );
+    }
+
     private static function hex(float $r, float $g, float $b): string
     {
         $channel = static fn (float $c): string => str_pad(

@@ -54,11 +54,19 @@ it('lets an operator step into a member and become purely the subject, audited',
     // person holding it that a staff console exists at that address.
     $this->get(route('platform.organizations'))->assertNotFound();
 
-    // The dashboard loads as the subject and shows the impersonation banner.
-    $this->get('/dashboard')
-        ->assertOk()
-        ->assertSee('member@acme.test')
-        ->assertSee('impersonating', false);
+    /*
+     * The dashboard loads AS THE SUBJECT, and the chrome is told this is an impersonation.
+     *
+     * The banner is one component reading a shared prop, so what the server decides is
+     * whether that prop is there and whose session it names — and a page rendering it
+     * without one is the failure this guards against. That it is DRAWN is held in
+     * tests/Browser, which is the only place that can see it.
+     */
+    $page = $this->get('/dashboard')->assertOk();
+
+    expect($page->inertiaProps('auth.user.email'))->toBe('member@acme.test')
+        ->and($page->inertiaProps('impersonation.email'))->toBe('member@acme.test')
+        ->and($page->inertiaProps('impersonation.reason'))->not->toBeNull();
 
     $audit->assertRecorded(
         'platform.impersonation_started',
@@ -438,11 +446,11 @@ it('leaves audit events untouched when not impersonating', function (): void {
  * of the set: a refresh token that outlives both the 30-minute window and the operator's
  * own session, and that is attributed to the person being impersonated.
  *
- * ImpersonationCallGuard did not cover it either. That guard hangs off Livewire's `call`
- * event and its comment claims deny-by-default means "no sink can be missed" — but
- * mount() is not a call, and the consent component reaches approve() from inside mount()
- * whenever the client is first-party. So a plain GET issued a code with no Livewire
- * action for the guard to refuse.
+ * THE READ-ONLY RULE DID NOT COVER IT EITHER, and the reason is worth keeping now that
+ * the rule is a middleware rather than a Livewire `call` hook: it answers "is this a
+ * write?" with the HTTP METHOD, and this one is a GET. The consent screen approves from
+ * inside the request that renders it whenever the client is first-party, so a plain page
+ * load issued an authorization code with nothing for a method-shaped rule to refuse.
  *
  * The redirect target never has to be reachable: the impersonator IS the user agent and
  * reads `code` straight out of the Location header.

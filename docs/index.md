@@ -63,6 +63,6 @@ sealed secrets unrecoverable. Details in [Operations](operations/_index.md).
 
 The deployable app built on `cboxdk/laravel-id`. The framework package provides the
 identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit); this app adds the
-admin console, onboarding, and hosted-cloud concerns. It's server-rendered
-(Livewire + Volt) on purpose — session-cookie auth, minimal JS, no tokens in the
+admin console, onboarding, and hosted-cloud concerns. The console is Inertia +
+React over server-rendered props: session-cookie auth, and no tokens in the
 browser — because it *is* the login surface.

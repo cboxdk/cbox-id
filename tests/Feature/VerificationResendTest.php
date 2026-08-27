@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Console\ProjectController;
 use App\Mail\EmailVerificationMail;
 use App\Platform\MemberEmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -9,12 +10,15 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
+use Inertia\Support\SessionKey;
+use Inertia\Testing\AssertableInertia;
 
 /**
  * Deferring the environment until the address is proven (see SignupDeferredEnvironmentTest)
@@ -51,13 +55,20 @@ function rootForResend(): Environment
 /** Sign up a workspace and stay signed in as its owner (signup establishes the session). */
 function signUpForResend(string $email = 'dana@acme.example', string $organization = 'Acme'): Subject
 {
-    Volt::test('auth.signup')
-        ->set('organization', $organization)
-        ->set('name', 'Dana Reeves')
-        ->set('email', $email)
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('register')
-        ->assertHasNoErrors();
+    /*
+     * A GUEST signs up. `platform.guest` guards the route, so a second call in one test —
+     * "somebody else's workspace, so 'the signed-in member' is a real distinction" —
+     * would otherwise be bounced without registering anybody, and the failure would land
+     * later, on a lookup for an account that was never created.
+     */
+    test()->flushSession();
+
+    test()->post(route('signup.register'), [
+        'organization' => $organization,
+        'name' => 'Dana Reeves',
+        'email' => $email,
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertSessionHasNoErrors();
 
     $member = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail($email));
     expect($member)->not->toBeNull();
@@ -71,6 +82,33 @@ function signUpForResend(string $email = 'dana@acme.example', string $organizati
     signInAsMember($member->id);
 
     return $member;
+}
+
+/**
+ * Press "send the link again".
+ *
+ * A real POST to the launchpad's own route, from the launchpad, so the redirect back and
+ * the flash it carries are the ones a browser would get.
+ */
+function resend(): TestResponse
+{
+    return test()
+        ->from(route('projects'))
+        ->post(route('projects.verification.resend'));
+}
+
+/**
+ * What the last resend told the person who clicked.
+ *
+ * Read off the INERTIA FLASH CHANNEL, which is where the answer to one click belongs —
+ * not the session's `status`, which the console's toaster shows for every mutation.
+ */
+function lastResendNotice(): string
+{
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+    $notice = is_array($flash) ? ($flash['resendNotice'] ?? null) : null;
+
+    return is_string($notice) ? $notice : '';
 }
 
 /** Every verification link mailed so far, oldest first. */
@@ -91,10 +129,9 @@ it('sends a fresh link to the signed-in member and to nobody else', function ():
 
     $before = count(verificationLinks());
 
-    Volt::test('console.projects.index')
-        ->call('resendVerification')
-        ->assertRenderedNotRedirected()
-        ->assertSee('on its way to dana@acme.example');
+    resend()->assertSessionHasNoErrors();
+
+    expect(lastResendNotice())->toContain('on its way to dana@acme.example');
 
     $sent = Mail::sent(EmailVerificationMail::class);
 
@@ -123,52 +160,49 @@ it('takes no address argument, so a crafted call cannot steer where the mail goe
     expect($action->getNumberOfParameters())->toBe(1)
         ->and((string) $action->getParameters()[0]->getType())->toBe(Subject::class);
 
-    // The Livewire control likewise takes only container-resolved services — no scalar a
-    // request payload could supply.
-    //
-    // Signed in as a real member first. The launchpad now redirects a session with no
-    // account membership to the platform console — an operator who owns nothing has no
-    // projects to land in — so mounting it as nobody yields a null instance and this
-    // assertion would pass by reflecting over nothing at all.
-    rootForResend();
-    $member = signUpForResend();
-    signInAsSubject($member->id);
-
-    $component = Volt::test('console.projects.index')->instance();
-
-    expect($component)->not->toBeNull('the launchpad did not mount, so nothing below was checked');
-
-    foreach ((new ReflectionMethod($component, 'resendVerification'))->getParameters() as $parameter) {
+    // The CONTROLLER action likewise takes only container-resolved services — no scalar a
+    // request payload could supply, and no `Request` it could read one off.
+    foreach ((new ReflectionMethod(ProjectController::class, 'resendVerification'))->getParameters() as $parameter) {
         $type = $parameter->getType();
         expect($type)->toBeInstanceOf(ReflectionNamedType::class)
-            ->and($type->isBuiltin())->toBeFalse();
+            ->and($type->isBuiltin())->toBeFalse()
+            ->and((string) $type)->not->toBe(Request::class);
     }
+
+    // …and the route carries no parameter either, so there is nowhere in the URL to put
+    // one. Reflection over the action alone would miss a `{subject}` segment.
+    expect(Route::getRoutes()->getByName('projects.verification.resend')?->parameterNames())->toBe([]);
 });
 
 it('offers the resend control on the launchpad while the environment is held back', function (): void {
     rootForResend();
     signUpForResend();
 
-    // The banner's own control, asserted on copy that exists nowhere else on the page.
+    // The banner's own state. It is a PROP now rather than copy in the response: the page
+    // renders in the browser, and `awaitingVerification` is the single thing that decides
+    // whether the way back exists at all.
     $this->get(route('projects'))
         ->assertOk()
-        ->assertSee('Send the link again')
-        ->assertSee('The link stays valid for 24 hours.');
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('console/projects/index')
+            ->where('awaitingVerification', true)
+            ->where('verificationEmail', 'dana@acme.example'));
 });
 
 it('refuses the fourth resend inside the window', function (): void {
     rootForResend();
     signUpForResend();
 
-    $component = Volt::test('console.projects.index');
-
     for ($attempt = 1; $attempt <= 3; $attempt++) {
-        $component->call('resendVerification')->assertSee('on its way to dana@acme.example');
+        resend();
+        expect(lastResendNotice())->toContain('on its way to dana@acme.example');
     }
 
-    $component->call('resendVerification')
-        ->assertDontSee('on its way to dana@acme.example')
-        ->assertSee('That is a lot of emails.');
+    resend();
+
+    expect(lastResendNotice())
+        ->toContain('That is a lot of emails.')
+        ->not->toContain('on its way to dana@acme.example');
 
     // Three links, not four: the throttle refuses before anything is mailed.
     expect(Mail::sent(EmailVerificationMail::class))->toHaveCount(4); // 1 signup + 3 resends
@@ -178,9 +212,12 @@ it('says exactly the same thing whether or not the address is already confirmed'
     rootForResend();
     $member = signUpForResend();
 
-    $unverifiedNotice = Volt::test('console.projects.index')
-        ->call('resendVerification')
-        ->get('resendNotice');
+    resend();
+    $unverifiedNotice = lastResendNotice();
+
+    // Read something, or the comparison below passes on two empty strings — which is
+    // exactly what a resend that flashed nothing at all would produce.
+    expect($unverifiedNotice)->not->toBe('');
 
     // Confirm the address WITHOUT releasing an environment — the state a suspended or
     // at-limit account sits in, and the only place a resend could leak verification.
@@ -190,9 +227,8 @@ it('says exactly the same thing whether or not the address is already confirmed'
 
     $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
 
-    $verifiedNotice = Volt::test('console.projects.index')
-        ->call('resendVerification')
-        ->get('resendNotice');
+    resend();
+    $verifiedNotice = lastResendNotice();
 
     expect($verifiedNotice)->toBe($unverifiedNotice)
         // Nothing was actually mailed to an address that needs no confirming — the
@@ -204,7 +240,7 @@ it('leaves exactly one live link: the resent one works and the earlier one does 
     rootForResend();
     $member = signUpForResend();
 
-    Volt::test('console.projects.index')->call('resendVerification');
+    resend();
 
     $links = verificationLinks();
     expect($links)->toHaveCount(2);
@@ -231,11 +267,9 @@ it('is a harmless no-op once the environment has been released', function (): vo
 
     $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
 
-    Volt::test('console.projects.index')
-        ->call('resendVerification')
-        ->assertRenderedNotRedirected()
-        ->assertHasNoErrors()
-        ->assertSee('your environment is already up and running');
+    resend()->assertSessionHasNoErrors();
+
+    expect(lastResendNotice())->toContain('your environment is already up and running');
 
     expect(Mail::sent(EmailVerificationMail::class))->toHaveCount($mailedSoFar)
         ->and(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);

@@ -31,6 +31,29 @@ final class RequireSudo
             return $next($request);
         }
 
+        /*
+         * AN INERTIA VISIT IS A REDIRECT, NOT AN ERROR.
+         *
+         * It arrives as an XHR — `X-Requested-With: XMLHttpRequest` — so without this it
+         * would fall into the ceremony branch below and get a 403 JSON body the client
+         * turns into nothing a person can act on. Inertia's own contract is that a 302 is
+         * followed and the page it names is rendered, which is exactly the step-up screen.
+         *
+         * The intended target is taken from the REFERER, for the same reason the ceremony
+         * branch takes it there: `fullUrl()` on a POST endpoint would send somebody back to
+         * an action by GET after they re-entered their password, and a 405 is a poor reward
+         * for proving who you are.
+         */
+        if ($request->header('X-Inertia') !== null) {
+            $intended = $this->sameOriginPath($request, $request->headers->get('referer'));
+
+            if ($intended !== null) {
+                $request->session()->put('sudo.intended', $intended);
+            }
+
+            return redirect()->route('sudo');
+        }
+
         // JSON/ceremony endpoints (passkey enrolment) can't follow a redirect; tell
         // the client where to re-authenticate. Record the PAGE that made the call
         // (the referer) — not the POST endpoint — so sudo returns the user to where
@@ -61,6 +84,12 @@ final class RequireSudo
             ], 403));
         }
 
+        /*
+         * A PLAIN BROWSER REQUEST. `fullUrl()` is right here and only here: this branch is
+         * reached by a GET for a gated PAGE, which is a place to come back to. A form POST
+         * that lands here would store its own endpoint — so console writes are Inertia
+         * visits, handled above, and the two ceremony endpoints are handled below.
+         */
         $request->session()->put('sudo.intended', $request->fullUrl());
 
         return redirect()->route('sudo');

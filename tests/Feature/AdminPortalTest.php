@@ -16,7 +16,7 @@ use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
-use Livewire\Volt\Volt;
+use Inertia\Support\SessionKey;
 
 beforeEach(function (): void {
     // These render product pages, which presuppose an installed deployment.
@@ -41,12 +41,17 @@ it('lets an entitled admin generate a setup link, recorded in the audit trail', 
     $fake = new FakeAuditLog;
     app()->instance(AuditLog::class, $fake);
 
-    $component = Volt::test('console.connections.index')->call('invite')->assertHasNoErrors();
+    $this->from(route('connections'))
+        ->post(route('connections.invite'))
+        ->assertSessionHasNoErrors()
+        // ON THE FLASH CHANNEL, not in props. The link admits its holder to this tenant's
+        // SSO setup with no account at all — a credential in a URL — and props are written
+        // into the browser's history entry, where one is readable by pressing Back.
+        ->assertInertiaFlash('portalUrl');
 
-    // Asserted through the RENDER, not through the wire: portalUrl is a protected
-    // property precisely so it never enters the Livewire snapshot, and a test that could
-    // still read it off the wire would be testing that the fix is absent.
-    $component->assertSee('/setup/', escape: false);
+    $flash = session()->get(SessionKey::FLASH_DATA, []);
+
+    expect(is_array($flash) ? ($flash['portalUrl'] ?? '') : '')->toContain('/setup/');
     expect(AdminPortalLink::query()->where('organization_id', $orgId)->count())->toBe(1);
     $fake->assertRecorded('portal_link.created', fn ($e) => $e->organizationId === $orgId);
 });
@@ -55,8 +60,9 @@ it('a non-admin cannot reach the invite action even on an entitled org', functio
     $orgId = gateAdmin('portal-member', MembershipRole::Member);
     grantFeature($orgId, 'cbox-id-sso');
 
-    // The admin read-gate blocks a member at mount — they never reach invite().
-    Volt::test('console.connections.index')->assertForbidden();
+    // The admin read-gate blocks a member at the door — they never reach the action.
+    $this->get(route('connections'))->assertForbidden();
+    $this->post(route('connections.invite'))->assertForbidden();
 });
 
 it('opens the portal for a valid token', function () {
@@ -64,10 +70,18 @@ it('opens the portal for a valid token', function () {
     grantFeature($orgId, 'cbox-id-sso');
     $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
 
-    $this->followingRedirects()
+    // Followed through to the setup screen, and asked what it OFFERS: a link scoped to
+    // SSO opens the SSO steps and not the SCIM one, which is the property this redemption
+    // has to preserve — `assertSee('SSO connection')` would pass on a page that showed the
+    // heading and no controls under it.
+    $props = (array) $this->followingRedirects()
         ->get(route('portal.enter', $token))
         ->assertOk()
-        ->assertSee('SSO connection');
+        ->inertiaProps();
+
+    expect($props['showSso'])->toBeTrue()
+        ->and($props['showScim'])->toBeFalse()
+        ->and($props['urls']['createConnection'])->toBe(route('portal.connections.store'));
 });
 
 it('regenerates the session id when a setup link is redeemed (anti-fixation)', function () {
@@ -95,16 +109,7 @@ it('creates a connection only for the org bound to the portal session', function
     $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
-    Volt::test('portal.setup')
-        ->set('type', 'saml')
-        ->set('connName', 'Bound Co')
-        ->set('idp_entity_id', 'https://idp.corp/metadata')
-        ->set('idp_sso_url', 'https://idp.corp/sso')
-        ->set('idp_x509cert', '-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----')
-        ->set('sp_entity_id', 'https://sp.acme/metadata')
-        ->set('sp_acs_url', 'https://sp.acme/acs')
-        ->call('createConnection')
-        ->assertHasNoErrors();
+    createPortalConnection()->assertSessionHasNoErrors();
 
     expect(Connection::query()->where('organization_id', $orgA)->where('name', 'Bound Co')->exists())->toBeTrue()
         ->and(Connection::query()->where('organization_id', $orgB)->exists())->toBeFalse();
@@ -118,13 +123,13 @@ it('lets the IT admin verify their domain from the self-serve portal, bound to t
     $token = app(AdminPortal::class)->generate($orgA, PortalScope::Sso, 'sub_creator');
     expect(app(AdminPortal::class)->redeem($token))->not->toBeNull();
 
-    $component = Volt::test('portal.setup')
-        ->set('domain', 'acme.com')
-        ->call('addDomain')
-        ->assertHasNoErrors();
+    addPortalDomain('acme.com')->assertSessionHasNoErrors();
 
-    // The DNS challenge is surfaced and the domain is bound to the portal's org only.
-    expect($component->get('dnsToken'))->not->toBeNull()
+    // The DNS challenge is surfaced — on the flash channel, because it is what the admin
+    // must publish on the render that answered — and the domain is bound to the portal's
+    // org and no other.
+    expect(flashed('dns'))->not->toBeNull()
+        ->and(flashed('dns')['domain'])->toBe('acme.com')
         ->and(VerifiedDomain::query()->where('organization_id', $orgA)->where('domain', 'acme.com')->exists())->toBeTrue()
         ->and(VerifiedDomain::query()->where('organization_id', $orgB)->exists())->toBeFalse();
 });
@@ -134,6 +139,16 @@ it('a portal session grants no access to the platform console', function () {
     grantFeature($orgId, 'cbox-id-sso');
     $token = app(AdminPortal::class)->generate($orgId, PortalScope::Sso, 'sub_creator');
     $link = AdminPortalLink::query()->where('organization_id', $orgId)->firstOrFail();
+
+    /*
+     * ONLY the portal session, and said out loud.
+     *
+     * `withSession()` MERGES, and the fixture above signs its administrator in — that is
+     * what an established administrator's browser holds. A browser carrying both would
+     * reach the console on the console session and prove nothing about the portal one, so
+     * the premise of this test is the empty session it starts from.
+     */
+    $this->flushSession();
 
     $this->withSession([
         AdminPortal::SESSION_KEY => [
@@ -152,7 +167,7 @@ it('refuses an expired token at the entry point', function () {
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['expires_at' => now()->subMinute()]);
 
-    $this->get(route('portal.enter', $token))->assertStatus(410);
+    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
 });
 
 it('refuses a consumed token at the entry point', function () {
@@ -162,7 +177,7 @@ it('refuses a consumed token at the entry point', function () {
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['consumed_at' => now()]);
 
-    $this->get(route('portal.enter', $token))->assertStatus(410);
+    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
 });
 
 it('refuses redemption when the org is no longer entitled', function () {
@@ -172,7 +187,7 @@ it('refuses redemption when the org is no longer entitled', function () {
 
     app(EntitlementWriter::class)->revoke($orgId, 'cbox-id-sso', EntitlementSource::Manual);
 
-    $this->get(route('portal.enter', $token))->assertStatus(410);
+    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
     expect(app(AdminPortal::class)->redeem($token))->toBeNull();
 });
 
@@ -185,7 +200,11 @@ it('finishing marks the link consumed, records completion, and closes the sessio
     app()->instance(AuditLog::class, $fake);
 
     app(AdminPortal::class)->redeem($token);
-    Volt::test('portal.setup')->call('finish')->assertOk();
+
+    // …and it hands over to a page of its own rather than re-rendering the setup screen,
+    // which the middleware would now bounce to the expired page: the wrong sentence for
+    // somebody who has just succeeded.
+    finishPortalSetup()->assertRedirect(route('portal.done'));
 
     $link = AdminPortalLink::query()->where('organization_id', $orgId)->firstOrFail();
     expect($link->consumed_at)->not->toBeNull();
@@ -235,7 +254,7 @@ it('refuses a setup link minted in another environment, on the service and over 
         ->and(session()->has(AdminPortal::SESSION_KEY))->toBeFalse();
 
     // Over HTTP the host resolves to env B, so the entry point refuses it there too.
-    $this->get(route('portal.enter', $token))->assertStatus(410);
+    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
 
     // The link is untouched on the environment that issued it.
     app(EnvironmentContext::class)->set($envA);

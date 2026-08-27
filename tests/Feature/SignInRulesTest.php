@@ -14,6 +14,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\NeverBreachedCheck;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -25,7 +26,9 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Auth\Access\AuthorizationException;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Collection;
+use Illuminate\Testing\TestResponse;
+use Inertia\Testing\AssertableInertia;
 
 /**
  * Sign-in rules — the capability that was enforced everywhere and authorable nowhere.
@@ -37,6 +40,67 @@ use Livewire\Volt\Volt;
  * just decided how their company signs in, and a refusal that goes somewhere.
  */
 beforeEach(fn () => app()->instance(BreachedPasswordCheck::class, new NeverBreachedCheck));
+
+/**
+ * Press "Save rules", the way the form does: every field, not only the changed one.
+ *
+ * The editor is a form over a WHOLE policy, so a submission that carried one field would
+ * be a submission this console cannot produce — and the tightening check reads all seven.
+ * The page's current values are the starting point, which is what the browser has.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function saveRules(array $changes, string $plane = 'auth-policy'): TestResponse
+{
+    return test()->from(route($plane))
+        ->put(route($plane.'.update'), [...currentRules($plane), ...$changes]);
+}
+
+/**
+ * Enrol a second factor for a subject, so a baseline that REQUIRES one lets them past.
+ *
+ * An administrator who mandates two-factor is, from that moment, somebody who has one —
+ * the console sends anybody else to enrol before it will render another page. A fixture
+ * without this describes an administrator locked out of the setting they just wrote.
+ */
+function enrolSecondFactor(string $subjectId): void
+{
+    WebAuthnCredential::query()->create([
+        'user_id' => $subjectId,
+        'credential_id' => 'cred-'.$subjectId,
+        'public_key' => 'key',
+        'sign_count' => 0,
+        'transports' => ['internal'],
+        'name' => 'Test key',
+    ]);
+}
+
+/** What the editor is showing right now. */
+function currentRules(string $plane = 'auth-policy'): array
+{
+    return (array) test()->get(route($plane))->assertOk()->inertiaProps('policy');
+}
+
+/**
+ * Re-establish the acting administrator's session as an SSO one.
+ *
+ * A mandate ends every PASSWORD session in the organization — that is the whole point of
+ * it — so an administrator who has just required SSO is, a moment later, somebody who
+ * signed in through their identity provider. A fixture that leaves them holding a password
+ * session is a fixture describing a state the product does not produce.
+ */
+function resignInThroughSso(string $subjectId, string $organizationId, MembershipRole $role): void
+{
+    $session = app(SessionManager::class)->start($subjectId, $organizationId, ['sso']);
+
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+    app(CurrentUser::class)->set(
+        app(Subjects::class)->find($subjectId),
+        $session,
+        app(Organizations::class)->find($organizationId),
+        $role,
+    );
+}
 
 /** A live password session for a subject, the way a real sign-in leaves one. */
 function aRuleSubjectSession(string $email): Session
@@ -63,11 +127,9 @@ it('writes an organization override from the organization console', function ():
     // Nothing of its own to begin with: the org is governed entirely by the baseline.
     expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull();
 
-    Volt::test('console.auth-policy')
-        ->set('minLength', 20)
-        ->set('mfa', 'required')
-        ->call('save')
-        ->assertHasNoErrors();
+    saveRules(['minLength' => 20, 'mfa' => 'required'])
+        ->assertRedirect(route('auth-policy'))
+        ->assertSessionHasNoErrors();
 
     $override = app(AuthPolicies::class)->overrideFor($org->id);
 
@@ -83,7 +145,7 @@ it('refuses an override that would loosen the environment baseline', function ()
     // console showing a rule that is in force nowhere. Refused with the floor named
     // instead — on every field, because a page that catches only the obvious one teaches
     // an administrator to trust the rest.
-    [, $org] = actingAsRole(MembershipRole::Owner);
+    [$subjectId, $org] = actingAsRole(MembershipRole::Owner);
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(
         minLength: 16,
@@ -95,16 +157,21 @@ it('refuses an override that would loosen the environment baseline', function ()
         lockoutThreshold: 10,
     ));
 
-    Volt::test('console.auth-policy')
-        ->set('minLength', 8)
-        ->set('reuseHistory', 0)
-        ->set('maxAgeDays', '')
-        ->set('lockoutThreshold', '')
-        ->set('requireBreachCheck', false)
-        ->set('mfa', 'optional')
-        ->set('sso', 'off')
-        ->call('save')
-        ->assertHasErrors(['minLength', 'reuseHistory', 'maxAgeDays', 'lockoutThreshold', 'requireBreachCheck', 'mfa', 'sso']);
+    // The baseline it just wrote requires a second factor, and the console holds its own
+    // author to it.
+    enrolSecondFactor((string) $subjectId);
+
+    saveRules([
+        'minLength' => 8,
+        'reuseHistory' => 0,
+        'maxAgeDays' => '',
+        'lockoutThreshold' => '',
+        'requireBreachCheck' => false,
+        'mfa' => 'optional',
+        'sso' => 'off',
+    ])->assertSessionHasErrors([
+        'minLength', 'reuseHistory', 'maxAgeDays', 'lockoutThreshold', 'requireBreachCheck', 'mfa', 'sso',
+    ]);
 
     expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull();
 })->group('security');
@@ -114,15 +181,22 @@ it('says whether a rule is the organization\'s own or the environment\'s', funct
     // depending on who decided it, and an administrator cannot act on it without knowing.
     [, $org] = actingAsRole(MembershipRole::Owner);
 
-    // Matched without the apostrophe: it is literal markup rather than escaped output, so
-    // assertSee's own escaping would look for an entity the page never renders.
-    Volt::test('console.auth-policy')->assertSee('Using your environment');
+    // Asserted on the PROPS, which is where the answer lives: `inheriting` decides the
+    // sentence and `overridden` decides which fields wear a badge. A markup assertion
+    // would be asserting the copy rather than the fact under it.
+    test()->get(route('auth-policy'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('inheriting', true)
+            ->where('overridden', []));
 
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(minLength: 20));
 
-    Volt::test('console.auth-policy')
-        ->assertSee('has its own rules')
-        ->assertSee('Overridden');
+    test()->get(route('auth-policy'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('inheriting', false)
+            ->where('overridden', fn (Collection $fields): bool => $fields->contains('minLength')));
 })->group('security');
 
 it('drops the override and goes back to inheriting', function (): void {
@@ -133,13 +207,15 @@ it('drops the override and goes back to inheriting', function (): void {
 
     expect(app(AuthPolicies::class)->resolve($org->id)->minLength)->toBe(22);
 
-    Volt::test('console.auth-policy')
-        ->call('returnToInherited')
-        ->assertHasNoErrors()
-        // The form now shows what actually governs this organization, not the value
-        // object's own defaults — a reset that left 12 on screen under a 14-character
-        // baseline would be the console lying about the rule it just restored.
-        ->assertSet('minLength', 14);
+    test()->from(route('auth-policy'))
+        ->delete(route('auth-policy.inherit'))
+        ->assertRedirect(route('auth-policy'))
+        ->assertSessionHasNoErrors();
+
+    // The form now shows what actually governs this organization, not the value object's
+    // own defaults — a reset that left 12 on screen under a 14-character baseline would
+    // be the console lying about the rule it just restored.
+    expect(test()->get(route('auth-policy'))->assertOk()->inertiaProps('policy.minLength'))->toBe(14);
 
     expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull()
         ->and(app(AuthPolicies::class)->resolve($org->id)->minLength)->toBe(14);
@@ -152,19 +228,23 @@ it('asks before a save that would sign an organization out, then does it', funct
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
     $bystander = aRuleSubjectSession('rules-bystander@acme.test');
 
-    $page = Volt::test('console.auth-policy')
-        ->set('sso', 'required')
-        ->call('save')
-        ->assertHasNoErrors()
-        ->assertSet('confirmingTightening', true)
-        ->assertSee('This will sign people out of');
+    /*
+     * THE PAGE ASKS FIRST, and this is the fact it asks on.
+     *
+     * Under Volt the question was a server round trip — save() refused to write and set a
+     * flag. There is no round trip to hang it on now: the form asks in the browser before
+     * it submits, so what the server owes the page is the one thing the browser cannot
+     * work out, which is whether passwords work TODAY. The dialog itself is asserted in
+     * tests/Browser/SignInRulesTest, where it can actually be seen.
+     */
+    test()->get(route('auth-policy'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('passwordsCurrentlyWork', true));
 
-    // The first click writes NOTHING. A mandate that took effect on the way to asking
-    // would make the question decoration.
     expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull()
         ->and(ruleSessionIsLive($member))->toBeTrue();
 
-    $page->call('confirmSave')->assertHasNoErrors();
+    saveRules(['sso' => 'required'])->assertSessionHasNoErrors();
 
     // …and the revocation is the decorator's, reached because the page writes through the
     // contract. Its scope is the organization's members and nobody else's.
@@ -173,31 +253,22 @@ it('asks before a save that would sign an organization out, then does it', funct
         ->and(ruleSessionIsLive($bystander))->toBeTrue();
 })->group('security');
 
-it('lets the confirmation be declined without writing anything', function (): void {
-    [, $org] = actingAsRole(MembershipRole::Owner);
-
-    Volt::test('console.auth-policy')
-        ->set('sso', 'required')
-        ->call('save')
-        ->call('cancelTightening')
-        ->assertSet('confirmingTightening', false)
-        ->assertSee('Save rules');
-
-    expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull();
-})->group('security');
-
 it('does not ask when the organization is already covered by an environment mandate', function (): void {
     // Nothing is ending, so nothing is confirmed. Asking "are you sure you want to sign
     // everyone out" about a change that signs nobody out is how confirmations become
     // reflexes — and the effective policy, not the stored override, is what says so.
-    [, $org] = actingAsRole(MembershipRole::Owner);
+    [$subjectId, $org] = actingAsRole(MembershipRole::Owner);
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required));
 
-    Volt::test('console.auth-policy')
-        ->set('sso', 'required')
-        ->call('save')
-        ->assertSet('confirmingTightening', false);
+    // …and the administrator is now signed in the only way the mandate allows.
+    resignInThroughSso((string) $subjectId, $org->id, MembershipRole::Owner);
+
+    test()->get(route('auth-policy'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('passwordsCurrentlyWork', false));
+
+    saveRules(['sso' => 'required'])->assertSessionHasNoErrors();
 
     expect(app(AuthPolicies::class)->overrideFor($org->id))->not->toBeNull();
 })->group('security');
@@ -205,7 +276,7 @@ it('does not ask when the organization is already covered by an environment mand
 it('refuses the page to an organization member who is not an administrator', function (): void {
     actingAsRole(MembershipRole::Member);
 
-    Volt::test('console.auth-policy')->assertForbidden();
+    test()->get(route('auth-policy'))->assertForbidden();
 })->group('security');
 
 it('refuses an organization admin with no organization at all', function (): void {
@@ -216,8 +287,9 @@ it('refuses an organization admin with no organization at all', function (): voi
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-orphan-rules'));
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, null, MembershipRole::Owner);
+    session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    Volt::test('console.auth-policy')->assertForbidden();
+    test()->get(route('auth-policy'))->assertForbidden();
 })->group('security');
 
 /*
@@ -230,10 +302,7 @@ it('keeps the environment plane writing the baseline, not an override', function
     $setup = crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-baseline'));
 
-    Volt::test('console.auth-policy')
-        ->set('minLength', 19)
-        ->call('save')
-        ->assertHasNoErrors();
+    saveRules(['minLength' => 19], 'environment.auth-policy')->assertSessionHasNoErrors();
 
     expect(app(AuthPolicies::class)->forEnvironment()->minLength)->toBe(19)
         // No override was invented for anybody: the organization simply inherits.
@@ -249,9 +318,9 @@ it('refuses the environment baseline an attempt to inherit from itself', functio
     // have — which is exactly the write that would land somewhere unintended.
     crudSetup();
 
-    Volt::test('console.auth-policy')
-        ->call('returnToInherited')
-        ->assertHasErrors('sso');
+    test()->from(route('environment.auth-policy'))
+        ->delete(route('environment.auth-policy.inherit'))
+        ->assertForbidden();
 })->group('security');
 
 /*
@@ -287,11 +356,16 @@ it('offers the mandate when a connection is activated, and does not apply it', f
     $member = aRuleSubjectSession('offer-member@acme.test');
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->call('activate')
-        ->assertSet('offerMandate', true)
-        ->assertSee('Make Acme IdP the only way in?')
-        ->assertSee('including yours');
+    // Activation lands back on the connection with the offer standing — `offeringMandate`
+    // is what draws the panel, and it is re-derived from the policy rather than trusted
+    // from the flag, so it can only be true while passwords still work.
+    test()->from(route('connections.show', $connection->id))
+        ->post(route('connections.activate', $connection->id))
+        ->assertRedirect();
+
+    test()->get(route('connections.show', ['connection' => $connection->id, 'activated' => '1']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('offeringMandate', true));
 
     // OFFERED. Turning it on ends every password session in the organization, so an
     // activation that flipped it silently would sign the administrator out of the page
@@ -306,11 +380,8 @@ it('applies the mandate when the offer is accepted', function (): void {
     $member = aRuleSubjectSession('accept-member@acme.test');
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->call('activate')
-        ->call('requireSso')
-        ->assertSet('offerMandate', false)
-        ->assertHasNoErrors();
+    test()->post(route('connections.activate', $connection->id))->assertRedirect();
+    test()->post(route('connections.require-sso', $connection->id))->assertSessionHasNoErrors();
 
     expect(app(AuthPolicies::class)->resolve($org->id)->sso)->toBe(SsoEnforcement::Required)
         // Written through the contract, so the decorator ended the sessions the mandate
@@ -326,9 +397,8 @@ it('keeps the rest of the organization\'s policy when the offer is accepted', fu
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(minLength: 16, reuseHistory: 4));
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->call('activate')
-        ->call('requireSso');
+    test()->post(route('connections.activate', $connection->id));
+    test()->post(route('connections.require-sso', $connection->id));
 
     $override = app(AuthPolicies::class)->overrideFor($connection->organization_id);
 
@@ -340,29 +410,41 @@ it('keeps the rest of the organization\'s policy when the offer is accepted', fu
 it('takes no for an answer', function (): void {
     [$org, $connection] = anOrgWithADraftConnection();
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->call('activate')
-        ->call('keepPasswords')
-        ->assertSet('offerMandate', false)
-        ->assertDontSee('Make Acme IdP the only way in?');
+    test()->post(route('connections.activate', $connection->id))->assertRedirect();
 
+    // Declining is a CLIENT decision and nothing else: it writes nothing, so the page a
+    // moment later still offers, and the policy is untouched. What must not happen is a
+    // mandate applied by an activation nobody said yes to.
     expect(app(AuthPolicies::class)->resolve($org->id)->sso)->toBe(SsoEnforcement::Off);
+
+    // …and arriving without the activation marker does not offer at all.
+    test()->get(route('connections.show', $connection->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('offeringMandate', false));
 })->group('security');
 
-it('never offers a mandate that is already in force, however the flag arrives', function (): void {
-    // `offerMandate` is a public property and therefore client-settable, so the page
-    // re-derives the offer from the policy rather than trusting the flag — and shows the
-    // standing mandate instead, where somebody debugging "why can nobody use a password"
-    // is actually looking.
+it('never offers a mandate that is already in force, however the marker arrives', function (): void {
+    // The marker rides in the URL, so anybody can type it. The page re-derives the offer
+    // from the POLICY rather than trusting it — and reports the standing mandate instead,
+    // where somebody debugging "why can nobody use a password" is actually looking.
     [$org, $connection] = anOrgWithADraftConnection();
 
     app(Connections::class)->activate($org->id, $connection->id);
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
 
-    Volt::test('console.connections.show', ['connection' => $connection->id])
-        ->set('offerMandate', true)
-        ->assertDontSee('Make Acme IdP the only way in?')
-        ->assertSee('Single sign-on is required');
+    // …and the administrator is now signed in the only way the mandate allows. Without
+    // this the page under test is a redirect to /login, which offers nothing either.
+    resignInThroughSso(
+        (string) app(CurrentUser::class)->id(),
+        $org->id,
+        MembershipRole::Owner,
+    );
+
+    test()->get(route('connections.show', ['connection' => $connection->id, 'activated' => '1']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('offeringMandate', false)
+            ->where('passwordsStillAllowed', false));
 })->group('security');
 
 /*
@@ -386,21 +468,31 @@ it('tells a tenant user to use their identity provider instead of that their pas
 
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
 
-    Volt::test('auth.login')
-        ->set('identified', true)
-        ->set('email', 'refused@acme.test')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login')
-        ->assertSet('ssoOrganization', 'Acme Inc')
-        ->assertSet('ssoStartUrl', url("/sso/oidc/{$connection->id}/redirect"))
-        ->assertSee('Acme Inc requires single sign-on')
-        // Terminal: the form it just refused is gone, along with the alternative doors
-        // this page offers. Leaving them on screen invites the same attempt again.
-        ->assertDontSee('Forgot password?')
-        ->assertDontSee('Email me a magic link')
-        // …and the verified credential is not left in the snapshot of the page that
-        // replaces the form.
-        ->assertSet('password', '');
+    test()->from(route('login'))->post(route('login.attempt'), [
+        'identified' => true,
+        'email' => 'refused@acme.test',
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertRedirect(route('login'));
+
+    /*
+     * THE MANDATE RIDES THE FLASH CHANNEL, and that is the security property rather than a
+     * detail of plumbing: this screen is reachable only by somebody who typed the RIGHT
+     * password, so it names their organization — and a page prop is written into the
+     * browser's history entry, where pressing Back would recover it.
+     *
+     * That the refusal is TERMINAL — the form and the alternative doors gone from the
+     * screen — is the page's own doing and a request cannot see it. It is held in
+     * tests/Browser/SignInRulesTest.php, in a browser that renders it.
+     */
+    test()->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->hasFlash('mandate.organization', 'Acme Inc')
+            ->hasFlash('mandate.startUrl', url("/sso/oidc/{$connection->id}/redirect")));
+
+    // And the verified credential is not left anywhere the next page can reach: the old
+    // input bag keeps the address, deliberately, and never the password.
+    expect(session()->get('_old_input.password'))->toBeNull();
 })->group('security');
 
 it('says so plainly when a mandate has no connection to send anyone to', function (): void {
@@ -413,13 +505,20 @@ it('says so plainly when a mandate has no connection to send anyone to', functio
 
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
 
-    Volt::test('auth.login')
-        ->set('identified', true)
-        ->set('email', 'stranded@acme.test')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login')
-        ->assertSet('ssoStartUrl', null)
-        ->assertSee('No identity provider is connected');
+    test()->from(route('login'))->post(route('login.attempt'), [
+        'identified' => true,
+        'email' => 'stranded@acme.test',
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertRedirect(route('login'));
+
+    // NAMED, with nowhere to send them: a link to nothing would be a second dead end
+    // wearing the clothes of a fix. What the screen SAYS about that is the page's, and is
+    // asserted in the browser suite.
+    test()->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->hasFlash('mandate.organization', 'Stranded Co')
+            ->hasFlash('mandate.startUrl', null));
 })->group('security');
 
 it('leaves a wrong password saying nothing at all', function (): void {
@@ -431,14 +530,20 @@ it('leaves a wrong password saying nothing at all', function (): void {
 
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
 
-    Volt::test('auth.login')
-        ->set('identified', true)
-        ->set('email', 'quiet@acme.test')
-        ->set('password', 'a-wrong-guess-entirely')
-        ->call('login')
-        ->assertSet('ssoOrganization', null)
-        ->assertHasErrors('email')
-        ->assertDontSee('requires single sign-on');
+    test()->from(route('login'))->post(route('login.attempt'), [
+        'identified' => true,
+        'email' => 'quiet@acme.test',
+        'password' => 'a-wrong-guess-entirely',
+    ])
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
+
+    // NOTHING ABOUT THE MANDATE. Reaching the mandate screen requires the right password,
+    // so it can never answer "does this address exist here" — and the absence of the flash
+    // key is exactly that guarantee.
+    test()->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->missingFlash('mandate'));
 })->group('security');
 
 it('offers a way back off the refusal screen', function (): void {
@@ -448,16 +553,23 @@ it('offers a way back off the refusal screen', function (): void {
 
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(sso: SsoEnforcement::Required));
 
-    Volt::test('auth.login')
-        ->set('identified', true)
-        ->set('email', 'back@acme.test')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login')
-        ->call('startOver')
-        ->assertSet('ssoOrganization', null)
-        // Back to the EMAIL step, not to the password it has just refused.
-        ->assertSet('identified', false)
-        ->assertSee('Continue');
+    test()->from(route('login'))->post(route('login.attempt'), [
+        'identified' => true,
+        'email' => 'back@acme.test',
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertRedirect(route('login'));
+
+    /*
+     * THE WAY BACK IS A FRESH LOAD, not a server action. `startOver` was a Livewire method
+     * that reset three properties; the same page reached again has simply not been flashed
+     * a mandate, so it opens at the email step. That the CONTROL exists on the refusal
+     * screen is the page's own doing, and is held in tests/Browser/SignInRulesTest.php.
+     */
+    test()->get(route('login'));
+
+    test()->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->missingFlash('mandate'));
 })->group('security');
 
 it('gives an account member the same terminal refusal', function (): void {
@@ -484,18 +596,21 @@ it('gives an account member the same terminal refusal', function (): void {
         fn (): mixed => Organization::query()->whereKey($provisioned->organization->id)->value('name'),
     );
 
-    Volt::test('auth.login')
-        ->set('identified', true)
-        ->set('email', 'refused-owner@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login')
-        ->assertSet('ssoOrganization', $organizationName)
-        ->assertSee('requires single sign-on')
-        ->assertDontSee('Email me a magic link')
-        ->assertSet('password', '');
+    test()->from(route('login'))->post(route('login.attempt'), [
+        'identified' => true,
+        'email' => 'refused-owner@acme.example',
+        'password' => 'a-strong-unbreached-passphrase',
+    ])->assertRedirect(route('login'));
 
-    // No session was established by the attempt that produced the screen.
-    expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
+    test()->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->hasFlash('mandate.organization', $organizationName));
+
+    // No session was established by the attempt that produced the screen, and the verified
+    // credential was not carried anywhere with it.
+    expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
+        ->and(session()->get('_old_input.password'))->toBeNull();
 })->group('security');
 
 it('resolves an account member\'s mandate in the platform root', function (): void {
@@ -517,11 +632,7 @@ it('resolves an account member\'s mandate in the platform root', function (): vo
         new AuthPolicy(sso: SsoEnforcement::Required),
     ));
 
-    Volt::test('auth.login')
-        ->set('identified', true)
-        ->set('email', 'scoped-owner@acme.example')
-        ->set('password', 'a-strong-unbreached-passphrase')
-        ->call('login')
+    test()->from(route('login'))->post(route('login.attempt'), ['identified' => true, 'email' => 'scoped-owner@acme.example', 'password' => 'a-strong-unbreached-passphrase'])
         ->assertDontSee('Your organization requires single sign-on');
 })->group('security');
 

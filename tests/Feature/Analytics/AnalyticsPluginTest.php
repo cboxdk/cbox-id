@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
-use Cbox\Console\Kit\ConsoleManager;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Analytics\Contracts\ReportSink;
 use Cbox\Id\Analytics\Testing\FakeReportSink;
@@ -71,7 +71,11 @@ it('renders a dashboard analytics card', function (): void {
     // console scope at all, and that is exactly what this assertion was measuring.
     actingAsRole(MembershipRole::Owner);
 
-    $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
+    // THE CARD AS DATA, not as a rendered string. A module says what its card IS and the
+    // console draws it, so the assertion is about the label and the number rather than
+    // about markup a copy edit would move.
+    $card = collect(app(DashboardCards::class)->resolve())->firstWhere('key', 'analytics.logins');
 
-    expect($html)->toContain('Logins');
+    expect($card)->not->toBeNull()
+        ->and($card->label)->toBe('Logins (24h)');
 });

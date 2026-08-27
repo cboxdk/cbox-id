@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Compliance;
 
+use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\Compliance\Console\ApplyRetentionCommand;
@@ -26,10 +28,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
-use Throwable;
 
 /**
  * The Cbox ID compliance module. It exports the platform's append-only, hash-chained audit trail — read
@@ -74,7 +73,6 @@ class ComplianceServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'id-compliance');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/compliance.php');
 
         // Console — present when a real sink is wired or compliance is explicitly on.
@@ -100,13 +98,13 @@ class ComplianceServiceProvider extends ServiceProvider
 
         $pages->add(
             area: ConsoleArea::Logs,
-            route: 'compliance.exports',
+            route: 'compliance.data-exports',
             label: 'Exports & retention',
             feature: 'compliance',
             order: 30,
         );
 
-        Console::dashboardCard(fn (): string => $this->exportCard(), 8);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->exportCard(), 8);
 
         if ($this->app->runningInConsole()) {
             $this->commands([ExportAuditCommand::class, ApplyRetentionCommand::class]);
@@ -209,35 +207,60 @@ class ComplianceServiceProvider extends ServiceProvider
      * environment and withheld from the plane that owns one tenant. The card is now the
      * same rule in a smaller frame.
      */
-    private function exportCard(): string
+    /**
+     * DATA, NOT MARKUP — the console draws the card. A throw is caught by the registry and
+     * the card is simply absent.
+     */
+    private function exportCard(): ?DashboardCardProps
     {
-        try {
-            $scope = $this->app->make(ConsoleScope::class);
-            $organizationId = $scope->organizationId();
+        $scope = $this->app->make(ConsoleScope::class);
+        $organizationId = $scope->organizationId();
 
-            if ($organizationId === null) {
-                return '';
-            }
-
-            $pending = $this->pendingEntryCount($organizationId);
-
-            // Environment bookkeeping, on the plane that owns the environment. Read at
-            // all only there, so a tenant's dashboard cannot report on work done across
-            // every tenant.
-            $lastRun = $scope->plane() === ConsolePlane::Environment
-                ? AuditExportRun::query()->latest('id')->first()
-                : null;
-        } catch (Throwable) {
-            return '';
+        if ($organizationId === null) {
+            return null;
         }
 
-        return $this->app->make(ViewFactory::class)
-            ->make('id-compliance::components.compliance-card', [
-                'pending' => $pending,
-                'lastRun' => $lastRun,
-                'showsRuns' => $scope->plane() === ConsolePlane::Environment,
-            ])
-            ->render();
+        $pending = $this->pendingEntryCount($organizationId);
+
+        /*
+         * THE RUN LINE IS ENVIRONMENT BOOKKEEPING: one run walks every chain in the
+         * environment, so "17 scopes scanned" describes other tenants' activity and answers
+         * nothing about your own. It is read AT ALL only on the plane that owns the
+         * environment — the organization plane gets a sentence about its own chain instead.
+         */
+        $onEnvironmentPlane = $scope->plane() === ConsolePlane::Environment;
+        $lastRun = $onEnvironmentPlane ? AuditExportRun::query()->latest('id')->first() : null;
+
+        return new DashboardCardProps(
+            key: 'compliance.exports',
+            label: 'Audit export',
+            value: number_format($pending).' pending',
+            caption: $this->exportCaption($onEnvironmentPlane, $lastRun, $pending),
+            icon: 'shield',
+            tone: $pending > 0 ? 'warning' : 'success',
+            linkLabel: 'View exports & retention',
+            linkHref: route('compliance.data-exports'),
+        );
+    }
+
+    /** The sentence under the count, which differs by plane — see {@see self::exportCard()}. */
+    private function exportCaption(bool $onEnvironmentPlane, ?AuditExportRun $lastRun, int $pending): string
+    {
+        if (! $onEnvironmentPlane) {
+            return $pending === 0
+                ? 'This organization’s audit chain has shipped in full.'
+                : 'From this organization’s audit chain.';
+        }
+
+        if ($lastRun !== null) {
+            return 'Last run '.($lastRun->finished_at?->diffForHumans() ?? '—').' · '.$lastRun->status;
+        }
+
+        // "25 pending" over a flat "No export runs yet" read as a contradiction: one line
+        // counts work, the next says none has been done, and neither says what to do.
+        return $pending > 0
+            ? 'Nothing has been exported yet — these entries are waiting for the first run.'
+            : 'No export runs yet, and nothing is waiting for one.';
     }
 
     /**

@@ -9,8 +9,8 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -62,51 +62,50 @@ function seedEnvironments(): void
     });
 }
 
+/**
+ * Asked of the PROPS: the rows the server sent are the set the search narrowed, and a name
+ * that merely fails to appear in the document could be a row that scrolled off a page.
+ */
+function customerNames(string $term = ''): Collection
+{
+    return collect(platformCustomers($term === '' ? [] : ['q' => $term])['customers'])->pluck('name');
+}
+
 it('narrows the customer list to what was searched for', function (): void {
     seedCustomers(3);
 
-    Volt::test('platform.customers')
-        ->assertSee('Northwind Traders')
-        ->assertSee('Customer 1')
-        ->set('search', 'Northwind')
-        ->assertSee('Northwind Traders')
+    expect(customerNames())->toContain('Northwind Traders')
+        ->and(customerNames())->toContain('Customer 1')
+        ->and(customerNames('Northwind'))->toContain('Northwind Traders')
         // The narrowing is the property. Without it the search box is decoration.
-        ->assertDontSee('Customer 1');
+        ->and(customerNames('Northwind'))->not->toContain('Customer 1');
 });
 
 it('matches on the slug as well as the name', function (): void {
     seedCustomers(1);
 
-    Volt::test('platform.customers')
-        ->set('search', 'northwind-traders')
-        ->assertSee('Northwind Traders');
+    expect(customerNames('northwind-traders'))->toContain('Northwind Traders');
 });
 
 it('tells an operator their search missed, rather than that they have no customers', function (): void {
     seedCustomers(2);
 
     // Two empty states that mean opposite things: "nothing here yet" reads as reassurance
-    // on a new install and as "your customers are gone" after a search that missed.
-    Volt::test('platform.customers')
-        ->set('search', 'nothing-matches-this')
-        ->assertSee('No customers match')
-        ->assertDontSee('No customers yet');
+    // on a new install and as "your customers are gone" after a search that missed. The
+    // page tells them apart by the term it was given, so that is what has to arrive.
+    $props = platformCustomers(['q' => 'nothing-matches-this']);
+
+    expect($props['customers'])->toBe([])
+        ->and($props['search'])->toBe('nothing-matches-this');
 });
 
 it('bounds the page rather than rendering every customer on the install', function (): void {
     seedCustomers(30);
 
-    $html = Volt::test('platform.customers')->html();
-
-    // Count the actual rows rather than guessing which names land where: 31 seeded, 25 to
-    // a page. Row links are the reliable marker — each row links to its customer page.
-    preg_match_all('#/platform/customers/[0-9a-zA-Z]+#', $html, $m);
-    $onPage = count(array_unique($m[0]));
-
     // Bounded at the page size, not at the size of the estate. Before this, rendering
     // twenty-five rows also ran three aggregate queries across EVERY organization on the
     // install; the counts are now scoped to the page's ids.
-    expect($onPage)->toBe(25);
+    expect(platformCustomers()['customers'])->toHaveCount(25);
 })->group('performance');
 
 /**
@@ -117,46 +116,65 @@ it('bounds the page rather than rendering every customer on the install', functi
  * "northwind" in the document was the term echoed back inside `No environments match
  * "northwind"`. The test asserted its own search box. It would have passed against a search
  * that matched everything, nothing, or the wrong column.
+ *
+ * Asked of the PROPS rather than of the rendered document: the rows the server sent are
+ * the set the search narrowed, and a name that merely fails to appear in the HTML could
+ * be a row that scrolled off a page or a term echoed back by an empty state.
  */
+function environmentNames(string $term = ''): Collection
+{
+    return collect(platformEnvironments($term === '' ? [] : ['q' => $term])['environments'])
+        ->pluck('name');
+}
+
 it('narrows the environment list, matching on slug and domain too', function (): void {
     seedEnvironments();
 
-    Volt::test('platform.environments')
-        // Present before the search, or "it disappeared" proves nothing.
-        ->assertSee('Northwind Production')
-        ->assertSee('Contoso Staging')
-        ->set('search', 'northwind')
-        ->assertSee('Northwind Production')
-        ->assertDontSee('Contoso Staging');
+    // Present before the search, or "it disappeared" proves nothing.
+    expect(environmentNames())->toContain('Northwind Production')
+        ->and(environmentNames())->toContain('Contoso Staging');
+
+    expect(environmentNames('northwind'))->toContain('Northwind Production')
+        ->and(environmentNames('northwind'))->not->toContain('Contoso Staging');
 });
 
 it('matches an environment on its slug', function (): void {
     seedEnvironments();
 
-    Volt::test('platform.environments')
-        ->set('search', 'contoso-staging')
-        ->assertSee('Contoso Staging')
-        ->assertDontSee('Northwind Production');
+    expect(environmentNames('contoso-staging'))->toContain('Contoso Staging')
+        ->and(environmentNames('contoso-staging'))->not->toContain('Northwind Production');
 });
 
 it('matches an environment on a custom domain', function (): void {
     seedEnvironments();
 
-    Volt::test('platform.environments')
-        ->set('search', 'id.northwind.example')
-        ->assertSee('Northwind Production')
-        ->assertDontSee('Contoso Staging');
+    expect(environmentNames('id.northwind.example'))->toContain('Northwind Production')
+        ->and(environmentNames('id.northwind.example'))->not->toContain('Contoso Staging');
 });
 
 it('says so plainly when nothing matches', function (): void {
     seedEnvironments();
 
-    Volt::test('platform.environments')
-        ->set('search', 'nothing-by-that-name')
-        ->assertDontSee('Northwind Production')
-        ->assertDontSee('Contoso Staging')
-        ->assertSee('No environments match');
+    // The page draws its two empty states apart from this pair — an empty list AND a term
+    // it echoes back — so "no environments match" cannot be rendered where the install
+    // genuinely has none, and vice versa.
+    $props = platformEnvironments(['q' => 'nothing-by-that-name']);
+
+    expect($props['environments'])->toBe([])
+        ->and($props['search'])->toBe('nothing-by-that-name');
 });
+
+/**
+ * A LITERAL UNDERSCORE IS NOT A WILDCARD.
+ *
+ * `LIKE` reads `_` as "any one character", so a term containing one used to match rows it
+ * has nothing to do with — the same defect the cross-plane search carries a test for.
+ */
+it('does not treat an underscore in an environment search as a wildcard', function (): void {
+    seedEnvironments();
+
+    expect(environmentNames('c_ntoso'))->not->toContain('Contoso Staging');
+})->group('security');
 
 /**
  * A TREE, so search must not hide a match whose parent did not match.
@@ -177,18 +195,23 @@ it('keeps a matching child visible when its parent did not match', function (): 
         return [$child->name, $parent->name];
     });
 
-    Volt::test('platform.organizations')
-        ->set('search', 'Zenith')
-        ->assertSee($childName)
-        ->assertDontSee($parentName);
+    $rows = collect(platformOrganizations(['q' => 'Zenith'])['organizations']);
+
+    expect($rows->pluck('name'))->toContain($childName)
+        ->and($rows->pluck('name'))->not->toContain($parentName)
+        // …and it renders as a ROOT rather than under a parent that is not on screen,
+        // which is the honest thing to show for a filtered view of a tree.
+        ->and($rows->firstWhere('name', $childName)['depth'])->toBe(0);
 });
 
 it('narrows the operator roster', function (): void {
     app(PlatformOperators::class)
         ->create('ada@platform.test', 'a-strong-unbreached-passphrase', 'Ada Lovelace');
 
-    Volt::test('platform.operators')
-        ->assertSee('Ada Lovelace')
-        ->set('search', 'nobody-by-that-name')
-        ->assertDontSee('Ada Lovelace');
+    $names = fn (array $query = []): Collection => collect(
+        (array) test()->get(route('platform.operators', $query))->assertOk()->inertiaProps('operators')
+    )->pluck('name');
+
+    expect($names())->toContain('Ada Lovelace')
+        ->and($names(['q' => 'nobody-by-that-name']))->not->toContain('Ada Lovelace');
 });

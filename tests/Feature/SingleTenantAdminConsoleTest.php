@@ -65,7 +65,19 @@ it('leaves organization creation reachable on a single-tenant deployment', funct
     // "the platform pages probably cover it" is how a capability goes missing.
     config()->set('cbox-id.tenancy.multi_tenant', false);
 
-    expect(Route::has('platform.organizations'))->toBeTrue()
-        ->and((string) file_get_contents(resource_path('views/livewire/platform/organizations.blade.php')))
-        ->toContain('public function create(');
+    /*
+     * DRIVEN, not grepped. This read the page's source file for `public function create(`
+     * — a claim about a file that no longer exists, and one that would have gone on
+     * passing over a create nothing could reach. The capability is the write, so the write
+     * is what is exercised: an operator on a single-tenant deployment creates a tenant and
+     * it is there.
+     */
+    expect(Route::has('platform.organizations'))->toBeTrue();
+
+    actAsOperator('single-tenant-op@platform.test');
+
+    createTenantOrganization(['name' => 'Still Reachable'])->assertSessionHasNoErrors();
+
+    expect(collect(platformOrganizations()['organizations'])->pluck('name'))
+        ->toContain('Still Reachable');
 })->group('security');

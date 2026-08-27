@@ -86,20 +86,14 @@ it('releases the hold once a new password is set, and only then', function (): v
 
     // A refused password leaves the requirement standing — releasing the hold before
     // the write would let a policy rejection open the console anyway.
-    Volt::test('auth.change-password')
-        ->set('password', 'short')
-        ->set('passwordConfirmation', 'short')
-        ->call('save')
-        ->assertHasErrors('password');
+    test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'short', 'password_confirmation' => 'short'])
+        ->assertSessionHasErrors('password');
 
     expect(app(AdminPasswords::class)->requiresChange($subjectId))->toBeTrue();
     $this->get('/dashboard')->assertRedirect(route('password.change'));
 
-    Volt::test('auth.change-password')
-        ->set('password', 'a-passphrase-only-they-know')
-        ->set('passwordConfirmation', 'a-passphrase-only-they-know')
-        ->call('save')
-        ->assertHasNoErrors();
+    test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'a-passphrase-only-they-know', 'password_confirmation' => 'a-passphrase-only-they-know'])
+        ->assertSessionHasNoErrors();
 
     expect(app(AdminPasswords::class)->requiresChange($subjectId))->toBeFalse()
         ->and(app(Subjects::class)->verifyPassword($subjectId, 'a-passphrase-only-they-know'))->toBeTrue();
@@ -110,11 +104,12 @@ it('releases the hold once a new password is set, and only then', function (): v
 it('refuses a mismatched confirmation without touching the credential', function (): void {
     $subjectId = subjectOwingAChange();
 
-    Volt::test('auth.change-password')
-        ->set('password', 'a-passphrase-only-they-know')
-        ->set('passwordConfirmation', 'a-different-passphrase-entirely')
-        ->call('save')
-        ->assertHasErrors('passwordConfirmation');
+    test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'a-passphrase-only-they-know', 'password_confirmation' => 'a-different-passphrase-entirely'])
+        // ON THE `password` FIELD, which is where `confirmed` puts it and where the form
+        // shows it. Asserting the confirmation field's own name passed under Volt, whose
+        // component named it that — and would pass here against any error at all if the
+        // key were simply absent from the bag.
+        ->assertSessionHasErrors(['password' => 'The passwords do not match.']);
 
     expect(app(Subjects::class)->verifyPassword($subjectId, 'the-handed-over-passphrase'))->toBeTrue()
         ->and(app(AdminPasswords::class)->requiresChange($subjectId))->toBeTrue();
@@ -170,11 +165,8 @@ it('holds the Identity platform until an account member replaces a temporary pas
     $this->get(route('projects'))->assertRedirect(route('password.change'));
     $this->get(route('password.change'))->assertOk();
 
-    Volt::test('auth.change-password')
-        ->set('password', 'a-passphrase-only-they-know')
-        ->set('passwordConfirmation', 'a-passphrase-only-they-know')
-        ->call('save')
-        ->assertHasNoErrors();
+    test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'a-passphrase-only-they-know', 'password_confirmation' => 'a-passphrase-only-they-know'])
+        ->assertSessionHasNoErrors();
 
     expect($root->run(fn () => app(AdminPasswords::class)->requiresChange($subjectId)))->toBeFalse();
 
@@ -202,11 +194,8 @@ it('holds a subject whose password has outlived the policy max age', function ()
     $this->get('/dashboard')->assertRedirect(route('password.change'));
 
     // Choosing a new one restarts the clock and releases the hold.
-    Volt::test('auth.change-password')
-        ->set('password', 'a-freshly-chosen-passphrase')
-        ->set('passwordConfirmation', 'a-freshly-chosen-passphrase')
-        ->call('save')
-        ->assertHasNoErrors();
+    test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'a-freshly-chosen-passphrase', 'password_confirmation' => 'a-freshly-chosen-passphrase'])
+        ->assertSessionHasNoErrors();
 
     $this->get('/dashboard')->assertOk();
 });
@@ -364,10 +353,7 @@ it('refuses a password change from someone who is not being held', function (): 
     // Nothing is holding this subject: no administrative password, no expired max age.
     $this->get('/dashboard')->assertOk();
 
-    Volt::test('auth.change-password')
-        ->set('password', 'a-password-the-attacker-picked')
-        ->set('passwordConfirmation', 'a-password-the-attacker-picked')
-        ->call('save')
+    test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'a-password-the-attacker-picked', 'password_confirmation' => 'a-password-the-attacker-picked'])
         ->assertForbidden();
 
     expect(app(Subjects::class)->verifyPassword($subject->id, 'a-perfectly-long-passphrase'))

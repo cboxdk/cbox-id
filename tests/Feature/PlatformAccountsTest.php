@@ -12,7 +12,6 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -41,9 +40,7 @@ function suspendableAccount(string $email = 'junk@signup.example'): Organization
 it('lists every account with its members, projects and environments', function (): void {
     $account = suspendableAccount();
 
-    // `items()`, not the paginator itself: the customer list is paged now, and
-    // `collect($paginator)` wraps the paginator object rather than its rows.
-    $rows = collect(Volt::test('platform.customers')->viewData('rows')->items())->keyBy('id');
+    $rows = collect(platformCustomers()['customers'])->keyBy('id');
 
     expect($rows)->toHaveKey($account->id)
         ->and($rows[$account->id]['name'])->toBe('Junk Signup')
@@ -56,10 +53,12 @@ it('lists every account with its members, projects and environments', function (
 it('suspends and reactivates an account, and the toggle is reversible', function (): void {
     $account = suspendableAccount();
 
-    Volt::test('platform.customers')->call('toggleStatus', $account->id)->assertRenderedNotRedirected();
+    // Back to the list, not onward: suspending is a two-way switch and the operator's next
+    // act is as likely to be undoing it.
+    toggleCustomer($account->id)->assertRedirect(route('platform.customers.show', $account->id));
     expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Suspended);
 
-    Volt::test('platform.customers')->call('toggleStatus', $account->id)->assertRenderedNotRedirected();
+    toggleCustomer($account->id);
     expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
 });
 
@@ -80,8 +79,8 @@ it('suspends and reactivates an account, and the toggle is reversible', function
 it('records both directions on the system chain, as the operator', function (): void {
     $account = suspendableAccount();
 
-    Volt::test('platform.customers')->call('toggleStatus', $account->id);
-    Volt::test('platform.customers')->call('toggleStatus', $account->id);
+    toggleCustomer($account->id);
+    toggleCustomer($account->id);
 
     $entries = AuditEntry::query()
         ->whereIn('action', ['organization.suspended', 'organization.reactivated'])
@@ -116,9 +115,10 @@ it('refuses the screen, and the toggle, without operator authority', function ()
     // asks the deployment shape; see AuthenticateOperator::signInRoute().
     $this->get(route('platform.customers'))->assertRedirect(route('login'));
 
-    // boot() — not mount() — carries the check, so it re-runs on every Livewire action
-    // too and a crafted wire request cannot reach the toggle.
-    Volt::test('platform.customers')->assertStatus(404);
+    // AND THE WRITE, asked in its own right. Under Livewire the toggle shared one endpoint
+    // with every other action on the console and the page had to re-ask in `boot()`; it is
+    // its own route now, so the refusal is the route's and this is what asks it.
+    toggleCustomer($account->id)->assertRedirect(route('login'));
 
     expect(Organization::query()->whereKey($account->id)->value('status'))->toBe(OrganizationStatus::Active);
 });

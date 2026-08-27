@@ -17,7 +17,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Error') · Cbox ID</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/errors.ts'])
 </head>
 <body class="h-full" style="background:var(--bg);color:var(--text)">
     <main role="main"

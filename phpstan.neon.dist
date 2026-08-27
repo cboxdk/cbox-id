@@ -10,12 +10,11 @@ parameters:
         - database
         - modules
         - routes
-        # Volt single-file components are real PHP (a `<?php` block in a
-        # `.blade.php` file, which PHPStan reads because the file extension IS
-        # `php`). 90+ of them live here and they are where the console's logic
-        # actually is — leaving them out made "level max clean" mean much less
-        # than it sounded.
-        - resources/views/livewire
+        # `resources/views/livewire` used to be listed here: Volt single-file
+        # components were real PHP (a `<?php` block in a `.blade.php` file, which
+        # PHPStan reads because the extension IS `php`), and 90+ of them held the
+        # console's logic. Every one of them is a controller now, under `app`,
+        # which this already analyses — so the path is gone with the directory.
 
     # No baseline and no ignoreErrors on purpose: real findings should surface
     # and be fixed, not papered over.

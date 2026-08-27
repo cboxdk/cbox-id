@@ -32,7 +32,24 @@ it('screens every password-accepting flow against the breach corpus', function (
     // existed to catch exactly the file it could not see. Same defect, one layer down.
     $components = [];
 
-    foreach ([resource_path('views/livewire'), ...array_filter((array) glob(base_path('modules/*/resources/views/livewire')), 'is_dir')] as $root) {
+    /*
+     * WHEREVER THE FLOW LIVES, which is now three places.
+     *
+     * This walked Volt views only. Most password-accepting flows are controllers and form
+     * requests since the Inertia port — signup, the reset, the forced change, invitation
+     * acceptance — so a blade-only walk was auditing a shrinking remainder and calling it
+     * the whole console. The floor below is what caught that, which is why it is here.
+     *
+     * The Volt roots are gone with the directories: there is no remainder left.
+     */
+    $roots = [
+        base_path('app/Http/Controllers'),
+        base_path('app/Http/Requests'),
+        ...array_filter((array) glob(base_path('modules/*/src/Http/Controllers')), 'is_dir'),
+        ...array_filter((array) glob(base_path('modules/*/src/Http/Requests')), 'is_dir'),
+    ];
+
+    foreach ($roots as $root) {
         if (! is_dir($root)) {
             continue;
         }
@@ -41,7 +58,7 @@ it('screens every password-accepting flow against the breach corpus', function (
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
 
         foreach ($files as $file) {
-            if ($file->isFile() && str_ends_with($file->getFilename(), '.blade.php')) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
                 $components[] = $file->getPathname();
             }
         }
@@ -55,6 +72,30 @@ it('screens every password-accepting flow against the breach corpus', function (
 
     foreach ($components as $file) {
         $source = file_get_contents($file) ?: '';
+
+        /*
+         * A CONTROLLER'S RULES LIVE IN ITS FORM REQUEST, and that is the right place for
+         * them — so reading one file at a time reported every ported flow as unscreened
+         * while the rule sat one type-hint away. The request's source is read in alongside
+         * the controller's, so the pair is judged as the one thing it is.
+         */
+        $source .= requestRulesReachableFrom($source);
+
+        /*
+         * AND THE PAIRING IS ASYMMETRIC, deliberately.
+         *
+         * A form request is also judged with the controller that consumes it, because the
+         * screening can legitimately live there — a `catch (PolicyViolation)` around
+         * `Subjects::create()` screens, and no rule in the request says so.
+         *
+         * But WHAT A FILE DOES is read from the file itself. A controller has several form
+         * requests, and folding its whole source into each of them made every one of them
+         * "set a password" the moment any sibling did: `SaveProfileRequest` — a form whose
+         * only field is a display name — was reported as an unscreened credential flow
+         * because the controller it shares also changes passwords. Evidence of screening
+         * may come from the neighbourhood; evidence of the hazard may not.
+         */
+        $context = $source.consumersOf($file);
 
         // A component "accepts a password" when it validates one into a real credential.
         // Detect by what the component DOES, not by one key spelling: account.blade.php
@@ -71,9 +112,24 @@ it('screens every password-accepting flow against the breach corpus', function (
             continue;
         }
 
-        // Sign-IN validates a password without setting one; screening there would leak
-        // breach status for an existing credential and block a legitimate login.
-        if (str_contains($source, 'AttemptOutcome') || str_contains($source, '->attempt(')) {
+        /*
+         * VERIFYING A PASSWORD IS NOT SETTING ONE, and screening on the way IN would be
+         * actively wrong: it would block a legitimate sign-in for somebody whose existing
+         * password has since appeared in a corpus, and turn the form into an inventory of
+         * which accounts have weak ones.
+         *
+         * Detected by the VERB, not by one class name. This carve-out used to look for
+         * `AttemptOutcome`, which the Volt login blade happened to mention — the ported
+         * `LoginRequest` and `ConfirmSudoRequest` declare a bare `'password' => [...]` and
+         * hand it to a verifier, and both were reported as unscreened credential-setting
+         * flows they have never been.
+         */
+        $verifiesOnly = str_contains($context, 'AttemptOutcome')
+            || str_contains($context, '->attempt(')
+            || str_contains($context, '->attemptPassword(')
+            || str_contains($context, '->verifyPassword(');
+
+        if ($verifiesOnly && ! str_contains($source, '->setPassword(') && ! str_contains($source, '->resetPassword(')) {
             continue;
         }
 
@@ -89,15 +145,19 @@ it('screens every password-accepting flow against the breach corpus', function (
         // beside a policy that already screens is a second, weaker opinion. The operator
         // plane sits above every environment, so no AuthPolicy governs it and the rule
         // is applied directly.
-        $screened = str_contains($source, 'new NotBreached')
-            || str_contains($source, 'PasswordMeetsPolicy::for(')
-            // The reset form cannot resolve its subject without becoming an
-            // account-existence oracle, so it screens through the guard and turns the
-            // refusal into a field error.
-            || str_contains($source, 'catch (PolicyViolation');
+        $screened = str_contains($context, 'new NotBreached')
+            || str_contains($context, 'PasswordMeetsPolicy::for(')
+            /*
+             * Screened at the credential primitive itself, with the refusal turned into an
+             * answer. {@see Subjects::create()} applies the environment's whole policy —
+             * length, reuse, the breach corpus — so a caller that lets it and reports what
+             * it said has screened; one that lets it and drops the exception has a 500
+             * where a refusal belongs, which is a different bug and not this one's.
+             */
+            || str_contains($context, 'catch (PolicyViolation');
 
         if (! $screened) {
-            $unscreened[] = str_replace(resource_path('views/livewire/'), '', $file);
+            $unscreened[] = str_replace(base_path().'/', '', $file);
         }
     }
 
@@ -107,6 +167,68 @@ it('screens every password-accepting flow against the breach corpus', function (
         .implode(', ', $unscreened)
     );
 });
+
+/**
+ * The rules a file DELEGATES to, as source.
+ *
+ * A controller type-hints `SaveSomethingRequest $request` and the rules live there. Only
+ * the app's own request classes are followed — a type-hint on a framework class is not a
+ * place rules can be hiding.
+ */
+function requestRulesReachableFrom(string $source): string
+{
+    preg_match_all('/\b([A-Z][A-Za-z0-9]*Request)\s+\$/', $source, $matches);
+
+    $extra = '';
+
+    foreach (array_unique($matches[1]) as $class) {
+        foreach ((array) glob(base_path('app/Http/Requests/**/'.$class.'.php')) as $path) {
+            if (is_string($path) && is_file($path)) {
+                $extra .= (string) file_get_contents($path);
+            }
+        }
+    }
+
+    return $extra;
+}
+
+/**
+ * The code that CONSUMES a form request, as source.
+ *
+ * The link has to run both ways. A controller's rules live in its request, and a request's
+ * PURPOSE lives in its controller — `LoginRequest` declares a bare `'password' => [...]`
+ * and hands it to a verifier, which is the fact that makes it a sign-in rather than a
+ * credential-setting flow. Read alone it is indistinguishable from the latter, and this
+ * sweep reported both of the platform's verify-only requests as unscreened.
+ */
+function consumersOf(string $path): string
+{
+    if (! str_contains($path, '/app/Http/Requests/')) {
+        return '';
+    }
+
+    $class = basename($path, '.php');
+    $extra = '';
+
+    /** @var iterable<SplFileInfo> $files */
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(base_path('app/Http/Controllers'), FilesystemIterator::SKIP_DOTS),
+    );
+
+    foreach ($files as $file) {
+        if (! $file->isFile() || $file->getExtension() !== 'php') {
+            continue;
+        }
+
+        $source = (string) file_get_contents($file->getPathname());
+
+        if (str_contains($source, $class.' $')) {
+            $extra .= $source;
+        }
+    }
+
+    return $extra;
+}
 
 it('rejects a known-breached password on the subject-plane reset', function (): void {
     // k-anonymity range response: the suffix of sha1('password') with a hit count.

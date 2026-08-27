@@ -29,7 +29,6 @@ use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -206,6 +205,19 @@ it('never shows one environment\'s data on another\'s console', function (): voi
      * sweep. Naming each page forces the question "could this page leak, and would we
      * see it?" to be answered rather than left to a threshold.
      *
+     * THE LIST GROWS AS PAGES PORT, and that is the sweep becoming more honest rather
+     * than less. A Volt page renders inside a Blade shell that drew the organization
+     * SWITCHER — a list of organization names — so the marker reached the response
+     * whether or not the page itself showed a single tenant record. A ported page's
+     * response carries only what its controller sent. Any page that lands here after a
+     * port was one this sweep could never really see.
+     *
+     * THE LAST FIVE ARRIVED WITHOUT PORTING, which is the same fact from the other side:
+     * the switcher moved into the React chrome, so the Blade shell that still frames them
+     * stopped lending them a marker they never generated themselves. Nothing about those
+     * pages changed — what changed is that the sweep can no longer mistake the chrome's
+     * data for theirs.
+     *
      * @var array<string, string>
      */
     $rendersNoTenantData = [
@@ -222,6 +234,16 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.settings' => 'environment-level configuration, not tenant records',
         'environment.appearance' => 'the theme editor, which reads one org',
         'environment.auth-policy' => 'policy toggles',
+        // Publishable keys are environment-owned and carry no organization at all, so
+        // there is no tenant record here to leak — and the fixture seeds none.
+        'environment.frontend-keys' => 'publishable keys, which have no organization and none seeded',
+        // Provider names from a static catalogue — Google, GitHub — never an organization's.
+        'environment.social-providers' => 'the social-login catalogue, which names providers rather than tenants',
+        'environment.connectors.catalog' => 'the connector catalogue, which is the same on every install',
+        'environment.connectors.connections' => 'connector connections, none seeded',
+        'environment.risk-plus.events' => 'risk events, which need live sign-in traffic',
+        // Reads ONE organization's branding, exactly as `environment.appearance` does.
+        'environment.whitelabel.branding' => 'the branding editor, which reads one org',
     ];
 
     $blind = array_values(array_diff(
@@ -319,21 +341,20 @@ it('refuses a deep link to another organization\'s access review, read and write
     // The fixture has to be capable of leaking, or the refusals below prove nothing.
     expect($reviews->itemsFor($victimCampaign->id))->not->toBeEmpty();
 
-    // READ — the deep link mounted with the victim's id.
-    Volt::test('console.governance.show', ['campaign' => $victimCampaign->id])->assertNotFound();
+    // READ — the deep link, with the victim's id in it.
+    test()->get(route('governance.show', $victimCampaign->id))->assertNotFound();
 
     // …and their OWN campaign still opens, so the refusal above is a fence rather than a
     // page that stopped working.
-    Volt::test('console.governance.show', ['campaign' => $ownCampaign->id])->assertOk();
+    test()->get(route('governance.show', $ownCampaign->id))->assertOk();
 
-    // WRITE — mounted legitimately, then the id swapped on the wire. `campaignId` is a
-    // plain public property, so this is a real request shape and not a contrivance; it is
-    // also why the fence has to live in the per-request resolve rather than in mount()
-    // alone. The refusal lands before `close()` can run, which is the point: `close()`
-    // applies every revoke, so it must be unreachable rather than merely unsuccessful.
-    Volt::test('console.governance.show', ['campaign' => $ownCampaign->id])
-        ->set('campaignId', $victimCampaign->id)
-        ->assertNotFound();
+    /*
+     * WRITE — the id is in the URL of the mutation, so every one of them re-resolves it
+     * inside the same fence rather than trusting the page it came from. The refusal has to
+     * land BEFORE `close()` can run, which is the point: `close()` applies every revoke,
+     * so it must be unreachable rather than merely unsuccessful.
+     */
+    test()->post(route('governance.close', $victimCampaign->id))->assertNotFound();
 
     expect(CertificationCampaign::query()->whereKey($victimCampaign->id)->value('status'))
         ->toBe(CampaignStatus::Open)

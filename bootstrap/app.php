@@ -6,9 +6,13 @@ use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\EnforcePlane;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
+use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RedirectOutsideInertia;
+use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
@@ -30,6 +34,7 @@ use Cbox\Id\Whitelabel\WhitelabelServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -173,9 +178,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'oauth/register',
             'oauth/register/*',
 
-            // /authorize over POST, which OIDC Core §3.1.2.1 makes mandatory. The POST
-            // comes cross-site from the relying party and carries no Laravel token; the
-            // component validates client, redirect_uri, scope and PKCE from scratch.
+            /*
+             * /authorize over POST, which OIDC Core §3.1.2.1 makes mandatory. The POST
+             * comes cross-site from the relying party and carries no Laravel token; the
+             * controller validates client, redirect_uri, scope and PKCE from scratch, and
+             * mints nothing on this request.
+             *
+             * THE PATH ONLY, not a wildcard under it. `oauth/authorize/{id}/approve` and
+             * `/deny` are same-origin posts from our own consent screen, they DO carry a
+             * token, and they are the two requests that actually issue a code — exempting
+             * them would hand any site a one-click authorization on behalf of whoever is
+             * signed in here.
+             */
             'oauth/authorize',
         ]);
 
@@ -208,10 +222,40 @@ return Application::configure(basePath: dirname(__DIR__))
         // platform root must stop existing the moment it has. See the middleware.
         $middleware->appendToGroup('web', PointAtFirstRun::class);
 
+        // SUPPORT IMPERSONATION IS READ-ONLY. Global rather than per-group, because a
+        // guard registered on a route group is a guard the next route group will not
+        // carry — and this one is deny-by-default: a new endpoint is refused because it
+        // is a write, not because somebody remembered to think about it.
+        $middleware->appendToGroup('web', ReadOnlyWhileImpersonating::class);
+
+        // THE UI. Every web response that renders a page renders it through Inertia, so
+        // the shared props — who is signed in, which brand this host wears, whether an
+        // impersonation is live — are attached here rather than by each page.
+        //
+        // Last in the group on purpose: it reads the environment and the first-run state
+        // that the two entries above pin, and a shared prop resolved before those would
+        // describe a request that had not been placed yet.
+        $middleware->appendToGroup('web', HandleInertiaRequests::class);
+
+        // A redirect that leaves the Inertia app has to say so, or the client follows it
+        // with an XHR and cannot render what comes back. AFTER the Inertia middleware, so
+        // it sees the response that middleware produced.
+        $middleware->appendToGroup('web', RedirectOutsideInertia::class);
+
+        // Vite emits a modulepreload for the page chunk Inertia is about to fetch; this
+        // turns those into Link headers so the browser starts them during the HTML
+        // response rather than after parsing it. Pure latency, no behaviour.
+        $middleware->appendToGroup('web', AddLinkHeadersForPreloadedAssets::class);
+
         $middleware->alias([
             'platform.auth' => Authenticate::class,
             'platform.guest' => RedirectIfAuthenticated::class,
             'portal.session' => PortalSession::class,
+            // May this administrator CHANGE things here, as opposed to look at them.
+            // On a route rather than inside a page: sixty-odd Volt components had to
+            // remember to ask in boot() rather than mount(), and the ones that did not
+            // kept working for a downgraded administrator with an open tab.
+            'console.admin' => RequireConsoleAdmin::class,
             'sudo' => RequireSudo::class,
             // The environment plane's own step-up. A separate alias AND a separate
             // session key: a confirmation on one plane must never satisfy the other,

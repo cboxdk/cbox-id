@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Cbox\Id\RiskPlus;
 
+use App\Http\Props\Console\DashboardCardProps;
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\RiskPlus\Contracts\GeoLocator;
 use Cbox\Id\RiskPlus\Geo\NullGeoLocator;
@@ -20,11 +22,8 @@ use Cbox\Risk\Facades\Risk;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
-use Throwable;
 
 /**
  * The Cbox ID risk-plus module. It registers adaptive-risk signals (impossible-travel,
@@ -74,7 +73,6 @@ class RiskPlusServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'risk-plus');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
         $this->loadRoutesFrom(__DIR__.'/../routes/risk-plus.php');
 
         // The hook that makes this a plugin: contribute premium signals to the risk
@@ -105,7 +103,7 @@ class RiskPlusServiceProvider extends ServiceProvider
             order: 40,
         );
 
-        Console::dashboardCard(fn (): string => $this->riskCard(), 6);
+        $this->app->make(DashboardCards::class)->add(fn (): ?DashboardCardProps => $this->riskCard(), 6);
     }
 
     /**
@@ -123,26 +121,37 @@ class RiskPlusServiceProvider extends ServiceProvider
      * nothing rather than the environment total, because a stat with no scope on a
      * per-organization card is a different answer, not a wider one.
      */
-    private function riskCard(): string
+    /**
+     * DATA, NOT MARKUP — the console draws the card, in the host's tokens.
+     *
+     * The blade this replaces carried a note about styling with `var(--card)` rather than
+     * Tailwind `dark:` utilities, because a module that gets that wrong renders permanently
+     * light and off-brand inside the console shell. A card that ships no markup at all
+     * cannot get it wrong.
+     */
+    private function riskCard(): ?DashboardCardProps
     {
-        try {
-            $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
+        $organizationId = $this->app->make(ConsoleScope::class)->organizationId();
 
-            if ($organizationId === null) {
-                return '';
-            }
-
-            $count = $this->app->make(OrganizationRiskEvents::class)
-                ->query($organizationId)
-                ->where('created_at', '>=', Carbon::now()->subDay())
-                ->count();
-        } catch (Throwable) {
-            return '';
+        if ($organizationId === null) {
+            return null;
         }
 
-        return $this->app->make(ViewFactory::class)
-            ->make('risk-plus::components.risk-card', ['count' => $count])
-            ->render();
+        $count = $this->app->make(OrganizationRiskEvents::class)
+            ->query($organizationId)
+            ->where('created_at', '>=', Carbon::now()->subDay())
+            ->count();
+
+        return new DashboardCardProps(
+            key: 'risk.events',
+            label: 'Risk events (24h)',
+            value: number_format($count),
+            caption: ($count === 1 ? 'signal elevated' : 'elevated').' in the last 24 hours',
+            icon: 'shield',
+            tone: $count > 0 ? 'warning' : 'success',
+            linkLabel: 'Review risk events',
+            linkHref: route('risk-plus.events'),
+        );
     }
 
     private function configFloat(string $key, float $default): float

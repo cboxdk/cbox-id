@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleRoutes;
+use Cbox\Id\Connectors\Http\Controllers\CatalogController;
+use Cbox\Id\Connectors\Http\Controllers\ConnectionsController;
 
 /*
  * Both planes, one component each — the middleware stacks live in ConsoleRoutes.
@@ -15,13 +17,13 @@ use App\Platform\Console\ConsoleRoutes;
 ConsoleRoutes::page(
     feature: 'connectors',
     uri: '/connectors',
-    component: 'connectors.catalog',
+    component: CatalogController::class,
     name: 'connectors.catalog',
 );
 
 ConsoleRoutes::page(
     feature: 'connectors',
     uri: '/connectors/connections',
-    component: 'connectors.connections',
+    component: ConnectionsController::class,
     name: 'connectors.connections',
 );

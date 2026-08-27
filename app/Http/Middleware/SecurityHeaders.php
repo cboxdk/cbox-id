@@ -12,9 +12,20 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Baseline security headers for an identity console. The CSP is strict — no
- * inline/remote scripts — which suits a server-rendered Livewire app (its JS is
- * bundled by Vite and served same-origin).
+ * Baseline security headers for an identity console. The CSP is strict — no inline and
+ * no remote scripts — which the app can afford because its whole client is one Vite
+ * bundle served same-origin.
+ *
+ * Inertia writes a page's props into a `<script type="application/json">` beside the
+ * mount point, and that is compatible with `script-src 'self'` rather than an exception
+ * to it: a script element whose type is not a JavaScript type is never prepared for
+ * execution, so the policy is never consulted for it. It is a data block that happens to
+ * be spelled as a tag. Verified in a browser against this policy, not assumed.
+ *
+ * The one exception is the Vite DEV SERVER, which lives on its own origin and cannot be
+ * bundled by definition. See {@see self::viteDevOrigin()}: it is admitted only when this
+ * is a local install AND Vite has actually written its hot file, so no deployment can
+ * reach that branch by configuration alone.
  */
 final class SecurityHeaders
 {
@@ -37,6 +48,12 @@ final class SecurityHeaders
         // no directive here changes shape unless the feature is switched on.
         $turnstile = $this->turnstile->configured();
 
+        // The Vite dev server, and ONLY on a local install that is actually running it.
+        // Empty everywhere else, so the deployed policy is byte-for-byte what it was.
+        $devOrigin = $this->viteDevOrigin();
+        $dev = $devOrigin !== null ? ' '.$devOrigin : '';
+        $devSocket = $devOrigin !== null ? ' '.str_replace(['http://', 'https://'], ['ws://', 'wss://'], $devOrigin) : '';
+
         $headers = [
             'X-Frame-Options' => 'DENY',
             'X-Content-Type-Options' => 'nosniff',
@@ -46,14 +63,20 @@ final class SecurityHeaders
             'Permissions-Policy' => 'geolocation=(), microphone=(), camera=(), payment=()',
             'Content-Security-Policy' => implode('; ', array_values(array_filter([
                 "default-src 'self'",
-                // 'unsafe-eval' is required by Livewire's bundled Alpine; scripts
-                // are still same-origin only (no inline, no remote). Tightening to
-                // Alpine's CSP build is a follow-up.
+                /*
+                 * NO 'unsafe-eval'. It was here because Livewire's bundled Alpine
+                 * required it — Alpine evaluates its `x-` expressions with `new Function`,
+                 * which is `eval` as far as CSP is concerned, so every page in the console
+                 * had to permit dynamic code generation to render a dropdown. React
+                 * compiles its templates at build time and needs none of it, so the
+                 * directive went out with the last Volt page rather than staying as a
+                 * "follow-up" nobody would come back to.
+                 */
                 // The nonce is not for our own markup — this app emits no inline script.
                 // It is here because a CDN in front of us does: Cloudflare's JavaScript
                 // Detections injects `/cdn-cgi/challenge-platform/scripts/jsd/main` as an
                 // INLINE script after the response has left PHP, and a policy of
-                // `'self' 'unsafe-eval'` refuses it on every page the console serves.
+                // a bare `'self'` refuses it on every page the console serves.
                 //
                 // Cloudflare parses this header and copies the nonce onto the script it
                 // injects, which is why the value has to be in the HEADER — a nonce set
@@ -61,12 +84,14 @@ final class SecurityHeaders
                 // failing. The alternative is `'unsafe-inline'`, which would permit every
                 // inline script on every page in order to permit one, and pinning the
                 // hash instead breaks the day Cloudflare ships a new build of it.
-                "script-src 'self' 'unsafe-eval' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : ''),
-                "style-src 'self' 'unsafe-inline'",
+                "script-src 'self' 'nonce-".$this->nonce->value()."'".($turnstile ? ' '.Turnstile::ORIGIN : '').$dev,
+                "style-src 'self' 'unsafe-inline'".$dev,
                 // https: allows customer-hosted org logos on the branded login.
                 "img-src 'self' data: https:",
                 "font-src 'self' data:",
-                "connect-src 'self'",
+                // …plus the dev server's websocket, which is how Fast Refresh reaches the
+                // page. Empty in every environment that is not a local install.
+                "connect-src 'self'".$dev.$devSocket,
                 // Turnstile renders its challenge in an iframe from its own origin.
                 // Omitted entirely when Turnstile is off, so default-src 'self' governs.
                 $turnstile ? "frame-src 'self' ".Turnstile::ORIGIN : null,
@@ -128,5 +153,41 @@ final class SecurityHeaders
         }
 
         return $response;
+    }
+
+    /**
+     * The Vite dev server's origin, or null — which is the answer everywhere that is not
+     * a developer's own machine with `npm run dev` running.
+     *
+     * WHY THIS HAS TO EXIST. `@vite` in development points the page at a SECOND origin
+     * (`http://localhost:5173` by default): the module graph, the Fast Refresh client and
+     * its websocket all come from there. Under `script-src 'self'` the browser refuses
+     * every one of them, so the console rendered a blank page with a wall of CSP
+     * violations the moment anybody ran the dev server — and the workaround people reach
+     * for is to switch the whole middleware off locally, which is how a machine ends up
+     * testing a policy it does not run.
+     *
+     * TWO CONDITIONS, both required. `local` is a deployment's own claim about itself, so
+     * it is necessary but not sufficient. The hot file is written by Vite when it starts
+     * and removed when it stops, and it is not in the built image at all — so a
+     * production container cannot reach this branch even if `APP_ENV` were wrong.
+     */
+    private function viteDevOrigin(): ?string
+    {
+        if (! app()->environment('local')) {
+            return null;
+        }
+
+        $hot = public_path('hot');
+
+        if (! is_file($hot)) {
+            return null;
+        }
+
+        $origin = trim((string) file_get_contents($hot));
+
+        // Vite writes the origin it is serving on. Anything that is not an http(s) origin
+        // is not something to widen a policy with, so it is refused rather than trusted.
+        return preg_match('#^https?://[A-Za-z0-9.\-]+(:\d+)?$#', $origin) === 1 ? $origin : null;
     }
 }

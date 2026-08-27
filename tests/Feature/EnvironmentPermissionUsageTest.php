@@ -10,14 +10,23 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
-beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
+beforeEach(function (): void {
+    Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+
+    // The permissions page lives under `/admin`, which exists only on a multi-tenant
+    // deployment ({@see \App\Http\Middleware\RequireMultiTenant}). It did not matter
+    // while these were driven at the component; every read is a request now, and without
+    // this each one answers 404 rather than rendering the page under measurement.
+    multiTenantDeployment();
+});
 
 /**
  * Provision an environment WITHOUT pinning a session, so a second one can be created
@@ -86,10 +95,13 @@ it('counts a permission\'s usage without loading the whole platform-wide pivot',
         }
     });
 
-    Volt::test('console.permissions.index')
+    test()->get(route('environment.permissions'))
         ->assertOk()
-        ->assertSee('reports:read')
-        ->assertSee('in 2 roles');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'mine',
+            fn (Collection $rows): bool => $rows
+                ->firstWhere('name', 'reports:read')['roleCount'] === 2,
+        ));
 
     expect($pivotReads)->not->toBeEmpty();
 
@@ -136,11 +148,13 @@ it('never counts another environment\'s roles toward this one\'s permission usag
     app(EnvironmentContext::class)->set(GenericEnvironment::of($acme['env']));
     actAsEnvironmentAdmin($acme['subjectId'], $acme['env']);
 
-    Volt::test('console.permissions.index')
+    // ONE, not four. The un-joined count reported all four, telling Acme's admin that
+    // deleting this permission would strip it from roles they cannot see.
+    test()->get(route('environment.permissions'))
         ->assertOk()
-        ->assertSee('reports:read')
-        ->assertSee('in 1 role')
-        // The un-joined count reported all four, telling Acme's admin that deleting
-        // this permission would strip it from roles they cannot see.
-        ->assertDontSee('in 4 roles');
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'mine',
+            fn (Collection $rows): bool => $rows
+                ->firstWhere('name', 'reports:read')['roleCount'] === 1,
+        ));
 });

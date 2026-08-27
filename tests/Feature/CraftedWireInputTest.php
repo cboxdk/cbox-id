@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use Cbox\Id\ExternalActions\Models\ExternalActionEndpoint;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -17,7 +18,6 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Livewire\Volt\Volt;
 
 uses(RefreshDatabase::class);
 
@@ -38,6 +38,10 @@ function craftedOrgOwner(string $slug): string
 function craftedEnvAdmin(): void
 {
     platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
@@ -61,6 +65,10 @@ function craftedEnvAdmin(): void
  */
 it('refuses a crafted enum on the sign-in rules form instead of throwing', function (): void {
     platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
@@ -72,14 +80,19 @@ it('refuses a crafted enum on the sign-in rules form instead of throwing', funct
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 
-    Volt::test('console.auth-policy')
-        ->set('mfa', 'not-a-requirement')
-        ->set('sso', 'also-not-real')
-        ->call('save')
-        ->assertHasErrors(['mfa', 'sso']);
+    $current = (array) test()->get(route('environment.auth-policy'))->assertOk()->inertiaProps('policy');
+
+    test()->from(route('environment.auth-policy'))
+        ->put(route('environment.auth-policy.update'), [
+            ...$current,
+            'mfa' => 'not-a-requirement',
+            'sso' => 'also-not-real',
+        ])
+        ->assertSessionHasErrors(['mfa', 'sso']);
 });
 
 it('refuses a crafted revocation scope on the admin set-password panel', function (): void {
+    multiTenantDeployment();
     platformRootEnvironment();
     $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -94,12 +107,16 @@ it('refuses a crafted revocation scope on the admin set-password panel', functio
 
     $userId = app(Subjects::class)->create('dana@acme.example', 'Dana', 'the-original-passphrase')->id;
 
-    Volt::test('environment.users.show', ['user' => $userId])
-        ->set('pwPassword', 'a-perfectly-long-passphrase')
-        ->set('pwReason', 'Locked out')
-        ->set('pwRevoke', 'everything-everywhere')
-        ->call('setPassword')
-        ->assertHasErrors('pwRevoke');
+    // The step-up first, so the refusal under test is the SHAPE check rather than the
+    // credential challenge in front of it — a page that answered every request with a
+    // step-up would pass this otherwise.
+    confirmEnvironmentStepUp();
+
+    setUserPassword($userId, [
+        'password' => 'a-perfectly-long-passphrase',
+        'reason' => 'Locked out',
+        'revoke' => 'everything-everywhere',
+    ])->assertSessionHasErrors('revoke');
 
     // …and the credential is untouched by the refused call.
     expect(app(Subjects::class)->verifyPassword($userId, 'the-original-passphrase'))->toBeTrue();
@@ -121,11 +138,13 @@ it('refuses a crafted hook point instead of throwing', function (): void {
     app(CurrentUser::class)->set($subject, $session, app(Organizations::class)->find($org->id), MembershipRole::Admin);
 
     confirmConsoleStepUp();
-    Volt::test('console.hooks.create')
-        ->set('hook', 'definitely_not_a_hook_point')
-        ->set('url', 'https://example.test/hook')
-        ->call('register')
-        ->assertHasErrors('hook');
+
+    // A CRAFTED HOOK POINT. Without the enum rule `HookPoint::from()` throws a ValueError
+    // and the console answers 500 instead of refusing the input — the difference between a
+    // validated field and a crash reachable by anybody who can post a form.
+    registerHook(['point' => 'definitely_not_a_hook_point'])->assertSessionHasErrors('point');
+
+    expect(ExternalActionEndpoint::query()->exists())->toBeFalse();
 });
 
 /**
@@ -143,7 +162,6 @@ it('refuses a crafted hook point instead of throwing', function (): void {
  */
 it('refuses only an email that is already a member here, and discloses nothing else', function (): void {
     platformRootEnvironment();
-
     $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
         ownerEmail: 'owner@acme.example',
@@ -160,23 +178,42 @@ it('refuses only an email that is already a member here, and discloses nothing e
 
     signInAsMember($mine->owner->id);
 
+    Mail::fake();
+
     // Somebody else's owner: a legitimate invitation, accepted without comment. Refusing
     // it would BE the oracle — it would confirm that the address is known to the platform.
-    Volt::test('console.members')
-        ->set('inviteEmail', 'owner@rival.example')
-        ->set('inviteRole', 'admin')
-        ->call('invite')
-        ->assertHasNoErrors();
+    test()->from(route('members'))
+        ->post(route('members.invite'), ['email' => 'owner@rival.example', 'role' => 'admin'])
+        ->assertSessionHasNoErrors();
 
     // Somebody already on THIS roster: refused, and the refusal discloses nothing the page
     // is not already showing.
-    $probeOwn = Volt::test('console.members')
-        ->set('inviteEmail', 'owner@acme.example')
-        ->set('inviteRole', 'admin')
-        ->call('invite')
-        ->assertHasErrors('inviteEmail');
+    $probeOwn = test()->from(route('members'))
+        ->post(route('members.invite'), ['email' => 'owner@acme.example', 'role' => 'admin'])
+        ->assertSessionHasErrors('email');
 
-    expect($probeOwn->errors()->first('inviteEmail'))->not->toContain('account');
+    expect(session('errors')?->getBag('default')->first('email'))->not->toContain('account');
+
+    /*
+     * AND A CRAFTED ROLE IS REFUSED BY NAME. `Invitations::invite()` takes a
+     * `MembershipRole`, so an unparseable value has to be turned away at the HTTP edge —
+     * parsing it deeper would only move the `ValueError` and answer a crafted payload with
+     * a 500 instead of a field error.
+     *
+     * `owner` rather than a second nonsense string: it is a REAL case of the enum that this
+     * form deliberately does not assign, because ownership is transferred by the owner
+     * rather than granted by an invitation. The check is the assignable set, not merely
+     * `tryFrom() !== null` — and only a real case can tell the two apart.
+     */
+    foreach (['archduke', 'owner', ''] as $crafted) {
+        test()->from(route('members'))
+            ->post(route('members.invite'), ['email' => 'joiner@acme.example', 'role' => $crafted])
+            ->assertSessionHasErrors('role');
+    }
+
+    expect(session('errors')?->getBag('default')->first('role'))
+        // The message names what IS accepted, rather than "the selected value is invalid".
+        ->toBe('Choose one of: Admin, Developer, Member, Viewer.');
 });
 
 /**
@@ -197,14 +234,9 @@ it('refuses a crafted invite role on the org members form instead of throwing', 
     $orgId = craftedOrgOwner('acme-invite-role');
 
     foreach (['archduke', 'viewer', ''] as $crafted) {
-        $probe = Volt::test('members')
-            ->set('inviteEmail', 'joiner@acme.test')
-            ->set('inviteRole', $crafted)
-            ->call('invite')
-            ->assertHasErrors('inviteRole');
-
         // The message names what IS accepted, rather than "the selected value is invalid".
-        expect($probe->errors()->first('inviteRole'))->toBe('Choose one of: Member, Admin, Owner.');
+        inviteToDirectory(['email' => 'joiner@acme.test', 'role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
     }
 
     expect(app(Invitations::class)->pending($orgId))->toHaveCount(0);
@@ -216,11 +248,14 @@ it('refuses a crafted role on the org members roster select without changing it'
     $target = app(Subjects::class)->create('target@acme.test', 'Target');
     app(Memberships::class)->add($orgId, $target->id, MembershipRole::Member);
 
-    // setRole is invoked from JS with the <select>'s value — no form field to report
-    // into, so the refusal is a no-op rather than an error bag entry. It must still not
-    // be a 500, and must not fall through to a default role.
+    // The roster select is a control with no field of its own, so this used to refuse
+    // SILENTLY — the row simply did not change and nothing said why. It is its own request
+    // now, so the refusal has somewhere to land and names the choices like every other.
     foreach (['archduke', 'viewer', 'OWNER'] as $crafted) {
-        Volt::test('members')->call('setRole', $target->id, $crafted)->assertOk();
+        test()->from(route('directory.members'))
+            ->patch(route('directory.members.role', $target->id), ['role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+
         expect(app(Memberships::class)->of($orgId, $target->id)?->role)->toBe(MembershipRole::Member);
     }
 });
@@ -233,21 +268,13 @@ it('refuses a crafted role on the env-admin organization member forms', function
     $user = app(Subjects::class)->create('dave@acme.example', 'Dave');
 
     foreach (['archduke', 'viewer'] as $crafted) {
-        $add = Volt::test('environment.organizations.show', ['organization' => $org->id])
-            ->set('memberEmail', 'dave@acme.example')
-            ->set('memberRole', $crafted)
-            ->call('addMember')
-            ->assertHasErrors('memberRole');
+        // The refusal NAMES THE CHOICES rather than saying "invalid": whoever hits this
+        // legitimately (a stale tab, a renamed role) needs to know what to pick instead.
+        addOrganizationMember($org->id, ['email' => 'dave@acme.example', 'role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
 
-        expect($add->errors()->first('memberRole'))->toBe('Choose one of: Member, Admin, Owner.');
-
-        $invite = Volt::test('environment.organizations.show', ['organization' => $org->id])
-            ->set('inviteEmail', 'newbie@acme.example')
-            ->set('inviteRole', $crafted)
-            ->call('invite')
-            ->assertHasErrors('inviteRole');
-
-        expect($invite->errors()->first('inviteRole'))->toBe('Choose one of: Member, Admin, Owner.');
+        inviteOrganizationMember($org->id, ['email' => 'newbie@acme.example', 'role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
     }
 
     expect(app(Memberships::class)->of($org->id, $user->id))->toBeNull()
@@ -258,9 +285,9 @@ it('refuses a crafted role on the env-admin organization member forms', function
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Admin);
 
     foreach (['archduke', 'viewer'] as $crafted) {
-        Volt::test('environment.organizations.show', ['organization' => $org->id])
-            ->call('changeMemberRole', $user->id, $crafted)
-            ->assertOk();
+        test()->from(route('environment.organizations.show', $org->id))
+            ->patch(route('environment.organizations.members.role', [$org->id, $user->id]), ['role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
 
         expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe(MembershipRole::Admin);
     }
@@ -273,13 +300,8 @@ it('refuses a crafted role on the env-admin user detail page', function (): void
     $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
 
     foreach (['archduke', 'viewer'] as $crafted) {
-        $assign = Volt::test('environment.users.show', ['user' => $user->id])
-            ->set('assignOrgId', $org->id)
-            ->set('assignRole', $crafted)
-            ->call('assignOrg')
-            ->assertHasErrors('assignRole');
-
-        expect($assign->errors()->first('assignRole'))->toBe('Choose one of: Member, Admin, Owner.');
+        assignUserToOrganization($user->id, $org->id, ['role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
     }
 
     expect(app(Memberships::class)->of($org->id, $user->id))->toBeNull();
@@ -287,9 +309,9 @@ it('refuses a crafted role on the env-admin user detail page', function (): void
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
     foreach (['archduke', 'viewer'] as $crafted) {
-        Volt::test('environment.users.show', ['user' => $user->id])
-            ->call('changeMembershipRole', $org->id, $crafted)
-            ->assertOk();
+        test()->from(route('environment.users.show', $user->id))
+            ->patch(route('environment.users.organizations.role', [$user->id, $org->id]), ['role' => $crafted])
+            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
 
         expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe(MembershipRole::Member);
     }

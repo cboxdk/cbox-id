@@ -82,18 +82,34 @@ function queryBudgetAdmin(int $extraMembers = 0): array
  * meaningless without it: a page that renders nothing is always cheap.
  */
 /** How many role rows the page drew — same reasoning as {@see rosterRows()}. */
+/**
+ * How many role rows the page actually drew.
+ *
+ * Counted from the PROPS rather than from the markup: the page renders in the browser, so
+ * there is no row in the response to count — and a substring sweep that finds nothing
+ * looks exactly like a page that drew nothing, which is the failure this helper exists to
+ * catch in the first place.
+ */
 function roleRows(string $route): int
 {
-    $html = (string) test()->get(route($route))->assertOk()->getContent();
+    $rows = test()->get(route($route))->assertOk()->inertiaProps('roles');
 
-    return substr_count($html, 'wire:key="role-');
+    return is_array($rows) ? count($rows) : 0;
 }
 
+/**
+ * How many rows the roster actually drew.
+ *
+ * Counted from the PROPS rather than from the markup: the page renders in the browser, so
+ * there is no row in the response to count — and a substring sweep that finds nothing
+ * looks exactly like a page that drew nothing, which is the failure this helper exists to
+ * catch in the first place.
+ */
 function rosterRows(string $route): int
 {
-    $html = (string) test()->get(route($route))->assertOk()->getContent();
+    $rows = test()->get(route($route))->assertOk()->inertiaProps('members');
 
-    return substr_count($html, 'wire:key="member-');
+    return is_array($rows) ? count($rows) : 0;
 }
 
 function addMembers(string $organizationId, int $count): void

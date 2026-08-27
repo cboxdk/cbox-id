@@ -17,6 +17,7 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -141,26 +142,47 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/access-reviews/new' => 'review',
         '/admin/conflict-rules/new' => 'New role conflict',
         '/admin/applications/new' => 'application',
-        '/admin/webhooks/new' => 'webhook',
         '/admin/event-hooks/new' => 'hook',
         '/admin/stored-tokens/new' => 'token',
         '/admin/log-streaming/new' => 'stream',
         '/admin/access-reviews' => 'Access reviews',
         '/admin/conflict-rules' => 'Role conflicts',
-        '/admin/webhooks' => 'Webhooks',
+
         '/admin/event-hooks' => 'Inline hooks',
         '/admin/stored-tokens' => 'Token vault',
-        // Likewise: the page is headed "Activity log" on both planes.
-        '/admin/audit' => 'Activity log',
         '/admin/log-streaming' => 'Log streaming',
         // "Usage" on BOTH planes now. It was "Analytics" here and "Usage" on the
         // organization plane, over the same `auth.*` counters — and this plane's version
         // was the primitive one: raw metric keys, no labels, no time window.
         '/admin/analytics' => 'Usage',
         '/admin/approvals' => 'Agent approvals',
-        '/admin/settings' => 'Integration',
     ] as $path => $needle) {
         $this->get($path)->assertOk()->assertSee($needle);
+    }
+
+    /*
+     * AND THE PORTED ONES, asked the only way they can be asked.
+     *
+     * These pages render in the browser, so there is no heading in the response to match
+     * — the word the sweep above looks for is drawn by React from a prop. What the
+     * response carries instead is the page object, and the two things worth holding are
+     * in it: WHICH component the server chose, and what it says the page is called. That
+     * is strictly more than "the word appears somewhere in the document", which would
+     * also pass for a page that mentioned it in a link to somewhere else.
+     */
+    foreach ([
+        '/admin/webhooks' => ['console/webhooks/index', 'Webhooks'],
+        '/admin/webhooks/new' => ['console/webhooks/create', 'New webhook'],
+        '/admin/audit' => ['console/audit', 'Activity log'],
+        '/admin/settings' => ['console/settings', 'Settings'],
+        '/admin/appearance' => ['console/appearance', 'Appearance'],
+        '/admin/sign-in-rules' => ['console/auth-policy', 'Sign-in rules'],
+    ] as $path => [$component, $title]) {
+        $this->get($path)
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component($component)
+                ->where('title', $title));
     }
 });
 

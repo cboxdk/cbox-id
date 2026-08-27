@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Cbox\Console\Kit\ConsoleManager;
+use App\Platform\Console\DashboardCards;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,7 +44,9 @@ it('renders a dashboard connectors card', function (): void {
     // console scope at all, and that is exactly what this assertion was measuring.
     actingAsRole(MembershipRole::Owner);
 
-    $html = Console::slots()->render(ConsoleManager::DASHBOARD_CARDS);
+    // THE CARD AS DATA, not as a rendered string.
+    $card = collect(app(DashboardCards::class)->resolve())->firstWhere('key', 'connectors.active');
 
-    expect($html)->toContain('Active connectors');
+    expect($card)->not->toBeNull()
+        ->and($card->label)->toBe('Active connectors');
 });

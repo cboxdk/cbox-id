@@ -7,8 +7,8 @@ namespace Cbox\Id\Billing;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Billing\Http\Controllers\BillingController;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Volt\Volt;
 
 /**
  * The Cbox ID billing module — the organization's usage rollup and its per-project plans.
@@ -57,11 +57,6 @@ class BillingServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Views and the Volt component mount unconditionally, exactly as the other
-        // modules do. A view path that resolves and stays unreached costs nothing, and it
-        // means enabling the feature later is a config change rather than a deploy.
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'billing');
-        Volt::mount([__DIR__.'/../resources/views/livewire']);
 
         $this->registerFeature();
         $this->registerNav();
@@ -130,7 +125,7 @@ class BillingServiceProvider extends ServiceProvider
         ConsoleRoutes::organizationPage(
             feature: 'billing',
             uri: '/billing',
-            component: 'billing',
+            component: [BillingController::class, '__invoke'],
             name: 'billing',
         );
     }

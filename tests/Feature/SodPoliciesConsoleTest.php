@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\CurrentUser;
+use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Governance\Models\SodPolicy;
@@ -13,7 +14,8 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Collection;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -25,6 +27,10 @@ function sodAdmin(MembershipRole $role = MembershipRole::Owner): string
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
 
+    // AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN — without it every
+    // request below answers a redirect to /login rather than the page under test.
+    session([PlatformAuth::SESSION_KEY => $session->id]);
+
     return $org->id;
 }
 
@@ -35,11 +41,7 @@ it('defines a policy over two roles', function (): void {
 
     // One component on both planes now, and the routable list → new → detail shape won
     // over this plane's single page — so defining happens on the create page.
-    Volt::test('console.sod-policies.create')
-        ->set('name', 'PO vs pay')
-        ->set('roleIds', [$a->id, $b->id])
-        ->call('define')
-        ->assertHasNoErrors();
+    defineRoleConflict(['roles' => [$a->id, $b->id]])->assertSessionHasNoErrors();
 
     $policy = SodPolicy::query()->where('organization_id', $orgId)->firstOrFail();
     expect($policy->name)->toBe('PO vs pay');
@@ -67,11 +69,31 @@ it('detects a violation', function (): void {
 
     expect(app(SegregationOfDuties::class)->scan($orgId))->toHaveCount(1);
 
-    Volt::test('console.sod-policies.index')->assertSee('user-1');
+    // NAMED, not a bare id. The whole output of the detective half is a list of people
+    // somebody has to go and talk to, and the page printed a ULID.
+    test()->get(route('sod-policies'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where(
+            'violations',
+            fn (Collection $found): bool => $found->pluck('subjectId')->all() === ['user-1'],
+        ));
+});
+
+it('refuses to define a rule over fewer than two roles', function (): void {
+    $orgId = sodAdmin();
+    $a = app(Roles::class)->define($orgId, 'create-po');
+
+    // A "mutually exclusive set" of one conflicts with nothing. It would sit in the list
+    // looking like a control while blocking no grant at all — worse than no rule, because
+    // somebody wrote it down and believes it is working.
+    defineRoleConflict(['roles' => [$a->id]])->assertSessionHasErrors('roles');
+    defineRoleConflict(['roles' => []])->assertSessionHasErrors('roles');
+
+    expect(SodPolicy::query()->exists())->toBeFalse();
 });
 
 it('forbids a non-admin member', function (): void {
     sodAdmin(MembershipRole::Member);
 
-    Volt::test('console.sod-policies.index')->assertForbidden();
+    test()->get(route('sod-policies'))->assertForbidden();
 });

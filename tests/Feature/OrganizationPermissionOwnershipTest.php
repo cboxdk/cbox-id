@@ -13,8 +13,9 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Livewire\Volt\Volt;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -65,11 +66,8 @@ function permEnvironmentId(): string
 it('stamps a tenant-authored permission with its authoring organization', function (): void {
     $orgA = permOrgAdmin('acme', 'owner@acme.example');
 
-    Volt::test('console.permissions.index')
-        ->set('name', 'invoices:create')
-        ->set('description', 'Create invoices')
-        ->call('create')
-        ->assertHasNoErrors();
+    createPermission(['name' => 'invoices:create', 'description' => 'Create invoices'])
+        ->assertSessionHasNoErrors();
 
     $perm = Permission::query()->withoutGlobalScopes()->where('name', 'invoices:create')->firstOrFail();
 
@@ -87,7 +85,7 @@ it('hides one organization\'s permissions from another in the same environment',
     permOrgAdmin('acme', 'owner@acme.example');
     $environment = permEnvironmentId();
 
-    Volt::test('console.permissions.index')->set('name', 'secrets:rotate')->call('create')->assertHasNoErrors();
+    createPermission(['name' => 'secrets:rotate'])->assertSessionHasNoErrors();
     $theirs = Permission::query()->withoutGlobalScopes()->where('name', 'secrets:rotate')->firstOrFail();
 
     // The shared tier, as the environment plane writes it: same environment, no owner.
@@ -105,16 +103,22 @@ it('hides one organization\'s permissions from another in the same environment',
 
     expect($theirs->environment_id)->toBe($environment);
 
-    Volt::test('console.permissions.index')
-        ->assertDontSee('secrets:rotate')  // the peer's own key
-        ->assertSee('reports:read');       // the environment's, which roles are built from
+    test()->get(route('permissions'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            // The peer's own key is in neither list — not theirs, and not shared.
+            ->where('mine', fn (Collection $rows): bool => $rows->pluck('name')->doesntContain('secrets:rotate'))
+            ->where('inherited', fn (Collection $rows): bool => $rows->pluck('name')->doesntContain('secrets:rotate'))
+            // The environment's, which their roles ARE built from, is inherited: shown,
+            // and read-only. A page that omitted it would explain half the roles editor.
+            ->where('inherited', fn (Collection $rows): bool => $rows->pluck('name')->contains('reports:read')));
 });
 
 it('refuses to let one organization edit or delete another\'s permission', function (): void {
     permOrgAdmin('acme', 'owner@acme.example');
     $environment = permEnvironmentId();
 
-    Volt::test('console.permissions.index')->set('name', 'secrets:rotate')->call('create')->assertHasNoErrors();
+    createPermission(['name' => 'secrets:rotate'])->assertSessionHasNoErrors();
     $theirs = Permission::query()->withoutGlobalScopes()->where('name', 'secrets:rotate')->firstOrFail();
     DB::table('role_permission')->insert(['role_id' => 'role_a', 'permission_id' => $theirs->id]);
 
@@ -129,16 +133,17 @@ it('refuses to let one organization edit or delete another\'s permission', funct
 
     permOrgAdmin('beta', 'owner@beta.example');
 
-    // The peer's private key: not resolvable for writing.
-    Volt::test('console.permissions.index')->call('startEdit', $theirs->id)->assertSet('editingId', null);
-    Volt::test('console.permissions.index')->call('delete', $theirs->id);
+    // The peer's private key: not resolvable for writing, so there is nothing to refuse
+    // afterwards — the write set is a query, and a forged id matches nothing in it.
+    test()->patch(route('permissions.update', $theirs->id), ['description' => 'Mine now'])->assertNotFound();
+    test()->delete(route('permissions.destroy', $theirs->id))->assertNotFound();
 
     // The SHARED key: visible, composable into roles, and still not writable from a
     // tenant plane. This is the pair `visibleToOrganization` and `ownedByOrganization`
     // exist to keep apart — a fence built from the visibility predicate alone would let
     // this delete through and take every role in the environment's grant with it.
-    Volt::test('console.permissions.index')->call('startEdit', $shared->id)->assertSet('editingId', null);
-    Volt::test('console.permissions.index')->call('delete', $shared->id);
+    test()->patch(route('permissions.update', $shared->id), ['description' => 'Mine now'])->assertNotFound();
+    test()->delete(route('permissions.destroy', $shared->id))->assertNotFound();
 
     expect(Permission::query()->withoutGlobalScopes()->whereKey($theirs->id)->exists())->toBeTrue()
         ->and(Permission::query()->withoutGlobalScopes()->whereKey($shared->id)->exists())->toBeTrue()
@@ -148,17 +153,14 @@ it('refuses to let one organization edit or delete another\'s permission', funct
 
 it('lets a tenant author a key a peer already owns, without disclosing that they own it', function (): void {
     permOrgAdmin('acme', 'owner@acme.example');
-    Volt::test('console.permissions.index')->set('name', 'billing:refund')->call('create')->assertHasNoErrors();
+    createPermission(['name' => 'billing:refund'])->assertSessionHasNoErrors();
 
     permOrgAdmin('beta', 'owner@beta.example');
 
     // No collision error: the uniqueness probe runs over what THIS tenant can see, so it
     // never becomes an oracle for a peer's `feature:action` names — which are named after
     // what that peer bought.
-    Volt::test('console.permissions.index')
-        ->set('name', 'billing:refund')
-        ->call('create')
-        ->assertHasNoErrors();
+    createPermission(['name' => 'billing:refund'])->assertSessionHasNoErrors();
 
     expect(Permission::query()->withoutGlobalScopes()->where('name', 'billing:refund')->count())->toBe(2);
 });
@@ -176,8 +178,5 @@ it('still refuses a key the environment already shares', function (): void {
 
     // Two identical keys in the Roles editor, one shared and one private, is a choice
     // nobody can make correctly — so the visible half of the probe still fires.
-    Volt::test('console.permissions.index')
-        ->set('name', 'reports:read')
-        ->call('create')
-        ->assertHasErrors('name');
+    createPermission(['name' => 'reports:read'])->assertSessionHasErrors('name');
 });
