@@ -52,19 +52,26 @@ jobs:
 
       # The baselines are drawn fresh: any committed picture is discarded first, so this
       # cannot silently keep a stale one that happens to still pass.
+      #
+      # `--update-snapshots` is REQUIRED, not a convenience. Without it a missing snapshot
+      # is an assertion failure ("Snapshot is missing ... Run Pest with
+      # --update-snapshots to create it") and nothing is written — which is the right
+      # default everywhere else, because it means a run can never quietly mint the baseline
+      # it was supposed to be judged against. This job is the one place that minting is the
+      # entire point.
       - name: Draw the baselines
         run: |
           rm -rf tests/.pest/snapshots
-          vendor/bin/pest --group=visual
+          vendor/bin/pest --group=visual --update-snapshots
 
-      # `--group=visual` exits non-zero the first time by design: a snapshot that did not
-      # exist is reported as INCOMPLETE, not as a pass. That is correct behaviour and not
-      # a failure of this job, so the run above is allowed to report it and the upload
-      # happens regardless.
+      # `include-hidden-files` because `.pest` begins with a dot, and upload-artifact skips
+      # dotted paths by default — the first run of this job uploaded nothing and said so
+      # only as "No files were found with the provided path".
       - name: Upload the baselines
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: visual-baselines-linux
           path: tests/.pest/snapshots
+          include-hidden-files: true
           if-no-files-found: error
