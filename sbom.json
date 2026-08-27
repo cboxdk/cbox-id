@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:3367d02e-66f4-4836-83f3-d28e99d08cc1",
+    "serialNumber": "urn:uuid:f8609fa8-a6f8-41ca-b339-bb93b5ab591d",
     "version": 1,
     "metadata": {
         "tools": [
@@ -1137,11 +1137,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/console@v8.1.2",
+            "bom-ref": "pkg:composer/symfony/console@v8.1.5",
             "group": "symfony",
             "name": "console",
-            "version": "v8.1.2",
-            "purl": "pkg:composer/symfony/console@v8.1.2",
+            "version": "v8.1.5",
+            "purl": "pkg:composer/symfony/console@v8.1.5",
             "description": "Eases the creation of beautiful and testable command line interfaces",
             "licenses": [
                 {
@@ -1233,11 +1233,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/finder@v8.1.1",
+            "bom-ref": "pkg:composer/symfony/finder@v8.1.5",
             "group": "symfony",
             "name": "finder",
-            "version": "v8.1.1",
-            "purl": "pkg:composer/symfony/finder@v8.1.1",
+            "version": "v8.1.5",
+            "purl": "pkg:composer/symfony/finder@v8.1.5",
             "description": "Finds files and directories via an intuitive fluent interface",
             "licenses": [
                 {
@@ -1361,11 +1361,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/polyfill-intl-normalizer@v1.38.0",
+            "bom-ref": "pkg:composer/symfony/polyfill-intl-normalizer@v1.42.0",
             "group": "symfony",
             "name": "polyfill-intl-normalizer",
-            "version": "v1.38.0",
-            "purl": "pkg:composer/symfony/polyfill-intl-normalizer@v1.38.0",
+            "version": "v1.42.0",
+            "purl": "pkg:composer/symfony/polyfill-intl-normalizer@v1.42.0",
             "description": "Symfony polyfill for intl's Normalizer class and related functions",
             "licenses": [
                 {
@@ -1473,11 +1473,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/process@v8.1.0",
+            "bom-ref": "pkg:composer/symfony/process@v8.1.5",
             "group": "symfony",
             "name": "process",
-            "version": "v8.1.0",
-            "purl": "pkg:composer/symfony/process@v8.1.0",
+            "version": "v8.1.5",
+            "purl": "pkg:composer/symfony/process@v8.1.5",
             "description": "Executes commands in sub-processes",
             "licenses": [
                 {
