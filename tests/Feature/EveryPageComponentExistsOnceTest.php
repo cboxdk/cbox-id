@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-
 /**
  * ONE CONTROLLER, ONE COMPONENT PATH — and every path names a file that is there.
  *

@@ -160,9 +160,15 @@ final readonly class DashboardController extends ConsoleController
                 'action' => str_replace(['.', '_'], [' · ', ' '], (string) $entry->action),
                 // The resolved name, or the type and a truncated id — never a bare ULID
                 // with nothing to say what kind of thing it names.
-                'subject' => $labels[$targetId] ?? ($targetId === null
+                //
+                // THE NULL CHECK COMES FIRST, and that is a fix rather than a tidy-up. An
+                // entry with no target — a sign-in, a policy change — has a null id, and
+                // `$labels[null]` is not a miss: PHP coerces the key to `''`, so it reads
+                // whatever happens to sit under the empty string. Nothing puts a value
+                // there today, which is the only reason this has been harmless.
+                'subject' => $targetId === null
                     ? null
-                    : Str::headline((string) $entry->target_type).' '.Str::limit((string) $targetId, 24)),
+                    : $labels[$targetId] ?? Str::headline((string) $entry->target_type).' '.Str::limit($targetId, 24),
                 'when' => $entry->recorded_at?->diffForHumans(),
             ];
         }
