@@ -1,0 +1,72 @@
+# GENERATE THE VISUAL BASELINES IN THE ENVIRONMENT THAT WILL JUDGE THEM.
+#
+# A screenshot baseline is a picture of one renderer. A picture drawn by Chromium on a
+# maintainer's macOS/arm64 laptop does not match one drawn on Linux/x64 — text rasterises
+# differently and the font the assertion pins is substituted — so a baseline committed
+# from a laptop fails every CI run for reasons nobody can act on.
+#
+# So the runner draws them. This workflow is MANUAL (`workflow_dispatch`): run it, download
+# the artifact, commit what is inside `tests/.pest/snapshots`, and CI can then hold the
+# console's layout on every pull request.
+#
+# WHEN TO RUN IT: after a deliberate design change, and only then. Regenerating a baseline
+# because a test went red — without looking at the diff — is how a visual suite becomes a
+# rubber stamp. Read the diff first; if the new picture is the one you meant, run this.
+name: Visual baselines
+
+on:
+  workflow_dispatch:
+
+jobs:
+  baselines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium, openssl, sockets
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force
+
+      # The baselines are drawn fresh: any committed picture is discarded first, so this
+      # cannot silently keep a stale one that happens to still pass.
+      #
+      # `--update-snapshots` is REQUIRED, not a convenience. Without it a missing snapshot
+      # is an assertion failure ("Snapshot is missing ... Run Pest with
+      # --update-snapshots to create it") and nothing is written — which is the right
+      # default everywhere else, because it means a run can never quietly mint the baseline
+      # it was supposed to be judged against. This job is the one place that minting is the
+      # entire point.
+      - name: Draw the baselines
+        run: |
+          rm -rf tests/.pest/snapshots
+          vendor/bin/pest --group=visual --update-snapshots
+
+      # `include-hidden-files` because `.pest` begins with a dot, and upload-artifact skips
+      # dotted paths by default — the first run of this job uploaded nothing and said so
+      # only as "No files were found with the provided path".
+      - name: Upload the baselines
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-linux
+          path: tests/.pest/snapshots
+          include-hidden-files: true
+          if-no-files-found: error

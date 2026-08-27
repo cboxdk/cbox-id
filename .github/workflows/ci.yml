@@ -72,20 +72,19 @@ jobs:
       - name: Static analysis (PHPStan/Larastan)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
 
-      # `visual` is excluded, and the reason is not squeamishness about flakiness — it is
-      # that a screenshot baseline is a picture of ONE renderer. The committed baselines
-      # are drawn by Chromium on macOS/arm64; this runner is Linux/x64, where the same page
-      # rasterises text differently and substitutes its own face for the font the assertion
-      # pins. Every baseline would fail here for a reason that has nothing to do with the
-      # change under test, and a job that fails for reasons nobody can act on is a job
-      # people learn to ignore.
+      # `visual` RUNS HERE NOW, and the baselines it compares against were drawn by this
+      # runner — see `.github/workflows/visual-baselines.yml`. That is the whole trick: a
+      # screenshot baseline is a picture of ONE renderer, and pictures drawn on a
+      # maintainer's macOS/arm64 laptop fail on Linux/x64 for reasons nobody can act on
+      # (text rasterises differently, the pinned font is substituted). This job judges
+      # against pictures from its own kind of machine.
       #
-      # So the visual suite is a LOCAL gate today: `vendor/bin/pest --group=visual` before
-      # a design change, and read the diff. Making it a CI gate means generating the
-      # baselines in the same container this job runs in — worth doing, and deliberately
-      # not done in the same change that introduces the tests.
-      - name: Tests (Pest — feature, axe-core a11y, and real-browser smoke)
-        run: vendor/bin/pest --exclude-group=visual
+      # WHEN ONE GOES RED: open the diff before regenerating anything. Regenerating a
+      # baseline because a test failed, without looking, is how a visual suite becomes a
+      # rubber stamp. If the new picture is the one you meant, run the Visual baselines
+      # workflow and commit what it uploads.
+      - name: Tests (Pest — feature, axe-core a11y, real-browser smoke, visual)
+        run: vendor/bin/pest
 
       - name: License gate (permissive-only dependencies)
         run: composer license-check
