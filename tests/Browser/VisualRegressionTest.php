@@ -48,8 +48,15 @@ use Cbox\Id\Platform\PlatformRoot;
  * that varies run to run.
  *
  * WHEN ONE FAILS, LOOK AT THE DIFF BEFORE REGENERATING IT. That is the entire value here.
- * Delete `.pest/snapshots` for a page only once you have decided the new picture is the
- * one you meant.
+ * Regenerating because a test went red, without looking, is how a visual suite becomes a
+ * rubber stamp.
+ *
+ * THE COMMITTED BASELINES ARE DRAWN ON LINUX, by `.github/workflows/visual-baselines.yml`,
+ * because that is what CI judges with — a picture drawn on macOS/arm64 fails on Linux/x64
+ * for reasons that have nothing to do with the change (text rasterises differently, and
+ * the font this assertion pins is substituted). So running `--group=visual` on a Mac will
+ * show diffs on every page and none of them mean anything. Locally, run it to LOOK at a
+ * page; to change what is committed, run the workflow and commit what it uploads.
  */
 beforeEach(function (): void {
     installedDeployment();
