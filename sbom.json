@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:f8609fa8-a6f8-41ca-b339-bb93b5ab591d",
+    "serialNumber": "urn:uuid:c9e097b3-54cb-4e64-a215-85a526890cad",
     "version": 1,
     "metadata": {
         "tools": [
@@ -69,11 +69,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/dns@v0.1.1",
+            "bom-ref": "pkg:composer/cboxdk/dns@v1.0.0",
             "group": "cboxdk",
             "name": "dns",
-            "version": "v0.1.1",
-            "purl": "pkg:composer/cboxdk/dns@v0.1.1",
+            "version": "v1.0.0",
+            "purl": "pkg:composer/cboxdk/dns@v1.0.0",
             "description": "Zero-dependency raw PHP DNS resolver, domain-ownership verification, and intoDNS/MxToolbox-style diagnostics. Queries authoritative nameservers directly over sockets \u2014 never trusts the recursive cache for ownership checks.",
             "licenses": [
                 {
@@ -101,11 +101,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-dns@v0.1.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-dns@v1.0.0",
             "group": "cboxdk",
             "name": "laravel-dns",
-            "version": "v0.1.0",
-            "purl": "pkg:composer/cboxdk/laravel-dns@v0.1.0",
+            "version": "v1.0.0",
+            "purl": "pkg:composer/cboxdk/laravel-dns@v1.0.0",
             "description": "Laravel integration for cboxdk/dns \u2014 authoritative DNS lookups, domain-ownership verification, DNSSEC validation, and intoDNS/MxToolbox-style diagnostics via a facade, Artisan commands, and validation rules.",
             "licenses": [
                 {
