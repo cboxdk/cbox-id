@@ -108,9 +108,12 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 'name' => $o->name,
             ])->values()->all(),
             'search' => $term,
+            // "Standard", not the enum's "Customer": in this console "customer" already meant
+            // two other things (a workspace, and the people using a product), and a third — an
+            // organization that is not a reseller — is the one a label can stop adding.
             'types' => array_map(static fn (OrganizationType $type): array => [
                 'value' => $type->value,
-                'label' => Str::headline($type->value),
+                'label' => $type === OrganizationType::Customer ? 'Standard' : Str::headline($type->value),
             ], OrganizationType::cases()),
             'storeHref' => route('platform.organizations.store'),
         ]);

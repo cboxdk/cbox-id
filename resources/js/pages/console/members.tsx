@@ -92,7 +92,7 @@ export default function Members({
 
     return (
         <>
-            <PageHeader description="People who can administer this account, their roles, and which environments they reach." />
+            <PageHeader description="The people who run this workspace, their built-in role, and which environments they reach." />
 
             <div
                 className="mt-6 rounded-xl border overflow-hidden"
@@ -148,7 +148,7 @@ export default function Members({
                                             );
                                         }}
                                         options={roleSelectOptions(assignableRoles)}
-                                        aria-label={`Role for ${member.email}`}
+                                        aria-label={`Built-in role for ${member.email}`}
                                     />
 
                                     <DropdownMenu>
@@ -247,7 +247,7 @@ export default function Members({
                 <div className="mt-6">
                     <Panel
                         title="Invite a teammate"
-                        description="They'll get an email to set a password and join this account."
+                        description="They'll get an email to set a password and join this workspace."
                     >
                         <InviteForm href={invite.url()} roles={assignableRoles} withName />
                     </Panel>
@@ -259,7 +259,7 @@ export default function Members({
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
                 verb="Remove"
-                consequence="They lose access to this account and every environment under it immediately."
+                consequence="They lose access to this workspace and every environment under it immediately."
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -274,9 +274,9 @@ export default function Members({
                 open={pending?.kind === 'transfer'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
-                verb="Hand this account to"
+                verb="Hand this workspace to"
                 actionLabel="Transfer ownership"
-                consequence="They become the account owner and you are demoted to admin. Only the new owner can hand it back."
+                consequence="They become the workspace owner and you are demoted to admin. Only the new owner can hand it back."
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);

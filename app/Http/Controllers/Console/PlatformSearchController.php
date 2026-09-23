@@ -102,7 +102,7 @@ final readonly class PlatformSearchController extends ConsoleController
                         'suspended' => $organization->status->value === 'suspended',
                         // Named rather than blank: a row whose plane cannot be resolved is a
                         // thing an operator should see, not a gap.
-                        'plane' => $plane->name ?? 'Unknown plane',
+                        'plane' => $plane->name ?? 'Unknown environment',
                         'href' => route('platform.search.jump', $organization->id),
                     ];
                 })->values()->all(),
@@ -123,7 +123,7 @@ final readonly class PlatformSearchController extends ConsoleController
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'plane' => $plane->name ?? 'Unknown plane',
+                        'plane' => $plane->name ?? 'Unknown environment',
                         'organizations' => $organizations,
                         /*
                          * A user is not a page: the console has no cross-plane person view, so

@@ -572,7 +572,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             return back()->withErrors(['role' => 'An organization must keep at least one owner.']);
         }
 
-        return back()->with('status', 'Org access updated.');
+        return back()->with('status', 'Built-in role updated.');
     }
 
     /**
@@ -601,7 +601,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         if (! $request->boolean('granted')) {
             app(GrantAccessRole::class)->revoke($organization, $model->id, $roleId);
 
-            return back()->with('status', 'Access role revoked.');
+            return back()->with('status', 'Role revoked.');
         }
 
         $refusal = app(GrantAccessRole::class)->grant($organization, $model->id, $roleId, GrantSource::Manual);
@@ -610,7 +610,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             return back()->withErrors(['role' => $refusal->message()]);
         }
 
-        return back()->with('status', 'Access role granted.');
+        return back()->with('status', 'Role granted.');
     }
 
     /**

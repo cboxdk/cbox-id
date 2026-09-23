@@ -141,7 +141,7 @@ export default function CreateRoleConflict({
                                         form.setData('environmentWide', checked)
                                     }
                                     label="Apply it to every organization in this environment"
-                                    hint="An environment-wide rule binds every tenant here, and is not theirs to switch off."
+                                    hint="An environment-wide rule binds every organization here, and is not theirs to switch off."
                                 />
                                 {form.errors.environmentWide !== undefined && (
                                     <p className="field-error" role="alert">

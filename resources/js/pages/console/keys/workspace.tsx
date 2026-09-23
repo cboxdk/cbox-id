@@ -104,8 +104,8 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes }: Props) {
                     {keys.length === 0 ? (
                         <EmptyState
                             icon="key"
-                            title="No API keys yet"
-                            description="Create a key to reach the account management API from your own services."
+                            title="No workspace keys yet"
+                            description="Create a key to reach the workspace API from your own services."
                         />
                     ) : (
                         keys.map((key, index) => (
@@ -166,7 +166,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes }: Props) {
                                 />
                             </Field>
 
-                            <Field label="Role" error={form.errors.role}>
+                            <Field label="Built-in role" error={form.errors.role}>
                                 <Select
                                     value={form.data.role}
                                     onValueChange={(role) => form.setData('role', role)}

@@ -55,8 +55,7 @@ final readonly class RoleOptionProps implements Prop
     }
 
     /**
-     * The roles a customer account offers its administrators (Identity platform ›
-     * Administrators) — a different question from an organization's roster, so a different
+     * The built-in roles a workspace offers its team (Workspace › Team) — a different question from an organization's roster, so a different
      * list, drawn by the same control.
      *
      * @return list<self>
@@ -65,7 +64,7 @@ final readonly class RoleOptionProps implements Prop
     {
         return array_map(
             static fn (MembershipRole $role): self => new self($role->value, $role->label(), match ($role) {
-                MembershipRole::Admin => 'Runs the account: people, projects, environments and billing.',
+                MembershipRole::Admin => 'Runs the workspace: team, projects, environments and billing.',
                 MembershipRole::Developer => 'Creates and runs environments; no access to people or billing.',
                 MembershipRole::Member => 'Works in the environments they are given; no administration.',
                 MembershipRole::Viewer => 'Read-only: environments, people and billing.',

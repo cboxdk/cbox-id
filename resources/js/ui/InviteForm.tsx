@@ -23,11 +23,11 @@ export interface ReturnApp {
     origins: string[];
 }
 
-/** An access role an invitation can carry, granted when the invitee accepts. */
+/** An app or custom role an invitation can carry, granted when the invitee accepts. */
 export interface InviteAccessRole {
     id: string;
     name: string;
-    /** "Org roles", or the app that declared it — the heading it is listed under. */
+    /** "Custom roles", or the app that declared it — the heading it is listed under. */
     group: string;
     hint?: string | null;
 }
@@ -138,27 +138,16 @@ export function InviteForm({
                 });
             }}
         >
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)] items-start">
-                <Field label="Email address" error={form.errors.email}>
-                    <Input
-                        name="email"
-                        type="email"
-                        autoComplete="off"
-                        placeholder="teammate@company.com"
-                        value={form.data.email}
-                        onChange={(event) => form.setData('email', event.target.value)}
-                    />
-                </Field>
-
-                <Field label="Role" error={form.errors.role}>
-                    <Select
-                        name="role"
-                        value={form.data.role === '' ? undefined : form.data.role}
-                        onValueChange={(role) => form.setData('role', role)}
-                        options={roleSelectOptions(offered)}
-                    />
-                </Field>
-            </div>
+            <Field label="Email address" error={form.errors.email}>
+                <Input
+                    name="email"
+                    type="email"
+                    autoComplete="off"
+                    placeholder="teammate@company.com"
+                    value={form.data.email}
+                    onChange={(event) => form.setData('email', event.target.value)}
+                />
+            </Field>
 
             {withName && (
                 <Field label="Name" optional error={form.errors.name}>
@@ -172,50 +161,74 @@ export function InviteForm({
                 </Field>
             )}
 
-            {accessRoles.length > 0 && (
+            {/*
+                ONE ROLES CONTROL. The built-in role and the app and custom roles were two
+                fields with two names ("Role", "Access roles"), and people read them as two
+                unrelated settings. They are one answer — what this person may do — in two
+                parts: exactly one built-in role, and any number of the others.
+            */}
+            <fieldset className="space-y-3">
+                <legend className="label">Roles</legend>
+
                 <Field
-                    label="Access roles"
-                    hint="Granted the moment they accept."
-                    optional
-                    error={form.errors.accessRoles}
+                    label="Built-in role"
+                    hint="Exactly one. It decides what they may administer."
+                    error={form.errors.role}
+                    className="max-w-sm"
                 >
-                    <div className="space-y-2">
-                        {grouped(accessRoles).map(([group, inGroup]) => (
-                            <div key={group}>
-                                <p
-                                    className="text-xs font-semibold uppercase mb-1.5"
-                                    style={{
-                                        color: 'var(--muted-foreground)',
-                                        letterSpacing: '0.05em',
-                                    }}
-                                >
-                                    {group}
-                                </p>
-                                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                                    {inGroup.map((role) => (
-                                        <Checkbox
-                                            key={role.id}
-                                            checked={form.data.accessRoles.includes(role.id)}
-                                            onCheckedChange={(checked) =>
-                                                form.setData(
-                                                    'accessRoles',
-                                                    checked
-                                                        ? [...form.data.accessRoles, role.id]
-                                                        : form.data.accessRoles.filter(
-                                                              (id) => id !== role.id,
-                                                          ),
-                                                )
-                                            }
-                                            label={role.name}
-                                            hint={role.hint ?? undefined}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <Select
+                        name="role"
+                        value={form.data.role === '' ? undefined : form.data.role}
+                        onValueChange={(role) => form.setData('role', role)}
+                        options={roleSelectOptions(offered)}
+                    />
                 </Field>
-            )}
+
+                {accessRoles.length > 0 && (
+                    <Field
+                        label="App and custom roles"
+                        hint="Any number, granted the moment they accept."
+                        optional
+                        error={form.errors.accessRoles}
+                    >
+                        <div className="space-y-2">
+                            {grouped(accessRoles).map(([group, inGroup]) => (
+                                <div key={group}>
+                                    <p
+                                        className="text-xs font-semibold uppercase mb-1.5"
+                                        style={{
+                                            color: 'var(--muted-foreground)',
+                                            letterSpacing: '0.05em',
+                                        }}
+                                    >
+                                        {group}
+                                    </p>
+                                    <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                                        {inGroup.map((role) => (
+                                            <Checkbox
+                                                key={role.id}
+                                                checked={form.data.accessRoles.includes(role.id)}
+                                                onCheckedChange={(checked) =>
+                                                    form.setData(
+                                                        'accessRoles',
+                                                        checked
+                                                            ? [...form.data.accessRoles, role.id]
+                                                            : form.data.accessRoles.filter(
+                                                                  (id) => id !== role.id,
+                                                              ),
+                                                    )
+                                                }
+                                                label={role.name}
+                                                hint={role.hint ?? undefined}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Field>
+                )}
+            </fieldset>
 
             {apps.length > 0 &&
                 (returning ||

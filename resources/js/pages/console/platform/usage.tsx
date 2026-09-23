@@ -47,7 +47,7 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations }: P
 
     return (
         <>
-            <PageHeader description="Platform-wide usage across every environment — above the plane the console is currently pinned to." />
+            <PageHeader description="Platform-wide usage across every environment — not only the one the console is pointed at." />
 
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5 mt-8">
                 {tiles.map(([label, value]) => (
@@ -65,7 +65,8 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations }: P
                     title="Per-environment breakdown"
                     action={
                         <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                            {breakdown.length} {breakdown.length === 1 ? 'plane' : 'planes'}
+                            {breakdown.length}{' '}
+                            {breakdown.length === 1 ? 'environment' : 'environments'}
                         </span>
                     }
                 >
@@ -120,7 +121,7 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations }: P
                 title="Top organizations by members"
                 action={
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        Across every plane
+                        Across every environment
                     </span>
                 }
             >
@@ -128,15 +129,15 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations }: P
                     <EmptyState
                         icon="members"
                         title="No organization has a member yet"
-                        description="This ranks tenants by member count once they do."
+                        description="This ranks organizations by member count once they do."
                     />
                 ) : (
                     <div className="overflow-x-auto">
-                        <Table caption="The ten organizations with the most members, and the plane each belongs to">
+                        <Table caption="The ten organizations with the most members, and the environment each belongs to">
                             <thead>
                                 <tr>
                                     <Th>Organization</Th>
-                                    <Th>Plane</Th>
+                                    <Th>Environment</Th>
                                     <Th className="text-right">Members</Th>
                                     <Th>
                                         <span className="sr-only">Actions</span>
@@ -150,7 +151,7 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations }: P
                                         <Td>
                                             {/*
                                                 The icon is decorative and the column is
-                                                already headed "Plane", so the pill needs no
+                                                already headed "Environment", so the pill needs no
                                                 title attribute to explain itself — one there
                                                 would be a tooltip repeating the header.
                                             */}

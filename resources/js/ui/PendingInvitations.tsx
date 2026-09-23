@@ -129,7 +129,7 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                 open={withdrawing !== null}
                 onOpenChange={(open) => !open && setWithdrawing(null)}
                 title={`Withdraw the invitation to ${withdrawing?.email ?? ''}?`}
-                description="The link they were sent stops working immediately, and any access roles it carried go with it. You can invite them again afterwards."
+                description="The link they were sent stops working immediately, and any roles it carried go with it. You can invite them again afterwards."
                 footer={
                     <>
                         <Button onClick={() => setWithdrawing(null)}>Cancel</Button>

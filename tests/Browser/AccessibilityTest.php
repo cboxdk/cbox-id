@@ -157,14 +157,14 @@ it('has no accessibility issues on the ported console pages', function (string $
         ->assertNoJavaScriptErrors();
 })->with([
     'projects' => ['/projects', 'Projects'],
-    'members' => ['/team', 'Administrators'],
-    'keys.workspace' => ['/keys/workspace', 'API keys'],
+    'members' => ['/team', 'Team'],
+    'keys.workspace' => ['/keys/workspace', 'Keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Activity log'],
     'settings' => ['/settings', 'Settings'],
     'appearance' => ['/appearance', 'Appearance'],
     'sign-in-rules' => ['/sign-in-rules', 'Sign-in rules'],
-    'clients' => ['/apps', 'Apps & API keys'],
+    'clients' => ['/apps', 'Apps'],
     'connections' => ['/single-sign-on', 'Single sign-on'],
     'directories' => ['/sync-in', 'Sync users in'],
     'roles' => ['/roles', 'Roles'],
@@ -178,7 +178,7 @@ it('has no accessibility issues on the ported console pages', function (string $
     'usage' => ['/usage', 'Usage'],
     'social-providers' => ['/social-sign-in', 'Social sign-in'],
     'get-started' => ['/get-started', 'Set up Acme'],
-    'approvals' => ['/approvals', 'Agent approvals'],
+    'approvals' => ['/approvals', 'Approve agent requests'],
     'dashboard' => ['/dashboard', 'Welcome back'],
 ])->group('a11y');
 
@@ -244,7 +244,7 @@ it('has no accessibility issues on the ported environment console pages', functi
     'organizations' => ['/admin/organizations', 'Organizations'],
     'users' => ['/admin/users', 'Users'],
     'saml-applications' => ['/admin/saml-apps', 'SAML applications'],
-    'approvals' => ['/admin/approvals', 'Agent approvals'],
+    'approvals' => ['/admin/approvals', 'Review agent requests'],
     // The SAME page as `/usage` on the other plane, and the reason that page exists: the
     // environment plane had a primitive copy of these counters called "Analytics".
     'analytics' => ['/admin/usage', 'Usage'],

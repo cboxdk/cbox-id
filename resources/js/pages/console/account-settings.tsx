@@ -11,7 +11,7 @@ export default function AccountSettings({ name }: Props) {
 
     return (
         <>
-            <PageHeader description="The name of the account these identity providers are billed and administered under." />
+            <PageHeader description="The name of the workspace these identity providers are billed and administered under." />
 
             <form
                 className="mt-6"
@@ -23,7 +23,7 @@ export default function AccountSettings({ name }: Props) {
                 <Panel>
                     <div className="flex items-start gap-2">
                         <Field
-                            label="Account name"
+                            label="Workspace name"
                             hint="Shown across the console."
                             error={form.errors.name}
                             className="flex-1 max-w-sm"
@@ -55,9 +55,9 @@ export default function AccountSettings({ name }: Props) {
                 conversation, not a control somebody would then have to be talked out of.
             */}
             <div className="mt-4">
-                <Panel title="Delete account">
+                <Panel title="Delete workspace">
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        Deleting this account tears down every project and environment it owns.
+                        Deleting this workspace tears down every project and environment it owns.
                         To protect live identity providers this isn't self-serve — contact
                         support to proceed.
                     </p>

@@ -35,7 +35,7 @@ enum DeploymentShape: string
     {
         return match ($this) {
             self::SingleTenant => 'Single-tenant — one host, one identity provider',
-            self::MultiTenant => 'Multi-tenant — an account plane that provisions IdPs',
+            self::MultiTenant => 'Multi-tenant — people sign up for workspaces that run their own environments',
         };
     }
 

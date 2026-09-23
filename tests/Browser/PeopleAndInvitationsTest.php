@@ -218,12 +218,12 @@ it('names an owner on the environment console\'s user page without offering Owne
         // The row's picker SHOWS the role it holds…
         ->assertSee('Owner')
         ->assertNoJavaScriptErrors()
-        ->script("document.querySelector('[aria-label=\"Org access in Tenant Co\"]').scrollIntoView({block: 'center'})");
+        ->script("document.querySelector('[aria-label=\"Built-in role in Tenant Co\"]').scrollIntoView({block: 'center'})");
 
     $page->screenshot(fullPage: false, filename: 'environment-user');
 
     // …and does not offer it: the option is there, disabled.
-    $page->click('[aria-label="Org access in Tenant Co"]')
+    $page->click('[aria-label="Built-in role in Tenant Co"]')
         ->assertScript('document.querySelector(\'[role="option"][data-disabled]\')?.textContent.includes("Owner") ?? false', true)
         ->screenshot(fullPage: false, filename: 'environment-user-roles');
 })->group('a11y');

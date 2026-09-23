@@ -222,7 +222,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return back()->withErrors(['role' => 'The organization must keep at least one owner.']);
         }
 
-        return back()->with('status', 'Console access updated.');
+        return back()->with('status', 'Built-in role updated.');
     }
 
     /**
@@ -256,7 +256,7 @@ final readonly class DirectoryMemberController extends ConsoleController
         if (! $request->boolean('granted')) {
             $roles->unassign($organizationId, $member, $roleId);
 
-            return back()->with('status', 'Access role revoked.');
+            return back()->with('status', 'Role revoked.');
         }
 
         /*
@@ -271,7 +271,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return back()->withErrors(['role' => $refusal->message()]);
         }
 
-        return back()->with('status', 'Access role granted.');
+        return back()->with('status', 'Role granted.');
     }
 
     public function remove(string $member, Memberships $memberships): RedirectResponse
@@ -363,7 +363,7 @@ final readonly class DirectoryMemberController extends ConsoleController
     }
 
     /** The sentence a refused roster write gets, and the page's own banner. */
-    private const MANAGED_ELSEWHERE = 'This organization is a customer of this platform. Manage its members under Identity platform → Members.';
+    private const MANAGED_ELSEWHERE = 'This organization is a Cbox workspace. Its team is managed under Workspace › Team.';
 
     private function assertAdmin(): void
     {
@@ -521,7 +521,7 @@ final readonly class DirectoryMemberController extends ConsoleController
                 'key' => $role->key ?? 'org',
                 // Grouped org-wide vs per-app: "what a person can do" reads differently
                 // depending on which apps it reaches.
-                'group' => $clientId === null ? 'Org roles' : ($appNames[$clientId] ?? $clientId),
+                'group' => $clientId === null ? 'Custom roles' : ($appNames[$clientId] ?? $clientId),
                 'permissions' => $permissions[$role->id] ?? [],
             ];
         }

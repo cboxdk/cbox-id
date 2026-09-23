@@ -245,7 +245,7 @@ function Details({ organization, href }: { organization: Props['organization']; 
                 <MetadataRows
                     rows={form.data.metadata}
                     onChange={(rows) => form.setData('metadata', rows)}
-                    hint="Anything your own systems need to keep against this tenant. Rows with no key are dropped."
+                    hint="Anything your own systems need to keep against this organization. Rows with no key are dropped."
                 />
 
                 <Button type="submit" variant="primary" loading={form.processing}>
@@ -342,22 +342,30 @@ function Members({
                                         )}
                                     </div>
 
-                                    <Select
-                                        className="w-44 shrink-0"
-                                        aria-label={`Organization access for ${member.name}`}
-                                        value={member.role}
-                                        onValueChange={(role) =>
-                                            router.patch(
-                                                member.urls.role,
-                                                { role },
-                                                { preserveScroll: true },
+                                    {/*
+                                        ONE ROLES CONTROL: the built-in role (exactly one)
+                                        and the app and custom roles (any number) are read
+                                        together, and edited together below.
+                                    */}
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        <Pill>
+                                            <span className="sr-only">Built-in role: </span>
+                                            {rosterRoleOptions.find(
+                                                (option) => option.value === member.role,
+                                            )?.label ?? member.role}
+                                        </Pill>
+                                        {accessRoles
+                                            .filter((role) =>
+                                                member.accessRoleIds.includes(role.id),
                                             )
-                                        }
-                                        options={roleSelectOptions(rosterRoleOptions)}
-                                    />
+                                            .map((role) => (
+                                                <Badge key={role.id}>{role.name}</Badge>
+                                            ))}
+                                    </div>
 
                                     <Button
                                         size="sm"
+                                        className="shrink-0"
                                         aria-expanded={managing === member.userId}
                                         onClick={() =>
                                             setManaging((current) =>
@@ -365,8 +373,7 @@ function Members({
                                             )
                                         }
                                     >
-                                        {member.accessRoleIds.length} app{' '}
-                                        {member.accessRoleIds.length === 1 ? 'role' : 'roles'}
+                                        {managing === member.userId ? 'Done' : 'Edit roles'}
                                     </Button>
 
                                     <DropdownMenu>
@@ -402,34 +409,69 @@ function Members({
                                         className="px-4 pb-4"
                                         style={{ background: 'var(--surface-2)' }}
                                     >
-                                        {accessRoles.length === 0 ? (
-                                            <p
-                                                className="pt-3 text-sm"
-                                                style={{ color: 'var(--muted-foreground)' }}
-                                            >
-                                                No app roles are defined for this organization yet.
-                                            </p>
-                                        ) : (
-                                            <div className="pt-3 grid gap-2 sm:grid-cols-2">
-                                                {accessRoles.map((role) => (
-                                                    <Checkbox
-                                                        key={role.id}
-                                                        checked={member.accessRoleIds.includes(
-                                                            role.id,
-                                                        )}
-                                                        onCheckedChange={(granted) =>
-                                                            router.post(
-                                                                member.urls.accessRole,
-                                                                { role: role.id, granted },
-                                                                { preserveScroll: true },
-                                                            )
-                                                        }
-                                                        label={role.name}
-                                                        hint={role.app ?? 'All apps'}
-                                                    />
-                                                ))}
+                                        <div className="pt-3 grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                                            <div>
+                                                <p className="label mb-1">Built-in role</p>
+                                                <p
+                                                    className="text-xs mb-2"
+                                                    style={{ color: 'var(--muted-foreground)' }}
+                                                >
+                                                    Exactly one. It decides what they may administer
+                                                    in this organization.
+                                                </p>
+                                                <Select
+                                                    aria-label={`Built-in role for ${member.name}`}
+                                                    value={member.role}
+                                                    onValueChange={(role) =>
+                                                        router.patch(
+                                                            member.urls.role,
+                                                            { role },
+                                                            { preserveScroll: true },
+                                                        )
+                                                    }
+                                                    options={roleSelectOptions(rosterRoleOptions)}
+                                                />
                                             </div>
-                                        )}
+
+                                            <div>
+                                                <p className="label mb-1">App and custom roles</p>
+                                                <p
+                                                    className="text-xs mb-2"
+                                                    style={{ color: 'var(--muted-foreground)' }}
+                                                >
+                                                    Any number. They ride in the app tokens.
+                                                </p>
+                                                {accessRoles.length === 0 ? (
+                                                    <p
+                                                        className="text-sm"
+                                                        style={{ color: 'var(--muted-foreground)' }}
+                                                    >
+                                                        No roles are defined for this organization
+                                                        yet.
+                                                    </p>
+                                                ) : (
+                                                    <div className="grid gap-2 sm:grid-cols-2">
+                                                        {accessRoles.map((role) => (
+                                                            <Checkbox
+                                                                key={role.id}
+                                                                checked={member.accessRoleIds.includes(
+                                                                    role.id,
+                                                                )}
+                                                                onCheckedChange={(granted) =>
+                                                                    router.post(
+                                                                        member.urls.accessRole,
+                                                                        { role: role.id, granted },
+                                                                        { preserveScroll: true },
+                                                                    )
+                                                                }
+                                                                label={role.name}
+                                                                hint={role.app ?? 'All apps'}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -529,7 +571,7 @@ function AddMember({
                     />
                 </Field>
 
-                <Field label="Role" error={form.errors.role}>
+                <Field label="Built-in role" error={form.errors.role}>
                     <Select
                         name="role"
                         value={form.data.role}
@@ -557,7 +599,7 @@ function AddMember({
     );
 }
 
-/** The app roles to grant alongside a membership. */
+/** The app and custom roles to grant alongside a membership. */
 function AccessRolePicker({
     roles,
     selected,
@@ -575,7 +617,7 @@ function AccessRolePicker({
 
     return (
         <fieldset>
-            <legend className="label">App roles</legend>
+            <legend className="label">App and custom roles</legend>
             {hint !== undefined && (
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                     {hint}

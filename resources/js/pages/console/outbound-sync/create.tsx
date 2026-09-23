@@ -112,7 +112,7 @@ export default function CreateOutboundSync({
                                     form.setData('environmentWide', checked)
                                 }
                                 label="Send every organization in this environment"
-                                hint="Every tenant's people are pushed to this one target. Not the same as choosing an organization above — this is a platform-wide connection."
+                                hint="Every organization's people are pushed to this one target. Not the same as choosing an organization above — this is an environment-wide connection."
                             />
                         )}
 

@@ -36,7 +36,7 @@ interface AccessRole {
     id: string;
     name: string;
     key: string;
-    /** "Org roles", or the app that declared it. */
+    /** "Custom roles", or the app that declared it. */
     group: string;
     /** What holding it actually lets a member do. */
     permissions: string[];
@@ -156,9 +156,9 @@ export default function DirectoryMembers({
                         }}
                     >
                         <p className="text-sm">
-                            <b>This organization is a customer of this platform.</b> Its members are
-                            administered under Identity platform → Members, by somebody holding an
-                            organization capability rather than from here.
+                            <b>This organization is a Cbox workspace.</b> Its team is administered
+                            under Workspace › Team, by somebody holding a workspace role, rather
+                            than from here.
                         </p>
                     </div>
                 )}
@@ -260,12 +260,11 @@ function Roster({
     return (
         <div className="card overflow-hidden">
             <div className="overflow-x-auto">
-                <Table caption="Everyone in this organization, what they may administer, and what their roles let them do in your apps">
+                <Table caption="Everyone in this organization and their roles: one built-in role each, and any app or custom roles">
                     <thead>
                         <tr>
                             <Th>Member</Th>
-                            <Th>Console access</Th>
-                            <Th>Roles in your apps</Th>
+                            <Th>Roles</Th>
                             <Th>Joined</Th>
                             <Th>
                                 <span className="sr-only">Actions</span>
@@ -411,6 +410,9 @@ function RosterRow({
     const mayRemove = isAdmin && !managedElsewhere && !member.isMe && (!rowIsOwner || isOwner);
     const mayTransfer = isOwner && !managedElsewhere && !member.isMe && !rowIsOwner;
 
+    const builtIn = roles.find((role) => role.value === member.role)?.label ?? member.role;
+    const editable = isAdmin && !managedElsewhere && (roleEditable || accessRoles.length > 0);
+
     return (
         <>
             <tr>
@@ -436,52 +438,28 @@ function RosterRow({
                     </div>
                 </Td>
 
-                <Td>
-                    {roleEditable ? (
-                        <Select
-                            aria-label={`Console access for ${label}`}
-                            value={member.role}
-                            onValueChange={(role) =>
-                                router.patch(member.urls.role, { role }, { preserveScroll: true })
-                            }
-                            options={roleSelectOptions(roles)}
-                        />
-                    ) : (
-                        <Pill>
-                            {roles.find((role) => role.value === member.role)?.label ?? member.role}
-                        </Pill>
-                    )}
-                </Td>
-
+                {/*
+                    ONE ROLES COLUMN. It was two — "Console access" and "Roles in your apps" —
+                    for what a person reads as one question: what may they do here. The
+                    built-in role comes first because there is always exactly one; the
+                    roles after it are any number, and the app decides what each allows.
+                */}
                 <Td>
                     <div className="flex flex-wrap items-center gap-1">
-                        {held.length === 0 ? (
-                            isAdmin && accessRoles.length === 0 ? (
-                                <Link
-                                    href={rolesHref}
-                                    className="text-xs"
-                                    style={{ color: 'var(--accent-strong)' }}
-                                >
-                                    No roles defined yet →
-                                </Link>
-                            ) : (
-                                <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                    None
-                                </span>
-                            )
-                        ) : (
-                            held.map((id) => {
-                                const role = byId.get(id);
+                        <Pill>
+                            <span className="sr-only">Built-in role: </span>
+                            {builtIn}
+                        </Pill>
 
-                                return role === undefined ? null : (
-                                    <Badge key={id}>{role.name}</Badge>
-                                );
-                            })
-                        )}
+                        {held.map((id) => {
+                            const role = byId.get(id);
 
-                        {isAdmin && accessRoles.length > 0 && (
+                            return role === undefined ? null : <Badge key={id}>{role.name}</Badge>;
+                        })}
+
+                        {editable && (
                             <Button size="sm" aria-expanded={managing} onClick={onToggleManage}>
-                                {managing ? 'Done' : 'Manage'}
+                                {managing ? 'Done' : 'Edit roles'}
                             </Button>
                         )}
                     </div>
@@ -525,50 +503,101 @@ function RosterRow({
                 </Td>
             </tr>
 
-            {managing && isAdmin && (
+            {managing && editable && (
                 <tr>
                     <td
-                        colSpan={5}
+                        colSpan={4}
                         style={{
                             background: 'color-mix(in oklch, var(--secondary) 55%, transparent)',
                             padding: '14px 20px',
                         }}
                     >
-                        <p className="text-xs mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                            Access roles for <b>{label}</b> — these ride in the app tokens; the app
-                            enforces what each one can do.
-                        </p>
+                        <p className="text-sm font-medium mb-3">Roles for {label}</p>
 
-                        {grouped(accessRoles).map(([group, inGroup]) => (
-                            <div key={group}>
+                        <div className="grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                            <div>
+                                <p className="label mb-1">Built-in role</p>
                                 <p
-                                    className="text-xs font-semibold uppercase mb-1.5 mt-1"
-                                    style={{
-                                        color: 'var(--muted-foreground)',
-                                        letterSpacing: '0.05em',
-                                    }}
+                                    className="text-xs mb-2"
+                                    style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    {group}
+                                    Exactly one. It decides what they may administer here.
                                 </p>
-                                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 mb-3">
-                                    {inGroup.map((role) => (
-                                        <Checkbox
-                                            key={role.id}
-                                            checked={held.includes(role.id)}
-                                            onCheckedChange={(granted) =>
-                                                router.post(
-                                                    member.urls.access,
-                                                    { role: role.id, granted },
-                                                    { preserveScroll: true },
-                                                )
-                                            }
-                                            label={role.name}
-                                            hint={permissionHint(role)}
-                                        />
-                                    ))}
-                                </div>
+                                {roleEditable ? (
+                                    <Select
+                                        aria-label={`Built-in role for ${label}`}
+                                        value={member.role}
+                                        onValueChange={(role) =>
+                                            router.patch(
+                                                member.urls.role,
+                                                { role },
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                        options={roleSelectOptions(roles)}
+                                    />
+                                ) : (
+                                    <p className="text-sm">
+                                        <Pill>{builtIn}</Pill>{' '}
+                                        <span className="text-xs" style={{ color: 'var(--faint)' }}>
+                                            {rowIsOwner ? 'Ownership moves by transfer.' : ''}
+                                        </span>
+                                    </p>
+                                )}
                             </div>
-                        ))}
+
+                            <div>
+                                <p className="label mb-1">App and custom roles</p>
+                                <p
+                                    className="text-xs mb-2"
+                                    style={{ color: 'var(--muted-foreground)' }}
+                                >
+                                    Any number. They ride in the app tokens, and each app decides
+                                    what its roles allow.
+                                </p>
+
+                                {accessRoles.length === 0 ? (
+                                    <Link
+                                        href={rolesHref}
+                                        className="text-xs"
+                                        style={{ color: 'var(--accent-strong)' }}
+                                    >
+                                        No roles defined yet →
+                                    </Link>
+                                ) : (
+                                    grouped(accessRoles).map(([group, inGroup]) => (
+                                        <div key={group}>
+                                            <p
+                                                className="text-xs font-semibold uppercase mb-1.5 mt-1"
+                                                style={{
+                                                    color: 'var(--muted-foreground)',
+                                                    letterSpacing: '0.05em',
+                                                }}
+                                            >
+                                                {group}
+                                            </p>
+                                            <div className="grid gap-1.5 sm:grid-cols-2 mb-3">
+                                                {inGroup.map((role) => (
+                                                    <Checkbox
+                                                        key={role.id}
+                                                        checked={held.includes(role.id)}
+                                                        onCheckedChange={(granted) =>
+                                                            router.post(
+                                                                member.urls.access,
+                                                                { role: role.id, granted },
+                                                                { preserveScroll: true },
+                                                            )
+                                                        }
+                                                        label={role.name}
+                                                        hint={permissionHint(role)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
                     </td>
                 </tr>
             )}

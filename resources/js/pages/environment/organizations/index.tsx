@@ -71,7 +71,7 @@ export default function OrganizationsIndex({
     return (
         <>
             <PageHeader
-                description="Your customers. Each is a company or team using your product, with its own users, roles and SSO."
+                description="The teams using your product. Each is a company or group with its own users, roles and single sign-on."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
@@ -83,38 +83,12 @@ export default function OrganizationsIndex({
             />
 
             {/*
-                SAID HERE, BECAUSE HERE IS WHERE THE CONFUSION HAPPENS. The word
-                "organization" does two jobs in this platform — up in the platform root it
-                names a CUSTOMER OF CBOX ID, and here it names one of that customer's own
-                end-user teams — and the two look identical on screen because underneath
-                they are the same kind of row. The distinction is easy to state and
-                impossible to infer.
+                NO EXPLAINER BOX. One used to sit here saying "these are your customers, not
+                your Cbox ID account", because "organization" named both this page's rows and
+                the customer's own account one level up. The account is the WORKSPACE now,
+                named in the topbar with the way back to it, and a box explaining the
+                vocabulary was the symptom rather than the fix.
             */}
-            <div
-                className="card p-4 mt-6"
-                style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-edge)' }}
-            >
-                <div className="flex items-start gap-3">
-                    <span
-                        className="grid place-items-center rounded-lg shrink-0"
-                        style={{
-                            width: '2rem',
-                            height: '2rem',
-                            background: 'var(--card)',
-                            color: 'var(--primary)',
-                        }}
-                    >
-                        <Icon name="layers" className="w-4 h-4" />
-                    </span>
-                    <p className="text-sm">
-                        <b>These are your customers, not your Cbox ID account.</b> An organization
-                        here is a company or team that uses <em>your</em> product, living inside
-                        this environment. Your own account — the one that owns this project and its
-                        bill — is a different thing one level up, and it is where "Account settings"
-                        lives.
-                    </p>
-                </div>
-            </div>
 
             <div className="mt-6">
                 <Input
@@ -151,7 +125,7 @@ export default function OrganizationsIndex({
                         <EmptyState
                             icon="layers"
                             title="No organizations yet"
-                            description="Organizations are the tenants inside this environment — each one a company or team using your product. Create the first one to get started."
+                            description="Each organization is a company or team using your product, with its own users, roles and single sign-on. Create the first one to get started."
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>

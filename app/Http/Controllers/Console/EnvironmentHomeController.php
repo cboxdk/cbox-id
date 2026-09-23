@@ -56,8 +56,8 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.connections'),
                 ],
                 [
-                    'label' => 'Apps & API keys',
-                    'icon' => 'clients',
+                    'label' => 'Apps',
+                    'icon' => 'code',
                     'count' => Client::query()->count(),
                     'href' => route('environment.clients'),
                 ],

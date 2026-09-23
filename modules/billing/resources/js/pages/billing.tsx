@@ -69,7 +69,7 @@ export default function Billing({ projects, usage }: Props) {
             {/* Live usage — the figures enterprise billing is based on, across all projects. */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Stat
-                    label="Organizations — tenants"
+                    label="Organizations — across your environments"
                     value={usage.organizations.toLocaleString()}
                 />
                 <Stat

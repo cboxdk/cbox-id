@@ -94,7 +94,7 @@ export default function Settings({
             {environmentRecord !== null && (
                 <Panel
                     title="Environment"
-                    description="The identity platform you operate. Every organization below lives inside it."
+                    description="This environment. Every organization below lives inside it."
                 >
                     <KvList>
                         <Kv label="Name" prose>

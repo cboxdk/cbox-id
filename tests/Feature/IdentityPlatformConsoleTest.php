@@ -818,7 +818,7 @@ it('refuses to remove a customer\'s member from the environment roster', functio
     // only thing that says it.
     test()->from(route('directory.members'))
         ->delete(route('directory.members.remove', $targetSubjectId))
-        ->assertSessionHasErrors(['member' => 'This organization is a customer of this platform. Manage its members under Identity platform → Members.']);
+        ->assertSessionHasErrors(['member' => 'This organization is a Cbox workspace. Its team is managed under Workspace › Team.']);
 
     // …and the membership is still there, which is the outcome that matters: removing it
     // alone would take somebody off the roster of the customer they belong to, from a page

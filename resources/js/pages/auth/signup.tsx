@@ -37,11 +37,11 @@ export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Pro
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {createsIdp ? 'Create your identity platform' : 'Create your organization'}
+                {createsIdp ? 'Create your workspace' : 'Create your organization'}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {createsIdp
-                    ? 'Your own hosted IdP — SSO, users, and sign-in you fully control, live in a minute.'
+                    ? 'A workspace for your company, and your own hosted identity provider — SSO, users and sign-in you fully control, live in a minute.'
                     : 'Set up Cbox ID for your team in under a minute.'}
             </p>
 
@@ -70,7 +70,7 @@ export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Pro
                 </div>
 
                 <Field
-                    label={createsIdp ? 'Name your platform' : 'Organization name'}
+                    label={createsIdp ? 'Workspace name' : 'Organization name'}
                     error={form.errors.organization}
                 >
                     <Input
@@ -144,7 +144,7 @@ export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Pro
                     className="w-full"
                     loading={form.processing}
                 >
-                    {createsIdp ? 'Create identity platform' : 'Create organization'}
+                    {createsIdp ? 'Create workspace' : 'Create organization'}
                 </Button>
             </form>
 

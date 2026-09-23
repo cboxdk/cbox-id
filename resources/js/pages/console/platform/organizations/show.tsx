@@ -102,7 +102,7 @@ export default function Organization({
             */}
             <PageHeader
                 eyebrow="Platform"
-                description="Tenant detail in the target environment — members, SSO, domains, entitlements and recent activity. The only thing changed from this page is the tenant's status."
+                description="Organization detail in the target environment — members, SSO, domains, entitlements and recent activity. The only thing changed from this page is the organization's status."
                 actions={
                     <Button
                         variant={organization.active ? 'danger' : 'primary'}
@@ -151,7 +151,7 @@ export default function Organization({
                     <Kv label="Members" prose>
                         {memberTotal}
                     </Kv>
-                    <Kv label="Child tenants" prose>
+                    <Kv label="Sub-organizations" prose>
                         {childCount}
                     </Kv>
                     {organization.createdAt !== null && (
@@ -206,7 +206,7 @@ export default function Organization({
                             <thead>
                                 <tr>
                                     <Th>User</Th>
-                                    <Th>Role</Th>
+                                    <Th>Built-in role</Th>
                                     <Th>Status</Th>
                                     <Th className="text-right">Support</Th>
                                 </tr>
@@ -359,7 +359,7 @@ export default function Organization({
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        No recent activity recorded for this tenant. Sign-ins, role changes and
+                        No recent activity recorded for this organization. Sign-ins, role changes and
                         connection edits appear here as they happen.
                     </div>
                 ) : (
@@ -409,7 +409,7 @@ export default function Organization({
                 title={`${organization.active ? 'Suspend' : 'Reactivate'} ${organization.name}?`}
                 description={
                     organization.active
-                        ? `Its ${plural(memberTotal, 'member')} can no longer sign in to this tenant, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.`
+                        ? `Its ${plural(memberTotal, 'member')} can no longer sign in to this organization, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.`
                         : 'Its members can sign in again immediately.'
                 }
                 footer={

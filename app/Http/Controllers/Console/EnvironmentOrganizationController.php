@@ -360,7 +360,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             return back()->withErrors(['role' => 'An organization must keep at least one owner.']);
         }
 
-        return back()->with('status', 'Org access updated.');
+        return back()->with('status', 'Built-in role updated.');
     }
 
     /**

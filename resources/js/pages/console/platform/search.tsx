@@ -54,7 +54,7 @@ export default function PlatformSearch({ term, ready, organizations, users }: Pr
 
     return (
         <>
-            <PageHeader description="Find an organization or a user across every environment — above the plane the console is currently pinned to." />
+            <PageHeader description="Find an organization or a user across every environment — not only the one the console is pointed at." />
 
             {/*
                 The results arrive without a page load, so nothing else here tells a

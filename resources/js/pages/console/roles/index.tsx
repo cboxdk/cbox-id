@@ -125,20 +125,21 @@ export default function RolesIndex({
                     </span>
                     <p className="text-sm">
                         <b>Cbox ID assigns roles; your app decides what they can do.</b> A role is a
-                        label stamped into the token — <b>app roles</b> are declared by each app and
-                        read-only here, and the rest are ones you define. This is different from{' '}
+                        label stamped into the token — the ones an app declares are read-only here,
+                        and the rest are ones you define. Every member also holds exactly one{' '}
                         {consoleAccessHref !== null ? (
                             <Link
                                 href={consoleAccessHref}
                                 className="underline"
                                 style={{ color: 'var(--accent-strong)' }}
                             >
-                                console access
+                                built-in role
                             </Link>
                         ) : (
-                            'console access'
+                            'built-in role'
                         )}{' '}
-                        (owner/admin/member), which is who can run this console.
+                        (Owner, Admin, Developer, Member or Viewer), which decides what they may
+                        administer in this console.
                     </p>
                 </div>
             </div>

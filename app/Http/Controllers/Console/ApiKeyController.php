@@ -85,7 +85,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
         $challenge = $this->stepUp(
-            'An account API key acts with this role across your whole account, and its value is shown once.',
+            'A workspace key acts with its built-in role across your whole workspace, and its value is shown once.',
         );
 
         if ($challenge !== null) {
@@ -115,7 +115,7 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', 'API key created — copy it now, it will not be shown again.');
+        return back()->with('status', 'Workspace key created — copy it now, it will not be shown again.');
     }
 
     public function destroy(Request $request, string $key, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
@@ -125,7 +125,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        $challenge = $this->stepUp('Revoking an API key stops whatever is using it, immediately.');
+        $challenge = $this->stepUp('Revoking a workspace key stops whatever is using it, immediately.');
 
         if ($challenge !== null) {
             return $challenge;
@@ -158,7 +158,7 @@ final readonly class ApiKeyController extends ConsoleController
             request: $request,
         );
 
-        return back()->with('status', 'API key revoked.');
+        return back()->with('status', 'Workspace key revoked.');
     }
 
     /**

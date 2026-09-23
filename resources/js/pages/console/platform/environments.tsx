@@ -99,7 +99,7 @@ export default function Environments({
     return (
         <>
             <PageHeader
-                description="Every isolation plane on this install, and who owns it. Create one, point the console at it, and bootstrap it with an admin."
+                description="Every environment on this install, and who owns it. Create one, point the console at it, and bootstrap it with an admin."
                 actions={
                     <Button variant="primary" onClick={() => setCreating((open) => !open)}>
                         <Icon name="plus" className="w-4 h-4" />
@@ -144,7 +144,7 @@ export default function Environments({
                         <EmptyState
                             icon="layers"
                             title="No environments yet"
-                            description="An environment is one isolation plane — its own users, keys, sign-in and issuer. Create your first one above, then bootstrap it with an organization and an admin."
+                            description="An environment is fully isolated — its own users, keys, sign-in and issuer. Create your first one above, then bootstrap it with an organization and an admin."
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
                                     <Icon name="plus" className="w-4 h-4" />
@@ -201,13 +201,13 @@ export default function Environments({
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
                 Environments nest under a project, and a project under a{' '}
                 <Link href={customersHref} className="underline">
-                    customer
+                    workspace
                 </Link>{' '}
-                — start there to see one customer&rsquo;s whole estate. Two rows here never have a
-                customer: the <strong>platform root</strong> is the plane this deployment itself
-                runs in, where operators and a customer&rsquo;s own people live, and an{' '}
+                — start there to see one workspace&rsquo;s whole estate. Two rows here never have a
+                workspace: the <strong>platform root</strong> is the environment this deployment itself
+                runs in, where operators and a workspace&rsquo;s own people live, and an{' '}
                 <strong>unattached</strong> environment has no project, so nothing bills for it and
-                no customer reaches it. Neither is an error to fix from this screen, and nothing
+                no workspace reaches it. Neither is an error to fix from this screen, and nothing
                 here reassigns either.
             </p>
 
@@ -221,7 +221,7 @@ export default function Environments({
                 open={targeting !== null}
                 onOpenChange={(open) => !open && setTargeting(null)}
                 title={targeting === null ? '' : `Point this console at ${targeting.name}?`}
-                description="Every page you open from now on — organizations, usage, tenant detail — reads that plane instead of the current one. Nothing is changed in either."
+                description="Every page you open from now on — organizations, usage, organization detail — reads that environment instead of the current one. Nothing is changed in either."
                 footer={
                     <>
                         <Button onClick={() => setTargeting(null)}>Cancel</Button>
@@ -331,14 +331,14 @@ function EnvironmentRows({
                                 stops a blank-looking owner reading as a broken join.
                             */}
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {lineage.note ?? 'This deployment\u2019s own plane'}
+                                {lineage.note ?? 'This deployment\u2019s own environment'}
                             </p>
                         </>
                     ) : (
                         <>
                             <Pill tone="warning">Unattached</Pill>
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {lineage.note ?? 'No project, so no customer'}
+                                {lineage.note ?? 'No project, so no workspace'}
                             </p>
                         </>
                     )}
@@ -422,7 +422,7 @@ function CreateEnvironment({ href, onDone }: { href: string; onDone: () => void 
             <div className="flex-1" style={{ minWidth: '14rem' }}>
                 <Field
                     label="Custom domain (optional)"
-                    hint="Recorded, not routed: the plane serves its own issuer until the domain is verified by DNS."
+                    hint="Recorded, not routed: the environment serves its own issuer until the domain is verified by DNS."
                     error={form.errors.domain}
                 >
                     <Input

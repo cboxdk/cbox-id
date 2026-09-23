@@ -690,8 +690,9 @@ function Organizations({
             title="Organizations"
             description={
                 <>
-                    <b>Org access</b> is the user's administration level; <b>access roles</b> are
-                    what they can do inside that org's apps.
+                    Each organization gives them one <b>built-in role</b> — what they may administer
+                    there — and any number of <b>app and custom roles</b>, which is what they can do
+                    inside its apps.
                 </>
             }
         >
@@ -701,7 +702,7 @@ function Organizations({
                         <EmptyState
                             icon="layers"
                             title="Not a member of any organization"
-                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them a role that applies everywhere in this environment."
+                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them a staff role, which applies everywhere in this environment."
                         />
                     ) : (
                         memberships.map((membership) => (
@@ -720,7 +721,7 @@ function Organizations({
                                     </Link>
 
                                     <Select
-                                        aria-label={`Org access in ${membership.organizationName}`}
+                                        aria-label={`Built-in role in ${membership.organizationName}`}
                                         value={membership.role}
                                         onValueChange={(role) =>
                                             router.patch(
@@ -744,7 +745,7 @@ function Organizations({
 
                                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                        Access roles:
+                                        Roles:
                                     </span>
 
                                     {membership.accessRoleIds.length === 0 ? (
@@ -817,12 +818,12 @@ function Organizations({
                 */}
                 {everywhereRoles.length > 0 && (
                     <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
-                        <p className="text-sm font-medium">Roles everywhere in this environment</p>
+                        <p className="text-sm font-medium">Staff roles</p>
                         <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            Applied in <b>every</b> organization, and to this person even when they
-                            belong to none. Only roles you defined for the whole environment can be
-                            granted this way — one organization's own role is their policy, not
-                            everyone's.
+                            For your own people — support, operations. Applied in <b>every</b>
+                            organization, and to this person even when they belong to none. Only
+                            roles you defined for the whole environment can be granted this way —
+                            one organization's own role is their policy, not everyone's.
                         </p>
                         <div className="mt-3 grid gap-2 sm:grid-cols-2">
                             {everywhereRoles.map((role) => (
@@ -933,7 +934,7 @@ function AddToOrganization({
                     />
                 </Field>
 
-                <Field label="Org access" error={form.errors.role}>
+                <Field label="Built-in role" error={form.errors.role}>
                     <Select
                         value={form.data.role}
                         onValueChange={(role) => form.setData('role', role)}
@@ -954,7 +955,7 @@ function AddToOrganization({
             {form.data.organization !== '' && accessRoles.length > 0 && (
                 <div>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Access roles — granted immediately (optional)
+                        App and custom roles — granted immediately (optional)
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         {accessRoles.map((role) => (
@@ -1005,7 +1006,8 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
             <Panel title="Support impersonation">
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     This user owns or administers an organization, and those cannot be impersonated
-                    — stepping into one would hand durable control of a tenant to whoever did it.
+                    — stepping into one would hand durable control of an organization to whoever did
+                    it.
                 </p>
             </Panel>
         );

@@ -47,7 +47,7 @@ final readonly class UsageController extends ConsoleController
         'auth.invitation_accepted' => 'Invitations accepted',
         'auth.role_assigned' => 'Roles assigned',
         'auth.service_account' => 'Service accounts',
-        'auth.ciba' => 'Agent approvals',
+        'auth.ciba' => 'Agent requests approved',
         'auth.domain_verified' => 'Domains verified',
         'auth.governance_campaign' => 'Access reviews',
         'auth.scim_sync' => 'SCIM syncs',

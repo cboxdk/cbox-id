@@ -93,7 +93,7 @@ export default function CreateDirectory({
                     <EmptyState
                         icon="layers"
                         title="Choose an organization"
-                        description="A directory provisions one tenant's users, so there is nothing to connect it to yet. Pick the organization in the bar above."
+                        description="A directory provisions one organization's users, so there is nothing to connect it to yet. Pick the organization in the bar above."
                         actions={
                             <Button asChild>
                                 <Link href={indexHref}>Back to Sync users in</Link>

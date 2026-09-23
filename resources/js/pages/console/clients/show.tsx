@@ -112,7 +112,7 @@ export default function ClientDetail({
                         className="w-3.5 h-3.5"
                         style={{ transform: 'rotate(90deg)' }}
                     />
-                    Apps &amp; API keys
+                    Apps
                 </Link>
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{client.name}</h1>

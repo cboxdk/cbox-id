@@ -82,7 +82,7 @@ final readonly class AccountSettingsController extends ConsoleController
             request: $request,
         );
 
-        return back()->with('status', 'Account settings saved.');
+        return back()->with('status', 'Workspace settings saved.');
     }
 
     /**
