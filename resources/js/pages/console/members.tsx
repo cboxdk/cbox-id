@@ -1,7 +1,6 @@
-import { router, useForm } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import { relativeTime } from '@/lib/time';
 import type { PageProps, Pagination as PaginationState } from '@/types';
 import {
     Avatar,
@@ -9,20 +8,22 @@ import {
     Button,
     Checkbox,
     ConfirmDelete,
-    Dialog,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-    Field,
     Input,
+    InviteForm,
     PageHeader,
     Pagination,
     Panel,
+    type PendingInvitation,
+    PendingInvitations,
+    type RoleOption,
+    roleSelectOptions,
     Select,
 } from '@/ui';
 import { access, invite, remove, role, transferOwnership } from '@routes/members';
-import { resend, revoke } from '@routes/members/invitations';
 
 interface Administrator {
     id: string;
@@ -44,17 +45,6 @@ interface Administrator {
     accessCount: number;
 }
 
-interface PendingInvitation {
-    id: string;
-    email: string;
-    roleLabel: string;
-    /** ISO both ways — "expires in 3 days" computed on the server is wrong the moment the
-     *  page sits open, and this one sits open. */
-    invitedAt: string | null;
-    expiresAt: string;
-    expired: boolean;
-}
-
 interface Editor {
     memberId: string;
     all: boolean;
@@ -73,12 +63,12 @@ type Props = PageProps<{
     environmentCount: number;
     canManage: boolean;
     isOwner: boolean;
-    assignableRoles: { value: string; label: string }[];
+    assignableRoles: RoleOption[];
     editor: Editor | null;
 }>;
 
 /** Which confirmation is open, and about whom. */
-type Pending = { kind: 'remove' | 'transfer' | 'withdraw'; id: string; label: string } | null;
+type Pending = { kind: 'remove' | 'transfer'; id: string; label: string } | null;
 
 /**
  * IDENTITY PLATFORM › ADMINISTRATORS — the account's own team.
@@ -99,12 +89,6 @@ export default function Members({
     editor,
 }: Props) {
     const [pending, setPending] = useState<Pending>(null);
-
-    const form = useForm({
-        email: '',
-        name: '',
-        role: assignableRoles[0]?.value ?? 'developer',
-    });
 
     return (
         <>
@@ -163,10 +147,7 @@ export default function Members({
                                                 { preserveScroll: true },
                                             );
                                         }}
-                                        options={assignableRoles.map((option) => ({
-                                            value: option.value,
-                                            label: option.label,
-                                        }))}
+                                        options={roleSelectOptions(assignableRoles)}
                                         aria-label={`Role for ${member.email}`}
                                     />
 
@@ -253,93 +234,14 @@ export default function Members({
                 />
             </div>
 
-            {invitations.length > 0 && (
-                <div className="mt-6">
-                    <Panel
-                        title="Invited, not joined yet"
-                        description={
-                            <>
-                                These links work until they expire or you withdraw them.
-                                {invitationCount > invitations.length && (
-                                    <>
-                                        {' '}
-                                        Showing the {invitations.length} most recent of{' '}
-                                        {invitationCount}.
-                                    </>
-                                )}
-                            </>
-                        }
-                    >
-                        <div className="flex flex-col gap-2">
-                            {invitations.map((invitation) => (
-                                <div
-                                    key={invitation.id}
-                                    className="flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2"
-                                    style={{ borderColor: 'var(--border)' }}
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm truncate">
-                                            {invitation.email}{' '}
-                                            <Badge className="ml-1">{invitation.roleLabel}</Badge>
-                                        </p>
-                                        <p
-                                            className="text-xs truncate"
-                                            style={{ color: 'var(--faint)' }}
-                                        >
-                                            invited{' '}
-                                            {invitation.invitedAt === null
-                                                ? 'recently'
-                                                : relativeTime(invitation.invitedAt)}{' '}
-                                            ·{' '}
-                                            {invitation.expired ? (
-                                                <span style={{ color: 'var(--destructive)' }}>
-                                                    expired {relativeTime(invitation.expiresAt)}
-                                                </span>
-                                            ) : (
-                                                <>expires {relativeTime(invitation.expiresAt)}</>
-                                            )}
-                                        </p>
-                                    </div>
-
-                                    {canManage && (
-                                        <>
-                                            <Button
-                                                size="sm"
-                                                className="shrink-0"
-                                                aria-label={`Send the invitation to ${invitation.email} again`}
-                                                onClick={() =>
-                                                    router.post(
-                                                        resend.url({ invitation: invitation.id }),
-                                                        {},
-                                                        { preserveScroll: true },
-                                                    )
-                                                }
-                                            >
-                                                Send again
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                className="shrink-0"
-                                                style={{ color: 'var(--destructive)' }}
-                                                aria-label={`Withdraw the invitation to ${invitation.email}`}
-                                                onClick={() =>
-                                                    setPending({
-                                                        kind: 'withdraw',
-                                                        id: invitation.id,
-                                                        label: invitation.email,
-                                                    })
-                                                }
-                                            >
-                                                Withdraw
-                                            </Button>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </Panel>
-                </div>
-            )}
+            {/*
+                The same list and the same form every invite surface draws. This page keeps
+                its own roles and its own accept door — an account administrator sets a
+                password on a signed link — but not its own controls.
+            */}
+            <div className="mt-6">
+                <PendingInvitations invitations={invitations} total={invitationCount} />
+            </div>
 
             {canManage && (
                 <div className="mt-6">
@@ -347,73 +249,7 @@ export default function Members({
                         title="Invite a teammate"
                         description="They'll get an email to set a password and join this account."
                     >
-                        <form
-                            className="grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-start"
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                form.post(invite.url(), {
-                                    preserveScroll: true,
-                                    onSuccess: () => form.reset('email', 'name'),
-                                });
-                            }}
-                        >
-                            {/*
-                                The labels are screen-reader-only: this is one row of three
-                                controls whose placeholders say what they are, and a visible
-                                label above each would double the height of a form that is
-                                deliberately one line.
-                            */}
-                            <Field
-                                label={<span className="sr-only">Teammate email</span>}
-                                error={form.errors.email}
-                            >
-                                <Input
-                                    name="email"
-                                    type="email"
-                                    autoComplete="off"
-                                    placeholder="teammate@yourco.example"
-                                    value={form.data.email}
-                                    onChange={(event) => form.setData('email', event.target.value)}
-                                />
-                            </Field>
-
-                            <Field
-                                label={<span className="sr-only">Teammate name</span>}
-                                error={form.errors.name}
-                            >
-                                <Input
-                                    name="name"
-                                    autoComplete="off"
-                                    placeholder="Name (optional)"
-                                    value={form.data.name}
-                                    onChange={(event) => form.setData('name', event.target.value)}
-                                />
-                            </Field>
-
-                            <Field
-                                label={<span className="sr-only">Role</span>}
-                                error={form.errors.role}
-                            >
-                                <Select
-                                    value={form.data.role}
-                                    onValueChange={(next) => form.setData('role', next)}
-                                    options={assignableRoles.map((option) => ({
-                                        value: option.value,
-                                        label: option.label,
-                                    }))}
-                                    aria-label="Role"
-                                />
-                            </Field>
-
-                            <Button
-                                type="submit"
-                                variant="primary"
-                                className="shrink-0"
-                                loading={form.processing}
-                            >
-                                Send invite
-                            </Button>
-                        </form>
+                        <InviteForm href={invite.url()} roles={assignableRoles} withName />
                     </Panel>
                 </div>
             )}
@@ -439,6 +275,7 @@ export default function Members({
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
                 verb="Hand this account to"
+                actionLabel="Transfer ownership"
                 consequence="They become the account owner and you are demoted to admin. Only the new owner can hand it back."
                 onConfirm={() => {
                     const target = pending;
@@ -452,35 +289,6 @@ export default function Members({
                         );
                     }
                 }}
-            />
-
-            {/*
-                A plain dialog rather than a type-to-confirm: withdrawing an invitation
-                destroys nothing a person owns, and it is undone by inviting them again.
-            */}
-            <Dialog
-                open={pending?.kind === 'withdraw'}
-                onOpenChange={(open) => !open && setPending(null)}
-                title={`Withdraw the invitation to ${pending?.label ?? ''}?`}
-                description="The link they were sent stops working immediately. You can invite them again afterwards."
-                footer={
-                    <>
-                        <Button onClick={() => setPending(null)}>Cancel</Button>
-                        <Button
-                            variant="danger"
-                            onClick={() => {
-                                const target = pending;
-                                setPending(null);
-
-                                if (target !== null) {
-                                    router.delete(revoke.url({ invitation: target.id }));
-                                }
-                            }}
-                        >
-                            Withdraw
-                        </Button>
-                    </>
-                }
             />
         </>
     );

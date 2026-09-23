@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\PaginationProps;
+use App\Http\Props\Shared\PendingInvitationProps;
+use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteMemberRequest;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
 use App\Mail\OrganizationInviteMail;
+use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\MailLinks;
+use App\Platform\Membership\MembershipLifecycle;
+use App\Platform\Membership\MembershipRefused;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonInterface;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -148,25 +153,7 @@ final readonly class MemberController extends ConsoleController
              * "did that go?" is the question immediately after clicking Send.
              */
             'invitations' => $organizationId === null ? [] : (app(PlatformRoot::class)->run(
-                fn (): array => $invitations->pending($organizationId, self::INVITATIONS_SHOWN)
-                    ->map(function (Invitation $invitation): array {
-                        // `getAttribute`, because `Invitation` documents the columns it
-                        // declares and Eloquent's own timestamps are not among them.
-                        $invitedAt = $invitation->getAttribute('created_at');
-
-                        return [
-                            'id' => $invitation->id,
-                            'email' => $invitation->email,
-                            'roleLabel' => $invitation->role->label(),
-                            // ISO both ways: "expires in 3 days" computed on the server is
-                            // wrong the moment the page sits open, and this one sits open.
-                            'invitedAt' => $invitedAt instanceof CarbonInterface
-                                ? $invitedAt->toIso8601String()
-                                : null,
-                            'expiresAt' => $invitation->expires_at->toIso8601String(),
-                            'expired' => $invitation->expires_at->isPast(),
-                        ];
-                    })->values()->all(),
+                fn (): array => $this->pendingInvitations($organizationId, $subjects, $canManage, $invitations),
             ) ?? []),
             'invitationCount' => $organizationId === null ? 0 : (app(PlatformRoot::class)->run(
                 fn (): int => $invitations->countPending($organizationId),
@@ -178,10 +165,9 @@ final readonly class MemberController extends ConsoleController
             // role read on the member cannot express.
             'canManage' => $canManage,
             'isOwner' => $this->scope->membershipRole() === MembershipRole::Owner,
-            'assignableRoles' => array_map(
-                fn (MembershipRole $role): array => ['value' => $role->value, 'label' => $role->label()],
-                MembershipRole::assignable(),
-            ),
+            // The same picker every invite surface draws, with this page's own list: an
+            // account's administrators hold different roles from an organization's people.
+            'assignableRoles' => RoleOptionProps::account(),
             'editor' => $this->editor($request, $members),
         ]);
     }
@@ -241,7 +227,7 @@ final readonly class MemberController extends ConsoleController
          */
         try {
             Mail::to($request->email())->send(
-                new OrganizationInviteMail($this->scope->organizationName() ?? '', $this->scope->actorId(), $url),
+                new OrganizationInviteMail($this->scope->organizationName() ?? '', $this->inviterName($subjects), $url, $request->role()->label()),
             );
         } catch (Throwable $e) {
             app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $pending->invitation->id));
@@ -275,6 +261,7 @@ final readonly class MemberController extends ConsoleController
         Invitations $invitations,
         OrganizationActivity $activity,
         MailLinks $links,
+        Subjects $subjects,
     ): RedirectResponse {
         $this->scope->assertMayAdminister();
 
@@ -320,7 +307,7 @@ final readonly class MemberController extends ConsoleController
 
         try {
             Mail::to($found->email)->send(
-                new OrganizationInviteMail($this->scope->organizationName() ?? '', $this->scope->actorId(), $url),
+                new OrganizationInviteMail($this->scope->organizationName() ?? '', $this->inviterName($subjects), $url, $found->role->label()),
             );
         } catch (Throwable $e) {
             /*
@@ -443,7 +430,7 @@ final readonly class MemberController extends ConsoleController
      * outright; promoting first means the organization briefly has two owners and never
      * zero.
      */
-    public function makeOwner(string $member, Memberships $members, Subjects $subjects): RedirectResponse
+    public function makeOwner(string $member, MembershipLifecycle $lifecycle, Subjects $subjects): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
         $actorId = $this->scope->actorId();
@@ -458,10 +445,15 @@ final readonly class MemberController extends ConsoleController
             return back();
         }
 
-        app(PlatformRoot::class)->run(function () use ($members, $organizationId, $target, $actorId): void {
-            $members->changeRole($organizationId, $target->user_id, MembershipRole::Owner);
-            $members->changeRole($organizationId, $actorId, MembershipRole::Admin);
-        });
+        // THE SAME VERB the organization's own People page uses — promote, then demote, in
+        // one transaction — run in the platform root, where an account's memberships live.
+        try {
+            app(PlatformRoot::class)->run(
+                fn () => $lifecycle->transferOwnership($organizationId, $target->user_id, $actorId, $actorId),
+            );
+        } catch (MembershipRefused $refused) {
+            return back()->with('error', $refused->getMessage());
+        }
 
         $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($target->user_id));
         $who = $subject === null ? 'that member' : ($subject->name ?? $subject->email ?? 'that member');
@@ -610,5 +602,50 @@ final readonly class MemberController extends ConsoleController
         abort_if($target === null, 404);
 
         return $target;
+    }
+
+    /**
+     * The account's pending invitations, in the shape every invite surface lists.
+     *
+     * @return list<PendingInvitationProps>
+     */
+    private function pendingInvitations(string $organizationId, Subjects $subjects, bool $canManage, Invitations $invitations): array
+    {
+        $rows = $invitations->pending($organizationId, self::INVITATIONS_SHOWN);
+
+        $inviters = $subjects->findMany(array_values(array_filter($rows->pluck('invited_by')->all(), 'is_string')));
+
+        return array_values($rows->map(function (Invitation $invitation) use ($inviters, $canManage): PendingInvitationProps {
+            // `getAttribute`, because `Invitation` documents the columns it declares and
+            // Eloquent's own timestamps are not among them.
+            $invitedAt = $invitation->getAttribute('created_at');
+            $inviter = is_string($invitation->invited_by) ? ($inviters[$invitation->invited_by] ?? null) : null;
+
+            return PendingInvitationProps::from(
+                new PendingInvitationSummary(
+                    id: $invitation->id,
+                    email: $invitation->email,
+                    role: $invitation->role,
+                    expiresAt: $invitation->expires_at,
+                    invitedAt: $invitedAt instanceof CarbonInterface ? $invitedAt : null,
+                    inviterName: $inviter->name ?? $inviter->email ?? null,
+                ),
+                $canManage ? route('members.invitations.resend', $invitation->id) : null,
+                $canManage ? route('members.invitations.revoke', $invitation->id) : null,
+            );
+        })->all());
+    }
+
+    /**
+     * The NAME an invitation is signed with.
+     *
+     * The mail was handed `actorId()` — the inviter's subject ULID — so every account
+     * invitation arrived reading "01J9… invited you to help run Acme".
+     */
+    private function inviterName(Subjects $subjects): string
+    {
+        $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($this->scope->actorId()));
+
+        return $subject === null ? 'A teammate' : ($subject->name ?? $subject->email ?? 'A teammate');
     }
 }

@@ -107,7 +107,7 @@ it('signup sends an email-verification link, and the link verifies the address',
     // signed-in person where they were going. It used to land on `login` because the session
     // it looked for was the subject's while signup wrote an account-plane one; there is one
     // session now, so the two halves agree.
-    $this->get('/verify-email/'.$raw)->assertRedirect(route('projects'));
+    $this->post('/verify-email/'.$raw)->assertRedirect(route('projects'));
 
     expect(User::query()->whereKey($subjectId)->value('email_verified_at'))->not->toBeNull();
 });

@@ -1,7 +1,20 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
-import { Badge, Button, CopyButton, Field, Icon, Input, Kv, KvList, PageHeader, Panel } from '@/ui';
+import {
+    Badge,
+    Button,
+    ConfirmDelete,
+    CopyButton,
+    Field,
+    Icon,
+    Input,
+    Kv,
+    KvList,
+    PageHeader,
+    Panel,
+} from '@/ui';
 
 type Props = PageProps<{
     help: HelpContent;
@@ -32,6 +45,8 @@ type Props = PageProps<{
     setupGuideHref: string | null;
     issuer: string;
     discovery: string;
+    /** Present only for the OWNER of an organization that is not a customer. */
+    closeOrganizationHref: string | null;
 }>;
 
 export default function Settings({
@@ -45,8 +60,11 @@ export default function Settings({
     setupGuideHref,
     issuer,
     discovery,
+    closeOrganizationHref,
 }: Props) {
     const form = useForm({ name: organization?.name ?? '' });
+    const [closing, setClosing] = useState(false);
+    const closeError = usePage<Props>().props.errors.name;
 
     return (
         <div className="space-y-6">
@@ -263,6 +281,39 @@ export default function Settings({
                     ))}
                 </div>
             </Panel>
+
+            {closeOrganizationHref !== null && organization !== null && (
+                <Panel
+                    title="Delete organization"
+                    description="Everyone in it loses access immediately, and it disappears from every list. The records are kept for the audit trail."
+                >
+                    {closeError !== undefined && (
+                        <p
+                            role="alert"
+                            className="mb-3 text-sm"
+                            style={{ color: 'var(--destructive)' }}
+                        >
+                            {closeError}
+                        </p>
+                    )}
+                    <Button variant="danger" onClick={() => setClosing(true)}>
+                        Delete organization
+                    </Button>
+
+                    <ConfirmDelete
+                        open={closing}
+                        onOpenChange={setClosing}
+                        name={organization.name}
+                        consequence="Every member is signed out of it and refused at every door, and its apps stop accepting their sign-ins. This cannot be undone from the console."
+                        onConfirm={() => {
+                            setClosing(false);
+                            router.delete(closeOrganizationHref, {
+                                data: { name: organization.name },
+                            });
+                        }}
+                    />
+                </Panel>
+            )}
         </div>
     );
 }

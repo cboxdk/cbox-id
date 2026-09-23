@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Props\Auth\LinkConfirmationProps;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
@@ -14,6 +15,7 @@ use Cbox\Id\Identity\Exceptions\InvalidMagicLink;
 use Cbox\Id\Identity\Models\Session;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Response;
 
 /**
  * Redeeming an emailed sign-in link, on either plane.
@@ -23,9 +25,27 @@ use Illuminate\Http\Request;
  * person knows. An organization that mandates SSO has said email possession is not what
  * decides who gets in — so both doors refuse it, and refuse it after the token is spent
  * rather than before, so redeeming can never answer "does this address exist here".
+ *
+ * OPENING THE LINK SPENDS NOTHING. The GET renders a one-button page and the POST redeems;
+ * a mail scanner that fetched the URL first used to be the one that got the session. The
+ * page asks nothing of the token either — no lookup, no "this link has expired" — so
+ * opening it cannot tell a scanner or a guesser whether the token is live.
  */
-final class MagicLinkController extends Controller
+final readonly class MagicLinkController extends PageController
 {
+    public function show(string $token): Response
+    {
+        return $this->page('auth/confirm-sign-in', 'Sign in', [
+            'confirmation' => new LinkConfirmationProps(
+                heading: 'Finish signing in',
+                lead: 'You opened a sign-in link. Continue to sign in on this device.',
+                actionLabel: 'Sign in',
+                actionUrl: route('magic.redeem.store', $token),
+                note: 'The link works once. If you did not ask to sign in, close this page — nothing happens until you press the button.',
+            ),
+        ]);
+    }
+
     public function redeem(Request $request, string $token, MagicLink $magicLink, PlatformAuth $auth, RiskGuard $risk, SessionManager $sessions): RedirectResponse
     {
         // Hard-block a Reject before consuming the single-use token, so a risky

@@ -150,7 +150,7 @@ it('hard-blocks a Reject magic-link redemption before consuming the token', func
     $token = app(MagicLink::class)->request('mlink@example.com');
 
     // Blocked → bounced to login (a successful redeem would land on the dashboard).
-    $this->get(route('magic.redeem', $token))->assertRedirect(route('login'));
+    $this->post(route('magic.redeem.store', $token))->assertRedirect(route('login'));
     expect(session()->has('cbox.session'))->toBeFalse();
 });
 

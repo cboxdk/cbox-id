@@ -15,6 +15,8 @@ import {
     Panel,
     Pill,
     type PillTone,
+    type RoleOption,
+    roleSelectOptions,
     Select,
 } from '@/ui';
 
@@ -63,7 +65,10 @@ type Props = PageProps<{
     everywhereRoles: AccessRole[];
     heldEverywhere: string[];
     sessions: SessionRow[];
-    assignableRoles: { value: string; label: string }[];
+    /** What a new membership may be given — never Owner. */
+    assignableRoles: RoleOption[];
+    /** The same plus Owner, disabled: an owner's row names what it holds. */
+    membershipRoles: RoleOption[];
     indexHref: string;
     urls: {
         update: string;
@@ -99,6 +104,7 @@ export default function UserDetail({
     heldEverywhere,
     sessions,
     assignableRoles,
+    membershipRoles,
     indexHref,
     urls,
 }: Props) {
@@ -148,6 +154,7 @@ export default function UserDetail({
                 everywhereRoles={everywhereRoles}
                 heldEverywhere={heldEverywhere}
                 assignableRoles={assignableRoles}
+                membershipRoles={membershipRoles}
                 urls={urls}
             />
 
@@ -661,6 +668,7 @@ function Organizations({
     everywhereRoles,
     heldEverywhere,
     assignableRoles,
+    membershipRoles,
     urls,
 }: {
     user: Props['user'];
@@ -670,7 +678,8 @@ function Organizations({
     joiningAccessRoles: AccessRole[];
     everywhereRoles: AccessRole[];
     heldEverywhere: string[];
-    assignableRoles: { value: string; label: string }[];
+    assignableRoles: RoleOption[];
+    membershipRoles: RoleOption[];
     urls: Props['urls'];
 }) {
     const [managing, setManaging] = useState<string | null>(null);
@@ -720,7 +729,7 @@ function Organizations({
                                                 { preserveScroll: true },
                                             )
                                         }
-                                        options={assignableRoles}
+                                        options={roleSelectOptions(membershipRoles)}
                                     />
 
                                     <Button
@@ -881,7 +890,7 @@ function AddToOrganization({
     joinable: { value: string; label: string }[];
     joining: string;
     accessRoles: AccessRole[];
-    assignableRoles: { value: string; label: string }[];
+    assignableRoles: RoleOption[];
     href: string;
 }) {
     const form = useForm({
@@ -928,7 +937,7 @@ function AddToOrganization({
                     <Select
                         value={form.data.role}
                         onValueChange={(role) => form.setData('role', role)}
-                        options={assignableRoles}
+                        options={roleSelectOptions(assignableRoles)}
                     />
                 </Field>
 

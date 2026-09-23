@@ -13,6 +13,12 @@ export interface ConfirmDeleteProps {
     name: string;
     /** The verb on the confirm button and in the title — "Delete", "Rotate", "Revoke". */
     verb?: string;
+    /**
+     * The confirm button's label, when the title's verb does not stand on its own — a
+     * title reads "Transfer ownership to dana@acme.test?", and a button reading "Transfer
+     * ownership to" does not. Defaults to `verb`.
+     */
+    actionLabel?: string;
     consequence?: ReactNode;
     /**
      * WHICH ENVIRONMENT this is happening in, named in the dialog.
@@ -61,6 +67,7 @@ function Confirmation({
     onOpenChange,
     name,
     verb = 'Delete',
+    actionLabel,
     consequence = 'This cannot be undone.',
     environment,
     confirming = false,
@@ -104,7 +111,7 @@ function Confirmation({
                         loading={confirming}
                         onClick={confirm}
                     >
-                        {verb}
+                        {actionLabel ?? verb}
                     </Button>
                 </>
             }
@@ -117,8 +124,7 @@ function Confirmation({
                         color: 'var(--muted-foreground)',
                     }}
                 >
-                    In environment{' '}
-                    <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
+                    In environment <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
                 </p>
             )}
 
@@ -129,7 +135,7 @@ function Confirmation({
                         Type <span className="mono">{name}</span> to confirm
                     </>
                 }
-                hint={`Exactly as shown — ${verb} stays disabled until it matches.`}
+                hint={`Exactly as shown — ${actionLabel ?? verb} stays disabled until it matches.`}
             >
                 <Input
                     value={typed}

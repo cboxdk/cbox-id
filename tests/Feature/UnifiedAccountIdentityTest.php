@@ -149,7 +149,7 @@ it('signs a member in from a magic link, and resolves the membership from the se
     $stranger = $root->run(fn () => app(Subjects::class)->create('stranger@example.test', 'Stranger', 'a-strong-unbreached-passphrase'));
     $strangerToken = $root->run(fn (): string => app(MagicLink::class)->request('stranger@example.test'));
 
-    $this->get(route('magic.redeem', $strangerToken))
+    $this->post(route('magic.redeem.store', $strangerToken))
         ->assertRedirect(route('dashboard'));
     // Asked of the MEMBERSHIP, which is where "what do they hold here" now lives. There is
     // no separate member session to check — that was the whole point of the fold — so the
@@ -165,7 +165,7 @@ it('signs a member in from a magic link, and resolves the membership from the se
     // …and the member's own link resolves to the member, off the same one session.
     $token = $root->run(fn (): string => app(MagicLink::class)->request('owner@acme.example'));
 
-    $this->get(route('magic.redeem', $token))
+    $this->post(route('magic.redeem.store', $token))
         ->assertRedirect(route('dashboard'));
 
     // The session the redemption minted names the member's SUBJECT — which is the whole
