@@ -11,19 +11,25 @@ description: Inviting people into an organization, sending them back to your app
 Everyone who can sign in to this organization, what they may administer here, and the
 invitations nobody has accepted yet. The same invite form and the same pending list
 appear on the environment console's view of an organization (Organizations › *name*),
-and a customer's own team uses the same form under Identity platform › Administrators.
+and a workspace's own team uses the same form under Workspace › Team.
 
 ## Inviting someone
 
-**Invite member** asks for three things:
+**Invite member** asks for an email address and **Roles**:
 
 - **Email address.** They get a mail from the organization, naming who invited them.
-- **Role** — what they may administer here. **Admin** manages people, apps, roles and
-  settings; **Member** signs in to the organization's apps and nothing more. There is no
-  "Owner" choice: an organization has one owner, and ownership is
-  [transferred](#handing-the-organization-over), never handed out from a list.
-- **Access roles** (optional) — [roles](roles.md) in your apps, granted the moment they
-  accept, so there is no second step after they join.
+- **Roles** — one control that holds two kinds of role:
+  - exactly one **built-in role**, which decides what they may administer in this
+    console. **Admin** manages people, apps, roles and settings; **Member** signs in to
+    the organization's apps and nothing more. There is no "Owner" choice: an
+    organization has one owner, and ownership is
+    [transferred](#handing-the-organization-over), never handed out from a list.
+  - any number of [roles](roles.md) your apps understand, app-declared or your own,
+    granted the moment they accept, so there is no second step after they join.
+
+On a workspace's **Team** page the built-in roles are Admin, Developer, Member and
+Viewer. Developer may administer environments and create management keys but not the
+team; Viewer can read the team and billing and change nothing.
 
 Nobody is added until they accept. The link in the mail opens a page that says which
 organization, who invited them, the role and the address it was sent to; **accepting is
@@ -54,8 +60,8 @@ Choosing an app without a return address still names the app on the invitation.
 Each pending invitation shows who sent it, when it expires and which app it is for.
 
 - **Send again** mails a fresh link (at most once a minute per address). The old link
-  stops working; the role, access roles and return address carry over.
-- **Withdraw** kills the link and drops the access roles it was carrying.
+  stops working; the roles and return address carry over.
+- **Withdraw** kills the link and drops the roles it was carrying.
 
 ## Handing the organization over
 
@@ -77,6 +83,6 @@ here you are moved to it; otherwise you are signed out.
 
 The owner can delete the organization under **Settings › Delete organization**, after
 typing its name and confirming their password. Every member loses access at once and it
-disappears from every list; the records are kept for the audit trail. An organization
-that owns identity-provider projects (a customer account) is closed from Identity
-platform instead.
+disappears from every list; the records are kept for the audit trail. A workspace (an
+organization that owns projects) cannot be deleted this way: close its projects under
+Workspace › Projects first.

@@ -17,7 +17,7 @@ git clone … && cd cbox-id
 composer setup          # installs deps, copies .env, creates the sqlite db,
                         # then runs `cbox-id:install` (guided: mints the crypto
                         # master key, migrates, and creates the first operator,
-                        # environment and — in the SaaS shape — account)
+                        # environment and — in the SaaS shape — workspace)
 composer run dev        # serve + queue + vite + logs
 ```
 
@@ -43,15 +43,16 @@ at it. It requires the **setup token** that the deployment publishes to
 it does what the install command does, then the route 404s for good.
 
 The **platform operator** it creates is the identity above every environment — it
-administers environments, tenant organizations, and other operators. Enroll a
+administers workspaces, environments, organizations, and other operators. Enroll a
 passkey or TOTP factor immediately; this is the most sensitive account on the
 system.
 
 ## 3. Create an environment and its first org
 
-Sign in at **`/workspace/login`** — the one door; there is no separate operator
-login. The deployment pages are the **`/platform`** section of that console, and they
-appear in the rail for whoever has authority over the deployment. From there create
+Sign in at **`/login`** on the console host — the one door; there is no separate
+operator login (`/workspace/login` still redirects there). The deployment pages are the
+**Platform** area of that console (`/platform`), and they appear in the rail for whoever
+has authority over the deployment. From there create
 your environment(s) and use **Provision admin** on each to seed its first
 organization and owner-admin. Those org admins then sign in at `/login`; end users
 sign in there too.

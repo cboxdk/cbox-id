@@ -33,7 +33,7 @@ to sit in — you can enrol, inspect and demo without a Firebase project.
 ### 1. Provision the app's OAuth client
 
 The authenticator is a public OAuth client, one per environment, because `client_id` is
-globally unique and one app binary has to serve every tenant.
+globally unique and one app binary has to serve every environment.
 
 ```bash
 php artisan cbox-id:devices:client --environment=prod
@@ -77,9 +77,9 @@ than failing at send time. A misconfigured push must not be able to break a logi
 
 ### 3. Enrol a phone
 
-A user opens **Account → Devices** and scans the enrolment QR with the app. Nothing is
-required of an administrator. **Sign-in → Devices** in the console shows the fleet: who
-enrolled what, when it was last seen, and every notification sent to it.
+A user opens **My account → Trusted devices** and scans the enrolment QR with the app.
+Nothing is required of an administrator. **Sign-in → Trusted devices**
+(`/trusted-devices`) in the console shows the fleet: who enrolled what, when it was last seen, and every notification sent to it.
 
 ## When a push cannot be delivered
 
@@ -156,7 +156,7 @@ hours). That deadline is not only about staleness: because a notification parked
 open circuit breaker is not charged an attempt, without a deadline one permanently
 soft-failing handset would accumulate Failed rows that — being oldest, and the sweep
 being oldest-first — would occupy every retry slot forever and starve every other
-tenant's approvals. Approvals take their deadline from the CIBA request's own TTL
+organization's approvals. Approvals take their deadline from the CIBA request's own TTL
 instead.
 
 ## The app's API
@@ -188,7 +188,7 @@ console can show delivery history, then pruned by the module's own scheduled job
 terminal rows are pruned; anything still Pending or Failed is left alone whatever its
 age.
 
-This table grows with **traffic**, not with tenants — one row per enrolled device per
+This table grows with **traffic**, not with organizations — one row per enrolled device per
 alerted event — so the prune is not optional housekeeping. Make sure the scheduler is
 running; see [Scheduled work](../operations/operations.md).
 

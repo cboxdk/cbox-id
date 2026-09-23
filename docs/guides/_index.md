@@ -23,18 +23,19 @@ console explains itself in two or three sentences; when that is not enough, the
 1. [Roles](roles.md) — decide who can do what before you invite anyone, and
    [permissions](permissions.md) if you want that spelled out here rather than in each app.
 2. [Members and invitations](members.md) — invite the team, send them back to your app, hand ownership over.
-3. [Apps & API keys](apps-and-api-keys.md) — register the first app people will sign in to.
+3. [Apps](apps-and-api-keys.md) — register the first app people will sign in to.
 4. [Single sign-on](single-sign-on.md) — let people use the company account they already have.
 5. [Social sign-in](social-sign-in.md) — Google, GitHub, Apple and the rest, plus how connecting one to an existing account works.
 6. [Sync users in](sync-users-in.md) — have your provider create and deactivate people for you.
 
 ## Keeping it running
 
+- [Keys](keys.md) — management, workspace and frontend keys, and who can see which.
 - [Sync users out](sync-users-out.md) — push your people into your other SaaS products.
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Inline hooks](inline-hooks.md) — have a say while it happens.
 - [Token vault](token-vault.md) — credentials your apps use elsewhere.
-- [Agent approvals](agent-approvals.md) — approving something an app or agent asks to do as you.
+- [Agent approvals](agent-approvals.md) — approving a request to act as you, and reviewing every pending request in an environment.
 - [Trusted devices](trusted-devices.md) — a phone as the authenticator that answers those approvals.
 
 ## Proving it is under control

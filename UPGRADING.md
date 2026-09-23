@@ -16,11 +16,98 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Console pages have one URL each; old GET URLs answer 301
+
+Every console page now has one path, the same on both consoles; the environment
+console's is that path under `/admin`. Old **GET** URLs answer `301 Moved Permanently`
+and keep their query string, so bookmarks, runbooks and links in support replies keep
+working. **Writes (POST, PATCH, PUT, DELETE) moved too and are not redirected**, because
+a 301 turns a POST into a GET. If a script posts to a console form, point it at the new
+path.
+
+Organization and workspace console (detail and `new` paths follow, e.g.
+`/clients/{id}` → `/apps/{id}`):
+
+| Old | New |
+|---|---|
+| `/clients` | `/apps` |
+| `/connections` | `/single-sign-on` |
+| `/social-providers` | `/social-sign-in` |
+| `/directories` | `/sync-in` |
+| `/provisioning` | `/sync-out` |
+| `/governance` | `/access-reviews` |
+| `/sod-policies` | `/role-conflicts` |
+| `/hooks` | `/inline-hooks` |
+| `/vault` | `/token-vault` |
+| `/members` | `/team` |
+| `/api-keys` | `/keys/workspace` |
+| `/environment-keys` | `/keys` |
+| `/organization-settings` | `/workspace-settings` |
+| `/analytics` | `/sign-in-activity` |
+| `/sign-in/devices` | `/trusted-devices` |
+| `/settings/branding` | `/branding` |
+
+Environment console:
+
+| Old | New |
+|---|---|
+| `/admin/applications` | `/admin/apps` |
+| `/admin/login-methods` | `/admin/saml-apps` |
+| `/admin/directories` | `/admin/sync-in` |
+| `/admin/outbound-sync` | `/admin/sync-out` |
+| `/admin/conflict-rules` | `/admin/role-conflicts` |
+| `/admin/event-hooks` | `/admin/inline-hooks` |
+| `/admin/stored-tokens` | `/admin/token-vault` |
+| `/admin/frontend-keys` | `/admin/keys/frontend` |
+| `/admin/analytics` | `/admin/usage` |
+
+Unchanged, and already the same on both consoles: `/webhooks`, `/audit`,
+`/log-streaming`, `/roles`, `/permissions`, `/settings`, `/sign-in-rules`, `/appearance`,
+`/usage`, `/access-reviews`, `/single-sign-on`, `/social-sign-in`, `/approvals`,
+`/projects`, `/environment-domains`, `/billing`.
+
+### Renamed routes, for forks and plugins that call `route()`
+
+Route **names** are unchanged except the merged key pages and one misnamed page. Code
+that builds URLs with `route()` or Wayfinder from these names throws
+`RouteNotFoundException` until it is updated:
+
+| Old name | New name |
+|---|---|
+| `api-keys`, `api-keys.store`, `api-keys.destroy` | `keys.workspace`, `keys.workspace.store`, `keys.workspace.destroy` |
+| `environment-keys`, `environment-keys.store`, `environment-keys.destroy` | `keys`, `keys.store`, `keys.destroy` |
+| `environment.frontend-keys`, `.store`, `.origins`, `.destroy` | `environment.keys.frontend`, `.store`, `.origins`, `.destroy` |
+| `environment.analytics` | `environment.usage` |
+| (new) | `environment.keys`, `environment.keys.store`, `environment.keys.destroy` |
+
+### A plugin that adds a page to the Workspace area must pass its label and icon
+
+The area's key is still `identity-platform`; only its label and icon changed, to
+**Workspace** and `briefcase`. console-kit's `area()` applies the label and icon it is
+given, so a plugin that still passes the old ones renames the host's area for the whole
+console. Register the way the billing module does:
+
+```php
+Console::nav()->area('identity-platform', 'Workspace', 'briefcase', 15)
+    ->page('your-page', 'Your page', order: 60);
+```
+
+### A workspace console no longer lists the end-user administration pages
+
+At the platform root of a multi-tenant deployment, a workspace's console now shows only
+Workspace, Team sign-in, Logs › Activity log and My account. Roles, permissions, apps,
+webhooks, inline hooks, token vault, connectors, access reviews and the other end-user
+pages are **hidden from the rail, not removed**: they answer at their URLs as before,
+with a notice that the page manages the workspace's own record in Cbox. Nothing to
+migrate. If you documented those pages for your workspace's team, point them at the
+environment console instead, where the product's users and apps live. Operators,
+single-tenant installs and every other organization keep the full console.
+
 ### New environment keys can no longer carry `directories:read` / `directories:write`
 
 The console's environment-key form offered both scopes, and no route in `routes/api.php`
 requires either — a key carrying them could do nothing more than one without. The form no
-longer offers them, and `POST /environment-keys` now refuses them with a validation error
+longer offers them, and `POST /keys` (was `/environment-keys`) now refuses them with a validation error
 on `scopes.N`. **Existing keys are untouched**: a key that already carries a directory scope
 keeps it, and the list shows it. Nothing to do unless a script posts to the console form
 with one of them; drop it from the request.

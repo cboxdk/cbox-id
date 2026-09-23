@@ -25,7 +25,7 @@ binary, no redirect URI to get wrong, and no password typed into a terminal.
 
 ## 1. Register the app
 
-**Apps & API keys → New app**, and answer **CLI or device** to *What kind of app is
+**Developers → Apps → New app**, and answer **CLI or device** to *What kind of app is
 this?*
 
 That single answer settles the rest. Cbox ID registers it as a **public** client — a
@@ -42,7 +42,7 @@ and refresh grants, and no redirect URI, because there is nothing to redirect. Y
 ## 2. Start the flow
 
 ```bash
-curl -s -X POST https://<tenant>.cboxid.com/oauth/device_authorization \
+curl -s -X POST https://<environment>.cboxid.com/oauth/device_authorization \
   -d client_id=cid_… \
   -d scope="openid profile email offline_access"
 ```
@@ -51,8 +51,8 @@ curl -s -X POST https://<tenant>.cboxid.com/oauth/device_authorization \
 {
   "device_code": "…",
   "user_code": "WDJB-MJHT",
-  "verification_uri": "https://<tenant>.cboxid.com/device",
-  "verification_uri_complete": "https://<tenant>.cboxid.com/device?user_code=WDJB-MJHT",
+  "verification_uri": "https://<environment>.cboxid.com/device",
+  "verification_uri_complete": "https://<environment>.cboxid.com/device?user_code=WDJB-MJHT",
   "expires_in": 600,
   "interval": 5
 }
@@ -66,7 +66,7 @@ is looking at.
 ## 3. Poll for the token
 
 ```bash
-curl -s -X POST https://<tenant>.cboxid.com/oauth/token \
+curl -s -X POST https://<environment>.cboxid.com/oauth/token \
   -d grant_type=urn:ietf:params:oauth:grant-type:device_code \
   -d device_code=… \
   -d client_id=cid_…
@@ -106,7 +106,7 @@ An access token in a shell history or a world-readable dotfile is a credential y
 published. Write them with mode `0600` under the platform's own config directory
 (`~/.config/<yourtool>/` on Linux, `~/Library/Application Support/…` on macOS), or use
 the OS keychain if you have one. Our own `cbox` CLI keeps one profile per account and
-per environment, because one person is usually several customers.
+per environment, because one person often works in several.
 
 ## When the person is already at a browser
 

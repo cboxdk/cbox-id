@@ -10,13 +10,13 @@ Seven capability areas live under `modules/` rather than in `app/`:
 
 | Module | Console area | What it adds |
 | --- | --- | --- |
-| `analytics` | Analytics | Authentication activity dashboards over a pluggable event store. See [Analytics storage](../operations/analytics.md). |
-| `billing` | Identity platform → Billing | The organization's usage rollup and its per-project plan allowances. Off switches the page and its route off entirely — a deployment that does not bill carries no billing surface. Set `CBOX_BILLING_ENABLED=false`. |
-| `compliance` | Compliance | Audit-trail export to a JSONL bundle or a SIEM endpoint, chain verification, retention, and a data-subject export. |
-| `connectors` | Connectors | One catalog and connections view over outbound SCIM provisioning, webhooks, inbound directory sync and upstream IdP federation. |
-| `devices` | Sign-in → Devices | A phone as an authenticator: approval pushes on the CIBA path, security alerts, and the REST surface the app talks to. Off by default. See [Trusted devices](../guides/trusted-devices.md). |
-| `risk-plus` | Security | Adaptive-risk signals (impossible travel, new device) plugged into the risk engine, and a console to review elevated events. |
-| `whitelabel` | Settings → Branding | Per-tenant branding: palette, logo, favicon, app name, custom domain and email sender. |
+| `analytics` | Overview → Sign-in activity (`/sign-in-activity`) | Authentication activity dashboards over a pluggable event store. See [Analytics storage](../operations/analytics.md). |
+| `billing` | Workspace → Billing | The workspace's usage rollup and its per-project plan allowances. Off switches the page and its route off entirely — a deployment that does not bill carries no billing surface. Set `CBOX_BILLING_ENABLED=false`. |
+| `compliance` | Logs → Audit trail, Exports & retention | Audit-trail export to a JSONL bundle or a SIEM endpoint, chain verification, retention, and a data-subject export. |
+| `connectors` | Connectors → Catalog, Connections | One catalog and connections view over outbound SCIM provisioning, webhooks, inbound directory sync and upstream IdP federation. |
+| `devices` | Sign-in → Trusted devices (`/trusted-devices`), and My account → Trusted devices | A phone as an authenticator: approval pushes on the CIBA path, security alerts, and the REST surface the app talks to. Off by default. See [Trusted devices](../guides/trusted-devices.md). |
+| `risk-plus` | Logs → Risk events | Adaptive-risk signals (impossible travel, new device) plugged into the risk engine, and a console to review elevated events. |
+| `whitelabel` | Settings → Branding (`/branding`) | Per-organization branding: palette, logo, favicon, app name, custom domain and email sender. |
 
 **All seven are always present.** There is nothing to license, unlock or install — but
 several can be switched off, and off means *absent*: no route, no nav entry, no page. A

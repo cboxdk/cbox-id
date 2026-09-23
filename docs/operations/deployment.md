@@ -30,7 +30,7 @@ composer install --no-dev --optimize-autoloader
 
 The guided installer generates the crypto master key, asks the few questions that
 matter (the first operator, the deployment shape, the issuer URL), writes them to
-`.env`, runs migrations, provisions the platform root — and the first account, in the
+`.env`, runs migrations, provisions the platform root — and the first workspace, in the
 multi-tenant shape — mints the first signing key, and then runs `cbox-id:doctor`
 against what it built:
 
@@ -64,9 +64,9 @@ Re-run these on every deploy after the code and `.env` are in place.
 ## 4. Create the first platform operator
 
 Step 2 already did this: `cbox-id:install` creates the **platform operator** — the
-identity above every environment, which administers environments, tenant
+identity above every environment, which administers workspaces, environments,
 organizations and other operators — along with the platform-root environment and, in
-the multi-tenant shape, the first account. Immediately enroll a passkey or TOTP
+the multi-tenant shape, the first workspace. Immediately enroll a passkey or TOTP
 factor; this is the most sensitive account on the system.
 
 If the deployment was stood up without a shell (an image started by someone else),
@@ -176,8 +176,8 @@ no tokens, signs no assertions and has no relying parties, so the whole IdP prot
 surface is confined to the **issuer plane**: an environment's own host, i.e. a custom
 domain or `{slug}.{base_domain}`.
 
-That is a narrower claim than it used to be. The apex is also the *account door* — sign up,
-manage the account and its environments — and it was once assumed the two went together, so
+That is a narrower claim than it used to be. The apex is also the *workspace door* — sign up,
+manage the workspace and its environments — and it was once assumed the two went together, so
 one gate answered both "is this an issuer?" and "does the console live here?". They differ
 on exactly this host: the platform root is a tenant like any other, whose subjects sign in
 and administer their organizations there. `/login` and the console are served on the apex

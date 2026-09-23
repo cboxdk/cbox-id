@@ -1,12 +1,21 @@
 ---
 title: Agent approvals
 weight: 120
-description: What it means when an app or AI agent asks to act on your behalf, how to check the request is really yours, and when to deny.
+description: What it means when an app or AI agent asks to act on your behalf, how to check the request is really yours, when to deny, and how an administrator reviews every pending request in an environment.
 ---
 
 # Agent approvals
 
-**Console page:** Overview › Agent approvals
+**Console page:** Overview › Approve agent requests (`/approvals`), and Overview ›
+Review agent requests in an environment console (`/admin/approvals`)
+
+The two pages are named for what each does:
+
+- **Approve agent requests** is yours: the requests to act as *you*, which only you can
+  approve or deny. Most of this guide is about it.
+- **Review agent requests** is for an environment administrator: every pending request in
+  the environment, so one that looks like abuse can be denied. See
+  [Reviewing requests across an environment](#reviewing-requests-across-an-environment).
 
 Sometimes an app or an AI agent needs your go-ahead to act as you, and cannot ask
 on the screen in front of you — it is running on a server, in a terminal, or on a
@@ -38,16 +47,24 @@ were doing needs an explanation before it gets an approval.
 - **Every decision is recorded** in the [activity log](activity-log.md), including
   denials.
 
+## Reviewing requests across an environment
+
+An environment administrator sees every pending request in the environment on **Review
+agent requests**, a page at a time, with each scope explained in plain words beside its
+raw name. There is **Deny** and no Approve: an approval is the person's own consent for an
+agent to act as them, and nobody can give it on their behalf. Denying withholds access,
+so an administrator can shut down a request that looks wrong.
+
 ## Building one
 
 This page is for the person who receives a request. If you are building the thing that
 sends them, the shape is short.
 
-Register the app under [Apps & API keys](apps-and-api-keys.md) and answer **AI agent**.
+Register the app under [Apps](apps-and-api-keys.md) and answer **AI agent**.
 That gives it a client secret and the backchannel grant. Then ask for approval:
 
 ```bash
-curl -X POST https://<tenant>.cboxid.com/oauth/backchannel_authentication \
+curl -X POST https://<environment>.cboxid.com/oauth/backchannel_authentication \
   -u $CBOX_ID_CLIENT_ID:$CBOX_ID_CLIENT_SECRET \
   -d login_hint=person@example.com \
   -d binding_message="Deploy release 4.2 to production" \
@@ -73,6 +90,6 @@ there is no browser in front of it to notice a smaller grant.
 ## Related
 
 - [Token vault](token-vault.md) — the credentials agents use once approved.
-- [Apps & API keys](apps-and-api-keys.md).
+- [Apps](apps-and-api-keys.md).
 - [Sign in from a CLI](../getting-started/sign-in-from-a-cli.md) — the same idea when
   the person and the program are at the same keyboard.

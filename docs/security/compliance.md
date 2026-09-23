@@ -69,7 +69,7 @@ What actually exists today, and what it does:
 |---|---|---|
 | **Deactivate a user** (environment console › Users) | Sets the subject to `disabled`. Sign-in is refused and existing sessions stop working on their next request. Reversible. | Removes nothing. Sessions, passkeys, MFA factors and TOTP seeds, password history, identity-provider profiles (`identities.raw`), magic links, verification tokens, OAuth access/refresh tokens, directory/SCIM records (`directory_users.resource`) and role assignments are all retained. |
 | **Revoke sessions and tokens** | Terminates sessions and revokes issued credentials. | Removes no stored personal data. |
-| **Delete an organization** (environment console › Organizations) | Soft status change to `deleted`: the tenant leaves every list and its members are refused at sign-in, device authorization and consent. | Erases nothing — the tenant's rows, and its members', are kept for audit. |
+| **Delete an organization** (environment console › Organizations) | Soft status change to `deleted`: the organization leaves every list and its members are refused at sign-in, device authorization and consent. | Erases nothing — the organization's rows, and its members', are kept for audit. |
 | **Risk-decision retention** (`risk_decisions`, default 90 days) | Bounds how long pseudonymised signup/login scoring data is held; rows matching a subject's pseudonym can be deleted on request (see [Adaptive risk](./adaptive-risk.md)). | Is a retention window on one table, not subject erasure. |
 
 There is no erasure service, command, endpoint or console action anywhere in this

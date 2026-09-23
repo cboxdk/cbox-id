@@ -71,7 +71,7 @@ because it is already claimed, that is why.
 
 Claiming a domain decides who Cbox ID RECOGNISES. It does not, on its own, decide
 whether those people may still use a password. That is the **Single sign-on** setting
-on **Auth policy**, and the three values differ:
+on **Sign-in › Sign-in rules**, and the three values differ:
 
 | Setting | What somebody on a verified domain sees |
 |---|---|
@@ -80,7 +80,7 @@ on **Auth policy**, and the three values differ:
 | **Off** | The password form, with the connection offered underneath. |
 
 **If you want SSO to be the only way in, choose Require SSO.** Until recently a verified
-domain routed to the provider whatever this was set to, so a tenant that had left it at
+domain routed to the provider whatever this was set to, so an organization that had left it at
 *Off* was enforced anyway. That was wrong in both directions: it ignored the setting, and
 it locked out anybody who had enrolled a passkey, because there was no local form to reach
 it from. Microsoft warns against exactly this pattern for the same reason.

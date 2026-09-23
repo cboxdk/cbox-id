@@ -76,6 +76,29 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **One Keys page per console, with the kind of key as a tab in the URL.** Seven kinds of
+  credential were spread over four pages under three names. The workspace console's
+  `/keys` holds **Management keys** (`cbid_env_…`, for one environment's management API,
+  with the environment in the URL as `?environment=`) and `/keys/workspace` holds
+  **Workspace keys** (the workspace API: projects, environments, team; each carries a
+  built-in role). The environment console's `/admin/keys` holds **Management keys** for
+  that environment and `/admin/keys/frontend` its **Frontend keys**. A tab the person may
+  not open is not drawn, so a Developer sees Management keys alone. See
+  [Keys](docs/guides/keys.md).
+- **Management keys can be created from the environment console.** A developer working in
+  an environment had to go back to the workspace, on another host, to get a key for the
+  environment they were standing in. The environment console now issues them for its own
+  environment only, behind the same step-up, and records them on the workspace's
+  activity log, where the workspace console records them.
+- **A "?" help topic on every console page**, each linking to its guide where there is
+  one. New guides: [Keys](docs/guides/keys.md), and
+  [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md)
+  (renamed from `accounts-and-organizations.md` and rewritten around the workspace, the
+  organization and which console you are in).
+- **A vocabulary test fails the build if a retired UI word comes back.** The labels below
+  were renamed once before and drifted back through modules and page copy nobody
+  re-read; the sweep reads the copy a person sees and refuses the old words.
+
 - **Key expiry in the console.** Both key forms (account API keys, environment keys) now
   ask how long the key lives — never, 30 days, 90 days, 1 year or a custom date (the key
   stops at the end of that day, UTC). The services always supported it; the forms never
@@ -86,7 +109,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   app's registered redirect-URI origins, and it is checked again at acceptance. Stored in a
   new app table, `invitation_contexts`, beside `invitation_role_grants`.
 - **One invite form and one pending-invitations list everywhere.** People › Members, the
-  environment console's organization page and Identity platform › Administrators draw the
+  environment console's organization page and Workspace › Team draw the
   same React component (`InviteForm`, `PendingInvitations`); the organization invite runs
   through one service (`OrganizationInvitations`). Every surface can now **send again** and
   **withdraw**, and each role in the picker says what it means.
@@ -103,6 +126,54 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **The workspace console is the workspace.** A workspace that owns identity providers
+  signed in to a console that showed its own record in Cbox's root environment with the
+  full end-user rail (roles, apps, webhooks, inline hooks, token vault, connectors,
+  access reviews), as though it were their product. The product was an environment
+  console on another host. At the platform root of a multi-tenant deployment the rail is
+  now **Workspace** (Projects, Team, Keys, Environment domains, Billing, Workspace
+  settings), **Team sign-in** (Single sign-on, Sign-in rules: how the workspace's own
+  team signs in to Cbox), Logs › Activity log and My account. Overview (`/dashboard`) and
+  the setup guide (`/get-started`) are not shown there either. Operators, single-tenant
+  installs and every other organization keep the full console.
+- **Hidden, not redirected.** The end-user pages a workspace console no longer lists stay
+  reachable by URL, so an app or webhook registered there before is not stranded, and
+  they stay authorized by the one check every console page uses. Reached that way, a
+  page says above its content that it manages the workspace's own record in Cbox, not the
+  product, and links to Projects.
+- **Signing in lands where people work.** A workspace member with exactly one active
+  environment they may administer (Owner, Admin or Developer) goes straight into that
+  environment's console through the signed handoff Projects › Open uses. Everyone else
+  lands on Projects, where each environment has **Open console**.
+- **The environment console shows its workspace and the way back.** The topbar reads
+  `← <Workspace> / <Environment> [badge] / <acting organization>`, and the first crumb
+  opens the workspace's Projects page.
+- **One URL per page.** About forty pages had a different path on each console
+  (`/sod-policies` beside `/admin/conflict-rules`, `/hooks` beside `/admin/event-hooks`,
+  `/clients` beside `/admin/applications`, and `/analytics` meaning sign-in activity on
+  one and usage on the other). Every page now has one slug, named after the page, and the
+  environment console's is that slug under `/admin`. Every old GET answers **301** with
+  its query string kept; writes moved too and are not redirected. The full table is in
+  [UPGRADING.md](UPGRADING.md). Route names are unchanged except the merged key pages and
+  `environment.analytics`, now `environment.usage`.
+- **One word per thing in the console.** *Identity platform* is **Workspace**,
+  *Administrators* is **Team**, *Account settings* is **Workspace settings**, and the
+  operator's *Customers* is **Workspaces**. The membership tier is the **built-in role**
+  (Owner, Admin, Developer, Member, Viewer); app-declared and custom roles are just
+  **Roles**, and people screens show both in one **Roles** control: exactly one built-in
+  role plus any number of roles (it was *Console access*, *Organization access*, *Access
+  roles* and *App roles* on different pages). *Roles everywhere in this environment* is
+  **Staff roles**. *Apps & API keys* is **Apps**. *Switch account* is **Switch user**,
+  which is what it does. The two agent approval pages are named for what each does:
+  **Approve agent requests** (a person approves requests to act as them) and **Review
+  agent requests** (an environment administrator sees every pending request and can deny
+  abuse).
+- **Sign-in rules moved from Settings to Sign-in** on both consoles. They are the
+  password, MFA and session policy, and on a workspace console they are half of the only
+  sign-in administration it has.
+- **Every rail area has its own icon.** The rail had three shields and two stacks, which
+  at 18px in a 64px rail were one glyph drawn several times.
+
 - **Ownership is transferred, never assigned, on every roster.** People › Members offered
   "Owner" in its role picker, so an owner could mint further owners; the organization
   roster's roles are now Admin and Member, and ownership moves only with Transfer ownership
@@ -115,12 +186,17 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **My account and Switch user in the environment console bounced to the environment's
+  end-user sign-in.** Both were relative links, so on an environment's host they opened a
+  page that needs the workspace session, found none, and sent the administrator to the
+  sign-in page of the product they were administering. Both now open on the workspace
+  host, where the person is signed in.
 - Environment-key scopes are shown by their label with the API key beside them, and the
   reserved `directories:*` scopes, which no route requires, are no longer offered.
 - The API keys page promised the account API could "read billing"; it lists projects and
   environments, creates environments, and lists and invites administrators. The environment
-  OpenAPI spec said environment keys are minted in the environment's console; they are
-  created under Identity platform › Environment keys.
+  OpenAPI spec said environment keys are minted in the environment's console; they were
+  created only under the workspace's keys page (both consoles issue them now, under Keys).
 - Key and secret verbs are one set across the console: **Create key**, **Revoke**,
   **Rotate secret**; the new-app form's button says **Create app**.
 - Secret rotation mints through the framework's `ClientSecret` value object instead of

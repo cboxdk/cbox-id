@@ -1,17 +1,20 @@
 ---
-title: Apps & API keys
+title: Apps
 weight: 20
 description: Register an app so people can sign in to it with their Cbox ID account, configure its redirect URLs, and let it declare the roles it understands.
 ---
 
-# Apps & API keys
+# Apps
 
-**Console page:** Developers › Apps & API keys
+**Console page:** Developers › Apps (`/apps`, or `/admin/apps` in an environment console)
 
 Every app that signs people in through Cbox ID, or calls its API, is registered
 here and gets its own credentials. Registering an app is what turns Cbox ID from a
 directory into something your colleagues actually use — it is the step that gives
 them a thing to sign in *to*.
+
+Machine keys that are not tied to an app (management keys, workspace keys and the
+publishable frontend keys) are on the [Keys](keys.md) page.
 
 ## Register one
 
@@ -78,4 +81,5 @@ scope to the app here.
 
 ## Related
 
+- [Keys](keys.md) — management, workspace and frontend keys.
 - [Roles](roles.md), [Webhooks](webhooks.md), [Token vault](token-vault.md).

@@ -11,8 +11,9 @@ sign into.
 
 - [Installation & first run](installation.md) — set up the app, create the first
   platform operator, and provision your first environment and organization.
-- [Screens](screens.md) — the admin console's nine areas and the sign-in surface, area by
-  area. The screenshots in it are dated and stale; the prose is current.
+- [Screens](screens.md) — the workspace, organization and environment consoles and the
+  sign-in surface, area by area. The screenshots in it are dated and stale; the prose is
+  current.
 
 For the fast path, see the top-level [Quickstart](../quickstart.md). For production
 hardening, see [Deployment](../operations/deployment.md).

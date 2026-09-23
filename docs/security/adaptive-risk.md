@@ -80,7 +80,7 @@ ever allows, and only on deployments that asked for it.
 ### Verification before provisioning
 
 Independently of risk mode, a self-serve signup on the platform root no longer
-provisions an environment up front. It creates the **account, its home organization,
+provisions an environment up front. It creates the **workspace (its home organization),
 its owner member and its first project**; the **environment** — the routable IdP whose
 signing key is warmed on creation — is released by `App\Platform\SignupProvisioner`
 only when the owner opens the emailed verification link.

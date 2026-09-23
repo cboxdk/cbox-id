@@ -23,7 +23,7 @@ it here and every app sees that on their next sign-in.
 
 ## Two kinds of role
 
-**Org roles** are yours: you create them for your organization, and they mean
+**Custom roles** are yours: you create them for your organization, and they mean
 whatever your apps agree they mean.
 
 **App-declared roles** come from the app itself. An app tells Cbox ID which roles
@@ -43,7 +43,8 @@ them yourself on the Permissions page without any integration at all.
 
 ## Assigning
 
-- Person by person on the **Members** page.
+- Person by person on the **Members** page, in the same **Roles** control that holds
+  their built-in role.
 - Automatically, by mapping a group from your identity provider onto a role — see
   [Sync users in](sync-users-in.md). For anything above a handful of people this is
   the one to use: access follows the group, and the group is already someone else's
@@ -56,7 +57,7 @@ them yourself on the Permissions page without any integration at all.
 Every grant above is scoped to one organization, which is right for the people who work
 inside one. It cannot describe three others:
 
-- **Your own support staff**, who act across every customer.
+- **Your own support staff**, who act across every organization.
 - **Somebody who has joined no organization** — a person exists before they belong
   anywhere.
 - **An app with no tenancy of its own.** If your service provider has no notion of
@@ -64,15 +65,16 @@ inside one. It cannot describe three others:
   invent one.
 
 For those, define the role as **Environment-wide** when you create it, then grant it from
-the person's page under **Roles everywhere in this environment**. It applies in every
+the person's page in the environment console (People › Users › *name*) under **Staff
+roles**. It applies in every
 organization *and* to a person who belongs to none, and it comes through in the token like
 any other role.
 
 Two things to know before you use it:
 
 - **Only an environment-wide role can be granted this way.** A role belonging to one
-  organization is that customer's own policy, named by them; handing it out across the
-  environment would give every other customer a role they never defined. The console
+  organization is that organization's own policy, named by them; handing it out across
+  the environment would give every other organization a role they never defined. The console
   offers only the eligible ones, and the write refuses the rest.
 - **It stacks, it does not replace.** Somebody can hold `Support` everywhere and `Editor`
   in one organization, and their token in that organization carries both.
@@ -89,8 +91,10 @@ organization.
 
 ## Things worth knowing
 
-- **Roles are not organization membership.** Being an owner or admin of the
-  organization governs the *console*; roles govern *your apps*.
+- **Roles are not the built-in role.** Everyone in an organization holds exactly one
+  built-in role (Owner, Admin, Member, and on a workspace's team also Developer and
+  Viewer), and it governs the *console*. Roles govern *your apps*. The Members page
+  shows both in one **Roles** control, but they do different jobs.
 - **Some role pairs should be impossible.** If two roles must never sit with the
   same person, declare that as a [role conflict](role-conflicts.md) rather than
   relying on everyone remembering.
@@ -104,7 +108,7 @@ vocabulary settled — authorizes from a **`groups`** claim on the ID token. The
 separate Groups page here, and you are not missing one: **your roles are those groups.**
 
 Tick the **`groups`** scope when you register the app under
-[Apps & API keys](apps-and-api-keys.md), and the ID token carries the person's role names
+[Apps](apps-and-api-keys.md), and the ID token carries the person's role names
 under the name that software already looks for:
 
 ```json
@@ -118,7 +122,7 @@ So name the role whatever the consuming app expects to see, assign people to it,
 arrives. Nothing else to create.
 
 > **Not to be confused with directory groups.** The *Sync users in* page also talks about
-> groups, and those go the other way: a customer's own identity provider pushes its groups
+> groups, and those go the other way: an organization's own identity provider pushes its groups
 > to Cbox ID over SCIM, and you map each one **onto** a role. They never reach a token
 > themselves. That page is for when somebody *else* is the identity provider. When Cbox ID
 > is your identity provider, roles are the whole story.
@@ -126,5 +130,5 @@ arrives. Nothing else to create.
 ## Related
 
 - [Permissions](permissions.md) — the individual capabilities a role is built from.
-- [Apps & API keys](apps-and-api-keys.md) — where an app's manifest URL is configured.
+- [Apps](apps-and-api-keys.md) — where an app's manifest URL is configured.
 - [Access reviews](access-reviews.md), [Role conflicts](role-conflicts.md).

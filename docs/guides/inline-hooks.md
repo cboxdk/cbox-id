@@ -53,4 +53,4 @@ chose and why, and check that reality matches it in staging.
 ## Related
 
 - [Webhooks](webhooks.md) — after the fact, cannot block, retried.
-- [Apps & API keys](apps-and-api-keys.md).
+- [Apps](apps-and-api-keys.md).

@@ -47,5 +47,5 @@ ticket, a screen share, a laptop that left.
 
 ## Related
 
-- [Apps & API keys](apps-and-api-keys.md) — the apps you grant.
+- [Apps](apps-and-api-keys.md) — the apps you grant.
 - [Agent approvals](agent-approvals.md).

@@ -66,8 +66,8 @@ never quietly reinterpreted.
 - **You can reuse a name another organization uses.** Names only have to be unique within
   what you can see, so `billing:refund` being taken elsewhere is not your problem and you
   are never told about it.
-- **A permission is not organization membership.** Owner and admin govern the *console*;
-  permissions govern *your apps*.
+- **A permission is not the built-in role.** Owner, Admin and the other built-in roles
+  govern the *console*; permissions govern *your apps*.
 
 ## Related
 

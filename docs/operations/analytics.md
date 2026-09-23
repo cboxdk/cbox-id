@@ -6,7 +6,7 @@ description: Choosing where authentication analytics are stored — nothing, the
 
 # Analytics storage
 
-The Analytics console reads authentication activity — logins, tokens issued, new
+The **Sign-in activity** page (Overview → Sign-in activity, `/sign-in-activity`) reads authentication activity — logins, tokens issued, new
 users, MFA enrolments — over a time window. Where those events are *stored* is a
 deployment choice, and the three options differ in what they cost you rather than in
 what the dashboards show.
@@ -60,7 +60,7 @@ numbers. That latency, not a correctness cliff, is the signal to move to ClickHo
 ### Retention is not optional here
 
 `id_analytics_events` is the one table in this application that grows with **traffic**
-rather than with tenants. It is swept daily by the scheduled `model:prune`, using
+rather than with organizations. It is swept daily by the scheduled `model:prune`, using
 `CBOX_ID_ANALYTICS_RETENTION_DAYS`:
 
 ```bash
@@ -90,5 +90,5 @@ or use the `database` store.
 
 Every read is scoped to the environment in context, in both stores, and an unscoped
 read returns **nothing** rather than every environment's events. Analytics is
-cross-tenant data in a single table; deny-by-default is the only safe reading of "no
+cross-environment data in a single table; deny-by-default is the only safe reading of "no
 environment is in context".
