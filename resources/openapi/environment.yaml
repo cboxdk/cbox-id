@@ -638,7 +638,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: cbid_env_
-      description: An environment API key, minted in the environment's console. Bound to that environment's host.
+      description: |
+        An environment API key, `cbid_env_…`. Created by the account that owns the environment,
+        in the console under Identity platform › Environment keys — not in the environment's own
+        console. Bound to that environment's host, and carries an explicit list of scopes; it may
+        also carry an expiry.
     VaultManagerToken:
       type: http
       scheme: bearer

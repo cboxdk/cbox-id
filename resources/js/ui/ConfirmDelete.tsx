@@ -11,8 +11,13 @@ export interface ConfirmDeleteProps {
     onOpenChange: (open: boolean) => void;
     /** The exact text the operator must type. Usually the resource's name. */
     name: string;
-    /** The verb on the confirm button and in the title — "Delete", "Rotate", "Revoke". */
+    /** The verb on the confirm button and in the title — "Delete", "Revoke", "Rotate secret". */
     verb?: string;
+    /**
+     * The dialog's question, when "{verb} {name}?" does not read as one — "Rotate secret
+     * Billing?" names the wrong thing, "Rotate the secret for Billing?" does not.
+     */
+    title?: string;
     consequence?: ReactNode;
     /**
      * WHICH ENVIRONMENT this is happening in, named in the dialog.
@@ -61,6 +66,7 @@ function Confirmation({
     onOpenChange,
     name,
     verb = 'Delete',
+    title,
     consequence = 'This cannot be undone.',
     environment,
     confirming = false,
@@ -92,7 +98,7 @@ function Confirmation({
             open
             onOpenChange={onOpenChange}
             size="sm"
-            title={`${verb} ${name}?`}
+            title={title ?? `${verb} ${name}?`}
             description={consequence}
             footer={
                 <>
@@ -117,8 +123,7 @@ function Confirmation({
                         color: 'var(--muted-foreground)',
                     }}
                 >
-                    In environment{' '}
-                    <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
+                    In environment <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
                 </p>
             )}
 

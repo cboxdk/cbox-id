@@ -2,16 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
-import {
-    Badge,
-    Button,
-    Combobox,
-    EmptyState,
-    Icon,
-    Input,
-    PageHeader,
-    Pagination,
-} from '@/ui';
+import { Badge, Button, Combobox, EmptyState, Icon, Input, PageHeader, Pagination } from '@/ui';
 
 interface Offerable {
     id: string;
@@ -28,6 +19,11 @@ interface RoleRow {
     /** The app whose tokens it is stamped into, or null for every app. */
     app: string | null;
     environmentWide: boolean;
+    /**
+     * The organization that owns it — set only when every organization is in view, where
+     * two tenants' "Editor" would otherwise be two identical rows.
+     */
+    organization: string | null;
     permissions: string[];
     moreCount: number;
     offerable: Offerable[];
@@ -297,18 +293,31 @@ function Row({
     mayAdminister: boolean;
     last: boolean;
 }) {
+    /*
+     * AN EMPTY PICKER MEANS TWO DIFFERENT THINGS. With grants on the role it means they
+     * are all held; with none it means the catalogue has nothing for this role at all —
+     * and the row said both at once: "No permissions yet." over "Every available
+     * permission is already granted." One sentence, the true one.
+     */
+    const nothingToOffer =
+        mayAdminister &&
+        role.mayCompose &&
+        role.offerable.length === 0 &&
+        role.permissions.length === 0 &&
+        role.moreCount === 0;
+
     return (
-        <div
-            className="p-4"
-            style={last ? undefined : { borderBottom: '1px solid var(--border)' }}
-        >
+        <div className="p-4" style={last ? undefined : { borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3 flex-wrap">
                 <div className="min-w-0 flex-1">
                     <Link href={role.href} className="font-medium truncate">
                         {role.name}
                     </Link>
                     {role.description !== null && (
-                        <p className="text-sm truncate" style={{ color: 'var(--muted-foreground)' }}>
+                        <p
+                            className="text-sm truncate"
+                            style={{ color: 'var(--muted-foreground)' }}
+                        >
                             {role.description}
                         </p>
                     )}
@@ -327,6 +336,14 @@ function Row({
 
                 {role.environmentWide && <Badge>Environment-wide</Badge>}
 
+                {role.organization !== null && (
+                    <Badge>
+                        <Icon name="members" className="w-3 h-3" />
+                        <span className="sr-only">Organization:</span>
+                        {role.organization}
+                    </Badge>
+                )}
+
                 <Icon
                     name="chevron"
                     className="w-4 h-4 shrink-0"
@@ -337,7 +354,9 @@ function Row({
             <div className="flex flex-wrap items-center gap-1.5 mt-3">
                 {role.permissions.length === 0 ? (
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        No permissions yet.
+                        {nothingToOffer
+                            ? 'No permissions yet — none of your apps has declared one this role can use.'
+                            : 'No permissions yet.'}
                     </span>
                 ) : (
                     role.permissions.map((permission) => (
@@ -356,6 +375,7 @@ function Row({
 
             {mayAdminister &&
                 role.mayCompose &&
+                !nothingToOffer &&
                 (role.offerable.length === 0 ? (
                     <p className="text-xs mt-3" style={{ color: 'var(--faint)' }}>
                         Every available permission is already granted.
@@ -400,9 +420,7 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
 
     return (
         <details className="card mt-4 p-4">
-            <summary className="text-sm font-medium cursor-pointer">
-                What your app receives
-            </summary>
+            <summary className="text-sm font-medium cursor-pointer">What your app receives</summary>
 
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 Roles and permissions arrive in the access token as two arrays. Your app reads them
@@ -438,10 +456,9 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
             <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
                 {sample.permissions.length === 0 && (
                     <>
-                        <b>{sample.role}</b> has no permissions yet, so <code className="mono">
-                            permissions
-                        </code>{' '}
-                        arrives empty — the role name is still there to act on.{' '}
+                        <b>{sample.role}</b> has no permissions yet, so{' '}
+                        <code className="mono">permissions</code> arrives empty — the role name is
+                        still there to act on.{' '}
                     </>
                 )}
                 The <code className="mono">scope</code> claim is a different thing: it is what the{' '}

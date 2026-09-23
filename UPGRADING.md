@@ -16,6 +16,15 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### New environment keys can no longer carry `directories:read` / `directories:write`
+
+The console's environment-key form offered both scopes, and no route in `routes/api.php`
+requires either — a key carrying them could do nothing more than one without. The form no
+longer offers them, and `POST /environment-keys` now refuses them with a validation error
+on `scopes.N`. **Existing keys are untouched**: a key that already carries a directory scope
+keeps it, and the list shows it. Nothing to do unless a script posts to the console form
+with one of them; drop it from the request.
+
 ### Everyone is signed out on deploy
 
 There were three session stores for what is one human, and two of them are gone.

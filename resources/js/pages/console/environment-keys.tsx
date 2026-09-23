@@ -9,32 +9,42 @@ import {
     ConfirmDelete,
     CopyButton,
     EmptyState,
+    ExpiryField,
     Field,
     Input,
+    type KeyLifecycle,
+    type KeyLifetimeOption,
+    KeyStatusPill,
+    KeyTimeline,
     PageHeader,
     Panel,
     Select,
 } from '@/ui';
 
+/** A scope in words, with the API's own key beside it. */
+interface Scope {
+    value: string;
+    label: string;
+    /** True for anything that is not `:read` — the distinction that matters here. */
+    writes: boolean;
+}
+
 interface KeyRow {
     id: string;
     name: string;
-    scopes: string[];
-    lastUsedAt: string | null;
-    revokeHref: string;
-}
-
-interface ScopeOption {
-    value: string;
-    /** True for anything that is not `:read` — the distinction that matters here. */
-    writes: boolean;
+    prefix: string;
+    scopes: Scope[];
+    lifecycle: KeyLifecycle;
+    /** Null once the key is no longer active: there is nothing left to stop. */
+    revokeHref: string | null;
 }
 
 type Props = PageProps<{
     environments: { id: string; name: string }[];
     selected: string;
     keys: KeyRow[];
-    scopes: ScopeOption[];
+    scopes: Scope[];
+    lifetimes: KeyLifetimeOption[];
     defaultScopes: string[];
     storeHref: string;
 }>;
@@ -44,6 +54,7 @@ export default function EnvironmentKeys({
     selected,
     keys,
     scopes,
+    lifetimes,
     defaultScopes,
     storeHref,
 }: Props) {
@@ -59,6 +70,8 @@ export default function EnvironmentKeys({
         environment: selected,
         name: '',
         scopes: defaultScopes,
+        expires: 'never',
+        expiresOn: '',
     });
 
     // The environment travels in the URL, so the form's copy follows it rather than
@@ -94,7 +107,7 @@ export default function EnvironmentKeys({
                     <EmptyState
                         icon="layers"
                         title="No environments yet"
-                        description="Create an environment first, then you can issue keys scoped to it."
+                        description="Create an environment first, then you can create keys scoped to it."
                     />
                 </div>
             ) : (
@@ -128,41 +141,56 @@ export default function EnvironmentKeys({
                                 {keys.map((key, index) => (
                                     <div
                                         key={key.id}
-                                        className="flex items-center gap-3 flex-wrap px-4 py-3"
+                                        className="flex items-start gap-3 flex-wrap px-4 py-3"
                                         style={
                                             index === keys.length - 1
                                                 ? undefined
                                                 : { borderBottom: '1px solid var(--border)' }
                                         }
                                     >
-                                        <div className="min-w-0 flex-1">
-                                            <p className="font-medium truncate">{key.name}</p>
-                                            <div className="mt-1 flex flex-wrap gap-1.5">
-                                                {key.scopes.map((scope) => (
-                                                    <Badge key={scope} className="mono">
-                                                        {scope}
-                                                    </Badge>
-                                                ))}
+                                        <div className="min-w-0 flex-1 space-y-1.5">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-medium truncate">
+                                                    {key.name}
+                                                </span>
+                                                <KeyStatusPill lifecycle={key.lifecycle} />
                                             </div>
+                                            <ul
+                                                className="flex flex-wrap gap-1.5"
+                                                aria-label="Scopes"
+                                            >
+                                                {key.scopes.map((scope) => (
+                                                    <li key={scope.value}>
+                                                        <Badge
+                                                            tone={scope.writes ? 'warn' : 'neutral'}
+                                                        >
+                                                            {scope.label}
+                                                            <span
+                                                                className="mono"
+                                                                style={{ opacity: 0.7 }}
+                                                            >
+                                                                {scope.value}
+                                                            </span>
+                                                        </Badge>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <KeyTimeline
+                                                lifecycle={key.lifecycle}
+                                                prefix={key.prefix}
+                                            />
                                         </div>
 
-                                        <span
-                                            className="text-xs shrink-0"
-                                            style={{ color: 'var(--faint)' }}
-                                        >
-                                            {key.lastUsedAt === null
-                                                ? 'never used'
-                                                : `used ${key.lastUsedAt}`}
-                                        </span>
-
-                                        <Button
-                                            size="sm"
-                                            variant="danger"
-                                            className="shrink-0"
-                                            onClick={() => setRevoking(key)}
-                                        >
-                                            Revoke
-                                        </Button>
+                                        {key.revokeHref !== null && (
+                                            <Button
+                                                size="sm"
+                                                variant="danger"
+                                                className="shrink-0"
+                                                onClick={() => setRevoking(key)}
+                                            >
+                                                Revoke
+                                            </Button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -170,7 +198,7 @@ export default function EnvironmentKeys({
                     </Panel>
 
                     <Panel
-                        title="Issue a key"
+                        title="New key"
                         description="The key can do only what its scopes allow. Read never implies write."
                     >
                         <form
@@ -204,8 +232,16 @@ export default function EnvironmentKeys({
                                                     toggleScope(scope.value, checked)
                                                 }
                                                 label={
-                                                    <span className="flex items-center gap-2">
-                                                        <span className="mono text-sm">
+                                                    <span className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-sm">
+                                                            {scope.label}
+                                                        </span>
+                                                        <span
+                                                            className="mono text-xs"
+                                                            style={{
+                                                                color: 'var(--muted-foreground)',
+                                                            }}
+                                                        >
                                                             {scope.value}
                                                         </span>
                                                         {/*
@@ -229,8 +265,18 @@ export default function EnvironmentKeys({
                                 )}
                             </div>
 
+                            <ExpiryField
+                                lifetimes={lifetimes}
+                                lifetime={form.data.expires}
+                                onLifetimeChange={(expires) => form.setData('expires', expires)}
+                                date={form.data.expiresOn}
+                                onDateChange={(expiresOn) => form.setData('expiresOn', expiresOn)}
+                                lifetimeError={form.errors.expires}
+                                dateError={form.errors.expiresOn}
+                            />
+
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                Issue key
+                                Create key
                             </Button>
                         </form>
                     </Panel>
@@ -247,7 +293,7 @@ export default function EnvironmentKeys({
                     const key = revoking;
                     setRevoking(null);
 
-                    if (key !== null) {
+                    if (key?.revokeHref) {
                         router.delete(key.revokeHref, {
                             data: { environment: selected },
                             preserveScroll: true,
@@ -288,7 +334,7 @@ function RevealedKey({ value }: { value: string }) {
                 Copy your key now — you won't be able to see it again.
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Only a hash is stored. If it is lost, revoke it and issue another.
+                Only a hash is stored. If it is lost, revoke it and create another.
             </p>
 
             <div className="mt-4 flex items-start gap-2">

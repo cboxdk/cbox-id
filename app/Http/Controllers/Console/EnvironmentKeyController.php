@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Console\EnvironmentKeyRowProps;
+use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Enums\KeyLifetime;
+use App\Platform\EnvironmentKeyScopes;
 use App\Platform\OrganizationActivity;
+use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,29 +71,37 @@ final readonly class EnvironmentKeyController extends ConsoleController
             $selected = (string) ($environments->first()->id ?? '');
         }
 
+        $now = CarbonImmutable::now();
+
         return $this->page('console/environment-keys', 'Environment keys', [
             'environments' => $environments->map(fn (Environment $environment): array => [
                 'id' => $environment->id,
                 'name' => $environment->name,
             ])->all(),
             'selected' => $selected,
+            /*
+             * EVERY key, revoked and expired included — the framework returns them on
+             * purpose, as the audit list — each carrying its own status. They used to be
+             * drawn exactly like live keys, with a Revoke button on a key nothing could
+             * use any more.
+             */
             'keys' => $selected === '' ? [] : $keys->forEnvironment($selected)
-                ->map(fn (object $key): array => [
-                    'id' => $key->id,
-                    'name' => $key->name,
-                    'scopes' => $key->scopes,
-                    'lastUsedAt' => $key->last_used_at?->diffForHumans(),
-                    'revokeHref' => $this->url('environment-keys.destroy', $key->id),
-                ])
+                ->map(fn (EnvironmentApiKey $key): EnvironmentKeyRowProps => EnvironmentKeyRowProps::from(
+                    $key,
+                    $this->url('environment-keys.destroy', $key->id),
+                    $now,
+                ))
                 ->values()
                 ->all(),
-            'scopes' => array_map(static fn (EnvironmentApiScope $scope): array => [
-                'value' => $scope->value,
-                // Read scopes first, and marked, because that is the difference that
-                // matters when somebody is ticking boxes for a credential that can
-                // provision people.
-                'writes' => ! str_ends_with($scope->value, ':read'),
-            ], EnvironmentApiScope::cases()),
+            // What the form offers: labelled, with the API's own key beside each, and
+            // without the reserved scopes no route requires. Writes are marked, because
+            // that is the difference that matters when somebody is ticking boxes for a
+            // credential that can provision people.
+            'scopes' => array_map(EnvironmentScopeProps::from(...), EnvironmentKeyScopes::offered()),
+            'lifetimes' => array_map(
+                fn (KeyLifetime $lifetime): array => ['value' => $lifetime->value, 'label' => $lifetime->label()],
+                KeyLifetime::cases(),
+            ),
             // An admin opts INTO write explicitly; the form opens read-only.
             'defaultScopes' => [
                 EnvironmentApiScope::OrganizationsRead->value,
@@ -104,6 +118,10 @@ final readonly class EnvironmentKeyController extends ConsoleController
         OrganizationActivity $activity,
     ): RedirectResponse {
         $this->assertMayManageEnvironments();
+
+        // Resolved BEFORE the write, so there is no path that mints a key and then finds
+        // it has nowhere to record who did.
+        $auditScope = $this->auditScope();
 
         $environmentId = $request->environmentId();
 
@@ -125,25 +143,26 @@ final readonly class EnvironmentKeyController extends ConsoleController
             return to_route($sudo);
         }
 
-        $issued = $keys->issue($environmentId, $request->name(), $request->scopes());
+        $issued = $keys->issue($environmentId, $request->name(), $request->scopes(), $request->expiresAt());
 
-        $organizationId = $this->scope->organizationId();
-
-        if ($organizationId !== null) {
-            $activity->record(
-                $organizationId,
-                'organization.environment_key_created',
-                $this->scope->actorId(),
-                targetType: 'environment',
-                targetId: $environmentId,
-                context: ['name' => $request->name(), 'scopes' => $request->scopes()],
-                request: $request,
-            );
-        }
+        $activity->record(
+            $auditScope,
+            'organization.environment_key_created',
+            $this->scope->actorId(),
+            targetType: 'environment',
+            targetId: $environmentId,
+            context: [
+                'key_id' => $issued->key->id,
+                'name' => $request->name(),
+                'scopes' => $request->scopes(),
+                'expires_at' => $issued->key->expires_at?->toIso8601String(),
+            ],
+            request: $request,
+        );
 
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', 'Environment key issued — copy it now, it will not be shown again.');
+        return back()->with('status', 'Environment key created — copy it now, it will not be shown again.');
     }
 
     public function destroy(
@@ -154,6 +173,8 @@ final readonly class EnvironmentKeyController extends ConsoleController
         OrganizationActivity $activity,
     ): RedirectResponse {
         $this->assertMayManageEnvironments();
+
+        $auditScope = $this->auditScope();
 
         $environmentId = trim($request->string('environment')->toString());
 
@@ -166,27 +187,43 @@ final readonly class EnvironmentKeyController extends ConsoleController
         }
 
         // Only revoke a key that belongs to the named — and reachable — environment.
-        if ($keys->forEnvironment($environmentId)->firstWhere('id', $key) === null) {
+        $found = $keys->forEnvironment($environmentId)->firstWhere('id', $key);
+
+        // An already-revoked key stays revoked and records nothing new: the log is the act
+        // that stopped it, not every request naming a row that no longer offers one.
+        if ($found === null || $found->revoked_at !== null) {
             return back();
         }
 
         $keys->revoke($environmentId, $key);
 
-        $organizationId = $this->scope->organizationId();
-
-        if ($organizationId !== null) {
-            $activity->record(
-                $organizationId,
-                'organization.environment_key_revoked',
-                $this->scope->actorId(),
-                targetType: 'environment',
-                targetId: $environmentId,
-                context: ['key_id' => $key],
-                request: $request,
-            );
-        }
+        $activity->record(
+            $auditScope,
+            'organization.environment_key_revoked',
+            $this->scope->actorId(),
+            targetType: 'environment',
+            targetId: $environmentId,
+            context: ['key_id' => $key, 'name' => $found->name],
+            request: $request,
+        );
 
         return back()->with('status', 'Environment key revoked.');
+    }
+
+    /**
+     * The account whose activity log records a key being minted or revoked.
+     *
+     * UNCONDITIONAL, and that is the change. Both writes recorded only `if` an
+     * organization was resolved, and skipped the entry in silence otherwise — a credential
+     * that provisions people, minted with no line anywhere saying who did it. Today no
+     * request reaches a write without one ({@see self::reachable()} answers nothing
+     * without an organization, and the write is refused), but that is a property of a
+     * different method: this makes the audit a requirement of the write itself, so a
+     * later change to reachability cannot turn it back into an optional extra.
+     */
+    private function auditScope(): string
+    {
+        return $this->scope->requireOrganizationId();
     }
 
     /**

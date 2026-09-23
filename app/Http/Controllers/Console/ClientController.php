@@ -11,6 +11,7 @@ use App\Http\Requests\Console\StoreClientRequest;
 use App\Platform\AppKind;
 use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\Snippet;
+use App\Platform\Console\ClientLifecycleAudit;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Help\HelpTopic;
@@ -22,6 +23,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\ClientSecret;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -193,6 +195,7 @@ final readonly class ClientController extends ConsoleController
         StoreClientRequest $request,
         ClientRegistry $clients,
         ScopeCatalog $catalog,
+        ClientLifecycleAudit $audit,
     ): RedirectResponse {
         $this->scope->assertMayAdminister();
 
@@ -272,6 +275,8 @@ final readonly class ClientController extends ConsoleController
             // scheduled sweep and "Sync now" can fetch its declared roles and permissions.
             $registered->client->forceFill(['manifest_url' => $manifestUrl])->save();
         }
+
+        $audit->created($registered->client, $request);
 
         // The plaintext exists only here. On the FLASH CHANNEL, not in props: props are
         // written into the browser's history entry, where a live credential is retrievable
@@ -383,8 +388,12 @@ final readonly class ClientController extends ConsoleController
         ]);
     }
 
-    public function update(SaveClientRequest $request, string $client, ScopeCatalog $catalog): RedirectResponse
-    {
+    public function update(
+        SaveClientRequest $request,
+        string $client,
+        ScopeCatalog $catalog,
+        ClientLifecycleAudit $audit,
+    ): RedirectResponse {
         $model = $this->manageable($client);
 
         $model->name = $request->name();
@@ -395,7 +404,16 @@ final readonly class ClientController extends ConsoleController
         // so this is a live change to what an integration can ask for — which is exactly
         // why it belongs on the page rather than behind delete-and-recreate.
         $model->scopes = $request->scopes($catalog);
+
+        // What actually changed, read before the save clears it — a Save pressed on an
+        // untouched form is not an edit, and the log should not say it was.
+        $changed = array_keys($model->getDirty());
+
         $model->save();
+
+        if ($changed !== []) {
+            $audit->updated($model, $changed, $request);
+        }
 
         return back()->with('status', 'App updated.');
     }
@@ -446,15 +464,26 @@ final readonly class ClientController extends ConsoleController
     }
 
     /**
-     * Overlap-rotate the secret: mint a fresh one, persist only its hash, and reveal the
-     * plaintext once. Public clients have no secret, so rotation is refused for them.
+     * Replace the secret: mint a fresh one, persist only its hash, and reveal the plaintext
+     * once. Public clients have no secret, so rotation is refused for them.
+     *
+     * A CUT-OVER, NOT AN OVERLAP. This docblock used to promise overlap rotation, and the
+     * code has never done it: an app holds one secret hash, so the moment the new one is
+     * saved the old one stops authenticating, and every deployment still presenting it
+     * fails until it is updated. The page says exactly that before the button is pressed.
+     * Overlap — old and new both valid for a window — needs the client to hold more than
+     * one secret, which is a framework change, not something this controller can fake.
+     *
+     * Minted through {@see ClientSecret}, the framework's one definition of a secret's
+     * format and hash. This built its own `csec_` string and SHA-256 inline, which is a
+     * second copy of the format waiting to drift from what `verifySecret()` checks.
      *
      * BEHIND A STEP-UP. This mints a live credential for an app that already exists, and
      * on the environment plane {@see self::mayManage()} returns an unconditional true — so
      * one unattended session rotates any tenant's production app secret and puts the
      * plaintext on screen, with no re-authentication anywhere in the path.
      */
-    public function rotate(string $client): RedirectResponse
+    public function rotate(Request $request, string $client, ClientLifecycleAudit $audit): RedirectResponse
     {
         // Authorization first: a step-up in front of a 403 hands somebody who may not
         // touch this app a password prompt instead of a refusal.
@@ -485,20 +514,22 @@ final readonly class ClientController extends ConsoleController
             // `confirmed` rides back as a query parameter, so the page this returns to can
             // say the window is open. See the `stepUpCleared` prop.
             ['client' => $model->id, 'confirmed' => 'rotate'],
-            'Rotating this app\'s secret issues a new one and stops the old one working immediately.',
+            'Rotating this app\'s secret creates a new one and stops the old one working immediately.',
         );
 
         if ($sudo !== null) {
             return to_route($sudo);
         }
 
-        $secret = 'csec_'.bin2hex(random_bytes(32));
-        $model->secret_hash = hash('sha256', $secret);
+        $secret = ClientSecret::mint();
+        $model->secret_hash = $secret->hash;
         $model->save();
 
-        $this->inertia->flash('revealedSecret', $secret);
+        $audit->secretRotated($model, $request);
 
-        return back()->with('status', 'A new secret was issued — copy it now, it will not be shown again.');
+        $this->inertia->flash('revealedSecret', $secret->plaintext);
+
+        return back()->with('status', 'Secret rotated — copy the new one now, it will not be shown again.');
     }
 
     /**
@@ -508,9 +539,13 @@ final readonly class ClientController extends ConsoleController
      * `deleteClient` on the environment plane — which is how a test exercising one plane
      * can pass while the other has been broken for a month.
      */
-    public function destroy(string $client): RedirectResponse
+    public function destroy(Request $request, string $client, ClientLifecycleAudit $audit): RedirectResponse
     {
-        $this->manageable($client)->delete();
+        $model = $this->manageable($client);
+
+        $model->delete();
+
+        $audit->deleted($model, $request);
 
         return to_route($this->scope->routeName('clients'))->with('status', 'App deleted.');
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Console;
 
+use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -41,7 +42,16 @@ final class IssueApiKeyRequest extends FormRequest
                     MembershipRole::assignable(),
                 )),
             ],
+            ...KeyExpiry::rules(),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return KeyExpiry::messages();
     }
 
     public function name(): string
@@ -52,5 +62,11 @@ final class IssueApiKeyRequest extends FormRequest
     public function role(): MembershipRole
     {
         return MembershipRole::from((string) $this->string('role'));
+    }
+
+    /** When the key stops working, or null for a key that does not expire. */
+    public function expiresAt(): ?CarbonImmutable
+    {
+        return KeyExpiry::expiresAt($this);
     }
 }

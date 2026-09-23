@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Console\ApiKeyRowProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
+use App\Platform\Enums\KeyLifetime;
+use App\Platform\OrganizationActivity;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
+use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
@@ -24,6 +29,10 @@ use Inertia\Response;
  * session could not MINT persistence — creation asks for a password — but it could destroy
  * the machine credentials running provisioning and automation, which is a denial of service
  * the same session was otherwise held back from.
+ *
+ * BOTH ARE ON THE ACCOUNT'S ACTIVITY LOG, which neither was: a credential that acts with a
+ * role across the whole account could be minted and destroyed without a line anywhere
+ * saying who did it. The environment key page beside this one always recorded both.
  */
 final readonly class ApiKeyController extends ConsoleController
 {
@@ -36,30 +45,29 @@ final readonly class ApiKeyController extends ConsoleController
         }
 
         $organizationId = $this->scope->organizationId();
+        $now = CarbonImmutable::now();
 
         return $this->page('console/api-keys', 'API keys', [
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
-                ->map(fn (OrganizationApiKey $key): array => [
-                    'id' => $key->id,
-                    'name' => $key->name,
-                    'role' => $key->role->label(),
-                    'prefix' => $key->prefix,
-                    'active' => $key->isActive(),
-                    // ISO, rendered relative in the browser: "last used 3 minutes ago"
-                    // computed on the server is wrong the moment the page sits open, and
-                    // this is a page people leave open while a deploy runs.
-                    'lastUsedAt' => $key->last_used_at?->toIso8601String(),
-                ])
+                ->map(fn (OrganizationApiKey $key): ApiKeyRowProps => ApiKeyRowProps::from(
+                    $key,
+                    route('api-keys.destroy', $key->id),
+                    $now,
+                ))
                 ->values()
                 ->all(),
             'roles' => array_map(
                 fn (MembershipRole $role): array => ['value' => $role->value, 'label' => $role->label()],
                 MembershipRole::assignable(),
             ),
+            'lifetimes' => array_map(
+                fn (KeyLifetime $lifetime): array => ['value' => $lifetime->value, 'label' => $lifetime->label()],
+                KeyLifetime::cases(),
+            ),
         ]);
     }
 
-    public function store(IssueApiKeyRequest $request, OrganizationApiKeys $keys): RedirectResponse
+    public function store(IssueApiKeyRequest $request, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
 
@@ -82,7 +90,21 @@ final readonly class ApiKeyController extends ConsoleController
             return $challenge;
         }
 
-        $issued = $keys->issue($organizationId, $request->name(), $request->role());
+        $issued = $keys->issue($organizationId, $request->name(), $request->role(), $request->expiresAt());
+
+        $activity->record(
+            $organizationId,
+            'organization.api_key_created',
+            $this->scope->actorId(),
+            targetType: 'api_key',
+            targetId: $issued->key->id,
+            context: [
+                'name' => $issued->key->name,
+                'role' => $issued->key->role->value,
+                'expires_at' => $issued->key->expires_at?->toIso8601String(),
+            ],
+            request: $request,
+        );
 
         /*
          * The plaintext, on the flash channel and nowhere else. Props are written into the
@@ -91,10 +113,10 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back();
+        return back()->with('status', 'API key created — copy it now, it will not be shown again.');
     }
 
-    public function destroy(string $key, OrganizationApiKeys $keys): RedirectResponse
+    public function destroy(Request $request, string $key, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
 
@@ -116,7 +138,23 @@ final readonly class ApiKeyController extends ConsoleController
             return back();
         }
 
+        // A key that is already revoked stays one, and says nothing new: the log records
+        // the act that stopped it, not every click on a row that no longer offers one.
+        if ($found->revoked_at !== null) {
+            return back();
+        }
+
         $keys->revoke($key);
+
+        $activity->record(
+            $organizationId,
+            'organization.api_key_revoked',
+            $this->scope->actorId(),
+            targetType: 'api_key',
+            targetId: $found->id,
+            context: ['name' => $found->name],
+            request: $request,
+        );
 
         return back()->with('status', 'API key revoked.');
     }
