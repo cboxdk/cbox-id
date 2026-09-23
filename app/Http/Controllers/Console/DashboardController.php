@@ -187,10 +187,10 @@ final readonly class DashboardController extends ConsoleController
             'percent' => $progress->percent(),
             // Lower-cased for the sentence it lands in, which reads "starting with …".
             'nextTitle' => $progress->next() === null ? null : Str::lcfirst($progress->next()->title()),
-            'steps' => array_map(static fn (SetupStep $step): array => [
+            'steps' => array_map(fn (SetupStep $step): array => [
                 'key' => $step->key->value,
                 'title' => $step->title(),
-                'href' => route($step->route()),
+                'href' => route($step->route($this->scope->peopleRoute() ?? 'directory.members')),
                 'done' => $step->done,
             ], $progress->steps),
         ];

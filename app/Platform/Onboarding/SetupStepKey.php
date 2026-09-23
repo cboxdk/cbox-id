@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Onboarding;
 
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Help\HelpTopic;
 
 /**
@@ -51,11 +52,19 @@ enum SetupStepKey: string
         };
     }
 
-    /** The route the step sends you to. */
-    public function route(): string
+    /**
+     * The route the step sends you to.
+     *
+     * `$peopleRoute` is where THIS organization's people are listed — a customer's
+     * administrators and everybody else's members are different pages (see
+     * {@see ConsoleScope::peopleRoute()}). It was hard-coded to the
+     * customer's, so the first step of every tenant organization's setup guide bounced its
+     * admin through two redirects to the dashboard.
+     */
+    public function route(string $peopleRoute = 'directory.members'): string
     {
         return match ($this) {
-            self::InviteTeam => 'members',
+            self::InviteTeam => $peopleRoute,
             self::ConnectApp => 'clients',
             self::DefineRoles => 'roles',
             self::BrandSignIn => 'appearance',
