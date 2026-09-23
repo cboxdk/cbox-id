@@ -33,12 +33,6 @@ export { Icon, type IconProps } from './Icon';
 export { type IconName, iconNames, iconPaths } from './icons';
 export { Input, type InputProps, Textarea } from './Input';
 export {
-    ExpiryField,
-    type KeyLifecycle,
-    type KeyLifetimeOption,
-    KeyStatusPill,
-    KeyTimeline,
-} from './KeyLifecycle';
     type InviteAccessRole,
     InviteForm,
     type InviteFormProps,
@@ -46,6 +40,13 @@ export {
     type RoleOption,
     roleSelectOptions,
 } from './InviteForm';
+export {
+    ExpiryField,
+    type KeyLifecycle,
+    type KeyLifetimeOption,
+    KeyStatusPill,
+    KeyTimeline,
+} from './KeyLifecycle';
 export { Kv, KvList } from './Kv';
 export { LinkConfirmation, type LinkConfirmationContent } from './LinkConfirmation';
 export { type MetadataRow, MetadataRows } from './MetadataRows';
