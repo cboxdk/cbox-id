@@ -156,7 +156,7 @@ export default function ClientDetail({
                         background: 'var(--accent-soft)',
                     }}
                 >
-                    Your password is confirmed. Press <strong>Rotate secret</strong> below to issue
+                    Your password is confirmed. Press <strong>Rotate secret</strong> below to create
                     the new one.
                 </output>
             )}
@@ -213,7 +213,7 @@ export default function ClientDetail({
                         <p className="label">Client secret</p>
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                             {client.confidential
-                                ? 'Stored as a hash and shown only once. Rotate to issue a new one.'
+                                ? 'Stored as a hash and shown only once. Rotate the secret to get a new one.'
                                 : 'None — this is a public app and uses PKCE instead of a secret.'}
                         </p>
                     </div>
@@ -505,7 +505,7 @@ export default function ClientDetail({
             {mayManage && client.confidential && !client.signsAssertions && (
                 <Panel
                     title="Rotate secret"
-                    description="Issue a fresh client secret. The current one stops working — update the app before rotating."
+                    description="Create a new client secret. The current one stops working the moment you do — there is no overlap window, so be ready to update the app straight away."
                 >
                     <Button size="sm" onClick={() => setConfirming('rotate')}>
                         Rotate secret
@@ -528,7 +528,8 @@ export default function ClientDetail({
                 open={confirming === 'rotate'}
                 onOpenChange={(open) => !open && setConfirming(null)}
                 name={client.name}
-                verb="Rotate"
+                verb="Rotate secret"
+                title={`Rotate the secret for ${client.name}?`}
                 consequence="The current client secret stops working immediately and cannot be recovered — every deployment still holding it starts failing authentication."
                 onConfirm={() => {
                     setConfirming(null);
@@ -589,8 +590,8 @@ function RevealedSecret({
                 Copy your client secret now
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                Only a hash is stored, so it won't be shown again. If you lose it, rotate to issue a
-                new one.
+                Only a hash is stored, so it won't be shown again. If you lose it, rotate the secret
+                to get a new one.
             </p>
 
             {/*

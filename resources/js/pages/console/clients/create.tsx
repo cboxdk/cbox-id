@@ -375,7 +375,7 @@ export default function CreateClient({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Register app
+                        Create app
                     </Button>
                     <Button asChild>
                         <Link href={indexHref}>Cancel</Link>

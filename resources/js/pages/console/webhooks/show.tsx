@@ -255,7 +255,11 @@ export default function WebhookDetail({
                             title="Signing secret"
                             description="The secret signs every delivery's HMAC. It is stored sealed and can't be retrieved — rotating issues a new one, shown once."
                         >
-                            <Button size="sm" icon="refresh" onClick={() => setConfirming('rotate')}>
+                            <Button
+                                size="sm"
+                                icon="refresh"
+                                onClick={() => setConfirming('rotate')}
+                            >
                                 Rotate secret
                             </Button>
                         </Panel>
@@ -351,7 +355,8 @@ export default function WebhookDetail({
                 open={confirming === 'rotate'}
                 onOpenChange={(open) => setConfirming(open ? 'rotate' : null)}
                 name={endpoint.url}
-                verb="Rotate"
+                verb="Rotate secret"
+                title="Rotate this endpoint's signing secret?"
                 consequence="The current signing secret stops verifying immediately and cannot be recovered — your receiver rejects every delivery until it is updated."
                 onConfirm={() => {
                     setConfirming(null);

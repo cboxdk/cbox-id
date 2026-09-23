@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Requests\Console\RenameOrganizationRequest;
+use App\Platform\OrganizationActivity;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
@@ -37,6 +38,7 @@ final readonly class AccountSettingsController extends ConsoleController
     public function update(
         RenameOrganizationRequest $request,
         Organizations $organizations,
+        OrganizationActivity $activity,
     ): RedirectResponse {
         $organization = $this->acting($organizations);
 
@@ -53,8 +55,31 @@ final readonly class AccountSettingsController extends ConsoleController
          * refuses a cross-environment save outright, so a rename issued from any other
          * host raises rather than silently writing nowhere.
          */
+        $from = $organization->name;
+        $to = $request->name();
+
+        if ($to === $from) {
+            return back();
+        }
+
         app(PlatformRoot::class)->run(
-            fn () => $organization->forceFill(['name' => $request->name()])->save(),
+            fn () => $organization->forceFill(['name' => $to])->save(),
+        );
+
+        /*
+         * ON THE ACCOUNT'S OWN LOG, under the same action the environment console's
+         * Settings page writes — one act, one name, whichever page did it. This page wrote
+         * nothing, so the name on every invoice and in every invitation email could change
+         * with no record of who changed it or what it was before.
+         */
+        $activity->record(
+            $organization->id,
+            'organization.renamed',
+            $this->scope->actorId(),
+            targetType: 'organization',
+            targetId: $organization->id,
+            context: ['from' => $from, 'to' => $to],
+            request: $request,
         );
 
         return back()->with('status', 'Account settings saved.');
