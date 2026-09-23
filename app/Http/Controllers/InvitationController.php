@@ -4,138 +4,105 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\InvitationRoleGrant;
+use App\Http\Props\Auth\LinkConfirmationProps;
+use App\Http\Props\Auth\LinkFact;
 use App\Platform\Enums\RefusedFactor;
-use App\Platform\GrantAccessRole;
+use App\Platform\Invitations\AppReturnTargets;
+use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\PlatformAuth;
 use App\Platform\SsoRefusal;
-use Cbox\Id\AccessControl\Enums\GrantSource;
-use Cbox\Id\AccessControl\Exceptions\GrantRefused;
-use Cbox\Id\AccessControl\Exceptions\UnknownRole;
-use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
-use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
- * Accept an organization invitation. The token was emailed to the invitee, so
- * possessing it proves control of that address — the same trust as a magic link.
- * Accepting resolves (or creates) the subject for the invited email, grants the
- * membership, and signs them in. Membership is never created without this action.
+ * Accept an organization invitation. The token was emailed to the invitee, so possessing
+ * it proves control of that address — the same trust as a magic link. Accepting resolves
+ * (or creates) the subject for the invited email, grants the membership, and signs them in.
+ * Membership is never created without this action.
+ *
+ * TWO REQUESTS. The link opens {@see self::show()}, which says who is inviting whom to what
+ * and spends nothing; the button POSTs to {@see self::accept()}. Accepting on the GET meant a
+ * mail scanner fetching the link accepted the invitation — and was signed in as the invitee.
+ *
+ * AND THEN BACK TO THE APP. An invitation sent on an app's behalf carries where in that app
+ * to land ({@see AppReturnTargets}), re-checked here against the
+ * app's registered origins; without one the person lands in this console as before.
  *
  * If that organization mandates SSO, the joining still happens and the session does not:
  * they are a member, and their way in is the identity provider their administrator chose.
  */
-final class InvitationController extends Controller
+final readonly class InvitationController extends PageController
 {
-    public function accept(Request $request, string $token, Invitations $invitations, Subjects $subjects, PlatformAuth $auth, GrantAccessRole $access, AuditLog $audit): RedirectResponse
+    public function show(string $token, OrganizationInvitations $invitations): Response|RedirectResponse
     {
-        $invitation = $invitations->byToken($token);
+        $preview = $invitations->preview($token);
 
-        if ($invitation === null || ! $invitation->isPending()) {
+        if ($preview === null) {
             return redirect()->route('login')->with('error', 'That invitation is invalid or has expired.');
         }
 
-        $subject = $subjects->findByEmail($invitation->email) ?? $subjects->create($invitation->email);
+        $facts = [new LinkFact('Organization', $preview->organizationName)];
 
+        if ($preview->inviterName !== null) {
+            $facts[] = new LinkFact('Invited by', $preview->inviterName);
+        }
+
+        $facts[] = new LinkFact('Role', $preview->role->label());
+        $facts[] = new LinkFact('Your email', $preview->email);
+
+        if ($preview->appName !== null) {
+            $facts[] = new LinkFact('App', $preview->appName);
+        }
+
+        return $this->page('auth/join-organization', 'Join '.$preview->organizationName, [
+            'confirmation' => new LinkConfirmationProps(
+                heading: 'Join '.$preview->organizationName.'?',
+                lead: $preview->appName === null
+                    ? 'You have been invited to join this organization. Accept to become a member and sign in.'
+                    : 'You have been invited to join this organization. Accept to become a member, and we will take you to '.$preview->appName.'.',
+                actionLabel: 'Accept invitation',
+                actionUrl: route('invitation.accept.store', $token),
+                facts: $facts,
+                note: 'Not expecting this? Close this page — nothing happens unless you accept.',
+            ),
+        ]);
+    }
+
+    public function accept(Request $request, string $token, OrganizationInvitations $invitations, PlatformAuth $auth): HttpResponse
+    {
         try {
-            $invitations->accept($token, $subject->id);
+            $accepted = $invitations->accept($token);
         } catch (InvalidInvitation) {
             return redirect()->route('login')->with('error', 'That invitation is invalid or has expired.');
         }
 
-        // Apply any access roles chosen for this invite, then clear them — so the
-        // invitee lands already holding the roles the admin picked.
-        // THIS INVITATION'S grants. Selected by (org, email) they included every grant
-        // ever parked for that address — among them the ones an administrator had
-        // deliberately revoked, because revoking updated the invitation and left the
-        // grants where they were.
-        $grants = InvitationRoleGrant::query()
-            ->where('invitation_id', $invitation->id)
-            ->get();
-
-        /** @var list<string> $withheld */
-        $withheld = [];
-
-        // The SoD gate applies to a deferred grant exactly as it does to a live one. The
-        // invite form refuses a toxic SET up front, but policies can be defined between
-        // the invite and its acceptance, and the invitee may already hold roles here from
-        // an earlier membership. A conflicting grant is skipped, not fatal: the person
-        // still joins, and the governance screen reports what was withheld.
-        foreach ($grants as $grant) {
-            try {
-                // THROUGH THE GATE, not past it. This checked SoD itself and then called
-                // `Roles::assign()` raw — the same rule as {@see GrantAccessRole}, applied
-                // through a second signature, which is the drift the comment below already
-                // worried about. A refusal is skipped here exactly as it was: the person
-                // still joins, and the conflicting grant simply does not happen.
-                if ($access->grant($invitation->organization_id, $subject->id, $grant->role_id, GrantSource::Manual) !== null) {
-                    continue;
-                }
-            } catch (UnknownRole|GrantRefused) {
-                // The role was retired or deleted between the invitation and the click —
-                // an app ships a manifest without it, or an admin removes it. Skipped for
-                // the same reason a conflicting grant is skipped: the person still joins.
-                //
-                // Uncaught, this was not a 500 but a permanent one. The acceptance above
-                // commits in its own transaction, so the invitation is already spent when
-                // the throw happens: the invitee is a member holding an arbitrary prefix
-                // of their roles, is never signed in, and every retry answers "That
-                // invitation is invalid or has expired". The parked grant row survives
-                // too, so the next invitation to the same address burns identically. The
-                // only exits were database surgery or un-retiring the role.
-                //
-                // The framework's directory reconcile learned this exact lesson one
-                // caller earlier; this is the caller nobody updated.
-                //
-                // `GrantRefused` is caught alongside it because `assign()` throws that
-                // too. It is pre-empted today by the SoD check above — but those are two
-                // different classes applying the same rule through different signatures,
-                // and if they ever drift apart the identical permanent failure returns.
-                $withheld[] = $grant->role_id;
-            }
-        }
-
-        InvitationRoleGrant::query()
-            ->where('invitation_id', $invitation->id)
-            ->delete();
-
-        if ($withheld !== []) {
-            $audit->record(new AuditEvent(
-                action: 'role.grant_withheld',
-                // On the ORGANIZATION's chain. Recorded without it, the entry went to the
-                // system trail — where the admin who needs to know a grant was withheld
-                // cannot see it, while the sibling SoD case's own comment promises "the
-                // governance screen reports what was withheld".
-                organizationId: $invitation->organization_id,
-                actorType: ActorType::System,
-                targetType: 'user',
-                targetId: $subject->id,
-                context: ['organization_id' => $invitation->organization_id, 'role_ids' => $withheld, 'reason' => 'role retired before the invitation was accepted'],
-            ));
-        }
-
-        // The membership is committed above and STAYS committed: the invitation was valid,
-        // the roles are granted, and this person is a member of the organization now. What
-        // a mandate refuses is the session, not the joining — an invitation is an emailed
-        // bearer token, the same trust as a magic link, and an organization that requires
-        // SSO has said that is not what opens a session here.
+        // The membership is committed and STAYS committed: the invitation was valid, the
+        // roles are granted, and this person is a member now. What a mandate refuses is the
+        // session, not the joining — an invitation is an emailed bearer token, and an
+        // organization that requires SSO has said that is not what opens a session here.
         //
-        // Asked after the acceptance rather than before it, and the order is what makes the
-        // check work at all: the membership that mandates SSO is the one this request just
-        // created, so a check above would have walked a subject who belonged to nothing.
-        if (! $auth->localSignInAllowedFor($subject->id)) {
-            SsoRefusal::hold($subject->id, RefusedFactor::Invitation);
+        // Asked after the acceptance rather than before it: the membership that mandates
+        // SSO is the one this request just created.
+        if (! $auth->localSignInAllowedFor($accepted->subjectId)) {
+            SsoRefusal::hold($accepted->subjectId, RefusedFactor::Invitation);
 
             return redirect()->route('login');
         }
 
-        $auth->establish($request, $subject->id, ['invitation']);
-        $auth->switchOrganization($request, $invitation->organization_id);
+        $auth->establish($request, $accepted->subjectId, ['invitation']);
+        $auth->switchOrganization($request, $accepted->organizationId());
+
+        $returnTo = $accepted->returnTarget?->url;
+
+        // `Inertia::location()`, not a redirect: the button posts over XHR, and an XHR
+        // cannot follow a redirect to another origin. This answers with a full-page visit.
+        if ($returnTo !== null) {
+            return Inertia::location($returnTo);
+        }
 
         return redirect()->route('dashboard')->with('status', 'Invitation accepted — welcome aboard.');
     }

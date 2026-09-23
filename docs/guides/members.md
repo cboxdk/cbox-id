@@ -1,0 +1,82 @@
+---
+title: Members and invitations
+weight: 12
+description: Inviting people into an organization, sending them back to your app afterwards, handing ownership over, leaving, and deleting an organization.
+---
+
+# Members and invitations
+
+**Console page:** People › Members
+
+Everyone who can sign in to this organization, what they may administer here, and the
+invitations nobody has accepted yet. The same invite form and the same pending list
+appear on the environment console's view of an organization (Organizations › *name*),
+and a customer's own team uses the same form under Identity platform › Administrators.
+
+## Inviting someone
+
+**Invite member** asks for three things:
+
+- **Email address.** They get a mail from the organization, naming who invited them.
+- **Role** — what they may administer here. **Admin** manages people, apps, roles and
+  settings; **Member** signs in to the organization's apps and nothing more. There is no
+  "Owner" choice: an organization has one owner, and ownership is
+  [transferred](#handing-the-organization-over), never handed out from a list.
+- **Access roles** (optional) — [roles](roles.md) in your apps, granted the moment they
+  accept, so there is no second step after they join.
+
+Nobody is added until they accept. The link in the mail opens a page that says which
+organization, who invited them, the role and the address it was sent to; **accepting is
+a button on that page**, never the link itself. Mail scanners (Outlook Safe Links and
+the like) open every link in a message before a person does — a link that joined on
+opening was joined by the scanner.
+
+The link is good for 7 days.
+
+### Sending them back to your app
+
+By default a new member lands in this console. When the invitation comes from your app,
+open **Send them to an app afterwards…**, pick the app, and give a **return address** —
+a page in that app, such as `https://app.example.com/welcome`.
+
+The return address has to be on one of the **origins** (scheme, host and port) the app
+registered as a redirect URI. `https://app.example.com/auth/callback` registered means
+any page on `https://app.example.com` is allowed; another host, another port or plain
+`http` (except on `localhost`) is refused when you send, with the reason next to the
+field. It is checked again when the invitation is accepted: if the app's redirect URIs
+changed in the meantime and the address is no longer covered, the person still joins
+and lands in the console instead.
+
+Choosing an app without a return address still names the app on the invitation.
+
+### Invited, not joined yet
+
+Each pending invitation shows who sent it, when it expires and which app it is for.
+
+- **Send again** mails a fresh link (at most once a minute per address). The old link
+  stops working; the role, access roles and return address carry over.
+- **Withdraw** kills the link and drops the access roles it was carrying.
+
+## Handing the organization over
+
+The owner can make any other member the owner: open the **⋯** menu on their row and
+choose **Transfer ownership**, then type their address to confirm. They become the owner
+and you become an admin. Only the new owner can hand it back.
+
+An environment administrator does the same from the organization's page with
+**Make owner**. That also gives an organization created from the environment console
+(which starts without an owner) its first one; any current owner becomes an admin.
+
+## Leaving
+
+Anyone can leave with **Leave** on their own row. The last owner cannot: transfer
+ownership first, or delete the organization. If you belong to another organization
+here you are moved to it; otherwise you are signed out.
+
+## Deleting the organization
+
+The owner can delete the organization under **Settings › Delete organization**, after
+typing its name and confirming their password. Every member loses access at once and it
+disappears from every list; the records are kept for the audit trail. An organization
+that owns identity-provider projects (a customer account) is closed from Identity
+platform instead.

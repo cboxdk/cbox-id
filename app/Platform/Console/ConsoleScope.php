@@ -744,6 +744,29 @@ class ConsoleScope
         return $this->membershipRole() !== null;
     }
 
+    /**
+     * The route that lists this organization's PEOPLE, or null on a plane that has none.
+     *
+     * TWO PAGES, and which one depends on the organization. A customer's team is its
+     * administrators (Identity platform › Administrators, `members`); every other
+     * organization's people are on People › Members (`directory.members`). Links that
+     * hard-coded `members` — the setup guide's "Invite your team", the Roles page's
+     * "console access" — sent a tenant organization's admin to a page that answered by
+     * redirecting them to projects, which redirected them to the dashboard: two hops to
+     * nowhere, from the first step of the setup guide.
+     *
+     * The environment plane has no such page for an organization; its rosters live on each
+     * organization's own detail page.
+     */
+    public function peopleRoute(): ?string
+    {
+        if ($this->plane() === ConsolePlane::Environment) {
+            return null;
+        }
+
+        return $this->ownsIdentityProviders() ? 'members' : 'directory.members';
+    }
+
     /** @throws AuthorizationException */
     public function assertPlatformOperator(): void
     {

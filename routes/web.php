@@ -293,7 +293,10 @@ Route::middleware(['plane:console', 'platform.guest'])->group(function (): void 
 
     // The branded door: same page, painted in one organization's colours.
     Route::get('/o/{slug}/login', [LoginController::class, 'show'])->name('login.branded');
-    Route::get('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem');
+    // Opening the link renders a button; pressing it signs in. Mail scanners fetch every
+    // link they see, so a GET that redeemed handed the session to the scanner.
+    Route::get('/magic/{token}', [MagicLinkController::class, 'show'])->name('magic.redeem');
+    Route::post('/magic/{token}', [MagicLinkController::class, 'redeem'])->name('magic.redeem.store');
 
     // Password reset — request a link, then choose a new password from the token.
     // Explicitly closed to an impersonator (the guest guard already bounces an
@@ -335,10 +338,20 @@ Route::post('/login/step-up/resend', [OtpStepUpController::class, 'resend'])->na
 // Invitation acceptance — the token is the proof; accepting signs the invitee in.
 // Blocked during impersonation (defense-in-depth: never mutate account state, and
 // never re-establish a session, while acting as someone).
-Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware(BlockDuringImpersonation::class)->name('invitation.accept');
+//
+// THE GET SPENDS NOTHING. It shows who is inviting whom to what, and the POST accepts:
+// Outlook Safe Links and every other mail scanner fetch the link before the invitee does,
+// and on a GET that fetch accepted the invitation and signed the SCANNER in.
+Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
+    Route::get('/invitations/{token}/accept', [InvitationController::class, 'show'])->name('invitation.accept');
+    Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept.store');
 
-// Email verification — the token is the proof; clickable while signed in or out.
-Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->middleware(BlockDuringImpersonation::class)->name('verification.verify');
+    // Email verification — the token is the proof; clickable while signed in or out. The
+    // same two steps, for the same reason: a scanner confirming the address first left the
+    // person holding a link that said it was invalid.
+    Route::get('/verify-email/{token}', [EmailVerificationController::class, 'show'])->name('verification.verify');
+    Route::post('/verify-email/{token}', [EmailVerificationController::class, 'verify'])->name('verification.verify.store');
+});
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
 
@@ -448,7 +461,10 @@ Route::middleware('plane:console')->group(function (): void {
         Route::post('/setup/finish', [PortalSetupController::class, 'finish'])->name('portal.finish');
     });
 
-    Route::get('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter');
+    // The link is pasted into mail, Slack or Teams, and every one of those previews it —
+    // so opening it renders a button and only the POST spends it.
+    Route::get('/setup/{token}', [AdminPortalController::class, 'show'])->name('portal.enter');
+    Route::post('/setup/{token}', [AdminPortalController::class, 'enter'])->name('portal.enter.store');
 });
 
 /*
@@ -570,9 +586,14 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // missing from the sub-nav.
     Route::get('/directory/members', [DirectoryMemberController::class, 'index'])->name('directory.members');
     Route::post('/directory/members/invitations', [DirectoryMemberController::class, 'invite'])->name('directory.members.invite');
+    Route::post('/directory/members/invitations/{invitation}/resend', [DirectoryMemberController::class, 'resendInvitation'])->name('directory.members.invitations.resend');
     Route::delete('/directory/members/invitations/{invitation}', [DirectoryMemberController::class, 'revokeInvitation'])->name('directory.members.invitations.revoke');
+    // Your own membership: leaving is its own verb, refused for the last owner.
+    Route::post('/directory/members/leave', [DirectoryMemberController::class, 'leave'])->name('directory.members.leave');
     Route::patch('/directory/members/{member}/role', [DirectoryMemberController::class, 'changeRole'])->name('directory.members.role');
     Route::post('/directory/members/{member}/access', [DirectoryMemberController::class, 'setAccessRole'])->name('directory.members.access');
+    // Ownership is TRANSFERRED, never picked from a role list — owner only.
+    Route::post('/directory/members/{member}/transfer-ownership', [DirectoryMemberController::class, 'transferOwnership'])->name('directory.members.transfer-ownership');
     Route::delete('/directory/members/{member}', [DirectoryMemberController::class, 'remove'])->name('directory.members.remove');
 
     /*
@@ -776,6 +797,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // environment's identity is on the environment plane alone.
     Route::get('/settings', [SettingsController::class, 'show'])->name('settings');
     Route::patch('/settings', [SettingsController::class, 'rename'])->name('settings.rename');
+    // The owner closes their own organization — typed-name confirmation on the page, a
+    // fresh password on the route.
+    Route::delete('/settings/organization', [SettingsController::class, 'destroyOrganization'])
+        ->middleware('sudo')
+        ->name('settings.organization.destroy');
     // Appearance: the SAME component the environment plane serves. What is being
     // themed — an organization's own sign-in, or the environment default every
     // organization inherits — is an explicit choice on the page, offered on the
@@ -972,8 +998,12 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::patch('/organizations/{organization}/members/{member}/role', [EnvironmentOrganizationController::class, 'changeMemberRole'])->name('environment.organizations.members.role');
         Route::post('/organizations/{organization}/members/{member}/access', [EnvironmentOrganizationController::class, 'setAccessRole'])->name('environment.organizations.members.access');
         Route::delete('/organizations/{organization}/members/{member}', [EnvironmentOrganizationController::class, 'removeMember'])->name('environment.organizations.members.remove');
+        // Ownership is transferred, not picked from the role list — this is also how an
+        // organization created here, which starts with no owner, gets its first one.
+        Route::post('/organizations/{organization}/members/{member}/transfer-ownership', [EnvironmentOrganizationController::class, 'transferOwnership'])->name('environment.organizations.members.transfer-ownership');
 
         Route::post('/organizations/{organization}/invitations', [EnvironmentOrganizationController::class, 'invite'])->name('environment.organizations.invitations.store');
+        Route::post('/organizations/{organization}/invitations/{invitation}/resend', [EnvironmentOrganizationController::class, 'resendInvitation'])->name('environment.organizations.invitations.resend');
         Route::delete('/organizations/{organization}/invitations/{invitation}', [EnvironmentOrganizationController::class, 'revokeInvitation'])->name('environment.organizations.invitations.revoke');
 
         Route::post('/organizations/{organization}/domains', [EnvironmentOrganizationController::class, 'addDomain'])->name('environment.organizations.domains.store');

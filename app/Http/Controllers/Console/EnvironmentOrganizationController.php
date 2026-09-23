@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\PaginationProps;
+use App\Http\Props\Shared\PendingInvitationProps;
+use App\Http\Props\Shared\ReturnAppProps;
+use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\AddOrganizationDomainRequest;
 use App\Http\Requests\Console\AddOrganizationMemberRequest;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
-use App\Mail\InvitationMail;
-use App\Models\InvitationRoleGrant;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
-use App\Platform\MailLinks;
+use App\Platform\Invitations\AppReturnTargets;
+use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Invitations\Exceptions\InvitationRefused;
+use App\Platform\Invitations\ValueObjects\Inviter;
+use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
+use App\Platform\Membership\MembershipLifecycle;
+use App\Platform\Membership\MembershipRefused;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
@@ -27,10 +34,8 @@ use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
-use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
@@ -41,7 +46,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Response;
 
@@ -127,7 +131,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             ->with('status', 'Organization created.');
     }
 
-    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog): Response
+    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog, OrganizationInvitations $invitations, AppReturnTargets $targets): Response
     {
         $this->assertEnvironmentAdmin();
 
@@ -179,17 +183,26 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
                         'role' => route('environment.organizations.members.role', [$model->id, $membership->user_id]),
                         'accessRole' => route('environment.organizations.members.access', [$model->id, $membership->user_id]),
                         'remove' => route('environment.organizations.members.remove', [$model->id, $membership->user_id]),
+                        'transfer' => route('environment.organizations.members.transfer-ownership', [$model->id, $membership->user_id]),
                     ],
                 ];
             }, $roster->items()),
             'pagination' => PaginationProps::from($roster),
-            'invitations' => $this->invitationProps($model->id),
+            'invitations' => array_map(
+                static fn (PendingInvitationSummary $pending): PendingInvitationProps => PendingInvitationProps::from(
+                    $pending,
+                    route('environment.organizations.invitations.resend', [$model->id, $pending->id]),
+                    route('environment.organizations.invitations.revoke', [$model->id, $pending->id]),
+                ),
+                $invitations->pending($model->id),
+            ),
             'domains' => $this->domainProps($model->id),
             'accessRoles' => $this->accessRoleProps($accessRoles, $appNames),
-            'assignableRoles' => array_map(static fn (MembershipRole $role): array => [
-                'value' => $role->value,
-                'label' => $role->label(),
-            ], OrgRoles::assignable()),
+            // The same lists the organization's own People page offers — one set of roles,
+            // wherever somebody is invited from.
+            'roleOptions' => RoleOptionProps::organization(),
+            'rosterRoleOptions' => RoleOptionProps::organization(withOwner: true),
+            'apps' => array_map(ReturnAppProps::from(...), $targets->appsFor($model->id)),
             'indexHref' => route('environment.organizations'),
             'urls' => [
                 'update' => route('environment.organizations.update', $model->id),
@@ -418,63 +431,70 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     public function invite(
         InviteOrganizationMemberRequest $request,
         string $organization,
-        Invitations $invitations,
-        MailLinks $links,
-        OrgAccessRoles $catalog,
+        OrganizationInvitations $invitations,
     ): RedirectResponse {
         $this->assertEnvironmentAdmin();
 
         $model = $this->resolve($organization);
 
-        // The invitee accepts via the emailed token — nobody is added without consent.
-        $pending = $invitations->invite($model->id, $request->email(), $request->role());
-
-        Mail::to($request->email())->send(new InvitationMail(
-            organization: $model->name,
-            // The administrator's NAME comes from their subject: a membership carries
-            // authority, not identity.
-            inviter: $this->inviterName(),
-            url: $links->route('invitation.accept', $pending->token),
-        ));
-
-        /*
-         * Park the chosen access roles, KEYED TO THIS INVITATION rather than to the
-         * address: a grant parked by (org, email) outlived the invitation that chose it
-         * and was collected by the next one sent to the same person.
-         */
-        $assignable = $catalog->assignable($model->id)->pluck('id')->all();
-
-        foreach ($request->accessRoleIds() as $roleId) {
-            if (! in_array($roleId, $assignable, true)) {
-                continue;
-            }
-
-            InvitationRoleGrant::query()->firstOrCreate([
-                'invitation_id' => $pending->invitation->id,
-                'role_id' => $roleId,
-            ], [
-                'organization_id' => $model->id,
-                'email' => $request->email(),
-            ]);
+        // The invitee accepts via the emailed token — nobody is added without consent. The
+        // same service the organization's own People page uses, so an invitation from here
+        // offers the same roles, parks access roles the same way and can be re-sent.
+        try {
+            $sent = $invitations->send($request->toInvitation($model->id, $this->inviter()));
+        } catch (InvitationRefused $refused) {
+            return back()->withInput()->withErrors([$refused->field() => $refused->getMessage()]);
         }
 
-        return back()->with('status', 'Invitation sent to '.$pending->invitation->email.'.');
+        return back()->with('status', 'Invitation sent to '.$sent->invitation->email.'.');
     }
 
-    public function revokeInvitation(string $organization, string $invitation, Invitations $invitations): RedirectResponse
+    public function resendInvitation(string $organization, string $invitation, OrganizationInvitations $invitations): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $invitations->revoke($this->resolve($organization)->id, $invitation);
+        try {
+            $sent = $invitations->resend($this->resolve($organization)->id, $invitation, $this->inviter());
+        } catch (InvitationRefused $refused) {
+            return back()->with('error', $refused->getMessage());
+        }
 
-        /*
-         * AND THE ROLES IT PARKED. Revoking updated the invitation row and left the grants
-         * behind, so the roles just withdrawn sat waiting for the next invitation to that
-         * address to collect them.
-         */
-        InvitationRoleGrant::query()->where('invitation_id', $invitation)->delete();
+        return back()->with('status', 'Invitation sent again to '.$sent->invitation->email.'.');
+    }
 
-        return back()->with('status', 'Invitation revoked.');
+    public function revokeInvitation(string $organization, string $invitation, OrganizationInvitations $invitations): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        try {
+            $invitations->revoke($this->resolve($organization)->id, $invitation, $this->actorId());
+        } catch (InvitationRefused $refused) {
+            return back()->with('error', $refused->getMessage());
+        }
+
+        return back()->with('status', 'Invitation revoked. That link no longer works.');
+    }
+
+    /**
+     * Make a member the organization's owner.
+     *
+     * From OUTSIDE the organization, so there is no outgoing owner to name: every current
+     * owner steps down to admin. That is also how an organization this console created —
+     * which starts with no owner at all — gets its first one.
+     */
+    public function transferOwnership(string $organization, string $member, MembershipLifecycle $lifecycle): RedirectResponse
+    {
+        $this->assertEnvironmentAdmin();
+
+        $model = $this->resolve($organization);
+
+        try {
+            $lifecycle->transferOwnership($model->id, $member, null, $this->actorId());
+        } catch (MembershipRefused $refused) {
+            return back()->withErrors(['member' => $refused->getMessage()]);
+        }
+
+        return back()->with('status', 'Ownership transferred.');
     }
 
     public function addDomain(AddOrganizationDomainRequest $request, string $organization, DomainVerification $domains): RedirectResponse
@@ -532,25 +552,6 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         $domains->remove($this->ownedDomain($organization, $domain)->id);
 
         return back()->with('status', 'Domain removed.');
-    }
-
-    /**
-     * @return list<array{id: string, email: string, role: string, revokeHref: string}>
-     */
-    private function invitationProps(string $organizationId): array
-    {
-        $rows = [];
-
-        foreach (app(Invitations::class)->pending($organizationId) as $invitation) {
-            $rows[] = [
-                'id' => (string) $invitation->id,
-                'email' => (string) $invitation->email,
-                'role' => $invitation->role->value,
-                'revokeHref' => route('environment.organizations.invitations.revoke', [$organizationId, $invitation->id]),
-            ];
-        }
-
-        return $rows;
     }
 
     /**
@@ -709,6 +710,17 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     private function actorId(): string
     {
         return app(EnvironmentAdminAuth::class)->subjectId() ?? '';
+    }
+
+    /**
+     * Who is sending an invitation from here: the administrator's SUBJECT id, which the
+     * trail is keyed on, and the name to sign it with.
+     */
+    private function inviter(): Inviter
+    {
+        $actorId = $this->actorId();
+
+        return new Inviter($actorId === '' ? null : $actorId, $this->inviterName());
     }
 
     /**

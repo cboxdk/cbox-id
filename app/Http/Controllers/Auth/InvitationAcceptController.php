@@ -38,6 +38,7 @@ final readonly class InvitationAcceptController extends PageController
         string $token,
         Invitations $invitations,
         Organizations $organizations,
+        Subjects $subjects,
         PlatformRoot $platformRoot,
     ): Response|RedirectResponse {
         $invitation = $platformRoot->run(fn () => $invitations->byToken($token));
@@ -54,11 +55,19 @@ final readonly class InvitationAcceptController extends PageController
                 ->with('status', 'This invitation is no longer valid. Try signing in.');
         }
 
+        // WHO is asking, and for WHAT — the same three facts the organization invitation's
+        // page states, so a link from somebody unexpected reads as unexpected.
+        $inviter = is_string($invitation->invited_by)
+            ? $platformRoot->run(fn () => $subjects->find((string) $invitation->invited_by))
+            : null;
+
         return $this->page('auth/accept-invite', 'Accept invitation', [
             'email' => $invitation->email,
             'organizationName' => $platformRoot->run(
                 fn () => $organizations->find($invitation->organization_id)?->name,
             ),
+            'inviterName' => $inviter === null ? null : ($inviter->name ?? $inviter->email),
+            'roleLabel' => $invitation->role->label(),
             // Signed, and minted here. The token in it is the same one that got them to
             // this page; the signature is what stops the write being reached with another.
             'acceptUrl' => URL::signedRoute('organization.invite.accept.store', ['token' => $token]),

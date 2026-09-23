@@ -4,15 +4,37 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Props\Auth\LinkConfirmationProps;
 use App\Platform\PlatformAuth;
 use App\Platform\SignupProvisioner;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Exceptions\InvalidEmailVerification;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
+use Inertia\Response;
 
-final class EmailVerificationController extends Controller
+/**
+ * Confirming an address from the link mailed to it.
+ *
+ * TWO REQUESTS, and the first one spends nothing. Confirming used to happen on the GET, so
+ * the mail scanner that fetched the link before anybody read the message was the one that
+ * confirmed it — and the person who then clicked was told the link was invalid, about an
+ * address that was in fact now verified. The GET renders a button; the POST verifies.
+ */
+final readonly class EmailVerificationController extends PageController
 {
+    public function show(string $token): Response
+    {
+        return $this->page('auth/confirm-email', 'Confirm your email', [
+            'confirmation' => new LinkConfirmationProps(
+                heading: 'Confirm your email address',
+                lead: 'You opened the confirmation link we sent. Confirm to finish verifying this address.',
+                actionLabel: 'Confirm email address',
+                actionUrl: route('verification.verify.store', $token),
+            ),
+        ]);
+    }
+
     public function verify(
         string $token,
         EmailVerification $verification,

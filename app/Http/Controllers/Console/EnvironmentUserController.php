@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\AssignUserOrganizationRequest;
 use App\Http\Requests\Console\CreateEnvironmentUserRequest;
@@ -271,10 +272,10 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'is_string',
             )),
             'sessions' => $this->sessionProps($model->id),
-            'assignableRoles' => array_map(static fn ($role): array => [
-                'value' => $role->value,
-                'label' => $role->label(),
-            ], OrgRoles::assignable()),
+            // The same lists every other roster in the product offers. The membership rows
+            // name Owner so an owner's row says what it holds; nothing offers it.
+            'assignableRoles' => RoleOptionProps::organization(),
+            'membershipRoles' => RoleOptionProps::organization(withOwner: true),
             'indexHref' => route('environment.users'),
             'urls' => [
                 'update' => route('environment.users.update', $model->id),

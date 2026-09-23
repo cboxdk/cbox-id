@@ -108,6 +108,7 @@ final readonly class RoleController extends ConsoleController
         $owners = $showsEveryOrganization
             ? $this->scope->organizationNames($rows->pluck('organization_id'))
             : [];
+        $people = $this->scope->peopleRoute();
 
         return $this->page('console/roles/index', 'Roles', [
             'help' => HelpProps::for(HelpTopic::Roles),
@@ -156,11 +157,11 @@ final readonly class RoleController extends ConsoleController
                 'permissions' => array_slice($permissionsByRole[$first->id] ?? [], 0, 3),
             ],
             'createHref' => $this->url('roles.create'),
-            // "Console access" is the organization plane's own page; the environment plane
-            // has no equivalent, so the sentence stays and only the link goes.
-            'consoleAccessHref' => Route::has($this->scope->routeName('members'))
-                ? $this->url('members')
-                : null,
+            // "Console access" is set on the organization's PEOPLE page — which is a different
+            // page for a customer than for everybody else, and hard-coding the customer's
+            // sent a tenant admin through two redirects to the dashboard. The environment
+            // plane has no equivalent, so there the sentence stays and only the link goes.
+            'consoleAccessHref' => $people === null ? null : route($people),
         ]);
     }
 

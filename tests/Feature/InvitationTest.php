@@ -16,7 +16,7 @@ it('grants membership only after the invitee accepts the emailed link', function
     // No membership yet — only a pending invitation.
     expect(app(Memberships::class)->forOrganization($org->id))->toHaveCount(1);
 
-    $this->get('/invitations/'.$pending->token.'/accept')->assertRedirect(route('dashboard'));
+    $this->post('/invitations/'.$pending->token.'/accept')->assertRedirect(route('dashboard'));
 
     $subject = app(Subjects::class)->findByEmail('joiner@acme.test');
     expect($subject)->not->toBeNull()
@@ -28,11 +28,12 @@ it('rejects an unknown or reused invitation token', function () {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $pending = app(Invitations::class)->invite($org->id, 'once@acme.test', MembershipRole::Member);
 
-    $this->get('/invitations/'.$pending->token.'/accept')->assertRedirect(route('dashboard'));
+    $this->post('/invitations/'.$pending->token.'/accept')->assertRedirect(route('dashboard'));
 
-    // Reusing the token fails.
+    // Reusing the token fails — on the page and on the button alike.
+    $this->post('/invitations/'.$pending->token.'/accept')->assertRedirect(route('login'));
     $this->get('/invitations/'.$pending->token.'/accept')->assertRedirect(route('login'));
-    $this->get('/invitations/inv_does_not_exist/accept')->assertRedirect(route('login'));
+    $this->post('/invitations/inv_does_not_exist/accept')->assertRedirect(route('login'));
 });
 
 it('lets an admin revoke a pending invitation', function () {

@@ -6,6 +6,8 @@ import { Button, PasswordField, PasswordManagerIdentity } from '@/ui';
 type Props = PageProps<{
     email: string;
     organizationName: string | null;
+    inviterName: string | null;
+    roleLabel: string;
     /** Signed, and minted on this page — see the controller for why the write is signed too. */
     acceptUrl: string;
 }>;
@@ -17,7 +19,13 @@ type Props = PageProps<{
  * was sent to, and letting somebody change it here would let one person's invitation
  * create another person's account.
  */
-export default function AcceptInvite({ email, organizationName, acceptUrl }: Props) {
+export default function AcceptInvite({
+    email,
+    organizationName,
+    inviterName,
+    roleLabel,
+    acceptUrl,
+}: Props) {
     const form = useForm({ password: '' });
 
     return (
@@ -26,11 +34,23 @@ export default function AcceptInvite({ email, organizationName, acceptUrl }: Pro
                 Accept your invitation
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Set a password to join{' '}
+                {inviterName !== null && (
+                    <>
+                        <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                            {inviterName}
+                        </span>{' '}
+                        invited you to help run{' '}
+                    </>
+                )}
+                {inviterName === null && 'Set a password to help run '}
                 <span className="font-medium" style={{ color: 'var(--foreground)' }}>
                     {organizationName ?? 'the organization'}
                 </span>{' '}
                 as{' '}
+                <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+                    {roleLabel}
+                </span>
+                . You will sign in as{' '}
                 <span className="font-medium" style={{ color: 'var(--foreground)' }}>
                     {email}
                 </span>

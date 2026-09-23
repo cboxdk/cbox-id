@@ -448,6 +448,31 @@ function setUserPassword(string $userId, array $changes = []): TestResponse
         ]);
 }
 
+/**
+ * Provision an account + environment and act as its env admin (the control plane).
+ *
+ * Here rather than in the file that first needed it: under `--parallel` a helper declared
+ * in one test file does not exist in the worker running another.
+ */
+function craftedEnvAdmin(): void
+{
+    platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+}
+
 /** Invite somebody to the acting organization's own roster. */
 function inviteToDirectory(array $changes = []): TestResponse
 {

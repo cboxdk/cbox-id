@@ -38,11 +38,11 @@ final readonly class GetStartedController extends ConsoleController
 
         return $this->page('console/get-started', 'Set up '.($organization === null ? 'your organization' : $organization->name), [
             'eyebrow' => 'Getting started',
-            'steps' => array_map(static fn (SetupStep $step): array => [
+            'steps' => array_map(fn (SetupStep $step): array => [
                 'key' => $step->key->value,
                 'title' => $step->title(),
                 'description' => $step->description(),
-                'href' => route($step->route()),
+                'href' => route($step->route($this->scope->peopleRoute() ?? 'directory.members')),
                 'actionLabel' => $step->actionLabel(),
                 'done' => $step->done,
                 'help' => HelpProps::for($step->helpTopic()),

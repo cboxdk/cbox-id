@@ -22,10 +22,11 @@ console explains itself in two or three sentences; when that is not enough, the
 
 1. [Roles](roles.md) — decide who can do what before you invite anyone, and
    [permissions](permissions.md) if you want that spelled out here rather than in each app.
-2. [Apps & API keys](apps-and-api-keys.md) — register the first app people will sign in to.
-3. [Single sign-on](single-sign-on.md) — let people use the company account they already have.
-4. [Social sign-in](social-sign-in.md) — Google, GitHub, Apple and the rest, plus how connecting one to an existing account works.
-5. [Sync users in](sync-users-in.md) — have your provider create and deactivate people for you.
+2. [Members and invitations](members.md) — invite the team, send them back to your app, hand ownership over.
+3. [Apps & API keys](apps-and-api-keys.md) — register the first app people will sign in to.
+4. [Single sign-on](single-sign-on.md) — let people use the company account they already have.
+5. [Social sign-in](social-sign-in.md) — Google, GitHub, Apple and the rest, plus how connecting one to an existing account works.
+6. [Sync users in](sync-users-in.md) — have your provider create and deactivate people for you.
 
 ## Keeping it running
 

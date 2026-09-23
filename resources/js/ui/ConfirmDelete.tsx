@@ -18,6 +18,12 @@ export interface ConfirmDeleteProps {
      * Billing?" names the wrong thing, "Rotate the secret for Billing?" does not.
      */
     title?: string;
+    /**
+     * The confirm button's label, when the title's verb does not stand on its own — a
+     * title reads "Transfer ownership to dana@acme.test?", and a button reading "Transfer
+     * ownership to" does not. Defaults to `verb`.
+     */
+    actionLabel?: string;
     consequence?: ReactNode;
     /**
      * WHICH ENVIRONMENT this is happening in, named in the dialog.
@@ -67,6 +73,7 @@ function Confirmation({
     name,
     verb = 'Delete',
     title,
+    actionLabel,
     consequence = 'This cannot be undone.',
     environment,
     confirming = false,
@@ -110,7 +117,7 @@ function Confirmation({
                         loading={confirming}
                         onClick={confirm}
                     >
-                        {verb}
+                        {actionLabel ?? verb}
                     </Button>
                 </>
             }
@@ -134,7 +141,7 @@ function Confirmation({
                         Type <span className="mono">{name}</span> to confirm
                     </>
                 }
-                hint={`Exactly as shown — ${verb} stays disabled until it matches.`}
+                hint={`Exactly as shown — ${actionLabel ?? verb} stays disabled until it matches.`}
             >
                 <Input
                     value={typed}

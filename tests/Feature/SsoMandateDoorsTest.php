@@ -184,7 +184,7 @@ it('refuses a redeemed magic link, and ends the session the redemption started',
 
     // The door works. Without this the refusal below would also pass against a door that
     // was simply broken.
-    $this->get('/magic/'.app(MagicLink::class)->request('magic@acme.test'))
+    $this->post('/magic/'.app(MagicLink::class)->request('magic@acme.test'))
         ->assertRedirect(route('dashboard'));
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeTrue();
 
@@ -197,7 +197,7 @@ it('refuses a redeemed magic link, and ends the session the redemption started',
 
     nextRequest();
 
-    $this->get('/magic/'.$token)->assertRedirect(route('login'));
+    $this->post('/magic/'.$token)->assertRedirect(route('login'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
         // Redemption STARTS a framework session before the door ever sees it, so declining
@@ -258,7 +258,7 @@ it('lets an invitation be accepted under a mandate, and still refuses the sessio
 
     $invitation = app(Invitations::class)->invite($organizationId, 'invitee@acme.test', MembershipRole::Member);
 
-    $this->get(route('invitation.accept', $invitation->token))->assertRedirect(route('login'));
+    $this->post(route('invitation.accept.store', $invitation->token))->assertRedirect(route('login'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 
@@ -288,7 +288,7 @@ it('refuses an account member\'s magic link while leaving the federated landing 
     [$member] = doorMandatedAccount('magic-owner@acme.example');
     $subjectId = $member->id;
 
-    $this->get('/magic/'.app(MagicLink::class)->request('magic-owner@acme.example'))
+    $this->post('/magic/'.app(MagicLink::class)->request('magic-owner@acme.example'))
         ->assertRedirect(route('login'));
 
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()

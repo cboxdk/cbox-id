@@ -44,7 +44,7 @@ it('applies parked access roles when the invitation is accepted', function (): v
         'role_id' => $role->id,
     ]);
 
-    $this->get('/invitations/'.$pending->token.'/accept')->assertRedirect();
+    $this->post('/invitations/'.$pending->token.'/accept')->assertRedirect();
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
     expect($subject)->not->toBeNull()
@@ -92,7 +92,7 @@ it('accepts an invitation whose parked role was retired in the meantime', functi
 
     Role::query()->whereKey($retired->id)->update(['orphaned_at' => now()]);
 
-    $this->get('/invitations/'.$pending->token.'/accept')
+    $this->post('/invitations/'.$pending->token.'/accept')
         ->assertRedirect(route('dashboard'));
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
@@ -147,7 +147,7 @@ it('does not hand a later invitation the roles a revoked one had parked', functi
     // stores a hash, which is why the console's own flow mails the link instead.
     $second = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
 
-    $this->get('/invitations/'.$second->token.'/accept')->assertRedirect();
+    $this->post('/invitations/'.$second->token.'/accept')->assertRedirect();
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
 
@@ -208,7 +208,7 @@ it('applies only the accepted invitation’s roles when two are live for one add
         'role_id' => $ordinary->id,
     ]);
 
-    $this->get('/invitations/'.$second->token.'/accept')->assertRedirect();
+    $this->post('/invitations/'.$second->token.'/accept')->assertRedirect();
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
     $holds = fn (string $roleId): bool => RoleAssignment::query()
