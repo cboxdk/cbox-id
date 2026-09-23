@@ -198,7 +198,7 @@ it('draws the same invite form for a customer\'s administrators', function (): v
     ['subjectId' => $ownerId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerId);
 
-    visit('/members')
+    visit('/team')
         ->assertSee('Invite a teammate')
         ->assertSee('Send invitation')
         ->assertNoJavaScriptErrors()

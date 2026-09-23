@@ -46,10 +46,10 @@ it('adds its page to the host Overview area, labelled the way the page is titled
  * The route name is `sign-in-activity`, not `analytics.overview`, and the name is the
  * point rather than an incidental rename.
  *
- * The environment console already serves `environment.analytics` — the environment's
- * usage counters — and a nav entry claims its own sub-routes by prefix. Named
+ * The environment console used to serve its usage counters as `environment.analytics`
+ * (now `environment.usage`), and a nav entry claims its own sub-routes by prefix. Named
  * `analytics.overview`, this page's environment-plane route would have been
- * `environment.analytics.overview`, which that entry owns: two highlighted items in one
+ * `environment.analytics.overview`, which that entry owned: two highlighted items in one
  * sub-nav, which is the bug ConsoleNavigationTest pins for `environment.audit` and
  * `environment.audit-streams`. Pinned here so a later tidy-up that "restores" the
  * module-namespaced name has to argue with this first.
@@ -59,9 +59,9 @@ it('names its route outside the environment console\'s analytics namespace', fun
         ->and(Route::has('environment.sign-in-activity'))->toBeTrue()
         // The page it must not hide under, so this test fails if that one is renamed
         // into the way rather than only if this one is renamed under it.
-        ->and(Route::has('environment.analytics'))->toBeTrue()
+        ->and(Route::has('environment.usage'))->toBeTrue()
         ->and(app(ConsoleScope::class)->routeName('sign-in-activity'))
-        ->not->toStartWith('environment.analytics.');
+        ->not->toStartWith('environment.usage.');
 });
 
 it('renders a dashboard analytics card', function (): void {

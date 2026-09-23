@@ -68,7 +68,7 @@ final readonly class MyApprovalController extends ConsoleController
             $names[(string) $client->client_id] = (string) $client->name;
         }
 
-        return $this->page('console/approvals', 'Agent approvals', [
+        return $this->page('console/approvals', 'Approve agent requests', [
             'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names): array {
                 $clientId = (string) $request->client_id;
 

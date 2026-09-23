@@ -3,7 +3,7 @@ import { Dialog as Primitive } from 'radix-ui';
 import { type ReactNode, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { toggleTheme } from '@/lib/theme';
-import type { NavArea, User } from '@/types';
+import type { NavArea, User, WorkspaceLink } from '@/types';
 import { Icon } from '@/ui';
 import { EnvBadge } from './EnvBadge';
 
@@ -13,8 +13,12 @@ export interface MobileNavProps {
     subheading?: string | null;
     user: User | null;
     logoutUrl: string;
-    /** A link to the console host's own security page, on the environment plane. */
-    securityUrl?: string;
+    /** The person's own account page — shown here only where the rail has no My account area. */
+    accountUrl?: string;
+    /** The signed-in-user switcher. */
+    switchUserUrl?: string;
+    /** The environment console's way back to its workspace. */
+    workspace?: WorkspaceLink | null;
     /** Plane-specific content above the navigation — the organization switcher. */
     children?: ReactNode;
 }
@@ -40,7 +44,9 @@ export function MobileNav({
     subheading,
     user,
     logoutUrl,
-    securityUrl,
+    accountUrl,
+    switchUserUrl,
+    workspace = null,
     children,
 }: MobileNavProps) {
     const [open, setOpen] = useState(false);
@@ -86,6 +92,17 @@ export function MobileNav({
                     </div>
 
                     {children !== undefined && <div className="cbx-sheet-slot">{children}</div>}
+
+                    {/*
+                        The topbar's back crumb, on a phone. A plain anchor: the workspace
+                        is on another host, so this is a page load rather than a visit.
+                    */}
+                    {workspace !== null && (
+                        <a href={workspace.href} className="nav-link" style={{ margin: '0 8px' }}>
+                            <Icon name="arrow-left" className="w-[1.15rem] h-[1.15rem]" />
+                            Back to {workspace.name}
+                        </a>
+                    )}
 
                     <nav className="cbx-sheet-nav" aria-label="Navigation">
                         {areas.map((area) => (
@@ -147,10 +164,22 @@ export function MobileNav({
                             </div>
                         )}
 
-                        {securityUrl !== undefined && (
-                            <a href={securityUrl} className="nav-link w-full">
-                                <Icon name="shield-check" className="w-[1.15rem] h-[1.15rem]" />
-                                Profile &amp; security
+                        {/*
+                            MY ACCOUNT only where the rail has no area for it — the
+                            environment console, whose account pages are on the workspace's
+                            host. Everywhere else it is a section of the sheet above.
+                        */}
+                        {workspace !== null && accountUrl !== undefined && (
+                            <a href={accountUrl} className="nav-link w-full">
+                                <Icon name="user" className="w-[1.15rem] h-[1.15rem]" />
+                                My account
+                            </a>
+                        )}
+
+                        {switchUserUrl !== undefined && (
+                            <a href={switchUserUrl} className="nav-link w-full">
+                                <Icon name="switch" className="w-[1.15rem] h-[1.15rem]" />
+                                Switch user
                             </a>
                         )}
 

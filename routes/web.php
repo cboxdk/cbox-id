@@ -85,6 +85,7 @@ use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\TargetEnvironment;
+use App\Platform\Console\ConsoleRoutes;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Api\Http\Middleware\NoStore;
@@ -627,23 +628,32 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Open an environment → signed handoff → its own admin console (no second login).
     Route::get('/open/{environment}', [EnvironmentHandoffController::class, 'openEnvironment'])->name('environment.open');
 
-    Route::get('/members', [MemberController::class, 'index'])->name('members');
-    Route::post('/members/invitations', [MemberController::class, 'invite'])->name('members.invite');
-    Route::post('/members/invitations/{invitation}/resend', [MemberController::class, 'resendInvite'])
+    Route::get('/team', [MemberController::class, 'index'])->name('members');
+    Route::post('/team/invitations', [MemberController::class, 'invite'])->name('members.invite');
+    Route::post('/team/invitations/{invitation}/resend', [MemberController::class, 'resendInvite'])
         ->name('members.invitations.resend');
-    Route::delete('/members/invitations/{invitation}', [MemberController::class, 'revokeInvite'])
+    Route::delete('/team/invitations/{invitation}', [MemberController::class, 'revokeInvite'])
         ->name('members.invitations.revoke');
-    Route::patch('/members/{member}/role', [MemberController::class, 'changeRole'])->name('members.role');
-    Route::put('/members/{member}/access', [MemberController::class, 'saveAccess'])->name('members.access');
-    Route::post('/members/{member}/transfer-ownership', [MemberController::class, 'makeOwner'])
+    Route::patch('/team/{member}/role', [MemberController::class, 'changeRole'])->name('members.role');
+    Route::put('/team/{member}/access', [MemberController::class, 'saveAccess'])->name('members.access');
+    Route::post('/team/{member}/transfer-ownership', [MemberController::class, 'makeOwner'])
         ->name('members.transfer-ownership');
-    Route::delete('/members/{member}', [MemberController::class, 'removeMember'])->name('members.remove');
-    Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api-keys');
-    Route::post('/api-keys', [ApiKeyController::class, 'store'])->name('api-keys.store');
-    Route::delete('/api-keys/{key}', [ApiKeyController::class, 'destroy'])->name('api-keys.destroy');
-    Route::get('/environment-keys', [EnvironmentKeyController::class, 'index'])->name('environment-keys');
-    Route::post('/environment-keys', [EnvironmentKeyController::class, 'store'])->name('environment-keys.store');
-    Route::delete('/environment-keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('environment-keys.destroy');
+    Route::delete('/team/{member}', [MemberController::class, 'removeMember'])->name('members.remove');
+    /*
+     * KEYS — one page, the type as a tab, the tab in the URL.
+     *
+     * These were two pages two rail entries apart, "API keys" and "Environment keys", and
+     * "API keys" was also half of "Apps & API keys" under Developers — three places to look
+     * for a credential, one of them not a key at all. The management keys come first
+     * because they are what a developer reaches for; the workspace's own keys are the
+     * second tab. The environment console's Keys page is the same shape with its own tabs.
+     */
+    Route::get('/keys', [EnvironmentKeyController::class, 'index'])->name('keys');
+    Route::post('/keys', [EnvironmentKeyController::class, 'store'])->name('keys.store');
+    Route::get('/keys/workspace', [ApiKeyController::class, 'index'])->name('keys.workspace');
+    Route::post('/keys/workspace', [ApiKeyController::class, 'store'])->name('keys.workspace.store');
+    Route::delete('/keys/workspace/{key}', [ApiKeyController::class, 'destroy'])->name('keys.workspace.destroy');
+    Route::delete('/keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('keys.destroy');
     Route::get('/environment-domains', [EnvironmentDomainController::class, 'index'])->name('environment-domains');
     Route::post('/environment-domains', [EnvironmentDomainController::class, 'store'])->name('environment-domains.store');
     Route::post('/environment-domains/verify', [EnvironmentDomainController::class, 'verify'])->name('environment-domains.verify');
@@ -662,36 +672,36 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // socket a third-party plugin would use — so a deployment that does not bill, or an
     // operator who turns the module off, has no route rather than a route that 404s
     // somewhere deeper. See modules/billing.
-    Route::get('/organization-settings', [AccountSettingsController::class, 'edit'])->name('organization-settings');
-    Route::patch('/organization-settings', [AccountSettingsController::class, 'update'])->name('organization-settings.update');
+    Route::get('/workspace-settings', [AccountSettingsController::class, 'edit'])->name('organization-settings');
+    Route::patch('/workspace-settings', [AccountSettingsController::class, 'update'])->name('organization-settings.update');
     // Single sign-on: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — a connection
     // URL is something you send to whoever runs the identity provider — and this plane
     // gains the edit, disable and delete it never had, while domain verification and the
     // Admin Portal invite come with it onto the environment plane.
-    Route::get('/connections', [ConnectionController::class, 'index'])->name('connections');
-    Route::post('/connections/invite', [ConnectionController::class, 'invite'])->name('connections.invite');
-    Route::post('/connections/domains', [ConnectionController::class, 'addDomain'])->name('connections.domains.store');
-    Route::post('/connections/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('connections.domains.verify');
-    Route::post('/connections/domains/{domain}/capture', [ConnectionController::class, 'toggleCapture'])->name('connections.domains.capture');
-    Route::delete('/connections/domains/{domain}', [ConnectionController::class, 'removeDomain'])->name('connections.domains.destroy');
-    Route::get('/connections/new', [ConnectionController::class, 'create'])->name('connections.create');
-    Route::post('/connections/import', [ConnectionController::class, 'importMetadata'])->name('connections.import');
-    Route::post('/connections', [ConnectionController::class, 'store'])->name('connections.store');
-    Route::get('/connections/{connection}', [ConnectionController::class, 'show'])->name('connections.show');
-    Route::patch('/connections/{connection}', [ConnectionController::class, 'update'])->name('connections.update');
-    Route::post('/connections/{connection}/activate', [ConnectionController::class, 'activate'])->name('connections.activate');
-    Route::post('/connections/{connection}/disable', [ConnectionController::class, 'disable'])->name('connections.disable');
-    Route::post('/connections/{connection}/require-sso', [ConnectionController::class, 'requireSso'])->name('connections.require-sso');
-    Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
+    Route::get('/single-sign-on', [ConnectionController::class, 'index'])->name('connections');
+    Route::post('/single-sign-on/invite', [ConnectionController::class, 'invite'])->name('connections.invite');
+    Route::post('/single-sign-on/domains', [ConnectionController::class, 'addDomain'])->name('connections.domains.store');
+    Route::post('/single-sign-on/domains/{domain}/verify', [ConnectionController::class, 'verifyDomain'])->name('connections.domains.verify');
+    Route::post('/single-sign-on/domains/{domain}/capture', [ConnectionController::class, 'toggleCapture'])->name('connections.domains.capture');
+    Route::delete('/single-sign-on/domains/{domain}', [ConnectionController::class, 'removeDomain'])->name('connections.domains.destroy');
+    Route::get('/single-sign-on/new', [ConnectionController::class, 'create'])->name('connections.create');
+    Route::post('/single-sign-on/import', [ConnectionController::class, 'importMetadata'])->name('connections.import');
+    Route::post('/single-sign-on', [ConnectionController::class, 'store'])->name('connections.store');
+    Route::get('/single-sign-on/{connection}', [ConnectionController::class, 'show'])->name('connections.show');
+    Route::patch('/single-sign-on/{connection}', [ConnectionController::class, 'update'])->name('connections.update');
+    Route::post('/single-sign-on/{connection}/activate', [ConnectionController::class, 'activate'])->name('connections.activate');
+    Route::post('/single-sign-on/{connection}/disable', [ConnectionController::class, 'disable'])->name('connections.disable');
+    Route::post('/single-sign-on/{connection}/require-sso', [ConnectionController::class, 'requireSso'])->name('connections.require-sso');
+    Route::delete('/single-sign-on/{connection}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
 
     // The provider catalogue — Google, GitHub, Apple and the rest, per tenant. A sibling
     // of Single sign-on rather than a section inside it: connecting the company's own
     // identity provider and offering consumer accounts as buttons are different jobs,
     // done by different people, at different times.
-    Route::get('/social-providers', [SocialProviderController::class, 'index'])->name('social-providers');
-    Route::post('/social-providers', [SocialProviderController::class, 'store'])->name('social-providers.store');
-    Route::delete('/social-providers/{connection}', [SocialProviderController::class, 'destroy'])->name('social-providers.destroy');
+    Route::get('/social-sign-in', [SocialProviderController::class, 'index'])->name('social-providers');
+    Route::post('/social-sign-in', [SocialProviderController::class, 'store'])->name('social-providers.store');
+    Route::delete('/social-sign-in/{connection}', [SocialProviderController::class, 'destroy'])->name('social-providers.destroy');
 
     // Sync users in (inbound directories): the SAME components the environment plane
     // serves. The routable index/new/show shape wins over the organization plane's single
@@ -699,17 +709,17 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // and the reveal-once bearer token needs somewhere to land that is not the row you
     // just submitted. This plane gains rename, pause, rotate and delete with it; the
     // environment plane gains the two pull providers it never had.
-    Route::get('/directories', [DirectoryController::class, 'index'])->name('directories');
-    Route::post('/directories/invite', [DirectoryController::class, 'invite'])->name('directories.invite');
-    Route::get('/directories/new', [DirectoryController::class, 'create'])->name('directories.create');
-    Route::post('/directories', [DirectoryController::class, 'store'])->name('directories.store');
-    Route::post('/directories/connect', [DirectoryController::class, 'connect'])->name('directories.connect');
-    Route::get('/directories/{directory}', [DirectoryController::class, 'show'])->name('directories.show');
-    Route::patch('/directories/{directory}', [DirectoryController::class, 'update'])->name('directories.update');
-    Route::post('/directories/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('directories.rotate');
-    Route::post('/directories/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('directories.toggle');
-    Route::post('/directories/{directory}/map', [DirectoryController::class, 'map'])->name('directories.map');
-    Route::delete('/directories/{directory}', [DirectoryController::class, 'destroy'])->name('directories.destroy');
+    Route::get('/sync-in', [DirectoryController::class, 'index'])->name('directories');
+    Route::post('/sync-in/invite', [DirectoryController::class, 'invite'])->name('directories.invite');
+    Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('directories.create');
+    Route::post('/sync-in', [DirectoryController::class, 'store'])->name('directories.store');
+    Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('directories.connect');
+    Route::get('/sync-in/{directory}', [DirectoryController::class, 'show'])->name('directories.show');
+    Route::patch('/sync-in/{directory}', [DirectoryController::class, 'update'])->name('directories.update');
+    Route::post('/sync-in/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('directories.rotate');
+    Route::post('/sync-in/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('directories.toggle');
+    Route::post('/sync-in/{directory}/map', [DirectoryController::class, 'map'])->name('directories.map');
+    Route::delete('/sync-in/{directory}', [DirectoryController::class, 'destroy'])->name('directories.destroy');
     // Roles: the SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page — a role URL is something you
     // send to whoever owns the access — and this plane gains rename, delete and permission
@@ -738,21 +748,21 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // an app has a lifecycle worth linking to, and the reveal-once client secret needs
     // somewhere to land that is not the form you just submitted. This plane gains editing
     // an app's details and rotating its secret with it; the other gains the roles manifest.
-    Route::get('/clients', [ClientController::class, 'index'])->name('clients');
+    Route::get('/apps', [ClientController::class, 'index'])->name('clients');
     // Publishable keys and the legacy-login declaration are NOT here, and that is the
     // one deliberate exception to "a capability belongs to both planes". Both are owned
     // by the environment and have no organization column, so on this plane every
     // organization's administrator would be administering every other organization's —
     // revoking their keys, or approving where the whole environment's passwords are sent.
     // They live on the environment plane alone; see ConsoleScope::assertMayAdministerEnvironment().
-    Route::get('/clients/new', [ClientController::class, 'create'])->name('clients.create');
-    Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-    Route::get('/clients/{client}', [ClientController::class, 'show'])->name('clients.show');
-    Route::patch('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
-    Route::put('/clients/{client}/manifest', [ClientController::class, 'saveManifest'])->name('clients.manifest');
-    Route::post('/clients/{client}/sync', [ClientController::class, 'sync'])->name('clients.sync');
-    Route::post('/clients/{client}/rotate', [ClientController::class, 'rotate'])->name('clients.rotate');
-    Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
+    Route::get('/apps/new', [ClientController::class, 'create'])->name('clients.create');
+    Route::post('/apps', [ClientController::class, 'store'])->name('clients.store');
+    Route::get('/apps/{client}', [ClientController::class, 'show'])->name('clients.show');
+    Route::patch('/apps/{client}', [ClientController::class, 'update'])->name('clients.update');
+    Route::put('/apps/{client}/manifest', [ClientController::class, 'saveManifest'])->name('clients.manifest');
+    Route::post('/apps/{client}/sync', [ClientController::class, 'sync'])->name('clients.sync');
+    Route::post('/apps/{client}/rotate', [ClientController::class, 'rotate'])->name('clients.rotate');
+    Route::delete('/apps/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
     // Webhooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page with its inline
     // form, and this plane gains resume, secret rotation, subscription editing and delete
@@ -821,36 +831,36 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // The SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page: a campaign URL is something
     // you send to a reviewer, and losing it would be a real regression.
-    Route::get('/governance', [AccessReviewController::class, 'index'])->name('governance');
-    Route::get('/governance/new', [AccessReviewController::class, 'create'])->name('governance.create');
-    Route::post('/governance', [AccessReviewController::class, 'store'])->name('governance.store');
-    Route::get('/governance/{campaign}', [AccessReviewController::class, 'show'])->name('governance.show');
+    Route::get('/access-reviews', [AccessReviewController::class, 'index'])->name('governance');
+    Route::get('/access-reviews/new', [AccessReviewController::class, 'create'])->name('governance.create');
+    Route::post('/access-reviews', [AccessReviewController::class, 'store'])->name('governance.store');
+    Route::get('/access-reviews/{campaign}', [AccessReviewController::class, 'show'])->name('governance.show');
     // One decision endpoint rather than certify and revoke as separate routes: they are
     // one act with two answers, and a reviewer moves between them.
-    Route::post('/governance/{campaign}/items/{item}', [AccessReviewController::class, 'item'])->name('governance.item');
-    Route::post('/governance/{campaign}/close', [AccessReviewController::class, 'close'])->name('governance.close');
-    Route::get('/sod-policies', [RoleConflictController::class, 'index'])->name('sod-policies');
-    Route::get('/sod-policies/new', [RoleConflictController::class, 'create'])->name('sod-policies.create');
-    Route::post('/sod-policies', [RoleConflictController::class, 'store'])->name('sod-policies.store');
-    Route::get('/sod-policies/{policy}', [RoleConflictController::class, 'show'])->name('sod-policies.show');
+    Route::post('/access-reviews/{campaign}/items/{item}', [AccessReviewController::class, 'item'])->name('governance.item');
+    Route::post('/access-reviews/{campaign}/close', [AccessReviewController::class, 'close'])->name('governance.close');
+    Route::get('/role-conflicts', [RoleConflictController::class, 'index'])->name('sod-policies');
+    Route::get('/role-conflicts/new', [RoleConflictController::class, 'create'])->name('sod-policies.create');
+    Route::post('/role-conflicts', [RoleConflictController::class, 'store'])->name('sod-policies.store');
+    Route::get('/role-conflicts/{policy}', [RoleConflictController::class, 'show'])->name('sod-policies.show');
     // Activate and deactivate as ONE endpoint: two states, and the record already knows
     // which it is in.
-    Route::post('/sod-policies/{policy}/toggle', [RoleConflictController::class, 'toggle'])->name('sod-policies.toggle');
-    Route::delete('/sod-policies/{policy}', [RoleConflictController::class, 'destroy'])->name('sod-policies.destroy');
+    Route::post('/role-conflicts/{policy}/toggle', [RoleConflictController::class, 'toggle'])->name('sod-policies.toggle');
+    Route::delete('/role-conflicts/{policy}', [RoleConflictController::class, 'destroy'])->name('sod-policies.destroy');
 
     // Outbound SCIM provisioning connections (push users OUT to downstream apps).
     // The SAME components the environment plane serves. The routable index/new/show
     // shape wins over the organization plane's single page with its inline form, and
     // this plane gains resume and delete with it — a tenant admin who paused a
     // connection previously had no way to start it again from their own console.
-    Route::get('/provisioning', [OutboundSyncController::class, 'index'])->name('provisioning');
-    Route::get('/provisioning/new', [OutboundSyncController::class, 'create'])->name('provisioning.create');
-    Route::post('/provisioning', [OutboundSyncController::class, 'store'])->name('provisioning.store');
-    Route::get('/provisioning/{sync}', [OutboundSyncController::class, 'show'])->name('provisioning.show');
+    Route::get('/sync-out', [OutboundSyncController::class, 'index'])->name('provisioning');
+    Route::get('/sync-out/new', [OutboundSyncController::class, 'create'])->name('provisioning.create');
+    Route::post('/sync-out', [OutboundSyncController::class, 'store'])->name('provisioning.store');
+    Route::get('/sync-out/{sync}', [OutboundSyncController::class, 'show'])->name('provisioning.show');
     // Pause and resume as ONE endpoint: two states, and the record already knows which it
     // is in.
-    Route::post('/provisioning/{sync}/toggle', [OutboundSyncController::class, 'toggle'])->name('provisioning.toggle');
-    Route::delete('/provisioning/{sync}', [OutboundSyncController::class, 'destroy'])->name('provisioning.destroy');
+    Route::post('/sync-out/{sync}/toggle', [OutboundSyncController::class, 'toggle'])->name('provisioning.toggle');
+    Route::delete('/sync-out/{sync}', [OutboundSyncController::class, 'destroy'])->name('provisioning.destroy');
 
     // AI token vault — the SAME components the environment plane serves, on the routable
     // index/new/show shape. Storing, rotating and granting a downstream credential is
@@ -863,28 +873,28 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * and gating only the writes would leave the inventory open to a borrowed session.
      */
     Route::middleware('sudo')->group(function (): void {
-        Route::get('/vault', [VaultController::class, 'index'])->name('vault');
-        Route::get('/vault/new', [VaultController::class, 'create'])->name('vault.create');
-        Route::post('/vault', [VaultController::class, 'store'])->name('vault.store');
-        Route::get('/vault/{secret}', [VaultController::class, 'show'])->name('vault.show');
-        Route::post('/vault/{secret}/rotate', [VaultController::class, 'rotate'])->name('vault.rotate');
-        Route::post('/vault/{secret}/grants', [VaultController::class, 'grant'])->name('vault.grants.store');
-        Route::delete('/vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('vault.grants.destroy');
-        Route::post('/vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('vault.revoke');
+        Route::get('/token-vault', [VaultController::class, 'index'])->name('vault');
+        Route::get('/token-vault/new', [VaultController::class, 'create'])->name('vault.create');
+        Route::post('/token-vault', [VaultController::class, 'store'])->name('vault.store');
+        Route::get('/token-vault/{secret}', [VaultController::class, 'show'])->name('vault.show');
+        Route::post('/token-vault/{secret}/rotate', [VaultController::class, 'rotate'])->name('vault.rotate');
+        Route::post('/token-vault/{secret}/grants', [VaultController::class, 'grant'])->name('vault.grants.store');
+        Route::delete('/token-vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('vault.grants.destroy');
+        Route::post('/token-vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('vault.revoke');
     });
     // Inline hooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — an endpoint
     // has a lifecycle worth linking to, and the one-time signing secret needs somewhere
     // to land that is not the row you just submitted.
-    Route::get('/hooks', [HookController::class, 'index'])->name('hooks');
-    Route::get('/hooks/new', [HookController::class, 'create'])->name('hooks.create');
-    Route::post('/hooks', [HookController::class, 'store'])->name('hooks.store');
-    Route::get('/hooks/{hook}', [HookController::class, 'show'])->name('hooks.show');
+    Route::get('/inline-hooks', [HookController::class, 'index'])->name('hooks');
+    Route::get('/inline-hooks/new', [HookController::class, 'create'])->name('hooks.create');
+    Route::post('/inline-hooks', [HookController::class, 'store'])->name('hooks.store');
+    Route::get('/inline-hooks/{hook}', [HookController::class, 'show'])->name('hooks.show');
     // Pause and resume as ONE endpoint. There are two states and the record already knows
     // which it is in, so a posted intent would only add a way for the button and the row
     // to disagree about what is being asked for.
-    Route::post('/hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('hooks.toggle');
-    Route::delete('/hooks/{hook}', [HookController::class, 'destroy'])->name('hooks.destroy');
+    Route::post('/inline-hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('hooks.toggle');
+    Route::delete('/inline-hooks/{hook}', [HookController::class, 'destroy'])->name('hooks.destroy');
 
     // SIEM audit-stream export.
 
@@ -1067,35 +1077,35 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 
         // SAML applications (downstream service providers) — routable list → create →
         // detail. The URL keeps its old spelling so existing links still resolve.
-        Route::get('/login-methods', [ServiceProviderController::class, 'index'])->name('environment.sso-providers');
-        Route::get('/login-methods/new', [ServiceProviderController::class, 'create'])->name('environment.sso-providers.create');
-        Route::post('/login-methods', [ServiceProviderController::class, 'store'])->name('environment.sso-providers.store');
-        Route::get('/login-methods/{provider}', [ServiceProviderController::class, 'show'])->name('environment.sso-providers.show');
-        Route::patch('/login-methods/{provider}', [ServiceProviderController::class, 'update'])->name('environment.sso-providers.update');
-        Route::delete('/login-methods/{provider}', [ServiceProviderController::class, 'destroy'])->name('environment.sso-providers.destroy');
+        Route::get('/saml-apps', [ServiceProviderController::class, 'index'])->name('environment.sso-providers');
+        Route::get('/saml-apps/new', [ServiceProviderController::class, 'create'])->name('environment.sso-providers.create');
+        Route::post('/saml-apps', [ServiceProviderController::class, 'store'])->name('environment.sso-providers.store');
+        Route::get('/saml-apps/{provider}', [ServiceProviderController::class, 'show'])->name('environment.sso-providers.show');
+        Route::patch('/saml-apps/{provider}', [ServiceProviderController::class, 'update'])->name('environment.sso-providers.update');
+        Route::delete('/saml-apps/{provider}', [ServiceProviderController::class, 'destroy'])->name('environment.sso-providers.destroy');
 
         // Sync users in — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
-        Route::get('/directories', [DirectoryController::class, 'index'])->name('environment.directories');
-        Route::post('/directories/invite', [DirectoryController::class, 'invite'])->name('environment.directories.invite');
-        Route::get('/directories/new', [DirectoryController::class, 'create'])->name('environment.directories.create');
-        Route::post('/directories', [DirectoryController::class, 'store'])->name('environment.directories.store');
-        Route::post('/directories/connect', [DirectoryController::class, 'connect'])->name('environment.directories.connect');
-        Route::get('/directories/{directory}', [DirectoryController::class, 'show'])->name('environment.directories.show');
-        Route::patch('/directories/{directory}', [DirectoryController::class, 'update'])->name('environment.directories.update');
-        Route::post('/directories/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('environment.directories.rotate');
-        Route::post('/directories/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('environment.directories.toggle');
-        Route::post('/directories/{directory}/map', [DirectoryController::class, 'map'])->name('environment.directories.map');
-        Route::delete('/directories/{directory}', [DirectoryController::class, 'destroy'])->name('environment.directories.destroy');
+        Route::get('/sync-in', [DirectoryController::class, 'index'])->name('environment.directories');
+        Route::post('/sync-in/invite', [DirectoryController::class, 'invite'])->name('environment.directories.invite');
+        Route::get('/sync-in/new', [DirectoryController::class, 'create'])->name('environment.directories.create');
+        Route::post('/sync-in', [DirectoryController::class, 'store'])->name('environment.directories.store');
+        Route::post('/sync-in/connect', [DirectoryController::class, 'connect'])->name('environment.directories.connect');
+        Route::get('/sync-in/{directory}', [DirectoryController::class, 'show'])->name('environment.directories.show');
+        Route::patch('/sync-in/{directory}', [DirectoryController::class, 'update'])->name('environment.directories.update');
+        Route::post('/sync-in/{directory}/rotate', [DirectoryController::class, 'rotate'])->name('environment.directories.rotate');
+        Route::post('/sync-in/{directory}/toggle', [DirectoryController::class, 'toggle'])->name('environment.directories.toggle');
+        Route::post('/sync-in/{directory}/map', [DirectoryController::class, 'map'])->name('environment.directories.map');
+        Route::delete('/sync-in/{directory}', [DirectoryController::class, 'destroy'])->name('environment.directories.destroy');
 
         // Outbound sync (provisioning connections) — routable list → create → detail.
-        Route::get('/outbound-sync', [OutboundSyncController::class, 'index'])->name('environment.provisioning');
-        Route::get('/outbound-sync/new', [OutboundSyncController::class, 'create'])->name('environment.provisioning.create');
-        Route::post('/outbound-sync', [OutboundSyncController::class, 'store'])->name('environment.provisioning.store');
-        Route::get('/outbound-sync/{sync}', [OutboundSyncController::class, 'show'])->name('environment.provisioning.show');
-        Route::post('/outbound-sync/{sync}/toggle', [OutboundSyncController::class, 'toggle'])->name('environment.provisioning.toggle');
-        Route::delete('/outbound-sync/{sync}', [OutboundSyncController::class, 'destroy'])->name('environment.provisioning.destroy');
+        Route::get('/sync-out', [OutboundSyncController::class, 'index'])->name('environment.provisioning');
+        Route::get('/sync-out/new', [OutboundSyncController::class, 'create'])->name('environment.provisioning.create');
+        Route::post('/sync-out', [OutboundSyncController::class, 'store'])->name('environment.provisioning.store');
+        Route::get('/sync-out/{sync}', [OutboundSyncController::class, 'show'])->name('environment.provisioning.show');
+        Route::post('/sync-out/{sync}/toggle', [OutboundSyncController::class, 'toggle'])->name('environment.provisioning.toggle');
+        Route::delete('/sync-out/{sync}', [OutboundSyncController::class, 'destroy'])->name('environment.provisioning.destroy');
 
         // Roles — routable list → create → detail (permission editor), on the merged
         // component. The route names are what the two planes disagree on, and both are
@@ -1125,22 +1135,29 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/access-reviews/{campaign}/close', [AccessReviewController::class, 'close'])->name('environment.governance.close');
 
         // Conflict rules (segregation-of-duties) — routable list → create → detail.
-        Route::get('/conflict-rules', [RoleConflictController::class, 'index'])->name('environment.sod-policies');
-        Route::get('/conflict-rules/new', [RoleConflictController::class, 'create'])->name('environment.sod-policies.create');
-        Route::post('/conflict-rules', [RoleConflictController::class, 'store'])->name('environment.sod-policies.store');
-        Route::get('/conflict-rules/{policy}', [RoleConflictController::class, 'show'])->name('environment.sod-policies.show');
-        Route::post('/conflict-rules/{policy}/toggle', [RoleConflictController::class, 'toggle'])->name('environment.sod-policies.toggle');
-        Route::delete('/conflict-rules/{policy}', [RoleConflictController::class, 'destroy'])->name('environment.sod-policies.destroy');
+        Route::get('/role-conflicts', [RoleConflictController::class, 'index'])->name('environment.sod-policies');
+        Route::get('/role-conflicts/new', [RoleConflictController::class, 'create'])->name('environment.sod-policies.create');
+        Route::post('/role-conflicts', [RoleConflictController::class, 'store'])->name('environment.sod-policies.store');
+        Route::get('/role-conflicts/{policy}', [RoleConflictController::class, 'show'])->name('environment.sod-policies.show');
+        Route::post('/role-conflicts/{policy}/toggle', [RoleConflictController::class, 'toggle'])->name('environment.sod-policies.toggle');
+        Route::delete('/role-conflicts/{policy}', [RoleConflictController::class, 'destroy'])->name('environment.sod-policies.destroy');
 
         // Apps & API keys (OAuth clients) — routable list → create → detail, on the
         // merged component. The URLs keep their old spelling so existing links and
         // bookmarks still resolve; the route names are what the two planes disagree on,
         // and both are preserved.
-        Route::get('/applications', [ClientController::class, 'index'])->name('environment.clients');
-        Route::get('/frontend-keys', [FrontendKeyController::class, 'index'])->name('environment.frontend-keys');
-        Route::post('/frontend-keys', [FrontendKeyController::class, 'store'])->name('environment.frontend-keys.store');
-        Route::put('/frontend-keys/{key}/origins', [FrontendKeyController::class, 'origins'])->name('environment.frontend-keys.origins');
-        Route::delete('/frontend-keys/{key}', [FrontendKeyController::class, 'destroy'])->name('environment.frontend-keys.destroy');
+        Route::get('/apps', [ClientController::class, 'index'])->name('environment.clients');
+        // Keys — this environment's management keys, and its frontend keys, as the two
+        // tabs of one page. The management keys used to be reachable only from the
+        // workspace, on another host, behind an environment picker — the one credential a
+        // developer standing in this console needs was the one it did not have.
+        Route::get('/keys', [EnvironmentKeyController::class, 'index'])->name('environment.keys');
+        Route::post('/keys', [EnvironmentKeyController::class, 'store'])->name('environment.keys.store');
+        Route::get('/keys/frontend', [FrontendKeyController::class, 'index'])->name('environment.keys.frontend');
+        Route::post('/keys/frontend', [FrontendKeyController::class, 'store'])->name('environment.keys.frontend.store');
+        Route::put('/keys/frontend/{key}/origins', [FrontendKeyController::class, 'origins'])->name('environment.keys.frontend.origins');
+        Route::delete('/keys/frontend/{key}', [FrontendKeyController::class, 'destroy'])->name('environment.keys.frontend.destroy');
+        Route::delete('/keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('environment.keys.destroy');
         // Behind sudo, like the token vault and log-stream creation: the button on this
         // page decides where every un-migrated address and the password typed with it is
         // sent. The design deliberately put a person in the loop, and a person who has
@@ -1161,14 +1178,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
             Route::post('/legacy-login/approve', [LegacyLoginController::class, 'approve'])->name('environment.legacy-login.approve');
             Route::post('/legacy-login/revoke', [LegacyLoginController::class, 'revoke'])->name('environment.legacy-login.revoke');
         });
-        Route::get('/applications/new', [ClientController::class, 'create'])->name('environment.clients.create');
-        Route::post('/applications', [ClientController::class, 'store'])->name('environment.clients.store');
-        Route::get('/applications/{client}', [ClientController::class, 'show'])->name('environment.clients.show');
-        Route::patch('/applications/{client}', [ClientController::class, 'update'])->name('environment.clients.update');
-        Route::put('/applications/{client}/manifest', [ClientController::class, 'saveManifest'])->name('environment.clients.manifest');
-        Route::post('/applications/{client}/sync', [ClientController::class, 'sync'])->name('environment.clients.sync');
-        Route::post('/applications/{client}/rotate', [ClientController::class, 'rotate'])->name('environment.clients.rotate');
-        Route::delete('/applications/{client}', [ClientController::class, 'destroy'])->name('environment.clients.destroy');
+        Route::get('/apps/new', [ClientController::class, 'create'])->name('environment.clients.create');
+        Route::post('/apps', [ClientController::class, 'store'])->name('environment.clients.store');
+        Route::get('/apps/{client}', [ClientController::class, 'show'])->name('environment.clients.show');
+        Route::patch('/apps/{client}', [ClientController::class, 'update'])->name('environment.clients.update');
+        Route::put('/apps/{client}/manifest', [ClientController::class, 'saveManifest'])->name('environment.clients.manifest');
+        Route::post('/apps/{client}/sync', [ClientController::class, 'sync'])->name('environment.clients.sync');
+        Route::post('/apps/{client}/rotate', [ClientController::class, 'rotate'])->name('environment.clients.rotate');
+        Route::delete('/apps/{client}', [ClientController::class, 'destroy'])->name('environment.clients.destroy');
 
         // Webhooks — routable list → create → detail, on the merged component. The URLs
         // are unchanged so existing links and bookmarks still resolve; the route names
@@ -1187,12 +1204,12 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // Inline hooks — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
         // route names are what the two planes disagree on, and both are preserved.
-        Route::get('/event-hooks', [HookController::class, 'index'])->name('environment.hooks');
-        Route::get('/event-hooks/new', [HookController::class, 'create'])->name('environment.hooks.create');
-        Route::post('/event-hooks', [HookController::class, 'store'])->name('environment.hooks.store');
-        Route::get('/event-hooks/{hook}', [HookController::class, 'show'])->name('environment.hooks.show');
-        Route::post('/event-hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('environment.hooks.toggle');
-        Route::delete('/event-hooks/{hook}', [HookController::class, 'destroy'])->name('environment.hooks.destroy');
+        Route::get('/inline-hooks', [HookController::class, 'index'])->name('environment.hooks');
+        Route::get('/inline-hooks/new', [HookController::class, 'create'])->name('environment.hooks.create');
+        Route::post('/inline-hooks', [HookController::class, 'store'])->name('environment.hooks.store');
+        Route::get('/inline-hooks/{hook}', [HookController::class, 'show'])->name('environment.hooks.show');
+        Route::post('/inline-hooks/{hook}/toggle', [HookController::class, 'toggle'])->name('environment.hooks.toggle');
+        Route::delete('/inline-hooks/{hook}', [HookController::class, 'destroy'])->name('environment.hooks.destroy');
 
         // Token vault — routable list → create → detail, on the merged component. The URL
         // keeps its old spelling so existing links and bookmarks still resolve; the route
@@ -1204,14 +1221,14 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         // always demanded a fresh password. The asymmetry meant the more privileged door
         // was the one with no step-up behind it.
         Route::middleware('env.sudo')->group(function (): void {
-            Route::get('/stored-tokens', [VaultController::class, 'index'])->name('environment.vault');
-            Route::get('/stored-tokens/new', [VaultController::class, 'create'])->name('environment.vault.create');
-            Route::post('/stored-tokens', [VaultController::class, 'store'])->name('environment.vault.store');
-            Route::get('/stored-tokens/{secret}', [VaultController::class, 'show'])->name('environment.vault.show');
-            Route::post('/stored-tokens/{secret}/rotate', [VaultController::class, 'rotate'])->name('environment.vault.rotate');
-            Route::post('/stored-tokens/{secret}/grants', [VaultController::class, 'grant'])->name('environment.vault.grants.store');
-            Route::delete('/stored-tokens/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('environment.vault.grants.destroy');
-            Route::post('/stored-tokens/{secret}/revoke', [VaultController::class, 'revoke'])->name('environment.vault.revoke');
+            Route::get('/token-vault', [VaultController::class, 'index'])->name('environment.vault');
+            Route::get('/token-vault/new', [VaultController::class, 'create'])->name('environment.vault.create');
+            Route::post('/token-vault', [VaultController::class, 'store'])->name('environment.vault.store');
+            Route::get('/token-vault/{secret}', [VaultController::class, 'show'])->name('environment.vault.show');
+            Route::post('/token-vault/{secret}/rotate', [VaultController::class, 'rotate'])->name('environment.vault.rotate');
+            Route::post('/token-vault/{secret}/grants', [VaultController::class, 'grant'])->name('environment.vault.grants.store');
+            Route::delete('/token-vault/{secret}/grants/{client}', [VaultController::class, 'revokeGrant'])->name('environment.vault.grants.destroy');
+            Route::post('/token-vault/{secret}/revoke', [VaultController::class, 'revoke'])->name('environment.vault.revoke');
         });
 
         // Step-up re-authentication for this plane. Inside the env-admin group — only an
@@ -1248,10 +1265,10 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/log-streaming/{stream}', [LogStreamController::class, 'show'])->name('environment.audit-streams.show');
         Route::post('/log-streaming/{stream}/toggle', [LogStreamController::class, 'toggle'])->name('environment.audit-streams.toggle');
         Route::delete('/log-streaming/{stream}', [LogStreamController::class, 'destroy'])->name('environment.audit-streams.destroy');
-        // The SHARED usage page — `environment.analytics` was the primitive version of it
-        // over the same counters. Route name kept so existing links and the rail entry
-        // keep working; only the component behind it changes.
-        Route::get('/analytics', [UsageController::class, 'index'])->name('environment.analytics');
+        // The SHARED usage page, under the slug the organization console uses. It was
+        // `/admin/analytics` and `environment.analytics`, while `/analytics` on the other
+        // console was the analytics module's sign-in activity — one word, two pages.
+        Route::get('/usage', [UsageController::class, 'index'])->name('environment.usage');
         Route::get('/approvals', [AgentApprovalController::class, 'index'])->name('environment.approvals');
         Route::post('/approvals/{request}/deny', [AgentApprovalController::class, 'deny'])->name('environment.approvals.deny');
         // Settings — the merged component. The route NAME is preserved on both planes;
@@ -1419,6 +1436,84 @@ Route::middleware('plane:console')->group(function (): void {
  */
 Route::redirect('/workspace', '/projects');
 Route::redirect('/workspace/login', '/login');
+
+/*
+ * ONE URL PER PAGE — and the old spellings, answered with a 301.
+ *
+ * The two consoles served the same component under different paths: `/sod-policies` here
+ * and `/admin/conflict-rules` there, `/hooks` beside `/admin/event-hooks`, `/clients`
+ * beside `/admin/applications`, and `/analytics` meaning sign-in activity on one console
+ * and usage on the other. A link pasted from one console was nonsense in the other, and a
+ * support reply had to know which console the reader was in. Every page now has ONE slug,
+ * the same on both — the environment console's is that slug under `/admin` — and the slug
+ * is the page's name as the rail says it.
+ *
+ * Every old GET keeps working, because these are in bookmarks, runbooks and the replies
+ * support already sent. Writes are not redirected: a 301 turns a POST into a GET, and a
+ * form rendered before the move re-renders from the new page on its next visit.
+ *
+ * Module pages that moved (sign-in activity, trusted devices, branding) keep their old
+ * spelling beside the new one, in the module's own routes file.
+ */
+foreach ([
+    // The organization and workspace console.
+    '/clients' => '/apps',
+    '/clients/new' => '/apps/new',
+    '/clients/{client}' => '/apps/{client}',
+    '/connections' => '/single-sign-on',
+    '/connections/new' => '/single-sign-on/new',
+    '/connections/{connection}' => '/single-sign-on/{connection}',
+    '/social-providers' => '/social-sign-in',
+    '/directories' => '/sync-in',
+    '/directories/new' => '/sync-in/new',
+    '/directories/{directory}' => '/sync-in/{directory}',
+    '/provisioning' => '/sync-out',
+    '/provisioning/new' => '/sync-out/new',
+    '/provisioning/{sync}' => '/sync-out/{sync}',
+    '/governance' => '/access-reviews',
+    '/governance/new' => '/access-reviews/new',
+    '/governance/{campaign}' => '/access-reviews/{campaign}',
+    '/sod-policies' => '/role-conflicts',
+    '/sod-policies/new' => '/role-conflicts/new',
+    '/sod-policies/{policy}' => '/role-conflicts/{policy}',
+    '/hooks' => '/inline-hooks',
+    '/hooks/new' => '/inline-hooks/new',
+    '/hooks/{hook}' => '/inline-hooks/{hook}',
+    '/vault' => '/token-vault',
+    '/vault/new' => '/token-vault/new',
+    '/vault/{secret}' => '/token-vault/{secret}',
+    '/members' => '/team',
+    '/api-keys' => '/keys/workspace',
+    '/environment-keys' => '/keys',
+    '/organization-settings' => '/workspace-settings',
+
+    // The environment console.
+    '/admin/applications' => '/admin/apps',
+    '/admin/applications/new' => '/admin/apps/new',
+    '/admin/applications/{client}' => '/admin/apps/{client}',
+    '/admin/login-methods' => '/admin/saml-apps',
+    '/admin/login-methods/new' => '/admin/saml-apps/new',
+    '/admin/login-methods/{provider}' => '/admin/saml-apps/{provider}',
+    '/admin/directories' => '/admin/sync-in',
+    '/admin/directories/new' => '/admin/sync-in/new',
+    '/admin/directories/{directory}' => '/admin/sync-in/{directory}',
+    '/admin/outbound-sync' => '/admin/sync-out',
+    '/admin/outbound-sync/new' => '/admin/sync-out/new',
+    '/admin/outbound-sync/{sync}' => '/admin/sync-out/{sync}',
+    '/admin/conflict-rules' => '/admin/role-conflicts',
+    '/admin/conflict-rules/new' => '/admin/role-conflicts/new',
+    '/admin/conflict-rules/{policy}' => '/admin/role-conflicts/{policy}',
+    '/admin/event-hooks' => '/admin/inline-hooks',
+    '/admin/event-hooks/new' => '/admin/inline-hooks/new',
+    '/admin/event-hooks/{hook}' => '/admin/inline-hooks/{hook}',
+    '/admin/stored-tokens' => '/admin/token-vault',
+    '/admin/stored-tokens/new' => '/admin/token-vault/new',
+    '/admin/stored-tokens/{secret}' => '/admin/token-vault/{secret}',
+    '/admin/frontend-keys' => '/admin/keys/frontend',
+    '/admin/analytics' => '/admin/usage',
+] as $from => $to) {
+    ConsoleRoutes::moved($from, $to);
+}
 
 /*
  * What the `cbox` CLI needs before it can sign in here — the environment's

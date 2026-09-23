@@ -155,6 +155,12 @@ it('offers every environment-console page somewhere in its rail', function (): v
                 'environment.acting-organization.search',
             ], true))
         ->reject(fn (string $name): bool => in_array($name, $railed, true))
+        // A TAB of a railed page — `environment.keys.frontend` is the second tab of Keys.
+        // The rail lights the page for every route under its name, and the tab strip on the
+        // page is how it is reached, so it is no more unreachable than a detail page is.
+        ->reject(fn (string $name): bool => collect($railed)->contains(
+            fn (string $page): bool => str_starts_with($name, $page.'.'),
+        ))
         ->values()
         ->all();
 

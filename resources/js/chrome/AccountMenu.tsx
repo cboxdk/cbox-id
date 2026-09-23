@@ -88,22 +88,37 @@ export function AccountMenu({ user, logoutUrl, children }: AccountMenuProps) {
     );
 }
 
-/** A plane-specific entry for the menu's slot — an internal link, styled as a menu row. */
+/**
+ * A plane-specific entry for the menu's slot, styled as a menu row.
+ *
+ * An ABSOLUTE href is another host — the environment console's links to the person's own
+ * account, which lives on the workspace's host — and is a plain anchor: Inertia visits
+ * are same-origin XHRs, and one aimed at another host fails without a word.
+ */
 export function AccountMenuLink({
     href,
     icon,
     children,
 }: {
     href: string;
-    icon: 'key' | 'refresh';
+    icon: 'user' | 'switch';
     children: ReactNode;
 }) {
+    const external = /^https?:\/\//.test(href);
+
     return (
         <DropdownMenuItem asChild>
-            <Link href={href}>
-                <Icon name={icon} className="w-4 h-4" />
-                {children}
-            </Link>
+            {external ? (
+                <a href={href}>
+                    <Icon name={icon} className="w-4 h-4" />
+                    {children}
+                </a>
+            ) : (
+                <Link href={href}>
+                    <Icon name={icon} className="w-4 h-4" />
+                    {children}
+                </Link>
+            )}
         </DropdownMenuItem>
     );
 }

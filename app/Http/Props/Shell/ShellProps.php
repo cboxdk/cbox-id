@@ -55,6 +55,18 @@ final readonly class ShellProps implements Prop
         public bool $isOperator,
         public string $brandHref,
         public bool $navPinned,
+        /**
+         * The person's own account page and the signed-in-user switcher — ABSOLUTE on the
+         * environment console, because both live on the workspace's host. As relative links
+         * on a tenant host they reached a page that asked for a sign-in the environment
+         * administrator does not have there, and bounced them to the tenant's end-user
+         * sign-in form.
+         */
+        public string $accountHref,
+        public string $switchUserHref,
+        /** The environment console's way back to its workspace; null on every other console. */
+        public ?WorkspaceLinkProps $workspace = null,
+        public ?ShellNoticeProps $notice = null,
     ) {}
 
     /**
@@ -72,6 +84,10 @@ final readonly class ShellProps implements Prop
             'isOperator' => $this->isOperator,
             'brandHref' => $this->brandHref,
             'navPinned' => $this->navPinned,
+            'accountHref' => $this->accountHref,
+            'switchUserHref' => $this->switchUserHref,
+            'workspace' => $this->workspace,
+            'notice' => $this->notice,
         ];
     }
 }

@@ -121,41 +121,40 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
         '/admin/organizations/new' => 'New organization',
         '/admin/users' => 'Users',
         '/admin/users/new' => 'New user',
-        // "Apps &amp; API keys" once the two consoles merged onto one component with one
-        // title; matched on the half that carries no escapable character.
-        '/admin/applications' => 'API keys',
+        // "Apps" on both consoles — one component, one title, one slug.
+        '/admin/apps' => 'Apps',
         '/admin/single-sign-on' => 'Single sign-on',
         '/admin/single-sign-on/new' => 'connection',
         // Renamed: it registers SAML service providers that trust us, which is the
         // opposite direction from Single sign-on, and "Login methods" named that one.
-        '/admin/login-methods' => 'SAML applications',
-        '/admin/login-methods/new' => 'method',
-        '/admin/directories' => 'Sync users in',
-        '/admin/directories/new' => 'directory',
+        '/admin/saml-apps' => 'SAML applications',
+        '/admin/saml-apps/new' => 'SAML application',
+        '/admin/sync-in' => 'Sync users in',
+        '/admin/sync-in/new' => 'directory',
         // "Sync users out", the name its page, its help topic and the organization
         // plane's registry have always used; only the environment rail said "Outbound
         // sync", one line under the "Sync users in" it is the pair of.
-        '/admin/outbound-sync' => 'Sync users out',
-        '/admin/outbound-sync/new' => 'connection',
+        '/admin/sync-out' => 'Sync users out',
+        '/admin/sync-out/new' => 'connection',
         '/admin/roles' => 'Roles',
         '/admin/roles/new' => 'role',
         '/admin/access-reviews/new' => 'review',
-        '/admin/conflict-rules/new' => 'New role conflict',
-        '/admin/applications/new' => 'application',
-        '/admin/event-hooks/new' => 'hook',
-        '/admin/stored-tokens/new' => 'token',
+        '/admin/role-conflicts/new' => 'New role conflict',
+        '/admin/apps/new' => 'application',
+        '/admin/inline-hooks/new' => 'hook',
+        '/admin/token-vault/new' => 'token',
         '/admin/log-streaming/new' => 'stream',
         '/admin/access-reviews' => 'Access reviews',
-        '/admin/conflict-rules' => 'Role conflicts',
+        '/admin/role-conflicts' => 'Role conflicts',
 
-        '/admin/event-hooks' => 'Inline hooks',
-        '/admin/stored-tokens' => 'Token vault',
+        '/admin/inline-hooks' => 'Inline hooks',
+        '/admin/token-vault' => 'Token vault',
         '/admin/log-streaming' => 'Log streaming',
         // "Usage" on BOTH planes now. It was "Analytics" here and "Usage" on the
         // organization plane, over the same `auth.*` counters — and this plane's version
         // was the primitive one: raw metric keys, no labels, no time window.
-        '/admin/analytics' => 'Usage',
-        '/admin/approvals' => 'Agent approvals',
+        '/admin/usage' => 'Usage',
+        '/admin/approvals' => 'Review agent requests',
     ] as $path => $needle) {
         $this->get($path)->assertOk()->assertSee($needle);
     }

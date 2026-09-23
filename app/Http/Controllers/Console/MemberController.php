@@ -122,7 +122,7 @@ final readonly class MemberController extends ConsoleController
         $actorId = $this->scope->actorId();
         $environmentCount = $organizationId === null ? 0 : $this->environmentQuery($organizationId)->count();
 
-        return $this->page('console/members', 'Administrators', [
+        return $this->page('console/members', 'Team', [
             'members' => collect($roster->items())->map(function (Membership $membership) use ($people, $accessByUser, $actorId, $canManage): array {
                 $person = $people[$membership->user_id] ?? null;
                 $isSelf = $membership->user_id === $actorId;

@@ -9,6 +9,7 @@ use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -73,6 +74,7 @@ class ConsoleScope
         private readonly EnvironmentAdminAuth $environmentAdmin,
         private readonly Entitlements $entitlements,
         private readonly PlatformOperators $operators,
+        private readonly PlaneResolver $planes,
     ) {}
 
     /**
@@ -742,6 +744,24 @@ class ConsoleScope
     public function ownsIdentityProviders(): bool
     {
         return $this->membershipRole() !== null;
+    }
+
+    /**
+     * Whether this console is a WORKSPACE's own — see {@see WorkspaceAltitude}.
+     *
+     * Four conditions, each load-bearing. The organization console, because the environment
+     * console is already the product. The platform root of a multi-tenant deployment,
+     * because on a single-tenant install the root environment IS the product and hiding its
+     * administration would hide everything. An organization that owns identity providers,
+     * because every other organization's console is its product. And not an operator,
+     * whose job is the full console on whichever organization they are looking at.
+     */
+    public function atWorkspaceAltitude(): bool
+    {
+        return $this->plane() === ConsolePlane::Organization
+            && $this->planes->onAccountPlane()
+            && $this->ownsIdentityProviders()
+            && ! $this->isPlatformOperator();
     }
 
     /**

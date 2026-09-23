@@ -150,7 +150,7 @@ final readonly class PlatformCustomerController extends ConsoleController
             return ['rows' => array_values($rows), 'pagination' => SimplePaginationProps::from($customers)];
         });
 
-        return $this->page('console/platform/customers', 'Customers', [
+        return $this->page('console/platform/customers', 'Workspaces', [
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
             'search' => $term,

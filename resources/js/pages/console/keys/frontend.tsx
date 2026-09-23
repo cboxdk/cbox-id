@@ -11,6 +11,8 @@ import {
     Field,
     Icon,
     Input,
+    type LinkTab,
+    LinkTabs,
     PageHeader,
     Panel,
     Pill,
@@ -30,12 +32,13 @@ interface KeyRow {
 }
 
 type Props = PageProps<{
+    tabs: LinkTab[];
     keys: KeyRow[];
     modes: { value: string; label: string }[];
     storeHref: string;
 }>;
 
-export default function FrontendKeys({ keys, modes, storeHref }: Props) {
+export default function FrontendKeys({ tabs, keys, modes, storeHref }: Props) {
     const [creating, setCreating] = useState(false);
     const [revoking, setRevoking] = useState<KeyRow | null>(null);
 
@@ -57,13 +60,13 @@ export default function FrontendKeys({ keys, modes, storeHref }: Props) {
                 }
             />
 
+            <div className="mt-4">
+                <LinkTabs tabs={tabs} label="Key types" />
+            </div>
+
             <div className="mt-6 space-y-6">
                 {creating && (
-                    <NewKey
-                        modes={modes}
-                        href={storeHref}
-                        onDone={() => setCreating(false)}
-                    />
+                    <NewKey modes={modes} href={storeHref} onDone={() => setCreating(false)} />
                 )}
 
                 {keys.length === 0 && !creating ? (

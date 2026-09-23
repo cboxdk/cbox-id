@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Console\ApiKeyRowProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
+use App\Platform\Console\KeyTabs;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\OrganizationActivity;
 use App\Platform\StepUpReason;
@@ -36,7 +37,7 @@ use Inertia\Response;
  */
 final readonly class ApiKeyController extends ConsoleController
 {
-    public function index(OrganizationApiKeys $keys): Response|RedirectResponse
+    public function index(OrganizationApiKeys $keys, KeyTabs $tabs): Response|RedirectResponse
     {
         if ($this->scope->capabilities()?->canManageMembers() !== true) {
             // Somebody arriving where they may not go is sent somewhere they can be, which
@@ -47,11 +48,12 @@ final readonly class ApiKeyController extends ConsoleController
         $organizationId = $this->scope->organizationId();
         $now = CarbonImmutable::now();
 
-        return $this->page('console/api-keys', 'API keys', [
+        return $this->page('console/keys/workspace', 'Keys', [
+            'tabs' => $tabs->for(KeyTabs::WORKSPACE),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
                 ->map(fn (OrganizationApiKey $key): ApiKeyRowProps => ApiKeyRowProps::from(
                     $key,
-                    route('api-keys.destroy', $key->id),
+                    route('keys.workspace.destroy', $key->id),
                     $now,
                 ))
                 ->values()
@@ -171,7 +173,7 @@ final readonly class ApiKeyController extends ConsoleController
             return null;
         }
 
-        $intended = route('api-keys');
+        $intended = route('keys.workspace');
 
         session()->put('sudo.intended', $intended);
         StepUpReason::record('sudo', $reason, $intended);

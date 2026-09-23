@@ -99,7 +99,7 @@ it('throttles repeated failed password attempts', function () {
 
 it('redirects guests away from the console', function () {
     $this->get('/dashboard')->assertRedirect(route('login'));
-    $this->get('/members')->assertRedirect(route('login'));
+    $this->get('/team')->assertRedirect(route('login'));
 });
 
 it('redirects authenticated users away from guest screens', function () {

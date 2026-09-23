@@ -79,7 +79,7 @@ function anOwnerWithAnApp(): array
 it('will not delete an app until its name is typed exactly', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/clients/'.$client->id);
+    $page = visit('/apps/'.$client->id);
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Delete app")');
@@ -125,7 +125,7 @@ it('will not delete an app until its name is typed exactly', function (): void {
 it('deletes the app once the name is typed exactly', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/clients/'.$client->id);
+    $page = visit('/apps/'.$client->id);
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Delete app")')
@@ -152,7 +152,7 @@ it('deletes the app once the name is typed exactly', function (): void {
 it('shows a rotated client secret once and never again', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/clients/'.$client->id);
+    $page = visit('/apps/'.$client->id);
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Rotate secret")')
@@ -168,7 +168,7 @@ it('shows a rotated client secret once and never again', function (): void {
      * the secret was shown does not show it, which is what makes "once" true rather than
      * merely "not in the next response".
      */
-    $page->navigate('/clients/'.$client->id);
+    $page->navigate('/apps/'.$client->id);
 
     $page->assertSee('Billing Worker')
         ->assertDontSee('Copy your client secret now')

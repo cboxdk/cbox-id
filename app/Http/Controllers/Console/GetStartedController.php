@@ -27,8 +27,15 @@ use Inertia\Response;
  */
 final readonly class GetStartedController extends ConsoleController
 {
-    public function index(SetupChecklist $checklist): Response
+    public function index(SetupChecklist $checklist): Response|RedirectResponse
     {
+        // Every step here — invite people, connect an app, define roles, brand the sign-in
+        // page — is about an organization's product. A workspace's product is in its
+        // environments, so its setup starts on Projects.
+        if ($this->scope->atWorkspaceAltitude()) {
+            return to_route('projects');
+        }
+
         $me = $this->assertAdmin();
 
         $organizationId = $me->organizationId();

@@ -222,7 +222,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
      */
     $rendersNoTenantData = [
         'environment.home' => 'counts and empty states only',
-        'environment.analytics' => 'aggregates over an event store the fixture does not populate',
+        'environment.usage' => 'aggregates over an event store the fixture does not populate',
         'environment.approvals' => 'CIBA requests, which need a live backchannel flow',
         'environment.permissions' => 'the platform permission catalogue, not tenant data',
         'environment.sso-providers' => 'relying parties, seeded by the clients fixture under a different name',
@@ -236,7 +236,10 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.auth-policy' => 'policy toggles',
         // Publishable keys are environment-owned and carry no organization at all, so
         // there is no tenant record here to leak — and the fixture seeds none.
-        'environment.frontend-keys' => 'publishable keys, which have no organization and none seeded',
+        'environment.keys.frontend' => 'publishable keys, which have no organization and none seeded',
+        // This environment's management keys: environment-owned, no organization column,
+        // so there is no tenant record to leak — and the fixture seeds none.
+        'environment.keys' => 'management keys, which have no organization and none seeded',
         // Provider names from a static catalogue — Google, GitHub — never an organization's.
         'environment.social-providers' => 'the social-login catalogue, which names providers rather than tenants',
         'environment.connectors.catalog' => 'the connector catalogue, which is the same on every install',

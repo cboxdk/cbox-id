@@ -97,10 +97,10 @@ it('puts the customer first in the platform rail, above the environments inside 
         ->firstOrFail(fn ($area): bool => $area->key === 'platform');
 
     // Root → leaf. The list used to read Environments, Accounts, Organizations — and the
-    // first entry is 'Customers' now, because a customer is not an account and the rail was
-    // the last place still saying so while the URL beneath it already said /customers.
+    // first entry was 'Customers', because a customer is not an account, and is 'Workspaces'
+    // now — the word the customer's own console uses for itself.
     expect(collect($platform->pages())->pluck('label')->all())
-        ->toBe(['Customers', 'Environments', 'Organizations']);
+        ->toBe(['Workspaces', 'Environments', 'Organizations']);
 });
 
 it('walks an operator from an account down to every environment its projects own', function (): void {

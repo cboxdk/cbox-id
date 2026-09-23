@@ -1164,8 +1164,8 @@ function probeLegacyLogin(string $email): TestResponse
  */
 function issueFrontendKey(array $changes = []): TestResponse
 {
-    return test()->from(route('environment.frontend-keys'))
-        ->post(route('environment.frontend-keys.store'), [
+    return test()->from(route('environment.keys.frontend'))
+        ->post(route('environment.keys.frontend.store'), [
             'name' => 'Marketing site',
             'mode' => 'test',
             'origins' => 'https://acme.test',
@@ -1183,7 +1183,7 @@ function issueFrontendKey(array $changes = []): TestResponse
  */
 function reachableEnvironmentId(): string
 {
-    $environments = test()->get(route('environment-keys'))->assertOk()->inertiaProps('environments');
+    $environments = test()->get(route('keys'))->assertOk()->inertiaProps('environments');
 
     expect($environments)->toBeArray()->not->toBeEmpty(
         'the signed-in member reaches no environment, so this test cannot be about the step-up',
@@ -1199,7 +1199,7 @@ function reachableEnvironmentId(): string
  */
 function issueEnvironmentKey(string $environmentId, array $changes = []): TestResponse
 {
-    return test()->from(route('environment-keys'))->post(route('environment-keys.store'), [
+    return test()->from(route('keys'))->post(route('keys.store'), [
         'environment' => $environmentId,
         'name' => 'Provisioner',
         'scopes' => ['users:read'],

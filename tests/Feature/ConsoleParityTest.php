@@ -1455,7 +1455,7 @@ it('refuses an organization admin with no organization at all a roles page', fun
 it('serves apps from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-apps');
 
-    $this->get(route('environment.clients'))->assertOk()->assertSee('API keys');
+    $this->get(route('environment.clients'))->assertOk()->assertSee('Apps');
     confirmConsoleStepUp();
     $this->get(route('environment.clients.create'))->assertOk();
 })->group('security');
@@ -1473,7 +1473,7 @@ it('serves apps from the same component on the organization plane', function ():
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/clients/index')
-            ->where('title', 'Apps & API keys'));
+            ->where('title', 'Apps'));
     confirmConsoleStepUp();
     $this->get(route('clients.create'))
         ->assertOk()

@@ -70,6 +70,7 @@ export { Select, type SelectOption } from './Select';
 export { Spinner } from './Spinner';
 export { Stat, type StatTone } from './Stat';
 export { Switch } from './Switch';
+export { type LinkTab, LinkTabs } from './LinkTabs';
 export { Tab, TabPanel, Tabs } from './Tabs';
 export { Table, Td, TdMono, Th } from './Table';
 export { ThemeEditor } from './ThemeEditor';

@@ -1358,6 +1358,55 @@
         letter-spacing: 0.01em;
     }
 
+    /* THE WAY BACK from an environment console to its workspace, and the environment
+       it is in — the first two crumbs of the topbar there. The back crumb is a quiet
+       link rather than a button: it leaves this host, and reads as a place. */
+    .cbx-crumb-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        max-width: 12rem;
+        padding: 4px 8px;
+        border-radius: var(--radius-md);
+        color: var(--muted-foreground);
+        font-size: 13px;
+        font-weight: 500;
+        transition: background-color 150ms cubic-bezier(.4,0,.2,1), color 150ms cubic-bezier(.4,0,.2,1);
+    }
+    .cbx-crumb-back:hover { background: var(--accent-soft); color: var(--foreground); }
+    .cbx-crumb-back:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .cbx-crumb-env {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        max-width: 11rem;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    /* A page the rail does not offer, reached by URL: one sentence saying what it is and
+       where the reader probably meant to go. Info tone, never a warning — nothing is
+       wrong, the reader is just somewhere unexpected. */
+    .cbx-shell-notice {
+        display: flex;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--info-soft, var(--accent-soft));
+        color: var(--foreground);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .cbx-shell-notice > svg { margin-top: 2px; color: var(--primary); }
+    .cbx-shell-notice-link { font-weight: 600; color: var(--accent-strong); white-space: nowrap; }
+    .cbx-shell-notice-link:hover { text-decoration: underline; }
+
     /* The command palette. Positioned high rather than centred: the list grows
        downward as you type, and a centred box jumps under the cursor on the first
        keystroke. */

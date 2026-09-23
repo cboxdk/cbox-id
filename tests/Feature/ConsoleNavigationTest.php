@@ -86,7 +86,7 @@ it('hides what an account role may not see, and drops the area when it holds not
     signInAsMember($result->owner->id);
     expect($pages())->toContain('billing')
         ->and($pages())->toContain('organization-settings')
-        ->and($pages())->toContain('api-keys');
+        ->and($pages())->toContain('keys');
 
     // A Viewer reads the roster and the bill and changes nothing.
     //
@@ -99,7 +99,7 @@ it('hides what an account role may not see, and drops the area when it holds not
 
     expect($pages())->toContain('billing')
         ->and($pages())->not->toContain('organization-settings')
-        ->and($pages())->not->toContain('api-keys');
+        ->and($pages())->not->toContain('keys');
 });
 
 /**

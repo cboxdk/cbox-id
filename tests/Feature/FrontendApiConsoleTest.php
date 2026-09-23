@@ -62,8 +62,8 @@ it('revokes a key so pages holding it stop working', function (): void {
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    test()->from(route('environment.frontend-keys'))
-        ->delete(route('environment.frontend-keys.destroy', $key->id))
+    test()->from(route('environment.keys.frontend'))
+        ->delete(route('environment.keys.frontend.destroy', $key->id))
         ->assertSessionHasNoErrors();
 
     expect(PublishableKey::query()->find($key->id)?->isActive())->toBeFalse();
@@ -80,7 +80,7 @@ it('keeps showing the key in full, because it is not a secret', function (): voi
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    test()->get(route('environment.frontend-keys'))
+    test()->get(route('environment.keys.frontend'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where(
             'keys',
@@ -113,7 +113,7 @@ it('refuses a member who may not administer', function (): void {
      * the environment is not theirs. The scope's own `assertMayAdministerEnvironment()` is
      * the second layer behind it, and is what the write below meets.
      */
-    test()->get(route('environment.frontend-keys'))
+    test()->get(route('environment.keys.frontend'))
         ->assertRedirectContains('/open/');
 
     issueFrontendKey(['name' => 'Sneaky'])->assertRedirectContains('/open/');
@@ -174,15 +174,15 @@ it('edits a key allow-list without minting a new key', function (): void {
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
     // The current list reaches the page, which is what the edit form opens with.
-    test()->get(route('environment.frontend-keys'))
+    test()->get(route('environment.keys.frontend'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where(
             'keys',
             fn (Collection $keys): bool => $keys->firstWhere('id', $key->id)['origins'] === ['https://acme.test'],
         ));
 
-    test()->from(route('environment.frontend-keys'))
-        ->put(route('environment.frontend-keys.origins', $key->id), [
+    test()->from(route('environment.keys.frontend'))
+        ->put(route('environment.keys.frontend.origins', $key->id), [
             'origins' => "https://acme.test\nhttps://staging.acme.test",
         ])
         ->assertSessionHasNoErrors();
@@ -196,8 +196,8 @@ it('refuses the whole edited list when one origin is unusable, and says which', 
 
     $key = app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    test()->from(route('environment.frontend-keys'))
-        ->put(route('environment.frontend-keys.origins', $key->id), [
+    test()->from(route('environment.keys.frontend'))
+        ->put(route('environment.keys.frontend.origins', $key->id), [
             'origins' => "https://acme.test\nhttps://acme.test/app",
         ])
         ->assertSessionHasErrors('origins');
@@ -213,8 +213,8 @@ it('refuses the whole edited list when one origin is unusable, and says which', 
  * administering — and revoking — every other organization's keys.
  */
 it('is absent from the organization console rather than present and refusing', function (): void {
-    expect(Route::has('frontend-keys'))->toBeFalse()
-        ->and(Route::has('environment.frontend-keys'))->toBeTrue();
+    expect(Route::has('keys.frontend'))->toBeFalse()
+        ->and(Route::has('environment.keys.frontend'))->toBeTrue();
 });
 
 it('refuses an organization administrator who types the environment URL', function (): void {
@@ -226,7 +226,7 @@ it('refuses an organization administrator who types the environment URL', functi
     actAsEnvironmentAdminOfATenant();
     actingAsRole(MembershipRole::Owner);
 
-    test()->get(route('environment.frontend-keys'))->assertRedirectContains('/open/');
+    test()->get(route('environment.keys.frontend'))->assertRedirectContains('/open/');
     issueFrontendKey(['name' => 'Theirs', 'origins' => 'https://theirs.test'])
         ->assertRedirectContains('/open/');
 

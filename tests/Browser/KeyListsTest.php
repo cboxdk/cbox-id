@@ -31,7 +31,7 @@ it('marks revoked and expired environment keys and offers Revoke only on a live 
         $keys->issue($environment->id, 'Lapsed worker', ['users:read'], CarbonImmutable::now()->subDay());
     });
 
-    $page = visit('/environment-keys');
+    $page = visit('/keys');
 
     $page->assertSee('Live worker')
         ->assertSee('Revoked')

@@ -72,7 +72,7 @@ function accountActions(string $organizationId): array
  */
 function listedEnvironmentKeys(string $environmentId): Collection
 {
-    $keys = test()->get(route('environment-keys', ['environment' => $environmentId]))
+    $keys = test()->get(route('keys', ['environment' => $environmentId]))
         ->assertOk()
         ->inertiaProps('keys');
 
@@ -150,7 +150,7 @@ it('shows each environment scope by its label with its key beside it', function 
 it('does not offer the reserved directory scopes no route requires', function (): void {
     ['environmentId' => $environmentId] = aKeyManager();
 
-    $offered = collect((array) $this->get(route('environment-keys'))->assertOk()->inertiaProps('scopes'))
+    $offered = collect((array) $this->get(route('keys'))->assertOk()->inertiaProps('scopes'))
         ->pluck('value')
         ->all();
 
@@ -222,15 +222,15 @@ it('mints an account key with an expiry and lists it as such', function (): void
     $this->travelTo(CarbonImmutable::parse('2026-09-24 10:00:00'));
     ['organizationId' => $organizationId] = aKeyManager();
 
-    $this->from(route('api-keys'))
-        ->post(route('api-keys.store'), ['name' => 'CI', 'role' => 'developer', 'expires' => '30'])
+    $this->from(route('keys.workspace'))
+        ->post(route('keys.workspace.store'), ['name' => 'CI', 'role' => 'developer', 'expires' => '30'])
         ->assertSessionHasNoErrors();
 
     $key = OrganizationApiKey::query()->where('name', 'CI')->firstOrFail();
 
     expect($key->expires_at?->toIso8601String())->toBe('2026-10-24T10:00:00+00:00');
 
-    $row = collect((array) $this->get(route('api-keys'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
+    $row = collect((array) $this->get(route('keys.workspace'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
 
     expect($row['lifecycle']['status'])->toBe('active')
         ->and($row['lifecycle']['expiresAt'])->toBe('2026-10-24T10:00:00+00:00')
@@ -241,7 +241,7 @@ it('mints an account key with an expiry and lists it as such', function (): void
     // of travel would expire the session reading the page, too.)
     $key->forceFill(['expires_at' => CarbonImmutable::now()->subMinute()])->save();
 
-    $row = collect((array) $this->get(route('api-keys'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
+    $row = collect((array) $this->get(route('keys.workspace'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
 
     expect($row['lifecycle']['status'])->toBe('expired')
         ->and($row['revokeHref'])->toBeNull()
@@ -255,13 +255,13 @@ it('mints an account key with an expiry and lists it as such', function (): void
 it('records minting and revoking an account API key on the account log', function (): void {
     ['organizationId' => $organizationId] = aKeyManager();
 
-    $this->from(route('api-keys'))
-        ->post(route('api-keys.store'), ['name' => 'Automation', 'role' => 'developer'])
+    $this->from(route('keys.workspace'))
+        ->post(route('keys.workspace.store'), ['name' => 'Automation', 'role' => 'developer'])
         ->assertSessionHasNoErrors();
 
     $key = OrganizationApiKey::query()->where('name', 'Automation')->firstOrFail();
 
-    $this->from(route('api-keys'))->delete(route('api-keys.destroy', $key->id))->assertRedirect(route('api-keys'));
+    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', $key->id))->assertRedirect(route('keys.workspace'));
 
     $keyActions = ['organization.api_key_created', 'organization.api_key_revoked'];
 
@@ -276,7 +276,7 @@ it('records minting and revoking an account API key on the account log', functio
         ->and($created?->context['role'] ?? null)->toBe('developer');
 
     // A second revoke of the same key stops nothing and records nothing.
-    $this->from(route('api-keys'))->delete(route('api-keys.destroy', $key->id))->assertRedirect(route('api-keys'));
+    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', $key->id))->assertRedirect(route('keys.workspace'));
 
     expect(accountActionsAmong($organizationId, $keyActions))->toHaveCount(2);
 })->group('security');
@@ -290,14 +290,14 @@ it('records an environment key mint and revoke, naming the key', function (): vo
 
     expect($keyId)->toBeString();
 
-    $this->from(route('environment-keys'))
-        ->delete(route('environment-keys.destroy', $keyId), ['environment' => $environmentId])
-        ->assertRedirect(route('environment-keys'));
+    $this->from(route('keys'))
+        ->delete(route('keys.destroy', $keyId), ['environment' => $environmentId])
+        ->assertRedirect(route('keys'));
 
     // Twice: the second finds the key already revoked and has nothing to add.
-    $this->from(route('environment-keys'))
-        ->delete(route('environment-keys.destroy', $keyId), ['environment' => $environmentId])
-        ->assertRedirect(route('environment-keys'));
+    $this->from(route('keys'))
+        ->delete(route('keys.destroy', $keyId), ['environment' => $environmentId])
+        ->assertRedirect(route('keys'));
 
     $entries = app(OrganizationActivity::class)->recent($organizationId)
         ->filter(fn (AuditEntry $entry): bool => str_starts_with($entry->action, 'organization.environment_key_'))

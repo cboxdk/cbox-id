@@ -65,7 +65,7 @@ function moduleConsoleRoutes(): array
         // the acting ORGANIZATION owns rather than on the membership role this file
         // sweeps for. An org admin who owns no identity providers is correctly refused
         // them, which is the opposite of what "admits an admin" asserts below.
-        'projects', 'members', 'api-keys', 'environment-keys',
+        'projects', 'members', 'keys.workspace', 'keys',
         'environment-domains', 'billing', 'organization-settings',
         // The People area's tenant directory — a host page like its Identity-platform
         // sibling above, and gated the same way (`canReadMembers()`), so this sweep's

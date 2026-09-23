@@ -16,6 +16,8 @@ import {
     type KeyLifetimeOption,
     KeyStatusPill,
     KeyTimeline,
+    type LinkTab,
+    LinkTabs,
     PageHeader,
     Panel,
     Select,
@@ -40,6 +42,9 @@ interface KeyRow {
 }
 
 type Props = PageProps<{
+    tabs: LinkTab[];
+    /** False on the environment console, which mints for the environment it stands on. */
+    pickEnvironment: boolean;
     environments: { id: string; name: string }[];
     selected: string;
     keys: KeyRow[];
@@ -49,7 +54,9 @@ type Props = PageProps<{
     storeHref: string;
 }>;
 
-export default function EnvironmentKeys({
+export default function ManagementKeys({
+    tabs,
+    pickEnvironment,
     environments,
     selected,
     keys,
@@ -92,7 +99,7 @@ export default function EnvironmentKeys({
     return (
         <>
             <PageHeader
-                description="Machine credentials for the per-environment management API — provision organizations and users inside one environment. Each key carries explicit scopes."
+                description="Keys for an environment's management API — create organizations and users in one environment from your own backend. Each key carries explicit scopes."
                 actions={
                     <Button asChild size="sm" className="shrink-0">
                         <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noreferrer">
@@ -101,6 +108,10 @@ export default function EnvironmentKeys({
                     </Button>
                 }
             />
+
+            <div className="mt-4">
+                <LinkTabs tabs={tabs} label="Key types" />
+            </div>
 
             {environments.length === 0 ? (
                 <div className="card mt-6">
@@ -112,22 +123,28 @@ export default function EnvironmentKeys({
                 </div>
             ) : (
                 <div className="mt-6 space-y-6">
-                    <Field label="Environment" className="max-w-sm">
-                        <Select
-                            value={selected}
-                            onValueChange={(environment) =>
-                                router.get(
-                                    window.location.pathname,
-                                    { environment },
-                                    { preserveState: true, preserveScroll: true, replace: true },
-                                )
-                            }
-                            options={environments.map((environment) => ({
-                                value: environment.id,
-                                label: environment.name,
-                            }))}
-                        />
-                    </Field>
+                    {pickEnvironment && (
+                        <Field label="Environment" className="max-w-sm">
+                            <Select
+                                value={selected}
+                                onValueChange={(environment) =>
+                                    router.get(
+                                        window.location.pathname,
+                                        { environment },
+                                        {
+                                            preserveState: true,
+                                            preserveScroll: true,
+                                            replace: true,
+                                        },
+                                    )
+                                }
+                                options={environments.map((environment) => ({
+                                    value: environment.id,
+                                    label: environment.name,
+                                }))}
+                            />
+                        </Field>
+                    )}
 
                     {freshKey !== undefined && <RevealedKey value={freshKey} />}
 
@@ -345,4 +362,4 @@ function RevealedKey({ value }: { value: string }) {
     );
 }
 
-EnvironmentKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+ManagementKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;

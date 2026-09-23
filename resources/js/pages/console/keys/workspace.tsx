@@ -16,6 +16,8 @@ import {
     type KeyLifetimeOption,
     KeyStatusPill,
     KeyTimeline,
+    type LinkTab,
+    LinkTabs,
     PageHeader,
     Panel,
     Select,
@@ -33,12 +35,13 @@ interface ApiKey {
 }
 
 type Props = PageProps<{
+    tabs: LinkTab[];
     keys: ApiKey[];
     roles: { value: string; label: string }[];
     lifetimes: KeyLifetimeOption[];
 }>;
 
-export default function ApiKeys({ keys, roles, lifetimes }: Props) {
+export default function WorkspaceKeys({ tabs, keys, roles, lifetimes }: Props) {
     // On the flash channel: a full-authority credential in a history entry is readable by
     // pressing Back, long after the page that showed it has gone.
     const freshKey = usePage().flash.freshKey;
@@ -55,7 +58,7 @@ export default function ApiKeys({ keys, roles, lifetimes }: Props) {
     return (
         <>
             <PageHeader
-                description="Machine credentials for the account management API — list projects and environments, create environments, list and invite administrators. Each key carries a role."
+                description="The workspace's own keys, for the workspace API — list projects and environments, create environments, list and invite your team. Each key carries a built-in role."
                 actions={
                     <Button asChild size="sm">
                         <a href="/api/v1/openapi.yaml" target="_blank" rel="noreferrer">
@@ -65,6 +68,10 @@ export default function ApiKeys({ keys, roles, lifetimes }: Props) {
                     </Button>
                 }
             />
+
+            <div className="mt-4">
+                <LinkTabs tabs={tabs} label="Key types" />
+            </div>
 
             {freshKey !== undefined && (
                 <div
@@ -207,4 +214,4 @@ export default function ApiKeys({ keys, roles, lifetimes }: Props) {
     );
 }
 
-ApiKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+WorkspaceKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;

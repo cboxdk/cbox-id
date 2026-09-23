@@ -56,7 +56,7 @@ function anOwnerRegisteringHooks(): void
 it('reveals the signing secret once and lets the reader clear it off the screen', function (): void {
     anOwnerRegisteringHooks();
 
-    $page = visit('/hooks/new');
+    $page = visit('/inline-hooks/new');
 
     $page->assertSee('New inline hook')
         ->fill('url', 'https://hooks.example.test/token')

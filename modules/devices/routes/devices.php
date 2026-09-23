@@ -19,11 +19,14 @@ use Illuminate\Support\Facades\Route;
  */
 ConsoleRoutes::page(
     feature: 'devices',
-    uri: '/sign-in/devices',
+    uri: '/trusted-devices',
     component: DeviceInventoryController::class,
     name: 'devices.index',
-    environmentUri: '/trusted-devices',
 );
+
+// One URL on both consoles: the organization console said `/sign-in/devices` for the page
+// the environment console calls `/trusted-devices`, which is also what the rail says.
+ConsoleRoutes::moved('/sign-in/devices', '/trusted-devices');
 
 /*
  * The personal half: my enrolment code, my handsets. ORGANIZATION PLANE ONLY, and

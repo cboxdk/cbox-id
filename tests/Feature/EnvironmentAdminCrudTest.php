@@ -203,9 +203,9 @@ it('renders the detail pages for connections, directories, roles, applications a
     );
 
     $this->get("/admin/roles/{$role->id}")->assertOk()->assertSee('Support');
-    $this->get("/admin/applications/{$client->id}")->assertOk()->assertSee('Test App');
+    $this->get("/admin/apps/{$client->id}")->assertOk()->assertSee('Test App');
     $this->get("/admin/webhooks/{$webhook->id}")->assertOk()->assertSee('example.com');
-    $this->get("/admin/directories/{$directory->id}")->assertOk()->assertSee('HR directory');
+    $this->get("/admin/sync-in/{$directory->id}")->assertOk()->assertSee('HR directory');
     $this->get("/admin/single-sign-on/{$connection->id}")->assertOk()->assertSee('Okta');
 });
 
@@ -391,7 +391,7 @@ it('renders the access-review, stored-token and log-stream detail pages', functi
     // of the gate — and that is what kept the weaker half of the pair in place: the
     // organization plane's identical page had demanded a fresh password since it shipped.
     app(EnvironmentSudo::class)->confirm();
-    $this->get("/admin/stored-tokens/{$secret->id}")->assertOk()->assertSee('Stripe key');
+    $this->get("/admin/token-vault/{$secret->id}")->assertOk()->assertSee('Stripe key');
 });
 
 /**
@@ -407,13 +407,13 @@ it('demands a fresh step-up before any token-vault page on the environment plane
     crudSetup();
     $secret = app(SecretVault::class)->store('Stripe key', 'stripe', 'sk_test_x');
 
-    foreach (['/admin/stored-tokens', '/admin/stored-tokens/new', "/admin/stored-tokens/{$secret->id}"] as $url) {
+    foreach (['/admin/token-vault', '/admin/token-vault/new', "/admin/token-vault/{$secret->id}"] as $url) {
         $this->get($url)->assertRedirect(route('environment.sudo'));
     }
 
     app(EnvironmentSudo::class)->confirm();
 
-    foreach (['/admin/stored-tokens', '/admin/stored-tokens/new', "/admin/stored-tokens/{$secret->id}"] as $url) {
+    foreach (['/admin/token-vault', '/admin/token-vault/new', "/admin/token-vault/{$secret->id}"] as $url) {
         $this->get($url)->assertOk();
     }
 })->group('security');
@@ -430,7 +430,7 @@ it('never lets an organization-plane step-up satisfy the environment plane', fun
     app(Sudo::class)->confirm();
     app(Sudo::class)->confirm();
 
-    $this->get('/admin/stored-tokens')->assertRedirect(route('environment.sudo'));
+    $this->get('/admin/token-vault')->assertRedirect(route('environment.sudo'));
 })->group('security');
 
 // RP-initiated logout only returns the browser to the app when the requested
@@ -541,10 +541,10 @@ it('renders the detail pages for login methods, event hooks, conflict rules and 
         'a-secret',
     )->connection;
 
-    $this->get("/admin/login-methods/{$sp->id}")->assertOk()->assertSee('sp.example');
-    $this->get("/admin/event-hooks/{$hook->id}")->assertOk()->assertSee('example.com');
-    $this->get("/admin/conflict-rules/{$policy->id}")->assertOk()->assertSee('Maker/Checker');
-    $this->get("/admin/outbound-sync/{$sync->id}")->assertOk()->assertSee('Downstream');
+    $this->get("/admin/saml-apps/{$sp->id}")->assertOk()->assertSee('sp.example');
+    $this->get("/admin/inline-hooks/{$hook->id}")->assertOk()->assertSee('example.com');
+    $this->get("/admin/role-conflicts/{$policy->id}")->assertOk()->assertSee('Maker/Checker');
+    $this->get("/admin/sync-out/{$sync->id}")->assertOk()->assertSee('Downstream');
 });
 
 // --- B: org RBAC access-role assignment (distinct from the coarse membership tier) ---

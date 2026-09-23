@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Http\Controllers\MovedPageController;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,23 @@ use Illuminate\Support\Facades\Route;
  */
 final class ConsoleRoutes
 {
+    /**
+     * A page that moved to a new path: its old GET answers 301 to the new one, keeping the
+     * query string and any `{parameters}` the two paths share.
+     *
+     * For the console's own table of moved pages AND for a module's, so the old spelling of
+     * a module page lives beside the module's new one rather than in a list in the host.
+     * No middleware on purpose: a redirect discloses nothing a `Location` header to a page
+     * that would refuse the visitor does not, and the destination does its own gating.
+     *
+     * @param  string  $from  the old path, e.g. `/admin/applications/{client}`
+     * @param  string  $to  the new path, e.g. `/admin/apps/{client}`
+     */
+    public static function moved(string $from, string $to): void
+    {
+        Route::get($from, MovedPageController::class)->defaults('to', $to);
+    }
+
     /**
      * Route a console page on BOTH planes, from the same controller.
      *

@@ -7,8 +7,11 @@ namespace App\Http\Controllers\Console;
 use App\Http\Props\Console\EnvironmentKeyRowProps;
 use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\Console\KeyTabs;
 use App\Platform\Enums\KeyLifetime;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyScopes;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
@@ -23,8 +26,15 @@ use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
- * CONSOLE › ENVIRONMENT KEYS — the machine credentials (`cbid_env_…`) apps use to
- * provision organizations and users inside ONE environment. Distinct from an account key:
+ * KEYS › MANAGEMENT KEYS — the machine credentials (`cbid_env_…`) apps use to provision
+ * organizations and users inside ONE environment.
+ *
+ * ON BOTH CONSOLES. The workspace console issues them for any environment the person may
+ * reach, with the environment in the URL; the environment console issues them for the
+ * environment it stands on, which is the one a developer working there needs and could
+ * only get by going back to the workspace on another host. The authority differs by
+ * console and so does the audit trail's owner — see {@see self::reachable()} and
+ * {@see self::auditScope()} — and nothing else does. Distinct from an account key:
  * an environment key is bound to a single environment and carries fine-grained scopes
  * rather than a role.
  *
@@ -42,7 +52,7 @@ use Inertia\Response;
  */
 final readonly class EnvironmentKeyController extends ConsoleController
 {
-    public function index(Request $request, Memberships $members, EnvironmentApiKeys $keys): Response|RedirectResponse
+    public function index(Request $request, Memberships $members, EnvironmentApiKeys $keys, KeyTabs $tabs): Response|RedirectResponse
     {
         /*
          * A READ IS REDIRECTED, A WRITE IS REFUSED, and the difference is deliberate.
@@ -53,7 +63,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
          * that fails the same question is not a navigation mistake, and there is nothing
          * to send them to: it is refused.
          */
-        if ($this->scope->capabilities()?->canManageEnvironments() !== true) {
+        if (! $this->mayManageEnvironments()) {
             return to_route('projects');
         }
 
@@ -73,7 +83,11 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         $now = CarbonImmutable::now();
 
-        return $this->page('console/environment-keys', 'Environment keys', [
+        return $this->page('console/keys/management', 'Keys', [
+            'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
+            // The environment console mints for the environment it stands on; a picker with
+            // one entry would only suggest there was a choice.
+            'pickEnvironment' => ! $this->onEnvironmentPlane(),
             'environments' => $environments->map(fn (Environment $environment): array => [
                 'id' => $environment->id,
                 'name' => $environment->name,
@@ -88,7 +102,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
             'keys' => $selected === '' ? [] : $keys->forEnvironment($selected)
                 ->map(fn (EnvironmentApiKey $key): EnvironmentKeyRowProps => EnvironmentKeyRowProps::from(
                     $key,
-                    $this->url('environment-keys.destroy', $key->id),
+                    $this->url('keys.destroy', $key->id),
                     $now,
                 ))
                 ->values()
@@ -107,7 +121,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
                 EnvironmentApiScope::OrganizationsRead->value,
                 EnvironmentApiScope::UsersRead->value,
             ],
-            'storeHref' => $this->url('environment-keys.store'),
+            'storeHref' => $this->url('keys.store'),
         ]);
     }
 
@@ -136,7 +150,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
          * something you get past rather than something that means what it says.
          */
         $sudo = $this->stepUp(
-            'An environment API key reads and writes this environment\'s organizations and people over the API, and its value is shown once.',
+            'A management key reads and writes this environment\'s organizations and people over the API, and its value is shown once.',
         );
 
         if ($sudo !== null) {
@@ -162,7 +176,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', 'Environment key created — copy it now, it will not be shown again.');
+        return back()->with('status', 'Management key created — copy it now, it will not be shown again.');
     }
 
     public function destroy(
@@ -180,7 +194,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
 
         abort_unless(in_array($environmentId, $this->reachable($members), true), 403);
 
-        $sudo = $this->stepUp('Revoking an environment key stops whatever is using it, immediately.');
+        $sudo = $this->stepUp('Revoking a management key stops whatever is using it, immediately.');
 
         if ($sudo !== null) {
             return to_route($sudo);
@@ -207,7 +221,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
             request: $request,
         );
 
-        return back()->with('status', 'Environment key revoked.');
+        return back()->with('status', 'Management key revoked.');
     }
 
     /**
@@ -223,6 +237,18 @@ final readonly class EnvironmentKeyController extends ConsoleController
      */
     private function auditScope(): string
     {
+        // On the environment console the acting organization is one of the ENVIRONMENT's
+        // organizations — somebody else's customer — and a key minted here is still the
+        // workspace's act. So it is recorded where the workspace console records it: under
+        // the workspace whose membership opened this console.
+        if ($this->onEnvironmentPlane()) {
+            $organizationId = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
+
+            abort_unless(is_string($organizationId) && $organizationId !== '', 403);
+
+            return $organizationId;
+        }
+
         return $this->scope->requireOrganizationId();
     }
 
@@ -235,7 +261,25 @@ final readonly class EnvironmentKeyController extends ConsoleController
      */
     private function assertMayManageEnvironments(): void
     {
-        abort_unless($this->scope->capabilities()?->canManageEnvironments() === true, 403);
+        abort_unless($this->mayManageEnvironments(), 403);
+    }
+
+    /**
+     * On the environment console, holding it IS the capability: its session resolves only
+     * for a workspace member who may manage environments and reaches this one, re-checked
+     * on every request ({@see EnvironmentAdminAuth::membership()}). The workspace console
+     * asks the membership's capability directly.
+     */
+    private function mayManageEnvironments(): bool
+    {
+        return $this->onEnvironmentPlane()
+            ? app(EnvironmentAdminAuth::class)->check()
+            : $this->scope->capabilities()?->canManageEnvironments() === true;
+    }
+
+    private function onEnvironmentPlane(): bool
+    {
+        return $this->scope->plane() === ConsolePlane::Environment;
     }
 
     /**
@@ -250,6 +294,16 @@ final readonly class EnvironmentKeyController extends ConsoleController
      */
     private function reachable(Memberships $members): array
     {
+        // The environment console administers exactly the environment it stands on. Its
+        // session is anchored to that environment and refused on any other host, so the
+        // anchor is the whole answer — and nothing in the request can widen it.
+        if ($this->onEnvironmentPlane()) {
+            $auth = app(EnvironmentAdminAuth::class);
+            $environmentId = $auth->environmentId();
+
+            return $auth->check() && $environmentId !== null ? [$environmentId] : [];
+        }
+
         $organizationId = $this->scope->organizationId();
         $actorId = $this->scope->actorId();
 
@@ -272,8 +326,8 @@ final readonly class EnvironmentKeyController extends ConsoleController
     private function stepUp(string $reason): ?string
     {
         return app(ConsoleStepUp::class)->challenge(
-            'environment-keys',
-            'environment.environment-keys',
+            'keys',
+            'environment.keys',
             [],
             $reason,
         );

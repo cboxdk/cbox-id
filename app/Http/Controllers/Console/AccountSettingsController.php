@@ -30,7 +30,7 @@ final readonly class AccountSettingsController extends ConsoleController
             return to_route('projects');
         }
 
-        return $this->page('console/account-settings', 'Account settings', [
+        return $this->page('console/account-settings', 'Workspace settings', [
             'name' => $organization->name,
         ]);
     }

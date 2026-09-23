@@ -46,7 +46,7 @@ final class MembershipRefused extends RuntimeException
     {
         return new self(
             MembershipRefusalReason::OwnsProducts,
-            'This organization owns identity providers on this platform. Close its projects under Identity platform first.',
+            'This organization owns identity providers on this platform. Close its projects under Workspace › Projects first.',
         );
     }
 }

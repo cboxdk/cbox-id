@@ -128,7 +128,7 @@ final readonly class ClientController extends ConsoleController
 
         $showsEveryOrganization = $organizationId === null;
 
-        return $this->page('console/clients/index', 'Apps & API keys', [
+        return $this->page('console/clients/index', 'Apps', [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
                 ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))

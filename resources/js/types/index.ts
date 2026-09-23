@@ -199,6 +199,26 @@ export interface Shell {
     isOperator: boolean;
     brandHref: string;
     navPinned: boolean;
+    /** Absolute on the environment console: the person's own pages live on the workspace host. */
+    accountHref: string;
+    switchUserHref: string;
+    /** The environment console's way back to its workspace; null on every other console. */
+    workspace: WorkspaceLink | null;
+    /** A sentence above a page the rail does not offer, and where to go instead. */
+    notice: ShellNotice | null;
+}
+
+/** `App\Http\Props\Shell\WorkspaceLinkProps` */
+export interface WorkspaceLink {
+    name: string;
+    href: string;
+}
+
+/** `App\Http\Props\Shell\ShellNoticeProps` */
+export interface ShellNotice {
+    message: string;
+    href: string;
+    label: string;
 }
 
 export interface SharedProps {
