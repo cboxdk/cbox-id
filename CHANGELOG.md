@@ -10,6 +10,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **Minting, revoking, rotating and renaming now leave a line on the activity log.**
+  Account API keys were created and revoked with no audit entry; an app being registered,
+  edited, having its secret rotated or being deleted wrote nothing; renaming the account
+  from Account settings wrote nothing (the environment console's Settings already wrote
+  `organization.renamed`). New actions: `organization.api_key_created`,
+  `organization.api_key_revoked`, `organization.renamed` (now on the account log too),
+  and `client.created`, `client.updated`, `client.secret_rotated`, `client.deleted` on the
+  app's own organization trail. The `client.*` entries are written by the console
+  (`App\Platform\Console\ClientLifecycleAudit`, `context.recorded_by = console`) until the
+  framework's client service records its own lifecycle; they are named to be de-duplicated
+  then. The environment-key audit is now unconditional rather than skipped whenever no
+  organization was resolved.
+
+- **The environment key list drew revoked keys like live ones, Revoke button included.**
+  Both key lists now show a status (active, expired or revoked — expired was reported as
+  revoked on the account page), the key prefix, when it was created, last used and expires,
+  each as a relative and an absolute time, and offer Revoke only on an active key. A second
+  revoke of the same key records nothing.
+
 - **A tenant admin could edit the whole environment's permission catalog.** The Permissions
   page is offered on both consoles deliberately — roles are made of permissions, and a plane
   that offers one while hiding the other asks an admin to assign a thing they cannot inspect.
@@ -44,12 +63,33 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Key expiry in the console.** Both key forms (account API keys, environment keys) now
+  ask how long the key lives — never, 30 days, 90 days, 1 year or a custom date (the key
+  stops at the end of that day, UTC). The services always supported it; the forms never
+  asked. Omitting the field still mints a key that never expires.
+
 - **A Permissions guide, and the "?" topic the page never had.** Every other console page
   has one; this had neither, so the only written account of what a permission is lived in
   the SDK reference. `docs/guides/permissions.md` is in plain language, for an administrator
   who does not want to write code to use a form that is already on their screen.
 
 ### Fixed
+
+- Environment-key scopes are shown by their label with the API key beside them, and the
+  reserved `directories:*` scopes, which no route requires, are no longer offered.
+- The API keys page promised the account API could "read billing"; it lists projects and
+  environments, creates environments, and lists and invites administrators. The environment
+  OpenAPI spec said environment keys are minted in the environment's console; they are
+  created under Identity platform › Environment keys.
+- Key and secret verbs are one set across the console: **Create key**, **Revoke**,
+  **Rotate secret**; the new-app form's button says **Create app**.
+- Secret rotation mints through the framework's `ClientSecret` value object instead of
+  a second inline copy of the format, and its docblock no longer claims overlap rotation:
+  rotation is a cut-over, and the page now says there is no overlap window.
+- The roles list said "No permissions yet." and "Every available permission is already
+  granted." on the same row when nothing could be granted; it now says which. With every
+  organization in view, an organization's role shows the organization that owns it, so two
+  tenants' "Editor" roles are no longer identical rows.
 
 - `pip install cbox-id-client` appeared in step 5 of the quickstart — the first command a
   new integrator runs. It has never been published. The block now lists the four packages

@@ -48,6 +48,10 @@ them a thing to sign in *to*.
   down the other, and the activity log can no longer tell you which one did what.
 - **The secret cannot be recovered, only replaced.** That is deliberate. If it is
   lost, or has ever been pasted somewhere it should not have been, rotate it.
+- **Rotating is a cut-over, not an overlap.** The old secret stops working the moment
+  the new one is created, so have the new value ready to deploy before you press
+  **Rotate secret**. Registering, editing, rotating and deleting an app are all recorded
+  on the activity log.
 - **Redirect URIs are a security control, not configuration.** They are the reason
   an attacker cannot have your app's sign-in send the resulting code to their
   server. Keep the list exact and short.
