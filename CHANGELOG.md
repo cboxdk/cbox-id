@@ -10,6 +10,20 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **Opening a mailed link spent it — and a mail scanner opens every link.** Organization
+  invitations, sign-in links, address confirmations and Admin Portal setup links were all
+  redeemed by their GET. Outlook Safe Links, Mimecast, Proofpoint and the link previews in
+  Slack and Teams fetch URLs before a person sees them, so the scanner accepted the
+  invitation or took the sign-in session, and the person who clicked was told the link had
+  expired. Each link now opens a page that says what it is for (an invitation names the
+  organization, who invited you and the role), and a button POSTs to spend it. The page is
+  not auto-submitted.
+
+- **Withdrawing an invitation deleted its parked access roles by invitation id alone.** The
+  roster's revoke action was scoped to the acting organization; the cleanup beside it was
+  not, so it could be pointed at another organization's invitation. Every write is now
+  bound to the organization in the query that finds the invitation.
+
 - **A tenant admin could edit the whole environment's permission catalog.** The Permissions
   page is offered on both consoles deliberately — roles are made of permissions, and a plane
   that offers one while hiding the other asks an admin to assign a thing they cannot inspect.
@@ -44,12 +58,47 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Invitations can send people back to the app that invited them.** An invitation takes
+  an optional `client_id` and `return_to`; after accepting, the person is sent to
+  `return_to` instead of this console's dashboard. The address must sit on one of the
+  app's registered redirect-URI origins, and it is checked again at acceptance. Stored in a
+  new app table, `invitation_contexts`, beside `invitation_role_grants`.
+- **One invite form and one pending-invitations list everywhere.** People › Members, the
+  environment console's organization page and Identity platform › Administrators draw the
+  same React component (`InviteForm`, `PendingInvitations`); the organization invite runs
+  through one service (`OrganizationInvitations`). Every surface can now **send again** and
+  **withdraw**, and each role in the picker says what it means.
+- **Transfer ownership** on People › Members (owner only) and **Make owner** on the
+  environment console's organization page; **Leave organization** for any member except the
+  last owner; the owner can **delete their own organization** under Settings, confirmed by
+  typing its name and behind a fresh password.
+- A **Members and invitations** guide, linked from the page's "?".
+
 - **A Permissions guide, and the "?" topic the page never had.** Every other console page
   has one; this had neither, so the only written account of what a permission is lived in
   the SDK reference. `docs/guides/permissions.md` is in plain language, for an administrator
   who does not want to write code to use a form that is already on their screen.
 
+### Changed
+
+- **Ownership is transferred, never assigned, on every roster.** People › Members offered
+  "Owner" in its role picker, so an owner could mint further owners; the organization
+  roster's roles are now Admin and Member, and ownership moves only with Transfer ownership
+  / Make owner. Existing extra owners keep their role until an owner or an environment
+  administrator changes it.
+- **The two invitation mails no longer share a subject line.** Joining an organization reads
+  "*Dana* invited you to join *Acme*"; administering a customer account reads "*Dana*
+  invited you to administer *Acme* on Cbox ID". The account mail used to be signed with the
+  inviter's subject id instead of their name.
+
 ### Fixed
+
+- The setup guide's **Invite your team** step and the Roles page's **console access** link
+  pointed at a customer's administrators page, which redirected a tenant organization's
+  admin to projects and then to the dashboard. Both now open the organization's own People
+  page.
+- A refused roster change (the last owner, a role that is not offered) is shown on the
+  page; it used to go into an error bag nothing read, so the control silently did nothing.
 
 - `pip install cbox-id-client` appeared in step 5 of the quickstart — the first command a
   new integrator runs. It has never been published. The block now lists the four packages

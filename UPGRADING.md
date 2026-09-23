@@ -16,6 +16,29 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Mailed links take one more click
+
+Invitation, sign-in, email-confirmation and Admin Portal setup links now open a page with
+a button; the button spends the link (`POST` to the same path). Nothing to migrate —
+links already in inboxes keep working and simply land on that page. If you script against
+these URLs (end-to-end tests, a support tool that opens them), send a `POST` to the same
+path instead of a `GET`. New route names: `invitation.accept.store`, `magic.redeem.store`,
+`verification.verify.store`, `portal.enter.store`.
+
+### Run the migration for invitation return addresses
+
+`2026_09_24_000100_create_invitation_contexts_table` adds `invitation_contexts`. It is
+additive; invitations sent before it simply have no app context.
+
+### Owner is no longer a choice in the organization role pickers
+
+`App\Platform\OrgRoles::assignable()` is `[Admin, Member]`. A request that posts
+`role=owner` to an invite, add-member or change-role endpoint is refused with
+"Choose one of: Admin, Member." Use the transfer endpoints instead
+(`directory.members.transfer-ownership`, `environment.organizations.members.transfer-ownership`).
+Organizations that already have several owners keep them; **Make owner** on the
+environment console reduces them to one.
+
 ### Everyone is signed out on deploy
 
 There were three session stores for what is one human, and two of them are gone.
