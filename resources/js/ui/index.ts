@@ -32,6 +32,13 @@ export { Help } from './Help';
 export { Icon, type IconProps } from './Icon';
 export { type IconName, iconNames, iconPaths } from './icons';
 export { Input, type InputProps, Textarea } from './Input';
+export {
+    ExpiryField,
+    type KeyLifecycle,
+    type KeyLifetimeOption,
+    KeyStatusPill,
+    KeyTimeline,
+} from './KeyLifecycle';
 export { Kv, KvList } from './Kv';
 export { type MetadataRow, MetadataRows } from './MetadataRows';
 export { PageHeader } from './PageHeader';
