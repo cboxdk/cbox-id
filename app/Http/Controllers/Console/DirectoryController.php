@@ -13,8 +13,10 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalScope;
 use App\Platform\Help\HelpTopic;
+use App\Platform\OrgAccessRoles;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
+use Cbox\Id\AccessControl\Exceptions\UnknownRole;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -311,7 +313,7 @@ final readonly class DirectoryController extends ConsoleController
             ->with('status', $provider->label().' connected — users are syncing.');
     }
 
-    public function show(string $directory, GroupRoleMappings $mappings): Response
+    public function show(string $directory, GroupRoleMappings $mappings, OrgAccessRoles $catalog): Response
     {
         $this->scope->assertMayAdminister();
 
@@ -323,25 +325,14 @@ final readonly class DirectoryController extends ConsoleController
             ->orderBy('display_name')
             ->get();
 
-        // Roles assignable to a group: the organization's own, plus the roles apps declare
-        // for it.
-        $clientIds = Client::query()
-            ->where(fn (Builder $q): Builder => $q
-                ->whereNull('organization_id')
-                ->orWhere('organization_id', $organizationId))
-            ->pluck('client_id');
-
-        $roles = Role::query()
-            ->where(function (Builder $q) use ($organizationId, $clientIds): void {
-                $q->where(fn (Builder $own): Builder => $own
-                    ->where('organization_id', $organizationId)
-                    ->whereNull('client_id'))
-                    ->orWhere(fn (Builder $declared): Builder => $declared
-                        ->whereIn('client_id', $clientIds)
-                        ->whereNull('orphaned_at'));
-            })
-            ->orderBy('name')
-            ->get();
+        /*
+         * Roles a group may map onto: the TENANT plane's set, on both consoles. Who is in
+         * a group is decided by the customer's own identity provider, so a mapping is a
+         * grant the customer controls — the framework refuses a staff-only role in one
+         * ({@see GroupRoleMappings::map()}), and offering it here would be a checkbox that
+         * cannot be ticked.
+         */
+        $roles = $catalog->tenantAssignable($organizationId);
 
         $appNames = Client::query()
             ->whereIn('client_id', $roles->pluck('client_id')->filter()->unique())
@@ -496,7 +487,13 @@ final readonly class DirectoryController extends ConsoleController
         $role = (string) $request->string('role');
 
         if ($request->boolean('mapped')) {
-            $mappings->map($model->organization_id, $group->id, $role);
+            try {
+                $mappings->map($model->organization_id, $group->id, $role);
+            } catch (UnknownRole) {
+                // Another organization's role, an orphaned one, or a staff-only one — none
+                // of which the picker offers, so this is a posted id, refused in words.
+                return back()->withErrors(['role' => 'That role cannot be given to a directory group here.']);
+            }
         } else {
             $mappings->unmap($model->organization_id, $group->id, $role);
         }

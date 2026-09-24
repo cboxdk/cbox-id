@@ -69,6 +69,11 @@ type Props = PageProps<{
     invitations: PendingInvitation[];
     domains: Domain[];
     accessRoles: AccessRole[];
+    /**
+     * What an invitation may carry: `accessRoles` without the staff-only ones, which an
+     * organization's own administrators could never hand out either.
+     */
+    inviteAccessRoles: AccessRole[];
     /** What an invitation or an added member may be given — never Owner. */
     roleOptions: RoleOption[];
     /** The same plus Owner, disabled, so an owner's row names what it holds. */
@@ -93,6 +98,7 @@ export default function OrganizationDetail({
     invitations,
     domains,
     accessRoles,
+    inviteAccessRoles,
     roleOptions,
     rosterRoleOptions,
     apps,
@@ -145,7 +151,7 @@ export default function OrganizationDetail({
                 <InviteForm
                     href={urls.invite}
                     roles={roleOptions}
-                    accessRoles={accessRoles.map((role) => ({
+                    accessRoles={inviteAccessRoles.map((role) => ({
                         id: role.id,
                         name: role.name,
                         group: role.app ?? 'All apps',

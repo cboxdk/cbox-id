@@ -352,7 +352,9 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
 
         foreach ($grants as $grant) {
             try {
-                if ($this->access->grant($invitation->organization_id, $subjectId, $grant->role_id, GrantSource::Manual) === null) {
+                // As the tenant: a role made staff-only since the invitation went is withheld
+                // here like any other refusal, rather than granted on stale say-so.
+                if ($this->access->grantAsTenant($invitation->organization_id, $subjectId, $grant->role_id, GrantSource::Manual) === null) {
                     continue;
                 }
             } catch (UnknownRole|GrantRefused) {
@@ -481,7 +483,11 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             return [];
         }
 
-        $assignable = array_filter($this->catalog->assignable($organizationId)->pluck('id')->all(), 'is_string');
+        // The TENANT plane's set, whichever console sends the invitation: accepting it is
+        // the invitee's act inside their organization, and a staff-only role never rides
+        // in on one. An environment administrator grants staff rights on the person once
+        // they have joined.
+        $assignable = array_filter($this->catalog->tenantAssignable($organizationId)->pluck('id')->all(), 'is_string');
 
         return array_values(array_unique(array_intersect($roleIds, $assignable)));
     }

@@ -249,7 +249,7 @@ final readonly class DirectoryMemberController extends ConsoleController
          * excludes another organization's private-app roles. The framework's role service is
          * the backstop; this pair is the gate.
          */
-        if ($memberships->of($organizationId, $member) === null || ! $catalog->isAssignable($organizationId, $roleId)) {
+        if ($memberships->of($organizationId, $member) === null || ! $catalog->isTenantAssignable($organizationId, $roleId)) {
             return back();
         }
 
@@ -265,7 +265,7 @@ final readonly class DirectoryMemberController extends ConsoleController
          * never called it, so an admin could create on this page exactly the toxic
          * combination the governance page reports.
          */
-        $refusal = app(GrantAccessRole::class)->grant($organizationId, $member, $roleId, GrantSource::Manual);
+        $refusal = app(GrantAccessRole::class)->grantAsTenant($organizationId, $member, $roleId, GrantSource::Manual);
 
         if ($refusal !== null) {
             return back()->withErrors(['role' => $refusal->message()]);
@@ -412,24 +412,15 @@ final readonly class DirectoryMemberController extends ConsoleController
     }
 
     /**
-     * The access roles a member may hold here: this organization's own org-wide roles, plus
-     * the roles declared by apps this organization can use.
+     * The access roles this organization's own administrators may hand out — never a
+     * staff-only role ({@see OrgAccessRoles::tenantAssignable()}). This page is the
+     * tenant plane; an environment administrator grants staff rights from theirs.
      *
      * @return Collection<int, Role>
      */
     private function assignableRoles(string $organizationId)
     {
-        $clientIds = Client::query()
-            ->where(fn ($q) => $q->whereNull('organization_id')->orWhere('organization_id', $organizationId))
-            ->pluck('client_id');
-
-        return Role::query()
-            ->where(function ($q) use ($organizationId, $clientIds): void {
-                $q->where(fn ($x) => $x->where('organization_id', $organizationId)->whereNull('client_id'))
-                    ->orWhere(fn ($x) => $x->whereIn('client_id', $clientIds)->whereNull('orphaned_at'));
-            })
-            ->orderBy('name')
-            ->get();
+        return app(OrgAccessRoles::class)->tenantAssignable($organizationId);
     }
 
     /**

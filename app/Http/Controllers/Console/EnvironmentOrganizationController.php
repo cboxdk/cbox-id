@@ -157,6 +157,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $accessRoles = $catalog->assignable($model->id);
         $appNames = $catalog->appNames($accessRoles);
+        $inviteRoles = $catalog->tenantAssignable($model->id);
         $assignments = $catalog->assignmentsByUser($model->id, $memberIds);
 
         return $this->page('environment/organizations/show', $model->name, [
@@ -198,6 +199,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             ),
             'domains' => $this->domainProps($model->id),
             'accessRoles' => $this->accessRoleProps($accessRoles, $appNames),
+            // What an INVITATION may carry: the tenant plane's set, because accepting one
+            // is the invitee's act inside the organization. Staff-only roles are granted
+            // on the member once they have joined, from `accessRoles` above.
+            'inviteAccessRoles' => $this->accessRoleProps($inviteRoles, $catalog->appNames($inviteRoles)),
             // The same lists the organization's own People page offers — one set of roles,
             // wherever somebody is invited from.
             'roleOptions' => RoleOptionProps::organization(),

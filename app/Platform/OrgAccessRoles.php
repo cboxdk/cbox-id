@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -22,11 +23,23 @@ use Illuminate\Support\Facades\DB;
  *
  * Shared by the environment-admin organization and user consoles so both surface the
  * exact same catalog and permission explanations.
+ *
+ * TWO PLANES, TWO SETS. {@see assignable()} is what an ENVIRONMENT administrator may grant
+ * inside an organization — staff-only roles included, because giving the vendor's support
+ * lead "Support" inside one customer is exactly their call. {@see tenantAssignable()} is
+ * what the organization's OWN administrators may offer: the framework's
+ * {@see Roles::tenantAssignableRoles()}, which leaves staff roles out. A customer handing
+ * the vendor's cross-customer role to one of their own people would be a privilege
+ * escalation out of their tenancy.
  */
 final class OrgAccessRoles
 {
+    public function __construct(private readonly Roles $roles) {}
+
     /**
-     * The roles assignable to people in this organization, ordered by name.
+     * The roles an ENVIRONMENT administrator may grant to people in this organization,
+     * ordered by name. Staff-only roles included; a tenant-facing surface uses
+     * {@see tenantAssignable()}.
      *
      * @return Collection<int, Role>
      */
@@ -43,6 +56,33 @@ final class OrgAccessRoles
             })
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * The roles this organization's own administrators may offer, ordered by name — the
+     * tenant plane's picker, and the set an invitation may carry.
+     *
+     * The framework's list (this organization's roles and the environment's shared ones,
+     * never a staff-only or an orphaned one) narrowed by the one rule it does not state:
+     * an app-declared role only for an app this organization can use. The write path
+     * asks the same framework predicate through {@see GrantAccessRole::grantAsTenant()},
+     * so a role this list hides is a role that grant refuses.
+     *
+     * @return Collection<int, Role>
+     */
+    public function tenantAssignable(string $organizationId): Collection
+    {
+        $usable = array_flip($this->orgClientIds($organizationId));
+
+        return collect($this->roles->tenantAssignableRoles($organizationId))
+            ->filter(static fn (Role $role): bool => $role->client_id === null || isset($usable[$role->client_id]))
+            ->values();
+    }
+
+    /** {@see tenantAssignable()} for one role: whether an organization's own admin may grant it. */
+    public function isTenantAssignable(string $organizationId, string $roleId): bool
+    {
+        return $this->tenantAssignable($organizationId)->contains(fn (Role $r): bool => $r->id === $roleId);
     }
 
     /**
