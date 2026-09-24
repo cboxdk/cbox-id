@@ -55,6 +55,10 @@ class ConsoleNavigation
             ),
             new NavArea('People', 'members',
                 new NavPage('environment.users', 'Users'),
+                // Roles held across the whole environment by its own people. Beside Users
+                // because it is a question about people — "who has support access?" —
+                // and only this console has it: organizations never grant one.
+                new NavPage('environment.staff', 'Staff'),
                 new NavPage('environment.roles', 'Roles'),
                 new NavPage('environment.permissions', 'Permissions'),
             ),

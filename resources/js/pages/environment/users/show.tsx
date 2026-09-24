@@ -18,6 +18,9 @@ import {
     type RoleOption,
     roleSelectOptions,
     Select,
+    type StaffRoleOption,
+    StaffRolePicker,
+    staffRoleScope,
 } from '@/ui';
 
 interface AccessRole {
@@ -62,8 +65,9 @@ type Props = PageProps<{
     joinableOrganizations: { value: string; label: string }[];
     joiningOrganization: string;
     joiningAccessRoles: AccessRole[];
-    everywhereRoles: AccessRole[];
-    heldEverywhere: string[];
+    staffRoles: StaffRoleOption[];
+    heldStaffRoles: string[];
+    staffHref: string;
     sessions: SessionRow[];
     /** What a new membership may be given — never Owner. */
     assignableRoles: RoleOption[];
@@ -100,8 +104,9 @@ export default function UserDetail({
     joinableOrganizations,
     joiningOrganization,
     joiningAccessRoles,
-    everywhereRoles,
-    heldEverywhere,
+    staffRoles,
+    heldStaffRoles,
+    staffHref,
     sessions,
     assignableRoles,
     membershipRoles,
@@ -151,11 +156,16 @@ export default function UserDetail({
                 joinableOrganizations={joinableOrganizations}
                 joiningOrganization={joiningOrganization}
                 joiningAccessRoles={joiningAccessRoles}
-                everywhereRoles={everywhereRoles}
-                heldEverywhere={heldEverywhere}
                 assignableRoles={assignableRoles}
                 membershipRoles={membershipRoles}
                 urls={urls}
+            />
+
+            <StaffRolesPanel
+                roles={staffRoles}
+                held={heldStaffRoles}
+                staffHref={staffHref}
+                href={urls.environmentRole}
             />
 
             <Impersonation memberships={memberships} href={urls.impersonate} />
@@ -665,8 +675,6 @@ function Organizations({
     joinableOrganizations,
     joiningOrganization,
     joiningAccessRoles,
-    everywhereRoles,
-    heldEverywhere,
     assignableRoles,
     membershipRoles,
     urls,
@@ -676,8 +684,6 @@ function Organizations({
     joinableOrganizations: { value: string; label: string }[];
     joiningOrganization: string;
     joiningAccessRoles: AccessRole[];
-    everywhereRoles: AccessRole[];
-    heldEverywhere: string[];
     assignableRoles: RoleOption[];
     membershipRoles: RoleOption[];
     urls: Props['urls'];
@@ -809,42 +815,6 @@ function Organizations({
                     )}
                 </div>
 
-                {/*
-                    GRANTS THAT NAME NO ORGANIZATION. Every grant above is scoped to one
-                    tenant, which cannot describe a support agent acting across all of
-                    them, somebody who has joined none, or an app with no tenancy of its own
-                    to hang a grant on. Those people used to get a token with no roles and
-                    no permissions, and there was no way to give them any.
-                */}
-                {everywhereRoles.length > 0 && (
-                    <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
-                        <p className="text-sm font-medium">Staff roles</p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            For your own people — support, operations. Applied in <b>every</b>
-                            organization, and to this person even when they belong to none. Only
-                            roles you defined for the whole environment can be granted this way —
-                            one organization's own role is their policy, not everyone's.
-                        </p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            {everywhereRoles.map((role) => (
-                                <Checkbox
-                                    key={role.id}
-                                    checked={heldEverywhere.includes(role.id)}
-                                    onCheckedChange={(granted) =>
-                                        router.post(
-                                            urls.environmentRole,
-                                            { role: role.id, granted },
-                                            { preserveScroll: true },
-                                        )
-                                    }
-                                    label={role.name}
-                                    hint={role.app ?? 'All apps'}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 <AddToOrganization
                     joinable={joinableOrganizations}
                     joining={joiningOrganization}
@@ -866,6 +836,135 @@ function Organizations({
 
                     if (membership !== null) {
                         router.delete(membership.urls.remove, { preserveScroll: true });
+                    }
+                }}
+            />
+        </Panel>
+    );
+}
+
+/**
+ * STAFF ROLES — grants that name no organization.
+ *
+ * Every grant above is scoped to one organization, which cannot describe a support agent
+ * acting across all of them, somebody who has joined none, or an app with no tenancy of
+ * its own to hang a grant on. An app's own role granted here reaches only that app's
+ * tokens; a role for all apps reaches every one.
+ */
+function StaffRolesPanel({
+    roles,
+    held,
+    staffHref,
+    href,
+}: {
+    roles: StaffRoleOption[];
+    held: string[];
+    staffHref: string;
+    href: string;
+}) {
+    const [role, setRole] = useState('');
+    const [takingBack, setTakingBack] = useState<StaffRoleOption | null>(null);
+    const { errors } = usePage().props;
+    const holding = roles.filter((candidate) => held.includes(candidate.id));
+    const offered = roles.filter((candidate) => !held.includes(candidate.id));
+
+    return (
+        <Panel
+            title="Staff roles"
+            description={
+                <>
+                    Roles held across the whole environment — in every organization, and even when
+                    they belong to none. Organizations never see these.{' '}
+                    <Link href={staffHref} style={{ color: 'var(--accent-strong)' }}>
+                        Everyone with a staff role
+                    </Link>
+                </>
+            }
+        >
+            <div className="space-y-3">
+                {holding.length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                        No staff roles.
+                    </p>
+                ) : (
+                    <ul className="space-y-2">
+                        {holding.map((staffRole) => (
+                            <li
+                                key={staffRole.id}
+                                className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                                style={{ borderColor: 'var(--border)' }}
+                            >
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-medium">
+                                        {staffRole.name}
+                                    </span>
+                                    <span
+                                        className="block truncate text-xs"
+                                        style={{ color: 'var(--faint)' }}
+                                    >
+                                        {staffRoleScope(staffRole)}
+                                    </span>
+                                </span>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    className="shrink-0"
+                                    onClick={() => setTakingBack(staffRole)}
+                                >
+                                    Take back
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                {offered.length > 0 && (
+                    <form
+                        className="grid gap-2 sm:grid-cols-[1fr_auto] items-start"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+
+                            if (role === '') {
+                                return;
+                            }
+
+                            router.post(
+                                href,
+                                { role, granted: true },
+                                { preserveScroll: true, onSuccess: () => setRole('') },
+                            );
+                        }}
+                    >
+                        <Field label="Grant a staff role" error={errors.staffRole}>
+                            <StaffRolePicker roles={offered} value={role} onValueChange={setRole} />
+                        </Field>
+                        <Button
+                            type="submit"
+                            className="shrink-0 sm:self-end"
+                            disabled={role === ''}
+                        >
+                            Grant
+                        </Button>
+                    </form>
+                )}
+            </div>
+
+            <ConfirmDelete
+                open={takingBack !== null}
+                onOpenChange={(open) => !open && setTakingBack(null)}
+                name={takingBack?.name ?? ''}
+                verb="Take back"
+                consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh this person's tokens; nobody is signed out."
+                onConfirm={() => {
+                    const staffRole = takingBack;
+                    setTakingBack(null);
+
+                    if (staffRole !== null) {
+                        router.post(
+                            href,
+                            { role: staffRole.id, granted: false },
+                            { preserveScroll: true },
+                        );
                     }
                 }}
             />

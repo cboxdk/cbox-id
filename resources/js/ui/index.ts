@@ -68,6 +68,7 @@ export { type ProviderMark as ProviderMarkShape, providerMarks } from './provide
 export { RadioGroup, type RadioOption } from './RadioGroup';
 export { Select, type SelectOption } from './Select';
 export { Spinner } from './Spinner';
+export { StaffRolePicker, type StaffRoleOption, staffRoleScope } from './StaffRolePicker';
 export { Stat, type StatTone } from './Stat';
 export { Switch } from './Switch';
 export { type LinkTab, LinkTabs } from './LinkTabs';

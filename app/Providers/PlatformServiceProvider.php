@@ -24,6 +24,8 @@ use App\Platform\OpenEntitlements;
 use App\Platform\PlatformSignedInSession;
 use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
+use App\Platform\Staff\ConsoleStaffRoles;
+use App\Platform\Staff\Contracts\StaffRoles;
 use App\Platform\TrustedHosts;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -168,6 +170,7 @@ final class PlatformServiceProvider extends ServiceProvider
         // does it. Scoped: it reads the environment the request stands in, and a worker
         // must not carry one request's scoped collaborators into the next.
         $this->app->scoped(OrganizationInvitations::class, OrganizationInvitationService::class);
+        $this->app->scoped(StaffRoles::class, ConsoleStaffRoles::class);
 
         // The setup token lives on the LOCAL disk explicitly, not on the default one: a
         // deployment that points `FILESYSTEM_DISK` at S3 would otherwise publish its

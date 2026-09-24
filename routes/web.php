@@ -55,6 +55,7 @@ use App\Http\Controllers\Console\RoleController;
 use App\Http\Controllers\Console\ServiceProviderController;
 use App\Http\Controllers\Console\SettingsController;
 use App\Http\Controllers\Console\SocialProviderController;
+use App\Http\Controllers\Console\StaffController;
 use App\Http\Controllers\Console\UsageController;
 use App\Http\Controllers\Console\VaultController;
 use App\Http\Controllers\Console\WebhookController;
@@ -1047,6 +1048,12 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::delete('/users/{user}/organizations/{organization}', [EnvironmentUserController::class, 'removeMembership'])->name('environment.users.organizations.remove');
 
         Route::post('/users/{user}/roles', [EnvironmentUserController::class, 'setEnvironmentRole'])->name('environment.users.roles');
+
+        // Staff — roles held across the whole environment, by its own people. This console
+        // only: an organization's administrators never grant one.
+        Route::get('/staff', [StaffController::class, 'index'])->name('environment.staff');
+        Route::post('/staff', [StaffController::class, 'store'])->name('environment.staff.store');
+        Route::delete('/staff/{user}/{role}', [StaffController::class, 'destroy'])->name('environment.staff.destroy');
 
         // SSO connections — routable list → create → detail, on the merged component. The
         // URL keeps its old spelling so existing links and bookmarks still resolve; the
