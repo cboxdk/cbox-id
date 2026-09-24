@@ -229,6 +229,12 @@ the same flow.
 Guessing is rate limited per email address, not just per key — an attacker spreading
 attempts across pages holding the same key would otherwise sit under a per-key limit.
 
+## 8. Organizations
+
+A person can belong to several organizations, and every token is for one of them. To ask
+for a particular one, let people pick or switch, let them create one, or let strangers sign
+up from your app, see [Organizations in your app](organizations-in-your-app.md).
+
 ## When it does not work
 
 The token endpoint returns an RFC-shaped `error`, and for most failures an

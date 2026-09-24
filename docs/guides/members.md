@@ -55,6 +55,11 @@ and lands in the console instead.
 
 Choosing an app without a return address still names the app on the invitation.
 
+Accepting also switches the person into this organization. When the app then signs them
+in, it gets this organization — even someone who already belonged to others, and even if
+the app does not ask for one. See
+[Organizations in your app](../getting-started/organizations-in-your-app.md).
+
 ### Invited, not joined yet
 
 Each pending invitation shows who sent it, when it expires and which app it is for.

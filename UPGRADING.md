@@ -16,6 +16,30 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Sign-up on tenant environments follows a new environment switch (off)
+
+On the SaaS shape, sign-up on a customer's environment is now decided by that
+environment's **Self-service sign-up** switch (environment console › Sign-in rules), not
+by `CBOX_ID_SIGNUP_MODE`. The switch is off for every existing environment. Two things
+change for an environment that leaves it off:
+
+- The sign-in page no longer shows "Create an account". The link pointed at `/signup`,
+  which 404'd on tenant hosts anyway.
+- A magic link is only sent to an address that already has an account. Before, it was
+  sent to any address (the deployment mode defaulted to `open`) and created the account
+  on first use. **If an environment relied on magic links to onboard new people, turn its
+  switch on.**
+
+`CBOX_ID_SIGNUP_MODE=closed` still closes every environment. `invite_only` now only
+affects the platform root. Nothing changes on a single-tenant install or on the platform
+root.
+
+### Apps can bind a sign-in to an organization
+
+Nothing to do. An authorization without the new parameters is bound to the session's
+organization, as before. `prompt=none` combined with another prompt value is now refused
+with `invalid_request` (OIDC Core §3.1.2.1); before, the other value was ignored.
+
 ### laravel-id 1.19: ten migrations, and a queue worker for back-channel logout
 
 `cboxdk/laravel-id` is now `^1.19`. Run `php artisan migrate`: ten additive migrations

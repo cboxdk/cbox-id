@@ -10,6 +10,12 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **Sign-up on a tenant environment followed the deployment's mode.** On the SaaS shape a
+  tenant's sign-in page offered "Create an account" (linking to a page that 404'd there),
+  and a magic link, which creates the account on first use, was sent to any address,
+  because both read `CBOX_ID_SIGNUP_MODE` (default `open`). Both now follow the
+  environment's own self-service sign-up switch, which is off until an administrator turns
+  it on.
 - **Tenant admins could hand out staff-only roles.** laravel-id 1.19 lets an app mark a
   role `tenant_assignable: false` (the vendor's own support or back-office role). The
   People page, invitations and directory group mappings listed and granted roles through
@@ -90,6 +96,33 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Apps choose the organization.** `/oauth/authorize` honours `organization`,
+  `organization_hint`, `prompt=select_organization` and `prompt=create_organization`, as
+  the SDKs already send them. The chosen organization is bound to the code and carried into
+  the access token, ID token, UserInfo and every refresh. An organization the person cannot
+  use (not an active member, suspended or deleted, another environment) returns
+  `access_denied`, under `prompt=none` too. Contradictory combinations return
+  `invalid_request`. With PAR, the organization parameters are read from the pushed request
+  only. See docs/getting-started/organizations-in-your-app.md.
+- **A hosted organization picker and a hosted "Create an organization" step.** The picker
+  lists the person's live, active memberships in the environment, marks the app's hint or
+  their current organization as the suggestion, and binds only that sign-in: it does not
+  move their console or remember the choice. The create step makes the person Owner through
+  the framework's organization and membership services and finishes the sign-in bound to
+  the new organization. Five per person per hour.
+- **Self-service sign-up on a tenant environment, and `prompt=create`.** An environment
+  setting under Sign-in rules (off by default) opens `/signup` on the environment's host:
+  a stranger creates an account and their own organization, as its Owner. `prompt=create`
+  sends a signed-out person to that form and back into the authorization, bound to the new
+  organization. The setting also gates `prompt=create_organization`. Password rules, the
+  breach check, the confirmation email, rate limits, the risk check and SSO domain capture
+  all apply. Switching it is audited (`environment.self_service_signup_enabled` /
+  `_disabled`).
+- **`prompt=consent`** shows the consent screen to a first-party app that would otherwise
+  skip it.
+- **Discovery lists `prompt_values_supported`**, on both the OIDC and the RFC 8414
+  document. `create` and `create_organization` appear only where sign-up is on.
+- **The consent screen names the organization** the app will see the person in.
 - **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
   approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated
   logout without a verifiable `id_token_hint` ends this browser's session and tells its
@@ -145,6 +178,11 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **`plane:account` is now `plane:signup`**, served on the platform root and on tenant
+  hosts. `/signup` was the only route on `plane:account`. Whether a tenant's sign-up is
+  open is the environment's setting.
+- **After sign-up, the person goes back to where they were headed**, an authorization
+  included, instead of always to the dashboard.
 - **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
 - **App writes go through the framework's `ClientRegistry`.** That covers register,
   update (built from `blueprint()` so settings the page does not show survive), manifest
