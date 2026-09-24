@@ -3,16 +3,22 @@
 declare(strict_types=1);
 
 use App\Listeners\RevokeTokensOnRoleChange;
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Events\Contracts\EventBus;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Kernel\Events\Models\Event;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Exceptions\InvalidGrant;
+use Cbox\Id\OAuthServer\Jobs\DeliverBackchannelLogout;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Facades\Queue;
 
 function deliver(string $type, array $payload = [], ?string $orgId = null): EventDelivered
 {
@@ -34,6 +40,24 @@ it('revokes a user\'s refresh tokens when their role changes', function (string 
 
     $spy->shouldHaveReceived('revokeForUser')->with('user_1', 'org_1')->once();
 })->with(['role.assigned', 'role.unassigned']);
+
+/**
+ * A STAFF ROLE reaches every organization, so its grant and its withdrawal refresh the
+ * person's claims everywhere: the organization is null on these events, and null is
+ * "all of them" to revokeForUser(). Revoke only — never withdrawAccess(), which would
+ * sign the person out of every app because an administrator adjusted a role.
+ */
+it('revokes a user\'s refresh tokens in every organization when a staff role changes', function (string $type): void {
+    $spy = Mockery::spy(RefreshTokens::class);
+    app()->instance(RefreshTokens::class, $spy);
+
+    app(RevokeTokensOnRoleChange::class)->handle(
+        deliver($type, ['user_id' => 'user_1', 'role_id' => 'role_1', 'client_id' => null])
+    );
+
+    $spy->shouldHaveReceived('revokeForUser')->with('user_1', null)->once();
+    $spy->shouldNotHaveReceived('withdrawAccess');
+})->with(['role.assigned_everywhere', 'role.unassigned_everywhere']);
 
 /**
  * Deleting a role revokes it from every holder at once, so `role.deleted` names them
@@ -111,3 +135,52 @@ it('really stops a refresh token working after a role change', function (): void
     expect(fn () => $refreshTokens->rotate($client->client->client_id, $raw))
         ->toThrow(InvalidGrant::class);
 });
+
+/**
+ * The staff-role half end to end, through the real role service and the real outbox: a
+ * staff role granted and taken back stops the person's refresh tokens in BOTH of the
+ * organizations they belong to — and tells no application to sign them out, because
+ * their access changed shape rather than ended.
+ */
+it('really stops refresh tokens in every organization when a staff role is granted or taken back', function (string $change): void {
+    $subject = app(Subjects::class)->create('staff@acme.test', 'Sam', 'a-strong-unbreached-passphrase');
+
+    $acme = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.uniqid()));
+    $globex = app(Organizations::class)->create(new NewOrganization('Globex', 'globex-'.uniqid()));
+    app(Memberships::class)->add($acme->id, $subject->id, MembershipRole::Member);
+    app(Memberships::class)->add($globex->id, $subject->id, MembershipRole::Member);
+
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Test App',
+        type: ClientType::Confidential,
+        redirectUris: ['https://app.test/callback'],
+        scopes: ['openid'],
+        backchannelLogoutUri: 'https://app.test/backchannel-logout',
+    ))->client;
+
+    $roles = app(Roles::class);
+    $support = $roles->define(null, 'Support', clientId: $client->client_id, tenantAssignable: false);
+
+    if ($change === 'taken back') {
+        $roles->assignEverywhere($subject->id, $support->id);
+        app(EventBus::class)->flushPending(1000);
+    }
+
+    $refreshTokens = app(RefreshTokens::class);
+    $inAcme = $refreshTokens->issue($client, $subject->id, $acme->id, ['openid']);
+    $inGlobex = $refreshTokens->issue($client, $subject->id, $globex->id, ['openid']);
+
+    Queue::fake();
+
+    $change === 'granted'
+        ? $roles->assignEverywhere($subject->id, $support->id)
+        : $roles->unassignEverywhere($subject->id, $support->id);
+
+    app(EventBus::class)->flushPending(1000);
+
+    expect(fn () => $refreshTokens->rotate($client->client_id, $inAcme))->toThrow(InvalidGrant::class)
+        ->and(fn () => $refreshTokens->rotate($client->client_id, $inGlobex))->toThrow(InvalidGrant::class);
+
+    // A claims refresh, not a sign-out: no application was told the person left.
+    Queue::assertNotPushed(DeliverBackchannelLogout::class);
+})->with(['granted', 'taken back']);
