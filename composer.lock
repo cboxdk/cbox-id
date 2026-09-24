@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "47e98b1bf088e4ff5b6897f5e693df05",
+    "content-hash": "0f02741d96a02d6026e6ac6a4d000b7d",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -656,40 +656,43 @@
         },
         {
             "name": "cboxdk/laravel-queue-autoscale",
-            "version": "v3.11.1",
+            "version": "v4.3.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-queue-autoscale.git",
-                "reference": "4128ad9338574efdbaae1f7b79e0d98b563b10bb"
+                "reference": "7412cb70eaece400f8dcb94f24e0fd3079a02f18"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-queue-autoscale/zipball/4128ad9338574efdbaae1f7b79e0d98b563b10bb",
-                "reference": "4128ad9338574efdbaae1f7b79e0d98b563b10bb",
+                "url": "https://api.github.com/repos/cboxdk/laravel-queue-autoscale/zipball/7412cb70eaece400f8dcb94f24e0fd3079a02f18",
+                "reference": "7412cb70eaece400f8dcb94f24e0fd3079a02f18",
                 "shasum": ""
             },
             "require": {
-                "cboxdk/laravel-queue-metrics": "^3.0",
-                "illuminate/contracts": "^11.0||^12.0||^13.0",
-                "php": "^8.3|^8.4|^8.5",
-                "spatie/laravel-package-tools": "^1.16",
+                "cboxdk/laravel-queue-metrics": "^3.4",
+                "ext-mbstring": "*",
+                "ext-pcntl": "*",
+                "ext-posix": "*",
+                "illuminate/contracts": "^12.0||^13.0",
+                "php": "^8.4|^8.5",
                 "symfony/process": "^7.0||^8.0"
             },
             "require-dev": {
-                "cboxdk/laravel-telemetry": "^0.2.0",
+                "aws/aws-sdk-php": "^3.390",
+                "cboxdk/laravel-telemetry": "^1.2.0",
                 "larastan/larastan": "^3.0",
                 "laravel/pint": "^1.14",
                 "nunomaduro/collision": "^8.8",
-                "orchestra/testbench": "^11.0.0||^10.0.0||^9.0.0",
-                "pestphp/pest": "^4.0",
+                "orchestra/testbench": "^10.0.0||^11.0.0",
+                "pestphp/pest": "^4.4.1",
                 "pestphp/pest-plugin-arch": "^4.0",
-                "pestphp/pest-plugin-laravel": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.1",
                 "phpstan/extension-installer": "^1.4",
                 "phpstan/phpstan-deprecation-rules": "^2.0",
                 "phpstan/phpstan-phpunit": "^2.0"
             },
             "suggest": {
-                "cboxdk/laravel-telemetry": "Publishes scaling decisions, SLA breach state and cluster gauges to OpenTelemetry via the telemetry pipeline. Requires Laravel 12+; unavailable on Laravel 11."
+                "cboxdk/laravel-telemetry": "Publishes scaling decisions, SLA breach state and cluster gauges to OpenTelemetry via the telemetry pipeline."
             },
             "type": "library",
             "extra": {
@@ -704,8 +707,7 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Cbox\\LaravelQueueAutoscale\\": "src/",
-                    "Cbox\\LaravelQueueAutoscale\\Database\\Factories\\": "database/factories/"
+                    "Cbox\\LaravelQueueAutoscale\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -735,7 +737,7 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-queue-autoscale/issues",
-                "source": "https://github.com/cboxdk/laravel-queue-autoscale/tree/v3.11.1"
+                "source": "https://github.com/cboxdk/laravel-queue-autoscale/tree/v4.3.1"
             },
             "funding": [
                 {
@@ -743,20 +745,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-07-13T13:47:23+00:00"
+            "time": "2026-09-15T15:37:15+00:00"
         },
         {
             "name": "cboxdk/laravel-queue-metrics",
-            "version": "v3.2.1",
+            "version": "v3.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-queue-metrics.git",
-                "reference": "9b04d3bc88db84696aabb7b96ac0823aa22df5a5"
+                "reference": "3bb0a646776a1e2c1c67e52625c9b901c8163638"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-queue-metrics/zipball/9b04d3bc88db84696aabb7b96ac0823aa22df5a5",
-                "reference": "9b04d3bc88db84696aabb7b96ac0823aa22df5a5",
+                "url": "https://api.github.com/repos/cboxdk/laravel-queue-metrics/zipball/3bb0a646776a1e2c1c67e52625c9b901c8163638",
+                "reference": "3bb0a646776a1e2c1c67e52625c9b901c8163638",
                 "shasum": ""
             },
             "require": {
@@ -767,9 +769,9 @@
                 "spatie/laravel-prometheus": "^1.3"
             },
             "require-dev": {
-                "cboxdk/laravel-telemetry": "^0.2.0",
+                "cboxdk/laravel-telemetry": "^1.0.0",
                 "larastan/larastan": "^3.0",
-                "laravel/pint": "^1.14",
+                "laravel/pint": "^1.18",
                 "nunomaduro/collision": "^8.8",
                 "orchestra/testbench": "^11.0.0||^10.0.0||^9.0.0",
                 "pestphp/pest": "^4.0",
@@ -824,7 +826,7 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-queue-metrics/issues",
-                "source": "https://github.com/cboxdk/laravel-queue-metrics/tree/v3.2.1"
+                "source": "https://github.com/cboxdk/laravel-queue-metrics/tree/v3.4.0"
             },
             "funding": [
                 {
@@ -832,7 +834,87 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-07-13T13:47:09+00:00"
+            "time": "2026-09-15T11:13:04+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-queue-monitor",
+            "version": "v1.11.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-queue-monitor.git",
+                "reference": "8f031aaaf5586c20f8b88bc05feb2f58f13c2ce6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-queue-monitor/zipball/8f031aaaf5586c20f8b88bc05feb2f58f13c2ce6",
+                "reference": "8f031aaaf5586c20f8b88bc05feb2f58f13c2ce6",
+                "shasum": ""
+            },
+            "require": {
+                "cboxdk/laravel-queue-metrics": "^3.0",
+                "illuminate/contracts": "^11.0||^12.0||^13.0",
+                "nunomaduro/termwind": "^2.3",
+                "php": "^8.3 || ^8.4 || ^8.5",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.8",
+                "orchestra/testbench": "^11.1.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-arch": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "LaravelQueueMonitor": "Cbox\\LaravelQueueMonitor\\Facades\\LaravelQueueMonitor"
+                    },
+                    "providers": [
+                        "Cbox\\LaravelQueueMonitor\\LaravelQueueMonitorServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\LaravelQueueMonitor\\": "src/",
+                    "Cbox\\LaravelQueueMonitor\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Laravel queue monitoring with individual job tracking, payload storage, replay, and analytics",
+            "homepage": "https://github.com/cboxdk/laravel-queue-monitor",
+            "keywords": [
+                "cbox",
+                "laravel",
+                "laravel-queue-monitor"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-queue-monitor/issues",
+                "source": "https://github.com/cboxdk/laravel-queue-monitor/tree/v1.11.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/cboxdk",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-07T12:18:48+00:00"
         },
         {
             "name": "cboxdk/laravel-risk",
@@ -4941,16 +5023,16 @@
         },
         {
             "name": "spatie/laravel-package-tools",
-            "version": "1.93.1",
+            "version": "1.93.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/laravel-package-tools.git",
-                "reference": "d5552849801f2642aea710557463234b59ef65eb"
+                "reference": "e927d5b5b05e9fecae098e559e51918aa608ad02"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/laravel-package-tools/zipball/d5552849801f2642aea710557463234b59ef65eb",
-                "reference": "d5552849801f2642aea710557463234b59ef65eb",
+                "url": "https://api.github.com/repos/spatie/laravel-package-tools/zipball/e927d5b5b05e9fecae098e559e51918aa608ad02",
+                "reference": "e927d5b5b05e9fecae098e559e51918aa608ad02",
                 "shasum": ""
             },
             "require": {
@@ -4990,7 +5072,7 @@
             ],
             "support": {
                 "issues": "https://github.com/spatie/laravel-package-tools/issues",
-                "source": "https://github.com/spatie/laravel-package-tools/tree/1.93.1"
+                "source": "https://github.com/spatie/laravel-package-tools/tree/1.93.2"
             },
             "funding": [
                 {
@@ -4998,20 +5080,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-05-19T14:06:37+00:00"
+            "time": "2026-08-26T09:13:25+00:00"
         },
         {
             "name": "spatie/laravel-prometheus",
-            "version": "1.6.0",
+            "version": "1.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/laravel-prometheus.git",
-                "reference": "3b8e8715c64fc7137a29916f360560cbeceb8bb8"
+                "reference": "6565b788a6a778dee9fe96e478ae5d4d9d3b2d05"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/laravel-prometheus/zipball/3b8e8715c64fc7137a29916f360560cbeceb8bb8",
-                "reference": "3b8e8715c64fc7137a29916f360560cbeceb8bb8",
+                "url": "https://api.github.com/repos/spatie/laravel-prometheus/zipball/6565b788a6a778dee9fe96e478ae5d4d9d3b2d05",
+                "reference": "6565b788a6a778dee9fe96e478ae5d4d9d3b2d05",
                 "shasum": ""
             },
             "require": {
@@ -5072,9 +5154,9 @@
             ],
             "support": {
                 "issues": "https://github.com/spatie/laravel-prometheus/issues",
-                "source": "https://github.com/spatie/laravel-prometheus/tree/1.6.0"
+                "source": "https://github.com/spatie/laravel-prometheus/tree/1.7.0"
             },
-            "time": "2026-04-27T19:28:14+00:00"
+            "time": "2026-09-08T12:21:29+00:00"
         },
         {
             "name": "spomky-labs/cbor-php",
@@ -5226,16 +5308,16 @@
         },
         {
             "name": "symfony/console",
-            "version": "v8.1.5",
+            "version": "v8.1.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "d07c06839e33047e2c894a6793248f3fb66c8129"
+                "reference": "29afb89f4e941f68a6e90f28e3f52ff1f6793a7d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/d07c06839e33047e2c894a6793248f3fb66c8129",
-                "reference": "d07c06839e33047e2c894a6793248f3fb66c8129",
+                "url": "https://api.github.com/repos/symfony/console/zipball/29afb89f4e941f68a6e90f28e3f52ff1f6793a7d",
+                "reference": "29afb89f4e941f68a6e90f28e3f52ff1f6793a7d",
                 "shasum": ""
             },
             "require": {
@@ -5302,7 +5384,7 @@
                 "terminal"
             ],
             "support": {
-                "source": "https://github.com/symfony/console/tree/v8.1.5"
+                "source": "https://github.com/symfony/console/tree/v8.1.7"
             },
             "funding": [
                 {
@@ -5322,7 +5404,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-08-21T14:29:57+00:00"
+            "time": "2026-09-13T10:55:57+00:00"
         },
         {
             "name": "symfony/css-selector",
@@ -6967,16 +7049,16 @@
         },
         {
             "name": "symfony/process",
-            "version": "v8.1.5",
+            "version": "v8.1.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/process.git",
-                "reference": "d863f5e70d7c87abb906ac11b61f83036093000b"
+                "reference": "10823b09358e690df4ff943e24e8492bb1019fc3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/process/zipball/d863f5e70d7c87abb906ac11b61f83036093000b",
-                "reference": "d863f5e70d7c87abb906ac11b61f83036093000b",
+                "url": "https://api.github.com/repos/symfony/process/zipball/10823b09358e690df4ff943e24e8492bb1019fc3",
+                "reference": "10823b09358e690df4ff943e24e8492bb1019fc3",
                 "shasum": ""
             },
             "require": {
@@ -7008,7 +7090,7 @@
             "description": "Executes commands in sub-processes",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/process/tree/v8.1.5"
+                "source": "https://github.com/symfony/process/tree/v8.1.7"
             },
             "funding": [
                 {
@@ -7028,7 +7110,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-08-21T17:47:34+00:00"
+            "time": "2026-09-02T12:40:29+00:00"
         },
         {
             "name": "symfony/routing",
@@ -7112,16 +7194,16 @@
         },
         {
             "name": "symfony/service-contracts",
-            "version": "v3.7.1",
+            "version": "v3.7.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/service-contracts.git",
-                "reference": "c0a284bab1ed8aa0417e3d69250ab437739563a0"
+                "reference": "15e6a07ec2a2c75ceb1b21dd98105ee8456d2257"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/service-contracts/zipball/c0a284bab1ed8aa0417e3d69250ab437739563a0",
-                "reference": "c0a284bab1ed8aa0417e3d69250ab437739563a0",
+                "url": "https://api.github.com/repos/symfony/service-contracts/zipball/15e6a07ec2a2c75ceb1b21dd98105ee8456d2257",
+                "reference": "15e6a07ec2a2c75ceb1b21dd98105ee8456d2257",
                 "shasum": ""
             },
             "require": {
@@ -7175,7 +7257,7 @@
                 "standards"
             ],
             "support": {
-                "source": "https://github.com/symfony/service-contracts/tree/v3.7.1"
+                "source": "https://github.com/symfony/service-contracts/tree/v3.7.3"
             },
             "funding": [
                 {
@@ -7195,20 +7277,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-06-16T09:55:08+00:00"
+            "time": "2026-07-27T15:39:01+00:00"
         },
         {
             "name": "symfony/string",
-            "version": "v8.1.2",
+            "version": "v8.1.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/string.git",
-                "reference": "286a76b7255e5cc4bf0101a0bc5388ecf1c38ccc"
+                "reference": "d950140b5f56f31901e5b7a0c04ffc3a3deb943c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/string/zipball/286a76b7255e5cc4bf0101a0bc5388ecf1c38ccc",
-                "reference": "286a76b7255e5cc4bf0101a0bc5388ecf1c38ccc",
+                "url": "https://api.github.com/repos/symfony/string/zipball/d950140b5f56f31901e5b7a0c04ffc3a3deb943c",
+                "reference": "d950140b5f56f31901e5b7a0c04ffc3a3deb943c",
                 "shasum": ""
             },
             "require": {
@@ -7265,7 +7347,7 @@
                 "utf8"
             ],
             "support": {
-                "source": "https://github.com/symfony/string/tree/v8.1.2"
+                "source": "https://github.com/symfony/string/tree/v8.1.7"
             },
             "funding": [
                 {
@@ -7285,7 +7367,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-07-28T07:35:25+00:00"
+            "time": "2026-09-11T14:51:16+00:00"
         },
         {
             "name": "symfony/translation",

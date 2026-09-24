@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:949c66f4-7a7c-41b0-b156-125fcaacf3b0",
+    "serialNumber": "urn:uuid:993470d5-07e1-4001-b6d0-36a64945e02b",
     "version": 1,
     "metadata": {
         "tools": [
@@ -165,11 +165,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-queue-autoscale@v3.11.1",
+            "bom-ref": "pkg:composer/cboxdk/laravel-queue-autoscale@v4.3.1",
             "group": "cboxdk",
             "name": "laravel-queue-autoscale",
-            "version": "v3.11.1",
-            "purl": "pkg:composer/cboxdk/laravel-queue-autoscale@v3.11.1",
+            "version": "v4.3.1",
+            "purl": "pkg:composer/cboxdk/laravel-queue-autoscale@v4.3.1",
             "description": "Intelligent, predictive autoscaling for Laravel queues with SLA/SLO-based optimization",
             "licenses": [
                 {
@@ -181,12 +181,28 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-queue-metrics@v3.2.1",
+            "bom-ref": "pkg:composer/cboxdk/laravel-queue-metrics@v3.4.0",
             "group": "cboxdk",
             "name": "laravel-queue-metrics",
-            "version": "v3.2.1",
-            "purl": "pkg:composer/cboxdk/laravel-queue-metrics@v3.2.1",
+            "version": "v3.4.0",
+            "purl": "pkg:composer/cboxdk/laravel-queue-metrics@v3.4.0",
             "description": "Production-ready Laravel queue monitoring with metrics, analytics, and insights",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-queue-monitor@v1.11.0",
+            "group": "cboxdk",
+            "name": "laravel-queue-monitor",
+            "version": "v1.11.0",
+            "purl": "pkg:composer/cboxdk/laravel-queue-monitor@v1.11.0",
+            "description": "Laravel queue monitoring with individual job tracking, payload storage, replay, and analytics",
             "licenses": [
                 {
                     "license": {
@@ -1073,11 +1089,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/spatie/laravel-package-tools@1.93.1",
+            "bom-ref": "pkg:composer/spatie/laravel-package-tools@1.93.2",
             "group": "spatie",
             "name": "laravel-package-tools",
-            "version": "1.93.1",
-            "purl": "pkg:composer/spatie/laravel-package-tools@1.93.1",
+            "version": "1.93.2",
+            "purl": "pkg:composer/spatie/laravel-package-tools@1.93.2",
             "description": "Tools for creating Laravel packages",
             "licenses": [
                 {
@@ -1089,11 +1105,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/spatie/laravel-prometheus@1.6.0",
+            "bom-ref": "pkg:composer/spatie/laravel-prometheus@1.7.0",
             "group": "spatie",
             "name": "laravel-prometheus",
-            "version": "1.6.0",
-            "purl": "pkg:composer/spatie/laravel-prometheus@1.6.0",
+            "version": "1.7.0",
+            "purl": "pkg:composer/spatie/laravel-prometheus@1.7.0",
             "description": "Export Laravel metrics to Prometheus",
             "licenses": [
                 {
@@ -1137,11 +1153,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/console@v8.1.5",
+            "bom-ref": "pkg:composer/symfony/console@v8.1.7",
             "group": "symfony",
             "name": "console",
-            "version": "v8.1.5",
-            "purl": "pkg:composer/symfony/console@v8.1.5",
+            "version": "v8.1.7",
+            "purl": "pkg:composer/symfony/console@v8.1.7",
             "description": "Eases the creation of beautiful and testable command line interfaces",
             "licenses": [
                 {
@@ -1473,11 +1489,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/process@v8.1.5",
+            "bom-ref": "pkg:composer/symfony/process@v8.1.7",
             "group": "symfony",
             "name": "process",
-            "version": "v8.1.5",
-            "purl": "pkg:composer/symfony/process@v8.1.5",
+            "version": "v8.1.7",
+            "purl": "pkg:composer/symfony/process@v8.1.7",
             "description": "Executes commands in sub-processes",
             "licenses": [
                 {
@@ -1505,11 +1521,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/service-contracts@v3.7.1",
+            "bom-ref": "pkg:composer/symfony/service-contracts@v3.7.3",
             "group": "symfony",
             "name": "service-contracts",
-            "version": "v3.7.1",
-            "purl": "pkg:composer/symfony/service-contracts@v3.7.1",
+            "version": "v3.7.3",
+            "purl": "pkg:composer/symfony/service-contracts@v3.7.3",
             "description": "Generic abstractions related to writing services",
             "licenses": [
                 {
@@ -1521,11 +1537,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/string@v8.1.2",
+            "bom-ref": "pkg:composer/symfony/string@v8.1.7",
             "group": "symfony",
             "name": "string",
-            "version": "v8.1.2",
-            "purl": "pkg:composer/symfony/string@v8.1.2",
+            "version": "v8.1.7",
+            "purl": "pkg:composer/symfony/string@v8.1.7",
             "description": "Provides an object-oriented API to strings and deals with bytes, UTF-8 code points and grapheme clusters in a unified way",
             "licenses": [
                 {
