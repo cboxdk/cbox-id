@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Platform\Sudo;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
@@ -60,9 +61,13 @@ it('draws a labelled box for every scope a management key can be given', functio
         count(EnvironmentApiScope::offerable()),
     );
 
+    // The label the console gives each scope — the framework's, except that the API-key
+    // scopes say "member API keys" like every other place the console names those keys.
     foreach (EnvironmentApiScope::offerable() as $scope) {
-        $page->assertSee($scope->label())->assertSee($scope->value);
+        $page->assertSee(EnvironmentScopeProps::from($scope)->label)->assertSee($scope->value);
     }
 
-    $page->assertDontSee('directories:read')->assertNoJavaScriptErrors();
+    $page->assertDontSee('directories:read')
+        ->assertDontSee('customer API keys')
+        ->assertNoJavaScriptErrors();
 });
