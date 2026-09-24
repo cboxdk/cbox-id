@@ -22,6 +22,14 @@ interface CatalogEntry {
     app: string | null;
 }
 
+/**
+ * "All apps", as a value the picker can hold. Radix reserves the empty string (it is how
+ * the primitive clears a selection), so an item carrying `''` never shows as chosen: the
+ * trigger drew "Select…" over the default. The form keeps `''`, which the server reads as
+ * "every app"; only the picker sees the sentinel.
+ */
+const ALL_APPS = '__all_apps__';
+
 type Props = PageProps<{
     catalog: CatalogEntry[];
     apps: { id: string; name: string }[];
@@ -131,10 +139,12 @@ export default function CreateRole({
                         >
                             <Select
                                 name="app"
-                                value={form.data.app}
-                                onValueChange={(app) => form.setData('app', app)}
+                                value={form.data.app === '' ? ALL_APPS : form.data.app}
+                                onValueChange={(app) =>
+                                    form.setData('app', app === ALL_APPS ? '' : app)
+                                }
                                 options={[
-                                    { value: '', label: 'All apps' },
+                                    { value: ALL_APPS, label: 'All apps' },
                                     ...apps.map((app) => ({
                                         value: app.id,
                                         label: `${app.name} only`,
