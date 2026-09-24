@@ -10,6 +10,13 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **The steps after `/oauth/authorize` answered for whatever `client_id` the browser
+  added.** On the platform root, `plane:first-party` admits our own first-party app and
+  nothing else, and it read the client from `client_id`. The consent screen, approve/deny
+  and the hosted organization picker name only a pending authorization, so on the root
+  they 404'd for our own app (the picker could never be used there) — and a `client_id`
+  appended to one of those URLs was believed instead of the pending request's own client.
+  They now ask about the pending authorization's client, and only that.
 - **An organization's administrator could claim another API's scopes by typing them.** A
   scope was free text on each app, so anybody who could edit an app could put
   `tax:assess` on it and receive a token whose audience and scope a tax API would accept.

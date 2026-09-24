@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\PlaneResolver;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -72,8 +74,15 @@ final class EnforcePlane
      */
     private const CLIENT_ID = 'client_id';
 
+    /**
+     * The route parameter that names a PENDING authorization rather than a client: the
+     * consent screen, its two answers and the hosted organization steps.
+     */
+    private const PENDING_AUTHORIZATION = 'authorization';
+
     public function __construct(
         private readonly PlaneResolver $planes,
+        private readonly PendingAuthorizations $pending = new PendingAuthorizations,
     ) {}
 
     /**
@@ -115,9 +124,7 @@ final class EnforcePlane
             // Public verification keys, served wherever this deployment issues tokens —
             // which now includes the platform root. See servesVerificationKeys().
             'keys' => $this->planes->servesVerificationKeys(),
-            'first-party' => $this->planes->servesFirstPartyIssuer(
-                is_string($id = $request->input(self::CLIENT_ID)) ? $id : '',
-            ),
+            'first-party' => $this->planes->servesFirstPartyIssuer($this->clientIdOf($request)),
             // The environment-admin console. Asked as its own question rather than
             // borrowed from `issuer`: same answer today, different reason, and a shared
             // name is how two surfaces end up moving together when only one should.
@@ -146,5 +153,36 @@ final class EnforcePlane
         abort_unless($allowed, 404);
 
         return $next($request);
+    }
+
+    /**
+     * The client a `plane:first-party` request is for.
+     *
+     * `/oauth/authorize` and the token endpoints NAME it (`client_id`). The steps that follow
+     * the authorize request — the consent screen, approve and deny, the hosted organization
+     * picker and "create a team" — name only the PENDING authorization this session holds
+     * under an opaque id, so on the platform root they asked about client `''` and 404'd
+     * for our own first-party app, the one client the root serves.
+     *
+     * For those, the client is the pending authorization's — and ONLY that: a `client_id`
+     * posted alongside is ignored, so a step cannot be admitted on another client's name.
+     * No guard is loosened by this. A pending authorization is written only by
+     * `/oauth/authorize`, after THIS gate admitted its client, and it is read back from the
+     * same session and asked the same question again; an id this session does not hold
+     * names no client and is refused as before.
+     */
+    private function clientIdOf(Request $request): string
+    {
+        $route = $request->route();
+
+        if ($route instanceof Route && $route->hasParameter(self::PENDING_AUTHORIZATION)) {
+            $id = $route->parameter(self::PENDING_AUTHORIZATION);
+
+            return is_string($id) && $request->hasSession()
+                ? ($this->pending->find($request, $id)->clientId ?? '')
+                : '';
+        }
+
+        return is_string($id = $request->input(self::CLIENT_ID)) ? $id : '';
     }
 }
