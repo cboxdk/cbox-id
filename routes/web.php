@@ -55,6 +55,7 @@ use App\Http\Controllers\Console\PermissionController;
 use App\Http\Controllers\Console\PlatformCustomerController;
 use App\Http\Controllers\Console\PlatformEnvironmentController;
 use App\Http\Controllers\Console\PlatformOrganizationController;
+use App\Http\Controllers\Console\PlatformQueuesController;
 use App\Http\Controllers\Console\PlatformSearchController;
 use App\Http\Controllers\Console\PlatformUsageController;
 use App\Http\Controllers\Console\ProjectController;
@@ -1462,6 +1463,10 @@ Route::prefix('platform')->group(function (): void {
         Route::post('/environments/{environment}/provision', [PlatformEnvironmentController::class, 'provision'])->name('platform.environments.provision');
         Route::get('/usage', PlatformUsageController::class)->name('platform.usage');
         Route::get('/search', PlatformSearchController::class)->name('platform.search');
+        // The queue workers' state. The job-by-job monitor it links to is registered by
+        // cboxdk/laravel-queue-monitor under `/platform/queues/monitor`, behind the same
+        // operator gate plus the host bulkhead — see config/queue-monitor.php.
+        Route::get('/queues', PlatformQueuesController::class)->name('platform.queues');
         Route::get('/customers', [PlatformCustomerController::class, 'index'])->name('platform.customers');
         Route::post('/customers', [PlatformCustomerController::class, 'store'])->name('platform.customers.store');
 

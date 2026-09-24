@@ -331,12 +331,13 @@ it('lands every platform nav entry on a page titled and headed the way the entry
 
     $checked = assertNavEntryLabelsMatchTheirPages($entries, 'platform');
 
-    // Six pages across three areas; anything less means the session stopped resolving
-    // and the loop is asserting nothing. It was seven until the operator "Security" page
-    // was retired — it enrolled a second factor nothing verified, so the screen promised
-    // a protection that did not exist. The count is deliberately exact for the reason in
-    // the comment above: a shrinking number must be a decision, not a silent no-op.
-    expect($checked)->toBe(6);
+    // Seven pages across three areas; anything less means the session stopped resolving
+    // and the loop is asserting nothing. It was seven, then six when the operator
+    // "Security" page was retired — it enrolled a second factor nothing verified, so the
+    // screen promised a protection that did not exist — and seven again with Insights ›
+    // Queues. The count is deliberately exact for the reason in the comment above: a
+    // changing number must be a decision, not a silent no-op.
+    expect($checked)->toBe(7);
 });
 
 /**

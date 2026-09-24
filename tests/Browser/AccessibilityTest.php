@@ -488,6 +488,9 @@ dataset('platform pages', [
     'organization' => ['/platform/organizations/tenant', 'Tenant A11y'],
     'operators' => ['/platform/operators', 'Operators'],
     'usage' => ['/platform/usage', 'Usage'],
+    // The queue workers' state. The suite runs jobs inline, so this is the page with no
+    // queue to watch — the empty state is what renders.
+    'queues' => ['/platform/queues', 'Queues'],
     // With a TERM, because the search page with none is a prompt and an empty list — the
     // result rows, which are the markup worth auditing, only exist once it has run.
     'search' => ['/platform/search?term=acme', 'Acme'],
