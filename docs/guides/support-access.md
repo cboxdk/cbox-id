@@ -47,6 +47,11 @@ decides whether to start a new sign-in, and one that finds you already signed in
 - **No way to stay signed in.** The app gets no refresh token, even if it asks for one,
   and no token outlives the session.
 - **One app.** Supporting the same person in two apps is two sessions, each recorded.
+- **One organization — the one you chose.** The app's sign-in is answered with a code for
+  that organization, whatever picker or hint it asks for (`prompt=select_organization`,
+  `organization_hint`). If the app names a *different* organization with `organization`,
+  or asks to create one (`prompt=create_organization`), it gets `error=access_denied`
+  with a sentence saying why, and the session stays open for a sign-in it can answer.
 
 The session is listed on the person's page and on the organization's page in the
 environment console, with **End now**.

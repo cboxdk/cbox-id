@@ -3,11 +3,15 @@
 declare(strict_types=1);
 
 use App\Platform\PlatformAuth;
+use App\Platform\SelfServiceSignup;
+use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\PushedAuthorizationRequests;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\Models\SupportSession;
@@ -16,6 +20,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\MembershipStatus;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -343,3 +348,135 @@ it('puts the session on the organization\'s activity log and on the person\'s ow
     expect($rows)->toHaveCount(1)
         ->and($rows->first()['detail'])->toBe('Parcels — “Ticket 4411: invoice totals look wrong”');
 });
+
+/*
+| Support access and the organization an app asks for (C5 × C6)
+*/
+
+/**
+ * The person in a SECOND organization, so a request can name one the session is not for.
+ *
+ * @return array{admin: string, org: string, user: string, other: string, parcels: string}
+ */
+function supportWithTwoOrganizations(): array
+{
+    $fixture = supportFixture();
+    $other = app(Organizations::class)->create(new NewOrganization('Initech', 'initech-support'));
+    app(Memberships::class)->add($other->id, $fixture['user'], MembershipRole::Member);
+
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+    startSupport($fixture['user'], ['app' => $parcels, 'organization' => $fixture['org']])->assertSessionHasNoErrors();
+
+    return [...$fixture, 'other' => $other->id, 'parcels' => $parcels];
+}
+
+/**
+ * Self-service sign-up switched on for the environment the console stands in — without it
+ * `prompt=create` and `create_organization` are `invalid_request` before a support session
+ * is asked anything, and the combination would go untested.
+ */
+function openSelfServiceSignupHere(): void
+{
+    $key = app(EnvironmentContext::class)->current()?->environmentKey();
+
+    app(SelfServiceSignup::class)->set(Environment::query()->findOrFail($key), true);
+}
+
+/** The app's sign-in with extra parameters, as an SDK sends them. */
+function appSignsInWith(string $clientId, array $extra): TestResponse
+{
+    return authorizeRequest([
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://parcels.test/callback',
+        'scope' => 'openid email',
+        'code_challenge' => pkcePair(SUPPORT_VERIFIER)['challenge'],
+        ...$extra,
+    ]);
+}
+
+function supportTokenOrg(string $clientId, string $code): ?string
+{
+    $access = test()->postJson('/oauth/token', [
+        'grant_type' => 'authorization_code',
+        'client_id' => $clientId,
+        'code' => $code,
+        'redirect_uri' => 'https://parcels.test/callback',
+        'code_verifier' => SUPPORT_VERIFIER,
+    ])->assertOk()->json('access_token');
+
+    $claims = app(TokenSigner::class)->verify((string) $access, [SigningAlg::RS256]);
+
+    return is_string($claims->get('org')) ? $claims->get('org') : null;
+}
+
+it('answers the session\'s organization when the app names it, a hint, or asks for the picker', function (array $extra): void {
+    ['org' => $org, 'parcels' => $parcels, 'user' => $user] = supportWithTwoOrganizations();
+    openSelfServiceSignupHere();
+
+    $extra = array_map(fn (string $value): string => str_replace('{org}', $org, $value), $extra);
+    $query = returnedToApp(appSignsInWith($parcels, $extra));
+
+    expect($query['code'] ?? null)->toBeString()
+        ->and(supportTokenOrg($parcels, (string) $query['code']))->toBe($org);
+
+    // And the administrator's console session survived the round trip.
+    $this->get(route('environment.users.show', $user))->assertOk();
+})->with([
+    'organization = the session\'s' => [['organization' => '{org}']],
+    'a hint and the picker' => [['organization_hint' => 'org_anything', 'prompt' => 'select_organization']],
+    'silently' => [['prompt' => 'none']],
+    'sign-up' => [['prompt' => 'create']],
+])->group('security');
+
+it('refuses an app that names another organization, and keeps the session for one it can answer', function (): void {
+    ['other' => $other, 'parcels' => $parcels, 'user' => $user] = supportWithTwoOrganizations();
+
+    $query = returnedToApp(appSignsInWith($parcels, ['organization' => $other]));
+
+    // NOT a code for the session's organization (the app would receive a team it did not
+    // ask for), and NOT a sign-in page for an administrator who is nobody here.
+    expect($query['error'] ?? null)->toBe('access_denied')
+        ->and($query['error_description'] ?? null)->toBe(SupportRequestRefused::otherOrganization()->getMessage())
+        ->and($query)->not->toHaveKey('code');
+
+    expect(returnedToApp(appSignsIn($parcels))['code'] ?? null)->toBeString();
+    $this->get(route('environment.users.show', $user))->assertOk();
+})->group('security');
+
+it('refuses prompt=create_organization during a support session', function (): void {
+    ['parcels' => $parcels] = supportWithTwoOrganizations();
+    openSelfServiceSignupHere();
+    $organizations = DB::table('organizations')->count();
+
+    $query = returnedToApp(appSignsInWith($parcels, ['prompt' => 'create_organization']));
+
+    expect($query['error'] ?? null)->toBe('access_denied')
+        ->and($query['error_description'] ?? null)->toBe(SupportRequestRefused::cannotCreateOrganization()->getMessage())
+        ->and(DB::table('organizations')->count())->toBe($organizations);
+})->group('security');
+
+it('reads the organization from the pushed request alone during a support session', function (): void {
+    ['org' => $org, 'other' => $other, 'parcels' => $parcels] = supportWithTwoOrganizations();
+    $client = app(ClientRegistry::class)->byClientId($parcels);
+    $params = [
+        'client_id' => $parcels,
+        'redirect_uri' => 'https://parcels.test/callback',
+        'response_type' => 'code',
+        'scope' => 'openid email',
+        'state' => 'xyz',
+        'code_challenge' => pkcePair(SUPPORT_VERIFIER)['challenge'],
+        'code_challenge_method' => 'S256',
+    ];
+
+    // Pushed naming another organization: refused.
+    $pushed = app(PushedAuthorizationRequests::class)->push($client, [...$params, 'organization' => $other]);
+    expect(returnedToApp(authorizeRequest(['client_id' => $parcels, 'request_uri' => $pushed['request_uri']]))['error'] ?? null)
+        ->toBe('access_denied');
+
+    // Pushed without one, and another smuggled onto the query: ignored — the session's.
+    $pushed = app(PushedAuthorizationRequests::class)->push($client, $params);
+    $query = returnedToApp(authorizeRequest(['client_id' => $parcels, 'request_uri' => $pushed['request_uri'], 'organization' => $other]));
+
+    expect(supportTokenOrg($parcels, (string) ($query['code'] ?? '')))->toBe($org);
+})->group('security');

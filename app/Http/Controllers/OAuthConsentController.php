@@ -16,8 +16,9 @@ use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\ScopeCatalog;
-use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SignupPolicy;
+use App\Platform\SupportAccess\Contracts\SupportAccess;
+use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -274,10 +275,19 @@ final readonly class OAuthConsentController extends PageController
          * app's PKCE challenge, whose tokens carry `act` and never a refresh token. Ahead of
          * everything about the signed-in person, because the administrator is nobody on
          * this tenant — and never when a login ticket names who just signed in here.
+         *
+         * AFTER the organization parameters are validated and bound (from the pushed request
+         * alone when there is one): the session is one person in one organization, and a
+         * request naming another, or asking to create one, is refused to the app rather
+         * than answered with the session's or sent to a sign-in page.
          */
-        $supportCode = $from('login_ticket') === null
-            ? app(SupportAccess::class)->codeFor($client->client_id, $redirectUri, $codeChallenge, $authorization->nonce)
-            : null;
+        try {
+            $supportCode = $from('login_ticket') === null
+                ? app(SupportAccess::class)->codeFor($authorization)
+                : null;
+        } catch (SupportRequestRefused $refused) {
+            return $this->redirectError($redirectUri, 'access_denied', $state, $refused->getMessage());
+        }
 
         if ($supportCode !== null) {
             $params = ['code' => $supportCode, 'iss' => app(IssuerResolver::class)->issuer()];

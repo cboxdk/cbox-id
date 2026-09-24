@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\SupportAccess\Contracts;
 
+use App\Platform\OAuth\PendingAuthorization;
+use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use App\Platform\SupportAccess\ValueObjects\ActiveSupportSession;
 use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\SupportAccess\ValueObjects\SupportSignInRequest;
@@ -78,6 +80,15 @@ interface SupportAccess
      * Only for the administrator who started it, still signed in to this environment's
      * console: a browser whose administrator has signed out, or been revoked, or become
      * somebody else, gets nothing from a session another person opened.
+     *
+     * The session is one person in one organization. A request that NAMES an organization
+     * (`organization`, from the pushed request alone when there is one) must name that
+     * one, and `prompt=create_organization` cannot be answered at all; either is refused
+     * rather than answered with the session's organization or passed to a sign-in page.
+     * `organization_hint` and `prompt=select_organization` are answered with the session's
+     * organization: the administrator already chose it.
+     *
+     * @throws SupportRequestRefused
      */
-    public function codeFor(string $clientId, string $redirectUri, string $codeChallenge, ?string $nonce): ?string;
+    public function codeFor(PendingAuthorization $authorization): ?string;
 }

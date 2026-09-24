@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Platform\SupportAccess;
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\OAuth\Enums\AuthorizationPrompt;
+use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
+use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use App\Platform\SupportAccess\ValueObjects\ActiveSupportSession;
 use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\SupportAccess\ValueObjects\SupportSignInRequest;
@@ -125,8 +128,9 @@ class ConsoleSupportAccess implements SupportAccess
         return true;
     }
 
-    public function codeFor(string $clientId, string $redirectUri, string $codeChallenge, ?string $nonce): ?string
+    public function codeFor(PendingAuthorization $authorization): ?string
     {
+        $clientId = $authorization->clientId;
         $entry = $this->handoff->for($clientId);
 
         if ($entry === null) {
@@ -144,13 +148,31 @@ class ConsoleSupportAccess implements SupportAccess
             return null;
         }
 
+        $session = $this->sessions->active($entry->sessionId);
+
+        if ($session === null || $session->actor_id !== $actor) {
+            $this->handoff->forgetApp($clientId);
+
+            return null;
+        }
+
+        // What the app asked for, against the one person in the one organization the
+        // administrator chose. Refused, not re-routed: see SupportRequestRefused.
+        if ($authorization->asks(AuthorizationPrompt::CreateOrganization)) {
+            throw SupportRequestRefused::cannotCreateOrganization();
+        }
+
+        if ($authorization->organizationId !== null && $authorization->organizationId !== $session->organization_id) {
+            throw SupportRequestRefused::otherOrganization();
+        }
+
         try {
             // The framework binds the actor into the session lookup and re-checks the app
             // and the redirect URI; the code is bound to the app's own PKCE challenge.
             return $this->sessions->issueCode(
                 $entry->sessionId,
                 $actor,
-                new SupportCodeRequest($redirectUri, $codeChallenge, $nonce),
+                new SupportCodeRequest($authorization->redirectUri, $authorization->codeChallenge, $authorization->nonce),
             );
         } catch (SupportSessionRefused) {
             // Ended or expired: this browser no longer holds a session for the app.

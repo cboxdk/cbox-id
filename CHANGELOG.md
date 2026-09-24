@@ -214,7 +214,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   outlives the session. Open sessions are listed on the user's and the organization's
   pages with **End now**. The organization's activity log shows who started it and why
   (the reason first, the administrator by name), and the person's own activity page
-  shows it once. See `docs/guides/support-access.md`.
+  shows it once. A session is one organization: an app that names another with
+  `organization` (or asks for `prompt=create_organization`) is answered `access_denied`,
+  never with a code for the session's organization. See `docs/guides/support-access.md`.
 
 - **Apps choose the organization.** `/oauth/authorize` honours `organization`,
   `organization_hint`, `prompt=select_organization` and `prompt=create_organization`, as
