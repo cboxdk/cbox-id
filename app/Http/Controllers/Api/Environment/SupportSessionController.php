@@ -7,8 +7,6 @@ namespace App\Http\Controllers\Api\Environment;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Environment\StartSupportSessionRequest;
 use App\Http\Resources\Environment\SupportSessionResource;
-use App\Platform\SupportAccess\AudienceResolvedSupportSessions;
-use App\Platform\SupportAccess\SupportSessionScopes;
 use Cbox\Id\OAuthServer\Contracts\SupportSessions;
 use Cbox\Id\OAuthServer\Enums\SupportSessionRefusal;
 use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
@@ -32,7 +30,7 @@ final class SupportSessionController extends Controller
 {
     use PaginatesEnvironmentResources;
 
-    public function store(StartSupportSessionRequest $request, SupportSessions $sessions, SupportSessionScopes $scopes): JsonResponse
+    public function store(StartSupportSessionRequest $request, SupportSessions $sessions): JsonResponse
     {
         $session = $request->toSession();
 
@@ -42,22 +40,14 @@ final class SupportSessionController extends Controller
 
         $code = $request->codeRequest();
 
-        /*
-         * Asked FIRST, in this API's own words: scopes of two registered APIs cannot be
-         * audienced to one token, so no code this session minted could be redeemed. The
-         * session service settles the same set again as it starts
-         * ({@see AudienceResolvedSupportSessions}), which is what makes the stored session,
-         * this response and the tokens agree — this call only gets the refusal said before
-         * anything is started or announced.
-         */
-        try {
-            $scopes->settle($session->clientId, $session->scopes);
-        } catch (InvalidAudience $audience) {
-            return $this->refuse($audience->error, $audience->getMessage(), 422);
-        }
-
         try {
             $started = $sessions->begin($session, $code);
+        } catch (InvalidAudience $audience) {
+            // Scopes of two registered APIs cannot be audienced to one token, so no code
+            // this session minted could be redeemed. The framework settles the session's
+            // scopes to what its tokens carry and refuses this before anything is started
+            // or announced — after the checks that say whether the caller may ask at all.
+            return $this->refuse($audience->error, $audience->getMessage(), 422);
         } catch (SupportSessionRefused $refused) {
             return $this->refuse($refused->refusal->value, $refused->getMessage(), match ($refused->refusal) {
                 SupportSessionRefusal::NotPermitted => 403,

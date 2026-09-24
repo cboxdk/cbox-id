@@ -95,7 +95,7 @@ final readonly class SupportSessionController extends ConsoleController
             return back()->withInput()->withErrors([$this->field($refused->refusal) => $refused->getMessage()]);
         } catch (InvalidAudience $audience) {
             // The app's scopes cannot be audienced to one API: no sign-in it starts could
-            // finish. See AudienceResolvedSupportSessions.
+            // finish. The framework refuses it before the session exists.
             return back()->withInput()->withErrors(['app' => $audience->getMessage()]);
         }
 
