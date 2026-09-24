@@ -19,7 +19,8 @@ a link to one tab opens that tab.
 | **Frontend keys** | Environment | `/admin/keys/frontend` | The Frontend API, from a browser |
 
 App credentials (a client ID and secret) are not here. They belong to the app and live on
-[Apps](apps-and-api-keys.md).
+[Apps](apps-and-api-keys.md). Keys people create for an app's own API are not here either:
+see [API keys](api-keys.md).
 
 ## Management keys
 

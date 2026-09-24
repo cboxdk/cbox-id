@@ -78,7 +78,11 @@ function moduleConsoleRoutes(): array
     // asking an administrator. Both are pinned open by their own tests
     // ({@see AccountActivityTest}, and the device test below), so excluding them here does
     // not quietly drop them from coverage.
-    $personal = ['devices.mine', 'account.activity'];
+    //
+    // `account.api-keys` is the same kind of page: the caller's OWN keys for the apps they
+    // use, created and revoked by the person who holds them. AppApiKeysTest pins it open to
+    // a plain member and proves they reach nobody else's key.
+    $personal = ['devices.mine', 'account.activity', 'account.api-keys'];
 
     // THE PLATFORM SECTION, which refuses a plain member HARDER than this sweep asserts
     // and so cannot be swept by it. `AuthenticateOperator` answers 404 rather than 403 on

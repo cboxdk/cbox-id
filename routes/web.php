@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AccountActivityController;
+use App\Http\Controllers\AccountApiKeyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
@@ -37,6 +38,7 @@ use App\Http\Controllers\Console\DirectoryMemberController;
 use App\Http\Controllers\Console\EnvironmentDomainController;
 use App\Http\Controllers\Console\EnvironmentHomeController;
 use App\Http\Controllers\Console\EnvironmentKeyController;
+use App\Http\Controllers\Console\EnvironmentOrganizationApiKeyController;
 use App\Http\Controllers\Console\EnvironmentOrganizationController;
 use App\Http\Controllers\Console\EnvironmentUserController;
 use App\Http\Controllers\Console\FrontendKeyController;
@@ -44,6 +46,7 @@ use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
 use App\Http\Controllers\Console\LegacyLoginController;
 use App\Http\Controllers\Console\LogStreamController;
+use App\Http\Controllers\Console\MemberApiKeyController;
 use App\Http\Controllers\Console\MemberController;
 use App\Http\Controllers\Console\MyApprovalController;
 use App\Http\Controllers\Console\OperatorRosterController;
@@ -579,6 +582,18 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::delete('/account/applications/{client}', [AccountActivityController::class, 'revokeApplication'])
         ->name('account.applications.destroy');
 
+    /*
+     * API KEYS FOR THE APPS BUILT ON THIS ENVIRONMENT — the person's own, for the apps that
+     * declared a key prefix. `?client_id=…&return_to=…` is the deep link the SDKs send
+     * people to, and it is a contract: the path and both parameters stay.
+     *
+     * No `sudo` on creating one, deliberately — see AccountApiKeyController. The console is
+     * read-only during a support session, so nobody acting as somebody else mints one.
+     */
+    Route::get('/account/api-keys', [AccountApiKeyController::class, 'index'])->name('account.api-keys');
+    Route::post('/account/api-keys', [AccountApiKeyController::class, 'store'])->name('account.api-keys.store');
+    Route::delete('/account/api-keys/{key}', [AccountApiKeyController::class, 'destroy'])->name('account.api-keys.revoke');
+
     Route::get('/usage', [UsageController::class, 'index'])->name('usage');
     // THE TENANT DIRECTORY — everyone who can sign in to this organization, plus the
     // invitations nobody has accepted. Its own URI, because it is not the same page as
@@ -601,6 +616,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Ownership is TRANSFERRED, never picked from a role list — owner only.
     Route::post('/directory/members/{member}/transfer-ownership', [DirectoryMemberController::class, 'transferOwnership'])->name('directory.members.transfer-ownership');
     Route::delete('/directory/members/{member}', [DirectoryMemberController::class, 'remove'])->name('directory.members.remove');
+    // Every API key this organization's people hold for its apps: seen and revoked by an
+    // administrator, never minted for somebody else.
+    Route::get('/directory/api-keys', [MemberApiKeyController::class, 'index'])->name('directory.api-keys');
+    Route::delete('/directory/api-keys/{key}', [MemberApiKeyController::class, 'destroy'])->name('directory.api-keys.revoke');
 
     /*
      * IDENTITY PLATFORM — what an organization has because it OWNS identity providers.
@@ -1037,6 +1056,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/organizations/{organization}/domains/{domain}/verify', [EnvironmentOrganizationController::class, 'verifyDomain'])->name('environment.organizations.domains.verify');
         Route::post('/organizations/{organization}/domains/{domain}/capture', [EnvironmentOrganizationController::class, 'toggleCapture'])->name('environment.organizations.domains.capture');
         Route::delete('/organizations/{organization}/domains/{domain}', [EnvironmentOrganizationController::class, 'removeDomain'])->name('environment.organizations.domains.remove');
+        Route::delete('/organizations/{organization}/api-keys/{key}', [EnvironmentOrganizationApiKeyController::class, 'destroy'])->name('environment.organizations.api-keys.revoke');
 
         // Users — routable list → create → detail. Every lifecycle action names the user
         // in its own URL, so each one re-resolves them through the environment-scoped

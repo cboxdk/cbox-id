@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\AppApiKeyRows;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
@@ -14,6 +15,7 @@ use App\Http\Requests\Console\AddOrganizationMemberRequest;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
+use App\Platform\ApiKeys\MemberApiKeys;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
 use App\Platform\Help\HelpTopic;
@@ -37,6 +39,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
+use Cbox\Id\Organization\Models\CustomerApiKey;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -131,7 +134,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             ->with('status', 'Organization created.');
     }
 
-    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog, OrganizationInvitations $invitations, AppReturnTargets $targets): Response
+    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog, OrganizationInvitations $invitations, AppReturnTargets $targets, MemberApiKeys $apiKeys, AppApiKeyRows $apiKeyRows): Response
     {
         $this->assertEnvironmentAdmin();
 
@@ -208,6 +211,13 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             'roleOptions' => RoleOptionProps::organization(),
             'rosterRoleOptions' => RoleOptionProps::organization(withOwner: true),
             'apps' => array_map(ReturnAppProps::from(...), $targets->appsFor($model->id)),
+            // Every API key the organization's people hold for its apps. Seen and revoked
+            // here; never minted — each person creates their own under My account.
+            'apiKeys' => $apiKeyRows->for(
+                $apiKeys->inOrganization($model->id),
+                withHolder: true,
+                revokeHref: static fn (CustomerApiKey $key): string => route('environment.organizations.api-keys.revoke', [$model->id, $key->id]),
+            ),
             'indexHref' => route('environment.organizations'),
             'urls' => [
                 'update' => route('environment.organizations.update', $model->id),

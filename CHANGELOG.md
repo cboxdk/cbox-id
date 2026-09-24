@@ -151,6 +151,25 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   another environment of the same project that the person administers, with its own client
   id and secret shown once. Behind the step-up; recorded as `app.created` in the target
   environment, attributed to the person.
+- **API keys for the apps built on an environment (laravel-id 1.19 customer API keys).**
+  An app that declares an API key prefix lets the people using it create keys for its API
+  on a hosted page, **My account › API keys** (`/account/api-keys`). They pick the app,
+  the organization (switchable among their memberships), a name, the permissions (only
+  the ones they hold in that app, with the manifest's descriptions) and an expiry. The key
+  is shown once. The list shows status, last use and expiry, and has a revoke button.
+  SDKs deep-link with `/account/api-keys?client_id=…&return_to=…`. `return_to` is only
+  offered as a link, and only when it sits on an origin the named app registered. A
+  refused key says why and names the permission the person does not hold. An app that
+  belongs to another organization is never offered and is refused if posted. Owners and
+  admins see every key in their organization on **People › Member API keys**
+  (`/directory/api-keys`), and environment administrators see them on each
+  organization's page. Both can revoke, and neither can create a key for somebody else.
+  Both rail entries appear only where an app offers keys or a key already exists.
+  Creating and revoking show up in the organization's activity log as `api_key.created`
+  and `api_key.revoked`. The webhooks come from the framework. Creating a key needs no
+  step-up, because the step-up asks for a password and people who sign in with single
+  sign-on have none. Guides: [Let your customers create API keys](docs/getting-started/let-your-customers-create-api-keys.md)
+  and [API keys](docs/guides/api-keys.md).
 
 - **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
   approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated

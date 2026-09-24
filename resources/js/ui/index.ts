@@ -9,6 +9,7 @@
  * probably a primitive that has not been written yet — write it here rather than
  * assembling it inline, or the console grows two spellings of the same control.
  */
+export { type AppApiKey, AppApiKeyList } from './AppApiKeyList';
 export { Avatar } from './Avatar';
 export { Badge, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';

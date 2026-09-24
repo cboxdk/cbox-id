@@ -123,6 +123,16 @@ final readonly class ShellPayload
         // Whether this page is one the workspace console does not offer — reached by URL.
         $offRail = false;
 
+        // Every page the registry names, so a page does not light up on a route another
+        // page owns more specifically (see routeIsCurrent()).
+        $claimed = [];
+
+        foreach (Console::nav()->areas() as $area) {
+            foreach ($area->pages() as $page) {
+                $claimed[] = $page->route;
+            }
+        }
+
         foreach (Console::nav()->areas() as $area) {
             if (! $isAdmin && ! in_array($area->key, self::MEMBER_AREAS, true)) {
                 continue;
@@ -140,7 +150,7 @@ final readonly class ShellPayload
                 // A WORKSPACE'S CONSOLE is the workspace, its team's sign-in and its log —
                 // see WorkspaceAltitude for why the rest is withheld rather than refused.
                 if ($workspace && ! WorkspaceAltitude::keepsPage($area->key, $page->route)) {
-                    $offRail = $offRail || $this->routeIsCurrent($page->route);
+                    $offRail = $offRail || $this->routeIsCurrent($page->route, $claimed);
 
                     continue;
                 }
@@ -151,7 +161,7 @@ final readonly class ShellPayload
                     route: $page->route,
                     href: route($page->route),
                     label: $page->label,
-                    active: $this->routeIsCurrent($page->route),
+                    active: $this->routeIsCurrent($page->route, $claimed),
                     badge: $feature !== null && ! $this->entitlements->entitledOrgFeature($feature)
                         ? 'Enterprise'
                         : null,
@@ -395,10 +405,33 @@ final readonly class ShellPayload
      * A page stays lit on its own detail and create routes (`users` → `users.show`) but
      * NOT on a sibling that merely shares a prefix: `audit` must not light up on
      * `audit-streams`. Hence two explicit patterns rather than one prefix test.
+     *
+     * NOR ON A PAGE OF ITS OWN BELOW IT. `account` (Security) is a prefix of
+     * `account.activity` and `account.api-keys`, which are pages beside it rather than
+     * details of it — and the prefix test lit Security as well as the page being shown,
+     * two items at once in a three-item sub-nav. A route that a more specific page claims
+     * belongs to that page.
+     *
+     * @param  list<string>  $claimed  every page route on the rail
      */
-    private function routeIsCurrent(string $route): bool
+    private function routeIsCurrent(string $route, array $claimed = []): bool
     {
-        return $this->request->routeIs($route) || $this->request->routeIs($route.'.*');
+        if ($this->request->routeIs($route)) {
+            return true;
+        }
+
+        if (! $this->request->routeIs($route.'.*')) {
+            return false;
+        }
+
+        foreach ($claimed as $other) {
+            if (str_starts_with($other, $route.'.')
+                && ($this->request->routeIs($other) || $this->request->routeIs($other.'.*'))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
