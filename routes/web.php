@@ -264,11 +264,19 @@ Route::get('/sso/oauth2/{connection}/redirect', OAuth2RedirectController::class)
 Route::get('/sso/oauth2/{connection}/callback', OAuth2CallbackController::class)->name('sso.oauth2.callback');
 
 /*
- * Account signup — "create your identity platform" — is an ACCOUNT-plane action in the
- * SaaS shape (`plane:account`, root host only): it provisions an account + its first
- * environment. In the single-tenant shape the gate is a no-op and it is a Tier-1 join.
+ * Signup, which is two things depending on the host ({@see SignupController}).
+ *
+ * On the SaaS shape's platform root it is "create your identity platform": it provisions an
+ * account + its first environment. On a TENANT environment it is the vendor's own
+ * self-service sign-up — an end user of their app creating an account and their team —
+ * and it is open only when that environment has switched it on; with the switch off the
+ * page sends the person to sign in with an explanation, and the POST refuses. In the
+ * single-tenant shape the gate is a no-op and it is a Tier-1 join.
+ *
+ * `plane:signup` rather than `plane:account`, which is what made every tenant's sign-in
+ * page link to a 404.
  */
-Route::middleware(['plane:account', 'platform.guest'])->group(function (): void {
+Route::middleware(['plane:signup', 'platform.guest'])->group(function (): void {
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
     Route::post('/signup', [SignupController::class, 'register'])->name('signup.register');
 });
@@ -1283,6 +1291,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::get('/sign-in-rules', [AuthPolicyController::class, 'edit'])->name('environment.auth-policy');
         Route::put('/sign-in-rules', [AuthPolicyController::class, 'update'])->name('environment.auth-policy.update');
         Route::delete('/sign-in-rules', [AuthPolicyController::class, 'inherit'])->name('environment.auth-policy.inherit');
+        // The environment's self-service sign-up switch — environment plane only: it
+        // decides who may create an account anywhere in the environment.
+        Route::put('/sign-in-rules/self-service-signup', [AuthPolicyController::class, 'selfServiceSignup'])->name('environment.auth-policy.self-service-signup');
         // Appearance — the merged component. The route NAME is preserved on both
         // planes; only the component behind it is now shared.
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('environment.appearance');
