@@ -893,7 +893,11 @@ function StaffRolesPanel({
                 <>
                     Roles held across the whole environment — in every organization, and even when
                     they belong to none. Organizations never see these.{' '}
-                    <Link href={staffHref} style={{ color: 'var(--accent-strong)' }}>
+                    <Link
+                        href={staffHref}
+                        className="underline underline-offset-2"
+                        style={{ color: 'var(--accent-strong)' }}
+                    >
                         Everyone with a staff role
                     </Link>
                 </>

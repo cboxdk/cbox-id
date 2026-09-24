@@ -89,6 +89,7 @@ it('lists staff grants per app and grants one from the Staff page', function ():
         ->assertSee('Parcels')
         ->assertSee('Sam Support')
         ->assertSee('Staff-only')
+        ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'staff-page')
         ->fill('email', 'grace@globex.test')
         ->click('Choose a role…')
@@ -117,6 +118,7 @@ it('draws a user\'s staff roles and the support access form', function (): void 
 
     $page->assertSee('Support access')
         ->assertSee('Sign in to Parcels as Grace Hopper')
+        ->assertNoAccessibilityIssues()
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-support-access')
         ->fill('reason', 'Ticket 4411: invoice totals look wrong')
         ->click('Sign in to Parcels as Grace Hopper')
@@ -144,6 +146,7 @@ it('lists an open support session on the person\'s and the organization\'s page,
 
     $page->assertSee('Support sessions')
         ->assertSee('Grace Hopper')
+        ->assertNoAccessibilityIssues()
         ->screenshotElement('section:has(h2:has-text("Support sessions"))', 'organization-open-session')
         ->click('End now')
         ->assertSee('End the support session for Grace Hopper in Parcels?')
@@ -164,6 +167,7 @@ it('opens a review of staff roles', function (): void {
 
     $page->assertSee('What to review')
         ->assertSee('Snapshots every staff role')
+        ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'review-staff-create')
         ->fill('name', 'Q3 staff access')
         ->click('Open review')

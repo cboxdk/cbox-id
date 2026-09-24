@@ -193,7 +193,11 @@ function GrantForm({
             <Panel title="Grant a staff role">
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     There is no role to grant yet. Define one on the{' '}
-                    <Link href={rolesHref} style={{ color: 'var(--accent-strong)' }}>
+                    <Link
+                        href={rolesHref}
+                        className="underline underline-offset-2"
+                        style={{ color: 'var(--accent-strong)' }}
+                    >
                         Roles
                     </Link>{' '}
                     page, or let an app declare its own in its manifest.
