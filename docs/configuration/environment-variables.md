@@ -376,12 +376,30 @@ of them carry more weight here than the framework defaults suggest:
   undoes it and adds write contention on top. `database` is the zero-dependency default
   for a first `php artisan serve`, and nothing more. `docker-compose.yml` already uses
   Redis.
-- **`QUEUE_CONNECTION` is not cosmetic.** Webhook delivery is dispatched to the queue, so
-  a deployment without a running `queue:work` delivers **nothing** and raises no error —
-  deliveries simply sit `Pending` until the retry sweep re-drives them into the same
-  empty queue. See [Deployment](../operations/deployment.md#5-run-the-workers) for the
-  processes a real deployment runs, and `CBOX_ID_WEBHOOKS_QUEUE_CONNECTION` /
-  `CBOX_ID_WEBHOOKS_QUEUE` above if you isolate egress onto its own worker fleet.
+- **`QUEUE_CONNECTION` is not cosmetic.** Webhook delivery and back-channel logout are
+  dispatched to the queue, so a deployment without a running queue manager
+  (`php artisan queue:autoscale`) delivers **nothing** and raises no error — deliveries
+  simply sit `Pending` until the retry sweep re-drives them into the same empty queue.
+  See [Queue workers](../operations/queue-workers.md) for the process a real deployment
+  runs, and `CBOX_ID_WEBHOOKS_QUEUE_CONNECTION` / `CBOX_ID_WEBHOOKS_QUEUE` above if you
+  isolate egress onto its own queue: the workers follow it.
+
+## Queue workers
+
+The queue manager (`cboxdk/laravel-queue-autoscale`) and the job monitor
+(`cboxdk/laravel-queue-monitor`). Most of their settings are values in
+`config/queue-autoscale.php` and `config/queue-monitor.php`, deliberately not environment
+variables; these are the ones a deployment sets. See
+[Queue workers](../operations/queue-workers.md).
+
+| Variable | Purpose | Default | Set it when |
+|---|---|---|---|
+| `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` | Hard cap on `queue:work` processes per host. | `2` | The workers get more memory than a 512 MB instance shared with the web tier. |
+| `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. |
+| `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The `queue_workers` health check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |
+| `QUEUE_METRICS_STORAGE` | Where the metrics the manager scales on are kept. | `redis` | Leave it. |
+| `QUEUE_MONITOR_MAX_ROWS` | Most job rows the monitor keeps, on top of its 7-day window. | `100000` | A very busy install. |
+| `QUEUE_MONITOR_API_ENABLED` | The monitor's REST API, behind the operator session. | `false` | You need it; the dashboard does not. |
 
 `APP_KEY` is required and **distinct** from
 `CBOX_ID_CRYPTO_KEY` — the former protects Laravel's own encryption/cookies, the

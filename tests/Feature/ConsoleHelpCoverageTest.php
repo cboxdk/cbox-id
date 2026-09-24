@@ -179,7 +179,7 @@ it('gives every platform page on the rail a help topic', function (): void {
 
     $routes = registryRailRoutes(fn (string $key): bool => in_array($key, HELP_PLATFORM_AREAS, true));
 
-    // Workspaces, Environments, Organizations, Usage, Search, Operators.
-    expect($routes)->toHaveCount(6)
+    // Workspaces, Environments, Organizations, Usage, Search, Queues, Operators.
+    expect($routes)->toHaveCount(7)
         ->and(pagesWithoutHelp($routes))->toBe([]);
 });

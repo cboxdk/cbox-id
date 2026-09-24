@@ -222,7 +222,10 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('platform-insights', 'Insights', 'chart', 110)
             ->page('platform.usage', 'Usage', feature: 'platform.operator', order: 10)
-            ->page('platform.search', 'Search', feature: 'platform.operator', order: 20);
+            ->page('platform.search', 'Search', feature: 'platform.operator', order: 20)
+            // Whether the background work — webhooks, sign-out notices, queued mail — is
+            // being done. An install with no queue worker looks healthy everywhere else.
+            ->page('platform.queues', 'Queues', feature: 'platform.operator', order: 30);
 
         // "Security" is gone, and its absence is the fix. It enrolled a SEPARATE operator
         // TOTP factor that nothing ever verified: the operator sign-in door was retired

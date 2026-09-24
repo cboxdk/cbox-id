@@ -75,6 +75,7 @@ enum HelpTopic: string
     case PlatformOrganizations = 'platform-organizations';
     case PlatformUsage = 'platform-usage';
     case PlatformSearch = 'platform-search';
+    case PlatformQueues = 'platform-queues';
     case Operators = 'operators';
 
     /** The popover heading — the concept's name, not the page's. */
@@ -132,6 +133,7 @@ enum HelpTopic: string
             self::PlatformOrganizations => 'Organizations in the target environment',
             self::PlatformUsage => 'Usage across the install',
             self::PlatformSearch => 'Finding someone in any environment',
+            self::PlatformQueues => 'The work that happens after the click',
             self::Operators => 'The people who run this install',
         };
     }
@@ -239,6 +241,7 @@ enum HelpTopic: string
 
             self::PlatformSearch => 'Looks up an organization by name or handle, or a user by name or email, across every environment on this install rather than only the one the console is pointed at. Use it when someone asks for help and you do not know which environment they are in.',
 
+            self::PlatformQueues => 'Webhooks, sign-out notices to connected apps, role updates pulled from those apps and queued email are sent in the background by queue workers, not while the person waits. If no worker is running, none of it is ever sent, and nothing else on the console looks wrong — this page is where you see it.',
             self::Operators => 'Platform operators administer every workspace and environment on this install, from above any single one of them. Add an operator only for someone who runs the deployment itself, and suspend them the day that stops being their job.',
         };
     }
@@ -281,6 +284,7 @@ enum HelpTopic: string
             self::DataExports => 'security/compliance',
             self::RiskEvents => 'security/adaptive-risk',
             self::SignInActivity => 'operations/analytics',
+            self::PlatformQueues => 'operations/queue-workers',
             self::Overview,
             self::Usage,
             self::Settings,

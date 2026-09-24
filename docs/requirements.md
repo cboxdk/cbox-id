@@ -18,10 +18,15 @@ guidance**, not hard requirements.
 | PHP | `^8.4` | `composer.json` | Uses PHP 8.4 language features throughout. |
 | ext-openssl | * | `cboxdk/laravel-id` + `cbox-id:doctor` | RSA/EC key generation and JWT/SAML signing. |
 | ext-sodium | * | `cboxdk/laravel-id` + `cbox-id:doctor` | Ed25519 signing and AEAD sealing of secrets at rest. |
+| ext-pcntl | * | `cboxdk/laravel-queue-autoscale` + `cbox-id:doctor` | The queue manager (`queue:autoscale`) handles signals to drain its workers. |
+| ext-posix | * | `cboxdk/laravel-queue-autoscale` + `cbox-id:doctor` | The queue manager signals and reaps the `queue:work` processes it starts. |
 
 `ext-sodium` and `ext-openssl` are not listed in this app's own `require` block, but
 the crypto layer in `cboxdk/laravel-id` needs both and `php artisan cbox-id:doctor`
-fails loudly if either is missing.
+fails loudly if either is missing. `ext-pcntl` and `ext-posix` are required by
+`cboxdk/laravel-queue-autoscale`, so Composer refuses to install without them; the doctor
+checks them again in the CLI the queue manager actually runs under. Laravel Cloud's PHP
+runtime ships both.
 
 ## Framework
 
@@ -48,8 +53,9 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-dns` | `^0.1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
 | `cboxdk/dns` | `^0.1` | The framework-agnostic DNS resolver beneath laravel-dns. |
 | `bacon/bacon-qr-code` | `^3.1` | TOTP enrolment QR codes. |
-| `cboxdk/laravel-queue-metrics` | `^3.2` | Queue depth/throughput metrics. |
-| `cboxdk/laravel-queue-autoscale` | `^3.0` | Worker autoscaling. |
+| `cboxdk/laravel-queue-metrics` | `^3.4` | Queue depth/throughput metrics the autoscaler scales on. |
+| `cboxdk/laravel-queue-autoscale` | `^4.3` | The queue manager: starts, sizes and stops the `queue:work` processes. See [Queue workers](operations/queue-workers.md). |
+| `cboxdk/laravel-queue-monitor` | `^1.11` | The operator-only job monitor under Platform › Queues. |
 
 ## Other Composer dependencies
 

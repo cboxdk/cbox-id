@@ -60,9 +60,14 @@ services:
       valkey: { condition: service_healthy }
 
   # Queue autoscaler (spawns/reaps its own queue:work children). Single instance.
+  # CACHE_STORE matches the app's: the manager's heartbeat, the failure fuse and the
+  # restart signal live in the cache, and /health/status reads the heartbeat from there.
+  # SIGTERM drains the workers; give it longer than their 30 s drain window.
   queue:
     image: ghcr.io/cboxdk/cbox-id:dev
     command: ["php", "artisan", "queue:autoscale"]
+    init: true
+    stop_grace_period: 60s
     environment:
       APP_ENV: local
       APP_KEY: base64:FfU141MTORZ7e7P1V6wmd4S/ADOpPFcilmK8qt0GDkg=
@@ -77,6 +82,7 @@ services:
       REDIS_CLIENT: phpredis
       REDIS_HOST: valkey
       REDIS_PASSWORD: secret
+      CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     depends_on:
       app: { condition: service_started }
