@@ -6,6 +6,7 @@ use App\Mail\InvitationMail;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\NewInvitation;
+use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
@@ -192,6 +193,28 @@ it('draws the same invite form on the environment console, with "Make owner" on 
         ->assertSee('Make owner')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'environment-organization');
+})->group('a11y');
+
+it('draws no staff-only role on the environment console\'s invite form, and does on its add-member form', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-co-staff-browser'));
+    app(Roles::class)->define(null, 'Approver');
+    app(Roles::class)->define(null, 'Vendor support', tenantAssignable: false);
+
+    $page = visit('/admin/organizations/'.$org->id)
+        ->assertSee('Send invitation')
+        ->assertNoJavaScriptErrors();
+
+    // Rendered first (asserted above), then read: the invite form's own text, not the
+    // page's, because the add-member form beside it rightly offers the staff role.
+    $invite = (string) $page->script('document.querySelector(\'form[aria-label="Invite someone"]\').innerText');
+
+    expect($invite)->toContain('Approver')
+        ->and($invite)->not->toContain('Vendor support');
+
+    $page->assertSee('Vendor support')
+        ->screenshot(filename: 'environment-organization-staff-roles');
 })->group('a11y');
 
 it('draws the same invite form for a customer\'s administrators', function (): void {
