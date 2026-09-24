@@ -297,6 +297,13 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   has one; this had neither, so the only written account of what a permission is lived in
   the SDK reference. `docs/guides/permissions.md` is in plain language, for an administrator
   who does not want to write code to use a form that is already on their screen.
+- **An end-to-end test of an app built on Cbox ID.** One vendor environment, one app with a
+  manifest and a registered API, and the whole scenario as a chain of real requests:
+  sign-up from the app, a second team, an invitation with an app role back to the app,
+  a team the backend founds, a staff role that reaches one app and not its neighbour, a
+  support session, and a member's API key that dies with his role and his membership
+  (`tests/Feature/AppBuiltOnCboxIdChainTest.php`). The browser suite walks the first three
+  steps through the real pages.
 
 ### Changed
 
