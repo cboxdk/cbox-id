@@ -67,7 +67,9 @@ Each pending invitation shows who sent it, when it expires and which app it is f
 
 The owner can make any other member the owner: open the **⋯** menu on their row and
 choose **Transfer ownership**, then type their address to confirm. They become the owner
-and you become an admin. Only the new owner can hand it back.
+and you become an admin. Only the new owner can hand it back. The new owner must be an
+active member. Someone who has not accepted their invitation yet, or is suspended, cannot
+take it over.
 
 An environment administrator does the same from the organization's page with
 **Make owner**. That also gives an organization created from the environment console
@@ -83,6 +85,8 @@ here you are moved to it; otherwise you are signed out.
 
 The owner can delete the organization under **Settings › Delete organization**, after
 typing its name and confirming their password. Every member loses access at once and it
-disappears from every list; the records are kept for the audit trail. A workspace (an
+disappears from every list; the records are kept for the audit trail. Apps that signed
+members in to it can no longer refresh their tokens. Apps registered for back-channel
+logout are told to sign those members out. A workspace (an
 organization that owns projects) cannot be deleted this way: close its projects under
 Workspace › Projects first.

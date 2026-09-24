@@ -52,6 +52,13 @@ them yourself on the Permissions page without any integration at all.
 - At invite time, so someone has the right access the moment they accept rather
   than after a second chore.
 
+**Staff-only roles are not offered here.** An app can mark a role it declares as
+staff-only (`"tenant_assignable": false` in its manifest). That is for the app vendor's
+own support or back-office access, which usually reaches every customer. An
+organization's administrators never see it on the Members page, in an invitation or in a
+group mapping, and a request that names it is refused. Only an environment administrator
+can grant it, from the organization's page in the environment console.
+
 ## Roles that apply everywhere
 
 Every grant above is scoped to one organization, which is right for the people who work

@@ -17,15 +17,27 @@ anything up or refuse. If you need a say in the outcome, you want an
 
 ## Events you can subscribe to
 
+The picker lists every event Cbox ID sends. The list comes from the catalogue in
+`cboxdk/laravel-id` ([webhook events reference](https://github.com/cboxdk/laravel-id/blob/main/docs/reference/webhook-events.md)).
+Common ones:
+
 | Event | Fires when |
 | --- | --- |
 | `user.created` | A person is created in this organization |
 | `user.login` | A person signs in |
 | `identity.linked` | An external identity is linked to a person |
-| `organization.member_added` | Someone joins the organization |
-| `organization.member_removed` | Someone is removed from it |
+| `membership.created` | Someone joins the organization |
+| `membership.updated` | A member's role changes, including an ownership transfer |
+| `membership.deleted` | Someone is removed from it, or leaves |
+| `invitation.created` / `invitation.accepted` / `invitation.revoked` | An invitation's lifecycle |
+| `organization.deleted` | The organization is closed |
 | `directory.user.provisioned` | A directory sync created or updated a person |
 | `directory.user.deactivated` | A directory sync deactivated a person |
+
+**Older names.** `organization.member_added`, `organization.member_removed` and the other
+`organization.member_*` and `organization.invitation_*` events are still sent to endpoints
+that subscribe to them. They are no longer offered for new endpoints. An endpoint
+subscribed to `*` receives both names for the same change, so count on one family only.
 
 ## Set one up
 

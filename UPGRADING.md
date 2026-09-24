@@ -16,6 +16,52 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### laravel-id 1.19: ten migrations, and a queue worker for back-channel logout
+
+`cboxdk/laravel-id` is now `^1.19`. Run `php artisan migrate`: ten additive migrations
+(APIs and their scopes, `oauth_client_secrets` backfilled from `oauth_clients.secret_hash`,
+customer API keys, back-channel logout, staff roles, support sessions). No existing row
+changes meaning. Read the package's
+[1.19 upgrade notes](https://github.com/cboxdk/laravel-id/blob/main/UPGRADING.md#1190).
+
+**Run a queue worker.** Back-channel logout tokens are delivered by a queued job; with no
+worker, nothing is sent. An app registers for them with a `backchannel_logout_uri`; until
+one does, nothing changes for it.
+
+What changes for people using this deployment:
+
+- **App lifecycle entries are renamed.** The activity log records `app.created`,
+  `app.updated` (with a from/to of each changed field), `app.secret_rotated` and
+  `app.deleted`, written by the framework. The console's own `client.created`,
+  `client.updated`, `client.secret_rotated` and `client.deleted` are no longer written.
+  Existing `client.*` entries stay. A saved alert or export that filters on `client.`
+  should filter on `app.` too. Changing an app's manifest URL now shows up as
+  `app.updated`.
+- **Ownership goes only to an active member.** Transfer ownership refuses someone who is
+  suspended or has not accepted their invitation yet.
+- **Leaving is logged once.** A member leaving shows up as `organization.member_removed`
+  with `reason: left`, attributed to them. The separate `organization.member_left` entry is
+  gone.
+- **Deleting an organization from the environment console** logs
+  `organization.archived` (it logged `organization.deleted`) and now sends the
+  `organization.deleted` webhook.
+- **Closing an organization signs its members out of its apps.** Every member's refresh
+  tokens in that organization are revoked, and apps registered for back-channel logout are
+  told. Before, those tokens kept refreshing.
+- **An administrator's "Revoke all sessions" revokes refresh tokens too**, so apps can no
+  longer mint new access tokens for that person afterwards.
+- **Webhook pickers list the framework's catalogue.** `user.password_reset`,
+  `user.email_verified`, `user.mfa_enrolled` and `user.passkey_registered` are gone:
+  nothing ever delivered them. The legacy `organization.member_*` and
+  `organization.invitation_*` names are no longer offered for new endpoints. Use
+  `membership.*` and `invitation.*` instead. An existing endpoint keeps everything it
+  subscribes to, and its edit form still lists those events.
+- **Tenant admins cannot give out staff-only roles.** A role an app declares with
+  `"tenant_assignable": false` is not listed and not accepted on the People page,
+  in invitations or in directory group mappings. Only the environment console grants it.
+  No role is staff-only until an app says so. The People page now also lists the
+  environment's shared roles, which it always accepted.
+
 ### Console pages have one URL each; old GET URLs answer 301
 
 Every console page now has one path, the same on both consoles; the environment

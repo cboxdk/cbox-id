@@ -10,17 +10,31 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **Tenant admins could hand out staff-only roles.** laravel-id 1.19 lets an app mark a
+  role `tenant_assignable: false` (the vendor's own support or back-office role). The
+  People page, invitations and directory group mappings listed and granted roles through
+  the environment plane's `assign()`, so an organization's administrator could give one to
+  their own people. Those surfaces now use `Roles::tenantAssignableRoles()` and
+  `assignAsTenant()`. A role made staff-only after an invitation went out is withheld when
+  the invitation is accepted. The environment console still grants staff roles.
+- **Closing an organization left its members' apps signed in.** The token endpoint does
+  not check organization status on refresh, so refresh tokens bound to a closed
+  organization kept working. Closing one now calls `withdrawAccess()` for every member,
+  scoped to that organization (`WithdrawAccessOnOrganizationClosed`).
+- **"Revoke all sessions" left refresh tokens alive.** The environment console's revoke
+  ended the sessions, but apps holding refresh tokens kept minting access as the person.
+  It now calls `withdrawAccess()` first.
+
 - **Minting, revoking, rotating and renaming now leave a line on the activity log.**
   Account API keys were created and revoked with no audit entry; an app being registered,
   edited, having its secret rotated or being deleted wrote nothing; renaming the account
   from Account settings wrote nothing (the environment console's Settings already wrote
   `organization.renamed`). New actions: `organization.api_key_created`,
   `organization.api_key_revoked`, `organization.renamed` (now on the account log too),
-  and `client.created`, `client.updated`, `client.secret_rotated`, `client.deleted` on the
-  app's own organization trail. The `client.*` entries are written by the console
-  (`App\Platform\Console\ClientLifecycleAudit`, `context.recorded_by = console`) until the
-  framework's client service records its own lifecycle; they are named to be de-duplicated
-  then. The environment-key audit is now unconditional rather than skipped whenever no
+  and the app lifecycle on the app's own organization trail: `app.created`, `app.updated`,
+  `app.secret_rotated` and `app.deleted`. laravel-id 1.19's client registry writes them,
+  and every console write now goes through it, so each change is logged once. The
+  console's interim `client.*` entries are gone. The environment-key audit is now unconditional rather than skipped whenever no
   organization was resolved.
 
 - **The environment key list drew revoked keys like live ones, Revoke button included.**
@@ -76,6 +90,11 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
+  approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated
+  logout without a verifiable `id_token_hint` ends this browser's session and tells its
+  apps. Back-channel logout needs a queue worker.
+
 - **One Keys page per console, with the kind of key as a tab in the URL.** Seven kinds of
   credential were spread over four pages under three names. The workspace console's
   `/keys` holds **Management keys** (`cbid_env_…`, for one environment's management API,
@@ -125,6 +144,22 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   who does not want to write code to use a form that is already on their screen.
 
 ### Changed
+
+- **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
+- **App writes go through the framework's `ClientRegistry`.** That covers register,
+  update (built from `blueprint()` so settings the page does not show survive), manifest
+  URL, secret rotation and delete. Rotation no longer writes the deprecated `secret_hash`;
+  it calls `rotateSecret()` with no grace period until the overlap UI exists. Settings
+  the registry refuses come back as form errors.
+- **Transfer, leave and close use the framework's verbs** (`transferOwnership()`,
+  `leave()`, `archiveAsOwner()`), which lock the rows and write their own audit entries.
+  Ownership goes only to an active member. The environment console's Delete organization
+  calls `Organizations::archive()` and sends the `organization.deleted` webhook.
+- **Webhook event pickers come from `WebhookEventType::catalogue()`**, limited to offered
+  events. A new endpoint may subscribe only to those. An existing endpoint keeps what it
+  already has.
+- **Environment key scopes** are the framework's `offerable()` scopes that some
+  `env.api:<scope>` route requires. A scope appears once its endpoint ships.
 
 - **The workspace console is the workspace.** A workspace that owns identity providers
   signed in to a console that showed its own record in Cbox's root environment with the
