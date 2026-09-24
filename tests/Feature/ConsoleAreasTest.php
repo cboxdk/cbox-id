@@ -47,6 +47,30 @@ it('never puts two rail areas on the same subject', function (): void {
 });
 
 /**
+ * ONE GLYPH PER AREA, on each rail. The rail is 64px of icons, and it drew three shields
+ * (Sign-in, Access control, Connectors) and two stacks (Developers and the workspace area)
+ * side by side — a control whose whole job is to be told apart at a glance, with the same
+ * picture on it several times. A module's area counts: it is on the same rail.
+ */
+it('draws every rail area with an icon no other area on that rail uses', function (): void {
+    config([
+        'id-analytics.enabled' => true,
+        'compliance.enabled' => true,
+        'connectors.enabled' => true,
+        'id-devices.enabled' => true,
+    ]);
+
+    $organization = collect(Console::nav()->areas())->mapWithKeys(fn ($area): array => [$area->key => $area->icon]);
+    $environment = collect(app(ConsoleNavigation::class)->environment()->areas)
+        ->mapWithKeys(fn ($area): array => [$area->label => $area->icon]);
+
+    expect($organization->duplicates()->all())->toBe([])
+        ->and($environment->duplicates()->all())->toBe([])
+        // …and none is blank, which the rail would draw as an empty square.
+        ->and($organization->filter(fn (?string $icon): bool => $icon === null || $icon === '')->all())->toBe([]);
+});
+
+/**
  * The promise a nav label makes: click "Token vault" and you land on a page headed
  * "Token vault". Six host pages and two plugin pages broke it. Asserted over the
  * rendered document rather than the source, so it holds for any page a module adds

@@ -81,7 +81,7 @@ final readonly class EnvironmentLineage
         }
 
         if ($this->isUnattached()) {
-            return 'No project, so no workspace owns it, and nothing here is anybody's product.';
+            return 'No project, so no workspace owns it, and nothing here is anybody\'s product.';
         }
 
         return null;

@@ -13,6 +13,12 @@ export interface MobileNavProps {
     subheading?: string | null;
     user: User | null;
     logoutUrl: string;
+    /**
+     * Whether the bar names the environment's type. Not on a workspace's own console: its
+     * requests resolve to Cbox's own environment, whose badge would only suggest that the
+     * workspace is one.
+     */
+    showEnvironment?: boolean;
     /** The person's own account page — shown here only where the rail has no My account area. */
     accountUrl?: string;
     /** The signed-in-user switcher. */
@@ -44,6 +50,7 @@ export function MobileNav({
     subheading,
     user,
     logoutUrl,
+    showEnvironment = true,
     accountUrl,
     switchUserUrl,
     workspace = null,
@@ -62,7 +69,7 @@ export function MobileNav({
 
                 <span className="min-w-0 flex-1">
                     <span className="block text-[13px] font-semibold truncate leading-tight">
-                        {heading} <EnvBadge />
+                        {heading} {showEnvironment && <EnvBadge />}
                     </span>
                     {subheading != null && (
                         <span

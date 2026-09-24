@@ -21,6 +21,11 @@ import { switchMethod as switchEnvironment } from '@routes/platform/environment'
 
 const SUBNAV_KEY = 'cbox-subnav-collapsed';
 
+/** The built-in role as the console writes it everywhere else — "Owner", not `owner`. */
+function builtInRole(role: string | null): string {
+    return role === null ? 'Member' : role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 export interface ConsoleLayoutProps {
     children: ReactNode;
 }
@@ -168,6 +173,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                     subheading={shell.workspace?.name ?? null}
                     user={auth.user}
                     logoutUrl={logout.url()}
+                    showEnvironment={shell.altitude !== 'workspace'}
                     accountUrl={shell.accountHref}
                     switchUserUrl={shell.switchUserHref}
                     workspace={shell.workspace}
@@ -204,17 +210,25 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                                             {shell.workspace.name}
                                         </span>
                                     </a>
-                                    <span style={{ color: 'var(--faint)' }} aria-hidden="true">
-                                        /
-                                    </span>
-                                    <span className="cbx-crumb-env">
-                                        <span className="truncate">
-                                            {environment.name ?? 'Environment'}
+                                    {/*
+                                        The environment's name, on a screen wide enough for
+                                        it. On a phone the bottom bar already names it, and
+                                        the topbar keeps its room for the way back and the
+                                        acting organization.
+                                    */}
+                                    <span className="hidden sm:inline-flex items-center gap-2 min-w-0">
+                                        <span style={{ color: 'var(--faint)' }} aria-hidden="true">
+                                            /
                                         </span>
-                                        <EnvBadge />
-                                    </span>
-                                    <span style={{ color: 'var(--faint)' }} aria-hidden="true">
-                                        /
+                                        <span className="cbx-crumb-env">
+                                            <span className="truncate">
+                                                {environment.name ?? 'Environment'}
+                                            </span>
+                                            <EnvBadge />
+                                        </span>
+                                        <span style={{ color: 'var(--faint)' }} aria-hidden="true">
+                                            /
+                                        </span>
                                     </span>
                                 </>
                             )}
@@ -225,7 +239,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                                 <Switcher
                                     heading="Switch organization"
                                     label={organization?.name ?? 'No organization'}
-                                    caption={organization?.role ?? 'Member'}
+                                    caption={builtInRole(organization?.role ?? null)}
                                     initial={(organization?.name ?? 'C').charAt(0).toUpperCase()}
                                     options={shell.organizations}
                                     action={switchOrganization.url()}

@@ -102,6 +102,7 @@ it('shrinks a workspace console to the workspace, its team\'s sign-in, its log a
     $labels = array_column($shell['areas'], 'label');
 
     expect($labels)->toBe(['Workspace', 'Team sign-in', 'Logs', 'My account'])
+        ->and($shell['altitude'])->toBe('workspace')
         ->and($shell['brandHref'])->toBe(route('projects'))
         ->and($shell['notice'])->toBeNull();
 });
@@ -115,6 +116,8 @@ it('says what a hidden page is when a workspace reaches it by URL, and does not 
     $shell = (array) $this->get('https://cboxid.com/roles')->assertOk()->inertiaProps('shell');
 
     expect($shell['notice'])->toBeArray()
+        // …and the rail does not light an area above it: the page is not Workspace's.
+        ->and($shell['activeArea'])->toBeNull()
         ->and($shell['notice']['href'])->toBe(route('projects'))
         ->and($shell['notice']['message'])->toContain('not your product');
 });
@@ -162,7 +165,7 @@ it('gives the environment console a way back to its workspace, on every page', f
     expect($shell['workspace'])->toBe([
         'name' => $workspace->name,
         'href' => 'https://cboxid.com/projects',
-    ]);
+    ])->and($shell['altitude'])->toBe('environment');
 });
 
 it('sends the environment console\'s account links to the workspace host, where the person is signed in', function (): void {

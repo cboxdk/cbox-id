@@ -179,7 +179,7 @@ final readonly class ShellPayload
             );
         }
 
-        $areas = $this->markActive($areas);
+        $areas = $this->markActive($areas, fallback: ! $offRail);
         $active = $this->activeArea($areas);
 
         return new ShellProps(
@@ -201,6 +201,7 @@ final readonly class ShellPayload
             navPinned: $this->request->cookie('cbox-nav-pinned') === '1',
             accountHref: route('account'),
             switchUserHref: route('accounts'),
+            altitude: $workspace ? ConsoleAltitude::Workspace : ConsoleAltitude::Organization,
             notice: $offRail ? new ShellNoticeProps(
                 message: 'This page manages your workspace’s own record in Cbox — the team that signs in to this console — not your product. Your apps, users and roles live in each environment’s console.',
                 href: route('projects'),
@@ -257,6 +258,7 @@ final readonly class ShellPayload
             accountHref: $this->onWorkspaceHost('account'),
             switchUserHref: $this->onWorkspaceHost('accounts'),
             workspace: $this->workspaceLink(),
+            altitude: ConsoleAltitude::Environment,
         );
     }
 
@@ -335,7 +337,7 @@ final readonly class ShellPayload
      * @param  list<NavAreaProps>  $areas
      * @return list<NavAreaProps>
      */
-    private function markActive(array $areas): array
+    private function markActive(array $areas, bool $fallback = true): array
     {
         $activeKey = null;
 
@@ -352,7 +354,14 @@ final readonly class ShellPayload
         // Nothing matched — a page outside the navigation entirely (the guided first run,
         // a detail route nobody listed). The rail falls back to the first area rather
         // than rendering with nothing selected, which reads as a broken shell.
-        $activeKey ??= $areas[0]->key ?? null;
+        //
+        // EXCEPT for a page the rail deliberately does not offer (a workspace console on
+        // one of its end-user pages): lighting "Workspace" above it, with Workspace's
+        // sub-nav beside it and "Workspace" as its eyebrow, would claim the page is part
+        // of the one area it is explicitly not.
+        if ($fallback) {
+            $activeKey ??= $areas[0]->key ?? null;
+        }
 
         return array_map(
             fn (NavAreaProps $area): NavAreaProps => new NavAreaProps(

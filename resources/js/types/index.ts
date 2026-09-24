@@ -202,6 +202,8 @@ export interface Shell {
     /** Absolute on the environment console: the person's own pages live on the workspace host. */
     accountHref: string;
     switchUserHref: string;
+    /** `App\Platform\Console\ConsoleAltitude` — which console this page is drawn in. */
+    altitude: 'workspace' | 'organization' | 'environment';
     /** The environment console's way back to its workspace; null on every other console. */
     workspace: WorkspaceLink | null;
     /** A sentence above a page the rail does not offer, and where to go instead. */

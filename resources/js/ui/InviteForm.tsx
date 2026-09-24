@@ -112,6 +112,22 @@ export function InviteForm({
     });
 
     const [returning, setReturning] = useState(false);
+
+    const builtInRole = (
+        <Field
+            label="Built-in role"
+            hint="Exactly one. It decides what they may administer."
+            error={form.errors.role}
+            className="max-w-sm"
+        >
+            <Select
+                name="role"
+                value={form.data.role === '' ? undefined : form.data.role}
+                onValueChange={(role) => form.setData('role', role)}
+                options={roleSelectOptions(offered)}
+            />
+        </Field>
+    );
     const app = apps.find((candidate) => candidate.clientId === form.data.client_id);
 
     return (
@@ -165,26 +181,14 @@ export function InviteForm({
                 ONE ROLES CONTROL. The built-in role and the app and custom roles were two
                 fields with two names ("Role", "Access roles"), and people read them as two
                 unrelated settings. They are one answer — what this person may do — in two
-                parts: exactly one built-in role, and any number of the others.
+                parts: exactly one built-in role, and any number of the others. With no app
+                or custom roles to offer, the built-in role is the whole answer, and a
+                "Roles" heading over a single field would only repeat it.
             */}
-            <fieldset className="space-y-3">
-                <legend className="label">Roles</legend>
-
-                <Field
-                    label="Built-in role"
-                    hint="Exactly one. It decides what they may administer."
-                    error={form.errors.role}
-                    className="max-w-sm"
-                >
-                    <Select
-                        name="role"
-                        value={form.data.role === '' ? undefined : form.data.role}
-                        onValueChange={(role) => form.setData('role', role)}
-                        options={roleSelectOptions(offered)}
-                    />
-                </Field>
-
-                {accessRoles.length > 0 && (
+            {accessRoles.length > 0 ? (
+                <fieldset className="space-y-3">
+                    <legend className="label">Roles</legend>
+                    {builtInRole}
                     <Field
                         label="App and custom roles"
                         hint="Any number, granted the moment they accept."
@@ -227,8 +231,10 @@ export function InviteForm({
                             ))}
                         </div>
                     </Field>
-                )}
-            </fieldset>
+                </fieldset>
+            ) : (
+                builtInRole
+            )}
 
             {apps.length > 0 &&
                 (returning ||
