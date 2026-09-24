@@ -46,6 +46,8 @@ enum HelpTopic: string
     case Appearance = 'appearance';
     case AccountSecurity = 'account-security';
     case SessionsAndActivity = 'sessions-and-activity';
+    case ApiKeys = 'api-keys';
+    case MemberApiKeys = 'member-api-keys';
     case WorkspaceSettings = 'workspace-settings';
     case Projects = 'projects';
     case Team = 'team';
@@ -98,6 +100,8 @@ enum HelpTopic: string
             self::Appearance => 'Your branded sign-in page',
             self::AccountSecurity => 'Protecting your own sign-in',
             self::SessionsAndActivity => 'Where you are signed in',
+            self::ApiKeys => 'Keys for the APIs of the apps you use',
+            self::MemberApiKeys => 'Keys your people hold for your apps',
             self::WorkspaceSettings => 'Workspace settings',
             self::Projects => 'Your products and their environments',
             self::Team => 'The people who run this workspace',
@@ -172,6 +176,10 @@ enum HelpTopic: string
             self::AccountSecurity => 'Your own sign-in methods and active sessions. A passkey is the strongest option and the quickest to use — your device unlocks it with a fingerprint or face, and there is no password left to phish.',
 
             self::SessionsAndActivity => 'Every browser and device signed in as you, the apps you have allowed to act for you, and your recent sign-ins and security changes. If something here is not yours, sign it out or withdraw the app, then change your password.',
+
+            self::ApiKeys => 'A key lets your own scripts and integrations call an app\'s API as you, without signing in. It can only do what you can do in that app, and never more: if your access is reduced, the key loses it too. The key is shown once, so copy it when you create it, and revoke it the moment it leaks or is no longer used.',
+
+            self::MemberApiKeys => 'Every API key the people in this organization have created for its apps: who holds it, which app it is for, what it may do and when it was last used. A key can only do what its holder can, and stops working when they leave. Revoke one that leaked or is no longer used; each person creates their own keys under My account.',
 
             self::WorkspaceSettings => 'The name of your workspace, which your projects, environments and team sit under and which the console shows everywhere. Deleting a workspace takes down every environment people sign in through, so it is a request to support rather than a button.',
 
@@ -250,6 +258,8 @@ enum HelpTopic: string
             self::TrustedDevices => 'guides/trusted-devices',
             self::ReviewAgentRequests => 'guides/agent-approvals',
             self::Keys => 'guides/keys',
+            self::ApiKeys,
+            self::MemberApiKeys => 'guides/api-keys',
             self::Projects,
             self::Workspaces,
             self::Environments,

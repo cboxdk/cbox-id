@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Platform\ApiKeys\ApiKeyPresence;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
+use App\Platform\CurrentUser;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Contracts\NavRegistry;
@@ -41,6 +43,9 @@ final class ConsoleServiceProvider extends ServiceProvider
         // because it is filled during provider boot and read by both rails and the
         // parity health check for the rest of the process's life.
         $this->app->singleton(ConsolePages::class);
+
+        // The API key pages' rail gates, answered once per request (see ApiKeyPresence).
+        $this->app->scoped(ApiKeyPresence::class);
     }
 
     public function boot(): void
@@ -110,7 +115,11 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Roles are made OF permissions, so a plane that offers one and hides the
             // other asks an administrator to assign a thing they cannot inspect. It was
             // environment-plane-only — the same component, reachable from one console.
-            ->page('permissions', 'Permissions', order: 30);
+            ->page('permissions', 'Permissions', order: 30)
+            // Every API key the organization's people hold for its apps. Only where an app
+            // offers keys here, or somebody already holds one: on every other organization
+            // it would be an empty page about a feature nobody turned on.
+            ->page('directory.api-keys', 'Member API keys', feature: 'organization.api-keys', order: 40);
 
         // "Sync users in" / "Sync users out" — the two SCIM directions are a pair, and
         // are only comprehensible as one. "User sync" beside "Outbound sync" gave no
@@ -162,7 +171,10 @@ final class ConsoleServiceProvider extends ServiceProvider
             ->page('account', 'Security', order: 10)
             // Beside it, because "change my password" and "sign that laptop out" are the
             // two halves of the same worry and people arrive looking for either.
-            ->page('account.activity', 'Sessions & activity', order: 20);
+            ->page('account.activity', 'Sessions & activity', order: 20)
+            // Keys for the APIs of the apps built on this environment — present only where
+            // one offers them, or the person already holds a key (see HolderApiKeys).
+            ->page('account.api-keys', 'API keys', feature: 'account.api-keys', order: 30);
 
         $this->platformAreas($nav);
     }
@@ -270,5 +282,25 @@ final class ConsoleServiceProvider extends ServiceProvider
         // area a member can see. THE SAME QUESTION THE PAGE ASKS, deliberately: the page
         // is the authorization and this only decides whether the rail offers a link to it.
         $features->register('organization.usage', static fn (): bool => app(ConsoleScope::class)->mayAdminister());
+        // The two API key pages. The rail only decides whether to offer a link — each page
+        // authorizes its own requests — so these ask about presence, in one statement per
+        // request between them ({@see ApiKeyPresence}), on the organization the person is
+        // in. The organization console's page only: an environment administrator (no
+        // signed-in subject) reads the same list on each organization's own page.
+        $features->register('account.api-keys', static function (): bool {
+            $me = app(CurrentUser::class);
+            $organizationId = $me->check() ? $me->organizationId() : null;
+
+            return $organizationId !== null
+                && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthHolderPage();
+        });
+        $features->register('organization.api-keys', static function (): bool {
+            $me = app(CurrentUser::class);
+            $organizationId = $me->check() ? $me->organizationId() : null;
+
+            return $organizationId !== null
+                && app(ConsoleScope::class)->mayAdminister()
+                && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthAdminPage();
+        });
     }
 }

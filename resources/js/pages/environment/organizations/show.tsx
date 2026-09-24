@@ -3,6 +3,8 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps, Pagination as PaginationState } from '@/types';
 import {
+    type AppApiKey,
+    AppApiKeyList,
     Badge,
     Button,
     Checkbox,
@@ -79,6 +81,8 @@ type Props = PageProps<{
     /** The same plus Owner, disabled, so an owner's row names what it holds. */
     rosterRoleOptions: RoleOption[];
     apps: ReturnApp[];
+    /** Every API key the organization's people hold for its apps. Seen and revoked, never minted here. */
+    apiKeys: AppApiKey[];
     indexHref: string;
     urls: {
         update: string;
@@ -102,6 +106,7 @@ export default function OrganizationDetail({
     roleOptions,
     rosterRoleOptions,
     apps,
+    apiKeys,
     indexHref,
     urls,
 }: Props) {
@@ -163,6 +168,22 @@ export default function OrganizationDetail({
             <PendingInvitations invitations={invitations} />
 
             <Domains domains={domains} addHref={urls.addDomain} />
+
+            <Panel
+                title="API keys"
+                description="Keys this organization's people have created for its apps, with what each may do. People create their own; revoke one that leaked or is no longer used."
+                flush={apiKeys.length > 0}
+            >
+                <AppApiKeyList
+                    keys={apiKeys}
+                    empty={{
+                        title: 'No API keys',
+                        description:
+                            'Nobody in this organization has created a key for one of its apps.',
+                    }}
+                    consequence="Whatever the holder has wired this key into stops working immediately. This cannot be undone."
+                />
+            </Panel>
 
             <Panel
                 title={suspended ? 'Reactivate organization' : 'Suspend organization'}
