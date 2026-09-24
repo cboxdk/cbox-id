@@ -30,10 +30,8 @@ use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
 use App\Platform\Staff\ConsoleStaffRoles;
 use App\Platform\Staff\Contracts\StaffRoles;
-use App\Platform\SupportAccess\AudienceResolvedSupportSessions;
 use App\Platform\SupportAccess\ConsoleSupportAccess;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
-use App\Platform\SupportAccess\SupportSessionScopes;
 use App\Platform\TrustedHosts;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -47,7 +45,6 @@ use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Migration\Contracts\LegacyCredentialSource;
 use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
-use Cbox\Id\OAuthServer\Contracts\SupportSessions;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -184,14 +181,6 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->scoped(TeamInvitations::class, TeamInvitationService::class);
         $this->app->scoped(StaffRoles::class, ConsoleStaffRoles::class);
         $this->app->scoped(SupportAccess::class, ConsoleSupportAccess::class);
-
-        // A support session's scopes are settled to what its tokens will carry before it
-        // starts, for every caller — see {@see AudienceResolvedSupportSessions}. Extend,
-        // not bind: this wraps whatever the framework registered.
-        $this->app->extend(SupportSessions::class, fn (SupportSessions $inner, Application $app): SupportSessions => new AudienceResolvedSupportSessions(
-            $inner,
-            $app->make(SupportSessionScopes::class),
-        ));
 
         // Which organizations an authorization may be bound to — the `organization`
         // parameter, the hosted picker and the hosted create step all ask this one
