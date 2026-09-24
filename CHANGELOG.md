@@ -10,6 +10,21 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **Taking back a staff role did not refresh the person's tokens.** Changing a role held
+  in one organization revoked the person's refresh tokens there, so apps picked up the new
+  roles on the next refresh. A staff role (`role.assigned_everywhere` /
+  `role.unassigned_everywhere`) did nothing, so apps kept minting the old roles until the
+  refresh token expired. Both events now revoke the person's refresh tokens in every
+  organization. Nobody is signed out.
+- **Two conflicting staff roles could be held by somebody in no organization.**
+  Segregation of duties was only asked inside organizations the person belonged to, so a
+  pair of staff roles under an environment-wide conflict rule was refused nowhere and
+  landed in every organization they later joined. The console now refuses it.
+- **Opening an app signed an environment administrator out of the console.** The
+  environment host's `/oauth/authorize` resolves a subject under the tenant's scope,
+  never found the administrator's platform-root session, and forgot it. A live
+  administrator session is now left alone; it still grants nothing on the tenant's pages.
+
 - **Tenant admins could hand out staff-only roles.** laravel-id 1.19 lets an app mark a
   role `tenant_assignable: false` (the vendor's own support or back-office role). The
   People page, invitations and directory group mappings listed and granted roles through
@@ -89,6 +104,24 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   have been in when somebody wired the console page. `clear()` had the same gap.
 
 ### Added
+
+- **People › Staff (environment console).** Who holds a staff role (a role held across
+  the whole environment), grouped by the app it reaches, with grant by email and take
+  back. An app's own role can be a staff role now (laravel-id 1.19); it reaches only that
+  app's tokens. Segregation-of-duties refusals name the organization where the
+  conflicting role already sits. A user's page shows the same list under **Staff roles**.
+- **Access reviews of staff roles.** The environment console's **New review** can review
+  every staff role instead of one organization; closing it takes revoked staff roles
+  back everywhere. An organization's review never lists them and cannot open one.
+- **Support access: "Sign in to *app* as *person*".** From a user's page in the
+  environment console: pick one of the environment's own first-party apps, one of the
+  person's organizations, a reason and a duration (never over
+  `CBOX_ID_SUPPORT_SESSION_MAX_TTL`), confirm your password, and your browser goes to the
+  app, which signs in as them. Tokens carry `act`, there is no refresh token, and nothing
+  outlives the session. Open sessions are listed on the user's and the organization's
+  pages with **End now**. The organization's activity log shows who started it and why
+  (the reason first, the administrator by name), and the person's own activity page
+  shows it once. See `docs/guides/support-access.md`.
 
 - **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
   approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated

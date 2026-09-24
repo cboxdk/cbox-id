@@ -89,6 +89,7 @@ Laravel `SESSION_*` keys below).
 |---|---|---|---|
 | `CBOX_ID_SESSION_TTL_MINUTES` | Absolute session lifetime before re-authentication. | `480` (8h) | Lower it for higher-assurance deployments. |
 | `CBOX_ID_SESSION_IDLE_MINUTES` | Idle timeout — inactivity before the session is invalidated. | `30` | Lower it for shared or high-risk environments. |
+| `CBOX_ID_SUPPORT_SESSION_MAX_TTL` | The longest a [support session](../guides/support-access.md) may run, in seconds — and every token minted for it. The console offers nothing longer. It can only lower the one-hour ceiling; nothing goes under 60. | `3600` | Lower it if your policy wants support access shorter than an hour. |
 
 ## OAuth / OIDC endpoint policy
 
