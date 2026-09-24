@@ -8,12 +8,14 @@ use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\OrganizationApiContext;
 use Cbox\Dns\Dns;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
+use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
         $this->app->scoped(EnvironmentApiContext::class);
+
+        // …and what it does is recorded as ITS act: the framework services behind the
+        // management API write their own audit entries, mostly with no actor at all.
+        $this->app->extend(AuditLog::class, fn (AuditLog $inner): AuditLog => new EnvironmentKeyAuditLog($inner));
 
         // One CSP nonce per request. `scoped` and not `singleton`: on a long-lived worker
         // a singleton would hand the same value to every request the process ever serves,

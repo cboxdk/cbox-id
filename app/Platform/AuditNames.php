@@ -8,6 +8,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Illuminate\Support\Collection;
 
 /**
@@ -48,7 +49,8 @@ final readonly class AuditNames
 
         foreach ($rows as $entry) {
             // An actor id is a subject id whenever the actor is a person; a service
-            // actor's id is a client_id, which has its own (human) name.
+            // actor's id is a client_id, which has its own (human) name — or the id of the
+            // environment API key that acted through the management API.
             $actorId = $entry->actor_id;
             if (is_string($actorId) && $actorId !== '') {
                 match ($entry->actor_type->value) {
@@ -130,6 +132,18 @@ final readonly class AuditNames
             ->whereIn('client_id', $ids)
             ->pluck('name', 'client_id')
             ->all();
+
+        $unresolved = array_values(array_diff($ids, array_keys($names)));
+
+        if ($unresolved === []) {
+            return $names;
+        }
+
+        // A management-API key, by the name it was given — in this environment only, which
+        // is the one whose trail is being read.
+        foreach (EnvironmentApiKey::query()->whereIn('id', $unresolved)->get(['id', 'name']) as $key) {
+            $names[$key->id] = 'Management key "'.$key->name.'"';
+        }
 
         return $names;
     }
