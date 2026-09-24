@@ -1,7 +1,7 @@
 ---
 title: Queue workers
 weight: 5
-description: Running the queue manager on Laravel Cloud and self-hosted, the operator-only job monitor, and the readiness signal that goes red when nothing is processing the queue.
+description: Running the queue manager on Laravel Cloud and self-hosted, the operator-only job monitor, and the health signal that goes red when nothing is processing the queue.
 ---
 
 # Queue workers
@@ -53,7 +53,7 @@ the web traffic:
 | Workers per group | min 1, max 2 | Never scale to zero: a cold start on every sign-out is latency for nothing. |
 | `limits.max_total_workers` | 2 (`QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS`) | The hard cap that keeps PHP-FPM alive. A worker of this app is about 75 MB resident, the manager about the same. |
 | `limits.max_memory_percent` | 70 | Stop spawning while the instance is above 70 % memory. |
-| Pickup SLA | 30 s | Also the line the readiness check turns red at. |
+| Pickup SLA | 30 s | Also the line the `queue_workers` health check turns red at. |
 | Job timeout | 75 s | Must stay below `retry_after` (90 s), or Redis hands a running job to a second worker and a webhook or logout token is sent twice. |
 | Failure fuse | on | A relying party that is down gets fewer workers, not more. |
 
@@ -144,10 +144,10 @@ The manager needs Redis for its metrics (`QUEUE_METRICS_STORAGE=redis`, the defa
 single-host install without Redis can switch queue metrics to database storage, but that
 is not set up in this repository.
 
-## The readiness signal
+## The health signal
 
-`GET /health/ready?token=…` (see [Deployment](deployment.md)) runs a `queue_workers`
-check. It is red when either is true:
+`GET /health/status?token=…` (the `HEALTH_TOKEN`, as for readiness) runs a `queue_workers`
+check, and answers 503 when it is red. It is red when either is true:
 
 - **No manager has reported in** for `2 × scaling.cooldown_seconds + 4 × interval`
   (140 s by default). The manager beats on every evaluation cycle; the window is long
@@ -160,9 +160,12 @@ check. It is red when either is true:
 
 The response carries counts, ages and queue names only, never job contents.
 
-**Alert on readiness; route on `/up`.** A load balancer that pulls instances when
-readiness is red would take the whole web tier down because a background process died.
-Point uptime monitoring at `/health/ready`, and keep traffic routing on `/up`.
+**Route on `/up` and `/health/ready`; alert on `/health/status`.** Readiness answers one
+question: can this instance serve web traffic? The queue manager is a separate process (on
+Kubernetes a separate pod), and if its death made readiness red, every web instance would
+be taken out of the load balancer at once. So `queue_workers` is deliberately not on
+`/up` or `/health/ready`; it is on `/health/status`, which nothing routes on. Point uptime
+monitoring and alerting there.
 
 One thing to know when a red clears by itself: on Redis, a job released with a delay (a
 back-channel logout retry) keeps its original creation time, so for the few seconds
@@ -218,7 +221,7 @@ run on SQLite, PostgreSQL and MySQL.
 
 ## Troubleshooting
 
-**Readiness says no manager has ever reported in.** The manager is not running, or it
+**`/health/status` says no manager has ever reported in.** The manager is not running, or it
 runs against a different cache than the web tier (check `CACHE_STORE` on both). On
 Cloud, check the background process exists and its log.
 

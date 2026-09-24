@@ -7,7 +7,7 @@ namespace App\Platform\Queues\Contracts;
 use App\Platform\Queues\QueueHealthReport;
 
 /**
- * Whether queued work is actually being done — the one question the readiness probe, the
+ * Whether queued work is actually being done — the one question the health status check, the
  * doctor and the Platform › Queues page all ask, answered in one place so they cannot
  * disagree.
  */

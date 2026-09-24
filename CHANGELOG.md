@@ -141,8 +141,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   queue connection covering every queue the app dispatches to (derived from the same
   settings the dispatchers read), at least one worker always, at most two, a 30 s pickup
   SLA, a 75 s job timeout below Redis's `retry_after`, and the failure fuse on.
-  `/health/ready` gains a `queue_workers` check that is red when no manager has reported in
-  for 140 s or a queue's oldest job has waited past its SLA; `cbox-id:doctor` reports the
+  `/health/status` gains a `queue_workers` check (and answers 503) when no manager has
+  reported in for 140 s or a queue's oldest job has waited past its SLA. It is deliberately
+  not on `/health/ready`, which the platform routes on; `cbox-id:doctor` reports the
   same, plus missing `ext-pcntl`/`ext-posix`. See `docs/operations/queue-workers.md`.
 - **Platform › Insights › Queues** shows whether the queue manager is running and how far
   behind each queue is, and opens the job monitor (`cboxdk/laravel-queue-monitor` ^1.11).

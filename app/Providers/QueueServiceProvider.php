@@ -45,6 +45,10 @@ class QueueServiceProvider extends ServiceProvider
     {
         Event::listen([AutoscaleManagerStarted::class, ScalingDecisionMade::class, WorkersScaled::class], RecordManagerHeartbeat::class);
 
+        // `/health/status` with the queue workers on it — see HealthStatusController for
+        // why they are there and not on readiness.
+        $this->loadRoutesFrom(base_path('routes/health.php'));
+
         $this->app->make(HealthChecks::class)->add($this->app->make(QueueWorkersDoctorCheck::class));
 
         // The monitor's own authorization callback — the second lock behind the route

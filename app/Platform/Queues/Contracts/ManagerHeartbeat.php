@@ -14,7 +14,7 @@ use App\Platform\Queues\ManagerBeat;
  * of its own, "no manager" and "an idle manager" look identical from here: an empty queue
  * either way. That is exactly how this deployment ran with no worker for weeks.
  *
- * Written by the manager on every evaluation cycle, read by the readiness check and the
+ * Written by the manager on every evaluation cycle, read by the health status check and the
  * Platform › Queues page. It must live in a store BOTH processes share — the application
  * cache, which is Redis in production.
  */

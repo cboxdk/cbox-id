@@ -86,7 +86,7 @@ Exit code is non-zero only on real problems, so it's safe to wire into CI/monito
   the scheduler (the cleanups depend on it). **Key retirement does not** —
   `cbox-id:keys:rotate` is not scheduled and never has been; you run it on your own
   cadence. See [deployment](deployment.md#5-run-the-workers). Platform › Insights ›
-  Queues and the `queue_workers` check on `/health/ready` show whether the queue manager
+  Queues and the `queue_workers` check on `/health/status` show whether the queue manager
   is running and how far behind each queue is — see [Queue workers](queue-workers.md).
 - Alert on auth anomalies surfaced by risk scoring (`cboxdk/laravel-risk`) and on
   audit-chain verification failures.

@@ -21,7 +21,7 @@ use Cbox\LaravelQueueAutoscale\Scaling\Forecasting\Policies\ModerateForecastPoli
  *  - SLA 30 s. Somebody who signs out expects the apps they used to follow within
  *    seconds, and a webhook receiver expects an event about as fast. 30 s is the tightest
  *    target the autoscaler's poll loop honours without flapping (its own floor is ~5 s,
- *    and sub-15 s targets breach on every burst), and it is also the line the readiness
+ *    and sub-15 s targets breach on every burst), and it is also the line the health
  *    check ({@see LiveQueueHealth}) turns red at — one number, stated once.
  *  - min 1. The floor is never zero: back-channel logout and webhooks are work nobody is
  *    watching for, and a scale-from-zero cold start (5–10 s) spent on every sign-out is

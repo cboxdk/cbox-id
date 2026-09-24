@@ -92,7 +92,7 @@ php artisan schedule:work          # a long-running process — or `schedule:run
 
 The queue manager starts and sizes the `queue:work` processes itself; do not run
 `queue:work` beside it. Without it no webhook, back-channel logout or queued mail is ever
-sent, and `/health/ready` reports it. The Laravel Cloud background process, the systemd
+sent, and `/health/status` reports it. The Laravel Cloud background process, the systemd
 unit, the deploy step and the sizing are in [Queue workers](queue-workers.md).
 
 The scheduler is not optional and its absence does not raise an error. Without it the

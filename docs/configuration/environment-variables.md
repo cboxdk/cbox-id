@@ -396,7 +396,7 @@ variables; these are the ones a deployment sets. See
 |---|---|---|---|
 | `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` | Hard cap on `queue:work` processes per host. | `2` | The workers get more memory than a 512 MB instance shared with the web tier. |
 | `QUEUE_AUTOSCALE_CLUSTER_ENABLED` | Let several managers share one set of queues through Redis. | `false` | More than one instance runs the manager. |
-| `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The readiness check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |
+| `QUEUE_AUTOSCALE_ENABLED` | Switch the manager off. The `queue_workers` health check then judges only the backlog. | `true` | You supervise plain `queue:work` processes yourself instead. |
 | `QUEUE_METRICS_STORAGE` | Where the metrics the manager scales on are kept. | `redis` | Leave it. |
 | `QUEUE_MONITOR_MAX_ROWS` | Most job rows the monitor keeps, on top of its 7-day window. | `100000` | A very busy install. |
 | `QUEUE_MONITOR_API_ENABLED` | The monitor's REST API, behind the operator session. | `false` | You need it; the dashboard does not. |

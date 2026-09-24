@@ -16,7 +16,7 @@ use Inertia\Response;
 /**
  * PLATFORM › QUEUES — is the background work of this install actually being done?
  *
- * The same report the readiness probe and the doctor read ({@see QueueHealth}), so the
+ * The same report the health status check and the doctor read ({@see QueueHealth}), so the
  * three cannot disagree, rendered for a person: is a manager running, and is any queue
  * behind. The job-by-job view is the queue monitor, a separate page this one links to —
  * it is the package's own dashboard, not an Inertia page, so it is opened with a full

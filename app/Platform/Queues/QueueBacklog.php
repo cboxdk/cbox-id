@@ -8,8 +8,8 @@ namespace App\Platform\Queues;
  * One queue at the moment it was looked at: how much is waiting, how long the oldest job
  * has waited, and the pickup SLA it is held to.
  *
- * Counts and ages only — never a job's contents. This is what a readiness probe prints,
- * and a readiness response is read by whatever monitors it.
+ * Counts and ages only — never a job's contents. This is what the health status endpoint prints,
+ * and a health response is read by whatever monitors it.
  */
 readonly class QueueBacklog
 {

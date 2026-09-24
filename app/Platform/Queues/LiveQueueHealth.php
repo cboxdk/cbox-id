@@ -92,7 +92,7 @@ class LiveQueueHealth implements QueueHealth
         try {
             $beat = $this->heartbeat->last();
         } catch (Throwable) {
-            // The cache is down. The readiness check's own cache probe says so; here it
+            // The cache is down. The health endpoints' own cache probe says so; here it
             // means we cannot vouch for the manager, which is the same as not hearing it.
             $beat = null;
         }

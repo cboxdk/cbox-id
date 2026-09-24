@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Health\QueueWorkersDoctorCheck;
+use App\Platform\Health\QueueWorkersHealthCheck;
 use App\Platform\Queues\CacheManagerHeartbeat;
 use App\Platform\Queues\Contracts\ManagerHeartbeat;
 use App\Platform\Queues\Contracts\QueueHealth;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Queue;
 
 /*
 |--------------------------------------------------------------------------
-| Queue workers — the manager's configuration, its heartbeat, and the readiness signal.
+| Queue workers — the manager's configuration, its heartbeat, and the health signal.
 |--------------------------------------------------------------------------
 |
 | Production ran with no queue worker at all for weeks: webhooks, back-channel logout and
@@ -64,14 +65,15 @@ function jobWaitingFor(int $seconds): void
     test()->travelBack();
 }
 
-function readiness(): array
+/** `/health/status`, where the queue check lives: [status code, the queue_workers check]. */
+function healthStatus(): array
 {
     config(['health.security.token' => 'probe-token', 'health.cache.enabled' => false]);
 
-    $response = test()->getJson('/health/ready?token=probe-token');
-    $check = $response->json('checks.queue_workers');
+    $response = test()->getJson('/health/status?token=probe-token');
+    $check = $response->json('operations.checks.queue_workers');
 
-    expect($check)->toBeArray('readiness does not run the queue_workers check at all');
+    expect($check)->toBeArray('/health/status does not run the queue_workers check at all');
 
     return [$response->status(), $check];
 }
@@ -151,10 +153,10 @@ it('reads an unrecognisable cache value as no beat, never as a live manager', fu
     expect(app(ManagerHeartbeat::class)->last())->toBeNull();
 });
 
-it('turns readiness red when no queue manager has ever run', function (): void {
+it('turns /health/status red when no queue manager has ever run', function (): void {
     superviseDatabaseQueue();
 
-    [$status, $check] = readiness();
+    [$status, $check] = healthStatus();
 
     expect($status)->toBe(503)
         ->and($check['status'])->toBe('critical')
@@ -162,11 +164,50 @@ it('turns readiness red when no queue manager has ever run', function (): void {
         ->and($check['metadata']['manager']['state'])->toBe(ManagerState::Missing->value);
 })->group('security');
 
+/*
+ * READINESS NEVER CARRIES THE QUEUE.
+ *
+ * `/health/ready` is what the platform ROUTES on — on Kubernetes it is the id Deployment's
+ * readinessProbe. The queue manager is a separate process (a separate pod there); if its
+ * death turned readiness red, every web instance would be pulled out of the load balancer
+ * at once and the site would go down because a background process stopped. So the same
+ * dead manager has to read red where people are told and green where traffic is moved.
+ */
+it('keeps readiness green with no manager alive while /health/status reports it', function (): void {
+    superviseDatabaseQueue();
+    jobWaitingFor(600);
+    config(['health.security.token' => 'probe-token', 'health.cache.enabled' => false]);
+
+    $ready = $this->getJson('/health/ready?token=probe-token');
+
+    $ready->assertOk();
+    expect(array_keys((array) $ready->json('checks')))->not->toContain('queue_workers')
+        ->and(config('health.checks.readiness'))->not->toContain(QueueWorkersHealthCheck::class)
+        ->and(config('health.checks.liveness'))->not->toContain(QueueWorkersHealthCheck::class);
+
+    $this->getJson('/up')->assertOk();
+
+    $status = $this->getJson('/health/status?token=probe-token');
+
+    $status->assertStatus(503);
+    expect($status->json('status'))->toBe('critical')
+        ->and($status->json('readiness.status'))->toBe('ok')
+        ->and($status->json('operations.checks.queue_workers.status'))->toBe('critical')
+        ->and($status->json('operations.checks.queue_workers.message'))->toContain('No queue manager has ever reported in');
+})->group('security');
+
+it('keeps /health/status behind the health token', function (): void {
+    config(['health.security.token' => 'probe-token', 'health.cache.enabled' => false]);
+
+    $this->getJson('/health/status')->assertForbidden();
+    $this->getJson('/health/status?token=wrong')->assertForbidden();
+})->group('security');
+
 it('is green with a live manager and nothing waiting', function (): void {
     superviseDatabaseQueue();
     app(ManagerHeartbeat::class)->beat('mgr-1', 'app-host');
 
-    [$status, $check] = readiness();
+    [$status, $check] = healthStatus();
 
     expect($status)->toBe(200)
         ->and($check['status'])->toBe('ok')
@@ -188,7 +229,7 @@ it('turns red when the manager goes silent for longer than a held scale-down can
 
     $this->travel(2)->seconds();
 
-    [$status, $check] = readiness();
+    [$status, $check] = healthStatus();
 
     expect($status)->toBe(503)
         ->and($check['message'])->toContain('No queue manager has reported in for');
@@ -200,12 +241,12 @@ it('turns red when the oldest job has waited past its pickup SLA, even with a ma
 
     // Inside the SLA: a queue with work in it is not a problem.
     jobWaitingFor(WorkerProfile::SLA_SECONDS - 5);
-    expect(readiness()[0])->toBe(200);
+    expect(healthStatus()[0])->toBe(200);
 
     // Past it: the workers are not getting through, whatever the manager says.
     jobWaitingFor(WorkerProfile::SLA_SECONDS + 90);
 
-    [$status, $check] = readiness();
+    [$status, $check] = healthStatus();
 
     expect($status)->toBe(503)
         ->and($check['message'])->toContain('database:default — the oldest job has waited')

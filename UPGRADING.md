@@ -34,9 +34,10 @@ never delivered. Nothing else errors.
   supervisors fight over the same jobs.
 - **Migrations:** `php artisan migrate` creates the queue monitor's four
   `queue_monitor_*` tables.
-- **Alerting:** `/health/ready` now also turns red when no manager is running or a queue
-  is behind its 30 s pickup SLA. Alert on it; keep load-balancer routing on `/up`, or a
-  stopped background process takes the web tier out of rotation.
+- **Alerting:** point an uptime monitor at `/health/status?token=…` (`HEALTH_TOKEN`). It
+  now answers 503 with a failing `queue_workers` check when no manager is running or a
+  queue is behind its 30 s pickup SLA. `/up` and `/health/ready` are unchanged and do not
+  include the queue: route on those, alert on `/health/status`.
 - **Jobs already queued** since the worker went missing are processed as soon as the
   manager starts. Back-channel logout tokens are minted at delivery, so late ones are still
   valid, but relying parties hear about old sign-outs late.

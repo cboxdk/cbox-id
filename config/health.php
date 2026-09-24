@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\Health\QueueWorkersReadinessCheck;
+use App\Platform\Health\QueueWorkersHealthCheck;
 use Cbox\LaravelHealth\Checks\CacheCheck;
 use Cbox\LaravelHealth\Checks\DatabaseCheck;
 use Cbox\LaravelHealth\Checks\QueueCheck;
@@ -39,12 +39,15 @@ use Cbox\LaravelHealth\Checks\StorageCheck;
 | so the requirement is visible in the repository rather than discovered from a
 | 403 during an incident.
 |
-| READINESS ALSO ANSWERS FOR THE QUEUE WORKERS (`queue_workers`): red when no
-| `queue:autoscale` manager has reported in, or a queue's oldest job has waited
-| past its pickup SLA. That makes it the right thing to ALERT on and the wrong
-| thing to ROUTE on — a load balancer that pulls instances on a red readiness
-| would take the whole web tier down because a background process died. Route on
-| `/up`; alert on `/health/ready`. See docs/operations/queue-workers.md.
+| THE QUEUE WORKERS ARE NOT ON READINESS, and must never be. Readiness answers
+| "can THIS instance serve web traffic?" and the platform routes on it (the
+| Kubernetes id Deployment's readinessProbe is /health/ready). The queue manager is
+| a separate process — a separate pod there — and its death marking every web
+| instance unready would take the whole site down. `queue_workers` runs on
+| /health/status instead (App\Http\Controllers\HealthStatusController), which
+| answers 503 when anything is critical and which nothing routes on.
+|
+| Route on /up and /health/ready; alert on /health/status.
 |
 */
 
@@ -65,8 +68,25 @@ return [
     ],
 
     /*
-     * The vendor's lists, restated because a published `checks` key replaces the
-     * package's whole block rather than merging into it — and extended by one.
+     * The vendor's endpoints, restated because a published key replaces the package's
+     * whole block — with ONE change: the package's `status` route is off, because this
+     * application serves its own at the same path (routes/health.php) with the `status`
+     * checks below added.
+     */
+    'endpoints' => [
+        'prefix' => env('HEALTH_PREFIX', 'health'),
+        'liveness' => ['path' => '/', 'enabled' => true],
+        'readiness' => ['path' => '/ready', 'enabled' => true],
+        'startup' => ['path' => '/startup', 'enabled' => true],
+        'status' => ['path' => '/status', 'enabled' => false],
+        'metrics' => ['path' => '/metrics', 'enabled' => true],
+        'json' => ['path' => '/metrics/json', 'enabled' => true],
+        'ui' => ['path' => '/ui', 'enabled' => false],
+    ],
+
+    /*
+     * The vendor's lists, restated for the same reason, plus `status`: checks that
+     * ALERT and must never ROUTE. Readiness is exactly the package's and stays that way.
      */
     'checks' => [
         'liveness' => [
@@ -77,8 +97,10 @@ return [
             CacheCheck::class,
             QueueCheck::class,
             StorageCheck::class,
-            QueueWorkersReadinessCheck::class,
         ],
         'startup' => [],
+        'status' => [
+            QueueWorkersHealthCheck::class,
+        ],
     ],
 ];

@@ -65,7 +65,7 @@ readonly class QueueHealthReport
     }
 
     /**
-     * The report at the serialization edge — the readiness response and the console page.
+     * The report at the serialization edge — the health status response and the console page.
      * Counts, ages and names only; never a job's contents.
      *
      * @return array{healthy: bool, manager: array{state: string, last_beat_at: string|null, seconds_since_beat: int|null, stale_after_seconds: int, host: string|null}, queues: list<array{connection: string, queue: string, pending: int, oldest_wait_seconds: int|null, sla_seconds: int, breached: bool, unreadable: string|null}>, problems: list<string>}
