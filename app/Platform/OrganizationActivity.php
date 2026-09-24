@@ -49,6 +49,7 @@ final class OrganizationActivity
         ?string $targetId = null,
         array $context = [],
         ?Request $request = null,
+        ActorType $actorType = ActorType::OrganizationMember,
     ): void {
         // IN THE PLATFORM ROOT, here rather than at each call site. An audit entry is
         // environment-owned and this chain lives in exactly one environment; written under
@@ -59,7 +60,9 @@ final class OrganizationActivity
         // forgets is the bug, so the funnel does it once.
         $this->platformRoot->run(fn () => $this->audit->record(new AuditEvent(
             action: $action,
-            actorType: ActorType::OrganizationMember,
+            // A member of the workspace, unless the caller says otherwise — a workspace API
+            // key inviting onto the team is a service, not a person.
+            actorType: $actorType,
             actorId: $actorId,
             // The organization id IS the audit chain scope (see class docblock).
             organizationId: $organizationId,

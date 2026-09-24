@@ -78,6 +78,9 @@ Route::middleware('throttle:api-organization')
 
         Route::get('members', [MemberController::class, 'index'])->middleware('organization.api:read-members');
         Route::post('members', [MemberController::class, 'store'])->middleware('organization.api:manage-members');
+        Route::get('invitations', [MemberController::class, 'invitations'])->middleware('organization.api:read-members');
+        Route::post('invitations/{id}/resend', [MemberController::class, 'resendInvitation'])->middleware('organization.api:manage-members');
+        Route::delete('invitations/{id}', [MemberController::class, 'revokeInvitation'])->middleware('organization.api:manage-members');
     });
 
 /*

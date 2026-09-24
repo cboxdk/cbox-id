@@ -19,7 +19,9 @@ use App\Platform\Install\DatabasePlatformInstaller;
 use App\Platform\Install\EnvFile;
 use App\Platform\Install\FileSetupTokens;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\OrganizationInvitationService;
+use App\Platform\Invitations\TeamInvitationService;
 use App\Platform\OAuth\AuthorizationOrganizationService;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OpenEntitlements;
@@ -174,6 +176,9 @@ final class PlatformServiceProvider extends ServiceProvider
         // does it. Scoped: it reads the environment the request stands in, and a worker
         // must not carry one request's scoped collaborators into the next.
         $this->app->scoped(OrganizationInvitations::class, OrganizationInvitationService::class);
+        // The OTHER kind: onto a workspace's team (its administrators), from the console's
+        // Team page and the workspace API alike. Runs in the platform root.
+        $this->app->scoped(TeamInvitations::class, TeamInvitationService::class);
         $this->app->scoped(StaffRoles::class, ConsoleStaffRoles::class);
         $this->app->scoped(SupportAccess::class, ConsoleSupportAccess::class);
 

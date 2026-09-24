@@ -8,12 +8,12 @@ use App\Http\Controllers\PageController;
 use App\Http\Requests\Auth\AcceptInvitationRequest;
 use App\Platform\Enums\CredentialVerdict;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\PlatformAuth;
 use App\Platform\SsoRefusal;
 use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\URL;
@@ -34,40 +34,29 @@ use Inertia\Response;
  */
 final readonly class InvitationAcceptController extends PageController
 {
-    public function show(
-        string $token,
-        Invitations $invitations,
-        Organizations $organizations,
-        Subjects $subjects,
-        PlatformRoot $platformRoot,
-    ): Response|RedirectResponse {
-        $invitation = $platformRoot->run(fn () => $invitations->byToken($token));
-
+    public function show(string $token, TeamInvitations $team): Response|RedirectResponse
+    {
         /*
-         * `isPending()`, not merely "was found". `byToken()` resolves a REDEEMED or
-         * revoked invitation just as happily as a live one — it is a lookup by hash, not
-         * a validity check — so without this the page renders for a spent link and asks
-         * the visitor to choose a password before refusing them. A refusal that arrives
-         * after the form is the shape people learn to distrust.
+         * A LIVE invitation, not merely one that was found. `byToken()` resolves a redeemed
+         * or revoked invitation just as happily as a live one — it is a lookup by hash, not
+         * a validity check — so without this the page renders for a spent link and asks the
+         * visitor to choose a password before refusing them.
          */
-        if ($invitation === null || ! $invitation->isPending()) {
+        $preview = $team->preview($token);
+
+        if ($preview === null) {
             return to_route('login')
                 ->with('status', 'This invitation is no longer valid. Try signing in.');
         }
 
         // WHO is asking, and for WHAT — the same three facts the organization invitation's
-        // page states, so a link from somebody unexpected reads as unexpected.
-        $inviter = is_string($invitation->invited_by)
-            ? $platformRoot->run(fn () => $subjects->find((string) $invitation->invited_by))
-            : null;
-
+        // page states, so a link from somebody unexpected reads as unexpected. The name is
+        // the one the mail was signed with, a workspace API key's included.
         return $this->page('auth/accept-invite', 'Accept invitation', [
-            'email' => $invitation->email,
-            'organizationName' => $platformRoot->run(
-                fn () => $organizations->find($invitation->organization_id)?->name,
-            ),
-            'inviterName' => $inviter === null ? null : ($inviter->name ?? $inviter->email),
-            'roleLabel' => $invitation->role->label(),
+            'email' => $preview->email,
+            'organizationName' => $preview->organizationName,
+            'inviterName' => $preview->inviterName,
+            'roleLabel' => $preview->role->label(),
             // Signed, and minted here. The token in it is the same one that got them to
             // this page; the signature is what stops the write being reached with another.
             'acceptUrl' => URL::signedRoute('organization.invite.accept.store', ['token' => $token]),

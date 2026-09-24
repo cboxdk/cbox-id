@@ -10,21 +10,21 @@ use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteMemberRequest;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
-use App\Mail\OrganizationInviteMail;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Invitations\Contracts\TeamInvitations;
+use App\Platform\Invitations\Enums\InvitationRefusalReason;
+use App\Platform\Invitations\Exceptions\InvitationRefused;
+use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
-use App\Platform\MailLinks;
 use App\Platform\Membership\MembershipLifecycle;
 use App\Platform\Membership\MembershipRefused;
 use App\Platform\OrganizationActivity;
-use Carbon\CarbonInterface;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Organization\Contracts\Invitations;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Environment;
-use Cbox\Id\Organization\Models\Invitation;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
@@ -33,10 +33,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Response;
-use Throwable;
 
 /**
  * IDENTITY PLATFORM › ADMINISTRATORS — the account's team, their roles, the environments
@@ -75,7 +72,7 @@ final readonly class MemberController extends ConsoleController
         Request $request,
         Memberships $members,
         Subjects $subjects,
-        Invitations $invitations,
+        TeamInvitations $team,
     ): Response|RedirectResponse {
         // The roster is PII — a Developer or billing-only role may not read it. Sent
         // somewhere they can be rather than refused: that is the console's own answer,
@@ -155,12 +152,8 @@ final readonly class MemberController extends ConsoleController
              * organization for a week with nothing in the product to say so — and because
              * "did that go?" is the question immediately after clicking Send.
              */
-            'invitations' => $organizationId === null ? [] : (app(PlatformRoot::class)->run(
-                fn (): array => $this->pendingInvitations($organizationId, $subjects, $canManage, $invitations),
-            ) ?? []),
-            'invitationCount' => $organizationId === null ? 0 : (app(PlatformRoot::class)->run(
-                fn (): int => $invitations->countPending($organizationId),
-            ) ?? 0),
+            'invitations' => $organizationId === null ? [] : $this->pendingInvitations($organizationId, $canManage, $team),
+            'invitationCount' => $organizationId === null ? 0 : $team->countPending($organizationId),
             'environmentCount' => $environmentCount,
             // Asked of the SCOPE, not of the member row, so the rail, this page's guard
             // and the buttons it renders all answer from one place — and so a person
@@ -175,168 +168,45 @@ final readonly class MemberController extends ConsoleController
         ]);
     }
 
-    public function invite(
-        InviteMemberRequest $request,
-        Invitations $invitations,
-        Subjects $subjects,
-        Memberships $members,
-        OrganizationActivity $activity,
-        MailLinks $links,
-    ): RedirectResponse {
+    public function invite(InviteMemberRequest $request, TeamInvitations $team, Subjects $subjects): RedirectResponse
+    {
         $organizationId = $this->scope->organizationId();
 
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        /*
-         * ONE MESSAGE FOR TWO CASES. The subject lookup is GLOBAL — one email, one root
-         * login — so "that email already belongs to a member" let an administrator of one
-         * organization probe whether an address belonged to ANOTHER. A member of THIS
-         * organization is already visible on the roster below, so nothing is lost to the
-         * person entitled to know and nothing is disclosed to the person who is not.
-         *
-         * A residual signal remains — the invitation fails, so the address exists
-         * somewhere — and that is inherent to globally-unique emails, not something a
-         * message can hide. Rate limiting and the audit trail are what bound it.
-         */
-        $existing = app(PlatformRoot::class)->run(fn () => $subjects->findByEmail($request->email()));
-
-        if ($existing !== null
-            && app(PlatformRoot::class)->run(fn () => $members->of($organizationId, $existing->id)) !== null) {
-            return back()->withInput()->withErrors(['email' => 'That person is already on this list.']);
-        }
-
-        $pending = app(PlatformRoot::class)->run(fn () => $invitations->invite(
-            $organizationId,
-            $request->email(),
-            $request->role(),
-            $this->scope->actorId(),
-        ));
-
-        if ($pending === null) {
-            return back();
-        }
-
-        // MailLinks, not URL:: — an invitation is mailed, so its origin comes from the
-        // deployment rather than from the Host header of whoever asked to send it.
-        $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
-
-        /*
-         * A TRANSPORT FAILURE IS NOT A SUCCESSFUL INVITE. The row is committed by the time
-         * the mailer runs, so an SMTP outage used to throw a 500 at the person clicking
-         * Send while the invitation sat in the database — invisible, and unrepeatable,
-         * because inviting the same address again is refused. It is withdrawn, so the
-         * obvious thing to do next (try again) works.
-         */
+        // The same service the workspace API's `POST /v1/organization/members` uses, so the
+        // two doors refuse, mail and record exactly alike ({@see TeamInvitations}).
         try {
-            Mail::to($request->email())->send(
-                new OrganizationInviteMail($this->scope->organizationName() ?? '', $this->inviterName($subjects), $url, $request->role()->label()),
-            );
-        } catch (Throwable $e) {
-            app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $pending->invitation->id));
-
-            report($e);
-
-            return back()->withInput()->withErrors([
-                'email' => 'We could not send that invitation — the mail server refused it. Nothing was created; try again, or check the deployment\'s mail configuration.',
-            ]);
+            $team->send($organizationId, $request->email(), $request->role(), $this->inviter($subjects), $this->actor());
+        } catch (InvitationRefused $refused) {
+            return back()->withInput()->withErrors(['email' => $refused->getMessage()]);
         }
-
-        $activity->record($organizationId, 'organization.member_invited', $this->scope->actorId(),
-            targetType: 'invitation', targetId: $pending->invitation->id,
-            context: ['email' => $request->email(), 'role' => $request->role()->value], request: $request);
 
         return back()->with('status', 'Invitation sent to '.$request->email().'.');
     }
 
     /**
-     * Send the invitation again, to somebody who never got the first one.
-     *
-     * A NEW TOKEN, not the old one: the mailed link is a signed URL over a token this
-     * server only stores hashed, so there is nothing to re-send — and re-issuing is the
-     * honest behaviour anyway, since the reason somebody asks is usually that the first
-     * link expired. `invite()` supersedes the earlier pending invitation for the same
-     * address as part of minting the new one, so the two are never both live.
+     * Send the invitation again, to somebody who never got the first one — a fresh link;
+     * the earlier one stops working. At most once a minute per address.
      */
-    public function resendInvite(
-        Request $request,
-        string $invitation,
-        Invitations $invitations,
-        OrganizationActivity $activity,
-        MailLinks $links,
-        Subjects $subjects,
-    ): RedirectResponse {
+    public function resendInvite(string $invitation, TeamInvitations $team, Subjects $subjects): RedirectResponse
+    {
         $this->scope->assertMayAdminister();
 
         $organizationId = $this->scope->requireOrganizationId();
 
-        $found = app(PlatformRoot::class)->run(
-            fn () => $invitations->pending($organizationId)->firstWhere('id', $invitation),
-        );
-
-        if ($found === null) {
-            return back();
-        }
-
-        /*
-         * ONE MAIL PER MINUTE PER ADDRESS. This is a POST anybody signed in can repeat,
-         * `OrganizationInviteMail` is not queued, and the sending domain is shared with
-         * every other tenant — so a held-down button is an outbound flood billed to our
-         * reputation, not just this organization's.
-         */
-        $key = 'organization-invite-resend|'.$organizationId.'|'.$found->email;
-
-        if (RateLimiter::tooManyAttempts($key, 1)) {
-            return back()->with('error', 'Already sent. Try again in '
-                .RateLimiter::availableIn($key).' seconds — and check their spam folder in the meantime.');
-        }
-
-        // NO PRE-REVOKE. `invite()` already supersedes every earlier pending invitation
-        // for the same address, so revoking first bought nothing — and cost everything
-        // when the mail then failed: the original was gone, the replacement was rolled
-        // back, and the person was left holding a dead link with no live invitation.
-        $pending = app(PlatformRoot::class)->run(fn () => $invitations->invite(
-            $organizationId,
-            $found->email,
-            $found->role,
-            $this->scope->actorId(),
-        ));
-
-        if ($pending === null) {
-            return back();
-        }
-
-        $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
-
         try {
-            Mail::to($found->email)->send(
-                new OrganizationInviteMail($this->scope->organizationName() ?? '', $this->inviterName($subjects), $url, $found->role->label()),
-            );
-        } catch (Throwable $e) {
-            /*
-             * THE INVITATION STAYS. Unlike the create path — where rolling back leaves the
-             * screen saying nothing happened, which is the truth — here the person already
-             * had one, and destroying the replacement on a transport failure would leave
-             * them with none at all. A live invitation nobody received is strictly better
-             * than no invitation: it is on the list, and the button that failed is the one
-             * that retries it.
-             */
-            report($e);
-
-            return back()->with('error', 'That invitation could not be sent — the mail server refused it. It is still listed below; try again in a moment.');
+            $sent = $team->resend($organizationId, $invitation, $this->inviter($subjects), $this->actor());
+        } catch (InvitationRefused $refused) {
+            // An id that is not a pending invitation on this team is answered with nothing,
+            // as before: it is a row this person was never shown.
+            return $refused->reason === InvitationRefusalReason::NotPending
+                ? back()
+                : back()->with('error', $refused->getMessage());
         }
 
-        // AFTER a successful send, not before it. Charging the window on the way in meant
-        // a transport failure told the administrator "try again in a moment" and then
-        // answered the retry with "Already sent. Try again in 54 seconds" — about a mail
-        // that was never sent.
-        RateLimiter::hit($key, 60);
-
-        $activity->record($organizationId, 'organization.member_invited', $this->scope->actorId(),
-            targetType: 'invitation', targetId: $pending->invitation->id,
-            context: ['email' => $found->email, 'role' => $found->role->value, 'resent' => true], request: $request);
-
-        return back()->with('status', 'Invitation sent again to '.$found->email.'.');
+        return back()->with('status', 'Invitation sent again to '.$sent->email.'.');
     }
 
     /**
@@ -346,29 +216,17 @@ final readonly class MemberController extends ConsoleController
      * who left before accepting, otherwise held a live link into the organization for a
      * week with nothing in the product to stop it.
      */
-    public function revokeInvite(
-        Request $request,
-        string $invitation,
-        Invitations $invitations,
-        OrganizationActivity $activity,
-    ): RedirectResponse {
+    public function revokeInvite(string $invitation, TeamInvitations $team): RedirectResponse
+    {
         $this->scope->assertMayAdminister();
 
         $organizationId = $this->scope->requireOrganizationId();
 
-        $found = app(PlatformRoot::class)->run(
-            fn () => $invitations->pending($organizationId)->firstWhere('id', $invitation),
-        );
-
-        if ($found === null) {
+        try {
+            $team->revoke($organizationId, $invitation, $this->actor());
+        } catch (InvitationRefused) {
             return back();
         }
-
-        app(PlatformRoot::class)->run(fn () => $invitations->revoke($organizationId, $found->id));
-
-        $activity->record($organizationId, 'organization.invitation_revoked', $this->scope->actorId(),
-            targetType: 'invitation', targetId: $found->id,
-            context: ['email' => $found->email], request: $request);
 
         // Back to page one: withdrawing the last row on a later page leaves the paginator
         // asking for a page that no longer exists, and the empty state then claims there
@@ -608,47 +466,38 @@ final readonly class MemberController extends ConsoleController
     }
 
     /**
-     * The account's pending invitations, in the shape every invite surface lists.
+     * The team's pending invitations, in the shape every invite surface lists.
      *
      * @return list<PendingInvitationProps>
      */
-    private function pendingInvitations(string $organizationId, Subjects $subjects, bool $canManage, Invitations $invitations): array
+    private function pendingInvitations(string $organizationId, bool $canManage, TeamInvitations $team): array
     {
-        $rows = $invitations->pending($organizationId, self::INVITATIONS_SHOWN);
-
-        $inviters = $subjects->findMany(array_values(array_filter($rows->pluck('invited_by')->all(), 'is_string')));
-
-        return array_values($rows->map(function (Invitation $invitation) use ($inviters, $canManage): PendingInvitationProps {
-            // `getAttribute`, because `Invitation` documents the columns it declares and
-            // Eloquent's own timestamps are not among them.
-            $invitedAt = $invitation->getAttribute('created_at');
-            $inviter = is_string($invitation->invited_by) ? ($inviters[$invitation->invited_by] ?? null) : null;
-
-            return PendingInvitationProps::from(
-                new PendingInvitationSummary(
-                    id: $invitation->id,
-                    email: $invitation->email,
-                    role: $invitation->role,
-                    expiresAt: $invitation->expires_at,
-                    invitedAt: $invitedAt instanceof CarbonInterface ? $invitedAt : null,
-                    inviterName: $inviter->name ?? $inviter->email ?? null,
-                ),
+        return array_map(
+            static fn (PendingInvitationSummary $invitation): PendingInvitationProps => PendingInvitationProps::from(
+                $invitation,
                 $canManage ? route('members.invitations.resend', $invitation->id) : null,
                 $canManage ? route('members.invitations.revoke', $invitation->id) : null,
-            );
-        })->all());
+            ),
+            $team->pending($organizationId, self::INVITATIONS_SHOWN),
+        );
     }
 
     /**
-     * The NAME an invitation is signed with.
+     * Who is sending: the acting member, by NAME.
      *
-     * The mail was handed `actorId()` — the inviter's subject ULID — so every account
+     * The mail was once handed `actorId()` — the inviter's subject ULID — so every team
      * invitation arrived reading "01J9… invited you to help run Acme".
      */
-    private function inviterName(Subjects $subjects): string
+    private function inviter(Subjects $subjects): Inviter
     {
-        $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($this->scope->actorId()));
+        $actorId = $this->scope->actorId();
+        $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($actorId));
 
-        return $subject === null ? 'A teammate' : ($subject->name ?? $subject->email ?? 'A teammate');
+        return new Inviter($actorId, $subject === null ? 'A teammate' : ($subject->name ?? $subject->email ?? 'A teammate'));
+    }
+
+    private function actor(): AuditActor
+    {
+        return AuditActor::organizationMember($this->scope->actorId());
     }
 }

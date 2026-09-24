@@ -27,9 +27,10 @@ use Cbox\Id\Organization\Exceptions\InvalidInvitation;
  * that finds the invitation, so an invitation id carried from another organization resolves
  * to nothing rather than to a row that is compared afterwards.
  *
- * The customer's own administrator invitations (the platform root's Identity platform
- * page) keep their own door: that invite is accepted by setting a password on a signed link,
- * and folding the two is a data migration rather than a refactor.
+ * The other KIND — onto a workspace's team, its administrators — is {@see TeamInvitations},
+ * shared by the console's Team page and the workspace API: that invite is accepted by
+ * setting a password on a signed link, and folding the two is a data migration rather
+ * than a refactor.
  */
 interface OrganizationInvitations
 {

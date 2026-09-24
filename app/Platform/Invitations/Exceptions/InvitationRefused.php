@@ -6,6 +6,7 @@ namespace App\Platform\Invitations\Exceptions;
 
 use App\Platform\Invitations\Enums\InvitationRefusalReason;
 use App\Platform\OrgRoles;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use RuntimeException;
 
 /**
@@ -31,6 +32,29 @@ final class InvitationRefused extends RuntimeException
     public static function alreadyMember(): self
     {
         return new self(InvitationRefusalReason::AlreadyMember, 'That person is already a member of this organization.');
+    }
+
+    /**
+     * The workspace team's own sentence. "Already a member of this organization" is the
+     * tenant roster's; on Workspace › Team the person is on a list of administrators.
+     */
+    public static function alreadyOnTeam(): self
+    {
+        return new self(InvitationRefusalReason::AlreadyMember, 'That person is already on this list.');
+    }
+
+    /**
+     * A workspace team offers its own four roles, not an organization's two.
+     */
+    public static function teamRoleNotOffered(): self
+    {
+        return new self(
+            InvitationRefusalReason::RoleNotOffered,
+            'Choose one of: '.implode(', ', array_map(
+                static fn (MembershipRole $role): string => $role->label(),
+                MembershipRole::assignable(),
+            )).'. Ownership is handed over with "Transfer ownership", never by invitation.',
+        );
     }
 
     public static function roleNotOffered(): self

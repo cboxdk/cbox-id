@@ -31,6 +31,15 @@ On a workspace's **Team** page the built-in roles are Admin, Developer, Member a
 Viewer. Developer may administer environments and create management keys but not the
 team; Viewer can read the team and billing and change nothing.
 
+A team invitation is a different kind from an organization's: the mail says "invited you
+to administer", and its link asks the person to **set a password**, then signs them in
+to this console. Your backend can send the same invitation with a workspace key —
+`POST /api/v1/organization/members` — and list, re-send and withdraw it under
+`/api/v1/organization/invitations`. It is the same invitation either way: the same mail
+and link, the same refusals, and the same line on the activity log
+(`organization.member_invited`, `organization.invitation_revoked`), signed by the key's
+name instead of a person's.
+
 Nobody is added until they accept. The link in the mail opens a page that says which
 organization, who invited them, the role and the address it was sent to; **accepting is
 a button on that page**, never the link itself. Mail scanners (Outlook Safe Links and

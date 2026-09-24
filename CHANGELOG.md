@@ -291,6 +291,20 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **Inviting onto a workspace's team is one service for the console and the workspace
+  API** (`TeamInvitations`). `POST /api/v1/organization/members` used to mail the
+  invitation without its role, record nothing on the activity log, answer 201 when the
+  mail server had refused (leaving a live invitation nobody received), and could not
+  list, re-send or withdraw what it sent. It now behaves exactly like Workspace › Team:
+  the role is in the mail, the key's name signs it (on the accept page too), the log
+  records `organization.member_invited` / `organization.invitation_revoked` with the key
+  as the actor, a refused mail is a `503` with nothing left behind, and
+  `GET /api/v1/organization/invitations`, `POST …/invitations/{id}/resend` and
+  `DELETE …/invitations/{id}` are new. The spec's role lists now name the roles the API
+  has accepted all along (`admin`, `developer`, `member`, `viewer`). An organization's
+  invitations (its people, `OrganizationInvitations`) are unchanged and stay a separate
+  kind.
+
 - **Rotating an app secret no longer has to be a cut-over.** The console passed a grace of
   0; it now passes the overlap chosen on the Secrets tab, "immediately" still among them.
   A rotation posted without one is still immediate.
