@@ -11,12 +11,15 @@ use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
+use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Events\Models\Event;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\SupportSession;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\CustomerApiKeys;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -710,6 +713,121 @@ it('starts a support session for staff holding the app\'s support:impersonate ev
     $foreign = inOtherEnvironment(fn (): Organization => tenancyOrg('Elsewhere'));
     $this->withToken($key)->postJson('/api/v1/support-sessions', ['organization_id' => $foreign->id] + $body)
         ->assertStatus(422)->assertJsonPath('error', 'organization_not_found');
+});
+
+/**
+ * An app holding one registered API's scopes and one nobody registered — the shape every
+ * app that publishes its own manifest has. Registered through the management API, the way
+ * a vendor's backend does it.
+ *
+ * @param  list<string>  $apiScopes
+ * @return array{0: Client, 1: string} the app and its secret
+ */
+function supportScopedApp(string $key, array $apiScopes = ['tax.quote']): array
+{
+    test()->withToken($key)->postJson('/api/v1/apis', [
+        'identifier' => 'https://api.tax.example',
+        'name' => 'Tax API',
+        'scopes' => [['key' => 'tax.quote', 'description' => 'Get a quote'], ['key' => 'tax.assess', 'description' => 'Run an assessment']],
+    ])->assertCreated();
+
+    test()->withToken($key)->postJson('/api/v1/apis', [
+        'identifier' => 'https://api.ledger.example',
+        'name' => 'Ledger API',
+        'scopes' => [['key' => 'ledger.read', 'description' => 'Read the ledger']],
+    ])->assertCreated();
+
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Tax',
+        type: ClientType::Confidential,
+        redirectUris: ['https://tax.example/callback'],
+        grantTypes: ['authorization_code', 'refresh_token', 'client_credentials'],
+        scopes: ['openid', 'profile', 'offline_access', 'apps.manifest', ...$apiScopes],
+        firstParty: true,
+    ));
+
+    return [$registered->client, (string) $registered->secret];
+}
+
+/**
+ * THE ANSWER SAYS WHAT THE TOKENS CARRY.
+ *
+ * The session used to store the app's whole registration (less `offline_access`) and the
+ * response echoed it. The token endpoint then audiences a token with an API's scope to that
+ * API, where a scope nobody registered cannot ride — so the response promised
+ * `apps.manifest` to a support session none of whose tokens carried it.
+ */
+it('states a support session\'s scopes as exactly what its tokens carry', function (): void {
+    [$key] = tenancyKey([EnvironmentApiScope::SupportWrite, EnvironmentApiScope::ApisWrite]);
+    [$app, $secret] = supportScopedApp($key);
+    $support = tenancyAppRole($app, 'support', tenantAssignable: false, permissions: ['support:impersonate']);
+    $agent = tenancyUser('agent@vendor.test');
+    $customer = tenancyUser('customer@acme.test');
+    $org = tenancyOrg('Acme', $customer);
+    app(Roles::class)->assignEverywhere($agent, $support->id);
+
+    $verifier = 'a-support-session-scopes-verifier-of-sufficient-length-0123';
+
+    $session = $this->withToken($key)->postJson('/api/v1/support-sessions', [
+        'user_id' => $customer,
+        'organization_id' => $org->id,
+        'client_id' => $app->client_id,
+        'actor_user_id' => $agent,
+        'reason' => 'Ticket 4412',
+        'redirect_uri' => 'https://tax.example/callback',
+        'code_challenge' => pkcePair($verifier)['challenge'],
+    ])->assertCreated()->json('data');
+
+    expect($session['scopes'])->toBe(['openid', 'profile', 'tax.quote']);
+
+    $token = $this->withBasicAuth($app->client_id, $secret)->postJson('/oauth/token', [
+        'grant_type' => 'authorization_code',
+        'code' => $session['code'],
+        'redirect_uri' => 'https://tax.example/callback',
+        'code_verifier' => $verifier,
+    ])->assertOk()->json('access_token');
+
+    $claims = app(TokenSigner::class)->verify((string) $token, [SigningAlg::RS256])->all();
+
+    // The same set, the same order: what the session says is what the token carries.
+    expect(explode(' ', (string) $claims['scope']))->toBe($session['scopes'])
+        ->and(SupportSession::query()->whereKey($session['id'])->sole()->scopes)->toBe($session['scopes']);
+
+    // Asked for by name, an unregistered scope beside an API's is refused the same way.
+    $asked = $this->withToken($key)->postJson('/api/v1/support-sessions', [
+        'user_id' => $customer,
+        'organization_id' => $org->id,
+        'client_id' => $app->client_id,
+        'actor_user_id' => $agent,
+        'reason' => 'Ticket 4413',
+        'scopes' => ['apps.manifest', 'tax.quote'],
+    ])->assertCreated()->json('data.scopes');
+
+    expect($asked)->toBe(['tax.quote']);
+});
+
+it('refuses a support session whose scopes no token could be audienced to, before it starts', function (): void {
+    [$key] = tenancyKey([EnvironmentApiScope::SupportWrite, EnvironmentApiScope::ApisWrite]);
+    [$app] = supportScopedApp($key, ['tax.quote', 'ledger.read']);
+    $support = tenancyAppRole($app, 'support', tenantAssignable: false, permissions: ['support:impersonate']);
+    $agent = tenancyUser('agent@vendor.test');
+    $customer = tenancyUser('customer@acme.test');
+    $org = tenancyOrg('Acme', $customer);
+    app(Roles::class)->assignEverywhere($agent, $support->id);
+
+    // Two APIs' scopes and no `resource`: the token endpoint would refuse every code, so
+    // no session is started, announced to the customer, and left for nobody to use.
+    $this->withToken($key)->postJson('/api/v1/support-sessions', [
+        'user_id' => $customer,
+        'organization_id' => $org->id,
+        'client_id' => $app->client_id,
+        'actor_user_id' => $agent,
+        'reason' => 'Ticket 4414',
+    ])->assertStatus(422)
+        ->assertJsonPath('error', 'invalid_target');
+
+    expect(SupportSession::query()->exists())->toBeFalse()
+        ->and(Event::query()->where('type', 'support_session.started')->exists())->toBeFalse();
 });
 
 /*

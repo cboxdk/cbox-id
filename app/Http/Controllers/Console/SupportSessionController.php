@@ -11,6 +11,7 @@ use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\ValueObjects\SupportSignInRequest;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\OAuthServer\Enums\SupportSessionRefusal;
+use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
 use Cbox\Id\OAuthServer\Exceptions\SupportSessionRefused;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipStatus;
@@ -92,6 +93,10 @@ final readonly class SupportSessionController extends ConsoleController
             ));
         } catch (SupportSessionRefused $refused) {
             return back()->withInput()->withErrors([$this->field($refused->refusal) => $refused->getMessage()]);
+        } catch (InvalidAudience $audience) {
+            // The app's scopes cannot be audienced to one API: no sign-in it starts could
+            // finish. See AudienceResolvedSupportSessions.
+            return back()->withInput()->withErrors(['app' => $audience->getMessage()]);
         }
 
         // To the app, which starts its own sign-in. A real navigation even from an Inertia

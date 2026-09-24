@@ -474,6 +474,11 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
         ->and((array) $acted['id']['act'])->toBe(['sub' => $sylvester])
         ->and($acted['access']['org'])->toBe($hansen->id)
         ->and($acted['access']['org_role'])->toBe('owner')
+        // The session states exactly what its tokens carry — the app's registration less
+        // `offline_access` (no refresh on an acted grant) and less `apps.manifest`, which
+        // nobody registered and so cannot ride on the tax API's audience.
+        ->and($support['scopes'])->toEqualCanonicalizing(['openid', 'profile', 'email', 'tax.quote', 'tax.assess'])
+        ->and(explode(' ', (string) $acted['access']['scope']))->toBe($support['scopes'])
         ->and($acted['body'])->not->toHaveKey('refresh_token')
         ->and($acted['body']['expires_in'])->toBeLessThanOrEqual(3600);
 

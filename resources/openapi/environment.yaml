@@ -1123,6 +1123,13 @@ paths:
         with the verifier; every token carries `act: {"sub": actor_user_id}` and there is
         never a refresh token. The session is audited on the customer's trail and the
         environment's, and announced as the `support_session.started` webhook.
+
+        `scopes` in the response are exactly what every token of the session carries: the
+        ones asked for (or, with none, the app's registration), never `offline_access`, and
+        audienced the way the token endpoint audiences them — once any of them belongs to a
+        registered API, the token is for that API and a scope no API registered (such as
+        `apps.manifest`) is left out. Scopes of two registered APIs cannot be audienced to
+        one token and are refused before the session starts (`422 invalid_target`).
       requestBody:
         required: true
         content:
@@ -1137,7 +1144,7 @@ paths:
                 actor_user_id: { type: string, description: "Your staff member." }
                 reason: { type: string, maxLength: 500, description: "Shown to the customer." }
                 ttl_minutes: { type: integer, minimum: 1, maximum: 60 }
-                scopes: { type: array, items: { type: string } }
+                scopes: { type: array, items: { type: string }, description: "Narrowed to the app's registration; omitted means all of it." }
                 redirect_uri: { type: string }
                 code_challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
                 nonce: { type: ["string", "null"] }

@@ -408,6 +408,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **A support session's API response listed scopes its tokens did not carry.** The
+  session stored the app's whole registration (less `offline_access`), and the token
+  endpoint then audienced every token to the app's registered API, where an unregistered
+  scope such as `apps.manifest` cannot ride. Sessions now settle their scopes through the
+  same audience rules before they start — for the management API and the console alike —
+  so the stored session, its codes, the response and the tokens agree. Scopes of two
+  registered APIs are refused up front (`422 invalid_target`) instead of starting a
+  session whose codes no token endpoint would redeem.
 - **The invitation page said "Role: Member" to somebody invited as an Editor.** It
   listed only the built-in role. It now lists the built-in role and every app and custom
   role accepting will grant, in the console's words ("Built-in role", "Roles in cboxtax",

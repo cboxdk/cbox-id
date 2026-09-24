@@ -154,7 +154,10 @@ role granted with `environment-roles`). The response carries the first authoriza
 `code`; your app redeems it at `/oauth/token` with the PKCE verifier. Every token names the
 agent in `act`, there is never a refresh token, and nothing lives past the session (at
 most an hour). The customer's activity log and webhooks (`support_session.started`) say
-who acted and why.
+who acted and why. The response's `scopes` are exactly what the session's tokens carry:
+once one belongs to a registered API the tokens are for that API, so a scope no API
+registered (`apps.manifest`, say) is not among them. Scopes of two APIs are refused with
+`422 invalid_target` before anything starts.
 
 ## Errors
 
