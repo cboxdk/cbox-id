@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Sudo;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
@@ -45,3 +46,23 @@ it('marks revoked and expired environment keys and offers Revoke only on a live 
         )
         ->assertNoJavaScriptErrors();
 })->group('a11y');
+
+it('draws a labelled box for every scope a management key can be given', function (): void {
+    ['subjectId' => $ownerId] = provisionAccount();
+    signInAsMember($ownerId);
+    app(Sudo::class)->confirm();
+
+    $page = visit('/keys');
+
+    // One checkbox per offered scope — the whole tenancy API, and nothing reserved.
+    $page->assertScript(
+        'document.querySelectorAll("fieldset [role=checkbox]").length',
+        count(EnvironmentApiScope::offerable()),
+    );
+
+    foreach (EnvironmentApiScope::offerable() as $scope) {
+        $page->assertSee($scope->label())->assertSee($scope->value);
+    }
+
+    $page->assertDontSee('directories:read')->assertNoJavaScriptErrors();
+});
