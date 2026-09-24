@@ -130,6 +130,15 @@ function undocumentedByDesign(): array
          */
         'POST /oauth/authorize/{authorization}/approve',
         'POST /oauth/authorize/{authorization}/deny',
+        // The hosted organization steps and the consent screen they lead back to — pages
+        // of that same screen, for the same reason: a relying party asks for them with
+        // `prompt=select_organization` / `create_organization` on /oauth/authorize and
+        // never calls them itself.
+        'GET /oauth/authorize/{authorization}',
+        'GET /oauth/authorize/{authorization}/organization',
+        'POST /oauth/authorize/{authorization}/organization',
+        'GET /oauth/authorize/{authorization}/organization/new',
+        'POST /oauth/authorize/{authorization}/organization/new',
         /*
          * Customer API key verification (laravel-id 1.19). Not an RFC surface — a Cbox
          * contract an app calls with its own client credentials — so it is debt like the

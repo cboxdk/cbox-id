@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\OAuth;
 
+use App\Platform\OAuth\Enums\AuthorizationPrompt;
+
 /**
  * ONE VALIDATED AUTHORIZATION REQUEST, as the consent screen needs it.
  *
@@ -25,6 +27,7 @@ final readonly class PendingAuthorization
      * @param  list<string>  $scopes
      * @param  array<string, mixed>|null  $pushedPayload  the consumed PAR body, kept so a
      *                                                    resumed request can be re-pushed
+     * @param  list<AuthorizationPrompt>  $prompts
      */
     public function __construct(
         public string $clientId,
@@ -57,7 +60,52 @@ final readonly class PendingAuthorization
         /** The raw OIDC `acr_values` request, for the same reason. */
         public ?string $acrValues = null,
         public ?array $pushedPayload = null,
+        /**
+         * THE ORGANIZATION THIS GRANT IS BOUND TO, once one has been decided: named by the
+         * client (`organization`), chosen on the hosted picker, or founded on the hosted
+         * create step. Null means "the organization the person's session is in", which is
+         * what every authorization meant before an app could choose.
+         *
+         * Held here, server-side, for the same reason as the redirect URI: a value the
+         * browser never holds is a value it cannot swap between the picker and the code.
+         */
+        public ?string $organizationId = null,
+        /** `organization_hint`: preselected on the picker, never bound on its own. */
+        public ?string $organizationHint = null,
+        /**
+         * The recognised `prompt` values, kept so the organization steps and a forced
+         * consent survive the pages in between.
+         */
+        public array $prompts = [],
     ) {}
+
+    public function asks(AuthorizationPrompt $prompt): bool
+    {
+        return in_array($prompt, $this->prompts, true);
+    }
+
+    /** The same request, bound to an organization — what the picker and the create step produce. */
+    public function boundTo(string $organizationId): self
+    {
+        return new self(
+            clientId: $this->clientId,
+            clientName: $this->clientName,
+            clientOwner: $this->clientOwner,
+            redirectUri: $this->redirectUri,
+            scopes: $this->scopes,
+            codeChallenge: $this->codeChallenge,
+            codeChallengeMethod: $this->codeChallengeMethod,
+            state: $this->state,
+            nonce: $this->nonce,
+            resource: $this->resource,
+            maxAge: $this->maxAge,
+            acrValues: $this->acrValues,
+            pushedPayload: $this->pushedPayload,
+            organizationId: $organizationId,
+            organizationHint: $this->organizationHint,
+            prompts: $this->prompts,
+        );
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -90,6 +138,12 @@ final readonly class PendingAuthorization
             maxAge: is_int($data['maxAge'] ?? null) ? $data['maxAge'] : null,
             acrValues: is_string($data['acrValues'] ?? null) ? $data['acrValues'] : null,
             pushedPayload: self::payload($data['pushedPayload'] ?? null),
+            organizationId: is_string($data['organizationId'] ?? null) ? $data['organizationId'] : null,
+            organizationHint: is_string($data['organizationHint'] ?? null) ? $data['organizationHint'] : null,
+            prompts: AuthorizationPrompt::parse(implode(' ', array_filter(
+                is_array($data['prompts'] ?? null) ? $data['prompts'] : [],
+                static fn (mixed $prompt): bool => is_string($prompt),
+            ))),
         );
     }
 
@@ -139,6 +193,9 @@ final readonly class PendingAuthorization
             'maxAge' => $this->maxAge,
             'acrValues' => $this->acrValues,
             'pushedPayload' => $this->pushedPayload,
+            'organizationId' => $this->organizationId,
+            'organizationHint' => $this->organizationHint,
+            'prompts' => array_map(static fn (AuthorizationPrompt $prompt): string => $prompt->value, $this->prompts),
         ];
     }
 }

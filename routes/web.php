@@ -428,6 +428,34 @@ Route::post('/oauth/authorize/{authorization}/deny', [OAuthConsentController::cl
     ->name('oauth.authorize.deny');
 
 /*
+ * The hosted organization steps, and the consent screen they lead back to.
+ *
+ * Same middleware as the answers above, for the same reasons: each can end in a code being
+ * minted, so none may be reached while impersonating, and each names only a PENDING request
+ * held server-side under an opaque id. The browser posts an organization id and a name —
+ * never the client, the redirect URI or the challenge — and the id it posts is re-checked
+ * against the membership tables on the request that uses it.
+ *
+ * The consent screen has a GET of its own because the steps POST: answering a POST with
+ * the page would leave the browser on the step's URL, where a reload re-submits a choice
+ * that was already spent.
+ */
+Route::middleware(['plane:first-party', EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth:optional'])
+    ->group(function (): void {
+        Route::get('/oauth/authorize/{authorization}', [OAuthConsentController::class, 'review'])
+            ->name('oauth.authorize.review');
+        Route::get('/oauth/authorize/{authorization}/organization', [OAuthConsentController::class, 'organization'])
+            ->name('oauth.authorize.organization');
+        Route::post('/oauth/authorize/{authorization}/organization', [OAuthConsentController::class, 'chooseOrganization'])
+            ->name('oauth.authorize.organization.choose');
+        Route::get('/oauth/authorize/{authorization}/organization/new', [OAuthConsentController::class, 'createOrganization'])
+            ->name('oauth.authorize.organization.create');
+        Route::post('/oauth/authorize/{authorization}/organization/new', [OAuthConsentController::class, 'storeOrganization'])
+            ->middleware('throttle:20,1')
+            ->name('oauth.authorize.organization.store');
+    });
+
+/*
  * Admin Portal — a single-use setup link. An external IT admin opens it with
  * NO platform account and configures one org's SSO/SCIM, nothing else. These live
  * in the guest area and must never be reachable via a platform session; the

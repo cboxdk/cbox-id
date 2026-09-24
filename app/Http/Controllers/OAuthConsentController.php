@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\OAuth\ChooseOrganizationRequest;
+use App\Http\Requests\OAuth\CreateOrganizationRequest;
 use App\Platform\CurrentUser;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\SignInWithTicket;
+use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
+use App\Platform\OAuth\Enums\AuthorizationPrompt;
+use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
 use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
+use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\ScopeCatalog;
+use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -191,6 +198,40 @@ final readonly class OAuthConsentController extends PageController
         $acrParam = $from('acr_values');
         $nonceParam = $from('nonce');
 
+        /*
+         * OIDC `prompt`, parsed once into the values this endpoint honours. See
+         * {@see AuthorizationPrompt} for why an unknown value is ignored rather than refused.
+         */
+        $prompts = AuthorizationPrompt::parse($from('prompt'));
+
+        /*
+         * THE ORGANIZATION PARAMETERS COME FROM THE PUSHED REQUEST ALONE when there is one.
+         * `$from()` falls back to the query for anything the payload lacks, and for these
+         * two that fallback would be a hole: a link carrying a pushed request_uri plus
+         * `&organization=…` would bind the grant to an organization the client never asked
+         * for — one of the person's own, so no membership check would stop it, and the app
+         * would receive another team's roles. RFC 9126 §4 says the pushed parameters are the
+         * request; here that is enforced where it matters most.
+         */
+        $organizationParam = $pushed !== null ? ($pushed['organization'] ?? null) : $request->input('organization');
+        $hintParam = $pushed !== null ? ($pushed['organization_hint'] ?? null) : $request->input('organization_hint');
+
+        /*
+         * PRESENT, not merely non-null. The request pipeline turns `organization=` into null,
+         * and a request that SENT the parameter empty is not one that sent none: the app
+         * meant to bind to something, and binding it to the session's organization instead
+         * would answer a question it did not ask.
+         */
+        $organizationSent = $pushed !== null
+            ? array_key_exists('organization', $pushed)
+            : ($request->query->has('organization') || $request->request->has('organization'));
+
+        $refusal = $this->invalidOrganizationRequest($prompts, $organizationSent ? ($organizationParam ?? '') : null, $hintParam);
+
+        if ($refusal !== null) {
+            return $this->redirectError($redirectUri, 'invalid_request', $state, $refusal);
+        }
+
         $authorization = new PendingAuthorization(
             clientId: $client->client_id,
             clientName: $client->name,
@@ -220,6 +261,9 @@ final readonly class OAuthConsentController extends PageController
              * requires pushed authorization requests".
              */
             pushedPayload: $pushed,
+            organizationId: is_string($organizationParam) ? $organizationParam : null,
+            organizationHint: is_string($hintParam) && $hintParam !== '' ? $hintParam : null,
+            prompts: $prompts,
         );
 
         /*
@@ -228,9 +272,7 @@ final readonly class OAuthConsentController extends PageController
          * chosen account becomes active and the request resumes, carrying `reauthed=1` so
          * re-entry does not loop.
          */
-        $promptParam = $from('prompt');
-        $prompts = is_string($promptParam) ? array_values(array_filter(explode(' ', $promptParam))) : [];
-        $silent = in_array('none', $prompts, true);
+        $silent = $authorization->asks(AuthorizationPrompt::None);
         $reauthed = in_array($from('reauthed'), ['1', 'true'], true);
 
         /*
@@ -256,6 +298,16 @@ final readonly class OAuthConsentController extends PageController
         }
 
         $me = app(CurrentUser::class);
+
+        /*
+         * OIDC PROMPT CREATE (Initiating User Registration): the sign-up form instead of the
+         * sign-in form, and back into this request afterwards. Somebody already signed in
+         * is not given a second account — the authorization simply continues as them, and
+         * an app that wants a fresh sign-in first says `prompt=login` as well.
+         */
+        if (! $reauthed && ! $me->check() && $authorization->asks(AuthorizationPrompt::Create)) {
+            return $this->interrupt($request, $authorization, route('signup'));
+        }
 
         if (! $me->check()) {
             if ($silent) {
@@ -287,11 +339,11 @@ final readonly class OAuthConsentController extends PageController
             return $this->interrupt($request, $authorization, route($hold['route']));
         }
 
-        if (! $reauthed && in_array('select_account', $prompts, true)) {
+        if (! $reauthed && $authorization->asks(AuthorizationPrompt::SelectAccount)) {
             return $this->interrupt($request, $authorization, route('accounts'));
         }
 
-        if (! $reauthed && in_array('login', $prompts, true)) {
+        if (! $reauthed && $authorization->asks(AuthorizationPrompt::Login)) {
             return $this->interrupt($request, $authorization, route('accounts.add'));
         }
 
@@ -318,14 +370,246 @@ final readonly class OAuthConsentController extends PageController
         }
 
         /*
-         * FIRST-PARTY CONSENT-SKIP: an organization's own trusted app — or a platform-owned
-         * first-party client — authorizes without a prompt. STRICTLY organization-scoped: a
-         * first-party client owned by ANOTHER organization still prompts, so it can never
-         * silently mint a code for a different tenant's user. The issuing path re-asserts
-         * every invariant, so this skips the screen and never the checks.
+         * WHICH ORGANIZATION. Decided only now, with the person known and every sign-in rule
+         * satisfied, because the answer is about THEIR memberships.
+         *
+         *  - `organization` names one: bind to it if they may use it, otherwise tell the
+         *    client `access_denied`. The same answer for an organization that does not
+         *    exist, one in another environment, one they left and one that was suspended,
+         *    so the error confirms nothing about somebody else's tenant.
+         *
+         *    `access_denied` under `prompt=none` too, rather than `interaction_required`:
+         *    no page this server could show would make this account a member, and an SDK
+         *    reading `interaction_required` retries interactively only to be refused again.
+         *  - `prompt=create_organization` / `prompt=select_organization` hand over to the
+         *    hosted steps, which bind the grant and then come back through proceed().
+         *  - otherwise the grant carries the session's organization, as it always has.
          */
+        if ($authorization->organizationId !== null) {
+            if (app(AuthorizationOrganizations::class)->usableBy($me->id(), $authorization->organizationId) === null) {
+                return $this->redirectError($redirectUri, 'access_denied', $state,
+                    'The user is not an active member of the requested organization.');
+            }
+        } elseif ($authorization->asks(AuthorizationPrompt::CreateOrganization)) {
+            return redirect()->route('oauth.authorize.organization.create', $pending->put($request, $authorization));
+        } elseif ($authorization->asks(AuthorizationPrompt::SelectOrganization)) {
+            return redirect()->route('oauth.authorize.organization', $pending->put($request, $authorization));
+        }
+
+        return $this->proceed($request, $authorization, $client, $clients, $codes, $pending, $silent, redirectToScreen: false);
+    }
+
+    /**
+     * `GET /oauth/authorize/{authorization}` — the consent screen for a request that has
+     * already been through one of the hosted organization steps.
+     *
+     * Those steps POST, and answering a POST with the consent page would leave the browser
+     * on the step's URL, where a reload re-submits a choice that has already been spent. So
+     * they redirect here instead, and the screen is drawn from the request held server-side
+     * under this id.
+     */
+    public function review(Request $request, string $authorization, PendingAuthorizations $pending): Response
+    {
+        $found = $pending->find($request, $authorization);
+
+        if ($found === null || ! app(CurrentUser::class)->check()) {
+            return $this->failure('This authorization request can no longer be completed. Please start again.');
+        }
+
+        return $this->consentScreen($authorization, $found);
+    }
+
+    /**
+     * `GET /oauth/authorize/{authorization}/organization` — THE HOSTED ORGANIZATION PICKER.
+     *
+     * Lists the organizations the signed-in person may bind this app to here, and nothing
+     * else: live organizations in this environment held through an active membership.
+     * Choosing one binds THIS grant. It does not move the person's console, and nothing is
+     * remembered for the next app — a picker that quietly changed the session would make
+     * one app's choice the next app's default.
+     */
+    public function organization(
+        Request $request,
+        string $authorization,
+        PendingAuthorizations $pending,
+        AuthorizationOrganizations $organizations,
+    ): Response {
+        $found = $pending->find($request, $authorization);
+        $me = app(CurrentUser::class);
+
+        if ($found === null || ! $me->check()) {
+            return $this->failure('This authorization request can no longer be completed. Please start again.');
+        }
+
+        $choices = $organizations->choicesFor($me->id());
+        $ids = array_map(static fn (OrganizationChoice $choice): string => $choice->id, $choices);
+
+        /*
+         * PRESELECTED: the app's hint when it names one of these, else the organization the
+         * person is working in, else the first. A hint naming anything else is ignored
+         * without comment — it is a suggestion from the app, and saying "you are not in
+         * that one" would confirm to the app which organizations exist.
+         */
+        $selected = match (true) {
+            $found->organizationHint !== null && in_array($found->organizationHint, $ids, true) => $found->organizationHint,
+            in_array($me->organizationId(), $ids, true) => $me->organizationId(),
+            default => $ids[0] ?? null,
+        };
+
+        return $this->page('oauth/organization', 'Choose an organization', [
+            'client' => ['name' => $found->clientName, 'owner' => $found->clientOwner],
+            'me' => $this->meProps($me),
+            'organizations' => array_map(static fn (OrganizationChoice $choice): array => [
+                'id' => $choice->id,
+                'name' => $choice->name,
+                'role' => $choice->role->label(),
+            ], $choices),
+            'selected' => $selected,
+            'chooseHref' => route('oauth.authorize.organization.choose', $authorization),
+            'createHref' => $organizations->creationOffered()
+                ? route('oauth.authorize.organization.create', $authorization)
+                : null,
+            'denyHref' => route('oauth.authorize.deny', $authorization),
+        ]);
+    }
+
+    public function chooseOrganization(
+        ChooseOrganizationRequest $request,
+        string $authorization,
+        ClientRegistry $clients,
+        AuthorizationCodes $codes,
+        PendingAuthorizations $pending,
+        AuthorizationOrganizations $organizations,
+    ): Response|SymfonyResponse {
+        $found = $pending->find($request, $authorization);
+        $me = app(CurrentUser::class);
+
+        if ($found === null || ! $me->check()) {
+            return $this->failure('This authorization request can no longer be completed. Please start again.');
+        }
+
+        // The posted id is a CLAIM. Only an organization this person may use right now is
+        // accepted — the list on the page was drawn on another request.
+        $choice = $organizations->usableBy($me->id(), $request->organizationId());
+
+        if ($choice === null) {
+            return back()->withErrors(['organization' => 'You are not an active member of that organization.']);
+        }
+
+        return $this->continueBound($request, $authorization, $found->boundTo($choice->id), $clients, $codes, $pending);
+    }
+
+    /**
+     * `GET /oauth/authorize/{authorization}/organization/new` — THE HOSTED "CREATE AN
+     * ORGANIZATION" STEP. A name, and the person becomes its Owner.
+     */
+    public function createOrganization(
+        Request $request,
+        string $authorization,
+        PendingAuthorizations $pending,
+        AuthorizationOrganizations $organizations,
+    ): Response {
+        $found = $pending->find($request, $authorization);
+        $me = app(CurrentUser::class);
+
+        if ($found === null || ! $me->check()) {
+            return $this->failure('This authorization request can no longer be completed. Please start again.');
+        }
+
+        if (! $organizations->creationOffered()) {
+            return $this->failure(OrganizationCreationRefused::notOffered()->getMessage());
+        }
+
+        return $this->page('oauth/create-organization', 'Create an organization', [
+            'client' => ['name' => $found->clientName, 'owner' => $found->clientOwner],
+            'me' => $this->meProps($me),
+            'storeHref' => route('oauth.authorize.organization.store', $authorization),
+            // Back to the picker when the app asked for one, so "create" is a detour from
+            // choosing rather than a dead end; otherwise the only way out is to cancel.
+            'pickerHref' => $found->asks(AuthorizationPrompt::SelectOrganization)
+                ? route('oauth.authorize.organization', $authorization)
+                : null,
+            'denyHref' => route('oauth.authorize.deny', $authorization),
+        ]);
+    }
+
+    public function storeOrganization(
+        CreateOrganizationRequest $request,
+        string $authorization,
+        ClientRegistry $clients,
+        AuthorizationCodes $codes,
+        PendingAuthorizations $pending,
+        AuthorizationOrganizations $organizations,
+    ): Response|SymfonyResponse {
+        $found = $pending->find($request, $authorization);
+        $me = app(CurrentUser::class);
+
+        if ($found === null || ! $me->check()) {
+            return $this->failure('This authorization request can no longer be completed. Please start again.');
+        }
+
+        try {
+            $created = $organizations->create($me->id(), $request->organizationName());
+        } catch (OrganizationCreationRefused $refused) {
+            return back()->withInput()->withErrors(['name' => $refused->getMessage()]);
+        }
+
+        return $this->continueBound($request, $authorization, $found->boundTo($created->id), $clients, $codes, $pending);
+    }
+
+    /**
+     * Spend the step's pending entry and carry on with the bound request: straight to the
+     * app for a first-party client that skips consent, otherwise to the consent screen.
+     */
+    private function continueBound(
+        Request $request,
+        string $spent,
+        PendingAuthorization $bound,
+        ClientRegistry $clients,
+        AuthorizationCodes $codes,
+        PendingAuthorizations $pending,
+    ): Response|SymfonyResponse {
+        // Spent either way: a second submit from a stale tab must not bind a second grant.
+        $pending->forget($request, $spent);
+
+        $client = $clients->byClientId($bound->clientId);
+
+        if (! $client instanceof Client) {
+            return $this->failure('This authorization request can no longer be completed. Please start again.');
+        }
+
+        return $this->proceed($request, $bound, $client, $clients, $codes, $pending, silent: false, redirectToScreen: true);
+    }
+
+    /**
+     * Consent, or straight to the app — the end of every path through the endpoint.
+     *
+     * FIRST-PARTY CONSENT-SKIP: an organization's own trusted app — or a platform-owned
+     * first-party client — authorizes without a prompt. STRICTLY organization-scoped: a
+     * first-party client owned by ANOTHER organization still prompts, so it can never
+     * silently mint a code for a different tenant's user. The issuing path re-asserts
+     * every invariant, so this skips the screen and never the checks.
+     *
+     * "Another organization" is measured against the organization the grant is FOR, not the
+     * one the session happens to be in: an app bound to Globex is not Acme's own app acting
+     * inside Acme, whatever the console was last looking at. And `prompt=consent` always
+     * shows the screen — that is the whole of what the value asks for.
+     */
+    private function proceed(
+        Request $request,
+        PendingAuthorization $authorization,
+        Client $client,
+        ClientRegistry $clients,
+        AuthorizationCodes $codes,
+        PendingAuthorizations $pending,
+        bool $silent,
+        bool $redirectToScreen,
+    ): Response|SymfonyResponse {
+        $organizationId = $authorization->organizationId ?? app(CurrentUser::class)->organizationId();
+
         $skipConsent = $client->first_party === true
-            && ($client->organization_id === null || $client->organization_id === $me->organizationId());
+            && ($client->organization_id === null || $client->organization_id === $organizationId)
+            && ! $authorization->asks(AuthorizationPrompt::Consent);
 
         if ($silent && ! $skipConsent) {
             /*
@@ -333,7 +617,7 @@ final readonly class OAuthConsentController extends PageController
              * building the redirect directly here was the one error path that omitted it,
              * and a mix-up-hardened client checks it on errors as well.
              */
-            return $this->redirectError($redirectUri, 'interaction_required', $state,
+            return $this->redirectError($authorization->redirectUri, 'interaction_required', $authorization->state,
                 'User interaction is required to authorize this request.');
         }
 
@@ -343,16 +627,27 @@ final readonly class OAuthConsentController extends PageController
 
         $id = $pending->put($request, $authorization);
 
+        return $redirectToScreen
+            ? redirect()->route('oauth.authorize.review', $id)
+            : $this->consentScreen($id, $authorization);
+    }
+
+    private function consentScreen(string $id, PendingAuthorization $authorization): Response
+    {
+        $me = app(CurrentUser::class);
+
         return $this->page('oauth/consent', 'Authorize', [
             'client' => [
                 'name' => $authorization->clientName,
                 'owner' => $authorization->clientOwner,
             ],
-            'me' => [
-                'name' => $me->name(),
-                'email' => $me->email(),
-                'initial' => mb_strtoupper(mb_substr($me->name(), 0, 1)),
-            ],
+            'me' => $this->meProps($me),
+            /*
+             * WHICH ORGANIZATION the app will see this person in. Their tokens carry its
+             * roles, so somebody in three teams is agreeing to something different in each —
+             * and the screen is the one place they can notice the app picked the wrong one.
+             */
+            'organization' => $this->organizationName($authorization, $me),
             /*
              * FROM THE CATALOG, not a second copy of it. The old map held four strings and
              * fell back to the raw scope key for everything else — so a person deciding
@@ -364,6 +659,82 @@ final readonly class OAuthConsentController extends PageController
             'approveHref' => route('oauth.authorize.approve', $id),
             'denyHref' => route('oauth.authorize.deny', $id),
         ]);
+    }
+
+    /** @return array{name: string, email: string|null, initial: string} */
+    private function meProps(CurrentUser $me): array
+    {
+        return [
+            'name' => $me->name(),
+            'email' => $me->email(),
+            'initial' => mb_strtoupper(mb_substr($me->name(), 0, 1)),
+        ];
+    }
+
+    private function organizationName(PendingAuthorization $authorization, CurrentUser $me): ?string
+    {
+        if ($authorization->organizationId === null) {
+            return $me->organization()?->name;
+        }
+
+        return app(AuthorizationOrganizations::class)->usableBy($me->id(), $authorization->organizationId)?->name;
+    }
+
+    /**
+     * A reason the organization parameters cannot be answered as sent, or null.
+     *
+     * Each of these is a request with two meanings, and guessing which one the app meant is
+     * how it ends up bound to an organization it did not ask for. id-js refuses the same
+     * combinations before the redirect; this is the same rule for every other client.
+     *
+     * @param  list<AuthorizationPrompt>  $prompts
+     */
+    private function invalidOrganizationRequest(array $prompts, mixed $organization, mixed $hint): ?string
+    {
+        $asks = static fn (AuthorizationPrompt $prompt): bool => in_array($prompt, $prompts, true);
+
+        // OIDC Core §3.1.2.1: `none` with any other value is an error.
+        if ($asks(AuthorizationPrompt::None) && count($prompts) > 1) {
+            return 'prompt=none cannot be combined with another prompt value.';
+        }
+
+        if ($organization !== null && (! is_string($organization) || trim($organization) === '')) {
+            return 'The organization parameter is empty. Omit it to authorize without binding to an organization.';
+        }
+
+        if ($hint !== null && ! is_string($hint)) {
+            return 'The organization_hint parameter must be a single organization id.';
+        }
+
+        if ($organization !== null && $asks(AuthorizationPrompt::SelectOrganization)) {
+            return 'organization binds the request to one organization, so prompt=select_organization has nothing to choose. Send organization_hint to preselect one in the picker instead.';
+        }
+
+        if ($organization !== null && $asks(AuthorizationPrompt::CreateOrganization)) {
+            return 'organization binds the request to an existing organization and prompt=create_organization creates a new one. Send one or the other.';
+        }
+
+        if ($asks(AuthorizationPrompt::Create) && $organization !== null) {
+            return 'prompt=create signs up a new account, which is not a member of any organization yet. Omit organization.';
+        }
+
+        if ($asks(AuthorizationPrompt::Create) && $asks(AuthorizationPrompt::CreateOrganization)) {
+            return 'prompt=create already asks the new account for its organization. Omit create_organization.';
+        }
+
+        $signup = app(SignupPolicy::class);
+
+        // OpenID Connect Prompt Create §4: a prompt value the server does not offer is
+        // `invalid_request`, and discovery does not list `create` where signup is closed.
+        if ($asks(AuthorizationPrompt::Create) && ! $signup->isOpen()) {
+            return 'Self-service sign-up is not available here, so prompt=create cannot be honoured.';
+        }
+
+        if ($asks(AuthorizationPrompt::CreateOrganization) && ! $signup->allowsCreatingOrganizations()) {
+            return 'Creating an organization is not available here, so prompt=create_organization cannot be honoured.';
+        }
+
+        return null;
     }
 
     public function approve(
@@ -485,10 +856,29 @@ final readonly class OAuthConsentController extends PageController
             return $this->failure('This application requires a more recent or stronger sign-in. Please start again.');
         }
 
+        /*
+         * THE BOUND ORGANIZATION, ASKED AGAIN. It was checked when the request arrived or
+         * when the person chose it — on another request. A membership removed, suspended or
+         * an organization closed while the consent screen sat open must not come back as a
+         * code whose tokens assert a role the person no longer holds. Answered to the CLIENT
+         * as `access_denied`, the same refusal the request would get if it arrived now.
+         */
+        if ($authorization->organizationId !== null
+            && app(AuthorizationOrganizations::class)->usableBy($me->id(), $authorization->organizationId) === null) {
+            return $this->redirectError($authorization->redirectUri, 'access_denied', $authorization->state,
+                'The user is not an active member of the requested organization.');
+        }
+
         $code = $codes->issue(
             $authorization->clientId,
             $me->id(),
-            $me->organizationId(),
+            /*
+             * The organization the grant was bound to, and only when nothing bound one the
+             * session's — which is what every authorization carried before an app could
+             * choose. The code carries it into the access token, the ID token, UserInfo and
+             * every refresh, so this one value is the app's `org` from here on.
+             */
+            $authorization->organizationId ?? $me->organizationId(),
             $authorization->redirectUri,
             /*
              * `array_values()` on `amr`: a JSON column is not guaranteed to rehydrate as a
@@ -591,6 +981,15 @@ final readonly class OAuthConsentController extends PageController
              * no-opped and the client's own value at REDEMPTION time was taken instead.
              */
             'resource' => $authorization->resource,
+            /*
+             * The organization request and the prompts, so a person who had to sign in first
+             * still reaches the picker the app asked for and a grant bound where the app
+             * said. `login` and `select_account` are carried too and cannot loop: both are
+             * skipped once `reauthed` is set.
+             */
+            'organization' => $authorization->organizationId,
+            'organization_hint' => $authorization->organizationHint,
+            'prompt' => implode(' ', array_map(static fn (AuthorizationPrompt $prompt): string => $prompt->value, $authorization->prompts)),
             'reauthed' => '1',
         ], static fn (?string $value): bool => $value !== null && $value !== ''));
     }
