@@ -15,6 +15,12 @@ use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
  * refresh-token gap so a downgrade takes effect promptly instead of riding a stale
  * grant to expiry. Reacts to the AccessControl domain-event outbox, so it stays
  * decoupled from the RoleService that emits.
+ *
+ * `revokeForUser()`, NEVER `withdrawAccess()`. The person has not lost access, only
+ * changed shape, so no application is told to sign them out (Back-Channel Logout) —
+ * withdrawing here would sign everybody out of every app whenever an administrator
+ * adjusted a role. {@see WithdrawAccessOnOrganizationClosed} and the framework's
+ * membership-removal listener are where access actually ends.
  */
 final class RevokeTokensOnRoleChange
 {

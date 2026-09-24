@@ -502,6 +502,14 @@ final readonly class OAuthConsentController extends PageController
             $session?->created_at?->getTimestamp(),
             $session !== null ? array_values($session->amr) : [],
             $authorization->resource,
+            /*
+             * THE SESSION THE PERSON APPROVED FROM (OIDC Back-Channel Logout 1.0). The ID
+             * Token carries `sid` derived from it, and the session is recorded against this
+             * client — so ending it (sign-out, an administrator's revoke, deactivation)
+             * tells this application to end its own session too. Without it the app is
+             * reachable only by `sub`, and ending one session cannot name it.
+             */
+            sessionId: $session?->id,
         );
 
         /*

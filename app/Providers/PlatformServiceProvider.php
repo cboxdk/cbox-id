@@ -21,6 +21,7 @@ use App\Platform\Install\FileSetupTokens;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\OrganizationInvitationService;
 use App\Platform\OpenEntitlements;
+use App\Platform\PlatformSignedInSession;
 use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
 use App\Platform\TrustedHosts;
@@ -28,6 +29,7 @@ use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\SignedInSession;
 use Cbox\Id\Identity\Contracts\SignedInSubject;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
@@ -55,6 +57,11 @@ final class PlatformServiceProvider extends ServiceProvider
         // Laravel's guard, which this application never populates — see
         // PlatformSignedInSubject for what that silently cost RP-initiated logout.
         $this->app->scoped(SignedInSubject::class, PlatformSignedInSubject::class);
+
+        // AND WHICH SESSION, for RP-initiated logout without a verifiable hint: that may
+        // end only this browser's session, and without this binding it ended none — the
+        // row stayed active and no application heard the person had left.
+        $this->app->scoped(SignedInSession::class, PlatformSignedInSession::class);
 
         // The customer's theme, on the Frontend API's public config document. Tagged
         // rather than referenced by the package: the framework owns the channel and
@@ -190,6 +197,9 @@ final class PlatformServiceProvider extends ServiceProvider
         // RBAC freshness: revoke a user's refresh tokens when their roles change, so a
         // grant/downgrade takes effect on next refresh rather than riding a stale token.
         Event::listen(EventDelivered::class, RevokeTokensOnRoleChange::class);
+        // WithdrawAccessOnOrganizationClosed is NOT listed here: Laravel discovers
+        // app/Listeners by the handle() type, and naming it as well runs it twice per event
+        // (as it does the line above, whose explicit registration predates discovery).
 
         // The trusted-Host allow-list is derived from the `environments` table and cached
         // for the resolution TTL, and NOTHING invalidated it. The window that opened is

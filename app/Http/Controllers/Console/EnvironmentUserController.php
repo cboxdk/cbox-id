@@ -38,6 +38,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
+use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
@@ -487,11 +488,25 @@ final readonly class EnvironmentUserController extends ConsoleController
         return back()->with('status', 'Session revoked.');
     }
 
-    public function revokeAllSessions(string $user, SessionManager $sessions): RedirectResponse
+    /**
+     * Sign this person out everywhere — the administrator's "this account's access is over
+     * until they sign in again".
+     *
+     * THE GRANTS TOO, not only the sessions. Ending the sessions told every application
+     * the person had signed in to (Back-Channel Logout), but a refresh token each one held
+     * went on minting access tokens, so an application that ignored the logout — or never
+     * registered for it — carried on acting as the person. {@see RefreshTokens::withdrawAccess()}
+     * revokes those and tells the applications holding them; it runs first, so the
+     * session revocation after it finds nobody left to notify twice.
+     */
+    public function revokeAllSessions(string $user, SessionManager $sessions, RefreshTokens $grants): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $sessions->revokeAllForUser($this->resolve($user)->id);
+        $userId = $this->resolve($user)->id;
+
+        $grants->withdrawAccess($userId);
+        $sessions->revokeAllForUser($userId);
 
         return back()->with('status', 'All sessions revoked.');
     }
