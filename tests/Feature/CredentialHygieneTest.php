@@ -149,6 +149,19 @@ it('shows each environment scope by its label with its key beside it', function 
     ]);
 });
 
+it('names the API-key scopes the way the console names the keys', function (): void {
+    ['environmentId' => $environmentId] = aKeyManager();
+
+    // The framework says "customer API keys"; everywhere a person reads about these keys
+    // in the console they are API keys, and an organization's are "Member API keys".
+    $labels = collect((array) $this->get(route('keys'))->assertOk()->inertiaProps('scopes'))
+        ->pluck('label', 'value');
+
+    expect($labels['api_keys:read'] ?? null)->toBe('Read member API keys')
+        ->and($labels['api_keys:write'] ?? null)->toBe('Revoke member API keys')
+        ->and($labels->filter(fn ($label): bool => str_contains(strtolower((string) $label), 'customer'))->all())->toBe([]);
+});
+
 it('does not offer a scope no route requires — reserved, or catalogued ahead of its endpoint', function (): void {
     ['environmentId' => $environmentId] = aKeyManager();
 

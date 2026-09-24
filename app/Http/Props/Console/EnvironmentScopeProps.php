@@ -26,7 +26,24 @@ final readonly class EnvironmentScopeProps implements Prop
 
     public static function from(EnvironmentApiScope $scope): self
     {
-        return new self($scope->value, $scope->label(), EnvironmentKeyScopes::writes($scope));
+        return new self($scope->value, self::label($scope), EnvironmentKeyScopes::writes($scope));
+    }
+
+    /**
+     * The framework's label, except where the console names the thing differently.
+     *
+     * The keys people create for an app's API are "API keys" to the person holding one and
+     * "Member API keys" to the organization and the environment that see them all. The
+     * framework calls them customer API keys; a box on this page saying so would be the one
+     * place in the console using a third name for them.
+     */
+    private static function label(EnvironmentApiScope $scope): string
+    {
+        return match ($scope) {
+            EnvironmentApiScope::ApiKeysRead => 'Read member API keys',
+            EnvironmentApiScope::ApiKeysWrite => 'Revoke member API keys',
+            default => $scope->label(),
+        };
     }
 
     /**
