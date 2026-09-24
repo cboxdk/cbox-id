@@ -1141,7 +1141,10 @@
     .cbx-menuitem[data-selected='true'] {
         background: var(--secondary);
     }
-    .cbx-menuitem[data-disabled] { opacity: 0.5; cursor: not-allowed; }
+    /* Not `[data-disabled]` alone: cmdk writes `data-disabled="false"` on every ENABLED
+       item, so the bare selector drew every combobox option at half opacity with a
+       not-allowed cursor. Radix writes the attribute only when an item is disabled. */
+    .cbx-menuitem[data-disabled]:not([data-disabled='false']) { opacity: 0.5; cursor: not-allowed; }
     .cbx-menuitem.is-destructive { color: var(--destructive-strong); }
     .cbx-menuitem.is-destructive[data-highlighted] { background: var(--destructive-soft); }
     .cbx-menuitem-hint {

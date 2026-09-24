@@ -8,7 +8,8 @@ use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 
 /**
- * When a user's role is assigned or unassigned, revoke their refresh tokens so the
+ * When a user's role is assigned or unassigned — in one organization or, for a staff
+ * role, across the whole environment — revoke their refresh tokens so the
  * next refresh forces re-authentication and re-mints a token carrying the new roles
  * and permissions — the "freshness" half of the federated RBAC model. Access tokens
  * already self-heal within their (short, configurable) TTL; this closes the
@@ -40,6 +41,27 @@ final class RevokeTokensOnRoleChange
                 if (is_string($userId) && $userId !== '') {
                     $this->refreshTokens->revokeForUser($userId, $event->organization_id);
                 }
+            }
+
+            return;
+        }
+
+        /*
+         * STAFF ROLES TOO. An environment-wide grant belongs to no organization, and it is
+         * stamped into the person's tokens in EVERY organization — so granting or taking
+         * one back changes the claims of every refresh token they hold, not one
+         * organization's. These two events carry no organization (it is null on the
+         * event), and a null organization is exactly "all of them" to revokeForUser().
+         *
+         * This listener used to know only the organization pair, so a staff role taken
+         * back from somebody kept riding their refresh tokens to expiry — the one grant
+         * that reaches every organization was the one grant that never refreshed.
+         */
+        if (in_array($event->type, ['role.assigned_everywhere', 'role.unassigned_everywhere'], true)) {
+            $userId = $event->payload['user_id'] ?? null;
+
+            if (is_string($userId) && $userId !== '') {
+                $this->refreshTokens->revokeForUser($userId, null);
             }
 
             return;

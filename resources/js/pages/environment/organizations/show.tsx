@@ -30,6 +30,8 @@ import {
     type RoleOption,
     roleSelectOptions,
     Select,
+    type SupportSessionRow,
+    SupportSessions,
 } from '@/ui';
 
 interface AccessRole {
@@ -83,6 +85,8 @@ type Props = PageProps<{
     apps: ReturnApp[];
     /** Every API key the organization's people hold for its apps. Seen and revoked, never minted here. */
     apiKeys: AppApiKey[];
+    /** Somebody signed in to an app as one of its people, right now. */
+    supportSessions: SupportSessionRow[];
     indexHref: string;
     urls: {
         update: string;
@@ -107,6 +111,7 @@ export default function OrganizationDetail({
     rosterRoleOptions,
     apps,
     apiKeys,
+    supportSessions,
     indexHref,
     urls,
 }: Props) {
@@ -166,6 +171,20 @@ export default function OrganizationDetail({
             </Panel>
 
             <PendingInvitations invitations={invitations} />
+
+            <Panel
+                title="Support sessions"
+                description="Signed in to an app as one of this organization's people right now. Each one is also on the organization's activity log, with its reason."
+            >
+                {supportSessions.length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                        Nobody is signed in to an app as one of its people. Start one from a
+                        person's page under Users.
+                    </p>
+                ) : (
+                    <SupportSessions sessions={supportSessions} lead="user" />
+                )}
+            </Panel>
 
             <Domains domains={domains} addHref={urls.addDomain} />
 

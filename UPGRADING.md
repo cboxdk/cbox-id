@@ -89,6 +89,26 @@ For forks and scripts that drive the console's routes directly:
   immediate, as before. After a step-up it returns to the Secrets tab.
 - Nothing to migrate: APIs, secrets and the new settings live in laravel-id 1.19's tables.
 
+### Staff roles, staff reviews and support access
+
+Nothing to migrate: the tables are laravel-id 1.19's.
+
+- **The user page's "Staff roles" offers app roles too.** Any role no organization owns
+  can be granted everywhere; an app's own role then reaches only that app. The page's
+  checkboxes are now a list with **Take back** and a picker. A refused grant is reported
+  under `staffRole`, naming the rule and the organization.
+- **Granting or taking back a staff role revokes the person's refresh tokens in every
+  organization**, so apps get the new roles on their next refresh. Nobody is signed out.
+- **Support access needs a first-party app the environment owns, with a web redirect
+  URI.** Mark your own apps first-party (`first_party`) and leave them unowned by any
+  organization to offer them. `CBOX_ID_SUPPORT_SESSION_MAX_TTL` (seconds, default and
+  maximum 3600) caps a session. An app that keeps its own session must let a support
+  session start a fresh sign-in, and should show a banner when a token carries `act`.
+- **`/oauth/authorize` answers an administrator's support session before anything else.**
+  A browser that started a support session for an app gets a code for it the next time
+  that app signs in, for as long as the session is open and the administrator is still
+  signed in to the console.
+
 ### Console pages have one URL each; old GET URLs answer 301
 
 Every console page now has one path, the same on both consoles; the environment

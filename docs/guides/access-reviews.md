@@ -9,7 +9,8 @@ description: Run a round of certification over who holds which role and membersh
 **Console page:** Access control › Access reviews
 
 An access review is a round where you go through who holds which role and
-membership, and confirm each one is still needed. Access accumulates quietly —
+membership, and confirm each one is still needed. A review covers one organization, or,
+on the environment console, every [staff role](#staff-roles). Access accumulates quietly —
 people change teams, cover for someone, join a project that ended — and nobody
 ever files a ticket to have their own permissions reduced. A review is the
 scheduled moment when that gets cleaned up.
@@ -25,6 +26,20 @@ claim; a closed review with names, decisions and dates is evidence.
 3. **Close the review.** Revocations are applied at that point — not as you click,
    which means you can change your mind mid-review without having already broken
    somebody's access.
+
+## Staff roles
+
+**Environment console only.** A [staff role](roles.md#staff-roles) is held across the
+whole environment, so no organization's review includes it. On the environment console,
+**New review** asks what to review: the organization chosen in the bar above, or **Staff
+roles**. The Staff page's **Review staff access** button opens the second directly.
+
+A staff review lists every staff role and who holds it. Revoking an item takes the role
+back **in every organization at once** when the review closes. A staff review stays on the
+environment console's list whichever organization is chosen, marked *Staff roles*.
+
+An organization's administrators never see a staff review or the grants in it, and cannot
+open one.
 
 ## Doing it well
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -70,7 +71,22 @@ final class Authenticate
         $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
 
         if ($session === null) {
-            $request->session()->forget(PlatformAuth::SESSION_KEY);
+            /*
+             * NOT AN ENVIRONMENT ADMINISTRATOR'S SESSION. Theirs is a platform-root session
+             * anchored to this host ({@see EnvironmentAdminAuth}), so it never resolves under
+             * the tenant scope this middleware reads in — and forgetting it signed the
+             * administrator out of their console the moment their browser touched a tenant
+             * page that resolves a subject. /oauth/authorize is one: opening an app, or
+             * starting a support session that hands the browser to one, cost the console.
+             *
+             * Left in place, it still grants nothing HERE — CurrentUser stays empty below,
+             * exactly as for a guest — and EnvironmentAdminAuth re-verifies it on every
+             * request, so a revoked one is refused there rather than preserved.
+             */
+            if (app(EnvironmentAdminAuth::class)->membership() === null) {
+                $request->session()->forget(PlatformAuth::SESSION_KEY);
+            }
+
             $this->current->clear();
 
             if ($optional) {

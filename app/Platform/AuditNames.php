@@ -9,6 +9,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
 
 /**
@@ -30,6 +31,7 @@ final readonly class AuditNames
     public function __construct(
         private Subjects $subjects,
         private Organizations $organizations,
+        private PlatformRoot $platformRoot,
     ) {}
 
     /**
@@ -73,11 +75,34 @@ final readonly class AuditNames
             };
         }
 
+        $people = $this->subjectNames($userIds);
+
         return [
-            ...$this->subjectNames($userIds),
+            ...$people,
+            ...$this->administratorNames(array_diff($userIds, array_keys($people))),
             ...$this->organizationNames($orgIds),
             ...$this->clientNames($clientIds),
         ];
+    }
+
+    /**
+     * Names for the people this environment does not know: its ADMINISTRATORS, who are
+     * subjects of the platform root. A support session is recorded on the organization's
+     * trail with the administrator as its actor — "who acted as your member" is the
+     * question that trail exists to answer, and a bare id does not answer it.
+     *
+     * @param  array<int, string>  $ids
+     * @return array<string, string>
+     */
+    private function administratorNames(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $names = $this->platformRoot->run(fn (): array => $this->subjectNames($ids));
+
+        return is_array($names) ? $names : [];
     }
 
     /**

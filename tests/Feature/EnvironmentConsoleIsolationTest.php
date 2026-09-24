@@ -136,6 +136,11 @@ function seedTenantData(string $environmentId, string $marker): array
             // page and watching this sweep pass.
             app(Roles::class)->define($org->id, "{$marker} Role");
 
+            // A staff grant: environment-wide, so it belongs to no organization, and the
+            // Staff page lists it by the person and the role.
+            $staffRole = app(Roles::class)->define(null, "{$marker} Staff role");
+            app(Roles::class)->assignEverywhere($user->id, $staffRole->id);
+
             app(SecretVault::class)->store(
                 strtolower($marker).'-secret',
                 'custom',

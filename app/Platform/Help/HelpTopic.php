@@ -59,6 +59,8 @@ enum HelpTopic: string
     case ReviewAgentRequests = 'review-agent-requests';
     case Organizations = 'organizations';
     case Users = 'users';
+    case Staff = 'staff';
+    case SupportAccess = 'support-access';
     case SignInRules = 'sign-in-rules';
     case SamlApplications = 'saml-applications';
     case LegacyLogin = 'legacy-login';
@@ -114,6 +116,8 @@ enum HelpTopic: string
             self::ReviewAgentRequests => 'Agent requests across the environment',
             self::Organizations => 'The teams using your product',
             self::Users => 'Everyone who can sign in here',
+            self::Staff => 'Roles for your own people',
+            self::SupportAccess => 'Signing in to an app as somebody else',
             self::SignInRules => 'The rules every sign-in has to meet',
             self::SamlApplications => 'Applications that trust this environment',
             self::LegacyLogin => 'Signing in through your old system',
@@ -204,6 +208,8 @@ enum HelpTopic: string
             self::Organizations => 'Each organization is a company or team using your product, with its own members, roles, domains and single sign-on. Create one for each company that signs up, and open it to manage its members, invitations and verified domains, or to suspend it.',
 
             self::Users => 'Every person with an identity in this environment, whichever organizations they belong to. Open one to reset their password or two-factor, sign out their sessions, deactivate them, or change which organizations and roles they hold.',
+            self::Staff => 'A staff role is a role you grant to your own people — support, operations — across the whole environment: it applies in every organization, and no organization\'s admins can see, grant or remove it. An app\'s own role granted this way reaches only that app.',
+            self::SupportAccess => 'See an app exactly as one of its users does: you sign in to the app as them, for a reason you state and at most an hour. The app is told who is really there, gets no way to stay signed in, and the organization\'s activity log records who did it and why.',
 
             self::SignInRules => 'The password rules, lockout, two-factor requirement and single sign-on requirement that apply whenever someone signs in. The environment sets a baseline every organization inherits, and an organization can make its own rules stricter but never looser.',
 
@@ -265,6 +271,8 @@ enum HelpTopic: string
             self::Keys => 'guides/keys',
             self::ApiKeys,
             self::MemberApiKeys => 'guides/api-keys',
+            self::Staff => 'guides/roles',
+            self::SupportAccess => 'guides/support-access',
             self::Projects,
             self::Workspaces,
             self::Environments,

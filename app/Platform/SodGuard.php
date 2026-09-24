@@ -45,6 +45,40 @@ final class SodGuard
     }
 
     /**
+     * Refuse a STAFF role that would complete a pair with a staff role the person already
+     * holds, under an environment-wide policy — or null when it would not.
+     *
+     * The per-organization check above cannot see this: it is only asked in organizations
+     * the person belongs to, and a staff role applies to somebody who belongs to none. Two
+     * conflicting staff roles held by such a person are refused nowhere, and the pair then
+     * lands in every organization they are later added to — where nothing asks again,
+     * because joining is not a role grant.
+     *
+     * @param  list<string>  $heldEverywhere  the staff roles the person already holds
+     */
+    public function refuseEverywhere(string $roleId, array $heldEverywhere): ?SodRefusal
+    {
+        $policies = SodPolicy::query()
+            ->where('active', true)
+            ->whereNull('organization_id')
+            ->get();
+
+        foreach ($policies as $policy) {
+            if (! in_array($roleId, $policy->role_ids, true)) {
+                continue;
+            }
+
+            $others = array_values(array_diff(array_intersect($policy->role_ids, $heldEverywhere), [$roleId]));
+
+            if ($others !== []) {
+                return $this->refusalFor($policy, $roleId, $others);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Refuse a PROPOSED SET of roles that is internally toxic, or null when it is not.
      *
      * The gate above cannot see this case: an invitee holds nothing yet, so granting any

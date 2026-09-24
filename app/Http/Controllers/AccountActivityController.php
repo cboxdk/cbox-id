@@ -13,6 +13,7 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\ConnectedApplication;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -75,6 +76,10 @@ final readonly class AccountActivityController extends PageController
         'user.passkey_authenticated' => 'Signed in with a passkey',
         'user.email_verified' => 'Email address verified',
         'user.magic_link_requested' => 'Sign-in link requested',
+        // Somebody else, signed in to an app AS this person. They are entitled to know it
+        // happened, in which app, and why — the reason is the only account of it they get.
+        'support_session.started' => 'Support signed in to an app as you',
+        'support_session.ended' => 'A support session as you ended',
     ];
 
     public function index(RefreshTokens $tokens): Response
@@ -229,6 +234,14 @@ final readonly class AccountActivityController extends PageController
                     ->where('target_id', $subjectId)))
             ->whereIn('action', array_keys(self::ACTIVITY))
             /*
+             * A support session is recorded TWICE — on the organization's trail and on the
+             * environment's — so that each of their readers has it. This person needs it
+             * once: the organization's copy, which is theirs.
+             */
+            ->where(fn (Builder $query): Builder => $query
+                ->whereNotIn('action', ['support_session.started', 'support_session.ended'])
+                ->orWhereNotNull('organization_id'))
+            /*
              * By the chain's own sequence, which is monotonic per environment — two events
              * in the same second are still ordered, and a clock that moves cannot reorder
              * somebody's history.
@@ -237,6 +250,8 @@ final readonly class AccountActivityController extends PageController
             ->limit(self::ACTIVITY_ROWS)
             ->get();
 
+        $apps = $this->appNames($entries);
+
         /** @var list<array<string, mixed>> $rows */
         $rows = [];
 
@@ -244,6 +259,7 @@ final readonly class AccountActivityController extends PageController
             $rows[] = [
                 'id' => $entry->id,
                 'label' => self::ACTIVITY[$entry->action] ?? $entry->action,
+                'detail' => $this->detail($entry, $apps),
                 // Only when there IS one. An entry written outside a request — a scheduled
                 // job, a console command — has no address, and printing "no address
                 // recorded" on every such row is a column of noise.
@@ -260,6 +276,56 @@ final readonly class AccountActivityController extends PageController
         }
 
         return $rows;
+    }
+
+    /**
+     * The line under a row that needs one: for a support session, which app and why.
+     *
+     * @param  array<string, string>  $apps
+     */
+    private function detail(AuditEntry $entry, array $apps): ?string
+    {
+        if ($entry->action !== 'support_session.started') {
+            return null;
+        }
+
+        $clientId = $entry->context['client_id'] ?? null;
+        $reason = $entry->context['reason'] ?? null;
+
+        $app = is_string($clientId) ? ($apps[$clientId] ?? $clientId) : 'an app';
+
+        return is_string($reason) && $reason !== '' ? $app.' — “'.$reason.'”' : $app;
+    }
+
+    /**
+     * client id => app name, for the support sessions on this page.
+     *
+     * @param  iterable<AuditEntry>  $entries
+     * @return array<string, string>
+     */
+    private function appNames(iterable $entries): array
+    {
+        $ids = [];
+
+        foreach ($entries as $entry) {
+            $clientId = $entry->context['client_id'] ?? null;
+
+            if (str_starts_with($entry->action, 'support_session.') && is_string($clientId)) {
+                $ids[$clientId] = true;
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $names = [];
+
+        foreach (Client::query()->whereIn('client_id', array_keys($ids))->get(['client_id', 'name']) as $client) {
+            $names[$client->client_id] = $client->name;
+        }
+
+        return $names;
     }
 
     /** The signed-in subject. The route requires one, so its absence is a 403 and not a page. */

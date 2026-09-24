@@ -10,6 +10,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\ReturnAppProps;
 use App\Http\Props\Shared\RoleOptionProps;
+use App\Http\Props\Shared\SupportSessionProps;
 use App\Http\Requests\Console\AddOrganizationDomainRequest;
 use App\Http\Requests\Console\AddOrganizationMemberRequest;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
@@ -28,6 +29,7 @@ use App\Platform\Membership\MembershipLifecycle;
 use App\Platform\Membership\MembershipRefused;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
+use App\Platform\SupportAccess\Contracts\SupportAccess;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -134,7 +136,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             ->with('status', 'Organization created.');
     }
 
-    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog, OrganizationInvitations $invitations, AppReturnTargets $targets, MemberApiKeys $apiKeys, AppApiKeyRows $apiKeyRows): Response
+    public function show(string $organization, Memberships $memberships, OrgAccessRoles $catalog, OrganizationInvitations $invitations, AppReturnTargets $targets, MemberApiKeys $apiKeys, AppApiKeyRows $apiKeyRows, SupportAccess $support): Response
     {
         $this->assertEnvironmentAdmin();
 
@@ -218,6 +220,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
                 withHolder: true,
                 revokeHref: static fn (CustomerApiKey $key): string => route('environment.organizations.api-keys.revoke', [$model->id, $key->id]),
             ),
+            // Somebody signed in to an app as one of this organization's people, right now.
+            // The organization's own activity log records each one; this is where the
+            // environment's administrators see them while they are open, and end them.
+            'supportSessions' => SupportSessionProps::list($support->activeForOrganization($model->id)),
             'indexHref' => route('environment.organizations'),
             'urls' => [
                 'update' => route('environment.organizations.update', $model->id),

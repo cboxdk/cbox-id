@@ -29,6 +29,8 @@ interface ApplicationRow {
 interface ActivityRow {
     id: string;
     label: string;
+    /** A second line where the event needs one — for a support session, the app and why. */
+    detail: string | null;
     ip: string | null;
     at: string | null;
     atIso: string | null;
@@ -241,6 +243,14 @@ export default function Activity({
                         >
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm">{entry.label}</p>
+                                {entry.detail !== null && (
+                                    <p
+                                        className="text-xs break-words"
+                                        style={{ color: 'var(--muted-foreground)' }}
+                                    >
+                                        {entry.detail}
+                                    </p>
+                                )}
                                 {/*
                                     Only when there IS one. An entry written outside a request
                                     has no address, and "no address recorded" on every such
