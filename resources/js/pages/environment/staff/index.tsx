@@ -99,7 +99,7 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                             description={
                                 scope === 'All apps'
                                     ? 'In the tokens of every app, in every organization.'
-                                    : `Only in ${scope}'s tokens, in every organization.`
+                                    : `Only in tokens for ${scope}, in every organization.`
                             }
                         >
                             <ul className="-my-1">
@@ -161,7 +161,8 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                 open={revoking !== null}
                 onOpenChange={(open) => !open && setRevoking(null)}
                 name={revoking?.userName ?? revoking?.userEmail ?? ''}
-                verb={`Take back “${revoking?.role.name ?? ''}” from`}
+                title={`Take back “${revoking?.role.name ?? ''}” from ${revoking?.userName ?? revoking?.userEmail ?? ''}?`}
+                actionLabel="Take back"
                 consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh the person's tokens; nobody is signed out."
                 onConfirm={() => {
                     const grant = revoking;

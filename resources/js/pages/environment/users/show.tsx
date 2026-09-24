@@ -971,7 +971,8 @@ function StaffRolesPanel({
                 open={takingBack !== null}
                 onOpenChange={(open) => !open && setTakingBack(null)}
                 name={takingBack?.name ?? ''}
-                verb="Take back"
+                title={`Take back the staff role “${takingBack?.name ?? ''}”?`}
+                actionLabel="Take back"
                 consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh this person's tokens; nobody is signed out."
                 onConfirm={() => {
                     const staffRole = takingBack;

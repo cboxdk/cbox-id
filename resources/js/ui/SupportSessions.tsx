@@ -2,7 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Badge } from './Badge';
 import { Button } from './Button';
-import { ConfirmDelete } from './ConfirmDelete';
+import { Dialog } from './Dialog';
 
 /** A support session that is open right now, as the server describes it. */
 export interface SupportSessionRow {
@@ -100,20 +100,40 @@ export function SupportSessions({
                 ))}
             </ul>
 
-            <ConfirmDelete
+            {/*
+                An ORDINARY confirm, not type-to-confirm. Ending a session only ever takes
+                access away from the person acting, and it is the button somebody reaches
+                for when something looks wrong — a typed name in front of it slows exactly
+                the moment that should be fast.
+            */}
+            <Dialog
                 open={ending !== null}
                 onOpenChange={(open) => !open && setEnding(null)}
-                name={ending === null ? '' : `${ending.user} in ${ending.app}`}
-                verb="End the support session for"
-                consequence="Every token it issued is revoked now, and no new sign-in can use it. An app that checks tokens itself stops accepting them when they expire, which is never later than the session's own end."
-                onConfirm={() => {
-                    const session = ending;
-                    setEnding(null);
+                size="sm"
+                title={
+                    ending === null
+                        ? ''
+                        : `End the support session for ${ending.user} in ${ending.app}?`
+                }
+                description="Every token it issued is revoked now, and no new sign-in can use it. An app that checks tokens itself stops accepting them when they expire, which is never later than the session's own end."
+                footer={
+                    <>
+                        <Button onClick={() => setEnding(null)}>Cancel</Button>
+                        <Button
+                            variant="danger"
+                            onClick={() => {
+                                const session = ending;
+                                setEnding(null);
 
-                    if (session !== null) {
-                        router.delete(session.endHref, { preserveScroll: true });
-                    }
-                }}
+                                if (session !== null) {
+                                    router.delete(session.endHref, { preserveScroll: true });
+                                }
+                            }}
+                        >
+                            End now
+                        </Button>
+                    </>
+                }
             />
         </>
     );
