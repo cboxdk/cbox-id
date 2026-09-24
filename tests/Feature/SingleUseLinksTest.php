@@ -51,7 +51,8 @@ it('shows an organization invitation without accepting it, then accepts it on th
             // invitation they were not expecting.
             ->where('confirmation.facts.0', ['label' => 'Organization', 'value' => 'Acme'])
             ->where('confirmation.facts.1', ['label' => 'Invited by', 'value' => 'Owner'])
-            ->where('confirmation.facts.2', ['label' => 'Role', 'value' => 'Member']));
+            ->where('confirmation.facts.2', ['label' => 'Built-in role', 'value' => 'Member'])
+            ->where('confirmation.facts.3', ['label' => 'Your email', 'value' => 'joiner@acme.test']));
 
     // Nothing was spent: still pending, nobody created, nobody signed in.
     expect(app(Invitations::class)->byToken($pending->token)?->isPending())->toBeTrue()

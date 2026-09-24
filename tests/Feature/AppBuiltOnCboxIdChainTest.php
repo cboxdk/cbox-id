@@ -337,7 +337,11 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('auth/join-organization')
             ->where('confirmation.heading', 'Join Hansen Revision?')
-            ->where('confirmation.facts.4', ['label' => 'App', 'value' => 'cboxtax']));
+            // Both kinds of role, in the console's words: the built-in one, and the app
+            // role the invitation parked.
+            ->where('confirmation.facts.2', ['label' => 'Built-in role', 'value' => 'Member'])
+            ->where('confirmation.facts.3', ['label' => 'Roles in cboxtax', 'value' => 'Editor'])
+            ->where('confirmation.facts.5', ['label' => 'App', 'value' => 'cboxtax']));
 
     // The GET spent nothing.
     expect($invitation->refresh()->status)->toBe(InvitationStatus::Pending)

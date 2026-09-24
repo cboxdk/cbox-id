@@ -9,6 +9,7 @@ use App\Http\Props\Auth\LinkFact;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\Invitations\AppReturnTargets;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Invitations\ValueObjects\InvitedRole;
 use App\Platform\PlatformAuth;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
@@ -51,7 +52,15 @@ final readonly class InvitationController extends PageController
             $facts[] = new LinkFact('Invited by', $preview->inviterName);
         }
 
-        $facts[] = new LinkFact('Role', $preview->role->label());
+        // THE CONSOLE'S WORDS, in the console's order: exactly one built-in role, then the
+        // roles in each app and the custom roles — the groups the inviter ticked them in.
+        // "Role: Member" alone told somebody invited as an Editor that they were not one.
+        $facts[] = new LinkFact('Built-in role', $preview->role->label());
+
+        foreach ($this->rolesByGroup($preview->roles) as $label => $names) {
+            $facts[] = new LinkFact($label, implode(', ', $names));
+        }
+
         $facts[] = new LinkFact('Your email', $preview->email);
 
         if ($preview->appName !== null) {
@@ -105,5 +114,28 @@ final readonly class InvitationController extends PageController
         }
 
         return redirect()->route('dashboard')->with('status', 'Invitation accepted — welcome aboard.');
+    }
+
+    /**
+     * "Custom roles" => [Approver], "Roles in cboxtax" => [Editor] — the custom roles
+     * first and then app by app, as the People page's picker groups them.
+     *
+     * @param  list<InvitedRole>  $roles
+     * @return array<string, list<string>>
+     */
+    private function rolesByGroup(array $roles): array
+    {
+        $apps = [];
+        $custom = [];
+
+        foreach ($roles as $role) {
+            if ($role->appName === null) {
+                $custom[] = $role->name;
+            } else {
+                $apps['Roles in '.$role->appName][] = $role->name;
+            }
+        }
+
+        return $custom === [] ? $apps : ['Custom roles' => $custom, ...$apps];
     }
 }

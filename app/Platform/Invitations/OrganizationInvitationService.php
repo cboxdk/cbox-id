@@ -12,6 +12,7 @@ use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
 use App\Platform\Invitations\ValueObjects\AcceptedInvitation;
 use App\Platform\Invitations\ValueObjects\InvitationPreview;
+use App\Platform\Invitations\ValueObjects\InvitedRole;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\NewInvitation;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
@@ -25,6 +26,7 @@ use Carbon\CarbonInterface;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Exceptions\GrantRefused;
 use Cbox\Id\AccessControl\Exceptions\UnknownRole;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -295,7 +297,47 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             role: $invitation->role,
             inviterName: $inviter,
             appName: $target?->appName,
+            roles: $this->invitedRoles($invitation),
         );
+    }
+
+    /**
+     * The app and custom roles accepting this invitation would grant, ordered by name.
+     *
+     * Read against what the organization offers NOW, the same set acceptance grants
+     * through: a parked role made staff-only or retired since is withheld at acceptance,
+     * so the page must not promise it.
+     *
+     * @return list<InvitedRole>
+     */
+    private function invitedRoles(Invitation $invitation): array
+    {
+        $parked = InvitationRoleGrant::query()
+            ->where('organization_id', $invitation->organization_id)
+            ->where('invitation_id', $invitation->id)
+            ->pluck('role_id')
+            ->all();
+
+        if ($parked === []) {
+            return [];
+        }
+
+        $roles = $this->catalog->tenantAssignable($invitation->organization_id)
+            ->filter(static fn (Role $role): bool => in_array($role->id, $parked, true))
+            ->values();
+
+        $appNames = $this->appNames(array_values(array_filter($roles->pluck('client_id')->all(), 'is_string')));
+
+        $out = [];
+
+        foreach ($roles as $role) {
+            $out[] = new InvitedRole(
+                name: $role->name,
+                appName: $role->client_id === null ? null : ($appNames[$role->client_id] ?? $role->client_id),
+            );
+        }
+
+        return $out;
     }
 
     public function accept(string $token): AcceptedInvitation

@@ -203,6 +203,10 @@ it('walks sign-up, a second team and an invitation back to the app, page by page
     $bo->assertSee('Join Hansen Revision?')
         ->assertSee('Anna Hansen')
         ->assertSee('cboxtax')
+        // Both roles he is agreeing to, not only the built-in one.
+        ->assertSee('Built-in role')
+        ->assertSee('Roles in cboxtax')
+        ->assertSee('Editor')
         ->assertSee('bo@nordic-survey.test')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'chain-3-join');
