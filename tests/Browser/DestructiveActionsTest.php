@@ -152,7 +152,8 @@ it('deletes the app once the name is typed exactly', function (): void {
 it('shows a rotated client secret once and never again', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/apps/'.$client->id);
+    // Rotation lives on the app's Secrets tab.
+    $page = visit('/apps/'.$client->id.'/secrets');
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Rotate secret")')
@@ -168,11 +169,11 @@ it('shows a rotated client secret once and never again', function (): void {
      * the secret was shown does not show it, which is what makes "once" true rather than
      * merely "not in the next response".
      */
-    $page->navigate('/apps/'.$client->id);
+    $page->navigate('/apps/'.$client->id.'/secrets');
 
     $page->assertSee('Billing Worker')
         ->assertDontSee('Copy your client secret now')
         // And the page says where it went, rather than leaving a blank where a
         // credential used to be.
-        ->assertSee('shown only once');
+        ->assertSee('Only a hash of each is stored');
 })->group('a11y');

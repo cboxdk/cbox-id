@@ -20,12 +20,16 @@ use App\Http\Controllers\Console\AccessReviewController;
 use App\Http\Controllers\Console\AccountSettingsController;
 use App\Http\Controllers\Console\ActingOrganizationController;
 use App\Http\Controllers\Console\AgentApprovalController;
+use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ApiKeyController;
 use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
 use App\Http\Controllers\Console\AuthPolicyController;
-use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ClientController;
+use App\Http\Controllers\Console\ClientPromotionController;
+use App\Http\Controllers\Console\ClientScopesController;
+use App\Http\Controllers\Console\ClientSecretsController;
+use App\Http\Controllers\Console\ClientSettingsController;
 use App\Http\Controllers\Console\ConnectionController;
 use App\Http\Controllers\Console\DashboardController;
 use App\Http\Controllers\Console\DirectoryController;
@@ -762,7 +766,19 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::patch('/apps/{client}', [ClientController::class, 'update'])->name('clients.update');
     Route::put('/apps/{client}/manifest', [ClientController::class, 'saveManifest'])->name('clients.manifest');
     Route::post('/apps/{client}/sync', [ClientController::class, 'sync'])->name('clients.sync');
-    Route::post('/apps/{client}/rotate', [ClientController::class, 'rotate'])->name('clients.rotate');
+    // The app's other three pages — its scopes, its secrets, its settings — each a URL of
+    // its own, on the same header as the overview. See App\Platform\Console\AppTabs.
+    Route::get('/apps/{client}/scopes', [ClientScopesController::class, 'show'])->name('clients.scopes');
+    Route::put('/apps/{client}/scopes', [ClientScopesController::class, 'update'])->name('clients.scopes.update');
+    Route::get('/apps/{client}/secrets', [ClientSecretsController::class, 'index'])->name('clients.secrets');
+    Route::post('/apps/{client}/rotate', [ClientSecretsController::class, 'rotate'])->name('clients.rotate');
+    Route::delete('/apps/{client}/secrets/{secret}', [ClientSecretsController::class, 'revoke'])->name('clients.secrets.revoke');
+    Route::get('/apps/{client}/settings', [ClientSettingsController::class, 'show'])->name('clients.settings');
+    Route::put('/apps/{client}/settings/lifetime', [ClientSettingsController::class, 'lifetime'])->name('clients.settings.lifetime');
+    Route::put('/apps/{client}/settings/token-exchange', [ClientSettingsController::class, 'exchange'])->name('clients.settings.exchange');
+    Route::put('/apps/{client}/settings/logout', [ClientSettingsController::class, 'logout'])->name('clients.settings.logout');
+    Route::put('/apps/{client}/settings/api-keys', [ClientSettingsController::class, 'apiKeys'])->name('clients.settings.api-keys');
+    Route::get('/apps/{client}/blueprint', [ClientPromotionController::class, 'blueprint'])->name('clients.blueprint');
     Route::delete('/apps/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
     // Webhooks: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page with its inline
@@ -1185,7 +1201,20 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::patch('/apps/{client}', [ClientController::class, 'update'])->name('environment.clients.update');
         Route::put('/apps/{client}/manifest', [ClientController::class, 'saveManifest'])->name('environment.clients.manifest');
         Route::post('/apps/{client}/sync', [ClientController::class, 'sync'])->name('environment.clients.sync');
-        Route::post('/apps/{client}/rotate', [ClientController::class, 'rotate'])->name('environment.clients.rotate');
+        Route::get('/apps/{client}/scopes', [ClientScopesController::class, 'show'])->name('environment.clients.scopes');
+        Route::put('/apps/{client}/scopes', [ClientScopesController::class, 'update'])->name('environment.clients.scopes.update');
+        Route::get('/apps/{client}/secrets', [ClientSecretsController::class, 'index'])->name('environment.clients.secrets');
+        Route::post('/apps/{client}/rotate', [ClientSecretsController::class, 'rotate'])->name('environment.clients.rotate');
+        Route::delete('/apps/{client}/secrets/{secret}', [ClientSecretsController::class, 'revoke'])->name('environment.clients.secrets.revoke');
+        Route::get('/apps/{client}/settings', [ClientSettingsController::class, 'show'])->name('environment.clients.settings');
+        Route::put('/apps/{client}/settings/lifetime', [ClientSettingsController::class, 'lifetime'])->name('environment.clients.settings.lifetime');
+        Route::put('/apps/{client}/settings/token-exchange', [ClientSettingsController::class, 'exchange'])->name('environment.clients.settings.exchange');
+        Route::put('/apps/{client}/settings/logout', [ClientSettingsController::class, 'logout'])->name('environment.clients.settings.logout');
+        Route::put('/apps/{client}/settings/api-keys', [ClientSettingsController::class, 'apiKeys'])->name('environment.clients.settings.api-keys');
+        Route::get('/apps/{client}/blueprint', [ClientPromotionController::class, 'blueprint'])->name('environment.clients.blueprint');
+        // Promotion between environments of one project — this console's alone, because an
+        // organization has no other environment to copy its app into.
+        Route::post('/apps/{client}/copy', [ClientPromotionController::class, 'copy'])->name('environment.clients.copy');
         Route::delete('/apps/{client}', [ClientController::class, 'destroy'])->name('environment.clients.destroy');
 
         // APIs — the resource servers tokens are minted for, and the scopes each owns.

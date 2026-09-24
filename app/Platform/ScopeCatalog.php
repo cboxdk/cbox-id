@@ -54,7 +54,7 @@ final class ScopeCatalog
             ['key' => 'groups', 'label' => 'Their roles, as a “groups” claim', 'description' => 'Puts the person’s ROLES on the ID token under the name `groups` — what Kubernetes, Grafana, Vault and most older SaaS look for. There is nothing called a group in this console: create a Role named as the app expects, and it arrives here.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Your roles'],
             ['key' => 'vault.manage', 'label' => 'Manage stored secrets', 'description' => 'Create, rotate and revoke downstream credentials in the Token Vault.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'vault.lease', 'label' => 'Use stored secrets', 'description' => 'Fetch a stored credential to call a downstream service.', 'category' => self::PLATFORM_API, 'recommended' => false],
-            ['key' => 'apps.manifest', 'label' => 'Publish its own manifest', 'description' => 'Let this app push its own roles &amp; permissions manifest to Cbox ID.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            ['key' => 'apps.manifest', 'label' => 'Publish its own manifest', 'description' => 'Let this app push its own roles and permissions manifest to Cbox ID.', 'category' => self::PLATFORM_API, 'recommended' => false],
             // The scope `/oauth/decisions` requires once an operator turns
             // `oauth.decisions.require_scope` on. It was named by the controller and by
             // the config and offered NOWHERE, so switching that flag on made the endpoint

@@ -1639,8 +1639,6 @@ it('gives the organization plane the edit and rotate it never had', function ():
             'name' => 'Support Portal (EU)',
             'redirectUris' => 'https://eu.portal.example.test/callback',
             'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
-            'scopes' => $showing['scopes'],
-            'customScopes' => $showing['customScopes'],
         ])
         ->assertSessionHasNoErrors();
 

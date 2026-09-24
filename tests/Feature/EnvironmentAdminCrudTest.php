@@ -470,8 +470,6 @@ it('registers and edits an application\'s post-logout redirect URIs', function (
             'name' => $showing['name'],
             'redirectUris' => $showing['redirectUris'],
             'postLogoutRedirectUris' => 'https://a.example/farewell',
-            'scopes' => $showing['scopes'],
-            'customScopes' => $showing['customScopes'],
         ])
         ->assertSessionHasNoErrors();
 
