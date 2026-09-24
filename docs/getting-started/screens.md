@@ -72,6 +72,23 @@ Create a new organization and its first owner. Risk scoring runs on submit
 
 ![Signup screen](../screenshots/signup.png)
 
+### Whose name is on the door
+
+On the platform root the sign-in pages carry Cbox ID's own panel beside the form. On a
+customer's environment every door — sign-in, sign-up, password reset, magic link, an
+invitation, the organization picker and the create-a-team step — carries that
+environment's brand instead: the name and logo its Appearance page previews, over its
+colours, with no Cbox ID panel. An organization's own door (`/o/{slug}/login`) carries the
+organization's. The consoles on that host stay Cbox ID's.
+
+### Joining by invitation
+
+The link in an invitation opens a page that says who is inviting whom, and every role
+accepting will grant, in the console's words: the **built-in role** (Member, Admin, …) and
+the **roles in each app** and **custom roles** the inviter ticked. A role that became
+staff-only or was retired while the invitation waited is left off, because accepting would
+withhold it.
+
 ## The workspace console
 
 What a workspace member sees at the platform root of a hosted deployment. The rail is the

@@ -234,6 +234,20 @@ final class PlaneResolver
     }
 
     /**
+     * Whether this request is on a CUSTOMER's environment of a multi-tenant deployment — a
+     * host whose sign-in doors carry somebody else's name.
+     *
+     * Not {@see servesIssuer()}, which answers true everywhere on a single-tenant install:
+     * there the one environment IS the deployment, its operator names it through
+     * `cbox-id.branding.*`, and its doors are theirs already. Here the environment is a
+     * vendor's product, and Cbox's own pitch on its sign-up page is a stranger's.
+     */
+    public function onCustomerEnvironment(): bool
+    {
+        return $this->isMultiTenant() && $this->onTenantEnvironment();
+    }
+
+    /**
      * Whether the ENVIRONMENT-ADMIN door is served here — `/admin/*`, entered by redeeming
      * the account plane's signed handoff.
      *

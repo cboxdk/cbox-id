@@ -1,6 +1,6 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
-import type { PageProps } from '@/types';
+import type { PageProps, SharedProps } from '@/types';
 import { Button, Icon } from '@/ui';
 
 interface ScopeRow {
@@ -55,7 +55,15 @@ export default function Consent({
     );
 }
 
+/** Whose account this is: the door's brand on a customer's environment, else this product. */
+function useAccountName(): string {
+    const { app, brand } = usePage<SharedProps>().props;
+
+    return brand?.name ?? app.name;
+}
+
 function Failure({ message }: { message: string }) {
+    const accountName = useAccountName();
     return (
         <div>
             <div
@@ -75,7 +83,7 @@ function Failure({ message }: { message: string }) {
                 {message}
             </p>
             <Button asChild className="w-full mt-6">
-                <a href="/">Back to Cbox ID</a>
+                <a href="/">Back to {accountName}</a>
             </Button>
         </div>
     );
@@ -100,6 +108,7 @@ function Authorize({
 }) {
     const approve = useForm({});
     const deny = useForm({});
+    const accountName = useAccountName();
 
     return (
         <div>
@@ -117,7 +126,7 @@ function Authorize({
 
             <h1 className="text-2xl font-semibold tracking-tight">Authorize {client.name}</h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
-                <b>{client.name}</b> wants to access your Cbox ID account.
+                <b>{client.name}</b> wants to access your {accountName} account.
             </p>
 
             {/*

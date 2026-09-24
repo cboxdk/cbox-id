@@ -408,6 +408,17 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **The invitation page said "Role: Member" to somebody invited as an Editor.** It
+  listed only the built-in role. It now lists the built-in role and every app and custom
+  role accepting will grant, in the console's words ("Built-in role", "Roles in cboxtax",
+  "Custom roles"), and leaves off a role that was made staff-only or retired since.
+- **A customer environment's sign-up showed Cbox ID's marketing panel to its end users.**
+  Every door on a customer environment of a multi-tenant deployment — sign-in, sign-up,
+  password reset, magic link, invitation, organization picker, create organization — now
+  carries the environment's brand (its name and logo from Appearance, over its colours,
+  also in the tab title) and no Cbox ID panel, pitch or "Set up Cbox ID" copy. An
+  organization-branded door drops the panel too. The platform root's doors and a
+  single-tenant install's keep theirs; the consoles on that host keep Cbox ID's name.
 - **A staff-only role posted to an organization's People page was refused in silence.**
   Granting it by id redirected back with nothing said, and an invitation carrying it was
   sent — "Invitation sent" — without it. Both now refuse the whole request with "That

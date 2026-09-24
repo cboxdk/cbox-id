@@ -21,6 +21,8 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
     // Set once the risk scorer has asked THIS submission to be challenged, and gone
     // again on the next page. The overwhelming majority never see a CAPTCHA at all.
     const challenged = usePage().flash.challenged === true;
+    // A customer environment's own sign-up says the customer's name, never ours.
+    const { brand } = usePage<Props>().props;
 
     const form = useForm({
         organization: '',
@@ -50,7 +52,9 @@ export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedA
                     ? 'A workspace for your company, and your own hosted identity provider — SSO, users and sign-in you fully control, live in a minute.'
                     : forApp !== null
                       ? `Sign up for ${forApp}. You will be the owner of your team, and can invite people once you are in.`
-                      : 'Set up Cbox ID for your team in under a minute.'}
+                      : brand !== null
+                        ? `Sign up for ${brand.name}. You will be the owner of your team, and can invite people once you are in.`
+                        : 'Set up Cbox ID for your team in under a minute.'}
             </p>
 
             <form
