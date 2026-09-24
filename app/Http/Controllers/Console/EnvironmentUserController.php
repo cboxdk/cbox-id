@@ -8,6 +8,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Props\Shared\StaffRoleProps;
+use App\Http\Props\Shared\SupportSessionProps;
 use App\Http\Requests\Console\AssignUserOrganizationRequest;
 use App\Http\Requests\Console\CreateEnvironmentUserRequest;
 use App\Http\Requests\Console\SaveEnvironmentUserRequest;
@@ -26,6 +27,8 @@ use App\Platform\OrgAccessRoles;
 use App\Platform\OrganizationAccess;
 use App\Platform\OrgRoles;
 use App\Platform\Staff\Contracts\StaffRoles;
+use App\Platform\SupportAccess\Contracts\SupportAccess;
+use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
@@ -41,6 +44,7 @@ use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
@@ -195,6 +199,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         OrgAccessRoles $catalog,
         Mfa $mfa,
         StaffRoles $staff,
+        SupportAccess $support,
     ): Response {
         $this->assertEnvironmentAdmin();
 
@@ -216,6 +221,9 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'organizationId' => $membership->organization_id,
                 'organizationName' => $names[$membership->organization_id] ?? $membership->organization_id,
                 'role' => $membership->role->value,
+                // Invited and suspended members cannot be acted as: a support session
+                // would put them into an organization its administrators have not.
+                'active' => $membership->status === MembershipStatus::Active,
                 'managesOrganization' => $membership->role->canManageOrganization(),
                 // Per-org RBAC catalogue + what this user holds there. Roles are largely
                 // environment-wide, but app-declared roles are scoped per organization.
@@ -273,6 +281,26 @@ final readonly class EnvironmentUserController extends ConsoleController
             'staffRoles' => StaffRoleProps::list($staff->grantable()),
             'heldStaffRoles' => $staff->heldBy($model->id),
             'staffHref' => route('environment.staff'),
+            /*
+             * SUPPORT ACCESS — sign in to one of the environment's own apps as this person.
+             * Only the apps a support session can reach are offered, and only the
+             * organizations they are an active member of; both are asked again on the way
+             * in, because a posted id is anything a client chooses to send.
+             */
+            'support' => [
+                'apps' => array_map(static fn (SupportApp $app): array => [
+                    'value' => $app->clientId,
+                    'label' => $app->name,
+                ], $support->eligibleApps()),
+                'organizations' => array_values(array_map(
+                    static fn (array $row): array => ['value' => $row['organizationId'], 'label' => $row['organizationName']],
+                    array_filter($rows, static fn (array $row): bool => $row['active']),
+                )),
+                'maxMinutes' => $support->maxMinutes(),
+                'sessions' => SupportSessionProps::list($support->activeForUser($model->id)),
+                'help' => HelpProps::for(HelpTopic::SupportAccess),
+                'startHref' => route('environment.users.support-sessions.store', $model->id),
+            ],
             'sessions' => $this->sessionProps($model->id),
             // The same lists every other roster in the product offers. The membership rows
             // name Owner so an owner's row says what it holds; nothing offers it.

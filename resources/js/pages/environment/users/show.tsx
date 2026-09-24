@@ -1,9 +1,10 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
+    Help,
     Button,
     Checkbox,
     ConfirmDelete,
@@ -21,6 +22,8 @@ import {
     type StaffRoleOption,
     StaffRolePicker,
     staffRoleScope,
+    type SupportSessionRow,
+    SupportSessions,
 } from '@/ui';
 
 interface AccessRole {
@@ -51,6 +54,17 @@ interface SessionRow {
     revokeHref: string;
 }
 
+interface SupportProps {
+    /** Only the apps a support session can reach: first-party, owned by this environment. */
+    apps: { value: string; label: string }[];
+    /** Only the organizations they are an active member of. */
+    organizations: { value: string; label: string }[];
+    maxMinutes: number;
+    sessions: SupportSessionRow[];
+    help: HelpContent;
+    startHref: string;
+}
+
 type Props = PageProps<{
     user: {
         id: string;
@@ -68,6 +82,7 @@ type Props = PageProps<{
     staffRoles: StaffRoleOption[];
     heldStaffRoles: string[];
     staffHref: string;
+    support: SupportProps;
     sessions: SessionRow[];
     /** What a new membership may be given — never Owner. */
     assignableRoles: RoleOption[];
@@ -107,6 +122,7 @@ export default function UserDetail({
     staffRoles,
     heldStaffRoles,
     staffHref,
+    support,
     sessions,
     assignableRoles,
     membershipRoles,
@@ -167,6 +183,8 @@ export default function UserDetail({
                 staffHref={staffHref}
                 href={urls.environmentRole}
             />
+
+            <SupportAccess support={support} label={label} active={user.status === 'active'} />
 
             <Impersonation memberships={memberships} href={urls.impersonate} />
         </div>
@@ -1077,6 +1095,128 @@ function AddToOrganization({
                 </div>
             )}
         </form>
+    );
+}
+
+/**
+ * "SIGN IN TO <APP> AS <USER>" — support access.
+ *
+ * Starting one sends this browser to the app, which starts its own sign-in and receives
+ * tokens that name you as the one really there. Only apps the environment owns and trusts
+ * are offered, only organizations the person is an active member of, and never longer
+ * than the configured maximum; the server asks all three again.
+ */
+function SupportAccess({
+    support,
+    label,
+    active,
+}: {
+    support: SupportProps;
+    label: string;
+    active: boolean;
+}) {
+    const durations = [15, 30, 60, support.maxMinutes]
+        .filter(
+            (minutes, index, all) =>
+                minutes <= support.maxMinutes && all.indexOf(minutes) === index,
+        )
+        .sort((a, b) => a - b);
+
+    const form = useForm({
+        app: support.apps[0]?.value ?? '',
+        organization: support.organizations[0]?.value ?? '',
+        reason: '',
+        minutes: String(Math.min(30, support.maxMinutes)),
+    });
+
+    const appName = support.apps.find((app) => app.value === form.data.app)?.label ?? 'an app';
+
+    const unavailable =
+        support.apps.length === 0
+            ? 'No app can be entered this way yet. Support access reaches only first-party apps this environment owns that sign people in with a redirect.'
+            : !active
+              ? 'This person cannot sign in, so nobody can sign in as them either.'
+              : support.organizations.length === 0
+                ? 'They are not an active member of any organization, and a support session always acts inside one.'
+                : null;
+
+    return (
+        <Panel
+            title={
+                <span className="inline-flex items-center gap-1.5">
+                    Support access <Help help={support.help} />
+                </span>
+            }
+            description={`Sign in to one of your apps as ${label} to see what they see. The app is told it is you, and the organization's activity log records who, when and why.`}
+        >
+            <div className="space-y-4">
+                <SupportSessions sessions={support.sessions} lead="organization" />
+
+                {unavailable !== null ? (
+                    <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                        {unavailable}
+                    </p>
+                ) : (
+                    <form
+                        className="grid gap-3 sm:grid-cols-2 items-start"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            form.post(support.startHref, { preserveScroll: true });
+                        }}
+                    >
+                        <Field label="App" error={form.errors.app}>
+                            <Select
+                                value={form.data.app}
+                                onValueChange={(app) => form.setData('app', app)}
+                                options={support.apps}
+                            />
+                        </Field>
+
+                        <Field label="Organization" error={form.errors.organization}>
+                            <Select
+                                value={form.data.organization}
+                                onValueChange={(organization) =>
+                                    form.setData('organization', organization)
+                                }
+                                options={support.organizations}
+                            />
+                        </Field>
+
+                        <Field
+                            label="Reason"
+                            hint="The organization sees this on its activity log."
+                            error={form.errors.reason}
+                        >
+                            <Input
+                                name="reason"
+                                maxLength={500}
+                                required
+                                placeholder="Ticket 4411: invoice totals look wrong"
+                                value={form.data.reason}
+                                onChange={(event) => form.setData('reason', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="For" error={form.errors.minutes}>
+                            <Select
+                                value={form.data.minutes}
+                                onValueChange={(minutes) => form.setData('minutes', minutes)}
+                                options={durations.map((minutes) => ({
+                                    value: String(minutes),
+                                    label: minutes === 60 ? '1 hour' : `${minutes} minutes`,
+                                }))}
+                            />
+                        </Field>
+
+                        <div className="sm:col-span-2">
+                            <Button type="submit" variant="primary" loading={form.processing}>
+                                Sign in to {appName} as {label}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+            </div>
+        </Panel>
     );
 }
 

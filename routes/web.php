@@ -56,6 +56,7 @@ use App\Http\Controllers\Console\ServiceProviderController;
 use App\Http\Controllers\Console\SettingsController;
 use App\Http\Controllers\Console\SocialProviderController;
 use App\Http\Controllers\Console\StaffController;
+use App\Http\Controllers\Console\SupportSessionController;
 use App\Http\Controllers\Console\UsageController;
 use App\Http\Controllers\Console\VaultController;
 use App\Http\Controllers\Console\WebhookController;
@@ -1048,6 +1049,11 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::delete('/users/{user}/organizations/{organization}', [EnvironmentUserController::class, 'removeMembership'])->name('environment.users.organizations.remove');
 
         Route::post('/users/{user}/roles', [EnvironmentUserController::class, 'setEnvironmentRole'])->name('environment.users.roles');
+
+        // Support access — "sign in to <app> as <user>". Starting one asks for a fresh
+        // password in the controller (after validation) and hands the browser to the app.
+        Route::post('/users/{user}/support-sessions', [SupportSessionController::class, 'store'])->name('environment.users.support-sessions.store');
+        Route::delete('/support-sessions/{session}', [SupportSessionController::class, 'destroy'])->name('environment.support-sessions.end');
 
         // Staff — roles held across the whole environment, by its own people. This console
         // only: an organization's administrators never grant one.

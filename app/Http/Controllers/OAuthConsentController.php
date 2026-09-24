@@ -10,6 +10,7 @@ use App\Platform\FrontendApi\SignInWithTicket;
 use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\ScopeCatalog;
+use App\Platform\SupportAccess\Contracts\SupportAccess;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -221,6 +222,28 @@ final readonly class OAuthConsentController extends PageController
              */
             pushedPayload: $pushed,
         );
+
+        /*
+         * A SUPPORT SESSION this browser holds for this app. An environment administrator
+         * started it from the console and was handed to the app, and this is the app's own
+         * sign-in arriving: it is answered with a code minted FOR THE SESSION, bound to the
+         * app's PKCE challenge, whose tokens carry `act` and never a refresh token. Ahead of
+         * everything about the signed-in person, because the administrator is nobody on
+         * this tenant — and never when a login ticket names who just signed in here.
+         */
+        $supportCode = $from('login_ticket') === null
+            ? app(SupportAccess::class)->codeFor($client->client_id, $redirectUri, $codeChallenge, $authorization->nonce)
+            : null;
+
+        if ($supportCode !== null) {
+            $params = ['code' => $supportCode, 'iss' => app(IssuerResolver::class)->issuer()];
+
+            if ($state !== null) {
+                $params['state'] = $state;
+            }
+
+            return $this->leave($this->buildRedirect($redirectUri, $params));
+        }
 
         /*
          * OIDC `prompt` handling. `select_account` sends the person to the account chooser;

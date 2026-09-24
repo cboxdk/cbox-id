@@ -70,6 +70,7 @@ export { Select, type SelectOption } from './Select';
 export { Spinner } from './Spinner';
 export { StaffRolePicker, type StaffRoleOption, staffRoleScope } from './StaffRolePicker';
 export { Stat, type StatTone } from './Stat';
+export { SupportSessions, type SupportSessionRow } from './SupportSessions';
 export { Switch } from './Switch';
 export { type LinkTab, LinkTabs } from './LinkTabs';
 export { Tab, TabPanel, Tabs } from './Tabs';
