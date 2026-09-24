@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Platform\Health\QueueWorkersReadinessCheck;
+use Cbox\LaravelHealth\Checks\CacheCheck;
+use Cbox\LaravelHealth\Checks\DatabaseCheck;
+use Cbox\LaravelHealth\Checks\QueueCheck;
+use Cbox\LaravelHealth\Checks\StorageCheck;
+
 /*
 |--------------------------------------------------------------------------
 | Health endpoints
@@ -33,6 +39,13 @@ declare(strict_types=1);
 | so the requirement is visible in the repository rather than discovered from a
 | 403 during an incident.
 |
+| READINESS ALSO ANSWERS FOR THE QUEUE WORKERS (`queue_workers`): red when no
+| `queue:autoscale` manager has reported in, or a queue's oldest job has waited
+| past its pickup SLA. That makes it the right thing to ALERT on and the wrong
+| thing to ROUTE on — a load balancer that pulls instances on a red readiness
+| would take the whole web tier down because a background process died. Route on
+| `/up`; alert on `/health/ready`. See docs/operations/queue-workers.md.
+|
 */
 
 return [
@@ -49,5 +62,23 @@ return [
          * able to enumerate which dependency of ours is currently unhappy.
          */
         'public_endpoints' => ['liveness'],
+    ],
+
+    /*
+     * The vendor's lists, restated because a published `checks` key replaces the
+     * package's whole block rather than merging into it — and extended by one.
+     */
+    'checks' => [
+        'liveness' => [
+            DatabaseCheck::class,
+        ],
+        'readiness' => [
+            DatabaseCheck::class,
+            CacheCheck::class,
+            QueueCheck::class,
+            StorageCheck::class,
+            QueueWorkersReadinessCheck::class,
+        ],
+        'startup' => [],
     ],
 ];

@@ -4,7 +4,12 @@ port: 80
 source: true
 url: APP_URL
 processes:
-  queue: ["php", "artisan", "queue:work", "--tries=1"]
+  # The queue MANAGER, not a worker: it starts, sizes and stops the `queue:work`
+  # processes itself (cboxdk/laravel-queue-autoscale). One per pod — run a second
+  # replica only with QUEUE_AUTOSCALE_CLUSTER_ENABLED=true. It needs Redis for its
+  # metrics and heartbeat, which the cache binding below provides.
+  # See docs/operations/queue-workers.md.
+  queue: ["php", "artisan", "queue:autoscale"]
 
 # This application trusts no proxy unless told to, deliberately — so behind a
 # real gateway it must be told. Without it Laravel builds every URL from the

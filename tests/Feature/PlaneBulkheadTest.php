@@ -388,19 +388,20 @@ it('refuses a plane name that no longer exists, in both shapes', function (): vo
  * only for URLs somebody thought to list. Neither can see a name that is simply never
  * applied. This asks the routing table instead.
  *
- * A name may legitimately carry nothing — `operator` does, and says so in its own
- * docblock — but that has to be a written decision rather than a gap, which is the
- * difference this test is made of.
+ * A name may legitimately carry nothing — `operator` did, until the queue monitor — but
+ * that has to be a written decision rather than a gap, which is the difference this test
+ * is made of.
  */
 it('leaves no plane name applied to nothing', function (): void {
     // Stated in the test, not read from the middleware: a list derived from the same
     // source it is checking would accept any drift as correct.
-    $deliberatelyUnrouted = [
-        // The staff console became a SECTION of the one console (`/platform`), which asks
-        // who you are rather than which host you are on. The name is kept because it is
-        // still the answer if a separate operator door is ever served again.
-        'operator',
-    ];
+    //
+    // Empty since the queue monitor: `operator` sat here while nothing carried it — the
+    // staff pages became a section of the one console and stopped asking which host they
+    // are on — and the monitor is the separate operator surface that does ask, so it
+    // carries the name again. Keep this list honest: a name that goes back to carrying
+    // nothing comes back here with a reason.
+    $deliberatelyUnrouted = [];
 
     $applied = [];
 

@@ -137,12 +137,11 @@ final class EnforcePlane
             // on a customer's own domain is a phishing surface and an unnecessary
             // disclosure. It belongs on the platform root, with the account plane.
             //
-            // Nothing carries `plane:operator` today: the staff pages became a SECTION of
-            // the one console (`/platform`), which asks who you are rather than which host
-            // you are on, and the separate operator door they needed a bulkhead for is
-            // gone. Kept because the plane name is still a name a route may take, and
-            // because it is still the answer for the question "may a staff sign-in be
-            // served here" if one is ever served again.
+            // The staff pages themselves no longer carry it: they became a SECTION of the
+            // one console (`/platform`), which asks who you are rather than which host you
+            // are on. The queue monitor (`/platform/queues/monitor`) does — it is a
+            // separate application with its own UI, and a staff tool has no business on a
+            // customer's origin. See config/queue-monitor.php.
             // A HOST question, not a context question — see PlaneResolver::onOperatorPlane().
             // Asking onAccountPlane() here meant an operator who used the environment
             // switcher 404'd out of the entire staff console, logout included.

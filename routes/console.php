@@ -37,3 +37,16 @@ Artisan::command('inspire', function () {
 Schedule::command('model:prune', ['--model' => [RiskDecision::class, AnalyticsEvent::class, LoginTicket::class, EnrolmentCode::class]])
     ->daily()
     ->onOneServer();
+
+// The queue monitor's retention — without these the package's retention settings are
+// only settings. `prune` keeps a week (and at most `retention.max_rows`) of job history
+// AND the autoscaler's scaling and cluster events, which the manager writes every cycle;
+// `resolve-stuck` closes out rows a killed worker left `processing` forever, which would
+// otherwise read on the dashboard as work in flight. See config/queue-monitor.php.
+Schedule::command('queue-monitor:prune')
+    ->daily()
+    ->onOneServer();
+
+Schedule::command('queue-monitor:resolve-stuck')
+    ->everyFifteenMinutes()
+    ->onOneServer();
