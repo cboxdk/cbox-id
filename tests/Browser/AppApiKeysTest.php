@@ -121,10 +121,10 @@ it('draws an organization\'s keys on the environment console\'s organization pag
     mintAppKey($fixture, $fixture['ada'], ['returns:read', 'returns:file'], name: 'Accounting sync');
 
     // The panel sits below the roster and the invite form; bring it into the frame.
-    $toPanel = 'Array.from(document.querySelectorAll("h2")).find((h) => h.textContent === "API keys")?.scrollIntoView()';
+    $toPanel = 'Array.from(document.querySelectorAll("h2")).find((h) => h.textContent === "Member API keys")?.scrollIntoView()';
 
     $light = visit('/admin/organizations/'.$fixture['org']->id)
-        ->assertSee('API keys')
+        ->assertSee('Member API keys')
         ->assertSee('Accounting sync')
         ->assertSee('Ada Lovelace')
         ->assertNoJavaScriptErrors();

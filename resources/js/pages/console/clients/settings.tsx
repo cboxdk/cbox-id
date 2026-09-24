@@ -178,8 +178,8 @@ function ApiKeysForm({ apiKeys }: { apiKeys: Props['apiKeys'] }) {
 
     return (
         <Panel
-            title="User API keys"
-            description="Lets the people who use this app create API keys for it — each tied to them, one organization and a subset of their permissions in this app. Your API checks a key by calling Cbox ID with this app's own credentials, and a key loses a permission the moment its holder does."
+            title="API keys"
+            description="Lets the people who use this app create API keys for its API, under My account › API keys — each tied to them, one organization and a subset of their permissions in this app. Your API checks a key by calling Cbox ID with this app's own credentials, and a key loses a permission the moment its holder does."
         >
             <form
                 className="space-y-3"

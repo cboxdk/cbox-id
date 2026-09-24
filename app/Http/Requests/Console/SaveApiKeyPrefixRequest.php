@@ -9,7 +9,7 @@ use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * The prefix this app's user API keys carry — `acme_live` makes keys shaped
+ * The prefix this app's API keys carry — `acme_live` makes keys shaped
  * `acme_live_…`. Declaring one is what lets the people who use the app create keys for
  * it; empty stops new keys being created.
  *

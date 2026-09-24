@@ -54,7 +54,7 @@ Open an app and it has up to four tabs, each a page of its own:
   [Scopes](#scopes) below.
 - **Secrets** — for an app that holds a client secret. Not drawn for a public app (it has
   none) or one that signs in with its own keys.
-- **Settings** — token lifetime, token exchange, back-channel logout and user API keys.
+- **Settings** — token lifetime, token exchange, back-channel logout and API keys.
 
 An organization's administrator looking at one of the environment's first-party apps
 sees Overview and Scopes, read-only: those apps are the environment's to change.
@@ -109,8 +109,8 @@ and revoking both ask for your password first.
   logout token to when somebody signs out, an administrator ends their sessions, or they
   are removed or deactivated. Tick **The app needs the session id** if it ends one session
   at a time.
-- **User API keys** — set a **key prefix** such as `acme_live` and the people who use the
-  app can create API keys for it, each tied to them, one organization and a subset of their
+- **API keys** — set a **key prefix** such as `acme_live` and the people who use the
+  app can create API keys for its API under My account › [API keys](api-keys.md), each tied to them, one organization and a subset of their
   permissions in this app. Your API checks a key by calling Cbox ID with this app's own
   credentials, and a key loses a permission the moment its holder does. The prefix is
   2–16 lowercase letters or digits followed by `_live` or `_test`, unique in the
@@ -135,7 +135,7 @@ Two buttons at the top of every tab, for whoever manages the app:
   Copying is for the environment's own apps. An app an organization owns cannot be copied —
   the organization exists in this environment only — and neither can an app that
   registered itself or one that signs in with its own keys; the dialog says so. If the
-  other environment already has an app with the same user API key prefix, clear the prefix
+  other environment already has an app with the same API key prefix, clear the prefix
   on one of them first.
 
 ## Things worth knowing

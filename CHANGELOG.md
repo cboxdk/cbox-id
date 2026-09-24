@@ -130,7 +130,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   as the consoles; a member's roles in one organization (`GET`, `PUT|DELETE
   …/roles/{roleId}`); `GET /v1/roles`; staff grants everywhere
   (`/v1/users/{id}/environment-roles/{roleId}`); apps (list, register from a blueprint or
-  a short form, export a blueprint); APIs (CRUD); customers' API keys per organization and
+  a short form, export a blueprint); APIs (CRUD); member API keys per organization and
   revoke; and `POST /v1/support-sessions`. A role can be named by your manifest `key` with
   `client_id`. The key acts with the environment's authority, so it may grant a staff role
   inside one organization; the tenant plane still cannot, and an invitation from the API
@@ -164,8 +164,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
     the app's last). Both behind the step-up.
   - **Settings**: access-token lifetime in minutes (bounded by
     `CBOX_ID_MAX_ACCESS_TOKEN_TTL`, stated on the page), token exchange (confidential apps
-    only), back-channel logout URI and "needs the session id", and a user API key prefix
-    that turns user API keys on for the app.
+    only), back-channel logout URI and "needs the session id", and an API key prefix
+    (**API keys**) that lets the app's people create keys under My account › API keys.
 - **Download blueprint** (both consoles) — the app's configuration as JSON, never a client
   id or secret. **Copy to another environment** (environment console) registers the app in
   another environment of the same project that the person administers, with its own client

@@ -152,8 +152,8 @@ final readonly class ClientSettingsController extends ConsoleController
             $registry->blueprint($model)->withApiKeyPrefix($prefix),
             'prefix',
             $prefix === null
-                ? 'User API keys turned off. Keys already created keep working until they are revoked.'
-                : "User API keys turned on. New keys start with {$prefix}_.",
+                ? 'API keys turned off for this app. Keys already created keep working until they are revoked.'
+                : "API keys turned on for this app. New keys start with {$prefix}_.",
         );
     }
 

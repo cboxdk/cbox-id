@@ -43,7 +43,9 @@ characters followed by `_live` or `_test`, for example `acme_live`. Use `_test` 
 the app you registered in a sandbox environment, so a leaked key says which kind it is at
 a glance. `cbid` is reserved.
 
-Set it on your app's settings in the environment console, or from code:
+Set it in the console under **Developers › Apps ›** *your app* **› Settings › API keys**
+(the environment console, or the organization's console for an app an organization
+owns), or from code:
 
 ```php
 use Cbox\Id\Organization\Contracts\CustomerApiKeys;

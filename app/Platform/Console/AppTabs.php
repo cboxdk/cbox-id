@@ -20,7 +20,7 @@ use Cbox\Id\OAuthServer\Models\Client;
  *  - OVERVIEW: connect it, its credentials, its details, its roles manifest;
  *  - SCOPES: what it may ask for, and the audience its tokens will carry;
  *  - SECRETS: its live secrets, rotation with an overlap, revoking one;
- *  - SETTINGS: token lifetime, token exchange, back-channel logout, user API keys.
+ *  - SETTINGS: token lifetime, token exchange, back-channel logout, API keys.
  *
  * A tab the person cannot use is not drawn. Secrets exist only for an app that holds a
  * shared secret — a public app uses PKCE and an app that signs assertions holds keys — and

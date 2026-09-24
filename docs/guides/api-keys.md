@@ -55,7 +55,8 @@ whether anything still depends on it.
 
 - **Your own keys:** My account › API keys.
 - **Everybody's keys in an organization:** People › Member API keys, for owners and
-  admins. The environment console shows the same list on each organization's page.
+  admins. The environment console shows the same list, as **Member API keys**, on each
+  organization's page.
 
 Admins can revoke any key in their organization. They cannot create a key for somebody
 else: a key acts as the person who holds it, so each person creates their own.
@@ -68,5 +69,6 @@ it. An admin revoking somebody else's key is recorded as the admin.
 
 ## For app developers
 
-To offer keys for your own app's API, see
+An app offers keys once it has a key prefix: **Developers › Apps ›** *the app* **›
+Settings › API keys**. For the whole integration, verifying keys included, see
 [Let your customers create API keys](../getting-started/let-your-customers-create-api-keys.md).

@@ -26,7 +26,7 @@ see [API keys](api-keys.md).
 
 A management key (`cbid_env_…`) lets your own backend run the tenancy of **one
 environment**: organizations and their owners, users, members, invitations, roles, apps,
-APIs, your customers' API keys and support sessions. It carries explicit **scopes** rather
+APIs, member API keys and support sessions. It carries explicit **scopes** rather
 than a role, and read never implies write. The form opens with read-only scopes ticked;
 you opt in to each write scope yourself, and the form marks which scopes write. The form
 offers a scope only when an endpoint uses it. What each endpoint does is in

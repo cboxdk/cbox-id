@@ -132,7 +132,7 @@ it('saves where the app is told somebody signed out, and refuses an address it w
         ->and($client->backchannel_logout_session_required)->toBeFalse();
 });
 
-it('declares a user API key prefix, and refuses a malformed, reserved or taken one', function (): void {
+it('declares an API key prefix, and refuses a malformed, reserved or taken one', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $client = settingsApp($org->id);
     $other = settingsApp($org->id);
@@ -147,7 +147,7 @@ it('declares a user API key prefix, and refuses a malformed, reserved or taken o
         ->assertSessionHasErrors(['prefix' => 'That prefix is reserved for Cbox ID\'s own keys. Choose another.']);
 
     $put($client, 'acme_live')->assertSessionHasNoErrors()
-        ->assertSessionHas('status', 'User API keys turned on. New keys start with acme_live_.');
+        ->assertSessionHas('status', 'API keys turned on for this app. New keys start with acme_live_.');
 
     expect($client->refresh()->api_key_prefix)->toBe('acme_live');
 

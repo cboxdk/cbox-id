@@ -189,7 +189,7 @@ export default function OrganizationDetail({
             <Domains domains={domains} addHref={urls.addDomain} />
 
             <Panel
-                title="API keys"
+                title="Member API keys"
                 description="Keys this organization's people have created for its apps, with what each may do. People create their own; revoke one that leaked or is no longer used."
                 flush={apiKeys.length > 0}
             >

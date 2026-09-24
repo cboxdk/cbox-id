@@ -30,7 +30,7 @@ environment's host** and nowhere else. Give it the scopes the job needs and no m
 | `roles:read` / `:write` | list roles and who holds them / grant and take them back |
 | `apps:read` / `:write` | list apps and export blueprints / register apps |
 | `apis:read` / `:write` | list APIs / register, change and delete them |
-| `api_keys:read` / `:write` | list customers' API keys / revoke them |
+| `api_keys:read` / `:write` | list member API keys / revoke them |
 | `support:write` | start a support session |
 
 Send it as `Authorization: Bearer cbid_env_…` to `https://{your-environment-host}/api/v1/…`.
@@ -125,7 +125,7 @@ staging, then `POST /api/v1/apps` with it as `blueprint` — plus production's
 `aud`, and its scopes are unique across the environment. `PATCH` takes the complete scope
 set. Only the environment registers APIs; no customer surface can.
 
-## Your customers' API keys
+## Member API keys
 
 When your API accepts keys your customers make (`tax_live_…`), your API verifies each one
 with `POST /oauth/api-keys/verify`, authenticated as your app, and gets back the holder,

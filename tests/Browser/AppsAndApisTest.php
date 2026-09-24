@@ -127,12 +127,13 @@ it('draws the settings page', function (): void {
         ->assertSee('Access token lifetime')
         ->assertSee('Token exchange')
         ->assertSee('Back-channel logout')
-        ->assertSee('User API keys')
+        ->assertSee('Key prefix')
+        ->assertSee('My account › API keys')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'c7-settings-light');
 
     visit('/apps/'.$client->id.'/settings')->inDarkMode()
-        ->assertSee('User API keys')
+        ->assertSee('Key prefix')
         ->screenshot(filename: 'c7-settings-dark');
 })->group('a11y');
 
@@ -147,7 +148,7 @@ it('draws every app tab at phone width without a sideways scroll', function (str
     'overview' => ['', 'Connect it'],
     'scopes' => ['/scopes', 'Token audience'],
     'secrets' => ['/secrets', 'Live secrets'],
-    'settings' => ['/settings', 'User API keys'],
+    'settings' => ['/settings', 'Key prefix'],
 ])->group('a11y');
 
 /*
