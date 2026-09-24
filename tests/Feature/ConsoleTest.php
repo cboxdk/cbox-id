@@ -475,18 +475,16 @@ it('lets an app’s scopes be edited without re-registering it', function () {
     $client = Client::query()->where('name', 'Scope Edit')->firstOrFail();
     $before = $client->client_id;
 
-    // Seeded from the record, split so a hand-typed key is not silently dropped.
-    $showing = (array) test()->get(route('clients.show', $client->id))
+    // Seeded from the record on the app's Scopes tab, split so a hand-typed key is not
+    // silently dropped.
+    $stored = (array) test()->get(route('clients.scopes', $client->id))
         ->assertOk()
-        ->inertiaProps('client');
+        ->inertiaProps('stored');
 
-    expect($showing['scopes'] ?? [])->toContain('openid');
+    expect($stored['catalogue'] ?? [])->toContain('openid');
 
-    test()->from(route('clients.show', $client->id))
-        ->patch(route('clients.update', $client->id), [
-            'name' => $showing['name'],
-            'redirectUris' => $showing['redirectUris'],
-            'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
+    test()->from(route('clients.scopes', $client->id))
+        ->put(route('clients.scopes.update', $client->id), [
             'scopes' => ['openid', 'profile'],
             'customScopes' => 'tax.data, api.read',
         ])
@@ -520,8 +518,22 @@ it('keeps a custom scope through an unrelated edit', function () {
 
     $client = Client::query()->where('name', 'Custom Scope')->firstOrFail();
 
-    // The form as the page hands it back, with ONE field changed — which is what an
+    // The scopes form as the page hands it back, with ONE box ticked — which is what an
     // unrelated edit is, and the only shape in which the custom key can be dropped.
+    $stored = (array) test()->get(route('clients.scopes', $client->id))
+        ->assertOk()
+        ->inertiaProps('stored');
+
+    test()->from(route('clients.scopes', $client->id))
+        ->put(route('clients.scopes.update', $client->id), [
+            'scopes' => [...(array) $stored['catalogue'], ...(array) $stored['api'], 'groups'],
+            'customScopes' => $stored['custom'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($client->refresh()->scopes)->toContain('tax.data');
+
+    // …and the details form, which no longer carries scopes at all, cannot drop it either.
     $showing = (array) test()->get(route('clients.show', $client->id))
         ->assertOk()
         ->inertiaProps('client');
@@ -531,12 +543,10 @@ it('keeps a custom scope through an unrelated edit', function () {
             'name' => 'Custom Scope Renamed',
             'redirectUris' => $showing['redirectUris'],
             'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
-            'scopes' => $showing['scopes'],
-            'customScopes' => $showing['customScopes'],
         ])
         ->assertSessionHasNoErrors();
 
-    expect($client->refresh()->scopes)->toContain('tax.data');
+    expect($client->refresh()->scopes)->toContain('tax.data', 'groups');
 });
 
 /**

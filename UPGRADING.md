@@ -75,6 +75,20 @@ What changes for people using this deployment:
   No role is staff-only until an app says so. The People page now also lists the
   environment's shared roles, which it always accepted.
 
+### App scopes moved to their own tab; rotation takes a grace period
+
+For forks and scripts that drive the console's routes directly:
+
+- `PATCH /apps/{client}` (`clients.update`, `environment.clients.update`) edits the name,
+  redirect URIs and sign-out URIs only. `scopes` and `customScopes` sent to it are
+  ignored — send them to `PUT /apps/{client}/scopes` (`clients.scopes.update`). The app
+  page's props no longer carry `client.scopes` / `client.customScopes`; the Scopes tab
+  carries `stored`.
+- `POST /apps/{client}/rotate` accepts `grace` (seconds: 0, 3600, 86400 or 604800, only
+  those within `CBOX_ID_CLIENT_SECRET_MAX_ROTATION_GRACE`). Without it a rotation is
+  immediate, as before. After a step-up it returns to the Secrets tab.
+- Nothing to migrate: APIs, secrets and the new settings live in laravel-id 1.19's tables.
+
 ### Console pages have one URL each; old GET URLs answer 301
 
 Every console page now has one path, the same on both consoles; the environment

@@ -93,6 +93,9 @@ class ConsoleNavigation
                 // One component serves both consoles, so it has one title: "Apps". It was
                 // "Apps & API keys", and the keys half of that promise lived on other pages.
                 new NavPage('environment.clients', 'Apps'),
+                // The resource servers apps get tokens FOR, and the scopes each owns — beside
+                // Apps, because a scope an app may ask for is either free text or one of these.
+                new NavPage('environment.apis', 'APIs'),
                 // KEYS — this environment's management keys and its frontend keys, one page
                 // with the type as a tab. The management keys were minted only from the
                 // workspace, on another host; the frontend keys were a page of their own.

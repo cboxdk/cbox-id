@@ -16,8 +16,11 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\Apis;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
+use Cbox\Id\OAuthServer\ValueObjects\NewApi;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -147,7 +150,17 @@ function seedTenantData(string $environmentId, string $marker): array
                 organizationId: $org->id,
             ));
 
-            return [$org->id, $user->id, $client->id, $webhook->id, $connection->id, $directory->id];
+            // An API, owned by the organization so its owner's name is on the list too.
+            // The identifier carries the marker as a HOST: it is the one thing the APIs page
+            // always prints, and a URL path would be lowercased into it all the same.
+            $api = app(Apis::class)->register(new NewApi(
+                identifier: 'https://'.strtolower($marker).'.example/api',
+                name: "{$marker} API",
+                organizationId: $org->id,
+                scopes: [new ApiScopeDefinition(strtolower($marker).':read')],
+            ));
+
+            return [$org->id, $user->id, $client->id, $webhook->id, $connection->id, $directory->id, $api->id];
         },
     );
 }
@@ -286,7 +299,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
 it('refuses a deep link to another environment\'s record', function (): void {
     [$victim, $attacker] = twoTenants();
 
-    [$orgId, $userId, $clientId, $webhookId, $connectionId, $directoryId] = seedTenantData($victim->environment->id, 'Zarquon');
+    [$orgId, $userId, $clientId, $webhookId, $connectionId, $directoryId, $apiId] = seedTenantData($victim->environment->id, 'Zarquon');
 
     serveOnTestHost($attacker->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
@@ -299,6 +312,7 @@ it('refuses a deep link to another environment\'s record', function (): void {
         'environment.webhooks.show' => $webhookId,
         'environment.connections.show' => $connectionId,
         'environment.directories.show' => $directoryId,
+        'environment.apis.show' => $apiId,
     ];
 
     $reachable = [];

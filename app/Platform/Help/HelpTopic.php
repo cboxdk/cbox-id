@@ -38,6 +38,7 @@ enum HelpTopic: string
     case AccessReviews = 'access-reviews';
     case RoleConflicts = 'role-conflicts';
     case Apps = 'apps';
+    case Apis = 'apis';
     case Webhooks = 'webhooks';
     case InlineHooks = 'inline-hooks';
     case TokenVault = 'token-vault';
@@ -90,6 +91,7 @@ enum HelpTopic: string
             self::AccessReviews => 'Certifying who still needs access',
             self::RoleConflicts => 'Roles that must not be combined',
             self::Apps => 'Connecting an app to Cbox ID',
+            self::Apis => 'Your APIs, and who may call them',
             self::Webhooks => 'Getting told when something happens',
             self::InlineHooks => 'Having a say while it happens',
             self::TokenVault => 'Credentials your apps use elsewhere',
@@ -156,6 +158,8 @@ enum HelpTopic: string
             self::RoleConflicts => 'Some pairs of roles must never sit with the same person — whoever raises a payment should not also approve it. Declare those pairs here and Cbox ID both blocks new grants that would break the rule and shows you who already holds a conflicting pair.',
 
             self::Apps => 'Every app that signs people in through Cbox ID, or calls its API, is registered here and gets its own credentials. Register one per app and per environment — never share credentials between them, so you can revoke one without taking the others down.',
+
+            self::Apis => 'An API is a service of yours that receives access tokens, such as https://api.example.com. Register it with the scopes it understands, and those scopes become yours to hand out: you decide which of them apps registered by the organizations here may ask for, and a token for the API carries its address as the audience your service checks.',
 
             self::Webhooks => 'Cbox ID posts a signed message to your endpoint after something happens — a member joined, a role changed — so your systems can react without polling. Delivery is retried, and it is after the fact: your endpoint is told, it does not get a vote.',
 
@@ -240,6 +244,7 @@ enum HelpTopic: string
             self::Members => 'guides/members',
             self::Permissions => 'guides/permissions',
             self::Apps => 'guides/apps-and-api-keys',
+            self::Apis => 'guides/apis',
             self::Webhooks => 'guides/webhooks',
             self::InlineHooks => 'guides/inline-hooks',
             self::TokenVault => 'guides/token-vault',

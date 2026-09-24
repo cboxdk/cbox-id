@@ -10,6 +10,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **An organization's administrator could claim another API's scopes by typing them.** A
+  scope was free text on each app, so anybody who could edit an app could put
+  `tax:assess` on it and receive a token whose audience and scope a tax API would accept.
+  Environments can now register their APIs (Developers › APIs) and decide, scope by scope,
+  which organizations' apps may request them. The app page offers only the scopes an app
+  may hold, and a refused scope typed under Advanced, ticked in a crafted request or given
+  to a newly registered app is refused on save with a sentence naming the API and why.
+
 - **Tenant admins could hand out staff-only roles.** laravel-id 1.19 lets an app mark a
   role `tenant_assignable: false` (the vendor's own support or back-office role). The
   People page, invitations and directory group mappings listed and granted roles through
@@ -116,6 +124,33 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - **`POST /oauth/api-keys/verify` is in the OpenAPI document**, under its own server (it
   is served at the host's root). The spec gates read a path item's `servers`, so its
   response is checked against the schema like every `/api/v1` one.
+- **Developers › APIs** (environment console): register an API with its identifier (the
+  `aud` its tokens carry, fixed once registered), its owner (the environment, or the
+  organization chosen in the console header), the app whose roles it enforces, and its
+  scopes with "Organizations' apps may request this". Only environment administrators
+  register APIs: identifiers and scope keys are first come per environment, so an
+  organization registering them could squat another's. Every change is on the activity
+  log (`api.created`, `api.updated`, `api.scope_defined`, `api.scope_removed`,
+  `api.deleted`). Guide: `docs/guides/apis.md`.
+- **The app page is four tabs, each its own URL**: Overview, Scopes
+  (`/apps/{id}/scopes`), Secrets (`/apps/{id}/secrets`) and Settings
+  (`/apps/{id}/settings`), on both consoles.
+  - **Scopes** groups registered APIs' scopes under each API, shows the audience the app's
+    tokens will carry (issuer, one API, or "name one with `resource`"), and keeps typed
+    scopes under Advanced, marked as unowned.
+  - **Secrets** lists every live secret (last four characters, created, last used,
+    expires), rotates with an overlap — immediately, 1 hour, 24 hours or 7 days, bounded by
+    `CBOX_ID_CLIENT_SECRET_MAX_ROTATION_GRACE` — and revokes one secret at a time (never
+    the app's last). Both behind the step-up.
+  - **Settings**: access-token lifetime in minutes (bounded by
+    `CBOX_ID_MAX_ACCESS_TOKEN_TTL`, stated on the page), token exchange (confidential apps
+    only), back-channel logout URI and "needs the session id", and a user API key prefix
+    that turns user API keys on for the app.
+- **Download blueprint** (both consoles) — the app's configuration as JSON, never a client
+  id or secret. **Copy to another environment** (environment console) registers the app in
+  another environment of the same project that the person administers, with its own client
+  id and secret shown once. Behind the step-up; recorded as `app.created` in the target
+  environment, attributed to the person.
 
 - **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
   approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated
@@ -171,6 +206,12 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   who does not want to write code to use a form that is already on their screen.
 
 ### Changed
+
+- **Rotating an app secret no longer has to be a cut-over.** The console passed a grace of
+  0; it now passes the overlap chosen on the Secrets tab, "immediately" still among them.
+  A rotation posted without one is still immediate.
+- **An app's scopes are edited on its Scopes tab**, `PUT /apps/{id}/scopes`. The details
+  form (`PATCH /apps/{id}`) no longer carries or changes scopes.
 
 - **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
 - **App writes go through the framework's `ClientRegistry`.** That covers register,
@@ -247,6 +288,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   inviter's subject id instead of their name.
 
 ### Fixed
+
+- The "Publish its own manifest" scope described itself with a literal `&amp;`.
 
 - **My account and Switch user in the environment console bounced to the environment's
   end-user sign-in.** Both were relative links, so on an environment's host they opened a

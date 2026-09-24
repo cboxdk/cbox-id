@@ -390,8 +390,6 @@ it('records an app being registered, edited, rotated and deleted on its organiza
         'name' => 'Billing (EU)',
         'redirectUris' => $showing['redirectUris'],
         'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
-        'scopes' => $showing['scopes'],
-        'customScopes' => $showing['customScopes'],
     ];
 
     $this->from(route('clients.show', $client->id))->patch(route('clients.update', $client->id), $form)
