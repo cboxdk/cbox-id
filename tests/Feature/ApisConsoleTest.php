@@ -8,6 +8,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -23,7 +24,10 @@ use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 
@@ -463,3 +467,111 @@ it('is reached only through the session it was minted for', function (): void {
 
     expect(test()->get(route('environment.apis'))->status())->not->toBe(200);
 })->group('security');
+
+/*
+| One change, one entry — from either door
+*/
+
+/**
+ * The trail of one API, reduced to what an auditor compares: the action, what it targeted
+ * and what it says. The actor and the management key's own marker are left out — they are
+ * the one thing that SHOULD differ between the doors.
+ *
+ * @return list<array<string, mixed>>
+ */
+function apiTrail(string $identifier): array
+{
+    return array_values(AuditEntry::query()
+        ->where('target_type', 'api')
+        ->where('target_id', $identifier)
+        ->orderBy('sequence')
+        ->get()
+        ->map(fn (AuditEntry $entry): array => [
+            'action' => $entry->action,
+            'organization_id' => $entry->organization_id,
+            'context' => Arr::except((array) $entry->context, [EnvironmentKeyAuditLog::CONTEXT_KEY]),
+        ])
+        ->all());
+}
+
+it('leaves the same trail whether the console or the management API changed the API', function (): void {
+    ['subjectId' => $adminId, 'envId' => $envId] = crudSetup();
+
+    // The console: register, two scopes, rename, open one scope up, remove the other, delete.
+    registerApiInConsole()->assertSessionHasNoErrors();
+    $api = Api::query()->where('identifier', 'https://tax.example.com')->firstOrFail();
+    defineApiScopeInConsole($api, 'tax:assess', false, 'Assess returns')->assertSessionHasNoErrors();
+    defineApiScopeInConsole($api, 'tax:read', true, 'Read returns')->assertSessionHasNoErrors();
+    test()->from(route('environment.apis.show', $api->id))
+        ->patch(route('environment.apis.update', $api->id), ['name' => 'Tax (EU)', 'clientId' => ''])
+        ->assertSessionHasNoErrors();
+    $api->refresh();
+    test()->from(route('environment.apis.show', $api->id))
+        ->patch(route('environment.apis.scopes.update', [$api->id, $api->scopes->firstWhere('key', 'tax:assess')?->id]), [
+            'description' => 'Assess returns',
+            'tenantRequestable' => true,
+        ])->assertSessionHasNoErrors();
+    test()->from(route('environment.apis.show', $api->id))
+        ->delete(route('environment.apis.scopes.destroy', [$api->id, $api->scopes->firstWhere('key', 'tax:read')?->id]))
+        ->assertSessionHasNoErrors();
+    test()->delete(route('environment.apis.destroy', $api->id))->assertRedirect(route('environment.apis'));
+
+    $console = apiTrail('https://tax.example.com');
+    $seen = count($console);
+
+    // The management API: the same changes, as a vendor's backend makes them.
+    $key = app(EnvironmentApiKeys::class)->issue($envId, 'Backend', [EnvironmentApiScope::ApisRead->value, EnvironmentApiScope::ApisWrite->value]);
+
+    $id = test()->withToken($key->plaintext)->postJson('/api/v1/apis', [
+        'identifier' => 'https://tax.example.com',
+        'name' => 'Tax',
+        'scopes' => [
+            ['key' => 'tax:read', 'description' => 'Read returns'],
+            ['key' => 'tax:assess', 'description' => 'Assess returns', 'tenant_requestable' => false],
+        ],
+    ])->assertCreated()->json('data.id');
+
+    // A complete-set PATCH: the rename, `tax:assess` opened up, `tax:read` left out.
+    test()->withToken($key->plaintext)->patchJson("/api/v1/apis/{$id}", [
+        'name' => 'Tax (EU)',
+        'scopes' => [['key' => 'tax:assess', 'description' => 'Assess returns', 'tenant_requestable' => true]],
+    ])->assertOk();
+
+    test()->withToken($key->plaintext)->deleteJson("/api/v1/apis/{$id}")->assertNoContent();
+
+    $api = array_slice(apiTrail('https://tax.example.com'), $seen);
+
+    expect(array_column($console, 'action'))->toBe([
+        ApiAudit::CREATED,
+        ApiAudit::SCOPE_DEFINED,
+        ApiAudit::SCOPE_DEFINED,
+        ApiAudit::UPDATED,
+        ApiAudit::SCOPE_DEFINED,
+        ApiAudit::SCOPE_REMOVED,
+        ApiAudit::DELETED,
+    ])->and($api)->toBe($console);
+
+    // Only the actor differs: the administrator on one door, the key on the other.
+    $actors = AuditEntry::query()->where('target_type', 'api')->orderBy('sequence')->get(['actor_type', 'actor_id']);
+
+    expect($actors->take($seen)->pluck('actor_id')->unique()->all())->toBe([$adminId])
+        ->and($actors->skip($seen)->pluck('actor_type')->unique()->values()->all())->toBe([ActorType::Service])
+        ->and($actors->skip($seen)->pluck('actor_id')->unique()->values()->all())->toBe([$key->key->id]);
+});
+
+it('records nothing for a scope a complete-set PATCH sends back unchanged', function (): void {
+    ['envId' => $envId] = crudSetup();
+    $key = app(EnvironmentApiKeys::class)->issue($envId, 'Backend', [EnvironmentApiScope::ApisWrite->value]);
+
+    $id = test()->withToken($key->plaintext)->postJson('/api/v1/apis', [
+        'identifier' => 'https://tax.example.com',
+        'name' => 'Tax',
+        'scopes' => [['key' => 'tax:read', 'description' => 'Read returns']],
+    ])->assertCreated()->json('data.id');
+
+    test()->withToken($key->plaintext)->patchJson("/api/v1/apis/{$id}", [
+        'scopes' => [['key' => 'tax:read', 'description' => 'Read returns']],
+    ])->assertOk();
+
+    expect(apiAuditActions('https://tax.example.com'))->toBe([ApiAudit::CREATED, ApiAudit::SCOPE_DEFINED]);
+});

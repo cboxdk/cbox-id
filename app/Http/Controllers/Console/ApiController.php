@@ -11,6 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\SaveApiScopeRequest;
 use App\Http\Requests\Console\StoreApiRequest;
 use App\Http\Requests\Console\UpdateApiRequest;
+use App\Platform\Apis\ApiAdministration;
 use App\Platform\Apis\ApiAudit;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\OAuthServer\Contracts\Apis;
@@ -44,9 +45,9 @@ use Inertia\Response;
  * environment itself, meant to use. So the environment's administrators register APIs, and
  * assign one to an organization when it is that organization's.
  *
- * {@see Apis} records nothing on the audit trail, so this controller does
- * ({@see ApiAudit}) — who may be given which scope is the kind of change somebody asks
- * about after an incident.
+ * {@see Apis} records nothing on the audit trail, so every write goes through
+ * {@see ApiAdministration}, the same service the management API's `/v1/apis` uses: one
+ * change, one {@see ApiAudit} entry, the same shape whichever door made it.
  */
 final readonly class ApiController extends ConsoleController
 {
@@ -109,7 +110,7 @@ final readonly class ApiController extends ConsoleController
         ]);
     }
 
-    public function store(StoreApiRequest $request, Apis $apis, ApiAudit $audit): RedirectResponse
+    public function store(StoreApiRequest $request, Apis $apis, ApiAdministration $admin): RedirectResponse
     {
         $this->scope->assertMayAdministerEnvironment();
 
@@ -137,19 +138,15 @@ final readonly class ApiController extends ConsoleController
         }
 
         try {
-            $api = $apis->register(new NewApi(
+            $api = $admin->register(new NewApi(
                 identifier: $request->identifier(),
                 name: $request->name(),
                 organizationId: $organizationId,
                 clientId: $request->clientId(),
-            ));
+            ), $this->scope->auditActor());
         } catch (InvalidApiDefinition $refused) {
             return back()->withInput()->withErrors(['identifier' => $refused->getMessage()]);
         }
-
-        $audit->record(ApiAudit::CREATED, $api, $this->scope->auditActor(), array_filter([
-            'client_id' => $api->client_id,
-        ]));
 
         return to_route('environment.apis.show', $api->id)
             ->with('status', 'API "'.$api->name.'" registered. Add the scopes it owns below.');
@@ -184,10 +181,9 @@ final readonly class ApiController extends ConsoleController
         ]);
     }
 
-    public function update(UpdateApiRequest $request, string $api, Apis $apis, ApiAudit $audit): RedirectResponse
+    public function update(UpdateApiRequest $request, string $api, ApiAdministration $admin): RedirectResponse
     {
         $model = $this->api($api);
-        $before = ['name' => $model->name, 'client_id' => $model->client_id];
 
         $refusal = $this->linkRefusal($request->clientId(), $model->organization_id);
 
@@ -196,28 +192,15 @@ final readonly class ApiController extends ConsoleController
         }
 
         try {
-            $apis->rename($model, $request->name());
-            $apis->linkClient($model, $request->clientId());
+            $admin->update($model, $request->name(), $request->clientId(), $this->scope->auditActor());
         } catch (InvalidApiDefinition $refused) {
             return back()->withInput()->withErrors(['name' => $refused->getMessage()]);
-        }
-
-        $changes = [];
-
-        foreach (['name' => $model->name, 'client_id' => $model->client_id] as $field => $after) {
-            if ($before[$field] !== $after) {
-                $changes[$field] = ['from' => $before[$field], 'to' => $after];
-            }
-        }
-
-        if ($changes !== []) {
-            $audit->record(ApiAudit::UPDATED, $model, $this->scope->auditActor(), ['changes' => $changes]);
         }
 
         return back()->with('status', 'API saved.');
     }
 
-    public function storeScope(SaveApiScopeRequest $request, string $api, Apis $apis, ApiAudit $audit): RedirectResponse
+    public function storeScope(SaveApiScopeRequest $request, string $api, ApiAdministration $admin): RedirectResponse
     {
         $model = $this->api($api);
         $key = $request->key();
@@ -234,69 +217,46 @@ final readonly class ApiController extends ConsoleController
                 : "\"{$key}\" already belongs to another API in this environment. A token request names a scope by its key alone, so each key can belong to one API."]);
         }
 
-        return $this->define($model, new ApiScopeDefinition($key, $request->description(), $this->requestable($model, $request)), $apis, $audit, 'Scope "'.$key.'" added.');
+        return $this->define($model, new ApiScopeDefinition($key, $request->description(), $this->requestable($model, $request)), $admin, 'Scope "'.$key.'" added.');
     }
 
-    public function updateScope(SaveApiScopeRequest $request, string $api, string $scope, Apis $apis, ApiAudit $audit): RedirectResponse
+    public function updateScope(SaveApiScopeRequest $request, string $api, string $scope, ApiAdministration $admin): RedirectResponse
     {
         $model = $this->api($api);
         $row = $this->scopeOf($model, $scope);
 
-        return $this->define($model, new ApiScopeDefinition($row->key, $request->description(), $this->requestable($model, $request)), $apis, $audit, 'Scope "'.$row->key.'" saved.', $row);
+        return $this->define($model, new ApiScopeDefinition($row->key, $request->description(), $this->requestable($model, $request)), $admin, 'Scope "'.$row->key.'" saved.');
     }
 
-    public function destroyScope(string $api, string $scope, Apis $apis, ApiAudit $audit): RedirectResponse
+    public function destroyScope(string $api, string $scope, ApiAdministration $admin): RedirectResponse
     {
         $model = $this->api($api);
         $row = $this->scopeOf($model, $scope);
 
-        $apis->removeScope($model, $row->key);
-
-        $audit->record(ApiAudit::SCOPE_REMOVED, $model, $this->scope->auditActor(), ['scope' => $row->key]);
+        $admin->removeScope($model, $row->key, $this->scope->auditActor());
 
         return back()->with('status', 'Scope "'.$row->key.'" removed. Apps that held it keep it as a typed scope, which no longer reaches this API.');
     }
 
-    public function destroy(string $api, Apis $apis, ApiAudit $audit): RedirectResponse
+    public function destroy(string $api, ApiAdministration $admin): RedirectResponse
     {
         $model = $this->api($api);
 
-        // Recorded BEFORE the delete: the entry names the API, and afterwards there is no
-        // API to name.
-        $audit->record(ApiAudit::DELETED, $model, $this->scope->auditActor(), [
-            'scopes' => $model->scopes->pluck('key')->values()->all(),
-        ]);
-
-        $apis->delete($model);
+        $admin->delete($model, $this->scope->auditActor());
 
         return to_route('environment.apis')->with('status', 'API "'.$model->name.'" deleted.');
     }
 
     /**
-     * Define (add or change) one scope, and record what changed.
+     * Define (add or change) one scope; the service records what changed.
      */
-    private function define(Api $model, ApiScopeDefinition $definition, Apis $apis, ApiAudit $audit, string $status, ?ApiScope $before = null): RedirectResponse
+    private function define(Api $model, ApiScopeDefinition $definition, ApiAdministration $admin, string $status): RedirectResponse
     {
         try {
-            $apis->defineScope($model, $definition);
+            $admin->defineScope($model, $definition, $this->scope->auditActor());
         } catch (InvalidApiDefinition $refused) {
             return back()->withInput()->withErrors(['key' => $refused->getMessage()]);
         }
-
-        $context = [
-            'scope' => $definition->key,
-            'description' => $definition->description,
-            'tenant_requestable' => $definition->tenantRequestable,
-        ];
-
-        if ($before !== null) {
-            $context['from'] = [
-                'description' => $before->description,
-                'tenant_requestable' => $before->tenant_requestable,
-            ];
-        }
-
-        $audit->record(ApiAudit::SCOPE_DEFINED, $model, $this->scope->auditActor(), $context);
 
         return back()->with('status', $status);
     }

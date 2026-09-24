@@ -55,7 +55,11 @@ tokens too.
 
 Every change — registering, renaming, linking an app, adding, changing or removing a
 scope, deleting — is recorded on the activity log: on the owning organization's trail for
-an organization's API, and on the environment's for its own.
+an organization's API, and on the environment's for its own. Each change is one entry
+(`api.created`, `api.updated`, `api.scope_defined`, `api.scope_removed`, `api.deleted`),
+the same whether it was made here or by your backend through the
+[management API](../getting-started/management-api.md); only who made it differs — a
+person, or the management key.
 
 ## Why only the environment's administrators register APIs
 

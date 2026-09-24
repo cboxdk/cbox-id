@@ -619,8 +619,12 @@ it('registers, changes and deletes an API, with its scopes as a complete set', f
         ->assertJsonPath('data.name', 'Tax')
         ->assertJsonPath('data.scopes', [['key' => 'returns:read', 'description' => 'Read returns', 'tenant_requestable' => true]]);
 
-    expect(auditFor('api.updated')?->context['scopes_removed'])->toBe(['returns:write'])
-        ->and(auditFor('api.created')?->actor_id)->toBe($row->id);
+    // One entry per change, in the console's shape (ApisConsoleTest compares the two doors).
+    expect(auditFor('api.updated')?->context['changes'] ?? null)->toBe(['name' => ['from' => 'Tax API', 'to' => 'Tax']])
+        ->and(auditFor('api.scope_removed')?->context['scope'] ?? null)->toBe('returns:write')
+        ->and(auditFor('api.scope_defined')?->context['from'] ?? null)->toBe(['description' => null, 'tenant_requestable' => true])
+        ->and(auditFor('api.created')?->actor_id)->toBe($row->id)
+        ->and(auditFor('api.created')?->target_id)->toBe('https://api.tax.example');
 
     $this->withToken($key)->getJson('/api/v1/apis')->assertOk()->assertJsonCount(1, 'data');
     $this->withToken($key)->deleteJson("/api/v1/apis/{$id}")->assertNoContent();

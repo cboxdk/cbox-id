@@ -151,7 +151,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   register APIs: identifiers and scope keys are first come per environment, so an
   organization registering them could squat another's. Every change is on the activity
   log (`api.created`, `api.updated`, `api.scope_defined`, `api.scope_removed`,
-  `api.deleted`). Guide: `docs/guides/apis.md`.
+  `api.deleted`), one entry per change and the same entry whether the console or the
+  management API's `/v1/apis` made it. Guide: `docs/guides/apis.md`.
 - **The app page is four tabs, each its own URL**: Overview, Scopes
   (`/apps/{id}/scopes`), Secrets (`/apps/{id}/secrets`) and Settings
   (`/apps/{id}/settings`), on both consoles.

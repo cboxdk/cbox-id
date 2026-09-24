@@ -8,9 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Environment\CreateApiRequest;
 use App\Http\Requests\Api\Environment\UpdateApiRequest;
 use App\Http\Resources\Environment\ApiResource;
-use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use App\Platform\Apis\ApiAdministration;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\OAuthServer\Contracts\Apis;
 use Cbox\Id\OAuthServer\Exceptions\InvalidApiDefinition;
 use Cbox\Id\OAuthServer\Models\Api;
@@ -28,8 +27,9 @@ use Illuminate\Support\Facades\DB;
  * tokens for it and its scope keys are unique across the environment, so no tenant surface
  * creates one; this API may, and may make one an organization's (`organization_id`).
  *
- * The framework's registry writes no audit entry of its own, so `api.created`,
- * `api.updated` and `api.deleted` are recorded here, attributed to the key.
+ * Every write goes through {@see ApiAdministration}, the service Developers › APIs on the
+ * environment console uses, so a change leaves the same entry whichever door made it —
+ * attributed here to the key.
  */
 final class ApiController extends Controller
 {
@@ -53,7 +53,7 @@ final class ApiController extends Controller
         return $api === null ? $this->notFound('API') : $this->item(ApiResource::from($api));
     }
 
-    public function store(CreateApiRequest $request, Apis $apis, AuditLog $audit): JsonResponse
+    public function store(CreateApiRequest $request, ApiAdministration $admin): JsonResponse
     {
         $organizationId = $request->organizationId();
 
@@ -62,12 +62,10 @@ final class ApiController extends Controller
         }
 
         try {
-            $api = $apis->register($request->toApi());
+            $api = $admin->register($request->toApi(), $this->actor());
         } catch (InvalidApiDefinition $refused) {
             return $this->refuse('invalid_api', $refused->getMessage(), 422);
         }
-
-        $this->record($audit, 'api.created', $api, ['identifier' => $api->identifier, 'scopes' => $this->scopeKeys($api)]);
 
         return $this->item(ApiResource::from($api), 201);
     }
@@ -77,7 +75,7 @@ final class ApiController extends Controller
      * refused would leave the API half-changed, with an error that names only the half
      * that did not happen.
      */
-    public function update(UpdateApiRequest $request, string $id, Apis $apis, AuditLog $audit): JsonResponse
+    public function update(UpdateApiRequest $request, string $id, Apis $apis, ApiAdministration $admin): JsonResponse
     {
         $api = $apis->find($id);
 
@@ -85,19 +83,18 @@ final class ApiController extends Controller
             return $this->notFound('API');
         }
 
-        $before = $this->scopeKeys($api);
+        $actor = $this->actor();
 
         try {
-            DB::transaction(function () use ($request, $apis, $api): void {
-                $name = $request->name();
-
-                if ($name !== null && $name !== $api->name) {
-                    $apis->rename($api, $name);
-                }
-
-                if ($request->changesClient() && $request->clientId() !== $api->client_id) {
-                    $apis->linkClient($api, $request->clientId());
-                }
+            // Its entries are written inside the same transaction, so a refused request
+            // leaves neither a change nor a line on the trail claiming one.
+            DB::transaction(function () use ($request, $admin, $api, $actor): void {
+                $admin->update(
+                    $api,
+                    $request->name() ?? $api->name,
+                    $request->changesClient() ? $request->clientId() : $api->client_id,
+                    $actor,
+                );
 
                 $scopes = $request->scopes();
 
@@ -108,35 +105,26 @@ final class ApiController extends Controller
                 $keep = [];
 
                 foreach ($scopes as $scope) {
-                    $apis->defineScope($api, $scope);
+                    $admin->defineScope($api, $scope, $actor);
                     $keep[] = $scope->key;
                 }
 
                 foreach (array_diff($this->scopeKeys($api), $keep) as $gone) {
-                    $apis->removeScope($api, $gone);
+                    $admin->removeScope($api, $gone, $actor);
                 }
             });
         } catch (InvalidApiDefinition $refused) {
             return $this->refuse('invalid_api', $refused->getMessage(), 422);
         }
 
-        $fresh = $apis->find($api->id) ?? $api;
-
-        $this->record($audit, 'api.updated', $fresh, [
-            'name' => $fresh->name,
-            'client_id' => $fresh->client_id,
-            'scopes_added' => array_values(array_diff($this->scopeKeys($fresh), $before)),
-            'scopes_removed' => array_values(array_diff($before, $this->scopeKeys($fresh))),
-        ]);
-
-        return $this->item(ApiResource::from($fresh));
+        return $this->item(ApiResource::from($apis->find($api->id) ?? $api));
     }
 
     /**
      * Delete the API and its scopes. Tokens already minted for it keep their `aud` until
      * they expire; clients holding its scope keys keep them as free text.
      */
-    public function destroy(string $id, Apis $apis, AuditLog $audit): JsonResponse|Response
+    public function destroy(string $id, Apis $apis, ApiAdministration $admin): JsonResponse|Response
     {
         $api = $apis->find($id);
 
@@ -144,11 +132,7 @@ final class ApiController extends Controller
             return $this->notFound('API');
         }
 
-        $keys = $this->scopeKeys($api);
-
-        $apis->delete($api);
-
-        $this->record($audit, 'api.deleted', $api, ['identifier' => $api->identifier, 'scopes' => $keys]);
+        $admin->delete($api, $this->actor());
 
         return response()->noContent();
     }
@@ -167,20 +151,10 @@ final class ApiController extends Controller
     }
 
     /**
-     * On the owning organization's trail, or the environment's for an environment-owned API.
-     *
-     * @param  array<string, mixed>  $context
+     * The management key, as the service that made the change.
      */
-    private function record(AuditLog $audit, string $action, Api $api, array $context): void
+    private function actor(): AuditActor
     {
-        $audit->record(new AuditEvent(
-            action: $action,
-            actorType: ActorType::Service,
-            actorId: $this->actingKey()->id,
-            organizationId: $api->organization_id,
-            targetType: 'api',
-            targetId: $api->id,
-            context: $context,
-        ));
+        return AuditActor::service($this->actingKey()->id);
     }
 }
