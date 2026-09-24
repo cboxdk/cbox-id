@@ -300,6 +300,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
 - **Inviting onto a workspace's team is one service for the console and the workspace
   API** (`TeamInvitations`). `POST /api/v1/organization/members` used to mail the
   invitation without its role, record nothing on the activity log, answer 201 when the
@@ -325,7 +326,6 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   open is the environment's setting.
 - **After sign-up, the person goes back to where they were headed**, an authorization
   included, instead of always to the dashboard.
-- **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
 - **App writes go through the framework's `ClientRegistry`.** That covers register,
   update (built from `blueprint()` so settings the page does not show survive), manifest
   URL, secret rotation and delete. Rotation no longer writes the deprecated `secret_hash`;

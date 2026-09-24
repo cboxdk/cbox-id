@@ -16,43 +16,6 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
-### Environment management API: new scopes on the Keys page, and a slug that is optional
-
-- The Keys page now offers `members:*`, `invitations:*`, `roles:*`, `apps:*`, `apis:*`,
-  `api_keys:*` and `support:write`: each has an endpoint now. Existing keys keep exactly
-  the scopes they have; give a key a new scope by minting a new one.
-- `POST /v1/organizations` no longer requires `slug`. Left out, it is derived from the
-  name and made unique. A client that retries creates should keep sending one.
-- `Organization.status` can be `deleted` (what `DELETE /v1/organizations/{id}` leaves).
-  A generated client with the old two-value enum needs regenerating.
-- Audit entries a management key causes now read `actor_type: service` with the key's
-  id, where they used to read `system` with no actor. A saved filter on
-  `actor_type = system` for provisioning will miss them.
-
-### Sign-up on tenant environments follows a new environment switch (off)
-
-On the SaaS shape, sign-up on a customer's environment is now decided by that
-environment's **Self-service sign-up** switch (environment console › Sign-in rules), not
-by `CBOX_ID_SIGNUP_MODE`. The switch is off for every existing environment. Two things
-change for an environment that leaves it off:
-
-- The sign-in page no longer shows "Create an account". The link pointed at `/signup`,
-  which 404'd on tenant hosts anyway.
-- A magic link is only sent to an address that already has an account. Before, it was
-  sent to any address (the deployment mode defaulted to `open`) and created the account
-  on first use. **If an environment relied on magic links to onboard new people, turn its
-  switch on.**
-
-`CBOX_ID_SIGNUP_MODE=closed` still closes every environment. `invite_only` now only
-affects the platform root. Nothing changes on a single-tenant install or on the platform
-root.
-
-### Apps can bind a sign-in to an organization
-
-Nothing to do. An authorization without the new parameters is bound to the session's
-organization, as before. `prompt=none` combined with another prompt value is now refused
-with `invalid_request` (OIDC Core §3.1.2.1); before, the other value was ignored.
-
 ### laravel-id 1.19: ten migrations, and a queue worker for back-channel logout
 
 `cboxdk/laravel-id` is now `^1.19`. Run `php artisan migrate`: ten additive migrations
@@ -98,6 +61,59 @@ What changes for people using this deployment:
   in invitations or in directory group mappings. Only the environment console grants it.
   No role is staff-only until an app says so. The People page now also lists the
   environment's shared roles, which it always accepted.
+
+### Environment management API: new scopes on the Keys page, and a slug that is optional
+
+- The Keys page now offers `members:*`, `invitations:*`, `roles:*`, `apps:*`, `apis:*`,
+  `api_keys:*` and `support:write`: each has an endpoint now. Existing keys keep exactly
+  the scopes they have; give a key a new scope by minting a new one.
+- `POST /v1/organizations` no longer requires `slug`. Left out, it is derived from the
+  name and made unique. A client that retries creates should keep sending one.
+- `Organization.status` can be `deleted` (what `DELETE /v1/organizations/{id}` leaves).
+  A generated client with the old two-value enum needs regenerating.
+- Audit entries a management key causes now read `actor_type: service` with the key's
+  id, where they used to read `system` with no actor. A saved filter on
+  `actor_type = system` for provisioning will miss them.
+
+### Workspace API: a team invitation is answered like the Team page answers it
+
+`POST /api/v1/organization/members` now goes through the same service as Workspace ›
+Team. For a client of the workspace API:
+
+- When the mail server refuses the invitation, the answer is `503` with
+  `error: mail_failed` and **nothing is created**. It used to be `201` with a live
+  invitation nobody received. Retry on `503`.
+- Somebody already on the team is still `422 email_taken`; the message now reads "That
+  person is already on this list."
+- New: `GET /api/v1/organization/invitations`, `POST …/invitations/{id}/resend` (at most
+  once a minute per address, `429 too_soon`) and `DELETE …/invitations/{id}`.
+- The spec's role enums now list `admin`, `developer`, `member` and `viewer`, which is
+  what the API has accepted all along (`billing` was never accepted). Regenerate a client
+  built from the old spec.
+
+### Sign-up on tenant environments follows a new environment switch (off)
+
+On the SaaS shape, sign-up on a customer's environment is now decided by that
+environment's **Self-service sign-up** switch (environment console › Sign-in rules), not
+by `CBOX_ID_SIGNUP_MODE`. The switch is off for every existing environment. Two things
+change for an environment that leaves it off:
+
+- The sign-in page no longer shows "Create an account". The link pointed at `/signup`,
+  which 404'd on tenant hosts anyway.
+- A magic link is only sent to an address that already has an account. Before, it was
+  sent to any address (the deployment mode defaulted to `open`) and created the account
+  on first use. **If an environment relied on magic links to onboard new people, turn its
+  switch on.**
+
+`CBOX_ID_SIGNUP_MODE=closed` still closes every environment. `invite_only` now only
+affects the platform root. Nothing changes on a single-tenant install or on the platform
+root.
+
+### Apps can bind a sign-in to an organization
+
+Nothing to do. An authorization without the new parameters is bound to the session's
+organization, as before. `prompt=none` combined with another prompt value is now refused
+with `invalid_request` (OIDC Core §3.1.2.1); before, the other value was ignored.
 
 ### App scopes moved to their own tab; rotation takes a grace period
 
