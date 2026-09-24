@@ -34,26 +34,6 @@ function craftedOrgOwner(string $slug): string
     return $org->id;
 }
 
-/** Provision an account + environment and act as its env admin (the control plane). */
-function craftedEnvAdmin(): void
-{
-    platformRootEnvironment();
-    // The environment console is `/admin`, which 404s unless the deployment is
-    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
-    multiTenantDeployment();
-
-    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        organizationName: 'Acme',
-        ownerEmail: 'owner@acme.example',
-        ownerName: 'Owner',
-        ownerPassword: 'a-strong-unbreached-passphrase',
-    ));
-
-    serveOnTestHost($result->environment);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
-}
-
 /**
  * A public Livewire prop is attacker-controlled: the wire request carries the whole
  * component state, so a `<select>` constrains a browser and nothing else. Where such a
@@ -233,10 +213,11 @@ it('refuses a crafted invite role on the org members form instead of throwing', 
     Mail::fake();
     $orgId = craftedOrgOwner('acme-invite-role');
 
-    foreach (['archduke', 'viewer', ''] as $crafted) {
+    // 'owner' is a real case this console no longer HANDS OUT: ownership is transferred.
+    foreach (['archduke', 'viewer', 'owner', ''] as $crafted) {
         // The message names what IS accepted, rather than "the selected value is invalid".
         inviteToDirectory(['email' => 'joiner@acme.test', 'role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
     }
 
     expect(app(Invitations::class)->pending($orgId))->toHaveCount(0);
@@ -251,10 +232,10 @@ it('refuses a crafted role on the org members roster select without changing it'
     // The roster select is a control with no field of its own, so this used to refuse
     // SILENTLY — the row simply did not change and nothing said why. It is its own request
     // now, so the refusal has somewhere to land and names the choices like every other.
-    foreach (['archduke', 'viewer', 'OWNER'] as $crafted) {
+    foreach (['archduke', 'viewer', 'OWNER', 'owner'] as $crafted) {
         test()->from(route('directory.members'))
             ->patch(route('directory.members.role', $target->id), ['role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
 
         expect(app(Memberships::class)->of($orgId, $target->id)?->role)->toBe(MembershipRole::Member);
     }
@@ -267,14 +248,14 @@ it('refuses a crafted role on the env-admin organization member forms', function
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant', slug: 'tenant-crafted'));
     $user = app(Subjects::class)->create('dave@acme.example', 'Dave');
 
-    foreach (['archduke', 'viewer'] as $crafted) {
+    foreach (['archduke', 'viewer', 'owner'] as $crafted) {
         // The refusal NAMES THE CHOICES rather than saying "invalid": whoever hits this
         // legitimately (a stale tab, a renamed role) needs to know what to pick instead.
         addOrganizationMember($org->id, ['email' => 'dave@acme.example', 'role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
 
         inviteOrganizationMember($org->id, ['email' => 'newbie@acme.example', 'role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
     }
 
     expect(app(Memberships::class)->of($org->id, $user->id))->toBeNull()
@@ -284,10 +265,10 @@ it('refuses a crafted role on the env-admin organization member forms', function
     // …and the JS-invoked roster select refuses without demoting anyone.
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Admin);
 
-    foreach (['archduke', 'viewer'] as $crafted) {
+    foreach (['archduke', 'viewer', 'owner'] as $crafted) {
         test()->from(route('environment.organizations.show', $org->id))
             ->patch(route('environment.organizations.members.role', [$org->id, $user->id]), ['role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
 
         expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe(MembershipRole::Admin);
     }
@@ -299,9 +280,9 @@ it('refuses a crafted role on the env-admin user detail page', function (): void
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant', slug: 'tenant-user-crafted'));
     $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
 
-    foreach (['archduke', 'viewer'] as $crafted) {
+    foreach (['archduke', 'viewer', 'owner'] as $crafted) {
         assignUserToOrganization($user->id, $org->id, ['role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
     }
 
     expect(app(Memberships::class)->of($org->id, $user->id))->toBeNull();
@@ -311,7 +292,7 @@ it('refuses a crafted role on the env-admin user detail page', function (): void
     foreach (['archduke', 'viewer'] as $crafted) {
         test()->from(route('environment.users.show', $user->id))
             ->patch(route('environment.users.organizations.role', [$user->id, $org->id]), ['role' => $crafted])
-            ->assertSessionHasErrors(['role' => 'Choose one of: Member, Admin, Owner.']);
+            ->assertSessionHasErrors(['role' => 'Choose one of: Admin, Member.']);
 
         expect(app(Memberships::class)->of($org->id, $user->id)?->role)->toBe(MembershipRole::Member);
     }

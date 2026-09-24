@@ -23,7 +23,7 @@ final readonly class AccountsController extends PageController
 {
     public function index(PlatformAuth $auth): Response
     {
-        return $this->page('auth/accounts', 'Choose account', [
+        return $this->page('auth/accounts', 'Switch user', [
             'accounts' => $auth->accounts(),
         ]);
     }

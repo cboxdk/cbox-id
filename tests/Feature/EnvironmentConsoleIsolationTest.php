@@ -16,8 +16,11 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\Apis;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
+use Cbox\Id\OAuthServer\ValueObjects\NewApi;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -133,6 +136,11 @@ function seedTenantData(string $environmentId, string $marker): array
             // page and watching this sweep pass.
             app(Roles::class)->define($org->id, "{$marker} Role");
 
+            // A staff grant: environment-wide, so it belongs to no organization, and the
+            // Staff page lists it by the person and the role.
+            $staffRole = app(Roles::class)->define(null, "{$marker} Staff role");
+            app(Roles::class)->assignEverywhere($user->id, $staffRole->id);
+
             app(SecretVault::class)->store(
                 strtolower($marker).'-secret',
                 'custom',
@@ -147,7 +155,17 @@ function seedTenantData(string $environmentId, string $marker): array
                 organizationId: $org->id,
             ));
 
-            return [$org->id, $user->id, $client->id, $webhook->id, $connection->id, $directory->id];
+            // An API, owned by the organization so its owner's name is on the list too.
+            // The identifier carries the marker as a HOST: it is the one thing the APIs page
+            // always prints, and a URL path would be lowercased into it all the same.
+            $api = app(Apis::class)->register(new NewApi(
+                identifier: 'https://'.strtolower($marker).'.example/api',
+                name: "{$marker} API",
+                organizationId: $org->id,
+                scopes: [new ApiScopeDefinition(strtolower($marker).':read')],
+            ));
+
+            return [$org->id, $user->id, $client->id, $webhook->id, $connection->id, $directory->id, $api->id];
         },
     );
 }
@@ -222,7 +240,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
      */
     $rendersNoTenantData = [
         'environment.home' => 'counts and empty states only',
-        'environment.analytics' => 'aggregates over an event store the fixture does not populate',
+        'environment.usage' => 'aggregates over an event store the fixture does not populate',
         'environment.approvals' => 'CIBA requests, which need a live backchannel flow',
         'environment.permissions' => 'the platform permission catalogue, not tenant data',
         'environment.sso-providers' => 'relying parties, seeded by the clients fixture under a different name',
@@ -236,7 +254,10 @@ it('never shows one environment\'s data on another\'s console', function (): voi
         'environment.auth-policy' => 'policy toggles',
         // Publishable keys are environment-owned and carry no organization at all, so
         // there is no tenant record here to leak — and the fixture seeds none.
-        'environment.frontend-keys' => 'publishable keys, which have no organization and none seeded',
+        'environment.keys.frontend' => 'publishable keys, which have no organization and none seeded',
+        // This environment's management keys: environment-owned, no organization column,
+        // so there is no tenant record to leak — and the fixture seeds none.
+        'environment.keys' => 'management keys, which have no organization and none seeded',
         // Provider names from a static catalogue — Google, GitHub — never an organization's.
         'environment.social-providers' => 'the social-login catalogue, which names providers rather than tenants',
         'environment.connectors.catalog' => 'the connector catalogue, which is the same on every install',
@@ -283,7 +304,7 @@ it('never shows one environment\'s data on another\'s console', function (): voi
 it('refuses a deep link to another environment\'s record', function (): void {
     [$victim, $attacker] = twoTenants();
 
-    [$orgId, $userId, $clientId, $webhookId, $connectionId, $directoryId] = seedTenantData($victim->environment->id, 'Zarquon');
+    [$orgId, $userId, $clientId, $webhookId, $connectionId, $directoryId, $apiId] = seedTenantData($victim->environment->id, 'Zarquon');
 
     serveOnTestHost($attacker->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($attacker->environment->id));
@@ -296,6 +317,7 @@ it('refuses a deep link to another environment\'s record', function (): void {
         'environment.webhooks.show' => $webhookId,
         'environment.connections.show' => $connectionId,
         'environment.directories.show' => $directoryId,
+        'environment.apis.show' => $apiId,
     ];
 
     $reachable = [];

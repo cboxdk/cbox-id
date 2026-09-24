@@ -39,25 +39,35 @@ class ConsoleNavigation
         return new ConsoleNav(...$this->withModulePages([
             new NavArea('Overview', 'dashboard',
                 new NavPage('environment.home', 'Overview'),
-                new NavPage('environment.analytics', 'Usage'),
-                new NavPage('environment.approvals', 'Agent approvals'),
+                new NavPage('environment.usage', 'Usage'),
+                // Named for what it does HERE: every pending request in the environment,
+                // so an administrator can deny one that looks like abuse. The organization
+                // console's page of a similar name is where a person approves their own.
+                new NavPage('environment.approvals', 'Review agent requests'),
             ),
             // Named for its page, not above it. The rail said TENANTS, the eyebrow
             // repeated it above an <h1> reading "Organizations", and the subtitle opened
             // "Your customers" — three words for one thing, stacked. "Tenant" is also the
             // word Auth0 uses for what we call an environment, so it pointed the wrong way
             // for exactly the readers most likely to need it.
-            new NavArea('Organizations', 'layers',
+            new NavArea('Organizations', 'building',
                 new NavPage('environment.organizations', 'Organizations'),
             ),
             new NavArea('People', 'members',
                 new NavPage('environment.users', 'Users'),
+                // Roles held across the whole environment by its own people. Beside Users
+                // because it is a question about people — "who has support access?" —
+                // and only this console has it: organizations never grant one.
+                new NavPage('environment.staff', 'Staff'),
                 new NavPage('environment.roles', 'Roles'),
                 new NavPage('environment.permissions', 'Permissions'),
             ),
-            new NavArea('Sign-in', 'connections',
+            new NavArea('Sign-in', 'fingerprint',
                 new NavPage('environment.connections', 'Single sign-on'),
                 new NavPage('environment.social-providers', 'Social sign-in'),
+                // Beside the other sign-in pages rather than under Settings, on both
+                // consoles — it is the password, MFA and session policy.
+                new NavPage('environment.auth-policy', 'Sign-in rules'),
                 // "Login methods" described the OPPOSITE direction. This page registers the
                 // applications that trust this environment as their SAML identity provider —
                 // outbound, us as the IdP — while Sign-in › Single sign-on is inbound: letting
@@ -76,27 +86,24 @@ class ConsoleNavigation
                 // ConsoleAreasTest, not by reading — which is the point of that test.
                 new NavPage('environment.provisioning', 'Sync users out'),
             ),
-            new NavArea('Access control', 'shield-check',
+            new NavArea('Access control', 'scale',
                 new NavPage('environment.governance', 'Access reviews'),
                 // One component serves both planes now, so it has one title — and the
                 // organization plane's "Role conflicts" is the name the help topic and
                 // the published guide already use.
                 new NavPage('environment.sod-policies', 'Role conflicts'),
             ),
-            new NavArea('Developers', 'clients',
-                // One component serves both planes now, so it has one title — and the
-                // organization plane's "Apps & API keys" is the name the help topic and
-                // the published guide already use. It also names the half "Applications"
-                // hides: the machine credentials that never sign anyone in.
-                new NavPage('environment.clients', 'Apps & API keys'),
-                // Beside Apps & API keys because that is where somebody goes looking for
-                // "how does my frontend talk to this", and the two answer opposite halves
-                // of it: one is the secret a server holds, one is the public key a page
-                // holds. They live on this plane ALONE — both are owned by the environment
-                // with no organization column — and when they moved here from the
-                // organization plane they were routed and never put on a rail, so for a
-                // day they were reachable only by typing the URL.
-                new NavPage('environment.frontend-keys', 'Frontend keys'),
+            new NavArea('Developers', 'code',
+                // One component serves both consoles, so it has one title: "Apps". It was
+                // "Apps & API keys", and the keys half of that promise lived on other pages.
+                new NavPage('environment.clients', 'Apps'),
+                // The resource servers apps get tokens FOR, and the scopes each owns — beside
+                // Apps, because a scope an app may ask for is either free text or one of these.
+                new NavPage('environment.apis', 'APIs'),
+                // KEYS — this environment's management keys and its frontend keys, one page
+                // with the type as a tab. The management keys were minted only from the
+                // workspace, on another host; the frontend keys were a page of their own.
+                new NavPage('environment.keys', 'Keys'),
                 new NavPage('environment.legacy-login', 'Legacy login'),
                 new NavPage('environment.webhooks', 'Webhooks'),
                 // "Inline hooks" on both planes now. Called "Event hooks" here, it sat
@@ -116,7 +123,6 @@ class ConsoleNavigation
             ),
             new NavArea('Settings', 'settings',
                 new NavPage('environment.settings', 'Settings'),
-                new NavPage('environment.auth-policy', 'Sign-in rules'),
                 new NavPage('environment.appearance', 'Appearance'),
             ),
         ]));

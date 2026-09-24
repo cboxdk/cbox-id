@@ -133,7 +133,7 @@ export default function DirectoriesIndex({
                         <EmptyState
                             icon="layers"
                             title="Choose an organization"
-                            description="Below is every directory in this environment. A directory provisions one tenant's users, so connecting one waits until you pick the organization you are configuring."
+                            description="Below is every directory in this environment. A directory provisions one organization's users, so connecting one waits until you pick the organization you are configuring."
                         />
                     </div>
                 ) : (

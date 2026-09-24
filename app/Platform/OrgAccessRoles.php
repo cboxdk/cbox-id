@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Exceptions\RoleNotTenantAssignable;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -22,11 +24,35 @@ use Illuminate\Support\Facades\DB;
  *
  * Shared by the environment-admin organization and user consoles so both surface the
  * exact same catalog and permission explanations.
+ *
+ * TWO PLANES, TWO SETS. {@see assignable()} is what an ENVIRONMENT administrator may grant
+ * inside an organization — staff-only roles included, because giving the vendor's support
+ * lead "Support" inside one customer is exactly their call. {@see tenantAssignable()} is
+ * what the organization's OWN administrators may offer: the framework's
+ * {@see Roles::tenantAssignableRoles()}, which leaves staff roles out. A customer handing
+ * the vendor's cross-customer role to one of their own people would be a privilege
+ * escalation out of their tenancy.
  */
 final class OrgAccessRoles
 {
     /**
-     * The roles assignable to people in this organization, ordered by name.
+     * What a tenant surface says when a posted role id is not one it offers.
+     *
+     * ONE sentence for a staff-only role, another organization's role and an id that
+     * matches nothing. The framework keeps those apart only in its exception class
+     * ({@see RoleNotTenantAssignable}), for the logs: told "that one is staff-only", a
+     * tenant administrator could probe the vendor's role catalog one id at a time. What
+     * they must be told is that the write did not happen — a redirect that says nothing
+     * reads as success.
+     */
+    public const NOT_OFFERED = 'That access role is not offered in this organization. Choose one from the list.';
+
+    public function __construct(private readonly Roles $roles) {}
+
+    /**
+     * The roles an ENVIRONMENT administrator may grant to people in this organization,
+     * ordered by name. Staff-only roles included; a tenant-facing surface uses
+     * {@see tenantAssignable()}.
      *
      * @return Collection<int, Role>
      */
@@ -46,36 +72,30 @@ final class OrgAccessRoles
     }
 
     /**
-     * The roles that may be granted EVERYWHERE in this environment: environment-wide,
-     * belonging to no app, not orphaned. Ordered by name.
+     * The roles this organization's own administrators may offer, ordered by name — the
+     * tenant plane's picker, and the set an invitation may carry.
+     *
+     * The framework's list (this organization's roles and the environment's shared ones,
+     * never a staff-only or an orphaned one) narrowed by the one rule it does not state:
+     * an app-declared role only for an app this organization can use. The write path
+     * asks the same framework predicate through {@see GrantAccessRole::grantAsTenant()},
+     * so a role this list hides is a role that grant refuses.
      *
      * @return Collection<int, Role>
      */
-    public function grantableEverywhere(): Collection
+    public function tenantAssignable(string $organizationId): Collection
     {
-        return Role::query()
-            ->whereNull('organization_id')
-            ->whereNull('client_id')
-            ->whereNull('orphaned_at')
-            ->orderBy('name')
-            ->get();
+        $usable = array_flip($this->orgClientIds($organizationId));
+
+        return collect($this->roles->tenantAssignableRoles($organizationId))
+            ->filter(static fn (Role $role): bool => $role->client_id === null || isset($usable[$role->client_id]))
+            ->values();
     }
 
-    /**
-     * Whether ONE role may be granted everywhere.
-     *
-     * Asked as its own query rather than by searching the collection above: the write
-     * path must not depend on what a page happened to render, which is the difference
-     * between a control being hidden and an action being refused.
-     */
-    public function isGrantableEverywhere(string $roleId): bool
+    /** {@see tenantAssignable()} for one role: whether an organization's own admin may grant it. */
+    public function isTenantAssignable(string $organizationId, string $roleId): bool
     {
-        return Role::query()
-            ->whereKey($roleId)
-            ->whereNull('organization_id')
-            ->whereNull('client_id')
-            ->whereNull('orphaned_at')
-            ->exists();
+        return $this->tenantAssignable($organizationId)->contains(fn (Role $r): bool => $r->id === $roleId);
     }
 
     /**

@@ -37,7 +37,7 @@ This limits the blast radius of a hijacked, already-authenticated session.
 
 ### Organization switcher
 
-A user who belongs to several organizations switches the active tenant from the
+A user who belongs to several organizations switches the active organization from the
 sidebar. The switch is **server-verified against membership on every request** — the
 active org is resolved from the authenticated user's memberships, not from a
 client-supplied value, so a user can only ever act within an org they actually
@@ -56,7 +56,7 @@ belong to. The role in effect updates with the switch, and switching is audited.
 Admin- and operator-initiated provisioning (invitations, the `/platform` section) is
 **never** gated by this — it is not self-service. Set this to `invite_only` or
 `closed` for a private or internal deployment so the internet-facing signup form
-cannot be used to create tenants.
+cannot be used to create organizations.
 
 ### Signup abuse controls
 
@@ -70,12 +70,12 @@ three layers beyond the mode gate — described in full under
    never on every signup, and entirely inert unless
    [`CBOX_ID_TURNSTILE_*`](../configuration/environment-variables.md#bot-protection-captcha)
    is configured.
-3. **Deferred environment provisioning.** A self-serve signup creates the account, its
+3. **Deferred environment provisioning.** A self-serve signup creates the workspace, its
    owner and its first project immediately, but the **environment** — the routable IdP
    with its own signing key — is stood up only when the owner opens the verification
    link in their inbox. An unverified signup therefore costs nothing worth farming.
 
-Because (3) puts a real owner's whole account behind one email, the workspace launchpad
+Because (3) puts a real owner's whole workspace behind one email, the workspace launchpad
 carries a **resend** control while the environment is held back. It re-sends only to the
 signed-in member's own address (the action accepts a member, never an address), retires
 every link issued before it so exactly one is ever live, answers identically whether or

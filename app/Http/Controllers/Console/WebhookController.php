@@ -125,7 +125,7 @@ final readonly class WebhookController extends ConsoleController
         }
 
         return $this->page('console/webhooks/create', 'New webhook', [
-            'events' => WebhookEventCatalogue::EVENTS,
+            'events' => WebhookEventCatalogue::offered(),
             'indexHref' => $this->url('webhooks'),
             'storeHref' => $this->url('webhooks.store'),
             /*
@@ -212,7 +212,9 @@ final readonly class WebhookController extends ConsoleController
                         ?? $endpoint->organization_id)
                     : null,
             ],
-            'events' => WebhookEventCatalogue::EVENTS,
+            // What it already hears, kept on the form even when no longer offered, so a Save
+            // never narrows a live integration by itself.
+            'events' => WebhookEventCatalogue::forEndpoint(array_values($endpoint->event_types)),
             /*
              * A tenant administrator SEES the environment's own endpoint because it
              * receives their events, but may not touch it — so the controls are not
@@ -264,6 +266,15 @@ final readonly class WebhookController extends ConsoleController
             return back()->withInput()->withErrors([
                 'url' => 'That URL is not allowed — it must be a public HTTPS endpoint.',
             ]);
+        }
+
+        // Checked here rather than in the request: which events may be KEPT depends on
+        // the endpoint, and the endpoint is only resolved — within what this plane may
+        // see — above.
+        $choosable = WebhookEventCatalogue::forEndpoint(array_values($endpoint->event_types));
+
+        if (array_diff($request->eventTypes(), $choosable) !== []) {
+            return back()->withInput()->withErrors(['eventTypes' => WebhookEventCatalogue::REFUSAL]);
         }
 
         $endpoint->url = $request->url();

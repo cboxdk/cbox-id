@@ -27,9 +27,9 @@ final readonly class SetupStep
         return $this->key->description();
     }
 
-    public function route(): string
+    public function route(string $peopleRoute = 'directory.members'): string
     {
-        return $this->key->route();
+        return $this->key->route($peopleRoute);
     }
 
     public function actionLabel(): string

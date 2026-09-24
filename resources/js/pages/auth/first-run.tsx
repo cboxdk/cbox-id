@@ -167,7 +167,7 @@ function ClaimForm({ href, multiTenant }: { href: string; multiTenant: boolean }
             {multiTenant && (
                 <Field
                     label="Organization name"
-                    hint="This deployment is configured as multi-tenant, so the install also creates the first organization — the customer that owns environments and billing."
+                    hint="This deployment is configured as multi-tenant, so the install also creates the first workspace — the organization that owns environments and billing."
                     error={form.errors.organizationName}
                 >
                     <Input

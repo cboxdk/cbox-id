@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\PageController;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Mail\EmailVerificationMail;
+use App\Platform\IntendedUrl;
 use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
@@ -19,6 +20,7 @@ use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Identity\Contracts\EmailVerification;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -59,6 +61,13 @@ final readonly class SignupController extends PageController
             // On the platform root this signup mints the signer's OWN IdP, so the page
             // says so; elsewhere it is an ordinary join.
             'createsIdp' => $this->provisionsOwnIdp(app(EnvironmentContext::class)),
+            /*
+             * The app an authorization is waiting to return to, when there is one — so a
+             * person who pressed "Sign up" in that app is told they are creating an account
+             * for it, not "setting up Cbox ID for their team", which is the operator's
+             * pitch and means nothing to somebody signing up for a tax app.
+             */
+            'forApp' => $this->waitingApp(),
             /*
              * Empty when Turnstile is not configured, and then the widget and its script
              * are never referenced at all — which is what keeps the policy tight and, more
@@ -172,7 +181,14 @@ final readonly class SignupController extends PageController
 
         $auth->establish($request, $subject->id, ['pwd']);
 
-        return to_route('dashboard');
+        /*
+         * BACK INTO THE APP when an authorization sent them here — `prompt=create`, or the
+         * "Create an account" link under an app's sign-in. The resumed request binds the
+         * grant to the organization they just founded (it is their only one), so the app
+         * receives a person who is the Owner of their new team. Without an authorization
+         * waiting, the console, as before.
+         */
+        return redirect()->to(IntendedUrl::pullForSubject() ?? route('dashboard'));
     }
 
     /**
@@ -231,7 +247,7 @@ final readonly class SignupController extends PageController
 
         return to_route('projects')->with(
             'status',
-            'Account created. Confirm your email to finish setting up your first environment.',
+            'Workspace created. Confirm your email to finish setting up your first environment.',
         );
     }
 
@@ -276,6 +292,29 @@ final readonly class SignupController extends PageController
         $intended = session()->get('url.intended');
 
         return $isRoot && ! (is_string($intended) && str_contains($intended, 'oauth'));
+    }
+
+    /**
+     * The name of the app whose authorization request sent the person here, or null.
+     *
+     * Read from the resume URL the authorize endpoint stashed, and looked up through the
+     * registry in THIS environment: a client id copied from somewhere else resolves to
+     * nothing, so the page can never be made to name an app that is not registered here.
+     */
+    private function waitingApp(): ?string
+    {
+        $intended = session()->get(IntendedUrl::KEY);
+
+        if (! is_string($intended) || parse_url($intended, PHP_URL_PATH) !== '/oauth/authorize') {
+            return null;
+        }
+
+        parse_str((string) parse_url($intended, PHP_URL_QUERY), $query);
+        $clientId = $query['client_id'] ?? null;
+
+        return is_string($clientId) && $clientId !== ''
+            ? app(ClientRegistry::class)->byClientId($clientId)?->name
+            : null;
     }
 
     /** A unique-index violation across the supported drivers. */

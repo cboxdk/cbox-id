@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "21524067865dfdf7931b0d3d792d65fd",
+    "content-hash": "47e98b1bf088e4ff5b6897f5e693df05",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -493,16 +493,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v1.18.0",
+            "version": "v1.19.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "1a56b271051d3cd0678e41dc17e6b3a9baed65d6"
+                "reference": "e242bf6dbfc0d1066b51bcfc081d5f3f93202968"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/1a56b271051d3cd0678e41dc17e6b3a9baed65d6",
-                "reference": "1a56b271051d3cd0678e41dc17e6b3a9baed65d6",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/e242bf6dbfc0d1066b51bcfc081d5f3f93202968",
+                "reference": "e242bf6dbfc0d1066b51bcfc081d5f3f93202968",
                 "shasum": ""
             },
             "require": {
@@ -518,7 +518,7 @@
                 "illuminate/support": "^12.0 || ^13.0",
                 "onelogin/php-saml": "^4.0",
                 "php": "^8.4",
-                "robrichards/xmlseclibs": "^3.1.5",
+                "robrichards/xmlseclibs": "^3.1.5 || ^4.0.0",
                 "spomky-labs/cbor-php": "^3.0"
             },
             "require-dev": {
@@ -564,9 +564,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v1.18.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v1.19.2"
             },
-            "time": "2026-08-25T13:41:50+00:00"
+            "time": "2026-09-24T06:01:22+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",

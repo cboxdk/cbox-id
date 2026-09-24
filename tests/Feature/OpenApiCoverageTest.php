@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\Yaml\Yaml;
+use Tests\Support\ApiContract;
 
 /**
  * The spec-vs-routes gate.
@@ -63,17 +64,17 @@ function documentedOperations(): array
         foreach ($paths as $path => $methods) {
             // A spec path is relative to the server's base URL; the routes carry it.
             //
-            // Unconditional, and it has to be: ApiContract::operation() — the checker
-            // that actually validates response bodies — hardcodes '/api/v1'.$specPath.
-            // This used to derive the base from a FILENAME heuristic instead, and the
-            // two disagreeing was a live trap. A new spec file whose name contained
-            // neither "account" nor "environment" either failed this test, or (worse)
-            // passed it while ApiContract silently found no operation and skipped
-            // schema validation entirely — a green build asserting nothing.
-            $base = '/api/v1';
+            // Through ApiContract::base(), the SAME derivation the checker that validates
+            // response bodies uses. This once derived the base from a FILENAME heuristic
+            // instead, and the two disagreeing was a live trap: a new spec file whose name
+            // contained neither "account" nor "environment" either failed this test, or
+            // (worse) passed it while ApiContract silently found no operation and skipped
+            // schema validation entirely — a green build asserting nothing. `/api/v1`
+            // unless the path item names its own server (`/oauth/api-keys/verify`).
+            $base = ApiContract::base($methods);
 
             foreach (array_keys($methods) as $method) {
-                if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description'], true)) {
+                if (in_array(strtolower((string) $method), ['parameters', 'summary', 'description', 'servers'], true)) {
                     continue;
                 }
 
@@ -130,6 +131,15 @@ function undocumentedByDesign(): array
          */
         'POST /oauth/authorize/{authorization}/approve',
         'POST /oauth/authorize/{authorization}/deny',
+        // The hosted organization steps and the consent screen they lead back to — pages
+        // of that same screen, for the same reason: a relying party asks for them with
+        // `prompt=select_organization` / `create_organization` on /oauth/authorize and
+        // never calls them itself.
+        'GET /oauth/authorize/{authorization}',
+        'GET /oauth/authorize/{authorization}/organization',
+        'POST /oauth/authorize/{authorization}/organization',
+        'GET /oauth/authorize/{authorization}/organization/new',
+        'POST /oauth/authorize/{authorization}/organization/new',
         'POST /oauth/backchannel_authentication',
         'POST /oauth/decisions',
         'POST /oauth/device_authorization',

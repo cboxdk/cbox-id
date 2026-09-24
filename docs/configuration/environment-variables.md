@@ -29,7 +29,7 @@ issuer — resolved per request from the host.
 |---|---|---|---|
 | `CBOX_ID_ENVIRONMENT_DEFAULT` | The fallback environment (plane) key used when the request host maps to none. | *(empty)* | **Set it** for a single-tenant / on-prem install (all traffic lands on one plane). **Leave empty** for multi-tenant hosting, where an unknown host is refused rather than defaulted. |
 | `CBOX_ID_ENVIRONMENT_BASE_DOMAINS` | Comma list of base domains under which a leading subdomain label resolves to an environment (e.g. `staging.auth.example.com` → the `staging` plane). | *(empty)* | Set when you host multiple planes as subdomains. A host is trusted for slug resolution **only** if it sits under one of these, so a spoofed `Host` can never select a plane. Leave empty to require exact custom-domain matches. Deployment-critical for multi-environment hosting. Setting it also switches on the host-plane bulkheads — see [the IdP-surface gate](../operations/deployment.md#the-idp-surface-gate-the-apex-host-404s-the-protocol-surface). |
-| `CBOX_ID_ENVIRONMENT_RESOLUTION_CACHE_TTL` | Seconds a host → environment resolution stays cached. Every request resolves its environment before any endpoint logic runs; uncached that is 2–3 queries against a table that changes approximately never. | `60` | Rarely. Creating, renaming, re-domaining or suspending an environment — and suspending or reactivating its account — drop the cache entry immediately, so the off-switch still bites on the next request. The TTL only bounds the one case that cannot be derived from the row: a **slug rename**, where the old subdomain keeps resolving until the entry lapses. Set `0` to disable caching entirely (correctness is unchanged; you pay the queries on every request). |
+| `CBOX_ID_ENVIRONMENT_RESOLUTION_CACHE_TTL` | Seconds a host → environment resolution stays cached. Every request resolves its environment before any endpoint logic runs; uncached that is 2–3 queries against a table that changes approximately never. | `60` | Rarely. Creating, renaming, re-domaining or suspending an environment — and suspending or reactivating its workspace — drop the cache entry immediately, so the off-switch still bites on the next request. The TTL only bounds the one case that cannot be derived from the row: a **slug rename**, where the old subdomain keeps resolving until the entry lapses. Set `0` to disable caching entirely (correctness is unchanged; you pay the queries on every request). |
 
 ## Self-service signup
 
@@ -37,7 +37,7 @@ issuer — resolved per request from the host.
 |---|---|---|---|
 | `CBOX_ID_SIGNUP_MODE` | Who may self-register at `/signup`: `open` (anyone), `invite_only` (public signup closed, admin invitations still work), or `closed` (no self-service at all). Admin/operator provisioning is never gated by this. | `open` | Set to `invite_only` or `closed` for a private/internal deployment. See [Security](../security/_index.md#self-service-signup-modes). |
 
-Note that a self-serve signup provisions the account, its owner and its first project
+Note that a self-serve signup provisions the workspace, its owner and its first project
 immediately, but its **environment** only once the owner confirms their email address —
 so an unverified signup never stands up a routable IdP. Nothing configures this; it is
 how self-serve signup works. See
@@ -89,6 +89,7 @@ Laravel `SESSION_*` keys below).
 |---|---|---|---|
 | `CBOX_ID_SESSION_TTL_MINUTES` | Absolute session lifetime before re-authentication. | `480` (8h) | Lower it for higher-assurance deployments. |
 | `CBOX_ID_SESSION_IDLE_MINUTES` | Idle timeout — inactivity before the session is invalidated. | `30` | Lower it for shared or high-risk environments. |
+| `CBOX_ID_SUPPORT_SESSION_MAX_TTL` | The longest a [support session](../guides/support-access.md) may run, in seconds — and every token minted for it. The console offers nothing longer. It can only lower the one-hour ceiling; nothing goes under 60. | `3600` | Lower it if your policy wants support access shorter than an hour. |
 
 ## OAuth / OIDC endpoint policy
 

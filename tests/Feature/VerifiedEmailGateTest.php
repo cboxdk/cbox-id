@@ -110,6 +110,9 @@ it('gates every subject-plane create action', function (): void {
     //    nobody else, so gating them buys nothing and costs onboarding friction.
     //  - `audit-streams` — environment plane, where there is no subject session to ask
     //    about at all.
+    //  - `environment.apis` — the same: registering an API is the environment console's
+    //    alone ({@see \App\Http\Controllers\Console\ApiController}), where the person
+    //    acting is an environment administrator and there is no subject session to ask.
     //  - `environment.organizations` — the environment plane's tenants. A tenant record
     //    reaches nothing on its own: it is this customer's own bookkeeping of who their
     //    customers are, the same shape as `projects` above, and the writes that DO reach
@@ -125,6 +128,7 @@ it('gates every subject-plane create action', function (): void {
     // went with it exactly as this list said it would.
     $deliberatelyUngated = [
         'app/Http/Controllers/Console/AccessReviewController.php::store()',
+        'app/Http/Controllers/Console/ApiController.php::store()',
         'app/Http/Controllers/Console/EnvironmentOrganizationController.php::store()',
         'app/Http/Controllers/Console/LogStreamController.php::store()',
         'app/Http/Controllers/Console/ProjectController.php::store()',

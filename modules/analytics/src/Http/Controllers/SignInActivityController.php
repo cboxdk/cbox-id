@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Id\Analytics\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Analytics\Contracts\ReportReader;
 use Illuminate\Support\Carbon;
 use Inertia\Response;
@@ -93,6 +95,7 @@ final readonly class SignInActivityController extends ConsoleController
             $mfa = (int) ($snapshot['auth.mfa_enrolled'] ?? 0);
 
             return $this->page('analytics::sign-in-activity', 'Sign-in activity', [
+                'help' => HelpProps::for(HelpTopic::SignInActivity),
                 'window' => $window,
                 'tiles' => $tiles,
                 'mfaRate' => $logins > 0 ? (int) round(($mfa / $logins) * 100) : 0,
@@ -102,6 +105,7 @@ final readonly class SignInActivityController extends ConsoleController
             report($e);
 
             return $this->page('analytics::sign-in-activity', 'Sign-in activity', [
+                'help' => HelpProps::for(HelpTopic::SignInActivity),
                 'window' => $window,
                 'tiles' => [],
                 'mfaRate' => 0,

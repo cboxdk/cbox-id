@@ -74,7 +74,7 @@ it('provisions no environment until the owner verifies their email, then exactly
 
     expect($url)->toBeString();
 
-    $this->get($url)->assertRedirect();
+    $this->post($url)->assertRedirect();
 
     $environments = environmentsOwnedBy(ownerOrganizationId($member->id))->get();
     expect($environments)->toHaveCount(1)
@@ -114,8 +114,8 @@ it('does not mint a second environment when the verification link is replayed', 
         return true;
     });
 
-    $this->get($url)->assertRedirect();
-    $this->get($url)->assertRedirect();
+    $this->post($url)->assertRedirect();
+    $this->post($url)->assertRedirect();
 
     expect(environmentsOwnedBy(ownerOrganizationId($member->id))->count())->toBe(1);
 });

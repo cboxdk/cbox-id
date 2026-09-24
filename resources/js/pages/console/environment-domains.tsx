@@ -1,7 +1,7 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
     Button,
@@ -30,6 +30,7 @@ type Props = PageProps<{
     verifiedDomain: string | null;
     challenge: Challenge | null;
     urls: { request: string; verify: string; destroy: string };
+    help: HelpContent;
 }>;
 
 export default function EnvironmentDomains({
@@ -38,6 +39,7 @@ export default function EnvironmentDomains({
     verifiedDomain,
     challenge,
     urls,
+    help,
 }: Props) {
     /*
      * "DNS has not propagated" is not an error about the DOMAIN — the value is fine and
@@ -50,7 +52,7 @@ export default function EnvironmentDomains({
 
     return (
         <div style={{ maxWidth: '42rem' }}>
-            <PageHeader description="Serve an environment's identity endpoints on your own domain, verified by DNS." />
+            <PageHeader help={help} description="Serve an environment's identity endpoints on your own domain, verified by DNS." />
 
             {environments.length === 0 ? (
                 <div className="card mt-6">

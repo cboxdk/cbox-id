@@ -63,7 +63,7 @@ final class ConsolePages
     ): void {
         if ($only !== ConsolePlane::Organization && $area->environmentLabel() === null) {
             throw new LogicException(sprintf(
-                'Console page [%s] is declared for the environment plane, but the [%s] area does not exist there. '
+                'Console page [%s] is declared for the environment console, but the [%s] area does not exist there. '
                 .'Pass only: ConsolePlane::Organization if the page is genuinely organization-only.',
                 $route,
                 $area->value,

@@ -170,7 +170,7 @@ it('withholds a parked grant that has become conflicting by the time it is accep
     // The rule appears AFTER the invite was sent.
     app(SegregationOfDuties::class)->definePolicy($orgId, 'PO vs payment', [$createPo->id, $approvePay->id]);
 
-    $this->get(route('invitation.accept', $invitation->token))->assertRedirect(route('dashboard'));
+    $this->post(route('invitation.accept.store', $invitation->token))->assertRedirect(route('dashboard'));
 
     // They joined, and hold exactly one of the two — never the forbidden pair.
     expect(app(Memberships::class)->of($orgId, $invitee->id))->not->toBeNull()

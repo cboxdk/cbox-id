@@ -5,8 +5,8 @@ declare(strict_types=1);
 /**
  * The console does not call a CUSTOMER an "account" in anything a person reads.
  *
- * The word is still right for a person's OWN account — "My account", "Switch account",
- * connected accounts, service accounts — so this cannot be a blanket ban, and a blanket
+ * The word is still right for a person's OWN account — "My account", connected accounts,
+ * service accounts — so this cannot be a blanket ban, and a blanket
  * rename is exactly what would break those. What it forbids is the account plane's meaning:
  * the customer that owns projects, environments and billing.
  *
@@ -88,34 +88,14 @@ it('never calls a customer an account in user-facing copy', function (): void {
         '/>\s*Account\s*</',
     ];
 
-    // FIRST PERSON IS NOT THE BANNED MEANING. The rule above is about the OPERATOR's
-    // third-person listing — a table of other people's companies headed "Accounts" while
-    // the URL says `customers`. In a customer's OWN console, "this account" names the
-    // thing they are signed in to and administering, which is the one place the word is
-    // the clearest available: they are not "a customer" to themselves.
-    //
-    // This exemption exists because the word "organization" does two jobs — a customer in
-    // the platform root, one of that customer's end-user teams inside an environment —
-    // and both appear in this one console. Reading "Organizations" on the environment
-    // rail and "Organization settings" on their own is what makes people conclude the two
-    // are the same thing one level apart. See docs/core-concepts/accounts-and-organizations.md.
-    //
-    // Narrow on purpose: one phrase, one directory. The plural listing stays banned
-    // everywhere, including here.
-    //
-    // `account owner` joins it for the same reason: the transfer-ownership dialog on the
-    // customer's OWN console hands over the account, and calling that person the
-    // "organization owner" is the collision this rename exists to remove. In the
-    // operator's listing of other people's companies it stays banned.
-    $firstPersonExempt = ['/\bthis account\b/', '/\baccount owner\b/'];
-
-    // BOTH SPELLINGS OF THE SAME DIRECTORY. The customer's own console pages are blade
-    // until they port and React afterwards, and the exemption is about which PAGES these
-    // are, not which language they happen to be written in.
-    $firstPersonRoots = [
-        resource_path('views/livewire/console'),
-        base_path('resources/js/pages/console'),
-    ];
+    // NO FIRST-PERSON EXEMPTION ANY MORE. A customer's own console used to be allowed "this
+    // account" and "account owner", because the word "organization" did two jobs there and
+    // "account" was the clearest word left for the customer's own record. That record is
+    // the WORKSPACE now — Workspace settings, Team, "hand this workspace to" — so the old
+    // meaning has no place left to be legitimate, and the rule applies everywhere. See
+    // docs/core-concepts/workspaces-and-organizations.md and ConsoleVocabularyTest.
+    $firstPersonExempt = [];
+    $firstPersonRoots = [];
 
     /*
      * AND THE PORTED COPY, which is where most of it now lives.

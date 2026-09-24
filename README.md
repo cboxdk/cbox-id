@@ -30,9 +30,10 @@ composer run dev        # serve + queue + vite + logs
 
 `cbox-id:install` is what creates the first **platform operator** — the identity
 above every environment — along with the platform-root environment and, in the SaaS
-shape, the first account. It prints where to sign in, and the generated password if
-it invented one. Sign in at **`/workspace/login`**; the deployment pages —
-environments, accounts, operators — are the **`/platform`** section of that console,
+shape, the first workspace. It prints where to sign in, and the generated password if
+it invented one. Sign in at **`/login`** on the console host; the deployment pages —
+workspaces, environments, organizations, operators — are the **Platform** area of that
+console (`/platform`),
 where you create environments and provision each one's first organization + admin.
 End users then sign in at `/login`.
 
@@ -54,6 +55,7 @@ Live platform endpoints (from the package): `/.well-known/openid-configuration`,
 
 Running or self-hosting this app? See [`docs/`](docs/index.md):
 
+- [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md) — the five layers and which console you are in. Read this first.
 - [Quickstart](docs/quickstart.md) — operator zero-to-running.
 - [Deployment](docs/operations/deployment.md) — fresh server to a hardened instance.
 - [Configuration](docs/configuration/environment-variables.md) — env reference + secure defaults.
@@ -83,9 +85,10 @@ passkeys + social), signup → org onboarding with signup-mode lockdown, the adm
 console in nine areas (Overview, People, Sign-in, Access control, Developers,
 Connectors, Logs, Settings, My account — see
 [`ConsoleArea`](app/Platform/Console/ConsoleArea.php)) served by one set of
-components on both the organization and the environment plane, the **`/platform`
-section** (environments, accounts, operators) for whoever has authority over the
-deployment, guided install (`cbox-id:install` or `/first-run`), branded error
+components on both the organization and the environment console, a workspace console
+(Projects, Team, Keys, Billing, Workspace settings) for the team that owns the projects,
+the **Platform** areas (workspaces, environments, organizations, operators) for
+whoever has authority over the deployment, guided install (`cbox-id:install` or `/first-run`), branded error
 screens with telemetry trace IDs, and health/metrics endpoints. Session-cookie
 auth, strict CSP, rate limiting, and argon2id throughout.
 

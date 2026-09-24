@@ -33,6 +33,9 @@ trust that the log was not edited, because the log can be checked.
   slider in the console. A log an administrator can prune is not evidence.
 - **It answers "who", not "why".** For sensitive changes, the reason belongs in
   your own change process; the log will tell you it happened and who was signed in.
+  The exception is a [support session](support-access.md): `support_session.started`
+  names the administrator, the person they signed in as, the app and the reason they
+  gave, on the organization's own log.
 
 ## Related
 

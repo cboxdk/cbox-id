@@ -3,8 +3,10 @@ info:
   title: Cbox ID — Environment Management API
   version: "1.0.0"
   description: |
-    The **per-environment management plane** — the API apps use for day-to-day
-    provisioning of organizations and users inside ONE environment. It is served on
+    The **per-environment management plane** — the API an app's own backend uses to run
+    its tenancy inside ONE environment: organizations and their owners, members,
+    invitations, roles (in one organization, or everywhere for your staff), apps, APIs,
+    the API keys customers made for them, and support sessions. It is served on
     the environment's own host ({slug}.cboxid.com or a custom domain): the host pins
     the environment, and the request is authenticated with an environment API key
     (`cbid_env_…`).
@@ -30,6 +32,18 @@ info:
     (`{ "error", "error_description" }` plus `WWW-Authenticate`) rather than this
     envelope. Protocol conformance beats local consistency there.
 
+    **Authority.** A management key acts with the ENVIRONMENT's authority — it is the app
+    vendor's backend, not an organization's administrator. It may therefore grant a staff
+    role (`tenant_assignable: false`) inside one organization, and create APIs. What an
+    organization's own administrators may do is unchanged by anything here. Everything a
+    key does is on the audit trail with the key as the actor (`actor_type: service`).
+
+    **Retries.** There is no `Idempotency-Key` header. Grants (`PUT`), revocations and
+    removals (`DELETE`) are idempotent by design, and adding a member who already holds the
+    same role answers `200`. To make organization creation retry-safe, send your own
+    `slug`: a retry then fails with `422 slug_taken` instead of creating a second
+    organization.
+
     **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
 servers:
@@ -41,7 +55,14 @@ security:
   - EnvironmentApiKey: []
 tags:
   - name: Organizations
+  - name: Members
+  - name: Invitations
+  - name: Roles
   - name: Users
+  - name: Apps
+  - name: APIs
+  - name: API keys
+  - name: Support sessions
   - name: Devices
   - name: Approvals
 paths:
@@ -70,7 +91,7 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       tags: [Organizations]
-      summary: Create an organization
+      summary: Create an organization, optionally with its owner
       description: "Requires scope `organizations:write`."
       requestBody:
         required: true
@@ -78,13 +99,27 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, slug]
+              required: [name]
               properties:
                 name: { type: string, maxLength: 190 }
                 slug:
-                  type: string
+                  type: ["string", "null"]
                   maxLength: 190
-                  description: URL-safe; unique within the environment.
+                  description: |
+                    URL-safe; unique within the environment. Optional — left out, it is derived
+                    from the name and made unique (`acme`, `acme-2`, …). **Send one if you
+                    retry creates**: with your own slug a retried request is a `422
+                    slug_taken` you can recognise, not a second organization.
+                parent_id:
+                  type: ["string", "null"]
+                  description: An organization in this environment to place it under (`422 parent_not_found` otherwise).
+                owner_user_id:
+                  type: ["string", "null"]
+                  description: |
+                    An existing user of this environment who becomes the organization's
+                    **owner**, in the same transaction as the create (`422 user_not_found`
+                    otherwise). Without it the organization starts with no owner; make one
+                    later with `transfer-ownership`.
                 type:
                   type: string
                   # OrganizationType has exactly these two cases and the controller
@@ -126,6 +161,494 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    patch:
+      tags: [Organizations]
+      summary: Rename an organization, or change its slug
+      description: |
+        Requires scope `organizations:write`. A field left out is left alone; a request
+        that changes nothing answers with the organization as it is and records nothing.
+        A change is announced as the `organization.updated` webhook and recorded on the
+        organization's trail as `organization.renamed`, with the values before and after.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 190 }
+                slug: { type: string, minLength: 1, maxLength: 190, description: "URL-safe; unique within the environment." }
+      responses:
+        "200":
+          description: The organization after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [Organizations]
+      summary: Archive an organization
+      description: |
+        Requires scope `organizations:write`. **Archives** rather than erases: the status
+        becomes `deleted`, every member loses access from their next request, the rows stay
+        for the audit trail, and `organization.deleted` is announced. Idempotent — archiving
+        an archived organization answers with it unchanged.
+
+        Refused with `409 owns_products` for an organization that owns identity-provider
+        projects on this platform (a platform customer, not a tenant of your app).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The archived organization.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/transfer-ownership:
+    post:
+      tags: [Organizations]
+      summary: Make a member the organization's owner
+      description: |
+        Requires scope `organizations:write`. The new owner must be an **active** member.
+        With one current owner this is a hand-over: the previous owner stays on as `admin`.
+        An organization with no owner (created without `owner_user_id`) gets its first; one
+        with several (from before ownership was transfer-only) ends with exactly one, the
+        others stepping down to `admin`.
+
+        Refusals: `422 not_a_member`, `409 not_active`, `409 already_owner`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string }
+      responses:
+        "200":
+          description: The new owner's membership.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/members:
+    get:
+      tags: [Members]
+      summary: List an organization's members
+      description: "Requires scope `members:read`. Every membership, whatever its status, oldest first."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Member" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Members]
+      summary: Add an existing user as a member
+      description: |
+        Requires scope `members:write`. Straight in — no invitation, no mail. The user must
+        exist in this environment (`422 user_not_found`).
+
+        `role` is `admin` or `member` (default `member`). `owner` is never assignable:
+        ownership moves with `transfer-ownership`.
+
+        **Idempotent for the same role**: repeating the request answers `200` with the
+        existing membership. A member on a *different* role is `409 already_member` — change
+        the role with `PATCH`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string }
+                role: { $ref: "#/components/schemas/AssignableMemberRole" }
+      responses:
+        "200":
+          description: Already a member with that role — nothing changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/members/{userId}:
+    patch:
+      tags: [Members]
+      summary: Change a member's role
+      description: |
+        Requires scope `members:write`. `role` is `admin` or `member`. Demoting the only
+        owner is refused with `409 last_owner` — transfer ownership first.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: "#/components/schemas/AssignableMemberRole" }
+      responses:
+        "200":
+          description: The membership after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [Members]
+      summary: Remove a member
+      description: |
+        Requires scope `members:write`. The member's roles in the organization go with the
+        membership. Removing the only owner is refused with `409 last_owner`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204": { description: "Removed." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/members/{userId}/roles:
+    get:
+      tags: [Roles]
+      summary: List the roles a member holds in the organization
+      description: |
+        Requires scope `roles:read`. Roles granted AT this organization. Roles a person holds
+        everywhere in the environment (staff) are listed under
+        `/users/{id}/environment-roles`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/RoleAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/members/{userId}/roles/{roleId}:
+    put:
+      tags: [Roles]
+      summary: Grant a member a role in the organization
+      description: |
+        Requires scope `roles:write`. Idempotent.
+
+        **This API grants with the environment's authority.** It is your backend, so it may
+        grant any role the organization can hold — including a **staff role**
+        (`tenant_assignable: false`), such as your support lead's "Support" role at one
+        customer. An organization's own administrators still cannot: their console, their
+        invitations and their directory mappings refuse staff roles, and nothing here
+        changes that.
+
+        Refusals: `422 role_not_assignable` (another organization's role, or one from an app
+        this organization cannot use), `409 role_conflict` (segregation of duties).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/RoleId"
+        - $ref: "#/components/parameters/RoleClientId"
+      responses:
+        "200":
+          description: Granted (or already held).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/RoleAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [Roles]
+      summary: Take a role back from a member
+      description: "Requires scope `roles:write`. Idempotent — a role the member does not hold is a 204 too."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/RoleId"
+        - $ref: "#/components/parameters/RoleClientId"
+      responses:
+        "204": { description: "Not held any more." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/invitations:
+    get:
+      tags: [Invitations]
+      summary: List an organization's pending invitations
+      description: "Requires scope `invitations:read`. Pending and unexpired only."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Invitation" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Invitations]
+      summary: Invite someone to the organization
+      description: |
+        Requires scope `invitations:write`. Mails a link; the person joins when they open it
+        and confirm. Inviting an address again replaces its earlier pending invitation.
+
+        - `role` — `admin` or `member` (default `member`). Never `owner`.
+        - `roles` — access roles granted when the invitation is accepted: role ids, or your
+          app's manifest **keys** when `client_id` names the app that declared them. Only
+          roles the organization's own administrators could grant are accepted: a **staff
+          role** is refused (`422 role_not_assignable`) — grant it after they join, with
+          `PUT …/members/{userId}/roles/{roleId}`.
+        - `client_id` + `return_to` — after accepting, the person is sent to `return_to`,
+          which must be on one of that app's registered redirect-URI origins (checked again
+          when the invitation is accepted).
+        - `inviter_name` — who the mail says it is from. Defaults to the app's name, or the
+          environment's.
+
+        Refusals: `409 already_member`, `409 access_role_conflict` (segregation of duties),
+        `422 unknown_role`, `422 role_not_assignable`, `422 unknown_app`,
+        `422 return_without_app`, `422 return_to_malformed`, `422 return_to_not_registered`,
+        `503 mail_failed` (nothing was created — retry).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 190 }
+                role: { $ref: "#/components/schemas/AssignableMemberRole" }
+                roles:
+                  type: array
+                  maxItems: 50
+                  items: { type: string }
+                client_id: { type: ["string", "null"] }
+                return_to: { type: ["string", "null"], format: uri, maxLength: 2048 }
+                inviter_name: { type: ["string", "null"], maxLength: 120 }
+      responses:
+        "201":
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Invitation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/MailFailed" }
+  /organizations/{id}/invitations/{invitationId}:
+    delete:
+      tags: [Invitations]
+      summary: Withdraw a pending invitation
+      description: |
+        Requires scope `invitations:write`. The link stops working, and the roles parked
+        for it go with it. `409 not_pending` for one already accepted, withdrawn or expired.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "204": { description: "Withdrawn." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organizations/{id}/invitations/{invitationId}/resend:
+    post:
+      tags: [Invitations]
+      summary: Mail a pending invitation again
+      description: |
+        Requires scope `invitations:write`. On a **fresh link**: only a hash of the old one is
+        kept, so it cannot be re-sent, and the reason people ask is usually that it expired.
+        The response is the NEW invitation — its `id` replaces the old one, which stops
+        working. Its roles and app context move with it.
+
+        One re-send per address per minute (`429 too_soon`); `409 not_pending` for one that
+        was accepted, withdrawn or has expired; `503 mail_failed` keeps the invitation.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "200":
+          description: Sent again.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Invitation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/MailFailed" }
+  /organizations/{id}/api-keys:
+    get:
+      tags: [API keys]
+      summary: List the API keys an organization's members created for your apps
+      description: |
+        Requires scope `api_keys:read`. Revoked and expired keys are included, marked by
+        `status`. Never the key itself. Narrow to one app with `?client_id=`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+        - name: client_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ApiKey" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api-keys/{id}:
+    delete:
+      tags: [API keys]
+      summary: Revoke a member API key
+      description: |
+        Requires scope `api_keys:write`. The key stops verifying at once. Idempotent — an
+        already-revoked key is a 204 too. Recorded as `api_key.revoked`, with this
+        management key as the actor.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204": { description: "Revoked." }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -222,6 +745,423 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users/{id}/environment-roles:
+    get:
+      tags: [Roles]
+      summary: List the roles a user holds everywhere (staff)
+      description: "Requires scope `roles:read`."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/RoleAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /users/{id}/environment-roles/{roleId}:
+    get:
+      tags: [Roles]
+      summary: Whether a user holds a role everywhere
+      description: "Requires scope `roles:read`. `200` with the grant, or `404` when it is not held."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/RoleId"
+        - $ref: "#/components/parameters/RoleClientId"
+      responses:
+        "200":
+          description: Held.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/RoleAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    put:
+      tags: [Roles]
+      summary: Grant a role everywhere in the environment (staff)
+      description: |
+        Requires scope `roles:write`. Idempotent. For your own people who act across every
+        customer. Any role that belongs to no organization may be granted this way: an
+        app-agnostic one reaches every app's tokens, one your app declared reaches only
+        your app's. An organization's own role is refused with `422 role_not_assignable`; a
+        grant that would form a segregation-of-duties conflict in any organization the
+        person belongs to with `409 role_conflict`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/RoleId"
+        - $ref: "#/components/parameters/RoleClientId"
+      responses:
+        "200":
+          description: Granted (or already held).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/RoleAssignment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [Roles]
+      summary: Take back an environment-wide grant
+      description: "Requires scope `roles:write`. Idempotent."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/RoleId"
+        - $ref: "#/components/parameters/RoleClientId"
+      responses:
+        "204": { description: "Not held any more." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /roles:
+    get:
+      tags: [Roles]
+      summary: List roles
+      description: |
+        Requires scope `roles:read`. Every role that can still be granted, ordered by name,
+        with the permissions each carries. Not paginated. `?client_id=` narrows to one
+        app's roles; `?organization_id=` to what can be granted in that organization.
+      parameters:
+        - name: client_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: organization_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Role" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apps:
+    get:
+      tags: [Apps]
+      summary: List apps
+      description: "Requires scope `apps:read`. Never a secret."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/App" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [Apps]
+      summary: Register an app
+      description: |
+        Requires scope `apps:write`. Two ways to describe it:
+
+        - **From a blueprint** — send `GET /apps/{id}/blueprint`'s document from another
+          environment as `blueprint` (promote staging to production). `name`,
+          `redirect_uris` and `post_logout_redirect_uris` beside it replace the
+          blueprint's own, since those usually name the environment it came from. A
+          `private_key_jwt` blueprint needs `jwks`.
+        - **Short form** — `name` and `type` (`web`, `spa`, `cli`, `service`, `agent`; default
+          `web`), which decide the client type, grants and default scopes as the console's
+          "Create app" does. `advanced` takes `client_type` and `grant_types`.
+
+        The response carries `client_secret` for an app that authenticates with one —
+        **once**. Only its hash is kept.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blueprint: { $ref: "#/components/schemas/AppBlueprint" }
+                name: { type: string, maxLength: 120 }
+                type: { type: string, enum: [web, spa, cli, service, agent, advanced], default: web }
+                client_type: { type: string, enum: [confidential, public] }
+                grant_types: { type: array, items: { type: string } }
+                redirect_uris: { type: array, items: { type: string } }
+                post_logout_redirect_uris: { type: array, items: { type: string } }
+                scopes: { type: array, items: { type: string } }
+                first_party: { type: boolean, default: false }
+                organization_id: { type: ["string", "null"], description: "The owning organization; null for the environment's own app." }
+                jwks: { type: ["object", "null"], description: "A public JWK Set, for a `private_key_jwt` app." }
+      responses:
+        "201":
+          description: Registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/App" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apps/{id}/blueprint:
+    get:
+      tags: [Apps]
+      summary: Export an app's configuration as a blueprint
+      description: |
+        Requires scope `apps:read`. `{id}` is the app's id or its `client_id`. The document
+        carries the app's settings and none of its identity or credentials: no client id,
+        no secret, no key set, no owning organization. `POST /apps` with it as `blueprint`
+        creates the same app in another environment.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/AppBlueprint" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apis:
+    get:
+      tags: [APIs]
+      summary: List registered APIs
+      description: "Requires scope `apis:read`."
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Api" }
+                  meta: { $ref: "#/components/schemas/PageMeta" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      tags: [APIs]
+      summary: Register an API and its scopes
+      description: |
+        Requires scope `apis:write`. Registering an API is the environment's act; no tenant
+        surface can. `identifier` is an absolute URI (RFC 8707) and becomes the token's
+        `aud`. Scope keys are unique across the environment. `client_id` links the app whose
+        roles and permissions the API enforces, and must have the API's owner.
+        `organization_id` makes the API one organization's; left out, the environment owns
+        it. Refusals are `422 invalid_api` with the reason.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, name]
+              properties:
+                identifier: { type: string, format: uri, maxLength: 255 }
+                name: { type: string, maxLength: 120 }
+                organization_id: { type: ["string", "null"] }
+                client_id: { type: ["string", "null"] }
+                scopes:
+                  type: array
+                  items: { $ref: "#/components/schemas/ApiScope" }
+      responses:
+        "201":
+          description: Registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Api" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /apis/{id}:
+    get:
+      tags: [APIs]
+      summary: Get an API
+      description: "Requires scope `apis:read`."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Api" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    patch:
+      tags: [APIs]
+      summary: Change an API
+      description: |
+        Requires scope `apis:write`. Any of: `name`; `client_id` (null unlinks the app);
+        `scopes`, which is the **complete** set afterwards — scopes named are added or
+        updated, scopes left out are removed. All or nothing. The identifier never changes:
+        register a new API instead.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 120 }
+                client_id: { type: ["string", "null"] }
+                scopes:
+                  type: array
+                  items: { $ref: "#/components/schemas/ApiScope" }
+      responses:
+        "200":
+          description: The API after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/Api" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      tags: [APIs]
+      summary: Delete an API and its scopes
+      description: |
+        Requires scope `apis:write`. Tokens already minted for it keep their `aud` until they
+        expire; apps holding its scope keys keep them as plain scopes.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204": { description: "Deleted." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /support-sessions:
+    post:
+      tags: [Support sessions]
+      summary: Start a support session
+      description: |
+        Requires scope `support:write`. A member of your staff (`actor_user_id`) signs in to
+        one of your apps (`client_id`) AS one of a customer's users (`user_id` in
+        `organization_id`), for a stated `reason`, for at most 60 minutes.
+
+        The actor must hold your app's own `support:impersonate` permission through an
+        **environment-wide** grant (see `PUT /users/{id}/environment-roles/{roleId}`);
+        otherwise `403 not_permitted`. The app must be a first-party app the environment
+        owns that uses the authorization-code grant (`422 client_not_eligible`). The target
+        must be an active member (`422 target_not_member`) of an active organization
+        (`409 organization_inactive`).
+
+        Send `redirect_uri` (registered for the app) and a PKCE S256 `code_challenge` to get
+        the first authorization `code` in the response. Your app redeems it at `/oauth/token`
+        with the verifier; every token carries `act: {"sub": actor_user_id}` and there is
+        never a refresh token. The session is audited on the customer's trail and the
+        environment's, and announced as the `support_session.started` webhook.
+
+        `scopes` in the response are exactly what every token of the session carries: the
+        ones asked for (or, with none, the app's registration), never `offline_access`, and
+        audienced the way the token endpoint audiences them — once any of them belongs to a
+        registered API, the token is for that API and a scope no API registered (such as
+        `apps.manifest`) is left out. Scopes of two registered APIs cannot be audienced to
+        one token and are refused before the session starts (`422 invalid_target`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, organization_id, client_id, actor_user_id, reason]
+              properties:
+                user_id: { type: string, description: "The customer's user to act as." }
+                organization_id: { type: string }
+                client_id: { type: string, description: "The app's public client id." }
+                actor_user_id: { type: string, description: "Your staff member." }
+                reason: { type: string, maxLength: 500, description: "Shown to the customer." }
+                ttl_minutes: { type: integer, minimum: 1, maximum: 60 }
+                scopes: { type: array, items: { type: string }, description: "Narrowed to the app's registration; omitted means all of it." }
+                redirect_uri: { type: string }
+                code_challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+                nonce: { type: ["string", "null"] }
+      responses:
+        "201":
+          description: Started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/SupportSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /vault/secrets:
     post:
@@ -632,13 +1572,77 @@ paths:
         '409': { $ref: '#/components/responses/ApprovalNotActionable' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /oauth/api-keys/verify:
+    # NOT under /api/v1: served at the environment host's root, beside the other OAuth
+    # endpoints. The path-level server says so, and the spec tooling reads it.
+    servers:
+      - url: https://{host}
+        description: The environment's own host
+        variables:
+          host: { default: acme.cboxid.com }
+    post:
+      tags: [API keys]
+      summary: Verify an API key presented to your API
+      description: |
+        Your API received an API key (`{prefix}_…`) and asks whether it is good and
+        what it may do. Authenticate as **your app**, exactly as at the token endpoint —
+        `client_secret_basic`, `client_secret_post` or `private_key_jwt`; a public client is
+        refused. Send the key as `key`.
+
+        A live key bound to your app answers with its holder, organization, tier and
+        permissions (`permissions` is re-capped at every call to what the holder still has).
+        **Everything else** — unknown, malformed, revoked, expired, another app's key, a
+        holder who left — is exactly `{"active": false}`: the endpoint never says which.
+        `401` is only ever about your own client credentials. The response is not cacheable.
+      security:
+        - AppClientCredentials: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/ApiKeyVerificationRequest" }
+          application/json:
+            schema: { $ref: "#/components/schemas/ApiKeyVerificationRequest" }
+      responses:
+        "200":
+          description: The verdict.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiKeyVerification" }
+        "401":
+          description: Your app's client credentials were missing or wrong (RFC 6749 §5.2).
+          headers:
+            WWW-Authenticate:
+              description: 'Basic realm="api-keys"'
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OAuthClientError" }
+        "429":
+          description: Too many verifications from this address — `cbox-id.customer_api_keys.verify_per_minute`, default 600 a minute.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying.
+              schema: { type: integer }
+
 components:
   securitySchemes:
     EnvironmentApiKey:
       type: http
       scheme: bearer
       bearerFormat: cbid_env_
-      description: An environment API key, minted in the environment's console. Bound to that environment's host.
+      description: |
+        An environment API key, `cbid_env_…`. Created by the account that owns the environment,
+        in the console under Identity platform › Environment keys — not in the environment's own
+        console. Bound to that environment's host, and carries an explicit list of scopes; it may
+        also carry an expiry.
+    AppClientCredentials:
+      type: http
+      scheme: basic
+      description: |
+        Your APP's own client credentials — `client_id:client_secret` as HTTP Basic
+        (`client_secret_basic`). `client_secret_post` and `private_key_jwt` are accepted
+        too, in the body, exactly as at the token endpoint.
     VaultManagerToken:
       type: http
       scheme: bearer
@@ -672,6 +1676,28 @@ components:
       name: id
       in: path
       required: true
+      schema: { type: string }
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string }
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema: { type: string }
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      description: The role's id — or its manifest `key`, together with `?client_id=` naming the app that declared it.
+      schema: { type: string }
+    RoleClientId:
+      name: client_id
+      in: query
+      required: false
+      description: The app whose manifest `key` `{roleId}` is. Not needed when `{roleId}` is an id.
       schema: { type: string }
     Limit:
       name: limit
@@ -755,13 +1781,220 @@ components:
         revoked: { type: boolean, description: Whether the secret has been revoked. }
     Organization:
       type: object
+      required: [id, name, slug, type, status]
       properties:
         id: { type: string }
         name: { type: string }
         slug: { type: string }
         type: { type: string, enum: [customer, reseller] }
-        status: { type: string, enum: [active, suspended] }
+        # `deleted` is what DELETE /organizations/{id} leaves: archived, kept for the trail.
+        status: { type: string, enum: [active, suspended, deleted] }
         parent_id: { type: ["string", "null"] }
+        created_at: { type: ["string", "null"], format: date-time }
+    AssignableMemberRole:
+      type: string
+      enum: [admin, member]
+      default: member
+      description: |
+        The built-in tiers this deployment hands out. `owner` is never assigned — ownership
+        moves with `transfer-ownership`.
+    Member:
+      type: object
+      required: [id, user_id, organization_id, role, status]
+      properties:
+        id: { type: string, description: "The membership's own id. Address a member by `user_id`." }
+        user_id: { type: string }
+        organization_id: { type: string }
+        role: { type: string, enum: [owner, admin, developer, member, viewer] }
+        status: { type: string, enum: [active, invited, suspended] }
+        email: { type: ["string", "null"] }
+        name: { type: ["string", "null"] }
+        joined_at: { type: ["string", "null"], format: date-time }
+    Invitation:
+      type: object
+      required: [id, organization_id, email, role, roles, status]
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [owner, admin, developer, member, viewer] }
+        roles:
+          type: array
+          description: Ids of the access roles granted when the invitation is accepted.
+          items: { type: string }
+        status: { type: string, enum: [pending, accepted, revoked] }
+        client_id: { type: ["string", "null"], description: "The app it came from." }
+        return_to: { type: ["string", "null"], description: "Where the person is sent after accepting." }
+        invited_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: ["string", "null"], format: date-time }
+    Role:
+      type: object
+      required: [id, name, tenant_assignable, permissions]
+      properties:
+        id: { type: string }
+        key: { type: ["string", "null"], description: "The app's manifest key; null for a role made in the console." }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        client_id: { type: ["string", "null"], description: "The app that declared it; null for an app-agnostic role." }
+        organization_id: { type: ["string", "null"], description: "Set only for a role one organization made for itself." }
+        tenant_assignable:
+          type: boolean
+          description: |
+            `false` marks a STAFF role: an organization's own administrators can never grant
+            it, nor can an invitation carry it. This API can — see the role endpoints.
+        permissions:
+          type: array
+          items: { type: string }
+    RoleAssignment:
+      type: object
+      required: [role_id, name, user_id, source]
+      properties:
+        role_id: { type: string }
+        key: { type: ["string", "null"] }
+        name: { type: string }
+        client_id: { type: ["string", "null"] }
+        tenant_assignable: { type: boolean }
+        user_id: { type: string }
+        organization_id:
+          type: ["string", "null"]
+          description: The organization it is held in; null for an environment-wide (staff) grant.
+        source: { type: string, enum: [manual, pushed, system] }
+    App:
+      type: object
+      required: [id, client_id, name, type, client_type, grant_types, redirect_uris, scopes, first_party]
+      properties:
+        id: { type: string }
+        client_id: { type: string }
+        name: { type: string }
+        type:
+          type: string
+          enum: [web, spa, cli, service, agent, advanced]
+          description: The kind, read back from its grants; `advanced` when they match no preset.
+        client_type: { type: string, enum: [confidential, public] }
+        organization_id: { type: ["string", "null"] }
+        first_party: { type: boolean }
+        grant_types: { type: array, items: { type: string } }
+        redirect_uris: { type: array, items: { type: string } }
+        post_logout_redirect_uris: { type: array, items: { type: string } }
+        scopes: { type: array, items: { type: string } }
+        created_at: { type: ["string", "null"], format: date-time }
+        client_secret:
+          type: string
+          description: Only on the response that created the app, and only for an app that authenticates with a secret. Never again.
+    AppBlueprint:
+      type: object
+      description: |
+        An app's configuration without its identity or credentials — deterministic (lists
+        sorted), versioned, and refused rather than half-read when it carries a key this
+        server does not know.
+      required: [kind, version, name, client_type]
+      additionalProperties: false
+      properties:
+        kind: { type: string, const: cbox-id.client-blueprint }
+        version: { type: integer, const: 1 }
+        name: { type: string }
+        client_type: { type: string, enum: [confidential, public] }
+        token_endpoint_auth_method: { type: ["string", "null"] }
+        grant_types: { type: array, items: { type: string } }
+        redirect_uris: { type: array, items: { type: string } }
+        post_logout_redirect_uris: { type: array, items: { type: string } }
+        scopes: { type: array, items: { type: string } }
+        first_party: { type: boolean }
+        manifest_url: { type: ["string", "null"] }
+        access_token_ttl: { type: ["integer", "null"] }
+        backchannel_logout_uri: { type: ["string", "null"] }
+        backchannel_logout_session_required: { type: boolean }
+        api_key_prefix: { type: ["string", "null"] }
+    ApiScope:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string, maxLength: 128 }
+        description: { type: ["string", "null"], maxLength: 255 }
+        tenant_requestable:
+          type: boolean
+          default: true
+          description: Whether apps an organization owns may be granted it; false keeps it for the environment's own apps.
+    Api:
+      type: object
+      required: [id, identifier, name, scopes]
+      properties:
+        id: { type: string }
+        identifier: { type: string, description: "Absolute URI; the token's `aud`." }
+        name: { type: string }
+        organization_id: { type: ["string", "null"], description: "null when the environment owns it." }
+        client_id: { type: ["string", "null"], description: "The app whose roles and permissions it enforces." }
+        scopes:
+          type: array
+          items: { $ref: "#/components/schemas/ApiScope" }
+        created_at: { type: ["string", "null"], format: date-time }
+    ApiKey:
+      type: object
+      required: [id, prefix, organization_id, user_id, client_id, permissions, status, revoked]
+      properties:
+        id: { type: string }
+        name: { type: ["string", "null"] }
+        prefix: { type: string, description: "What a person recognises the key by. Never the key." }
+        organization_id: { type: string }
+        user_id: { type: string, description: "Its holder." }
+        client_id: { type: string, description: "The app whose API it is for." }
+        permissions: { type: array, items: { type: string } }
+        status: { type: string, enum: [active, expired, revoked] }
+        revoked: { type: boolean }
+        created_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: ["string", "null"], format: date-time }
+        last_used_at: { type: ["string", "null"], format: date-time }
+        revoked_at: { type: ["string", "null"], format: date-time }
+    SupportSession:
+      type: object
+      required: [id, user_id, organization_id, client_id, actor_id, act, reason, scopes, expires_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string, description: "The customer's user being acted as." }
+        organization_id: { type: string }
+        client_id: { type: string }
+        actor_id: { type: string }
+        act:
+          type: object
+          required: [sub]
+          description: The RFC 8693 actor claim every token of the session carries.
+          properties:
+            sub: { type: string }
+        reason: { type: string }
+        scopes: { type: array, items: { type: string } }
+        expires_at: { type: string, format: date-time }
+        code:
+          type: ["string", "null"]
+          description: The first authorization code, when `redirect_uri` and `code_challenge` were sent. Shown once.
+        redirect_uri: { type: ["string", "null"] }
+    ApiKeyVerificationRequest:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string, description: "The API key your API was presented with." }
+        client_id: { type: string, description: "For `client_secret_post`." }
+        client_secret: { type: string, description: "For `client_secret_post`." }
+        client_assertion_type: { type: string, description: "For `private_key_jwt`." }
+        client_assertion: { type: string, description: "For `private_key_jwt`." }
+    ApiKeyVerification:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+        key_id: { type: string }
+        sub: { type: string, description: "The key's holder." }
+        org: { type: string }
+        org_role: { type: ["string", "null"], enum: [owner, admin, developer, member, viewer, null] }
+        permissions: { type: array, items: { type: string } }
+        client_id: { type: string }
+        expires_at: { type: ["string", "null"], format: date-time }
+    OAuthClientError:
+      type: object
+      required: [error]
+      description: RFC 6749 §5.2 — the OAuth error shape, not this API's `{error, message}` envelope.
+      properties:
+        error: { type: string, enum: [invalid_client] }
+        error_description: { type: string }
     User:
       type: object
       properties:
@@ -820,6 +2053,18 @@ components:
       description: |
         Validation failed (`error: validation_failed`, with a field-keyed `errors` map),
         or a uniqueness conflict (e.g. slug/email taken).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: |
+        The request conflicts with the resource's state; `error` names which rule
+        (`last_owner`, `already_member`, `not_pending`, `role_conflict`, …).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MailFailed:
+      description: "The mail server refused the invitation mail (`error: mail_failed`). Retry."
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

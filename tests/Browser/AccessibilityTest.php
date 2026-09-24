@@ -157,28 +157,28 @@ it('has no accessibility issues on the ported console pages', function (string $
         ->assertNoJavaScriptErrors();
 })->with([
     'projects' => ['/projects', 'Projects'],
-    'members' => ['/members', 'Administrators'],
-    'api-keys' => ['/api-keys', 'API keys'],
+    'members' => ['/team', 'Team'],
+    'keys.workspace' => ['/keys/workspace', 'Keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Activity log'],
     'settings' => ['/settings', 'Settings'],
     'appearance' => ['/appearance', 'Appearance'],
     'sign-in-rules' => ['/sign-in-rules', 'Sign-in rules'],
-    'clients' => ['/clients', 'Apps & API keys'],
-    'connections' => ['/connections', 'Single sign-on'],
-    'directories' => ['/directories', 'Sync users in'],
+    'clients' => ['/apps', 'Apps'],
+    'connections' => ['/single-sign-on', 'Single sign-on'],
+    'directories' => ['/sync-in', 'Sync users in'],
     'roles' => ['/roles', 'Roles'],
     'permissions' => ['/permissions', 'Permissions'],
-    'hooks' => ['/hooks', 'Inline hooks'],
-    'access-reviews' => ['/governance', 'Access reviews'],
-    'role-conflicts' => ['/sod-policies', 'Role conflicts'],
-    'vault' => ['/vault', 'Token vault'],
-    'outbound-sync' => ['/provisioning', 'Sync users out'],
+    'hooks' => ['/inline-hooks', 'Inline hooks'],
+    'access-reviews' => ['/access-reviews', 'Access reviews'],
+    'role-conflicts' => ['/role-conflicts', 'Role conflicts'],
+    'vault' => ['/token-vault', 'Token vault'],
+    'outbound-sync' => ['/sync-out', 'Sync users out'],
     'log-streams' => ['/log-streaming', 'Log streaming'],
     'usage' => ['/usage', 'Usage'],
-    'social-providers' => ['/social-providers', 'Social sign-in'],
+    'social-providers' => ['/social-sign-in', 'Social sign-in'],
     'get-started' => ['/get-started', 'Set up Acme'],
-    'approvals' => ['/approvals', 'Agent approvals'],
+    'approvals' => ['/approvals', 'Approve agent requests'],
     'dashboard' => ['/dashboard', 'Welcome back'],
 ])->group('a11y');
 
@@ -192,7 +192,7 @@ it('has no accessibility issues on the ported console pages', function (string $
 it('audits a roster that actually has rows, an invitation and a pager', function (): void {
     signedInForAudit();
 
-    visit('/members')
+    visit('/team')
         ->assertSee('Invited, not joined yet')
         ->assertSee('pending@acme.test')
         ->assertSee('Next')
@@ -243,11 +243,11 @@ it('has no accessibility issues on the ported environment console pages', functi
     'home' => ['/admin', 'Overview'],
     'organizations' => ['/admin/organizations', 'Organizations'],
     'users' => ['/admin/users', 'Users'],
-    'saml-applications' => ['/admin/login-methods', 'SAML applications'],
-    'approvals' => ['/admin/approvals', 'Agent approvals'],
+    'saml-applications' => ['/admin/saml-apps', 'SAML applications'],
+    'approvals' => ['/admin/approvals', 'Review agent requests'],
     // The SAME page as `/usage` on the other plane, and the reason that page exists: the
     // environment plane had a primitive copy of these counters called "Analytics".
-    'analytics' => ['/admin/analytics', 'Usage'],
+    'analytics' => ['/admin/usage', 'Usage'],
     'social-sign-in' => ['/admin/social-sign-in', 'Social sign-in'],
 ])->group('a11y');
 
@@ -478,7 +478,7 @@ it('has no accessibility issues on the ported platform console pages', function 
  */
 dataset('platform pages', [
     'environments' => ['/platform', 'Environments'],
-    'customers' => ['/platform/customers', 'Customers'],
+    'customers' => ['/platform/customers', 'Workspaces'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
     'customer' => ['/platform/customers/first', 'Acme'],
@@ -592,7 +592,7 @@ it('confirms before it suspends a tenant, and says who the operator is', functio
     // navigating by control and to this test alike.
     $page->click('button[aria-label="Suspend Tenant A11y"]')
         ->assertSee('Suspend Tenant A11y?')
-        ->assertSee('can no longer sign in to this tenant')
+        ->assertSee('can no longer sign in to this organization')
         ->assertSee('You can reactivate it here')
         ->assertNoJavaScriptErrors();
 })->group('a11y');

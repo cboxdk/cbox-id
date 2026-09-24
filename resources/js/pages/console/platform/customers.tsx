@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, SimplePagination as SimplePaginationState } from '@/types';
+import type { HelpContent, PageProps, SimplePagination as SimplePaginationState } from '@/types';
 import {
     Button,
     Dialog,
@@ -38,6 +38,7 @@ type Props = PageProps<{
     storeHref: string;
     environmentsHref: string;
     environmentLimits: number[];
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -67,6 +68,7 @@ export default function Customers({
     storeHref,
     environmentsHref,
     environmentLimits,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
@@ -91,7 +93,8 @@ export default function Customers({
     return (
         <>
             <PageHeader
-                description="Every customer on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth."
+                help={help}
+                description="Every workspace on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth."
                 actions={
                     <Button
                         variant="primary"
@@ -99,7 +102,7 @@ export default function Customers({
                         onClick={() => setCreating((open) => !open)}
                     >
                         <Icon name="plus" className="w-4 h-4" />
-                        New customer
+                        New workspace
                     </Button>
                 }
             />
@@ -127,12 +130,12 @@ export default function Customers({
                     type="search"
                     style={{ maxWidth: '24rem' }}
                     placeholder="Search by name or slug"
-                    aria-label="Search customers"
+                    aria-label="Search workspaces"
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
                 <output className="sr-only">
-                    {plural(pagination.count, 'customer')} on this page.
+                    {plural(pagination.count, 'workspace')} on this page.
                 </output>
             </div>
 
@@ -146,18 +149,18 @@ export default function Customers({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={`No customers match “${search}”`}
+                            title={`No workspaces match “${search}”`}
                             description="Try part of the organization name, or its slug."
                         />
                     ) : (
                         <EmptyState
                             icon="settings"
-                            title="No customers yet"
-                            description="A customer appears here the moment somebody signs up — or use New customer above to onboard one yourself."
+                            title="No workspaces yet"
+                            description="A workspace appears here the moment somebody signs up — or use New workspace above to onboard one yourself."
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
                                     <Icon name="plus" className="w-4 h-4" />
-                                    New customer
+                                    New workspace
                                 </Button>
                             }
                         />
@@ -173,10 +176,10 @@ export default function Customers({
                     */}
                     <div className="cbx-panel overflow-hidden mt-8">
                         <div className="overflow-x-auto">
-                            <Table caption="Customers on this install, with the size of each estate.">
+                            <Table caption="Workspaces on this install, with the size of each estate.">
                                 <thead>
                                     <tr>
-                                        <Th>Customer</Th>
+                                        <Th>Workspace</Th>
                                         <Th className="text-right">Members</Th>
                                         <Th className="text-right">Projects</Th>
                                         <Th className="text-right">Environments</Th>
@@ -280,7 +283,7 @@ export default function Customers({
                     <div className="mt-4">
                         <SimplePagination
                             pagination={pagination}
-                            noun="customer"
+                            noun="workspace"
                             href={(page) => listHref(search, page)}
                         />
                     </div>
@@ -289,7 +292,7 @@ export default function Customers({
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
                 Suspension is the only lever here, and it is reversible. Nothing on this screen
-                deletes or purges a customer. An install also holds environments that no customer
+                deletes or purges a workspace. An install also holds environments that no workspace
                 owns — the platform root, and any unattached leftover; both are named for what they
                 are on{' '}
                 <Link href={environmentsHref} className="underline">
@@ -374,7 +377,7 @@ function CreateCustomer({
     }, []);
 
     return (
-        <Panel title="New customer" className="mt-6">
+        <Panel title="New workspace" className="mt-6">
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -389,7 +392,7 @@ function CreateCustomer({
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                        <Field label="Customer name" error={form.errors.name}>
+                        <Field label="Workspace name" error={form.errors.name}>
                             <Input
                                 ref={name}
                                 name="name"
@@ -425,7 +428,7 @@ function CreateCustomer({
 
                     <Field
                         label="Environment allowance"
-                        hint="The plan allowance on their first product. Billing hangs off the product, not the customer."
+                        hint="The plan allowance on their first product. Billing hangs off the product, not the workspace."
                         error={form.errors.environmentLimit}
                     >
                         <Select
@@ -443,7 +446,7 @@ function CreateCustomer({
 
                 <div className="mt-6 flex items-center gap-3">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Create customer
+                        Create workspace
                     </Button>
                     <Button type="button" onClick={onDone}>
                         Cancel

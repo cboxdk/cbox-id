@@ -72,10 +72,10 @@ function plural(count: number, noun: string): string {
 
 /** What a control that repoints the console has to say before it does it. */
 const TARGET_COPY =
-    'Every page you open from now on — organizations, usage, tenant detail — reads that plane instead of the current one. Nothing is changed in either.';
+    'Every page you open from now on — organizations, usage, organization detail — reads that environment instead of the current one. Nothing is changed in either.';
 
 const OPEN_COPY =
-    'The console is pointed at this plane and every page you open from now on reads it instead of the current one. Nothing is changed in either.';
+    'The console is pointed at this environment and every page you open from now on reads it instead of the current one. Nothing is changed in either.';
 
 export default function Customer({
     customer,
@@ -103,7 +103,7 @@ export default function Customer({
                     className="inline-flex items-center gap-1 text-sm"
                     style={{ color: 'var(--muted)' }}
                 >
-                    <span aria-hidden="true">&larr;</span> Back to customers
+                    <span aria-hidden="true">&larr;</span> Back to workspaces
                 </Link>
             </div>
 
@@ -113,7 +113,7 @@ export default function Customer({
                 the label from there.
             */}
             <PageHeader
-                description="One customer on this install — its team, its projects, and every environment those projects own. Suspending it signs out its members and stops all of them serving auth."
+                description="One workspace on this install — its team, its projects, and every environment those projects own. Suspending it signs out its members and stops all of them serving auth."
                 actions={
                     <Button
                         variant={customer.active ? 'danger' : 'primary'}
@@ -163,7 +163,7 @@ export default function Customer({
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        Nobody is on this customer — it has no owner, so nobody can sign in to
+                        Nobody is on this workspace — it has no owner, so nobody can sign in to
                         administer it. That is a provisioning failure worth chasing, not an empty
                         list.
                     </div>
@@ -173,7 +173,7 @@ export default function Customer({
                             <thead>
                                 <tr>
                                     <Th>Member</Th>
-                                    <Th>Role</Th>
+                                    <Th>Built-in role</Th>
                                     <Th>Status</Th>
                                     <Th>Environments</Th>
                                     <Th>Last sign-in</Th>
@@ -236,7 +236,7 @@ export default function Customer({
                     <EmptyState
                         icon="layers"
                         title="No projects yet"
-                        description="A project is one IdP product this customer owns, and it is what environments hang off — so until the customer creates one from its own workspace, there is nothing here to target or open. Nothing on this screen creates one on the customer's behalf."
+                        description="A project is one IdP product this workspace owns, and it is what environments hang off — so until the workspace creates one from its own console, there is nothing here to target or open. Nothing on this screen creates one on the workspace's behalf."
                     />
                 )}
 
@@ -288,7 +288,7 @@ export default function Customer({
                         action={<Pill tone="warning">Unfiled</Pill>}
                     >
                         <div className="px-5 pt-4 text-sm" style={{ color: 'var(--muted)' }}>
-                            This customer owns{' '}
+                            This workspace owns{' '}
                             {plural(unfiledEnvironments.length, 'environment')} that no project
                             holds, so nothing bills for{' '}
                             {unfiledEnvironments.length === 1 ? 'it' : 'them'} and{' '}
@@ -300,7 +300,7 @@ export default function Customer({
 
                         <div className="mt-4">
                             <EnvironmentTable
-                                caption="Environments this customer owns that no project holds."
+                                caption="Environments this workspace owns that no project holds."
                                 environments={unfiledEnvironments}
                                 onConfirm={setConfirming}
                                 openOnly
@@ -313,7 +313,7 @@ export default function Customer({
             <p className="mt-4 text-xs" style={{ color: 'var(--faint)' }}>
                 Suspension is the only thing this page changes, and it is reversible. Targeting and
                 opening an environment move the console&rsquo;s own view; they change nothing in
-                either plane.
+                either environment.
             </p>
 
             <Dialog
@@ -463,17 +463,17 @@ function EnvironmentTable({
                             <Td className="text-right whitespace-nowrap">
                                 <Button
                                     size="sm"
-                                    aria-label={`Open the tenants in ${environment.name}`}
+                                    aria-label={`Open the organizations in ${environment.name}`}
                                     onClick={() =>
                                         onConfirm({
                                             href: environment.openHref,
                                             title: `Open ${environment.name}?`,
                                             description: OPEN_COPY,
-                                            action: 'Open tenants',
+                                            action: 'Open organizations',
                                         })
                                     }
                                 >
-                                    Open tenants
+                                    Open organizations
                                 </Button>
 
                                 {openOnly ? null : environment.isTarget ? (

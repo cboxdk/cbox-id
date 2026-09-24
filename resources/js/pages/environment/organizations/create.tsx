@@ -107,7 +107,7 @@ export default function CreateOrganization({ indexHref, storeHref }: Props) {
                                     <MetadataRows
                                         rows={form.data.metadata}
                                         onChange={(rows) => form.setData('metadata', rows)}
-                                        hint="Anything your own systems need to keep against this tenant. Rows with no key are dropped."
+                                        hint="Anything your own systems need to keep against this organization. Rows with no key are dropped."
                                     />
                                 </div>
                             )}

@@ -3,15 +3,23 @@
 declare(strict_types=1);
 
 use App\Models\InvitationRoleGrant;
+use App\Platform\PlatformAuth;
+use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Manifest\DeclaredPermission;
+use Cbox\Id\AccessControl\Manifest\DeclaredRole;
+use Cbox\Id\AccessControl\Manifest\Manifest;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Invitation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -44,7 +52,7 @@ it('applies parked access roles when the invitation is accepted', function (): v
         'role_id' => $role->id,
     ]);
 
-    $this->get('/invitations/'.$pending->token.'/accept')->assertRedirect();
+    $this->post('/invitations/'.$pending->token.'/accept')->assertRedirect();
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
     expect($subject)->not->toBeNull()
@@ -92,7 +100,7 @@ it('accepts an invitation whose parked role was retired in the meantime', functi
 
     Role::query()->whereKey($retired->id)->update(['orphaned_at' => now()]);
 
-    $this->get('/invitations/'.$pending->token.'/accept')
+    $this->post('/invitations/'.$pending->token.'/accept')
         ->assertRedirect(route('dashboard'));
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
@@ -147,7 +155,7 @@ it('does not hand a later invitation the roles a revoked one had parked', functi
     // stores a hash, which is why the console's own flow mails the link instead.
     $second = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member);
 
-    $this->get('/invitations/'.$second->token.'/accept')->assertRedirect();
+    $this->post('/invitations/'.$second->token.'/accept')->assertRedirect();
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
 
@@ -208,7 +216,7 @@ it('applies only the accepted invitation’s roles when two are live for one add
         'role_id' => $ordinary->id,
     ]);
 
-    $this->get('/invitations/'.$second->token.'/accept')->assertRedirect();
+    $this->post('/invitations/'.$second->token.'/accept')->assertRedirect();
 
     $subject = app(Subjects::class)->findByEmail('newbie@acme.test');
     $holds = fn (string $roleId): bool => RoleAssignment::query()
@@ -223,3 +231,77 @@ it('applies only the accepted invitation’s roles when two are live for one add
         // what belongs to the other.
         ->and(InvitationRoleGrant::query()->where('invitation_id', $first->invitation->id)->exists())->toBeTrue();
 })->group('security');
+
+/*
+ * THE PAGE SAYS WHAT ACCEPTING GRANTS. It listed only the built-in role — "Role: Member"
+ * — for an invitation that also made the person an Editor in the app they were invited
+ * to, so the one screen that asks for their consent understated what they were agreeing
+ * to, in words the inviter never used.
+ */
+it('tells the invitee every role the invitation grants, in the console\'s words', function (): void {
+    [$inviterId, $org] = actingAsRole(MembershipRole::Owner);
+    $approver = app(Roles::class)->define($org->id, 'Approver');
+
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        'Acme Tasks',
+        redirectUris: ['https://tasks.acme.test/auth/callback'],
+        organizationId: $org->id,
+    ))->client;
+
+    app(AppManifests::class)->sync($client->client_id, new Manifest(
+        version: '1',
+        permissions: [new DeclaredPermission('tasks:edit', 'Edit tasks', true)],
+        roles: [
+            new DeclaredRole('editor', 'Editor', null, ['tasks:edit']),
+            new DeclaredRole('reviewer', 'Reviewer', null, ['tasks:edit']),
+        ],
+    ));
+
+    $appRole = fn (string $key): Role => Role::query()->where('client_id', $client->client_id)->where('key', $key)->sole();
+
+    $pending = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Member, invitedBy: $inviterId);
+
+    foreach ([$approver, $appRole('editor'), $appRole('reviewer')] as $role) {
+        InvitationRoleGrant::query()->create([
+            'invitation_id' => $pending->invitation->id,
+            'organization_id' => $org->id,
+            'email' => 'newbie@acme.test',
+            'role_id' => $role->id,
+        ]);
+    }
+
+    app(PlatformAuth::class)->logout(request());
+
+    $this->get(route('invitation.accept', $pending->token))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('auth/join-organization')
+            ->where('confirmation.facts.2', ['label' => 'Built-in role', 'value' => 'Member'])
+            // Grouped as the People page's picker groups them: custom roles, then app by app.
+            ->where('confirmation.facts.3', ['label' => 'Custom roles', 'value' => 'Approver'])
+            ->where('confirmation.facts.4', ['label' => 'Roles in Acme Tasks', 'value' => 'Editor, Reviewer'])
+            ->where('confirmation.facts.5', ['label' => 'Your email', 'value' => 'newbie@acme.test']));
+
+    // The app's next manifest makes Reviewer staff-only: accepting would withhold it, so
+    // the page no longer promises it.
+    Role::query()->whereKey($appRole('reviewer')->id)->update(['tenant_assignable' => false]);
+
+    $this->get(route('invitation.accept', $pending->token))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('confirmation.facts.4', ['label' => 'Roles in Acme Tasks', 'value' => 'Editor']));
+});
+
+it('says only the built-in role when the invitation carries no other', function (): void {
+    [$inviterId, $org] = actingAsRole(MembershipRole::Owner);
+    $pending = app(Invitations::class)->invite($org->id, 'newbie@acme.test', MembershipRole::Admin, invitedBy: $inviterId);
+
+    app(PlatformAuth::class)->logout(request());
+
+    $this->get(route('invitation.accept', $pending->token))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('confirmation.facts', [
+                ['label' => 'Organization', 'value' => 'Acme'],
+                ['label' => 'Invited by', 'value' => 'Owner'],
+                ['label' => 'Built-in role', 'value' => 'Admin'],
+                ['label' => 'Your email', 'value' => 'newbie@acme.test'],
+            ]));
+});

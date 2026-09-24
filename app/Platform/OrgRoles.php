@@ -14,11 +14,11 @@ use Illuminate\Validation\Rules\Enum;
  * The org-membership roles this console offers, and the single place an untrusted
  * role string becomes a {@see MembershipRole}.
  *
- * The framework enum carries five cases; the console deliberately offers three.
+ * The framework enum carries five cases; the console deliberately offers two.
  * Developer and Viewer are technical-plane roles with no meaning on an
  * organization's member roster here, so the restriction is this host's product
- * decision — which is why it lives app-side rather than on the packaged enum, and
- * mirrors {@see MembershipRole::assignable()} on the account plane.
+ * decision — which is why it lives app-side rather than on the packaged enum. Owner
+ * is not offered anywhere: it moves only by transfer.
  *
  * A public Livewire prop is attacker-controlled: the wire request carries the whole
  * component state, so a `<select>` constrains a browser and nothing else. Every role
@@ -30,14 +30,35 @@ use Illuminate\Validation\Rules\Enum;
 final class OrgRoles
 {
     /**
-     * The roles the console may assign, highest last so the `<select>`s read the way
-     * they always have (Member, Admin, Owner).
+     * The roles the console may assign, highest first — the order every role picker in
+     * the product reads in.
+     *
+     * NO OWNER, and that is the framework's rule rather than this console's taste:
+     * ownership is TRANSFERRED, never assigned ({@see MembershipRole::assignable()}). This
+     * list used to offer it, so an owner could hand out further owners from the People
+     * page — each of them able to demote the others — while the customer console beside
+     * it only ever moved ownership with "Transfer ownership". One rule now, on both.
      *
      * @return list<MembershipRole>
      */
     public static function assignable(): array
     {
-        return [MembershipRole::Member, MembershipRole::Admin, MembershipRole::Owner];
+        return [MembershipRole::Admin, MembershipRole::Member];
+    }
+
+    /**
+     * What a role means on an organization's own roster, in one line — shown under the
+     * option in every picker, so a choice is not a word with no consequence attached.
+     */
+    public static function description(MembershipRole $role): string
+    {
+        return match ($role) {
+            MembershipRole::Owner => 'Everything an admin can do, and the only one who can delete the organization or hand it over.',
+            MembershipRole::Admin => 'Manages people, apps, roles and settings for this organization.',
+            MembershipRole::Developer => 'Works with the organization\'s apps; no say over its people.',
+            MembershipRole::Member => 'Signs in to the organization\'s apps. No console administration.',
+            MembershipRole::Viewer => 'Read-only.',
+        };
     }
 
     /**

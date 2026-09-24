@@ -24,9 +24,9 @@ type Props = PageProps<{ accounts: Account[] }>;
 export default function Accounts({ accounts }: Props) {
     return (
         <div className="w-full max-w-sm mx-auto">
-            <h1 className="font-semibold tracking-tight text-2xl">Choose an account</h1>
+            <h1 className="font-semibold tracking-tight text-2xl">Switch user</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                Signed in on this device. Pick one, or add another.
+                Everyone signed in on this device. Pick one, or sign in as someone else.
             </p>
 
             <ul className="mt-6 flex flex-col gap-2">
@@ -75,7 +75,7 @@ export default function Accounts({ accounts }: Props) {
                 className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-dashed px-3.5 py-3 text-sm font-medium transition"
                 style={{ borderColor: 'var(--border)' }}
             >
-                <Icon name="plus" className="w-4 h-4" /> Add another account
+                <Icon name="plus" className="w-4 h-4" /> Sign in as someone else
             </Link>
         </div>
     );

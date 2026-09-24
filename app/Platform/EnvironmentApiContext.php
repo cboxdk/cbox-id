@@ -23,6 +23,19 @@ final class EnvironmentApiContext
         $this->key = $key;
     }
 
+    /**
+     * Forget the key once its request is answered.
+     *
+     * A `scoped` binding is only reset between requests under Octane. Everywhere else — a
+     * queue worker, the test suite, a console command running after an in-process request —
+     * the key would stay "authenticated" for whatever ran next, and
+     * {@see EnvironmentKeyAuditLog} would attribute that work to it.
+     */
+    public function clear(): void
+    {
+        $this->key = null;
+    }
+
     public function key(): ?EnvironmentApiKey
     {
         return $this->key;

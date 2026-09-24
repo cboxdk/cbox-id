@@ -59,13 +59,21 @@ final class ApiContract
 
         $path = '/'.ltrim($request->getPathInfo(), '/');
 
-        if (! str_starts_with($path, '/api/')) {
+        // The OAuth surface is checked for SHAPE where the spec documents an operation of it
+        // (`/oauth/api-keys/verify`, whose path item carries its own server), never for the
+        // envelope: its errors are RFC 6749's `{error, error_description}` by design.
+        $api = str_starts_with($path, '/api/');
+
+        if (! $api && ! str_starts_with($path, '/oauth/')) {
             return;
         }
 
         $body = self::json($response);
 
-        self::assertErrorEnvelope($request, $response, $body);
+        if ($api) {
+            self::assertErrorEnvelope($request, $response, $body);
+        }
+
         self::assertDocumentedShape($request, $response, $body);
     }
 
@@ -159,7 +167,7 @@ final class ApiContract
             $paths = is_array($spec['paths'] ?? null) ? $spec['paths'] : [];
 
             foreach ($paths as $specPath => $operations) {
-                if ('/api/v1'.$specPath !== $routeUri) {
+                if (self::base($operations).$specPath !== $routeUri) {
                     continue;
                 }
 
@@ -172,6 +180,29 @@ final class ApiContract
         }
 
         return null;
+    }
+
+    /**
+     * Where a spec path is served from: the specs' servers are `https://{host}/api/v1`, and a
+     * path item may override that with its own `servers` — `/oauth/api-keys/verify` is served
+     * at the host's root. Only the URL's PATH counts; the host is a variable.
+     *
+     * Public because OpenApiCoverageTest must derive routes from the spec the same way. Two
+     * derivations that disagreed once let a spec file be checked by neither.
+     *
+     * @param  array<mixed>  $pathItem
+     */
+    public static function base(array $pathItem): string
+    {
+        $server = $pathItem['servers'][0]['url'] ?? null;
+
+        if (! is_string($server)) {
+            return '/api/v1';
+        }
+
+        $path = parse_url(str_replace('{host}', 'host.invalid', $server), PHP_URL_PATH);
+
+        return is_string($path) ? rtrim($path, '/') : '';
     }
 
     /**

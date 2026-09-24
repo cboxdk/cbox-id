@@ -74,8 +74,8 @@ export default function CreateLogStream({
                          * console you are already inside.
                          */
                         shipsWholeEnvironment
-                            ? "Every organization's entries in this environment, including tenants other than your own."
-                            : "This organization's entries, and nothing from any other tenant."
+                            ? "Every organization's entries in this environment, including organizations other than your own."
+                            : "This organization's entries, and nothing from any other organization."
                     }
                 >
                     <div className="space-y-4">

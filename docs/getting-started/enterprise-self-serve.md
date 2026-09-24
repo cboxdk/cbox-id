@@ -95,7 +95,7 @@ How it holds together:
 The portal session is deliberately a *different* thing from a platform login:
 
 - It is stored under `cbox.portal`, so it **never** satisfies `platform.auth` — a
-  portal holder hitting `/dashboard`, `/members`, `/connections`, … is bounced to
+  portal holder hitting `/dashboard`, `/directory/members`, `/single-sign-on`, … is bounced to
   login like any guest.
 - The bound org id lives only in the server session; the setup screen feeds it to
   the org-scoped package contracts, so the portal can only ever configure its own

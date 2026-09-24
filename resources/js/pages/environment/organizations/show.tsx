@@ -1,31 +1,42 @@
-import { Link, router, useForm } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps, Pagination as PaginationState } from '@/types';
 import {
+    type AppApiKey,
+    AppApiKeyList,
     Badge,
     Button,
     Checkbox,
     ConfirmDelete,
     CopyButton,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
     EmptyState,
     Field,
     Icon,
     Input,
+    InviteForm,
     type MetadataRow,
     MetadataRows,
     Pagination,
     Panel,
+    type PendingInvitation,
+    PendingInvitations,
     Pill,
+    type ReturnApp,
+    type RoleOption,
+    roleSelectOptions,
     Select,
+    type SupportSessionRow,
+    SupportSessions,
+    AccessRoleHint,
+    type AccessRoleOption,
 } from '@/ui';
 
-interface AccessRole {
-    id: string;
-    name: string;
-    /** The app it is scoped to, or null when it applies across all of them. */
-    app: string | null;
-}
+type AccessRole = AccessRoleOption;
 
 interface Member {
     userId: string;
@@ -33,14 +44,7 @@ interface Member {
     email: string | null;
     role: string;
     accessRoleIds: string[];
-    urls: { role: string; accessRole: string; remove: string };
-}
-
-interface Invitation {
-    id: string;
-    email: string;
-    role: string;
-    revokeHref: string;
+    urls: { role: string; accessRole: string; remove: string; transfer: string };
 }
 
 interface Domain {
@@ -63,10 +67,23 @@ type Props = PageProps<{
     };
     members: Member[];
     pagination: PaginationState;
-    invitations: Invitation[];
+    invitations: PendingInvitation[];
     domains: Domain[];
     accessRoles: AccessRole[];
-    assignableRoles: { value: string; label: string }[];
+    /**
+     * What an invitation may carry: `accessRoles` without the staff-only ones, which an
+     * organization's own administrators could never hand out either.
+     */
+    inviteAccessRoles: AccessRole[];
+    /** What an invitation or an added member may be given — never Owner. */
+    roleOptions: RoleOption[];
+    /** The same plus Owner, disabled, so an owner's row names what it holds. */
+    rosterRoleOptions: RoleOption[];
+    apps: ReturnApp[];
+    /** Every API key the organization's people hold for its apps. Seen and revoked, never minted here. */
+    apiKeys: AppApiKey[];
+    /** Somebody signed in to an app as one of its people, right now. */
+    supportSessions: SupportSessionRow[];
     indexHref: string;
     urls: {
         update: string;
@@ -86,7 +103,12 @@ export default function OrganizationDetail({
     invitations,
     domains,
     accessRoles,
-    assignableRoles,
+    inviteAccessRoles,
+    roleOptions,
+    rosterRoleOptions,
+    apps,
+    apiKeys,
+    supportSessions,
     indexHref,
     urls,
 }: Props) {
@@ -124,18 +146,60 @@ export default function OrganizationDetail({
                 members={members}
                 pagination={pagination}
                 accessRoles={accessRoles}
-                assignableRoles={assignableRoles}
+                roleOptions={roleOptions}
+                rosterRoleOptions={rosterRoleOptions}
                 addHref={urls.addMember}
             />
 
-            <Invitations
-                invitations={invitations}
-                accessRoles={accessRoles}
-                assignableRoles={assignableRoles}
-                inviteHref={urls.invite}
-            />
+            <Panel
+                title="Invite someone"
+                description="The invitee accepts by email — nobody is added to an organization without saying yes."
+            >
+                <InviteForm
+                    href={urls.invite}
+                    roles={roleOptions}
+                    accessRoles={inviteAccessRoles.map((role) => ({
+                        id: role.id,
+                        name: role.name,
+                        group: role.app ?? 'All apps',
+                    }))}
+                    apps={apps}
+                />
+            </Panel>
+
+            <PendingInvitations invitations={invitations} />
+
+            <Panel
+                title="Support sessions"
+                description="Signed in to an app as one of this organization's people right now. Each one is also on the organization's activity log, with its reason."
+            >
+                {supportSessions.length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                        Nobody is signed in to an app as one of its people. Start one from a
+                        person's page under Users.
+                    </p>
+                ) : (
+                    <SupportSessions sessions={supportSessions} lead="user" />
+                )}
+            </Panel>
 
             <Domains domains={domains} addHref={urls.addDomain} />
+
+            <Panel
+                title="Member API keys"
+                description="Keys this organization's people have created for its apps, with what each may do. People create their own; revoke one that leaked or is no longer used."
+                flush={apiKeys.length > 0}
+            >
+                <AppApiKeyList
+                    keys={apiKeys}
+                    empty={{
+                        title: 'No API keys',
+                        description:
+                            'Nobody in this organization has created a key for one of its apps.',
+                    }}
+                    consequence="Whatever the holder has wired this key into stops working immediately. This cannot be undone."
+                />
+            </Panel>
 
             <Panel
                 title={suspended ? 'Reactivate organization' : 'Suspend organization'}
@@ -224,7 +288,7 @@ function Details({ organization, href }: { organization: Props['organization']; 
                 <MetadataRows
                     rows={form.data.metadata}
                     onChange={(rows) => form.setData('metadata', rows)}
-                    hint="Anything your own systems need to keep against this tenant. Rows with no key are dropped."
+                    hint="Anything your own systems need to keep against this organization. Rows with no key are dropped."
                 />
 
                 <Button type="submit" variant="primary" loading={form.processing}>
@@ -247,17 +311,25 @@ function Members({
     members,
     pagination,
     accessRoles,
-    assignableRoles,
+    roleOptions,
+    rosterRoleOptions,
     addHref,
 }: {
     members: Member[];
     pagination: PaginationState;
     accessRoles: AccessRole[];
-    assignableRoles: { value: string; label: string }[];
+    roleOptions: RoleOption[];
+    rosterRoleOptions: RoleOption[];
     addHref: string;
 }) {
     const [managing, setManaging] = useState<string | null>(null);
     const [removing, setRemoving] = useState<Member | null>(null);
+    const [transferring, setTransferring] = useState<Member | null>(null);
+
+    // Refusals from a roster write (the last owner, a role that is not offered) land in the
+    // shared error bag; said here rather than lost.
+    const { errors } = usePage<Props>().props;
+    const refusal = errors.member ?? errors.role ?? null;
 
     return (
         <Panel
@@ -265,11 +337,20 @@ function Members({
             description="Who belongs to this organization, and what they can do."
         >
             <div className="space-y-4">
-                <AddMember
-                    accessRoles={accessRoles}
-                    assignableRoles={assignableRoles}
-                    href={addHref}
-                />
+                {refusal !== null && (
+                    <p
+                        role="alert"
+                        className="rounded-lg p-3 text-sm"
+                        style={{
+                            background: 'var(--destructive-soft)',
+                            border: '1px solid var(--destructive)',
+                        }}
+                    >
+                        {refusal}
+                    </p>
+                )}
+
+                <AddMember accessRoles={accessRoles} roleOptions={roleOptions} href={addHref} />
 
                 {members.length === 0 ? (
                     <EmptyState
@@ -304,24 +385,30 @@ function Members({
                                         )}
                                     </div>
 
-                                    <Select
-                                        aria-label={`Organization access for ${member.name}`}
-                                        value={member.role}
-                                        onValueChange={(role) =>
-                                            router.patch(
-                                                member.urls.role,
-                                                { role },
-                                                { preserveScroll: true },
+                                    {/*
+                                        ONE ROLES CONTROL: the built-in role (exactly one)
+                                        and the app and custom roles (any number) are read
+                                        together, and edited together below.
+                                    */}
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        <Pill>
+                                            <span className="sr-only">Built-in role: </span>
+                                            {rosterRoleOptions.find(
+                                                (option) => option.value === member.role,
+                                            )?.label ?? member.role}
+                                        </Pill>
+                                        {accessRoles
+                                            .filter((role) =>
+                                                member.accessRoleIds.includes(role.id),
                                             )
-                                        }
-                                        options={assignableRoles.map((role) => ({
-                                            value: role.value,
-                                            label: role.label,
-                                        }))}
-                                    />
+                                            .map((role) => (
+                                                <Badge key={role.id}>{role.name}</Badge>
+                                            ))}
+                                    </div>
 
                                     <Button
                                         size="sm"
+                                        className="shrink-0"
                                         aria-expanded={managing === member.userId}
                                         onClick={() =>
                                             setManaging((current) =>
@@ -329,18 +416,35 @@ function Members({
                                             )
                                         }
                                     >
-                                        {member.accessRoleIds.length} app{' '}
-                                        {member.accessRoleIds.length === 1 ? 'role' : 'roles'}
+                                        {managing === member.userId ? 'Done' : 'Edit roles'}
                                     </Button>
 
-                                    <Button
-                                        size="sm"
-                                        variant="danger"
-                                        className="shrink-0"
-                                        onClick={() => setRemoving(member)}
-                                    >
-                                        Remove
-                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                className="shrink-0"
+                                                aria-label={`More actions for ${member.name}`}
+                                            >
+                                                ⋯
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            {member.role !== 'owner' && (
+                                                <DropdownMenuItem
+                                                    onSelect={() => setTransferring(member)}
+                                                >
+                                                    Make owner
+                                                </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuItem
+                                                destructive
+                                                onSelect={() => setRemoving(member)}
+                                            >
+                                                Remove from organization
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
 
                                 {managing === member.userId && (
@@ -348,34 +452,71 @@ function Members({
                                         className="px-4 pb-4"
                                         style={{ background: 'var(--surface-2)' }}
                                     >
-                                        {accessRoles.length === 0 ? (
-                                            <p
-                                                className="pt-3 text-sm"
-                                                style={{ color: 'var(--muted-foreground)' }}
-                                            >
-                                                No app roles are defined for this organization yet.
-                                            </p>
-                                        ) : (
-                                            <div className="pt-3 grid gap-2 sm:grid-cols-2">
-                                                {accessRoles.map((role) => (
-                                                    <Checkbox
-                                                        key={role.id}
-                                                        checked={member.accessRoleIds.includes(
-                                                            role.id,
-                                                        )}
-                                                        onCheckedChange={(granted) =>
-                                                            router.post(
-                                                                member.urls.accessRole,
-                                                                { role: role.id, granted },
-                                                                { preserveScroll: true },
-                                                            )
-                                                        }
-                                                        label={role.name}
-                                                        hint={role.app ?? 'All apps'}
-                                                    />
-                                                ))}
+                                        <div className="pt-3 grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                                            <div>
+                                                <p className="label mb-1">Built-in role</p>
+                                                <p
+                                                    className="text-xs mb-2"
+                                                    style={{ color: 'var(--muted-foreground)' }}
+                                                >
+                                                    Exactly one. It decides what they may administer
+                                                    in this organization.
+                                                </p>
+                                                <Select
+                                                    aria-label={`Built-in role for ${member.name}`}
+                                                    value={member.role}
+                                                    onValueChange={(role) =>
+                                                        router.patch(
+                                                            member.urls.role,
+                                                            { role },
+                                                            { preserveScroll: true },
+                                                        )
+                                                    }
+                                                    options={roleSelectOptions(rosterRoleOptions)}
+                                                />
                                             </div>
-                                        )}
+
+                                            <div>
+                                                <p className="label mb-1">App and custom roles</p>
+                                                <p
+                                                    className="text-xs mb-2"
+                                                    style={{ color: 'var(--muted-foreground)' }}
+                                                >
+                                                    Any number. They ride in the app tokens.
+                                                </p>
+                                                {accessRoles.length === 0 ? (
+                                                    <p
+                                                        className="text-sm"
+                                                        style={{ color: 'var(--muted-foreground)' }}
+                                                    >
+                                                        No roles are defined for this organization
+                                                        yet.
+                                                    </p>
+                                                ) : (
+                                                    <div className="grid gap-2 sm:grid-cols-2">
+                                                        {accessRoles.map((role) => (
+                                                            <Checkbox
+                                                                key={role.id}
+                                                                checked={member.accessRoleIds.includes(
+                                                                    role.id,
+                                                                )}
+                                                                onCheckedChange={(granted) =>
+                                                                    router.post(
+                                                                        member.urls.accessRole,
+                                                                        { role: role.id, granted },
+                                                                        { preserveScroll: true },
+                                                                    )
+                                                                }
+                                                                label={role.name}
+                                                                hint={
+                                                                    <AccessRoleHint role={role} />
+                                                                }
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -405,22 +546,44 @@ function Members({
                     }
                 }}
             />
+
+            {/*
+                An organization has ONE owner, and it moves by transfer: whoever owns it now
+                steps down to admin. It is also how an organization created here — which
+                starts with nobody owning it — gets its first owner.
+            */}
+            <ConfirmDelete
+                open={transferring !== null}
+                onOpenChange={(open) => !open && setTransferring(null)}
+                name={transferring?.email ?? transferring?.name ?? ''}
+                verb="Make owner:"
+                actionLabel="Make owner"
+                consequence="They become this organization's only owner. Whoever owns it now becomes an admin."
+                onConfirm={() => {
+                    const member = transferring;
+                    setTransferring(null);
+
+                    if (member !== null) {
+                        router.post(member.urls.transfer, {}, { preserveScroll: true });
+                    }
+                }}
+            />
         </Panel>
     );
 }
 
 function AddMember({
     accessRoles,
-    assignableRoles,
+    roleOptions,
     href,
 }: {
     accessRoles: AccessRole[];
-    assignableRoles: { value: string; label: string }[];
+    roleOptions: RoleOption[];
     href: string;
 }) {
     const form = useForm({
         email: '',
-        role: assignableRoles[0]?.value ?? 'member',
+        role: 'member',
         accessRoles: [] as string[],
     });
 
@@ -453,15 +616,12 @@ function AddMember({
                     />
                 </Field>
 
-                <Field label="Organization access" error={form.errors.role}>
+                <Field label="Built-in role" error={form.errors.role}>
                     <Select
                         name="role"
                         value={form.data.role}
                         onValueChange={(role) => form.setData('role', role)}
-                        options={assignableRoles.map((role) => ({
-                            value: role.value,
-                            label: role.label,
-                        }))}
+                        options={roleSelectOptions(roleOptions)}
                     />
                 </Field>
 
@@ -484,119 +644,7 @@ function AddMember({
     );
 }
 
-function Invitations({
-    invitations,
-    accessRoles,
-    assignableRoles,
-    inviteHref,
-}: {
-    invitations: Invitation[];
-    accessRoles: AccessRole[];
-    assignableRoles: { value: string; label: string }[];
-    inviteHref: string;
-}) {
-    const form = useForm({
-        email: '',
-        role: assignableRoles[0]?.value ?? 'member',
-        accessRoles: [] as string[],
-    });
-
-    return (
-        <Panel
-            title="Invitations"
-            description="The invitee accepts by email — nobody is added to an organization without saying yes."
-        >
-            <div className="space-y-4">
-                <form
-                    className="rounded-xl border p-4 space-y-3"
-                    style={{ borderColor: 'var(--border)' }}
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        form.post(inviteHref, {
-                            preserveScroll: true,
-                            onSuccess: () => form.reset(),
-                        });
-                    }}
-                >
-                    <div className="flex flex-wrap items-end gap-2">
-                        <Field label="Email" className="flex-1" error={form.errors.email}>
-                            <Input
-                                name="email"
-                                type="email"
-                                value={form.data.email}
-                                onChange={(event) => form.setData('email', event.target.value)}
-                            />
-                        </Field>
-
-                        <Field label="Organization access" error={form.errors.role}>
-                            <Select
-                                name="role"
-                                value={form.data.role}
-                                onValueChange={(role) => form.setData('role', role)}
-                                options={assignableRoles.map((role) => ({
-                                    value: role.value,
-                                    label: role.label,
-                                }))}
-                            />
-                        </Field>
-
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            className="shrink-0"
-                            loading={form.processing}
-                        >
-                            Send invitation
-                        </Button>
-                    </div>
-
-                    <AccessRolePicker
-                        roles={accessRoles}
-                        selected={form.data.accessRoles}
-                        onChange={(next) => form.setData('accessRoles', next)}
-                        hint="Applied when they accept, so they arrive already holding them."
-                    />
-                </form>
-
-                {invitations.length > 0 && (
-                    <div
-                        className="rounded-xl border overflow-hidden"
-                        style={{ borderColor: 'var(--border)' }}
-                    >
-                        {invitations.map((invitation, index) => (
-                            <div
-                                key={invitation.id}
-                                className="flex items-center gap-3 flex-wrap px-4 py-3"
-                                style={
-                                    index === invitations.length - 1
-                                        ? undefined
-                                        : { borderBottom: '1px solid var(--border)' }
-                                }
-                            >
-                                <span className="min-w-0 flex-1 truncate">{invitation.email}</span>
-                                <Badge>{invitation.role}</Badge>
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    className="shrink-0"
-                                    onClick={() =>
-                                        router.delete(invitation.revokeHref, {
-                                            preserveScroll: true,
-                                        })
-                                    }
-                                >
-                                    Revoke
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </Panel>
-    );
-}
-
-/** The app roles to grant alongside a membership. */
+/** The app and custom roles to grant alongside a membership. */
 function AccessRolePicker({
     roles,
     selected,
@@ -614,7 +662,7 @@ function AccessRolePicker({
 
     return (
         <fieldset>
-            <legend className="label">App roles</legend>
+            <legend className="label">App and custom roles</legend>
             {hint !== undefined && (
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                     {hint}
@@ -633,7 +681,7 @@ function AccessRolePicker({
                             )
                         }
                         label={role.name}
-                        hint={role.app ?? 'All apps'}
+                        hint={<AccessRoleHint role={role} />}
                     />
                 ))}
             </div>

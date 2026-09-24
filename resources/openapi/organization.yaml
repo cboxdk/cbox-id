@@ -178,7 +178,13 @@ paths:
     post:
       tags: [Members]
       summary: Invite a member
-      description: Requires the `manage-members` capability (owner/admin). Sends a signed email invitation; the member is created in the `invited` state until they accept.
+      description: |
+        Requires the `manage-members` capability (owner/admin). Invites the address onto the
+        organization's team — the same invitation the console's Team page sends: a mail naming
+        this key as the inviter and the role, with a signed link on which the invitee sets a
+        password and is signed in. Owner is never invited; ownership is transferred. An
+        earlier pending invitation for the same address is superseded. List, re-send and
+        withdraw it under `/organization/invitations`.
       requestBody:
         required: true
         content:
@@ -189,7 +195,7 @@ paths:
               properties:
                 email: { type: string, format: email }
                 name: { type: ["string", "null"] }
-                role: { type: string, enum: [admin, billing, developer, viewer] }
+                role: { type: string, enum: [admin, developer, member, viewer] }
       responses:
         "201":
           description: Invited
@@ -207,7 +213,64 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-              example: { error: email_taken, message: "That email already belongs to a member." }
+              example: { error: email_taken, message: "That person is already on this list." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/MailFailed" }
+  /organization/invitations:
+    get:
+      tags: [Members]
+      summary: List pending invitations
+      description: Requires the `read-members` capability. The team's invitations nobody has accepted yet, newest first (at most 100).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/TeamInvitation" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /organization/invitations/{id}/resend:
+    post:
+      tags: [Members]
+      summary: Re-send an invitation
+      description: |
+        Requires the `manage-members` capability. Mails a fresh link; the earlier link stops
+        working and the invitation gets a new `id`. At most once a minute per address
+        (`429`, `too_soon`). If the mail server refuses, the invitation is kept (`503`).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Sent again
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Member" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Sent less than a minute ago (`too_soon`), or the key's rate limit is exhausted
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "503": { $ref: "#/components/responses/MailFailed" }
+  /organization/invitations/{id}:
+    delete:
+      tags: [Members]
+      summary: Withdraw an invitation
+      description: Requires the `manage-members` capability. The link stops working. An invitation that is not pending on this organization is a `404`.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Withdrawn }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 components:
   securitySchemes:
@@ -221,6 +284,9 @@ components:
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Forbidden:
       description: The key's role lacks the required capability
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    MailFailed:
+      description: The mail server refused the invitation (`mail_failed`). A new invitation is withdrawn, so trying again works; a re-sent one is kept.
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     NotFound:
       description: No such resource on this organization
@@ -283,9 +349,19 @@ components:
         id: { type: string }
         email: { type: string, format: email }
         name: { type: ["string", "null"] }
-        role: { type: string, enum: [owner, admin, billing, developer, viewer] }
+        role: { type: string, enum: [owner, admin, developer, member, viewer] }
         status: { type: string, enum: [active, invited] }
         all_environments: { type: boolean }
+    TeamInvitation:
+      type: object
+      required: [id, email, role, expires_at]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, developer, member, viewer] }
+        invited_by: { type: ["string", "null"], description: "The person, or the API key, that sent it — by name." }
+        invited_at: { type: ["string", "null"], format: date-time }
+        expires_at: { type: string, format: date-time }
     ListMeta:
       type: object
       description: >-

@@ -34,6 +34,13 @@ final readonly class AuditController extends ConsoleController
 {
     private const PER_PAGE = 25;
 
+    /**
+     * Context a person wrote rather than a system recorded, shown ahead of the ids.
+     *
+     * @var list<string>
+     */
+    private const FIRST_FACTS = ['reason'];
+
     public function index(Request $request, AuditNames $names): Response
     {
         $this->scope->assertMayAdminister();
@@ -107,6 +114,10 @@ final readonly class AuditController extends ConsoleController
                  */
                 'facts' => collect($entry->context)
                     ->filter(fn (mixed $value): bool => is_scalar($value))
+                    // The facts a person wrote down first: a support session's reason is
+                    // the only account the organization gets of it, and three ids ahead of
+                    // it pushed it off the row.
+                    ->sortBy(fn (mixed $value, string $key): int => in_array($key, self::FIRST_FACTS, true) ? 0 : 1)
                     ->take(3)
                     ->map(fn (mixed $value, string $key): string => $key.': '.(string) $value)
                     ->values()

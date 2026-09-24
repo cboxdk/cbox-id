@@ -14,6 +14,12 @@ use App\Platform\OperatorEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
+use Cbox\Id\AccessControl\Contracts\AppManifests;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Manifest\DeclaredPermission;
+use Cbox\Id\AccessControl\Manifest\DeclaredRole;
+use Cbox\Id\AccessControl\Manifest\Manifest;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -33,15 +39,19 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\CustomerApiKeys;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\CustomerApiKey;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\ValueObjects\ApiKeyPrefix;
+use Cbox\Id\Organization\ValueObjects\NewCustomerApiKey;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
@@ -446,6 +456,31 @@ function setUserPassword(string $userId, array $changes = []): TestResponse
             'expiryHours' => 24,
             ...$changes,
         ]);
+}
+
+/**
+ * Provision an account + environment and act as its env admin (the control plane).
+ *
+ * Here rather than in the file that first needed it: under `--parallel` a helper declared
+ * in one test file does not exist in the worker running another.
+ */
+function craftedEnvAdmin(): void
+{
+    platformRootEnvironment();
+    // The environment console is `/admin`, which 404s unless the deployment is
+    // multi-tenant — the page is reached by REQUEST now rather than driven directly.
+    multiTenantDeployment();
+
+    $result = app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        organizationName: 'Acme',
+        ownerEmail: 'owner@acme.example',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-unbreached-passphrase',
+    ));
+
+    serveOnTestHost($result->environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
+    actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
 }
 
 /** Invite somebody to the acting organization's own roster. */
@@ -1139,8 +1174,8 @@ function probeLegacyLogin(string $email): TestResponse
  */
 function issueFrontendKey(array $changes = []): TestResponse
 {
-    return test()->from(route('environment.frontend-keys'))
-        ->post(route('environment.frontend-keys.store'), [
+    return test()->from(route('environment.keys.frontend'))
+        ->post(route('environment.keys.frontend.store'), [
             'name' => 'Marketing site',
             'mode' => 'test',
             'origins' => 'https://acme.test',
@@ -1158,7 +1193,7 @@ function issueFrontendKey(array $changes = []): TestResponse
  */
 function reachableEnvironmentId(): string
 {
-    $environments = test()->get(route('environment-keys'))->assertOk()->inertiaProps('environments');
+    $environments = test()->get(route('keys'))->assertOk()->inertiaProps('environments');
 
     expect($environments)->toBeArray()->not->toBeEmpty(
         'the signed-in member reaches no environment, so this test cannot be about the step-up',
@@ -1174,7 +1209,7 @@ function reachableEnvironmentId(): string
  */
 function issueEnvironmentKey(string $environmentId, array $changes = []): TestResponse
 {
-    return test()->from(route('environment-keys'))->post(route('environment-keys.store'), [
+    return test()->from(route('keys'))->post(route('keys.store'), [
         'environment' => $environmentId,
         'name' => 'Provisioner',
         'scopes' => ['users:read'],
@@ -1911,4 +1946,83 @@ function pkcePair(string $verifier = 'a-verifier-of-sufficient-length-0123456789
 function pkceChallenge(): string
 {
     return pkcePair()['challenge'];
+}
+
+/*
+|--------------------------------------------------------------------------
+| API keys for an app's own API (customer API keys)
+|--------------------------------------------------------------------------
+| Shared by the feature and browser suites for the hosted key pages.
+*/
+
+/**
+ * An organization, an app that offers keys (prefix `ctax_live` for the default slug), and
+ * two members — Ada holds the app's "Filer" role, Bob holds nothing in it.
+ *
+ * @return array{org: Organization, clientId: string, secret: string, ada: string, bob: string}
+ */
+function appKeyFixture(string $slug = 'acme-keys', bool $ownApp = false): array
+{
+    $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
+
+    $ada = app(Subjects::class)->create("ada@{$slug}.test", 'Ada Lovelace', 'supersecret123');
+    $bob = app(Subjects::class)->create("bob@{$slug}.test", 'Bob', 'supersecret123');
+    app(Memberships::class)->add($org->id, $ada->id, MembershipRole::Member);
+    app(Memberships::class)->add($org->id, $bob->id, MembershipRole::Member);
+
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'Acme Tax',
+        redirectUris: ['https://tax.example/auth/callback'],
+        // Environment-wide unless the organization owns it: every organization may use it.
+        organizationId: $ownApp ? $org->id : null,
+    ));
+    $clientId = $registered->client->client_id;
+
+    app(AppManifests::class)->sync($clientId, new Manifest(
+        version: 'v1',
+        permissions: [
+            new DeclaredPermission('returns:read', 'See your tax returns'),
+            new DeclaredPermission('returns:file', 'File a tax return'),
+            new DeclaredPermission('settings:manage', 'Change the tax settings'),
+        ],
+        roles: [
+            new DeclaredRole('filer', 'Filer', null, ['returns:read', 'returns:file']),
+            new DeclaredRole('owner', 'Owner', null, ['settings:manage']),
+        ],
+    ));
+
+    app(CustomerApiKeys::class)->setPrefix($clientId, ApiKeyPrefix::of($slug === 'acme-keys' ? 'ctax_live' : 'k'.substr(md5($slug), 0, 8).'_live'));
+
+    $filer = Role::query()->where('client_id', $clientId)->where('key', 'filer')->firstOrFail();
+    app(Roles::class)->assign($org->id, $ada->id, $filer->id);
+
+    return ['org' => $org, 'clientId' => $clientId, 'secret' => (string) $registered->secret, 'ada' => $ada->id, 'bob' => $bob->id];
+}
+
+/** Sign the browser in as this subject, in this organization. */
+function signInKeyHolder(string $subjectId, Organization $org): void
+{
+    $subject = app(Subjects::class)->find($subjectId);
+    $role = app(Memberships::class)->of($org->id, $subjectId)?->role;
+    $session = app(SessionManager::class)->start($subjectId, $org->id, ['pwd']);
+
+    session([PlatformAuth::SESSION_KEY => $session->id, PlatformAuth::ORG_KEY => $org->id]);
+    app(CurrentUser::class)->set($subject, $session, $org, $role);
+}
+
+/**
+ * A key minted straight through the framework, as the holder would on the page.
+ *
+ * @param  array{org: Organization, clientId: string}  $fixture
+ * @param  list<string>  $permissions
+ */
+function mintAppKey(array $fixture, string $holder, array $permissions = [], string $name = 'Nightly export'): CustomerApiKey
+{
+    return app(CustomerApiKeys::class)->issue(new NewCustomerApiKey(
+        organizationId: $fixture['org']->id,
+        userId: $holder,
+        clientId: $fixture['clientId'],
+        permissions: $permissions,
+        name: $name,
+    ))->key;
 }

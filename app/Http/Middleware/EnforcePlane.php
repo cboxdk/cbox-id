@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\PlaneResolver;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Which SURFACES exist on this host, enforced with a 404 — the wrong plane on a host does
  * not merely refuse, it is absent:
  *
- *  - `plane:account` — the ACCOUNT/buyer plane (cboxid.com): sign up / manage the
- *    account, its environments, billing and keys. Served ONLY on the platform-root
- *    (is_default) host.
+ *  - `plane:signup` — `/signup`. On the platform root (cboxid.com) it is "buy an identity
+ *    platform"; on a tenant host it is that environment's own self-service sign-up, open
+ *    only while the environment's switch is on (SignupPolicy decides that, not this gate).
+ *    It was `plane:account` — root only — which is why every tenant's sign-in page linked
+ *    to a 404. `account` had no other route left, so the name went with it.
  *  - `plane:console` — the sign-in door and the subject console behind it. Served on
  *    EVERY host this deployment answers on, the platform root included: the root is a
  *    tenant whose subjects sign in and administer their organizations exactly as any
@@ -58,7 +62,7 @@ final class EnforcePlane
      *
      * @var list<string>
      */
-    private const PLANES = ['account', 'console', 'issuer', 'first-party', 'keys', 'environment', 'operator'];
+    private const PLANES = ['signup', 'console', 'issuer', 'first-party', 'keys', 'environment', 'operator'];
 
     /**
      * Where a client identifier is found on the endpoints carrying `plane:first-party`.
@@ -70,8 +74,15 @@ final class EnforcePlane
      */
     private const CLIENT_ID = 'client_id';
 
+    /**
+     * The route parameter that names a PENDING authorization rather than a client: the
+     * consent screen, its two answers and the hosted organization steps.
+     */
+    private const PENDING_AUTHORIZATION = 'authorization';
+
     public function __construct(
         private readonly PlaneResolver $planes,
+        private readonly PendingAuthorizations $pending = new PendingAuthorizations,
     ) {}
 
     /**
@@ -91,7 +102,11 @@ final class EnforcePlane
         }
 
         $allowed = match ($plane) {
-            'account' => $this->planes->onAccountPlane(),
+            // Signup: the platform root's "buy an identity platform", and on a tenant
+            // environment the vendor's own self-service sign-up. The page is served on both;
+            // whether a tenant's is OPEN is the environment's switch, which SignupPolicy
+            // reads — a host question here, a setting question there.
+            'signup' => $this->planes->servesSignup(),
             // A HOST question — the only one of the four that has to be, because
             // SetEnvironment answers an unmapped name with the platform root, so the
             // CONTEXT cannot tell `cboxid.com` from `anything.invalid`. Serving a sign-in
@@ -109,9 +124,7 @@ final class EnforcePlane
             // Public verification keys, served wherever this deployment issues tokens —
             // which now includes the platform root. See servesVerificationKeys().
             'keys' => $this->planes->servesVerificationKeys(),
-            'first-party' => $this->planes->servesFirstPartyIssuer(
-                is_string($id = $request->input(self::CLIENT_ID)) ? $id : '',
-            ),
+            'first-party' => $this->planes->servesFirstPartyIssuer($this->clientIdOf($request)),
             // The environment-admin console. Asked as its own question rather than
             // borrowed from `issuer`: same answer today, different reason, and a shared
             // name is how two surfaces end up moving together when only one should.
@@ -140,5 +153,36 @@ final class EnforcePlane
         abort_unless($allowed, 404);
 
         return $next($request);
+    }
+
+    /**
+     * The client a `plane:first-party` request is for.
+     *
+     * `/oauth/authorize` and the token endpoints NAME it (`client_id`). The steps that follow
+     * the authorize request — the consent screen, approve and deny, the hosted organization
+     * picker and "create a team" — name only the PENDING authorization this session holds
+     * under an opaque id, so on the platform root they asked about client `''` and 404'd
+     * for our own first-party app, the one client the root serves.
+     *
+     * For those, the client is the pending authorization's — and ONLY that: a `client_id`
+     * posted alongside is ignored, so a step cannot be admitted on another client's name.
+     * No guard is loosened by this. A pending authorization is written only by
+     * `/oauth/authorize`, after THIS gate admitted its client, and it is read back from the
+     * same session and asked the same question again; an id this session does not hold
+     * names no client and is refused as before.
+     */
+    private function clientIdOf(Request $request): string
+    {
+        $route = $request->route();
+
+        if ($route instanceof Route && $route->hasParameter(self::PENDING_AUTHORIZATION)) {
+            $id = $route->parameter(self::PENDING_AUTHORIZATION);
+
+            return is_string($id) && $request->hasSession()
+                ? ($this->pending->find($request, $id)->clientId ?? '')
+                : '';
+        }
+
+        return is_string($id = $request->input(self::CLIENT_ID)) ? $id : '';
     }
 }

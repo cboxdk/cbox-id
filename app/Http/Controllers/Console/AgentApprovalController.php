@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
@@ -106,7 +108,8 @@ final readonly class AgentApprovalController extends ConsoleController
             $subjects[(string) $user->id] = (string) $user->email;
         }
 
-        return $this->page('environment/approvals', 'Agent approvals', [
+        return $this->page('environment/approvals', 'Review agent requests', [
+            'help' => HelpProps::for(HelpTopic::ReviewAgentRequests),
             'requests' => array_map(function (BackchannelAuthRequest $request) use ($names, $subjects): array {
                 $clientId = (string) $request->client_id;
 

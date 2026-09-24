@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Id\Connectors\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Inertia\Response;
 
@@ -39,6 +41,7 @@ final readonly class ConnectionsController extends ConsoleController
         }
 
         return $this->page('connectors::connections', 'Connections', [
+            'help' => HelpProps::for(HelpTopic::Connectors),
             'connections' => $rows,
             'wholeEnvironment' => $organizationId === null,
         ]);

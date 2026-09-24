@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreateCustomerRequest;
 use App\Mail\PasswordResetMail;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Help\HelpTopic;
 use App\Platform\MailLinks;
 use App\Platform\OperatorEnvironment;
 use Carbon\CarbonInterface;
@@ -150,7 +152,8 @@ final readonly class PlatformCustomerController extends ConsoleController
             return ['rows' => array_values($rows), 'pagination' => SimplePaginationProps::from($customers)];
         });
 
-        return $this->page('console/platform/customers', 'Customers', [
+        return $this->page('console/platform/customers', 'Workspaces', [
+            'help' => HelpProps::for(HelpTopic::Workspaces),
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
             'search' => $term,
@@ -212,10 +215,10 @@ final readonly class PlatformCustomerController extends ConsoleController
         $token = $resets->request($ownerEmail);
 
         if ($token === null) {
-            $status = 'Customer created, but the owner could not be sent a link. Ask them to use "Forgot password".';
+            $status = 'Workspace created, but the owner could not be sent a link. Ask them to use "Forgot password".';
         } else {
             Mail::to($ownerEmail)->send(new PasswordResetMail($links->route('password.reset', $token)));
-            $status = 'Customer created. '.$ownerEmail.' has been emailed a link to set their password.';
+            $status = 'Workspace created. '.$ownerEmail.' has been emailed a link to set their password.';
         }
 
         return redirect()->route('platform.customers.show', $tenant->organization->id)->with('status', $status);
@@ -423,8 +426,8 @@ final readonly class PlatformCustomerController extends ConsoleController
         abort_if($suspending === null, 404);
 
         return back()->with('status', $suspending
-            ? 'Customer suspended — its members can no longer sign in and its environments stop serving auth.'
-            : 'Customer reactivated.');
+            ? 'Workspace suspended — its members can no longer sign in and its environments stop serving auth.'
+            : 'Workspace reactivated.');
     }
 
     /**

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Id\Whitelabel\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Whitelabel\Assets\BrandAssetStore;
 use Cbox\Id\Whitelabel\Contracts\BrandProfiles;
 use Cbox\Id\Whitelabel\Http\Requests\SaveBrandingRequest;
@@ -46,6 +48,7 @@ final readonly class BrandingController extends ConsoleController
         }
 
         return $this->page('whitelabel::branding', 'Branding', [
+            'help' => HelpProps::for(HelpTopic::Branding),
             'tokens' => PaletteTokens::TOKENS,
             'palette' => $palette,
             // The columns are nullable, so the coalesce is doing the work and the nullsafe

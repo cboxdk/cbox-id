@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Enums\UserStatus;
@@ -32,10 +34,11 @@ final readonly class EnvironmentHomeController extends ConsoleController
         abort_if(app(EnvironmentAdminAuth::class)->membership() === null, 403);
 
         return $this->page('environment/home', 'Overview', [
+            'help' => HelpProps::for(HelpTopic::EnvironmentOverview),
             'stats' => [
                 [
                     'label' => 'Organizations',
-                    'icon' => 'layers',
+                    'icon' => 'building',
                     // Soft-deleted tenants are gone from every list, so counting them here
                     // would make this number disagree with the page it opens.
                     'count' => Organization::query()
@@ -51,13 +54,13 @@ final readonly class EnvironmentHomeController extends ConsoleController
                 ],
                 [
                     'label' => 'SSO connections',
-                    'icon' => 'connections',
+                    'icon' => 'fingerprint',
                     'count' => Connection::query()->count(),
                     'href' => route('environment.connections'),
                 ],
                 [
-                    'label' => 'Apps & API keys',
-                    'icon' => 'clients',
+                    'label' => 'Apps',
+                    'icon' => 'code',
                     'count' => Client::query()->count(),
                     'href' => route('environment.clients'),
                 ],

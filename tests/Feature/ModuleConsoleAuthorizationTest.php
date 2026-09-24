@@ -65,7 +65,7 @@ function moduleConsoleRoutes(): array
         // the acting ORGANIZATION owns rather than on the membership role this file
         // sweeps for. An org admin who owns no identity providers is correctly refused
         // them, which is the opposite of what "admits an admin" asserts below.
-        'projects', 'members', 'api-keys', 'environment-keys',
+        'projects', 'members', 'keys.workspace', 'keys',
         'environment-domains', 'billing', 'organization-settings',
         // The People area's tenant directory — a host page like its Identity-platform
         // sibling above, and gated the same way (`canReadMembers()`), so this sweep's
@@ -78,7 +78,11 @@ function moduleConsoleRoutes(): array
     // asking an administrator. Both are pinned open by their own tests
     // ({@see AccountActivityTest}, and the device test below), so excluding them here does
     // not quietly drop them from coverage.
-    $personal = ['devices.mine', 'account.activity'];
+    //
+    // `account.api-keys` is the same kind of page: the caller's OWN keys for the apps they
+    // use, created and revoked by the person who holds them. AppApiKeysTest pins it open to
+    // a plain member and proves they reach nobody else's key.
+    $personal = ['devices.mine', 'account.activity', 'account.api-keys'];
 
     // THE PLATFORM SECTION, which refuses a plain member HARDER than this sweep asserts
     // and so cannot be swept by it. `AuthenticateOperator` answers 404 rather than 403 on

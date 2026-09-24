@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Panel, Stat } from '@/ui';
 
 interface ProjectRow {
@@ -18,12 +18,13 @@ type Props = PageProps<{
         connections: number;
         signIns: number;
     };
+    help: HelpContent;
 }>;
 
-export default function Billing({ projects, usage }: Props) {
+export default function Billing({ projects, usage, help }: Props) {
     return (
         <>
-            <PageHeader description="Plans are per project; usage rolls up across every environment this organization owns." />
+            <PageHeader help={help} description="Plans are per project; usage rolls up across every environment this organization owns." />
 
             {/* The billing anchor is the PROJECT — one customer can own several products. */}
             <Panel title="Projects" flush className="mt-6">
@@ -69,7 +70,7 @@ export default function Billing({ projects, usage }: Props) {
             {/* Live usage — the figures enterprise billing is based on, across all projects. */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Stat
-                    label="Organizations — tenants"
+                    label="Organizations — across your environments"
                     value={usage.organizations.toLocaleString()}
                 />
                 <Stat

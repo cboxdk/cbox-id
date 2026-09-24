@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Console\ApiKeyRowProps;
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
+use App\Platform\Console\KeyTabs;
+use App\Platform\Enums\KeyLifetime;
+use App\Platform\Help\HelpTopic;
+use App\Platform\OrganizationActivity;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
+use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
@@ -24,10 +32,14 @@ use Inertia\Response;
  * session could not MINT persistence — creation asks for a password — but it could destroy
  * the machine credentials running provisioning and automation, which is a denial of service
  * the same session was otherwise held back from.
+ *
+ * BOTH ARE ON THE ACCOUNT'S ACTIVITY LOG, which neither was: a credential that acts with a
+ * role across the whole account could be minted and destroyed without a line anywhere
+ * saying who did it. The environment key page beside this one always recorded both.
  */
 final readonly class ApiKeyController extends ConsoleController
 {
-    public function index(OrganizationApiKeys $keys): Response|RedirectResponse
+    public function index(OrganizationApiKeys $keys, KeyTabs $tabs): Response|RedirectResponse
     {
         if ($this->scope->capabilities()?->canManageMembers() !== true) {
             // Somebody arriving where they may not go is sent somewhere they can be, which
@@ -36,30 +48,31 @@ final readonly class ApiKeyController extends ConsoleController
         }
 
         $organizationId = $this->scope->organizationId();
+        $now = CarbonImmutable::now();
 
-        return $this->page('console/api-keys', 'API keys', [
+        return $this->page('console/keys/workspace', 'Keys', [
+            'help' => HelpProps::for(HelpTopic::Keys),
+            'tabs' => $tabs->for(KeyTabs::WORKSPACE),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
-                ->map(fn (OrganizationApiKey $key): array => [
-                    'id' => $key->id,
-                    'name' => $key->name,
-                    'role' => $key->role->label(),
-                    'prefix' => $key->prefix,
-                    'active' => $key->isActive(),
-                    // ISO, rendered relative in the browser: "last used 3 minutes ago"
-                    // computed on the server is wrong the moment the page sits open, and
-                    // this is a page people leave open while a deploy runs.
-                    'lastUsedAt' => $key->last_used_at?->toIso8601String(),
-                ])
+                ->map(fn (OrganizationApiKey $key): ApiKeyRowProps => ApiKeyRowProps::from(
+                    $key,
+                    route('keys.workspace.destroy', $key->id),
+                    $now,
+                ))
                 ->values()
                 ->all(),
             'roles' => array_map(
                 fn (MembershipRole $role): array => ['value' => $role->value, 'label' => $role->label()],
                 MembershipRole::assignable(),
             ),
+            'lifetimes' => array_map(
+                fn (KeyLifetime $lifetime): array => ['value' => $lifetime->value, 'label' => $lifetime->label()],
+                KeyLifetime::cases(),
+            ),
         ]);
     }
 
-    public function store(IssueApiKeyRequest $request, OrganizationApiKeys $keys): RedirectResponse
+    public function store(IssueApiKeyRequest $request, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
 
@@ -75,14 +88,28 @@ final readonly class ApiKeyController extends ConsoleController
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
         $challenge = $this->stepUp(
-            'An account API key acts with this role across your whole account, and its value is shown once.',
+            'A workspace key acts with its built-in role across your whole workspace, and its value is shown once.',
         );
 
         if ($challenge !== null) {
             return $challenge;
         }
 
-        $issued = $keys->issue($organizationId, $request->name(), $request->role());
+        $issued = $keys->issue($organizationId, $request->name(), $request->role(), $request->expiresAt());
+
+        $activity->record(
+            $organizationId,
+            'organization.api_key_created',
+            $this->scope->actorId(),
+            targetType: 'api_key',
+            targetId: $issued->key->id,
+            context: [
+                'name' => $issued->key->name,
+                'role' => $issued->key->role->value,
+                'expires_at' => $issued->key->expires_at?->toIso8601String(),
+            ],
+            request: $request,
+        );
 
         /*
          * The plaintext, on the flash channel and nowhere else. Props are written into the
@@ -91,17 +118,17 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back();
+        return back()->with('status', 'Workspace key created — copy it now, it will not be shown again.');
     }
 
-    public function destroy(string $key, OrganizationApiKeys $keys): RedirectResponse
+    public function destroy(Request $request, string $key, OrganizationApiKeys $keys, OrganizationActivity $activity): RedirectResponse
     {
         $organizationId = $this->scope->organizationId();
 
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        $challenge = $this->stepUp('Revoking an API key stops whatever is using it, immediately.');
+        $challenge = $this->stepUp('Revoking a workspace key stops whatever is using it, immediately.');
 
         if ($challenge !== null) {
             return $challenge;
@@ -116,9 +143,25 @@ final readonly class ApiKeyController extends ConsoleController
             return back();
         }
 
+        // A key that is already revoked stays one, and says nothing new: the log records
+        // the act that stopped it, not every click on a row that no longer offers one.
+        if ($found->revoked_at !== null) {
+            return back();
+        }
+
         $keys->revoke($key);
 
-        return back()->with('status', 'API key revoked.');
+        $activity->record(
+            $organizationId,
+            'organization.api_key_revoked',
+            $this->scope->actorId(),
+            targetType: 'api_key',
+            targetId: $found->id,
+            context: ['name' => $found->name],
+            request: $request,
+        );
+
+        return back()->with('status', 'Workspace key revoked.');
     }
 
     /**
@@ -133,7 +176,7 @@ final readonly class ApiKeyController extends ConsoleController
             return null;
         }
 
-        $intended = route('api-keys');
+        $intended = route('keys.workspace');
 
         session()->put('sudo.intended', $intended);
         StepUpReason::record('sudo', $reason, $intended);

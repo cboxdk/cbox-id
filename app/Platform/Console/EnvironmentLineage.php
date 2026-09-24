@@ -77,11 +77,11 @@ final readonly class EnvironmentLineage
     public function note(): ?string
     {
         if ($this->isPlatformRoot) {
-            return 'The environment this deployment itself runs in — operators and account members live here. It belongs to no customer.';
+            return 'The environment this deployment itself runs in — operators and workspace teams sign in here. It belongs to no workspace.';
         }
 
         if ($this->isUnattached()) {
-            return 'No project, so no account owns it. Nothing is served to a customer from here.';
+            return 'No project, so no workspace owns it, and nothing here is anybody\'s product.';
         }
 
         return null;

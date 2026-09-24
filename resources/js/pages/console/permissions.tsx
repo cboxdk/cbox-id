@@ -102,7 +102,7 @@ export default function Permissions({
                 A permission is what a <b>person</b> may do, once signed in. What an <b>app</b> may
                 ask for is a scope, set when you register it under{' '}
                 <Link href={clientsHref} className="underline">
-                    Apps &amp; API keys
+                    Apps
                 </Link>
                 .
             </p>
@@ -320,7 +320,7 @@ function NewPermission({
                     <Checkbox
                         checked={form.data.tenantAssignable}
                         onCheckedChange={(checked) => form.setData('tenantAssignable', checked)}
-                        label="Tenant-assignable"
+                        label="Organizations may assign"
                         hint="Organization admins may compose this into their own roles. Untick to keep it internal."
                     />
                 )}
@@ -388,7 +388,7 @@ function ManualRow({
                         <Checkbox
                             checked={form.data.tenantAssignable}
                             onCheckedChange={(checked) => form.setData('tenantAssignable', checked)}
-                            label="Tenant-assignable"
+                            label="Organizations may assign"
                         />
                     )}
 

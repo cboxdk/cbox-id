@@ -9,14 +9,20 @@ use App\Http\Requests\Console\RenameOrganizationRequest;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\ThemePresets;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Membership\AfterLeaving;
+use App\Platform\Membership\MembershipLifecycle;
+use App\Platform\Membership\MembershipRefused;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
@@ -121,7 +127,41 @@ final readonly class SettingsController extends ConsoleController
                 : null,
             'issuer' => $issuer,
             'discovery' => $issuer.'/.well-known/openid-configuration',
+            /*
+             * CLOSING THE ORGANIZATION — its OWNER's call, from inside it. Only an
+             * environment administrator could do this before, so an owner who wanted out had
+             * to ask somebody else to delete their own organization. Offered on the
+             * organization plane to the owner of an organization that is not a customer
+             * (a customer's projects and bill are closed under Identity platform).
+             */
+            'closeOrganizationHref' => ! $onEnvironmentPlane
+                && $organization !== null
+                && app(CurrentUser::class)->role() === MembershipRole::Owner
+                && ! $this->scope->ownsIdentityProviders()
+                    ? route('settings.organization.destroy')
+                    : null,
         ]);
+    }
+
+    /**
+     * Close (archive) the organization — owner only, confirmed by typing its name, behind a
+     * fresh password on the route. Everyone loses access at once; the records stay.
+     */
+    public function destroyOrganization(Request $request, MembershipLifecycle $lifecycle, AfterLeaving $after): RedirectResponse
+    {
+        abort_unless($this->scope->plane() === ConsolePlane::Organization, 404);
+
+        $me = app(CurrentUser::class);
+        $organizationId = $this->scope->requireOrganizationId();
+        $name = $me->organization()->name ?? '';
+
+        try {
+            $lifecycle->archive($organizationId, $me->id(), $request->string('name')->toString());
+        } catch (MembershipRefused $refused) {
+            return back()->withErrors(['name' => $refused->getMessage()]);
+        }
+
+        return $after->land($request, $me->id(), $organizationId, $name.' has been deleted.');
     }
 
     /**

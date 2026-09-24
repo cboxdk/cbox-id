@@ -9,25 +9,35 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveClientRequest;
 use App\Http\Requests\Console\StoreClientRequest;
 use App\Platform\AppKind;
+use App\Platform\Apps\AppScopes;
 use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\Snippet;
+use App\Platform\Console\AppHeader;
+use App\Platform\Console\AppTabs;
+use App\Platform\Console\ConsoleClients;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Help\HelpTopic;
 use App\Platform\ScopeCatalog;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\AppManifestPuller;
 use Cbox\Id\AccessControl\Models\Role;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
+use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\OAuthServer\ValueObjects\ScopeHolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Response;
+use Inertia\ResponseFactory;
 use Throwable;
 
 /**
@@ -51,10 +61,30 @@ use Throwable;
  * THE SECRET IS NEVER STORED IN THE CLEAR — only its SHA-256 hash. It is shown exactly
  * once, on the flash channel, because page props are written into the browser's history
  * entry and a live credential there is retrievable by pressing Back.
+ *
+ * THE APP IS FOUR PAGES that share a header ({@see AppTabs}): this controller serves the
+ * overview, and {@see ClientScopesController}, {@see ClientSecretsController} and
+ * {@see ClientSettingsController} the other three. Which app a URL names, and whether the
+ * person acting may change it, is answered for all four by {@see ConsoleClients}.
+ *
+ * EVERY WRITE GOES THROUGH {@see ClientRegistry}: register, update, rotateSecret, delete.
+ * The registry records the app's lifecycle on the audit trail itself (`app.created`,
+ * `app.updated`, `app.secret_rotated`, `app.deleted`), attributed to the
+ * {@see ConsoleScope::auditActor()} this passes — so a write made
+ * here and one made by the management API or RFC 7592 read the same, and none is recorded
+ * twice.
  */
 final readonly class ClientController extends ConsoleController
 {
     private const PER_PAGE = 25;
+
+    public function __construct(
+        ResponseFactory $inertia,
+        ConsoleScope $scope,
+        private ConsoleClients $clients,
+    ) {
+        parent::__construct($inertia, $scope);
+    }
 
     public function index(Request $request, ScopeCatalog $catalog): Response
     {
@@ -126,7 +156,7 @@ final readonly class ClientController extends ConsoleController
 
         $showsEveryOrganization = $organizationId === null;
 
-        return $this->page('console/clients/index', 'Apps & API keys', [
+        return $this->page('console/clients/index', 'Apps', [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
                 ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))
@@ -193,6 +223,7 @@ final readonly class ClientController extends ConsoleController
         StoreClientRequest $request,
         ClientRegistry $clients,
         ScopeCatalog $catalog,
+        AppScopes $scopes,
     ): RedirectResponse {
         $this->scope->assertMayAdminister();
 
@@ -251,26 +282,34 @@ final readonly class ClientController extends ConsoleController
             return to_route($sudo);
         }
 
-        $registered = $clients->register(new NewClient(
-            name: $request->name(),
-            // The kind decides where the code runs, and therefore whether it can hold a
-            // secret. Only Advanced lets that be answered by hand — somebody who has told
-            // us they are building a CLI has already told us it is public.
-            type: $kind === AppKind::Advanced ? $request->clientType() : $kind->clientType(),
-            redirectUris: $redirects,
-            grantTypes: $grantTypes,
-            scopes: $request->scopes($catalog),
-            firstParty: $request->firstParty(),
-            organizationId: $organizationId,
-            postLogoutRedirectUris: $request->postLogoutRedirectUris(),
-        ));
-
-        $manifestUrl = $request->manifestUrl();
-
-        if ($manifestUrl !== null) {
-            // A published manifest URL (the pull transport) — stored on the app so the
-            // scheduled sweep and "Sync now" can fetch its declared roles and permissions.
-            $registered->client->forceFill(['manifest_url' => $manifestUrl])->save();
+        try {
+            $registered = $clients->register(new NewClient(
+                name: $request->name(),
+                // The kind decides where the code runs, and therefore whether it can hold a
+                // secret. Only Advanced lets that be answered by hand — somebody who has
+                // told us they are building a CLI has already told us it is public.
+                type: $kind === AppKind::Advanced ? $request->clientType() : $kind->clientType(),
+                redirectUris: $redirects,
+                grantTypes: $grantTypes,
+                scopes: $request->scopes($catalog),
+                firstParty: $request->firstParty(),
+                organizationId: $organizationId,
+                postLogoutRedirectUris: $request->postLogoutRedirectUris(),
+                // A published manifest URL (the pull transport) — stored on the app so the
+                // scheduled sweep and "Sync now" can fetch its declared roles and permissions.
+                manifestUrl: $request->manifestUrl(),
+            ), $this->scope->auditActor());
+        } catch (InvalidClientMetadata $refused) {
+            // Settings the token endpoint would refuse later (a grant it does not implement)
+            // — refused now, in the framework's words.
+            return back()->withInput()->with('error', $refused->getMessage());
+        } catch (ScopeNotGrantable $refused) {
+            // A registered API's scope this owner may not hold — said with the API it
+            // belongs to and what to do about it, not as the framework's one-line refusal.
+            return back()->withInput()->withErrors(['customScopes' => $scopes->explain(
+                $refused,
+                new ScopeHolder(app(EnvironmentContext::class)->current()?->environmentKey(), $organizationId),
+            )]);
         }
 
         // The plaintext exists only here. On the FLASH CHANNEL, not in props: props are
@@ -284,12 +323,12 @@ final readonly class ClientController extends ConsoleController
             ->with('status', 'App "'.$registered->client->name.'" created.');
     }
 
-    public function show(Request $request, string $client, ScopeCatalog $catalog): Response
+    public function show(string $client, AppHeader $header): Response
     {
         $this->scope->assertMayAdminister();
 
-        $model = $this->client($client);
-        $mayManage = $this->mayManage($model);
+        $model = $this->clients->visible($client);
+        $mayManage = $this->clients->mayManage($model);
 
         /*
          * THE ENVIRONMENT'S OWN ISSUER, not the deployment's URL.
@@ -308,10 +347,8 @@ final readonly class ClientController extends ConsoleController
         // enforces, so they cannot disagree with what this page claims.
         $kind = AppKind::forClient($model);
 
-        $registered = array_values($model->scopes ?? []);
-        $catalogKeys = $catalog->keys();
-
         return $this->page('console/clients/show', $model->name, [
+            'appHeader' => $header->for($model, AppTabs::OVERVIEW),
             'client' => [
                 'id' => $model->id,
                 'name' => $model->name,
@@ -320,16 +357,11 @@ final readonly class ClientController extends ConsoleController
                 // A private_key_jwt client is Confidential AND has no secret, deliberately:
                 // a client authenticates EITHER by a shared secret OR by signing
                 // assertions, never both.
-                'signsAssertions' => $model->jwks !== null,
+                'signsAssertions' => ! AppTabs::holdsSharedSecret($model),
                 'firstParty' => $model->first_party,
                 'redirectUris' => implode("\n", $model->redirect_uris ?? []),
                 'postLogoutRedirectUris' => implode("\n", $model->post_logout_redirect_uris ?? []),
                 'manifestUrl' => $model->manifest_url ?? '',
-                // Split by whether the catalogue knows the key, so a scope somebody typed
-                // by hand survives an edit instead of being dropped the first time this
-                // form is saved.
-                'scopes' => array_values(array_intersect($registered, $catalogKeys)),
-                'customScopes' => implode(', ', array_values(array_diff($registered, $catalogKeys))),
                 'kind' => $kind->value,
                 'kindLabel' => $kind->label(),
             ],
@@ -346,7 +378,6 @@ final readonly class ClientController extends ConsoleController
                 ],
                 app(ConnectSnippets::class)->for($kind, $model, $issuer),
             ),
-            'scopeGroups' => $catalog->grouped(),
             // How many roles this app currently declares. Tombstoned ones are excluded:
             // they are what the app STOPPED declaring.
             'declaredRoles' => Role::query()
@@ -357,58 +388,62 @@ final readonly class ClientController extends ConsoleController
             // appear in their launcher, but may not touch them — so the controls are not
             // offered, rather than offered and refused.
             'mayManage' => $mayManage,
-            /*
-             * A STEP-UP THAT HAS JUST BEEN CLEARED, said out loud.
-             *
-             * Rotation sends the administrator to re-enter their password and the console
-             * brings them back HERE — to a page that looks exactly as it did, with nothing
-             * rotated and nothing explaining why. People concluded it was broken and did
-             * the whole thing again, so the second attempt was the one that worked.
-             *
-             * The Volt page answered that by resuming the rotation during mount. A
-             * controller must not: mount became a GET, and a GET that mints a live
-             * credential is reachable by a refresh, a prefetch and the Back button. So the
-             * page says the window is open and the administrator presses the button once
-             * more — one click, on a request that means it.
-             */
-            'stepUpCleared' => $request->string('confirmed')->toString() === 'rotate',
-            'indexHref' => $this->url('clients'),
             'urls' => [
                 'update' => $this->url('clients.update', $model->id),
                 'manifest' => $this->url('clients.manifest', $model->id),
                 'sync' => $this->url('clients.sync', $model->id),
-                'rotate' => $this->url('clients.rotate', $model->id),
+                'secrets' => $this->url('clients.secrets', $model->id),
                 'destroy' => $this->url('clients.destroy', $model->id),
             ],
         ]);
     }
 
-    public function update(SaveClientRequest $request, string $client, ScopeCatalog $catalog): RedirectResponse
-    {
-        $model = $this->manageable($client);
+    public function update(
+        SaveClientRequest $request,
+        string $client,
+        ClientRegistry $clients,
+    ): RedirectResponse {
+        $model = $this->clients->manageable($client);
 
-        $model->name = $request->name();
-        $model->redirect_uris = $request->redirectUris();
-        $model->post_logout_redirect_uris = $request->postLogoutRedirectUris();
-        // THE CEILING, and narrowing it takes effect on the next token. A device or CIBA
-        // request naming a scope removed here is refused outright rather than downscoped,
-        // so this is a live change to what an integration can ask for — which is exactly
-        // why it belongs on the page rather than behind delete-and-recreate.
-        $model->scopes = $request->scopes($catalog);
-        $model->save();
+        /*
+         * The app's whole settings as they are, with the three this form edits replaced —
+         * never a hand-built blueprint, which would clear every setting this page does not
+         * show (the scopes, the logout endpoint, the key prefix, the token lifetime). The
+         * registry writes `app.updated` only when something actually changed, so a Save
+         * pressed on an untouched form is not recorded as an edit.
+         *
+         * The scopes are NOT here any more. They have a tab of their own, and a details
+         * form that also carried them would write back whatever that tab last loaded.
+         */
+        $settings = $clients->blueprint($model)
+            ->withName($request->name())
+            ->withRedirectUris($request->redirectUris())
+            ->withPostLogoutRedirectUris($request->postLogoutRedirectUris());
+
+        try {
+            $clients->update($model, $settings, $this->scope->auditActor());
+        } catch (InvalidClientMetadata $refused) {
+            return back()->withInput()->withErrors(['redirectUris' => $refused->getMessage()]);
+        }
 
         return back()->with('status', 'App updated.');
     }
 
-    public function saveManifest(Request $request, string $client, AppManifestPuller $puller): RedirectResponse
+    public function saveManifest(Request $request, string $client, AppManifestPuller $puller, ClientRegistry $clients): RedirectResponse
     {
-        $model = $this->manageable($client);
+        $model = $this->clients->manageable($client);
 
         $request->validate(['manifestUrl' => ['nullable', 'url', 'max:500']]);
 
         $url = trim((string) $request->string('manifestUrl')) ?: null;
 
-        $model->forceFill(['manifest_url' => $url])->save();
+        // Through the registry like every other setting, so where an app's roles come
+        // from changing is on the trail too — it decides what its tokens carry.
+        try {
+            $clients->update($model, $clients->blueprint($model)->withManifestUrl($url), $this->scope->auditActor());
+        } catch (InvalidClientMetadata $refused) {
+            return back()->withErrors(['manifestUrl' => $refused->getMessage()]);
+        }
 
         if ($url === null) {
             return back()->with('status', 'Manifest URL cleared.');
@@ -428,7 +463,7 @@ final readonly class ClientController extends ConsoleController
 
     public function sync(string $client, AppManifestPuller $puller): RedirectResponse
     {
-        $model = $this->manageable($client);
+        $model = $this->clients->manageable($client);
 
         if ($model->manifest_url === null) {
             return back();
@@ -446,71 +481,17 @@ final readonly class ClientController extends ConsoleController
     }
 
     /**
-     * Overlap-rotate the secret: mint a fresh one, persist only its hash, and reveal the
-     * plaintext once. Public clients have no secret, so rotation is refused for them.
-     *
-     * BEHIND A STEP-UP. This mints a live credential for an app that already exists, and
-     * on the environment plane {@see self::mayManage()} returns an unconditional true — so
-     * one unattended session rotates any tenant's production app secret and puts the
-     * plaintext on screen, with no re-authentication anywhere in the path.
-     */
-    public function rotate(string $client): RedirectResponse
-    {
-        // Authorization first: a step-up in front of a 403 hands somebody who may not
-        // touch this app a password prompt instead of a refusal.
-        $model = $this->manageable($client);
-
-        if ($model->type !== ClientType::Confidential) {
-            return back()->with('error', 'Public apps use PKCE and have no secret to rotate.');
-        }
-
-        /*
-         * A private_key_jwt client is Confidential AND has no secret, by construction:
-         * a client authenticates EITHER by a shared secret OR by signing assertions, never
-         * both. Minting one here does not rotate anything; it ADDS a bearer credential to
-         * a client that was asymmetric-only, and the authenticator then accepts client_id
-         * plus secret whenever no assertion is presented. A one-click downgrade of an
-         * authentication model, offered as routine hygiene.
-         */
-        if ($model->jwks !== null) {
-            return back()->with('error', 'This app signs assertions with its own keys and has no secret. Rotate the key in its JWKS instead.');
-        }
-
-        // LAST, after authorization and after the two refusals above. Asking for a password
-        // and then answering "public apps have no secret to rotate" trains people to type
-        // it without reading.
-        $sudo = app(ConsoleStepUp::class)->challenge(
-            'clients.show',
-            'environment.clients.show',
-            // `confirmed` rides back as a query parameter, so the page this returns to can
-            // say the window is open. See the `stepUpCleared` prop.
-            ['client' => $model->id, 'confirmed' => 'rotate'],
-            'Rotating this app\'s secret issues a new one and stops the old one working immediately.',
-        );
-
-        if ($sudo !== null) {
-            return to_route($sudo);
-        }
-
-        $secret = 'csec_'.bin2hex(random_bytes(32));
-        $model->secret_hash = hash('sha256', $secret);
-        $model->save();
-
-        $this->inertia->flash('revealedSecret', $secret);
-
-        return back()->with('status', 'A new secret was issued — copy it now, it will not be shown again.');
-    }
-
-    /**
      * Delete the app.
      *
      * One capability that had two names — `delete` on the organization plane and
      * `deleteClient` on the environment plane — which is how a test exercising one plane
      * can pass while the other has been broken for a month.
      */
-    public function destroy(string $client): RedirectResponse
+    public function destroy(string $client, ClientRegistry $clients): RedirectResponse
     {
-        $this->manageable($client)->delete();
+        $model = $this->clients->manageable($client);
+
+        $clients->delete($model, $this->scope->auditActor());
 
         return to_route($this->scope->routeName('clients'))->with('status', 'App deleted.');
     }
@@ -546,71 +527,6 @@ final readonly class ClientController extends ConsoleController
                 : null,
             'href' => $this->url('clients.show', $client->id),
         ];
-    }
-
-    /**
-     * The app, re-resolved and re-scoped on every read and write.
-     *
-     * An organization sees its own apps and the platform's first-party ones — those appear
-     * in its launcher and skip its consent screen, so it must be able to read them — and
-     * nothing else. 404 rather than 403, because the caller was not entitled to learn the
-     * app exists.
-     */
-    private function client(string $id): Client
-    {
-        $organizationId = $this->actingOrganizationId();
-
-        $client = Client::query()
-            ->whereKey($id)
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where(
-                fn (Builder $scoped): Builder => $scoped
-                    ->where('organization_id', $organizationId)
-                    ->orWhere(fn (Builder $platform): Builder => $platform
-                        ->whereNull('organization_id')
-                        ->where('first_party', true)),
-            ))
-            ->first();
-
-        abort_if($client === null, 404);
-
-        return $client;
-    }
-
-    /**
-     * The app, refused unless this administrator may CHANGE it.
-     *
-     * Resolved inside the gate rather than checked afterwards, so every mutation shares one
-     * answer instead of each remembering to ask.
-     */
-    private function manageable(string $id): Client
-    {
-        $this->scope->assertMayAdminister();
-
-        $client = $this->client($id);
-
-        abort_unless($this->mayManage($client), 403);
-
-        return $client;
-    }
-
-    /**
-     * Whether this administrator may change this app, as opposed to look at it.
-     *
-     * On the ENVIRONMENT plane the administrator is the operator above every organization
-     * in it, so every app this console can see is theirs to manage; the environment scope
-     * is the real boundary and an app in another environment is not visible here at all.
-     * On the ORGANIZATION plane it is the organization's own apps and nothing else — which
-     * is what makes the platform's first-party apps visible to a tenant administrator and
-     * not rotatable or deletable by one.
-     */
-    private function mayManage(Client $client): bool
-    {
-        if ($this->scope->plane() === ConsolePlane::Environment) {
-            return true;
-        }
-
-        return $client->organization_id !== null
-            && $client->organization_id === $this->scope->organizationId();
     }
 
     /**

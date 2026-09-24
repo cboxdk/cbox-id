@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Requests\Console;
 
 use App\Http\Controllers\Console\WebhookController;
+use App\Platform\Console\WebhookEventCatalogue;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 
 /**
  * Registering an endpoint.
@@ -31,14 +34,18 @@ final class StoreWebhookRequest extends FormRequest
     }
 
     /**
-     * @return array<string, list<string>>
+     * The events are the picker's, and only the picker's: an option the form does not
+     * list is still POSTable, and a subscription to an event nothing emits is an endpoint
+     * waiting for deliveries that cannot come.
+     *
+     * @return array<string, list<string|In>>
      */
     public function rules(): array
     {
         return [
             'url' => ['required', 'url', 'max:500'],
             'eventTypes' => ['required', 'array', 'min:1'],
-            'eventTypes.*' => ['string'],
+            'eventTypes.*' => ['string', Rule::in(WebhookEventCatalogue::offered())],
         ];
     }
 
@@ -50,6 +57,7 @@ final class StoreWebhookRequest extends FormRequest
         return [
             'eventTypes.required' => 'Choose at least one event for this endpoint to receive.',
             'eventTypes.min' => 'Choose at least one event for this endpoint to receive.',
+            'eventTypes.*.in' => WebhookEventCatalogue::REFUSAL,
         ];
     }
 

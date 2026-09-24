@@ -81,7 +81,7 @@ it('stops serving a ported console page the request after the capability is take
 })->with([
     // A Developer may not read the roster (it is PII) and may not manage API keys.
     'the roster, which is PII' => ['members', MembershipRole::Developer, 'projects'],
-    'the organization API keys' => ['api-keys', MembershipRole::Developer, 'projects'],
+    'the organization API keys' => ['keys.workspace', MembershipRole::Developer, 'projects'],
     // Roles are the access itself: who may act as what inside the apps. A Developer may
     // read an app's configuration and may not decide that.
     'the role catalogue' => ['roles', MembershipRole::Developer, null],

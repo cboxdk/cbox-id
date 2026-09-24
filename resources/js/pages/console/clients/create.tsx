@@ -116,7 +116,7 @@ export default function CreateClient({
                     className="w-3.5 h-3.5"
                     style={{ transform: 'rotate(90deg)' }}
                 />
-                Apps &amp; API keys
+                Apps
             </Link>
 
             <h1 className="cbx-page-title mt-2">New app</h1>
@@ -361,7 +361,7 @@ export default function CreateClient({
                                     form.setData('environmentWide', checked)
                                 }
                                 label="Register it to this environment rather than to an organization"
-                                hint="A platform app, not a tenant's."
+                                hint="An environment app, not one organization's."
                             />
                             <Checkbox
                                 checked={form.data.firstParty}
@@ -375,7 +375,7 @@ export default function CreateClient({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Register app
+                        Create app
                     </Button>
                     <Button asChild>
                         <Link href={indexHref}>Cancel</Link>

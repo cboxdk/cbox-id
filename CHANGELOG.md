@@ -10,6 +10,87 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **The steps after `/oauth/authorize` answered for whatever `client_id` the browser
+  added.** On the platform root, `plane:first-party` admits our own first-party app and
+  nothing else, and it read the client from `client_id`. The consent screen, approve/deny
+  and the hosted organization picker name only a pending authorization, so on the root
+  they 404'd for our own app (the picker could never be used there) — and a `client_id`
+  appended to one of those URLs was believed instead of the pending request's own client.
+  They now ask about the pending authorization's client, and only that.
+- **An organization's administrator could claim another API's scopes by typing them.** A
+  scope was free text on each app, so anybody who could edit an app could put
+  `tax:assess` on it and receive a token whose audience and scope a tax API would accept.
+  Environments can now register their APIs (Developers › APIs) and decide, scope by scope,
+  which organizations' apps may request them. The app page offers only the scopes an app
+  may hold, and a refused scope typed under Advanced, ticked in a crafted request or given
+  to a newly registered app is refused on save with a sentence naming the API and why.
+- **Taking back a staff role did not refresh the person's tokens.** Changing a role held
+  in one organization revoked the person's refresh tokens there, so apps picked up the new
+  roles on the next refresh. A staff role (`role.assigned_everywhere` /
+  `role.unassigned_everywhere`) did nothing, so apps kept minting the old roles until the
+  refresh token expired. Both events now revoke the person's refresh tokens in every
+  organization. Nobody is signed out.
+- **Two conflicting staff roles could be held by somebody in no organization.**
+  Segregation of duties was only asked inside organizations the person belonged to, so a
+  pair of staff roles under an environment-wide conflict rule was refused nowhere and
+  landed in every organization they later joined. The console now refuses it.
+- **Opening an app signed an environment administrator out of the console.** The
+  environment host's `/oauth/authorize` resolves a subject under the tenant's scope,
+  never found the administrator's platform-root session, and forgot it. A live
+  administrator session is now left alone; it still grants nothing on the tenant's pages.
+
+- **Sign-up on a tenant environment followed the deployment's mode.** On the SaaS shape a
+  tenant's sign-in page offered "Create an account" (linking to a page that 404'd there),
+  and a magic link, which creates the account on first use, was sent to any address,
+  because both read `CBOX_ID_SIGNUP_MODE` (default `open`). Both now follow the
+  environment's own self-service sign-up switch, which is off until an administrator turns
+  it on.
+- **Tenant admins could hand out staff-only roles.** laravel-id 1.19 lets an app mark a
+  role `tenant_assignable: false` (the vendor's own support or back-office role). The
+  People page, invitations and directory group mappings listed and granted roles through
+  the environment plane's `assign()`, so an organization's administrator could give one to
+  their own people. Those surfaces now use `Roles::tenantAssignableRoles()` and
+  `assignAsTenant()`. A role made staff-only after an invitation went out is withheld when
+  the invitation is accepted. The environment console still grants staff roles.
+- **Closing an organization left its members' apps signed in.** The token endpoint does
+  not check organization status on refresh, so refresh tokens bound to a closed
+  organization kept working. Closing one now calls `withdrawAccess()` for every member,
+  scoped to that organization (`WithdrawAccessOnOrganizationClosed`).
+- **"Revoke all sessions" left refresh tokens alive.** The environment console's revoke
+  ended the sessions, but apps holding refresh tokens kept minting access as the person.
+  It now calls `withdrawAccess()` first.
+
+- **Minting, revoking, rotating and renaming now leave a line on the activity log.**
+  Account API keys were created and revoked with no audit entry; an app being registered,
+  edited, having its secret rotated or being deleted wrote nothing; renaming the account
+  from Account settings wrote nothing (the environment console's Settings already wrote
+  `organization.renamed`). New actions: `organization.api_key_created`,
+  `organization.api_key_revoked`, `organization.renamed` (now on the account log too),
+  and the app lifecycle on the app's own organization trail: `app.created`, `app.updated`,
+  `app.secret_rotated` and `app.deleted`. laravel-id 1.19's client registry writes them,
+  and every console write now goes through it, so each change is logged once. The
+  console's interim `client.*` entries are gone. The environment-key audit is now unconditional rather than skipped whenever no
+  organization was resolved.
+
+- **The environment key list drew revoked keys like live ones, Revoke button included.**
+  Both key lists now show a status (active, expired or revoked — expired was reported as
+  revoked on the account page), the key prefix, when it was created, last used and expires,
+  each as a relative and an absolute time, and offer Revoke only on an active key. A second
+  revoke of the same key records nothing.
+- **Opening a mailed link spent it — and a mail scanner opens every link.** Organization
+  invitations, sign-in links, address confirmations and Admin Portal setup links were all
+  redeemed by their GET. Outlook Safe Links, Mimecast, Proofpoint and the link previews in
+  Slack and Teams fetch URLs before a person sees them, so the scanner accepted the
+  invitation or took the sign-in session, and the person who clicked was told the link had
+  expired. Each link now opens a page that says what it is for (an invitation names the
+  organization, who invited you and the role), and a button POSTs to spend it. The page is
+  not auto-submitted.
+
+- **Withdrawing an invitation deleted its parked access roles by invitation id alone.** The
+  roster's revoke action was scoped to the acting organization; the cleanup beside it was
+  not, so it could be pointed at another organization's invitation. Every write is now
+  bound to the organization in the query that finds the invitation.
+
 - **A tenant admin could edit the whole environment's permission catalog.** The Permissions
   page is offered on both consoles deliberately — roles are made of permissions, and a plane
   that offers one while hiding the other asks an admin to assign a thing they cannot inspect.
@@ -44,12 +125,344 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **The environment management API runs a whole tenancy, not just orgs and users.** An
+  app's backend could create an organization and a user and nothing else: no owner, no
+  members, no invitations, no roles. New endpoints, each behind its own scope (and each
+  scope now offered on the Keys page, which lists a scope only once a route needs it):
+  `POST /v1/organizations` with `owner_user_id` and `parent_id` (and an optional slug),
+  `PATCH` (through `Organizations::update()`, so `organization.updated` fires) and `DELETE`
+  (archive); members (`GET|POST`, `PATCH|DELETE …/members/{userId}`) and
+  `transfer-ownership`; invitations with roles, `client_id`, `return_to` and
+  `inviter_name`, re-send and withdraw, through the same `OrganizationInvitations` service
+  as the consoles; a member's roles in one organization (`GET`, `PUT|DELETE
+  …/roles/{roleId}`); `GET /v1/roles`; staff grants everywhere
+  (`/v1/users/{id}/environment-roles/{roleId}`); apps (list, register from a blueprint or
+  a short form, export a blueprint); APIs (CRUD); member API keys per organization and
+  revoke; and `POST /v1/support-sessions`. A role can be named by your manifest `key` with
+  `client_id`. The key acts with the environment's authority, so it may grant a staff role
+  inside one organization; the tenant plane still cannot, and an invitation from the API
+  refuses one rather than dropping it. Documented in `environment.yaml` and
+  [Run your tenancy from your backend](docs/getting-started/management-api.md).
+- **What a management key does is recorded as the key's act.** The framework services
+  behind the API wrote most entries with no actor, so an organization provisioned by a
+  vendor's backend looked like it made itself. While a key is on the request, an entry
+  with no actor (or with the key's id) is `actor_type: service` with the key's id, every
+  entry carries `context.environment_api_key`, and the activity log names the key.
+- **`POST /oauth/api-keys/verify` is in the OpenAPI document**, under its own server (it
+  is served at the host's root). The spec gates read a path item's `servers`, so its
+  response is checked against the schema like every `/api/v1` one.
+- **Developers › APIs** (environment console): register an API with its identifier (the
+  `aud` its tokens carry, fixed once registered), its owner (the environment, or the
+  organization chosen in the console header), the app whose roles it enforces, and its
+  scopes with "Organizations' apps may request this". Only environment administrators
+  register APIs: identifiers and scope keys are first come per environment, so an
+  organization registering them could squat another's. Every change is on the activity
+  log (`api.created`, `api.updated`, `api.scope_defined`, `api.scope_removed`,
+  `api.deleted`), one entry per change and the same entry whether the console or the
+  management API's `/v1/apis` made it. Guide: `docs/guides/apis.md`.
+- **The app page is four tabs, each its own URL**: Overview, Scopes
+  (`/apps/{id}/scopes`), Secrets (`/apps/{id}/secrets`) and Settings
+  (`/apps/{id}/settings`), on both consoles.
+  - **Scopes** groups registered APIs' scopes under each API, shows the audience the app's
+    tokens will carry (issuer, one API, or "name one with `resource`"), and keeps typed
+    scopes under Advanced, marked as unowned.
+  - **Secrets** lists every live secret (last four characters, created, last used,
+    expires), rotates with an overlap — immediately, 1 hour, 24 hours or 7 days, bounded by
+    `CBOX_ID_CLIENT_SECRET_MAX_ROTATION_GRACE` — and revokes one secret at a time (never
+    the app's last). Both behind the step-up.
+  - **Settings**: access-token lifetime in minutes (bounded by
+    `CBOX_ID_MAX_ACCESS_TOKEN_TTL`, stated on the page), token exchange (confidential apps
+    only), back-channel logout URI and "needs the session id", and an API key prefix
+    (**API keys**) that lets the app's people create keys under My account › API keys.
+- **Download blueprint** (both consoles) — the app's configuration as JSON, never a client
+  id or secret. **Copy to another environment** (environment console) registers the app in
+  another environment of the same project that the person administers, with its own client
+  id and secret shown once. Behind the step-up; recorded as `app.created` in the target
+  environment, attributed to the person.
+- **API keys for the apps built on an environment (laravel-id 1.19 customer API keys).**
+  An app that declares an API key prefix lets the people using it create keys for its API
+  on a hosted page, **My account › API keys** (`/account/api-keys`). They pick the app,
+  the organization (switchable among their memberships), a name, the permissions (only
+  the ones they hold in that app, with the manifest's descriptions) and an expiry. The key
+  is shown once. The list shows status, last use and expiry, and has a revoke button.
+  SDKs deep-link with `/account/api-keys?client_id=…&return_to=…`. `return_to` is only
+  offered as a link, and only when it sits on an origin the named app registered. A
+  refused key says why and names the permission the person does not hold. An app that
+  belongs to another organization is never offered and is refused if posted. Owners and
+  admins see every key in their organization on **People › Member API keys**
+  (`/directory/api-keys`), and environment administrators see them on each
+  organization's page. Both can revoke, and neither can create a key for somebody else.
+  Both rail entries appear only where an app offers keys or a key already exists.
+  Creating and revoking show up in the organization's activity log as `api_key.created`
+  and `api_key.revoked`. The webhooks come from the framework. Creating a key needs no
+  step-up, because the step-up asks for a password and people who sign in with single
+  sign-on have none. Guides: [Let your customers create API keys](docs/getting-started/let-your-customers-create-api-keys.md)
+  and [API keys](docs/guides/api-keys.md).
+- **People › Staff (environment console).** Who holds a staff role (a role held across
+  the whole environment), grouped by the app it reaches, with grant by email and take
+  back. An app's own role can be a staff role now (laravel-id 1.19); it reaches only that
+  app's tokens. Segregation-of-duties refusals name the organization where the
+  conflicting role already sits. A user's page shows the same list under **Staff roles**.
+- **Access reviews of staff roles.** The environment console's **New review** can review
+  every staff role instead of one organization; closing it takes revoked staff roles
+  back everywhere. An organization's review never lists them and cannot open one.
+- **Support access: "Sign in to *app* as *person*".** From a user's page in the
+  environment console: pick one of the environment's own first-party apps, one of the
+  person's organizations, a reason and a duration (never over
+  `CBOX_ID_SUPPORT_SESSION_MAX_TTL`), confirm your password, and your browser goes to the
+  app, which signs in as them. Tokens carry `act`, there is no refresh token, and nothing
+  outlives the session. Open sessions are listed on the user's and the organization's
+  pages with **End now**. The organization's activity log shows who started it and why
+  (the reason first, the administrator by name), and the person's own activity page
+  shows it once. A session is one organization: an app that names another with
+  `organization` (or asks for `prompt=create_organization`) is answered `access_denied`,
+  never with a code for the session's organization. See `docs/guides/support-access.md`.
+
+- **Apps choose the organization.** `/oauth/authorize` honours `organization`,
+  `organization_hint`, `prompt=select_organization` and `prompt=create_organization`, as
+  the SDKs already send them. The chosen organization is bound to the code and carried into
+  the access token, ID token, UserInfo and every refresh. An organization the person cannot
+  use (not an active member, suspended or deleted, another environment) returns
+  `access_denied`, under `prompt=none` too. Contradictory combinations return
+  `invalid_request`. With PAR, the organization parameters are read from the pushed request
+  only. See docs/getting-started/organizations-in-your-app.md.
+- **A hosted organization picker and a hosted "Create an organization" step.** The picker
+  lists the person's live, active memberships in the environment, marks the app's hint or
+  their current organization as the suggestion, and binds only that sign-in: it does not
+  move their console or remember the choice. The create step makes the person Owner through
+  the framework's organization and membership services and finishes the sign-in bound to
+  the new organization. Five per person per hour.
+- **Self-service sign-up on a tenant environment, and `prompt=create`.** An environment
+  setting under Sign-in rules (off by default) opens `/signup` on the environment's host:
+  a stranger creates an account and their own organization, as its Owner. `prompt=create`
+  sends a signed-out person to that form and back into the authorization, bound to the new
+  organization. The setting also gates `prompt=create_organization`. Password rules, the
+  breach check, the confirmation email, rate limits, the risk check and SSO domain capture
+  all apply. Switching it is audited (`environment.self_service_signup_enabled` /
+  `_disabled`).
+- **`prompt=consent`** shows the consent screen to a first-party app that would otherwise
+  skip it.
+- **Discovery lists `prompt_values_supported`**, on both the OIDC and the RFC 8414
+  document. `create` and `create_organization` appear only where sign-up is on.
+- **The consent screen names the organization** the app will see the person in.
+- **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
+  approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated
+  logout without a verifiable `id_token_hint` ends this browser's session and tells its
+  apps. Back-channel logout needs a queue worker.
+
+- **One Keys page per console, with the kind of key as a tab in the URL.** Seven kinds of
+  credential were spread over four pages under three names. The workspace console's
+  `/keys` holds **Management keys** (`cbid_env_…`, for one environment's management API,
+  with the environment in the URL as `?environment=`) and `/keys/workspace` holds
+  **Workspace keys** (the workspace API: projects, environments, team; each carries a
+  built-in role). The environment console's `/admin/keys` holds **Management keys** for
+  that environment and `/admin/keys/frontend` its **Frontend keys**. A tab the person may
+  not open is not drawn, so a Developer sees Management keys alone. See
+  [Keys](docs/guides/keys.md).
+- **Management keys can be created from the environment console.** A developer working in
+  an environment had to go back to the workspace, on another host, to get a key for the
+  environment they were standing in. The environment console now issues them for its own
+  environment only, behind the same step-up, and records them on the workspace's
+  activity log, where the workspace console records them.
+- **A "?" help topic on every console page**, each linking to its guide where there is
+  one. New guides: [Keys](docs/guides/keys.md), and
+  [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md)
+  (renamed from `accounts-and-organizations.md` and rewritten around the workspace, the
+  organization and which console you are in).
+- **A vocabulary test fails the build if a retired UI word comes back.** The labels below
+  were renamed once before and drifted back through modules and page copy nobody
+  re-read; the sweep reads the copy a person sees and refuses the old words.
+
+- **Key expiry in the console.** Both key forms (account API keys, environment keys) now
+  ask how long the key lives — never, 30 days, 90 days, 1 year or a custom date (the key
+  stops at the end of that day, UTC). The services always supported it; the forms never
+  asked. Omitting the field still mints a key that never expires.
+- **Invitations can send people back to the app that invited them.** An invitation takes
+  an optional `client_id` and `return_to`; after accepting, the person is sent to
+  `return_to` instead of this console's dashboard. The address must sit on one of the
+  app's registered redirect-URI origins, and it is checked again at acceptance. Stored in a
+  new app table, `invitation_contexts`, beside `invitation_role_grants`.
+- **One invite form and one pending-invitations list everywhere.** People › Members, the
+  environment console's organization page and Workspace › Team draw the
+  same React component (`InviteForm`, `PendingInvitations`); the organization invite runs
+  through one service (`OrganizationInvitations`). Every surface can now **send again** and
+  **withdraw**, and each role in the picker says what it means.
+- **Transfer ownership** on People › Members (owner only) and **Make owner** on the
+  environment console's organization page; **Leave organization** for any member except the
+  last owner; the owner can **delete their own organization** under Settings, confirmed by
+  typing its name and behind a fresh password.
+- A **Members and invitations** guide, linked from the page's "?".
+
 - **A Permissions guide, and the "?" topic the page never had.** Every other console page
   has one; this had neither, so the only written account of what a permission is lived in
   the SDK reference. `docs/guides/permissions.md` is in plain language, for an administrator
   who does not want to write code to use a form that is already on their screen.
+- **An end-to-end test of an app built on Cbox ID.** One vendor environment, one app with a
+  manifest and a registered API, and the whole scenario as a chain of real requests:
+  sign-up from the app, a second team, an invitation with an app role back to the app,
+  a team the backend founds, a staff role that reaches one app and not its neighbour, a
+  support session, and a member's API key that dies with his role and his membership
+  (`tests/Feature/AppBuiltOnCboxIdChainTest.php`). The browser suite walks the first three
+  steps through the real pages.
+
+### Changed
+
+- **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
+- **Inviting onto a workspace's team is one service for the console and the workspace
+  API** (`TeamInvitations`). `POST /api/v1/organization/members` used to mail the
+  invitation without its role, record nothing on the activity log, answer 201 when the
+  mail server had refused (leaving a live invitation nobody received), and could not
+  list, re-send or withdraw what it sent. It now behaves exactly like Workspace › Team:
+  the role is in the mail, the key's name signs it (on the accept page too), the log
+  records `organization.member_invited` / `organization.invitation_revoked` with the key
+  as the actor, a refused mail is a `503` with nothing left behind, and
+  `GET /api/v1/organization/invitations`, `POST …/invitations/{id}/resend` and
+  `DELETE …/invitations/{id}` are new. The spec's role lists now name the roles the API
+  has accepted all along (`admin`, `developer`, `member`, `viewer`). An organization's
+  invitations (its people, `OrganizationInvitations`) are unchanged and stay a separate
+  kind.
+
+- **Rotating an app secret no longer has to be a cut-over.** The console passed a grace of
+  0; it now passes the overlap chosen on the Secrets tab, "immediately" still among them.
+  A rotation posted without one is still immediate.
+- **An app's scopes are edited on its Scopes tab**, `PUT /apps/{id}/scopes`. The details
+  form (`PATCH /apps/{id}`) no longer carries or changes scopes.
+
+- **`plane:account` is now `plane:signup`**, served on the platform root and on tenant
+  hosts. `/signup` was the only route on `plane:account`. Whether a tenant's sign-up is
+  open is the environment's setting.
+- **After sign-up, the person goes back to where they were headed**, an authorization
+  included, instead of always to the dashboard.
+- **App writes go through the framework's `ClientRegistry`.** That covers register,
+  update (built from `blueprint()` so settings the page does not show survive), manifest
+  URL, secret rotation and delete. Rotation no longer writes the deprecated `secret_hash`;
+  it calls `rotateSecret()` with no grace period until the overlap UI exists. Settings
+  the registry refuses come back as form errors.
+- **Transfer, leave and close use the framework's verbs** (`transferOwnership()`,
+  `leave()`, `archiveAsOwner()`), which lock the rows and write their own audit entries.
+  Ownership goes only to an active member. The environment console's Delete organization
+  calls `Organizations::archive()` and sends the `organization.deleted` webhook.
+- **Webhook event pickers come from `WebhookEventType::catalogue()`**, limited to offered
+  events. A new endpoint may subscribe only to those. An existing endpoint keeps what it
+  already has.
+- **Environment key scopes** are the framework's `offerable()` scopes that some
+  `env.api:<scope>` route requires. A scope appears once its endpoint ships.
+
+- **The workspace console is the workspace.** A workspace that owns identity providers
+  signed in to a console that showed its own record in Cbox's root environment with the
+  full end-user rail (roles, apps, webhooks, inline hooks, token vault, connectors,
+  access reviews), as though it were their product. The product was an environment
+  console on another host. At the platform root of a multi-tenant deployment the rail is
+  now **Workspace** (Projects, Team, Keys, Environment domains, Billing, Workspace
+  settings), **Team sign-in** (Single sign-on, Sign-in rules: how the workspace's own
+  team signs in to Cbox), Logs › Activity log and My account. Overview (`/dashboard`) and
+  the setup guide (`/get-started`) are not shown there either. Operators, single-tenant
+  installs and every other organization keep the full console.
+- **Hidden, not redirected.** The end-user pages a workspace console no longer lists stay
+  reachable by URL, so an app or webhook registered there before is not stranded, and
+  they stay authorized by the one check every console page uses. Reached that way, a
+  page says above its content that it manages the workspace's own record in Cbox, not the
+  product, and links to Projects.
+- **Signing in lands where people work.** A workspace member with exactly one active
+  environment they may administer (Owner, Admin or Developer) goes straight into that
+  environment's console through the signed handoff Projects › Open uses. Everyone else
+  lands on Projects, where each environment has **Open console**.
+- **The environment console shows its workspace and the way back.** The topbar reads
+  `← <Workspace> / <Environment> [badge] / <acting organization>`, and the first crumb
+  opens the workspace's Projects page.
+- **One URL per page.** About forty pages had a different path on each console
+  (`/sod-policies` beside `/admin/conflict-rules`, `/hooks` beside `/admin/event-hooks`,
+  `/clients` beside `/admin/applications`, and `/analytics` meaning sign-in activity on
+  one and usage on the other). Every page now has one slug, named after the page, and the
+  environment console's is that slug under `/admin`. Every old GET answers **301** with
+  its query string kept; writes moved too and are not redirected. The full table is in
+  [UPGRADING.md](UPGRADING.md). Route names are unchanged except the merged key pages and
+  `environment.analytics`, now `environment.usage`.
+- **One word per thing in the console.** *Identity platform* is **Workspace**,
+  *Administrators* is **Team**, *Account settings* is **Workspace settings**, and the
+  operator's *Customers* is **Workspaces**. The membership tier is the **built-in role**
+  (Owner, Admin, Developer, Member, Viewer); app-declared and custom roles are just
+  **Roles**, and people screens show both in one **Roles** control: exactly one built-in
+  role plus any number of roles (it was *Console access*, *Organization access*, *Access
+  roles* and *App roles* on different pages). *Roles everywhere in this environment* is
+  **Staff roles**. *Apps & API keys* is **Apps**. *Switch account* is **Switch user**,
+  which is what it does. The two agent approval pages are named for what each does:
+  **Approve agent requests** (a person approves requests to act as them) and **Review
+  agent requests** (an environment administrator sees every pending request and can deny
+  abuse).
+- **Sign-in rules moved from Settings to Sign-in** on both consoles. They are the
+  password, MFA and session policy, and on a workspace console they are half of the only
+  sign-in administration it has.
+- **Every rail area has its own icon.** The rail had three shields and two stacks, which
+  at 18px in a 64px rail were one glyph drawn several times.
+
+- **Ownership is transferred, never assigned, on every roster.** People › Members offered
+  "Owner" in its role picker, so an owner could mint further owners; the organization
+  roster's roles are now Admin and Member, and ownership moves only with Transfer ownership
+  / Make owner. Existing extra owners keep their role until an owner or an environment
+  administrator changes it.
+- **The two invitation mails no longer share a subject line.** Joining an organization reads
+  "*Dana* invited you to join *Acme*"; administering a customer account reads "*Dana*
+  invited you to administer *Acme* on Cbox ID". The account mail used to be signed with the
+  inviter's subject id instead of their name.
 
 ### Fixed
+
+- **A support session's API response listed scopes its tokens did not carry.** The
+  session stored the app's whole registration (less `offline_access`), and the token
+  endpoint then audienced every token to the app's registered API, where an unregistered
+  scope such as `apps.manifest` cannot ride. Sessions now settle their scopes through the
+  same audience rules before they start — for the management API and the console alike —
+  so the stored session, its codes, the response and the tokens agree. Scopes of two
+  registered APIs are refused up front (`422 invalid_target`) instead of starting a
+  session whose codes no token endpoint would redeem.
+- **The invitation page said "Role: Member" to somebody invited as an Editor.** It
+  listed only the built-in role. It now lists the built-in role and every app and custom
+  role accepting will grant, in the console's words ("Built-in role", "Roles in cboxtax",
+  "Custom roles"), and leaves off a role that was made staff-only or retired since.
+- **A customer environment's sign-up showed Cbox ID's marketing panel to its end users.**
+  Every door on a customer environment of a multi-tenant deployment — sign-in, sign-up,
+  password reset, magic link, invitation, organization picker, create organization — now
+  carries the environment's brand (its name and logo from Appearance, over its colours,
+  also in the tab title) and no Cbox ID panel, pitch or "Set up Cbox ID" copy. An
+  organization-branded door drops the panel too. The platform root's doors and a
+  single-tenant install's keep theirs; the consoles on that host keep Cbox ID's name.
+- **A staff-only role posted to an organization's People page was refused in silence.**
+  Granting it by id redirected back with nothing said, and an invitation carrying it was
+  sent — "Invitation sent" — without it. Both now refuse the whole request with "That
+  access role is not offered in this organization", shown on the page (against the invite
+  form's access roles, or in the People page's alert). The same sentence answers another
+  organization's role and an id that matches nothing, so the refusal does not map the
+  vendor's staff roles. The environment API's invitation endpoint reports it as
+  `access_role_not_offered` (422).
+- The "Publish its own manifest" scope described itself with a literal `&amp;`.
+
+- **My account and Switch user in the environment console bounced to the environment's
+  end-user sign-in.** Both were relative links, so on an environment's host they opened a
+  page that needs the workspace session, found none, and sent the administrator to the
+  sign-in page of the product they were administering. Both now open on the workspace
+  host, where the person is signed in.
+- Environment-key scopes are shown by their label with the API key beside them, and the
+  reserved `directories:*` scopes, which no route requires, are no longer offered.
+- The API keys page promised the account API could "read billing"; it lists projects and
+  environments, creates environments, and lists and invites administrators. The environment
+  OpenAPI spec said environment keys are minted in the environment's console; they were
+  created only under the workspace's keys page (both consoles issue them now, under Keys).
+- Key and secret verbs are one set across the console: **Create key**, **Revoke**,
+  **Rotate secret**; the new-app form's button says **Create app**.
+- Secret rotation mints through the framework's `ClientSecret` value object instead of
+  a second inline copy of the format, and its docblock no longer claims overlap rotation:
+  rotation is a cut-over, and the page now says there is no overlap window.
+- The roles list said "No permissions yet." and "Every available permission is already
+  granted." on the same row when nothing could be granted; it now says which. With every
+  organization in view, an organization's role shows the organization that owns it, so two
+  tenants' "Editor" roles are no longer identical rows.
+- The setup guide's **Invite your team** step and the Roles page's **console access** link
+  pointed at a customer's administrators page, which redirected a tenant organization's
+  admin to projects and then to the dashboard. Both now open the organization's own People
+  page.
+- A refused roster change (the last owner, a role that is not offered) is shown on the
+  page; it used to go into an error bag nothing read, so the control silently did nothing.
 
 - `pip install cbox-id-client` appeared in step 5 of the quickstart — the first command a
   new integrator runs. It has never been published. The block now lists the four packages

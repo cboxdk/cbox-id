@@ -18,14 +18,28 @@ use App\Platform\Install\Contracts\SetupTokens;
 use App\Platform\Install\DatabasePlatformInstaller;
 use App\Platform\Install\EnvFile;
 use App\Platform\Install\FileSetupTokens;
+use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Invitations\Contracts\TeamInvitations;
+use App\Platform\Invitations\OrganizationInvitationService;
+use App\Platform\Invitations\TeamInvitationService;
+use App\Platform\OAuth\AuthorizationOrganizationService;
+use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OpenEntitlements;
+use App\Platform\PlatformSignedInSession;
 use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
+use App\Platform\Staff\ConsoleStaffRoles;
+use App\Platform\Staff\Contracts\StaffRoles;
+use App\Platform\SupportAccess\AudienceResolvedSupportSessions;
+use App\Platform\SupportAccess\ConsoleSupportAccess;
+use App\Platform\SupportAccess\Contracts\SupportAccess;
+use App\Platform\SupportAccess\SupportSessionScopes;
 use App\Platform\TrustedHosts;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Contracts\SignedInSession;
 use Cbox\Id\Identity\Contracts\SignedInSubject;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
@@ -33,6 +47,7 @@ use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Migration\Contracts\LegacyCredentialSource;
 use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
+use Cbox\Id\OAuthServer\Contracts\SupportSessions;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -53,6 +68,11 @@ final class PlatformServiceProvider extends ServiceProvider
         // Laravel's guard, which this application never populates — see
         // PlatformSignedInSubject for what that silently cost RP-initiated logout.
         $this->app->scoped(SignedInSubject::class, PlatformSignedInSubject::class);
+
+        // AND WHICH SESSION, for RP-initiated logout without a verifiable hint: that may
+        // end only this browser's session, and without this binding it ended none — the
+        // row stayed active and no application heard the person had left.
+        $this->app->scoped(SignedInSession::class, PlatformSignedInSession::class);
 
         // The customer's theme, on the Frontend API's public config document. Tagged
         // rather than referenced by the package: the framework owns the channel and
@@ -155,6 +175,29 @@ final class PlatformServiceProvider extends ServiceProvider
         // that stopped it being true.
         $this->app->scoped(PlatformInstaller::class, DatabasePlatformInstaller::class);
 
+        // Inviting somebody into an organization — one service behind every surface that
+        // does it. Scoped: it reads the environment the request stands in, and a worker
+        // must not carry one request's scoped collaborators into the next.
+        $this->app->scoped(OrganizationInvitations::class, OrganizationInvitationService::class);
+        // The OTHER kind: onto a workspace's team (its administrators), from the console's
+        // Team page and the workspace API alike. Runs in the platform root.
+        $this->app->scoped(TeamInvitations::class, TeamInvitationService::class);
+        $this->app->scoped(StaffRoles::class, ConsoleStaffRoles::class);
+        $this->app->scoped(SupportAccess::class, ConsoleSupportAccess::class);
+
+        // A support session's scopes are settled to what its tokens will carry before it
+        // starts, for every caller — see {@see AudienceResolvedSupportSessions}. Extend,
+        // not bind: this wraps whatever the framework registered.
+        $this->app->extend(SupportSessions::class, fn (SupportSessions $inner, Application $app): SupportSessions => new AudienceResolvedSupportSessions(
+            $inner,
+            $app->make(SupportSessionScopes::class),
+        ));
+
+        // Which organizations an authorization may be bound to — the `organization`
+        // parameter, the hosted picker and the hosted create step all ask this one
+        // service. Scoped for the same reason: it reads the request's environment.
+        $this->app->scoped(AuthorizationOrganizations::class, AuthorizationOrganizationService::class);
+
         // The setup token lives on the LOCAL disk explicitly, not on the default one: a
         // deployment that points `FILESYSTEM_DISK` at S3 would otherwise publish its
         // first-run secret to object storage, where "only console access can read it"
@@ -183,6 +226,9 @@ final class PlatformServiceProvider extends ServiceProvider
         // RBAC freshness: revoke a user's refresh tokens when their roles change, so a
         // grant/downgrade takes effect on next refresh rather than riding a stale token.
         Event::listen(EventDelivered::class, RevokeTokensOnRoleChange::class);
+        // WithdrawAccessOnOrganizationClosed is NOT listed here: Laravel discovers
+        // app/Listeners by the handle() type, and naming it as well runs it twice per event
+        // (as it does the line above, whose explicit registration predates discovery).
 
         // The trusted-Host allow-list is derived from the `environments` table and cached
         // for the resolution TTL, and NOTHING invalidated it. The window that opened is

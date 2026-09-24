@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreatePlatformEnvironmentRequest;
 use App\Http\Requests\Console\ProvisionEnvironmentAdminRequest;
 use App\Platform\Console\EnvironmentLineage;
 use App\Platform\Console\EnvironmentLineages;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Identity\Contracts\PasswordPolicyGuard;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\PolicyViolation;
@@ -127,6 +129,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
         });
 
         return $this->page('console/platform/environments', 'Environments', [
+            'help' => HelpProps::for(HelpTopic::Environments),
             'environments' => $page['rows'],
             'pagination' => $page['pagination'],
             'search' => $term,

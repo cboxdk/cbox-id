@@ -42,10 +42,11 @@ it('will not let an admin remove themselves', function () {
     [$meId, $org] = actingAsRole(MembershipRole::Owner);
 
     // The refusal SAYS SO, rather than being a control that silently does nothing: the
-    // error rides back to the page it was posted from and is announced there.
+    // error rides back to the page it was posted from and is announced there — and it
+    // names the verb that does exist for this, rather than just "no".
     test()->from(route('directory.members'))
         ->delete(route('directory.members.remove', $meId))
-        ->assertSessionHasErrors(['member' => 'You cannot remove yourself.']);
+        ->assertSessionHasErrors(['member' => 'To remove yourself, use "Leave organization".']);
 
     expect(app(Memberships::class)->of($org->id, $meId))->not->toBeNull();
 });

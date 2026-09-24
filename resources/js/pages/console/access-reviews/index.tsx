@@ -1,8 +1,8 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
-import { Button, EmptyState, Icon, Input, PageHeader, Pill } from '@/ui';
+import type { HelpContent, PageProps } from '@/types';
+import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pill } from '@/ui';
 
 interface ReviewRow {
     id: string;
@@ -12,6 +12,8 @@ interface ReviewRow {
     /** Open, and past its due date — the one row on this list that needs attention. */
     overdue: boolean;
     open: boolean;
+    /** A review of staff roles — the environment's, belonging to no organization. */
+    staff: boolean;
     href: string;
 }
 
@@ -19,6 +21,7 @@ type Props = PageProps<{
     reviews: ReviewRow[];
     search: string;
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string): string {
@@ -27,7 +30,7 @@ function listHref(search: string): string {
         : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
 }
 
-export default function AccessReviewsIndex({ reviews, search, createHref }: Props) {
+export default function AccessReviewsIndex({ reviews, search, createHref, help }: Props) {
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -49,6 +52,7 @@ export default function AccessReviewsIndex({ reviews, search, createHref }: Prop
     return (
         <>
             <PageHeader
+                help={help}
                 description="Periodically certify who holds which role and membership. Revoked access is applied when the review closes."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
@@ -124,6 +128,11 @@ export default function AccessReviewsIndex({ reviews, search, createHref }: Prop
                         >
                             <div className="min-w-0 flex-1">
                                 <span className="font-medium truncate">{review.name}</span>
+                                {review.staff && (
+                                    <Badge tone="info" className="ml-2">
+                                        Staff roles
+                                    </Badge>
+                                )}
                                 {review.dueAt !== null && (
                                     <p
                                         className="text-xs truncate"

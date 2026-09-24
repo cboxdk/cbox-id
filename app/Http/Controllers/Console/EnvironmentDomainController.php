@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RequestEnvironmentDomainRequest;
+use App\Platform\Help\HelpTopic;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -54,6 +56,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
         $challenge = $environment === null ? null : $domains->challenge($environment->id);
 
         return $this->page('console/environment-domains', 'Environment domains', [
+            'help' => HelpProps::for(HelpTopic::EnvironmentDomains),
             'environments' => $environments->map(fn (Environment $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,

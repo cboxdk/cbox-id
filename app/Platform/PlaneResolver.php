@@ -111,6 +111,19 @@ final class PlaneResolver
     }
 
     /**
+     * Whether this host serves the signup pages: the account plane (the root's "create your
+     * identity platform"), or a tenant environment (its own end users signing up).
+     *
+     * Only the ROUTE question. Whether a tenant environment's signup is open is its own
+     * setting, answered by {@see SignupPolicy} — so with the setting off the page explains
+     * that sign-up is by invitation instead of 404ing under a sign-in page that linked to it.
+     */
+    public function servesSignup(): bool
+    {
+        return $this->onAccountPlane() || $this->onTenantEnvironment();
+    }
+
+    /**
      * Whether this host answers AS AN IDENTITY PROVIDER — OIDC discovery and JWKS, the
      * RFC 8414 / RFC 9728 metadata, every `/oauth/*` endpoint, the SAML IdP bindings, SCIM.
      *
@@ -218,6 +231,20 @@ final class PlaneResolver
                 ->whereNull('organization_id')
                 ->exists(),
         ) === true;
+    }
+
+    /**
+     * Whether this request is on a CUSTOMER's environment of a multi-tenant deployment — a
+     * host whose sign-in doors carry somebody else's name.
+     *
+     * Not {@see servesIssuer()}, which answers true everywhere on a single-tenant install:
+     * there the one environment IS the deployment, its operator names it through
+     * `cbox-id.branding.*`, and its doors are theirs already. Here the environment is a
+     * vendor's product, and Cbox's own pitch on its sign-up page is a stranger's.
+     */
+    public function onCustomerEnvironment(): bool
+    {
+        return $this->isMultiTenant() && $this->onTenantEnvironment();
     }
 
     /**

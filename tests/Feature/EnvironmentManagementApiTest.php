@@ -174,6 +174,6 @@ it('redirects a non-manager away from the environment-keys console', function ()
     [$viewer, $viewerSubjectId] = addMember($result->organization->id, MembershipRole::Viewer, 'viewer@acme.example');
 
     signInAsMember($viewerSubjectId);
-    $this->get(route('environment-keys'))
+    $this->get(route('keys'))
         ->assertRedirect(route('projects'));
 });

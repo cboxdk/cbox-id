@@ -249,11 +249,11 @@ it('leaves exactly one live link: the resent one works and the earlier one does 
     expect($original)->not->toBe($resent);
 
     // The superseded link is dead — it provisions nothing.
-    $this->get($original)->assertRedirect(route('login'));
+    $this->post($original)->assertRedirect(route('login'));
     expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->exists())->toBeFalse();
 
     // The newest one is the one that works.
-    $this->get($resent)->assertRedirect();
+    $this->post($resent)->assertRedirect();
     expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 });
 
@@ -262,7 +262,7 @@ it('is a harmless no-op once the environment has been released', function (): vo
     $member = signUpForResend();
 
     [$link] = verificationLinks();
-    $this->get($link)->assertRedirect();
+    $this->post($link)->assertRedirect();
     expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 
     $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();

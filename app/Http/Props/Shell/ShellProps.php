@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Shell;
 
 use App\Http\Props\Prop;
+use App\Platform\Console\ConsoleAltitude;
 use App\Platform\Console\ShellPayload;
 
 /**
@@ -55,6 +56,20 @@ final readonly class ShellProps implements Prop
         public bool $isOperator,
         public string $brandHref,
         public bool $navPinned,
+        /**
+         * The person's own account page and the signed-in-user switcher — ABSOLUTE on the
+         * environment console, because both live on the workspace's host. As relative links
+         * on a tenant host they reached a page that asked for a sign-in the environment
+         * administrator does not have there, and bounced them to the tenant's end-user
+         * sign-in form.
+         */
+        public string $accountHref,
+        public string $switchUserHref,
+        /** Which console this is — a workspace's, an organization's, or an environment's. */
+        public ConsoleAltitude $altitude,
+        /** The environment console's way back to its workspace; null on every other console. */
+        public ?WorkspaceLinkProps $workspace = null,
+        public ?ShellNoticeProps $notice = null,
     ) {}
 
     /**
@@ -72,6 +87,11 @@ final readonly class ShellProps implements Prop
             'isOperator' => $this->isOperator,
             'brandHref' => $this->brandHref,
             'navPinned' => $this->navPinned,
+            'accountHref' => $this->accountHref,
+            'switchUserHref' => $this->switchUserHref,
+            'altitude' => $this->altitude->value,
+            'workspace' => $this->workspace,
+            'notice' => $this->notice,
         ];
     }
 }

@@ -4,21 +4,26 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Props\Shell\ActingOrganizationProps;
 use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
+use App\Http\Props\Shell\ShellNoticeProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Http\Props\Shell\SwitchOptionProps;
+use App\Http\Props\Shell\WorkspaceLinkProps;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
+use App\Platform\PlaneResolver;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -84,6 +89,7 @@ final readonly class ShellPayload
         private Entitlements $entitlements,
         private ConsoleNavigation $navigation,
         private Request $request,
+        private PlaneResolver $planes,
     ) {}
 
     /**
@@ -111,8 +117,21 @@ final readonly class ShellPayload
         }
 
         $isAdmin = Console::context()->isAdmin();
+        $workspace = $this->scope->atWorkspaceAltitude();
 
         $areas = [];
+        // Whether this page is one the workspace console does not offer — reached by URL.
+        $offRail = false;
+
+        // Every page the registry names, so a page does not light up on a route another
+        // page owns more specifically (see routeIsCurrent()).
+        $claimed = [];
+
+        foreach (Console::nav()->areas() as $area) {
+            foreach ($area->pages() as $page) {
+                $claimed[] = $page->route;
+            }
+        }
 
         foreach (Console::nav()->areas() as $area) {
             if (! $isAdmin && ! in_array($area->key, self::MEMBER_AREAS, true)) {
@@ -128,13 +147,21 @@ final readonly class ShellPayload
                     continue;
                 }
 
+                // A WORKSPACE'S CONSOLE is the workspace, its team's sign-in and its log —
+                // see WorkspaceAltitude for why the rest is withheld rather than refused.
+                if ($workspace && ! WorkspaceAltitude::keepsPage($area->key, $page->route)) {
+                    $offRail = $offRail || $this->routeIsCurrent($page->route, $claimed);
+
+                    continue;
+                }
+
                 $feature = self::ENTITLEMENT_FEATURE[$page->route] ?? null;
 
                 $pages[] = new NavPageProps(
                     route: $page->route,
                     href: route($page->route),
                     label: $page->label,
-                    active: $this->routeIsCurrent($page->route),
+                    active: $this->routeIsCurrent($page->route, $claimed),
                     badge: $feature !== null && ! $this->entitlements->entitledOrgFeature($feature)
                         ? 'Enterprise'
                         : null,
@@ -149,7 +176,7 @@ final readonly class ShellPayload
 
             $areas[] = new NavAreaProps(
                 key: $area->key,
-                label: $area->label,
+                label: $workspace ? WorkspaceAltitude::label($area->key, $area->label) : $area->label,
                 // A plugin may register an area without one, and the rail is icons —
                 // rendering the blank is worse than rendering the wrong thing, because a
                 // blank square in the primary navigation reads as a broken build.
@@ -162,7 +189,7 @@ final readonly class ShellPayload
             );
         }
 
-        $areas = $this->markActive($areas);
+        $areas = $this->markActive($areas, fallback: ! $offRail);
         $active = $this->activeArea($areas);
 
         return new ShellProps(
@@ -178,8 +205,18 @@ final readonly class ShellPayload
             actingOrganization: null,
             environments: $this->targetEnvironments(),
             isOperator: $this->scope->isPlatformOperator(),
-            brandHref: route('dashboard'),
+            // A workspace's home is Projects; `dashboard` would hand it straight on to an
+            // environment, which is not what clicking the brand mark in its own console means.
+            brandHref: route($workspace ? 'projects' : 'dashboard'),
             navPinned: $this->request->cookie('cbox-nav-pinned') === '1',
+            accountHref: route('account'),
+            switchUserHref: route('accounts'),
+            altitude: $workspace ? ConsoleAltitude::Workspace : ConsoleAltitude::Organization,
+            notice: $offRail ? new ShellNoticeProps(
+                message: 'This page manages your workspace’s own record in Cbox — the team that signs in to this console — not your product. Your apps, users and roles live in each environment’s console.',
+                href: route('projects'),
+                label: 'Go to Projects',
+            ) : null,
         );
     }
 
@@ -228,6 +265,48 @@ final readonly class ShellPayload
             isOperator: false,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,
             navPinned: $this->request->cookie('cbox-nav-pinned') === '1',
+            accountHref: $this->onWorkspaceHost('account'),
+            switchUserHref: $this->onWorkspaceHost('accounts'),
+            workspace: $this->workspaceLink(),
+            altitude: ConsoleAltitude::Environment,
+        );
+    }
+
+    /**
+     * A console page on the WORKSPACE's host, for a link drawn on an environment console.
+     *
+     * The environment console is on the environment's own host, where the administrator
+     * holds an environment binding and no subject session; the person's own pages — their
+     * account, the signed-in-user switcher, the workspace's Projects — are on the host the
+     * handoff came from. Same host derivation as the handoff's own refusal path
+     * ({@see AuthenticateEnvironmentAdmin}), so the way out and the
+     * way in agree.
+     */
+    private function onWorkspaceHost(string $route): string
+    {
+        $host = $this->planes->consoleHost();
+
+        return $host === null
+            ? route($route)
+            : 'https://'.$host.route($route, [], false);
+    }
+
+    /** The workspace this environment console belongs to, named, with the way back. */
+    private function workspaceLink(): ?WorkspaceLinkProps
+    {
+        $organizationId = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
+
+        if (! is_string($organizationId) || $organizationId === '') {
+            return null;
+        }
+
+        $name = app(PlatformRoot::class)->run(
+            fn (): ?string => app(Organizations::class)->find($organizationId)?->name,
+        );
+
+        return new WorkspaceLinkProps(
+            name: is_string($name) && $name !== '' ? $name : 'Workspace',
+            href: $this->onWorkspaceHost('projects'),
         );
     }
 
@@ -268,7 +347,7 @@ final readonly class ShellPayload
      * @param  list<NavAreaProps>  $areas
      * @return list<NavAreaProps>
      */
-    private function markActive(array $areas): array
+    private function markActive(array $areas, bool $fallback = true): array
     {
         $activeKey = null;
 
@@ -285,7 +364,14 @@ final readonly class ShellPayload
         // Nothing matched — a page outside the navigation entirely (the guided first run,
         // a detail route nobody listed). The rail falls back to the first area rather
         // than rendering with nothing selected, which reads as a broken shell.
-        $activeKey ??= $areas[0]->key ?? null;
+        //
+        // EXCEPT for a page the rail deliberately does not offer (a workspace console on
+        // one of its end-user pages): lighting "Workspace" above it, with Workspace's
+        // sub-nav beside it and "Workspace" as its eyebrow, would claim the page is part
+        // of the one area it is explicitly not.
+        if ($fallback) {
+            $activeKey ??= $areas[0]->key ?? null;
+        }
 
         return array_map(
             fn (NavAreaProps $area): NavAreaProps => new NavAreaProps(
@@ -319,10 +405,33 @@ final readonly class ShellPayload
      * A page stays lit on its own detail and create routes (`users` → `users.show`) but
      * NOT on a sibling that merely shares a prefix: `audit` must not light up on
      * `audit-streams`. Hence two explicit patterns rather than one prefix test.
+     *
+     * NOR ON A PAGE OF ITS OWN BELOW IT. `account` (Security) is a prefix of
+     * `account.activity` and `account.api-keys`, which are pages beside it rather than
+     * details of it — and the prefix test lit Security as well as the page being shown,
+     * two items at once in a three-item sub-nav. A route that a more specific page claims
+     * belongs to that page.
+     *
+     * @param  list<string>  $claimed  every page route on the rail
      */
-    private function routeIsCurrent(string $route): bool
+    private function routeIsCurrent(string $route, array $claimed = []): bool
     {
-        return $this->request->routeIs($route) || $this->request->routeIs($route.'.*');
+        if ($this->request->routeIs($route)) {
+            return true;
+        }
+
+        if (! $this->request->routeIs($route.'.*')) {
+            return false;
+        }
+
+        foreach ($claimed as $other) {
+            if (str_starts_with($other, $route.'.')
+                && ($this->request->routeIs($other) || $this->request->routeIs($other.'.*'))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

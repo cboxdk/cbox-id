@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
+use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Props\Shared\SimplePaginationProps;
+use App\Http\Props\Shared\StaffRoleProps;
+use App\Http\Props\Shared\SupportSessionProps;
 use App\Http\Requests\Console\AssignUserOrganizationRequest;
 use App\Http\Requests\Console\CreateEnvironmentUserRequest;
 use App\Http\Requests\Console\SaveEnvironmentUserRequest;
@@ -17,12 +21,15 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\LikeTerm;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
+use App\Platform\Help\HelpTopic;
 use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrganizationAccess;
 use App\Platform\OrgRoles;
+use App\Platform\Staff\Contracts\StaffRoles;
+use App\Platform\SupportAccess\Contracts\SupportAccess;
+use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\VerifiedEmailGate;
-use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -35,7 +42,9 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
+use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\LastOwner;
 use Cbox\Id\Organization\Models\Membership;
@@ -105,6 +114,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         $page = $query->simplePaginate(self::PER_PAGE)->withQueryString();
 
         return $this->page('environment/users/index', 'Users', [
+            'help' => HelpProps::for(HelpTopic::Users),
             'users' => array_map(static fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -188,6 +198,8 @@ final readonly class EnvironmentUserController extends ConsoleController
         Memberships $memberships,
         OrgAccessRoles $catalog,
         Mfa $mfa,
+        StaffRoles $staff,
+        SupportAccess $support,
     ): Response {
         $this->assertEnvironmentAdmin();
 
@@ -209,6 +221,9 @@ final readonly class EnvironmentUserController extends ConsoleController
                 'organizationId' => $membership->organization_id,
                 'organizationName' => $names[$membership->organization_id] ?? $membership->organization_id,
                 'role' => $membership->role->value,
+                // Invited and suspended members cannot be acted as: a support session
+                // would put them into an organization its administrators have not.
+                'active' => $membership->status === MembershipStatus::Active,
                 'managesOrganization' => $membership->role->canManageOrganization(),
                 // Per-org RBAC catalogue + what this user holds there. Roles are largely
                 // environment-wide, but app-declared roles are scoped per organization.
@@ -257,24 +272,40 @@ final readonly class EnvironmentUserController extends ConsoleController
             'joiningOrganization' => $joining,
             'joiningAccessRoles' => $this->accessRoleProps($joiningRoles, $catalog->appNames($joiningRoles)),
             /*
-             * GRANTS THAT NAME NO ORGANIZATION — the case an org-scoped grant cannot
-             * describe: a support agent acting across every customer, somebody who has
-             * joined none, or an app with no tenancy of its own to hang a grant on. Before
-             * this the only way to give such a person anything was to invent a membership.
+             * STAFF ROLES — grants that name no organization: a support agent acting across
+             * every organization, somebody who has joined none, or an app with no tenancy of
+             * its own to hang a grant on. Any role no organization owns, an app's own
+             * included (that one reaches only that app's tokens); the Staff page lists the
+             * same grants for everybody at once.
              */
-            'everywhereRoles' => $this->accessRoleProps(
-                $catalog->grantableEverywhere(),
-                $catalog->appNames($catalog->grantableEverywhere()),
-            ),
-            'heldEverywhere' => array_values(array_filter(
-                app(Roles::class)->everywhereFor($model->id),
-                'is_string',
-            )),
+            'staffRoles' => StaffRoleProps::list($staff->grantable()),
+            'heldStaffRoles' => $staff->heldBy($model->id),
+            'staffHref' => route('environment.staff'),
+            /*
+             * SUPPORT ACCESS — sign in to one of the environment's own apps as this person.
+             * Only the apps a support session can reach are offered, and only the
+             * organizations they are an active member of; both are asked again on the way
+             * in, because a posted id is anything a client chooses to send.
+             */
+            'support' => [
+                'apps' => array_map(static fn (SupportApp $app): array => [
+                    'value' => $app->clientId,
+                    'label' => $app->name,
+                ], $support->eligibleApps()),
+                'organizations' => array_values(array_map(
+                    static fn (array $row): array => ['value' => $row['organizationId'], 'label' => $row['organizationName']],
+                    array_filter($rows, static fn (array $row): bool => $row['active']),
+                )),
+                'maxMinutes' => $support->maxMinutes(),
+                'sessions' => SupportSessionProps::list($support->activeForUser($model->id)),
+                'help' => HelpProps::for(HelpTopic::SupportAccess),
+                'startHref' => route('environment.users.support-sessions.store', $model->id),
+            ],
             'sessions' => $this->sessionProps($model->id),
-            'assignableRoles' => array_map(static fn ($role): array => [
-                'value' => $role->value,
-                'label' => $role->label(),
-            ], OrgRoles::assignable()),
+            // The same lists every other roster in the product offers. The membership rows
+            // name Owner so an owner's row says what it holds; nothing offers it.
+            'assignableRoles' => RoleOptionProps::organization(),
+            'membershipRoles' => RoleOptionProps::organization(withOwner: true),
             'indexHref' => route('environment.users'),
             'urls' => [
                 'update' => route('environment.users.update', $model->id),
@@ -483,11 +514,25 @@ final readonly class EnvironmentUserController extends ConsoleController
         return back()->with('status', 'Session revoked.');
     }
 
-    public function revokeAllSessions(string $user, SessionManager $sessions): RedirectResponse
+    /**
+     * Sign this person out everywhere — the administrator's "this account's access is over
+     * until they sign in again".
+     *
+     * THE GRANTS TOO, not only the sessions. Ending the sessions told every application
+     * the person had signed in to (Back-Channel Logout), but a refresh token each one held
+     * went on minting access tokens, so an application that ignored the logout — or never
+     * registered for it — carried on acting as the person. {@see RefreshTokens::withdrawAccess()}
+     * revokes those and tells the applications holding them; it runs first, so the
+     * session revocation after it finds nobody left to notify twice.
+     */
+    public function revokeAllSessions(string $user, SessionManager $sessions, RefreshTokens $grants): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $sessions->revokeAllForUser($this->resolve($user)->id);
+        $userId = $this->resolve($user)->id;
+
+        $grants->withdrawAccess($userId);
+        $sessions->revokeAllForUser($userId);
 
         return back()->with('status', 'All sessions revoked.');
     }
@@ -571,7 +616,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             return back()->withErrors(['role' => 'An organization must keep at least one owner.']);
         }
 
-        return back()->with('status', 'Org access updated.');
+        return back()->with('status', 'Built-in role updated.');
     }
 
     /**
@@ -600,7 +645,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         if (! $request->boolean('granted')) {
             app(GrantAccessRole::class)->revoke($organization, $model->id, $roleId);
 
-            return back()->with('status', 'Access role revoked.');
+            return back()->with('status', 'Role revoked.');
         }
 
         $refusal = app(GrantAccessRole::class)->grant($organization, $model->id, $roleId, GrantSource::Manual);
@@ -609,47 +654,44 @@ final readonly class EnvironmentUserController extends ConsoleController
             return back()->withErrors(['role' => $refusal->message()]);
         }
 
-        return back()->with('status', 'Access role granted.');
+        return back()->with('status', 'Role granted.');
     }
 
     /**
-     * Grant or revoke a role EVERYWHERE in this environment.
+     * Grant or take back a STAFF role — a role held everywhere in this environment.
      *
-     * Deliberately NOT routed through {@see GrantAccessRole}, which is org-scoped by
-     * construction — segregation of duties refuses a toxic PAIR within an organization, and
-     * this grant belongs to none. It is still visible to that check: the framework's
-     * `assignmentsForSubject()` unions environment-wide grants into what a person holds in
-     * every organization, so the next org-scoped grant that would form a pair with this one
-     * is refused there, where the pair actually exists.
+     * Through {@see StaffRoles}, the Staff page's own door, so segregation of duties is
+     * asked the same way from both pages: in every organization the person belongs to, and
+     * against the staff roles they already hold — and a refusal names the organization
+     * where the conflicting half already sits.
      */
-    public function setEnvironmentRole(
-        Request $request,
-        string $user,
-        Roles $roles,
-        OrgAccessRoles $catalog,
-    ): RedirectResponse {
+    public function setEnvironmentRole(Request $request, string $user, StaffRoles $staff): RedirectResponse
+    {
         $this->assertEnvironmentAdmin();
 
         $model = $this->resolve($user);
 
         $roleId = $request->string('role')->toString();
 
-        // Only an environment-wide role — no organization, no declaring app. The framework
-        // refuses anything else outright; asking here as well means the control is never
-        // drawn for a role that would be rejected.
-        if (! $catalog->isGrantableEverywhere($roleId)) {
-            return back();
+        // Only a role no organization owns. The framework refuses anything else outright;
+        // asking here as well means a posted id that matches nothing is refused by name.
+        if (! $staff->isGrantable($roleId)) {
+            return back()->withErrors(['staffRole' => 'That role cannot be granted across the environment.']);
         }
 
         if (! $request->boolean('granted')) {
-            $roles->unassignEverywhere($model->id, $roleId);
+            $staff->revoke($model->id, $roleId);
 
-            return back()->with('status', 'Role removed everywhere.');
+            return back()->with('status', 'Staff role taken back.');
         }
 
-        $roles->assignEverywhere($model->id, $roleId);
+        $refusal = $staff->grant($model->id, $roleId);
 
-        return back()->with('status', 'Role granted in every organization.');
+        if ($refusal !== null) {
+            return back()->withErrors(['staffRole' => $refusal->message()]);
+        }
+
+        return back()->with('status', 'Staff role granted.');
     }
 
     public function removeMembership(string $user, string $organization, Memberships $memberships): RedirectResponse
@@ -763,6 +805,10 @@ final readonly class EnvironmentUserController extends ConsoleController
                 // Grouped org-wide vs per-app, because "what a person can do" reads
                 // differently depending on which apps it reaches.
                 'app' => $role->client_id === null ? null : ($appNames[$role->client_id] ?? $role->client_id),
+                // A staff role the environment may grant inside one organization; tagged so
+                // it is not mistaken for one of the organization's own. Tenant surfaces
+                // never list it (OrgAccessRoles::tenantAssignable()).
+                'staffOnly' => $role->tenant_assignable === false,
             ];
         }
 

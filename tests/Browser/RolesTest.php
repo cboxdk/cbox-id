@@ -105,3 +105,15 @@ it('composes a role from the catalogue without leaving the list', function (): v
         ->assertSee('reports:export')
         ->assertNoJavaScriptErrors();
 })->group('a11y');
+
+it('draws "All apps" as the chosen default on the new-role form, not the picker\'s placeholder', function (): void {
+    anOwnerLookingAtRoles();
+
+    // Radix reserves the empty string, so an option carrying `''` is never drawn as chosen:
+    // the trigger read "Select…" over a default that was in fact every app.
+    visit('/roles/new')
+        ->assertSee('Applies to')
+        ->assertScript('Array.from(document.querySelectorAll(".cbx-select")).map((b) => b.textContent.trim()).includes("All apps")', true)
+        ->assertScript('Array.from(document.querySelectorAll(".cbx-select")).some((b) => b.textContent.includes("Select…"))', false)
+        ->assertNoJavaScriptErrors();
+});

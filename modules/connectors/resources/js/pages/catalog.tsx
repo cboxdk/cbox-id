@@ -1,5 +1,5 @@
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { PageHeader, Pill } from '@/ui';
 
 interface ConnectorType {
@@ -15,12 +15,16 @@ interface ConnectorType {
 
 type Props = PageProps<{
     types: ConnectorType[];
+    help: HelpContent;
 }>;
 
-export default function Catalog({ types }: Props) {
+export default function Catalog({ types, help }: Props) {
     return (
         <div className="space-y-6">
-            <PageHeader description="The connector types this platform speaks. Each is backed by a platform module you enable and configure on its own page; review them together under Connections." />
+            <PageHeader
+                help={help}
+                description="The connector types this platform speaks. Each is backed by a platform module you enable and configure on its own page; review them together under Connections."
+            />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {types.map((type) => (

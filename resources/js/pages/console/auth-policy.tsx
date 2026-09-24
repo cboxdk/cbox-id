@@ -1,7 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
     Badge,
     Button,
@@ -13,6 +13,7 @@ import {
     Pagination,
     Panel,
     Select,
+    Switch,
     Table,
     Td,
     Th,
@@ -27,6 +28,17 @@ interface Policy {
     mfa: string;
     sso: string;
     lockoutThreshold: string;
+}
+
+/** The environment's self-service sign-up switch. Environment plane only. */
+interface SelfServiceSignup {
+    /** False on a single-tenant install, where the deployment's signup mode decides. */
+    decidedHere: boolean;
+    enabled: boolean;
+    /** Whether sign-up is actually open here right now. */
+    open: boolean;
+    mode: string;
+    href: string;
 }
 
 interface OrganizationRow {
@@ -52,6 +64,8 @@ type Props = PageProps<{
     organizationsPagination: PaginationState | null;
     saveHref: string;
     inheritHref: string;
+    selfServiceSignup: SelfServiceSignup | null;
+    help: HelpContent;
 }>;
 
 export default function AuthPolicyPage({
@@ -68,9 +82,11 @@ export default function AuthPolicyPage({
     organizationsPagination,
     saveHref,
     inheritHref,
+    selfServiceSignup,
+    help,
 }: Props) {
     const form = useForm<Policy>(policy);
-    const [confirming, setConfirming] = useState<'lockout' | 'inherit' | null>(null);
+    const [confirming, setConfirming] = useState<'lockout' | 'inherit' | 'signup' | null>(null);
 
     /*
      * Whether saving would sign people out.
@@ -93,6 +109,7 @@ export default function AuthPolicyPage({
     return (
         <div className="space-y-6">
             <PageHeader
+                help={help}
                 description={
                     onEnvironmentPlane
                         ? 'The baseline every organization in this environment inherits. An organization can ask for stricter rules — never looser.'
@@ -293,6 +310,14 @@ export default function AuthPolicyPage({
                 </div>
             </form>
 
+            {selfServiceSignup !== null && (
+                <SelfServiceSignupPanel
+                    setting={selfServiceSignup}
+                    scopeName={scopeName}
+                    onEnable={() => setConfirming('signup')}
+                />
+            )}
+
             {/* What each organization actually ends up with. */}
             {onEnvironmentPlane && organizations !== null && (
                 <Panel
@@ -395,6 +420,57 @@ export default function AuthPolicyPage({
                 </ul>
             </Dialog>
 
+            {/*
+                OPENING THE DOOR, SAID BEFORE IT OPENS. Turning sign-up on lets anybody
+                create an account here — and with it an organization of their own — which is
+                what a product with self-serve onboarding wants and what a B2B product with
+                provisioned customers very much does not.
+            */}
+            {selfServiceSignup !== null && (
+                <Dialog
+                    open={confirming === 'signup'}
+                    onOpenChange={(open) => !open && setConfirming(null)}
+                    title={`Let people sign up to ${scopeName}?`}
+                    description="Anyone who reaches one of your apps can create an account here, without an invitation."
+                    footer={
+                        <>
+                            <Button onClick={() => setConfirming(null)}>
+                                Keep invitation-only
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={() => {
+                                    setConfirming(null);
+                                    router.put(
+                                        selfServiceSignup.href,
+                                        { enabled: true },
+                                        { preserveScroll: true },
+                                    );
+                                }}
+                            >
+                                Turn on sign-up
+                            </Button>
+                        </>
+                    }
+                >
+                    <ul className="space-y-1 text-sm list-disc pl-5">
+                        <li>
+                            Your sign-in page gets a &ldquo;Create an account&rdquo; link, and apps
+                            can send people straight to sign-up with <code>prompt=create</code>.
+                        </li>
+                        <li>
+                            Each new account creates its own organization and owns it. Apps can also
+                            ask a signed-in person to create one with{' '}
+                            <code>prompt=create_organization</code>.
+                        </li>
+                        <li>
+                            Your sign-in rules still apply: password strength, the breach check,
+                            email confirmation, rate limits and bot checks.
+                        </li>
+                    </ul>
+                </Dialog>
+            )}
+
             <Dialog
                 open={confirming === 'inherit'}
                 onOpenChange={(open) => !open && setConfirming(null)}
@@ -420,3 +496,75 @@ export default function AuthPolicyPage({
 }
 
 AuthPolicyPage.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+
+/**
+ * SELF-SERVICE SIGN-UP — whether a stranger may create an account in this environment.
+ *
+ * A switch, because it takes effect the moment it is flipped. Turning it ON goes through
+ * a confirmation (the parent owns the dialog); turning it off closes the door at once and
+ * needs none — nobody is signed out, and people already in stay in.
+ */
+function SelfServiceSignupPanel({
+    setting,
+    scopeName,
+    onEnable,
+}: {
+    setting: SelfServiceSignup;
+    scopeName: string;
+    onEnable: () => void;
+}) {
+    const [saving, setSaving] = useState(false);
+
+    if (!setting.decidedHere) {
+        return (
+            <Panel
+                title="Self-service sign-up"
+                description={`Decided by this deployment's CBOX_ID_SIGNUP_MODE, which is "${setting.mode}". Sign-up is ${setting.open ? 'open' : 'closed'}.`}
+            />
+        );
+    }
+
+    return (
+        <Panel
+            title="Self-service sign-up"
+            description={
+                setting.enabled
+                    ? `Anyone can create an account in ${scopeName}, and becomes the owner of their own organization.`
+                    : `People join ${scopeName} by invitation only.`
+            }
+            action={
+                <Switch
+                    aria-label="Self-service sign-up"
+                    checked={setting.enabled}
+                    disabled={saving}
+                    onCheckedChange={(checked) => {
+                        if (checked) {
+                            onEnable();
+
+                            return;
+                        }
+
+                        setSaving(true);
+                        router.put(
+                            setting.href,
+                            { enabled: false },
+                            { preserveScroll: true, onFinish: () => setSaving(false) },
+                        );
+                    }}
+                />
+            }
+        >
+            {setting.enabled && !setting.open && (
+                <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
+                    On here, but this deployment has closed sign-up everywhere
+                    (CBOX_ID_SIGNUP_MODE=closed), so nobody can sign up until that changes.
+                </p>
+            )}
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                Apps send people to sign-up with <code>prompt=create</code>, and ask a signed-in
+                person to create an organization with <code>prompt=create_organization</code>. Both
+                are offered only while this is on.
+            </p>
+        </Panel>
+    );
+}

@@ -75,7 +75,7 @@ it('opens the portal for a valid token', function () {
     // has to preserve — `assertSee('SSO connection')` would pass on a page that showed the
     // heading and no controls under it.
     $props = (array) $this->followingRedirects()
-        ->get(route('portal.enter', $token))
+        ->post(route('portal.enter.store', $token))
         ->assertOk()
         ->inertiaProps();
 
@@ -167,7 +167,7 @@ it('refuses an expired token at the entry point', function () {
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['expires_at' => now()->subMinute()]);
 
-    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
+    $this->post(route('portal.enter.store', $token))->assertRedirect(route('portal.expired'));
 });
 
 it('refuses a consumed token at the entry point', function () {
@@ -177,7 +177,7 @@ it('refuses a consumed token at the entry point', function () {
 
     AdminPortalLink::query()->where('organization_id', $orgId)->update(['consumed_at' => now()]);
 
-    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
+    $this->post(route('portal.enter.store', $token))->assertRedirect(route('portal.expired'));
 });
 
 it('refuses redemption when the org is no longer entitled', function () {
@@ -187,7 +187,7 @@ it('refuses redemption when the org is no longer entitled', function () {
 
     app(EntitlementWriter::class)->revoke($orgId, 'cbox-id-sso', EntitlementSource::Manual);
 
-    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
+    $this->post(route('portal.enter.store', $token))->assertRedirect(route('portal.expired'));
     expect(app(AdminPortal::class)->redeem($token))->toBeNull();
 });
 
@@ -254,7 +254,7 @@ it('refuses a setup link minted in another environment, on the service and over 
         ->and(session()->has(AdminPortal::SESSION_KEY))->toBeFalse();
 
     // Over HTTP the host resolves to env B, so the entry point refuses it there too.
-    $this->get(route('portal.enter', $token))->assertRedirect(route('portal.expired'));
+    $this->post(route('portal.enter.store', $token))->assertRedirect(route('portal.expired'));
 
     // The link is untouched on the environment that issued it.
     app(EnvironmentContext::class)->set($envA);

@@ -69,7 +69,7 @@ it('holds every authenticated page until the temporary password is replaced', fu
     // Not just the sign-in that used it — any authenticated request.
     $this->get('/dashboard')->assertRedirect(route('password.change'));
     $this->get('/account')->assertRedirect(route('password.change'));
-    $this->get('/members')->assertRedirect(route('password.change'));
+    $this->get('/team')->assertRedirect(route('password.change'));
 
     // The change page itself must not redirect to itself.
     $this->get(route('password.change'))->assertOk();

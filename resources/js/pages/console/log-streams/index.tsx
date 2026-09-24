@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pill } from '@/ui';
 
 interface StreamRow {
@@ -17,6 +17,7 @@ type Props = PageProps<{
     streams: StreamRow[];
     search: string;
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string): string {
@@ -25,7 +26,7 @@ function listHref(search: string): string {
         : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
 }
 
-export default function LogStreamsIndex({ streams, search, createHref }: Props) {
+export default function LogStreamsIndex({ streams, search, createHref, help }: Props) {
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -47,6 +48,7 @@ export default function LogStreamsIndex({ streams, search, createHref }: Props) 
     return (
         <>
             <PageHeader
+                help={help}
                 description="Mirror this environment's hash-chained audit trail out to your SIEM. Delivery is at-least-once and environment-isolated."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">

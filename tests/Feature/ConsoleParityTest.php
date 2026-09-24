@@ -62,6 +62,7 @@ use Cbox\Id\Provisioning\Enums\ConnectionStatus;
 use Cbox\Id\Provisioning\Models\ProvisioningConnection;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
+use Cbox\Id\Webhooks\Enums\WebhookEventType;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme as SiemAuthScheme;
@@ -851,12 +852,74 @@ it('offers the same event catalogue on both planes', function (): void {
     // The whole catalogue, and the SAME catalogue — asserted as a set rather than by
     // looking for each string somewhere in a document, which would also pass for a page
     // that listed them and then offered a shorter set to submit.
-    expect($environment)->toBe(WebhookEventCatalogue::EVENTS)
-        ->and($organization)->toBe(WebhookEventCatalogue::EVENTS);
+    expect($environment)->toBe(WebhookEventCatalogue::offered())
+        ->and($organization)->toBe(WebhookEventCatalogue::offered());
 
-    // The seven the organization console had are a subset of what it offers now, so the
-    // assertion above cannot pass by having quietly shrunk the environment plane's list.
-    expect(WebhookEventCatalogue::EVENTS)->toContain('user.password_reset', 'user.mfa_enrolled', 'role.unassigned');
+    // The framework's offered set, so the assertion above cannot pass by both planes
+    // having quietly shrunk to the same shorter list.
+    $offered = array_map(static fn (WebhookEventType $type): string => $type->value, WebhookEventType::offered());
+    sort($offered);
+    $shown = $organization;
+    sort($shown);
+
+    expect($shown)->toBe($offered)
+        ->and($organization)->toContain('role.unassigned', 'membership.created', 'invitation.accepted');
+})->group('security');
+
+it('offers only events that are delivered — never an audit-only one, never a legacy name', function (): void {
+    actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
+    $events = (array) $this->get(route('webhooks.create'))->assertOk()->inertiaProps('events');
+
+    // Written to the audit trail and never put on the event bus: an endpoint subscribed to
+    // one waited for deliveries that could not come.
+    foreach (['user.password_reset', 'user.email_verified', 'user.mfa_enrolled', 'user.passkey_registered'] as $auditOnly) {
+        expect($events)->not->toContain($auditOnly);
+    }
+
+    // Superseded by `membership.*`: still delivered to whoever has them, not offered anew.
+    expect($events)->not->toContain('organization.member_added');
+
+    // And not accepted either — an option the form does not list is still POSTable.
+    config(['cbox-id.webhooks.verify_url' => false]);
+    $this->from(route('webhooks.create'))
+        ->post(route('webhooks.store'), [
+            'url' => 'https://hooks.example.test/events',
+            'eventTypes' => ['user.created', 'user.password_reset'],
+        ])
+        ->assertSessionHasErrors(['eventTypes.1' => WebhookEventCatalogue::REFUSAL]);
+})->group('security');
+
+it('keeps an endpoint\'s existing subscriptions on its edit form, offered or not', function (): void {
+    config(['cbox-id.webhooks.verify_url' => false]);
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
+
+    $endpoint = app(WebhookRegistry::class)
+        ->register($org->id, 'https://hooks.example.test/legacy', ['user.created', 'organization.member_added'])
+        ->endpoint;
+
+    $events = (array) $this->get(route('webhooks.show', $endpoint->id))->assertOk()->inertiaProps('events');
+
+    // Listed, so a Save does not silently stop a live integration hearing about members.
+    expect($events)->toContain('organization.member_added');
+
+    $this->from(route('webhooks.show', $endpoint->id))
+        ->patch(route('webhooks.update', $endpoint->id), [
+            'url' => 'https://hooks.example.test/legacy',
+            'eventTypes' => ['user.created', 'organization.member_added'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    // But an event it did not already hold is refused like on the create form.
+    $this->from(route('webhooks.show', $endpoint->id))
+        ->patch(route('webhooks.update', $endpoint->id), [
+            'url' => 'https://hooks.example.test/legacy',
+            'eventTypes' => ['user.created', 'user.password_reset'],
+        ])
+        ->assertSessionHasErrors(['eventTypes' => WebhookEventCatalogue::REFUSAL]);
+
+    expect($endpoint->fresh()?->event_types)->toBe(['user.created', 'organization.member_added']);
 })->group('security');
 
 it('registers an endpoint against the organization from the scope', function (): void {
@@ -1455,7 +1518,7 @@ it('refuses an organization admin with no organization at all a roles page', fun
 it('serves apps from one component on the environment plane', function (): void {
     anEnvironmentAdminActingOn('tenant-apps');
 
-    $this->get(route('environment.clients'))->assertOk()->assertSee('API keys');
+    $this->get(route('environment.clients'))->assertOk()->assertSee('Apps');
     confirmConsoleStepUp();
     $this->get(route('environment.clients.create'))->assertOk();
 })->group('security');
@@ -1473,7 +1536,7 @@ it('serves apps from the same component on the organization plane', function ():
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/clients/index')
-            ->where('title', 'Apps & API keys'));
+            ->where('title', 'Apps'));
     confirmConsoleStepUp();
     $this->get(route('clients.create'))
         ->assertOk()
@@ -1576,8 +1639,6 @@ it('gives the organization plane the edit and rotate it never had', function ():
             'name' => 'Support Portal (EU)',
             'redirectUris' => 'https://eu.portal.example.test/callback',
             'postLogoutRedirectUris' => $showing['postLogoutRedirectUris'],
-            'scopes' => $showing['scopes'],
-            'customScopes' => $showing['customScopes'],
         ])
         ->assertSessionHasNoErrors();
 

@@ -163,4 +163,4 @@ until the link is clicked too.
 ## Related
 
 - [Single sign-on](single-sign-on.md) — connecting a company identity provider
-- [Apps and API keys](apps-and-api-keys.md)
+- [Apps](apps-and-api-keys.md)

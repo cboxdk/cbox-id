@@ -5,25 +5,28 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Organization;
 
 use App\Http\Controllers\Controller;
-use App\Mail\OrganizationInviteMail;
-use App\Platform\MailLinks;
+use App\Platform\Invitations\Contracts\TeamInvitations;
+use App\Platform\Invitations\Enums\InvitationRefusalReason;
+use App\Platform\Invitations\Exceptions\InvitationRefused;
+use App\Platform\Invitations\ValueObjects\Inviter;
+use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\OrganizationApiContext;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
-use Cbox\Id\Organization\Contracts\Invitations;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 /**
- * Organization plane › members. Lists the organization's team and invites new members (who
- * receive a signed accept link, exactly as the console invite does).
+ * Organization plane › members. Lists the workspace's team, and invites onto it — send,
+ * list pending, re-send and withdraw — through {@see TeamInvitations}, the service behind the
+ * console's Team page, so an invitation sent from here is the one sent from there.
  *
  * A MEMBER IS TWO ROWS HERE: the membership carries the authority (role, environment
  * grants) and the subject carries the person (name, address). This endpoint presents them
@@ -90,16 +93,13 @@ final class MemberController extends Controller
         ]);
     }
 
-    public function store(
-        Request $request,
-        OrganizationApiContext $context,
-        Memberships $members,
-        Invitations $invitations,
-        Subjects $subjects,
-        Organizations $organizations,
-        PlatformRoot $platformRoot,
-        MailLinks $links,
-    ): JsonResponse {
+    /**
+     * Invite somebody onto the workspace's team — through {@see TeamInvitations}, the same
+     * service the console's Team page uses, so the mail, the refusals, the activity log and
+     * the accept link (set a password, signed in to the console) are the same from both.
+     */
+    public function store(Request $request, OrganizationApiContext $context, TeamInvitations $team): JsonResponse
+    {
         $request->validate([
             'email' => ['required', 'email', 'max:190'],
             'name' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -109,47 +109,118 @@ final class MemberController extends Controller
         $key = $context->key();
         $organizationId = $context->organizationId();
 
-        $organization = $organizationId === null
-            ? null
-            : $platformRoot->run(fn () => $organizations->find($organizationId));
-
-        if ($key === null || $organization === null) {
-            return response()->json(['error' => 'not_found', 'message' => 'Organization not found.'], 404);
+        if ($key === null || $organizationId === null) {
+            return $this->notFound();
         }
 
-        $email = $request->string('email')->toString();
+        $email = trim($request->string('email')->toString());
         $role = $request->enum('role', MembershipRole::class) ?? MembershipRole::Viewer;
 
-        $existing = $platformRoot->run(fn () => $subjects->findByEmail($email));
-
-        if ($existing !== null && $platformRoot->run(fn () => $members->of($organization->id, $existing->id)) !== null) {
-            return response()->json(['error' => 'email_taken', 'message' => 'That email already belongs to a member.'], 422);
+        try {
+            $invitation = $team->send($organizationId, $email, $role, new Inviter($key->id, $key->name), AuditActor::service($key->id));
+        } catch (InvitationRefused $refused) {
+            return $this->refused($refused);
         }
-
-        $pending = $platformRoot->run(
-            fn () => $invitations->invite($organization->id, $email, $role, $key->id),
-        );
-
-        if ($pending === null) {
-            return response()->json(['error' => 'not_found', 'message' => 'Organization not found.'], 404);
-        }
-
-        // MailLinks, not URL:: — the console invite and this one mint the SAME link, so
-        // they mint it the same way (see that class); an API caller's Host is no more
-        // trustworthy than a browser's.
-        $url = $links->temporarySignedRoute('organization.invite.accept', now()->addDays(7), ['token' => $pending->token]);
-        Mail::to($email)->send(new OrganizationInviteMail(
-            organization: $organization->name,
-            inviter: $key->name,
-            url: $url,
-        ));
 
         return response()->json(['data' => [
-            'id' => $pending->invitation->id,
+            'id' => $invitation->id,
             'email' => $email,
             'role' => $role->value,
             'status' => 'invited',
         ]], 201);
+    }
+
+    /**
+     * The team's pending invitations — what the console lists under Team.
+     */
+    public function invitations(OrganizationApiContext $context, TeamInvitations $team): JsonResponse
+    {
+        $organizationId = $context->organizationId();
+
+        if ($organizationId === null) {
+            return $this->notFound();
+        }
+
+        return response()->json(['data' => array_map(
+            static fn (PendingInvitationSummary $invitation): array => [
+                'id' => $invitation->id,
+                'email' => $invitation->email,
+                'role' => $invitation->role->value,
+                'invited_by' => $invitation->inviterName,
+                'invited_at' => $invitation->invitedAt?->toIso8601String(),
+                'expires_at' => $invitation->expiresAt->toIso8601String(),
+            ],
+            $team->pending($organizationId, 100),
+        )]);
+    }
+
+    /**
+     * Send a pending invitation again with a fresh link; the earlier link stops working.
+     */
+    public function resendInvitation(string $id, OrganizationApiContext $context, TeamInvitations $team): JsonResponse
+    {
+        $key = $context->key();
+        $organizationId = $context->organizationId();
+
+        if ($key === null || $organizationId === null) {
+            return $this->notFound();
+        }
+
+        try {
+            $sent = $team->resend($organizationId, $id, new Inviter($key->id, $key->name), AuditActor::service($key->id));
+        } catch (InvitationRefused $refused) {
+            return $this->refused($refused);
+        }
+
+        return response()->json(['data' => [
+            'id' => $sent->id,
+            'email' => $sent->email,
+            'role' => $sent->role->value,
+            'status' => 'invited',
+        ]]);
+    }
+
+    /**
+     * Withdraw a pending invitation. Its link stops working.
+     */
+    public function revokeInvitation(string $id, OrganizationApiContext $context, TeamInvitations $team): JsonResponse|Response
+    {
+        $key = $context->key();
+        $organizationId = $context->organizationId();
+
+        if ($key === null || $organizationId === null) {
+            return $this->notFound();
+        }
+
+        try {
+            $team->revoke($organizationId, $id, AuditActor::service($key->id));
+        } catch (InvitationRefused $refused) {
+            return $this->refused($refused);
+        }
+
+        return response()->noContent();
+    }
+
+    /**
+     * The refusal, as this plane has always answered it: a member already on the team is
+     * `email_taken` (422), an invitation that is not pending here is `not_found`.
+     */
+    private function refused(InvitationRefused $refused): JsonResponse
+    {
+        [$error, $status] = match ($refused->reason) {
+            InvitationRefusalReason::AlreadyMember => ['email_taken', 422],
+            InvitationRefusalReason::NotPending => ['not_found', 404],
+            InvitationRefusalReason::TooSoon => ['too_soon', 429],
+            InvitationRefusalReason::MailFailed => ['mail_failed', 503],
+            default => ['validation_failed', 422],
+        };
+
+        return response()->json(['error' => $error, 'message' => $refused->getMessage()], $status);
+    }
+
+    private function notFound(): JsonResponse
+    {
+        return response()->json(['error' => 'not_found', 'message' => 'Organization not found.'], 404);
     }
 
     /**

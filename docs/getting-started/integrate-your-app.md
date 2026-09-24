@@ -17,13 +17,15 @@ that missing step. It takes about two minutes.
 
 ## 1. Sign in to the environment console
 
-Open your environment's host — `https://<tenant>.cboxid.com/admin` — and sign in as an
-account member with admin access. If you have not created an environment yet, see
-[Quickstart](../quickstart.md) first.
+Sign in to your workspace. If it has exactly one environment you may administer, you
+land in that environment's console straight away; otherwise open **Projects** and choose
+**Open console** beside the environment. The environment console is `/admin` on the
+environment's own host, `https://<environment>.cboxid.com/admin`. If you have not created
+an environment yet, see [Quickstart](../quickstart.md) first.
 
-Hosted environments live under `cboxid.com`, one subdomain per tenant. If you run Cbox
-ID yourself, substitute your own host everywhere this page writes
-`<tenant>.cboxid.com`; nothing else on the page changes.
+Hosted environments live under `cboxid.com`, one subdomain per environment. If you run
+Cbox ID yourself, substitute your own host everywhere this page writes
+`<environment>.cboxid.com`; nothing else on the page changes.
 
 The badge beside the environment name tells you which realm you are in. **Register test
 integrations in a sandbox environment**, not production: an environment is a hard
@@ -32,7 +34,7 @@ does not exist in the other.
 
 ## 2. Register the application
 
-**Apps & API keys → New app.**
+**Developers → Apps → New app.**
 
 The form asks one question — **what kind of app is this?** — and everything the
 specification would have you decide separately follows from the answer:
@@ -72,7 +74,7 @@ Your issuer is your environment's own base URL. Confirm it — and everything el
 needs — from the discovery document:
 
 ```bash
-curl https://<tenant>.cboxid.com/.well-known/openid-configuration
+curl https://<environment>.cboxid.com/.well-known/openid-configuration
 ```
 
 The `issuer` value in that response is exactly what you pass to the SDK. Use it verbatim:
@@ -113,7 +115,8 @@ A **publishable key** removes that middle step. It is public on purpose — it g
 JS bundle, it is visible in devtools, and it is safe there because it only works from the
 origins you register.
 
-Create one under **Developers → Frontend keys**. Add every origin your app is served
+Create one under **Developers → Keys**, on the **Frontend keys** tab
+(`/admin/keys/frontend`). See [Keys](../guides/keys.md). Add every origin your app is served
 from, one per line:
 
 ```
@@ -225,6 +228,12 @@ the same flow.
 
 Guessing is rate limited per email address, not just per key — an attacker spreading
 attempts across pages holding the same key would otherwise sit under a per-key limit.
+
+## 8. Organizations
+
+A person can belong to several organizations, and every token is for one of them. To ask
+for a particular one, let people pick or switch, let them create one, or let strangers sign
+up from your app, see [Organizations in your app](organizations-in-your-app.md).
 
 ## When it does not work
 

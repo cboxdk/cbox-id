@@ -79,7 +79,7 @@ function anOwnerWithAnApp(): array
 it('will not delete an app until its name is typed exactly', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/clients/'.$client->id);
+    $page = visit('/apps/'.$client->id);
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Delete app")');
@@ -125,7 +125,7 @@ it('will not delete an app until its name is typed exactly', function (): void {
 it('deletes the app once the name is typed exactly', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/clients/'.$client->id);
+    $page = visit('/apps/'.$client->id);
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Delete app")')
@@ -133,7 +133,7 @@ it('deletes the app once the name is typed exactly', function (): void {
         ->click('.cbx-dialog button:has-text("Delete")');
 
     // Landed back on the list, and the row is gone.
-    $page->assertSee('Apps & API keys')
+    $page->assertSee('Every app that signs people in through Cbox ID')
         ->assertDontSee('Billing Worker')
         ->assertNoJavaScriptErrors();
 
@@ -152,7 +152,8 @@ it('deletes the app once the name is typed exactly', function (): void {
 it('shows a rotated client secret once and never again', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/clients/'.$client->id);
+    // Rotation lives on the app's Secrets tab.
+    $page = visit('/apps/'.$client->id.'/secrets');
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Rotate secret")')
@@ -168,11 +169,11 @@ it('shows a rotated client secret once and never again', function (): void {
      * the secret was shown does not show it, which is what makes "once" true rather than
      * merely "not in the next response".
      */
-    $page->navigate('/clients/'.$client->id);
+    $page->navigate('/apps/'.$client->id.'/secrets');
 
     $page->assertSee('Billing Worker')
         ->assertDontSee('Copy your client secret now')
         // And the page says where it went, rather than leaving a blank where a
         // credential used to be.
-        ->assertSee('shown only once');
+        ->assertSee('Only a hash of each is stored');
 })->group('a11y');

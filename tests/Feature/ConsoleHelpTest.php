@@ -51,7 +51,7 @@ it('builds a documentation link from the configured base and suffix', function (
 it('never links a topic that has no guide behind it', function (): void {
     config()->set('docs.base_url', 'https://example.test/docs');
 
-    expect(app(DocsLinks::class)->url(HelpTopic::Members))->toBeNull();
+    expect(app(DocsLinks::class)->url(HelpTopic::Usage))->toBeNull();
 });
 
 /**
@@ -80,7 +80,7 @@ it('keeps every nav label identical to its page title', function (): void {
         'hooks' => 'Inline hooks',
         'vault' => 'Token vault',
         'sod-policies' => 'Role conflicts',
-        'clients' => 'Apps & API keys',
+        'clients' => 'Apps',
         'audit' => 'Activity log',
     ];
 

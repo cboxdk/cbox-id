@@ -97,6 +97,19 @@ final readonly class RoleController extends ConsoleController
 
         $first = $rows->first();
 
+        /*
+         * WHOSE ROLE IT IS, when that is not already obvious. With no organization chosen
+         * the environment plane lists every tenant's roles in one list, and two tenants'
+         * "Editor" were two identical rows — one click away from re-permissioning the
+         * wrong customer's access. Named through the scope's own list, so on a plane that
+         * holds one organization this can never enumerate the others.
+         */
+        $showsEveryOrganization = $this->actingOrganizationId() === null;
+        $owners = $showsEveryOrganization
+            ? $this->scope->organizationNames($rows->pluck('organization_id'))
+            : [];
+        $people = $this->scope->peopleRoute();
+
         return $this->page('console/roles/index', 'Roles', [
             'help' => HelpProps::for(HelpTopic::Roles),
             'roles' => array_map(fn (Role $role): array => [
@@ -108,6 +121,9 @@ final readonly class RoleController extends ConsoleController
                     ? ($appNames[$role->client_id] ?? $role->client_id)
                     : null,
                 'environmentWide' => $role->organization_id === null,
+                'organization' => $showsEveryOrganization && $role->organization_id !== null
+                    ? ($owners[$role->organization_id] ?? $role->organization_id)
+                    : null,
                 'permissions' => array_slice($permissionsByRole[$role->id] ?? [], 0, self::BADGE_LIMIT),
                 'moreCount' => max(0, count($permissionsByRole[$role->id] ?? []) - self::BADGE_LIMIT),
                 // The keys still on offer for this role: declared, assignable, in its own
@@ -141,11 +157,11 @@ final readonly class RoleController extends ConsoleController
                 'permissions' => array_slice($permissionsByRole[$first->id] ?? [], 0, 3),
             ],
             'createHref' => $this->url('roles.create'),
-            // "Console access" is the organization plane's own page; the environment plane
-            // has no equivalent, so the sentence stays and only the link goes.
-            'consoleAccessHref' => Route::has($this->scope->routeName('members'))
-                ? $this->url('members')
-                : null,
+            // "Console access" is set on the organization's PEOPLE page — which is a different
+            // page for a customer than for everybody else, and hard-coding the customer's
+            // sent a tenant admin through two redirects to the dashboard. The environment
+            // plane has no equivalent, so there the sentence stays and only the link goes.
+            'consoleAccessHref' => $people === null ? null : route($people),
         ]);
     }
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Id\RiskPlus\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\RiskPlus\Models\RiskEvent;
 use Cbox\Id\RiskPlus\Queries\OrganizationRiskEvents;
 use Inertia\Response;
@@ -56,6 +58,7 @@ final readonly class RiskEventsController extends ConsoleController
         $events = $query->latest('created_at')->limit(self::LIMIT)->get();
 
         return $this->page('risk-plus::events', 'Risk events', [
+            'help' => HelpProps::for(HelpTopic::RiskEvents),
             'events' => $events->map(static fn (RiskEvent $event): array => [
                 'id' => $event->id,
                 'when' => $event->created_at->diffForHumans(),

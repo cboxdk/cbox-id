@@ -6,7 +6,7 @@ description: Take an empty deployment to a working one — the install command, 
 
 # Installation & first run
 
-A fresh deployment holds nothing: no platform operator, no account, no environment,
+A fresh deployment holds nothing: no platform operator, no workspace, no environment,
 no user. This page is how it gets from there to a platform someone can sign in to.
 
 There are two supported paths, and they provision exactly the same thing:
@@ -14,7 +14,7 @@ There are two supported paths, and they provision exactly the same thing:
 | | [`php artisan cbox-id:install`](#the-install-command) | [The first-run screen](#the-first-run-screen) |
 |---|---|---|
 | Where | A shell on the server (or your CI/Docker build) | A browser, at `/first-run` |
-| Gate | You already have console access | The **setup token**, published to the server |
+| Gate | You already have shell access to the server | The **setup token**, published to the server |
 | Chooses the deployment shape | **Yes** — and writes it to `.env` | No — installs the shape already configured |
 | Non-interactive | Yes, fully | No |
 
@@ -50,7 +50,7 @@ generates one), the deployment shape, and the public issuer URL. Then it:
    never overwriting a value that is already there;
 5. creates the platform-root environment and stamps it `is_default`;
 6. creates the first platform operator;
-7. in the multi-tenant shape, creates the first organization, its project and its own
+7. in the multi-tenant shape, creates the first workspace, its project and its own
    environment;
 8. mints the signing key, so the JWKS answers on the first request;
 9. runs `cbox-id:doctor` and fails if the deployment it just built is unhealthy.
@@ -75,7 +75,7 @@ php artisan cbox-id:install --no-interaction \
 | `--name=` | Their display name. Defaults to `Operator`. |
 | `--password=` | Their password (minimum 12 characters). Omit it and a strong one is generated and printed **once**. A password you supply is never echoed. |
 | `--multi-tenant` | Install the SaaS shape. Requires `--console-host`. |
-| `--console-host=` | Where the account console lives, e.g. `cboxid.com`. |
+| `--console-host=` | Where the workspace console lives, e.g. `cboxid.com`. |
 | `--environment=` | Name of the first environment. Defaults to `Production`. |
 | `--organization=` | Name of the first organization (multi-tenant only). |
 | `--issuer=` | Public HTTPS URL of this platform. Defaults to `APP_URL`. |
@@ -86,10 +86,10 @@ problems — read the output before retrying.
 ### Which shape?
 
 - **Single-tenant** (the default, and the self-hosted shape): one host, one identity
-  provider, no account plane. The single environment *is* the platform root.
-- **Multi-tenant**: a management plane on its own host that provisions IdPs, with
-  tenant environments on their own hosts. The install creates the platform root plus
-  the first account and its environment.
+  provider, no workspace console. The single environment *is* the platform root.
+- **Multi-tenant**: a workspace console on its own host that provisions IdPs, with
+  each environment on its own host. The install creates the platform root plus the
+  first workspace and its environment.
 
 The shape decides whether the host bulkheads exist at all, so it is stated rather
 than inferred — see
@@ -127,20 +127,25 @@ account host). Use the install command when you need to decide the shape.
 
 Cbox ID has three layers, top to bottom:
 
-1. **Platform operator** — the identity above everything. Administers environments,
-   tenant organizations, and other operators.
+1. **Platform operator** — the identity above everything. Administers workspaces,
+   environments, organizations, and other operators.
 2. **Environment** — an isolated plane (e.g. staging vs production, or per-region)
    with its own users, keys and issuer. Created and managed by operators.
-3. **Organization (tenant)** — a customer's org with its own members, roles, SSO,
+3. **Organization** — one of your customers' teams, with its own members, roles, SSO,
    and audit trail. Org admins and members sign in at `/login`.
+
+In the multi-tenant shape a **workspace** sits between the operator and the
+environments: the customer of Cbox that owns projects and environments. See
+[Workspaces & organizations](../core-concepts/workspaces-and-organizations.md).
 
 The install creates the first two. Enrol a passkey or TOTP factor on the operator
 immediately — it is the most sensitive account on the system.
 
 ## 3. Provision an environment and organization
 
-Sign in at **`/workspace/login`**, then open the **`/platform`** section — the
-deployment pages, shown in the rail to whoever has authority over the deployment.
+Sign in at **`/login`** on the console host, then open the **Platform** area at the
+bottom of the rail (the `/platform` pages), shown to whoever has authority over the
+deployment.
 From there create further environments, then use **Provision admin** to seed an
 environment's first organization and owner-admin. That admin signs in at `/login`.
 

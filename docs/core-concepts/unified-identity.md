@@ -20,6 +20,10 @@ environment.
 > read it as what was true at the time; the current shape is
 > [customers, projects & the platform plane](https://github.com/cboxdk/laravel-id/blob/main/docs/core-concepts/customers-and-projects.md)
 > in the framework.
+>
+> The console calls that customer organization a **workspace**, and "account" below is
+> the older name for it. See
+> [Workspaces & organizations](workspaces-and-organizations.md).
 
 ## The problem this solves
 

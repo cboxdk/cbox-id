@@ -100,13 +100,20 @@ function firstPartyClient(bool $firstParty, ?string $organizationId): string
     return $clientId;
 }
 
-it('serves the account plane ONLY on the platform-root host', function (): void {
+/**
+ * Signup is served on the root AND on a tenant host — and whether a tenant's is OPEN is its
+ * own setting, asked by SignupPolicy rather than by this gate ({@see SelfServiceSignupTest}).
+ *
+ * It was `plane:account`, root only, which 404'd every tenant's signup while the tenant's
+ * sign-in page linked to it. What the gate still refuses is a host that resolves to nothing.
+ */
+it('serves the signup plane on the platform root and on a tenant host', function (): void {
     // Root host: current env IS the default (is_default) env.
     $root = planeGate('env_prod', 'env_prod');
     $tenant = planeGate('env_tenant_a', 'env_prod');
 
-    expect(passesPlane($root, 'account'))->toBeTrue()
-        ->and(passesPlane($tenant, 'account'))->toBeFalse(); // never on a tenant host
+    expect(passesPlane($root, 'signup'))->toBeTrue()
+        ->and(passesPlane($tenant, 'signup'))->toBeTrue();
 });
 
 /**
@@ -224,7 +231,7 @@ it('serves the token endpoints on a tenant host for any client, first-party or n
 it('denies every plane when no environment resolves (deny-by-default)', function (): void {
     $none = planeGate(null, 'env_prod');
 
-    expect(passesPlane($none, 'account'))->toBeFalse()
+    expect(passesPlane($none, 'signup'))->toBeFalse()
         ->and(passesPlane($none, 'console'))->toBeFalse()
         ->and(passesPlane($none, 'issuer'))->toBeFalse()
         ->and(passesPlane($none, 'environment'))->toBeFalse();
@@ -342,7 +349,7 @@ it('does NOT split planes in a single-tenant / self-hosted deployment (no base_d
     expect(passesPlane($gate, 'console'))->toBeTrue()
         ->and(passesPlane($gate, 'issuer'))->toBeTrue()
         ->and(passesPlane($gate, 'environment'))->toBeTrue()
-        ->and(passesPlane($gate, 'account'))->toBeTrue();
+        ->and(passesPlane($gate, 'signup'))->toBeTrue();
 });
 
 /**

@@ -1,7 +1,8 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu, AccountMenuLink } from '@/chrome/AccountMenu';
 import { ActingOrganization } from '@/chrome/ActingOrganization';
+import { EnvBadge } from '@/chrome/EnvBadge';
 import { ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
 import { MobileNav } from '@/chrome/MobileNav';
@@ -13,12 +14,17 @@ import { Toaster } from '@/chrome/Toaster';
 import { setNavPinned } from '@/lib/theme';
 import type { SharedProps } from '@/types';
 import { Icon, TooltipProvider } from '@/ui';
-import { account, accounts, logout } from '@routes';
+import { logout } from '@routes';
 import { exit as exitImpersonation } from '@routes/impersonation';
 import { switchMethod as switchOrganization } from '@routes/organization';
 import { switchMethod as switchEnvironment } from '@routes/platform/environment';
 
 const SUBNAV_KEY = 'cbox-subnav-collapsed';
+
+/** The built-in role as the console writes it everywhere else — "Owner", not `owner`. */
+function builtInRole(role: string | null): string {
+    return role === null ? 'Member' : role.charAt(0).toUpperCase() + role.slice(1);
+}
 
 export interface ConsoleLayoutProps {
     children: ReactNode;
@@ -37,7 +43,7 @@ export interface ConsoleLayoutProps {
  * arrives as one shared prop. This file is only the arrangement.
  */
 export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
-    const { shell, auth, title } = usePage<SharedProps>().props;
+    const { shell, auth, title, environment } = usePage<SharedProps>().props;
 
     const [pinned, setPinned] = useState(shell?.navPinned ?? false);
     // Read in a lazy initialiser rather than an effect: reading it after mount renders
@@ -123,11 +129,21 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                     onTogglePin={togglePin}
                     foot={
                         <AccountMenu user={auth.user} logoutUrl={logout.url()}>
-                            <AccountMenuLink href={account.url()} icon="key">
+                            {/*
+                                From the SHELL, not from the route helpers: on the
+                                environment console these pages are on the workspace's
+                                host, and a relative link sent the administrator to a
+                                sign-in form for the tenant's end users.
+                            */}
+                            <AccountMenuLink href={shell.accountHref} icon="user">
                                 My account
                             </AccountMenuLink>
-                            <AccountMenuLink href={accounts.url()} icon="refresh">
-                                Switch account
+                            {/*
+                                "Switch user": it moves between the people signed in on
+                                this device. "Switch account" read as switching workspace.
+                            */}
+                            <AccountMenuLink href={shell.switchUserHref} icon="switch">
+                                Switch user
                             </AccountMenuLink>
                         </AccountMenu>
                     }
@@ -149,9 +165,18 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
                 <MobileNav
                     areas={shell.areas}
-                    heading={organization?.name ?? 'Console'}
+                    heading={
+                        shell.workspace !== null
+                            ? (environment.name ?? 'Environment')
+                            : (organization?.name ?? 'Console')
+                    }
+                    subheading={shell.workspace?.name ?? null}
                     user={auth.user}
                     logoutUrl={logout.url()}
+                    showEnvironment={shell.altitude !== 'workspace'}
+                    accountUrl={shell.accountHref}
+                    switchUserUrl={shell.switchUserHref}
+                    workspace={shell.workspace}
                 />
 
                 <div className="flex flex-col min-w-0 flex-1">
@@ -164,13 +189,57 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                                 The environment plane asks which TENANT of this environment
                                 I am acting on — unbounded, so a search.
                             */}
+                            {/*
+                                THE WAY BACK. The environment console is reached from the
+                                workspace's Projects page on another host, and had no link
+                                back to it: the rail and the brand mark are the
+                                environment's own. So the topbar names where you are the
+                                way the design system says it should — workspace, then
+                                environment — and the first crumb goes home.
+                            */}
+                            {shell.workspace !== null && (
+                                <>
+                                    <a
+                                        href={shell.workspace.href}
+                                        className="cbx-crumb-back"
+                                        aria-label={`Back to ${shell.workspace.name} — Projects`}
+                                        title={`Back to ${shell.workspace.name}`}
+                                    >
+                                        <Icon name="arrow-left" className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="hidden sm:block truncate">
+                                            {shell.workspace.name}
+                                        </span>
+                                    </a>
+                                    {/*
+                                        The environment's name, on a screen wide enough for
+                                        it. On a phone the bottom bar already names it, and
+                                        the topbar keeps its room for the way back and the
+                                        acting organization.
+                                    */}
+                                    <span className="hidden sm:inline-flex items-center gap-2 min-w-0">
+                                        <span style={{ color: 'var(--faint)' }} aria-hidden="true">
+                                            /
+                                        </span>
+                                        <span className="cbx-crumb-env">
+                                            <span className="truncate">
+                                                {environment.name ?? 'Environment'}
+                                            </span>
+                                            <EnvBadge />
+                                        </span>
+                                        <span style={{ color: 'var(--faint)' }} aria-hidden="true">
+                                            /
+                                        </span>
+                                    </span>
+                                </>
+                            )}
+
                             {shell.actingOrganization !== null ? (
                                 <ActingOrganization acting={shell.actingOrganization} />
                             ) : (
                                 <Switcher
                                     heading="Switch organization"
                                     label={organization?.name ?? 'No organization'}
-                                    caption={organization?.role ?? 'Member'}
+                                    caption={builtInRole(organization?.role ?? null)}
                                     initial={(organization?.name ?? 'C').charAt(0).toUpperCase()}
                                     options={shell.organizations}
                                     action={switchOrganization.url()}
@@ -226,6 +295,18 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
                     <main id="main-content" className="flex-1 overflow-y-auto canvas-gradient">
                         <div className="p-6 lg:p-8 mx-auto w-full" style={{ maxWidth: '72rem' }}>
+                            {shell.notice !== null && (
+                                <div className="cbx-shell-notice" role="note">
+                                    <Icon name="info" className="w-4 h-4 shrink-0" />
+                                    <p className="min-w-0 flex-1">{shell.notice.message}</p>
+                                    <Link
+                                        href={shell.notice.href}
+                                        className="cbx-shell-notice-link"
+                                    >
+                                        {shell.notice.label}
+                                    </Link>
+                                </div>
+                            )}
                             {children}
                         </div>
                     </main>

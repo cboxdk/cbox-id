@@ -108,11 +108,13 @@ class BillingServiceProvider extends ServiceProvider
     private function registerNav(): void
     {
         // INTO THE HOST'S AREA, not an area of its own. Billing is one page about the
-        // identity platform an organization owns, and it belongs beside that platform's
-        // projects and keys — a rail entry of its own for a single page would be a second
-        // place to look for the same subject. `area()` on the registry is idempotent: it
-        // returns the existing area when the host has already declared it.
-        Console::nav()->area('identity-platform', 'Identity platform', 'layers', 15)
+        // workspace an organization runs, and it belongs beside that workspace's projects
+        // and keys — a rail entry of its own for a single page would be a second place to
+        // look for the same subject. `area()` on the registry is idempotent: it returns the
+        // existing area when the host has already declared it — but it also APPLIES the
+        // label and icon passed here, so they must be the host's own, word for word, or
+        // whichever provider boots last renames the area.
+        Console::nav()->area('identity-platform', 'Workspace', 'briefcase', 15)
             ->page('billing', 'Billing', feature: 'organization.billing', order: self::NAV_ORDER);
     }
 

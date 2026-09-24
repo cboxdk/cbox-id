@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Platform\Appearance\BrandContext;
 use Inertia\Response;
 use Inertia\ResponseFactory;
 use LogicException;
@@ -33,9 +34,25 @@ abstract readonly class PageController
     {
         $this->refuseShadowedProps($component, $props);
 
+        if (self::isDoor($component)) {
+            app(BrandContext::class)->atTheDoor();
+        }
+
         return $this->inertia
             ->render($component, [...$props, 'title' => $title])
             ->withViewData(['title' => $title]);
+    }
+
+    /**
+     * The pages drawn in the sign-in layout — every `auth/*` and `oauth/*` page but the
+     * console's own step-up, which sits inside the console. Named by component because
+     * the component IS what decides the layout; a new door under either folder is branded
+     * without anybody remembering to ask.
+     */
+    private static function isDoor(string $component): bool
+    {
+        return $component !== 'auth/sudo'
+            && (str_starts_with($component, 'auth/') || str_starts_with($component, 'oauth/'));
     }
 
     /**

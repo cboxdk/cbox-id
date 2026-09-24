@@ -78,6 +78,9 @@ class ConsoleParityHealthCheck implements HealthCheck
         // the per-organization policy on every attempt. Listed here so the organization
         // half cannot quietly disappear again.
         'Sign-in rules' => ['auth-policy', 'environment.auth-policy'],
+        // Management keys: the workspace console mints them for any environment the person
+        // reaches, the environment console for the one it stands on — one controller.
+        'Management keys' => ['keys', 'environment.keys'],
     ];
 
     /**
@@ -101,8 +104,7 @@ class ConsoleParityHealthCheck implements HealthCheck
     private const ORGANIZATION_ONLY = [
         'projects',
         'members',
-        'api-keys',
-        'environment-keys',
+        'keys.workspace',
         'environment-domains',
         'activity',
         'billing',
@@ -205,7 +207,7 @@ class ConsoleParityHealthCheck implements HealthCheck
             return [HealthResult::ok(
                 'Console parity',
                 sprintf(
-                    '%d capabilities and %d module pages reachable on both planes (%d declared single-plane); %d Identity platform pages on the organization plane alone',
+                    '%d capabilities and %d module pages reachable on both planes (%d declared single-plane); %d Workspace pages on the organization plane alone',
                     count(self::PAIRS),
                     $both,
                     $singlePlane,

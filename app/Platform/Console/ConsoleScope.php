@@ -9,8 +9,11 @@ use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -73,6 +76,7 @@ class ConsoleScope
         private readonly EnvironmentAdminAuth $environmentAdmin,
         private readonly Entitlements $entitlements,
         private readonly PlatformOperators $operators,
+        private readonly PlaneResolver $planes,
     ) {}
 
     /**
@@ -494,6 +498,28 @@ class ConsoleScope
     }
 
     /**
+     * Who is acting, in the shape a framework service that audits its own writes takes
+     * ({@see ClientRegistry} and friends).
+     *
+     * By the plane they act from: on the organization plane a tenant's own administrator,
+     * who is a user of this environment; on the environment plane one of the customer's
+     * people, acting above every organization in it. The difference is what an auditor
+     * needs to resolve the id against. Nobody acting is the system, never an empty id.
+     */
+    public function auditActor(): AuditActor
+    {
+        $actorId = $this->actorId();
+
+        if ($actorId === '') {
+            return AuditActor::system();
+        }
+
+        return $this->plane() === ConsolePlane::Organization
+            ? AuditActor::user($actorId)
+            : AuditActor::organizationMember($actorId);
+    }
+
+    /**
      * Whether the person acting also runs this deployment.
      *
      * Asked of the SESSION THAT ALREADY EXISTS, which is the point. The platform pages —
@@ -742,6 +768,47 @@ class ConsoleScope
     public function ownsIdentityProviders(): bool
     {
         return $this->membershipRole() !== null;
+    }
+
+    /**
+     * Whether this console is a WORKSPACE's own — see {@see WorkspaceAltitude}.
+     *
+     * Four conditions, each load-bearing. The organization console, because the environment
+     * console is already the product. The platform root of a multi-tenant deployment,
+     * because on a single-tenant install the root environment IS the product and hiding its
+     * administration would hide everything. An organization that owns identity providers,
+     * because every other organization's console is its product. And not an operator,
+     * whose job is the full console on whichever organization they are looking at.
+     */
+    public function atWorkspaceAltitude(): bool
+    {
+        return $this->plane() === ConsolePlane::Organization
+            && $this->planes->onAccountPlane()
+            && $this->ownsIdentityProviders()
+            && ! $this->isPlatformOperator();
+    }
+
+    /**
+     * The route that lists this organization's PEOPLE, or null on a plane that has none.
+     *
+     * TWO PAGES, and which one depends on the organization. A customer's team is its
+     * administrators (Identity platform › Administrators, `members`); every other
+     * organization's people are on People › Members (`directory.members`). Links that
+     * hard-coded `members` — the setup guide's "Invite your team", the Roles page's
+     * "console access" — sent a tenant organization's admin to a page that answered by
+     * redirecting them to projects, which redirected them to the dashboard: two hops to
+     * nowhere, from the first step of the setup guide.
+     *
+     * The environment plane has no such page for an organization; its rosters live on each
+     * organization's own detail page.
+     */
+    public function peopleRoute(): ?string
+    {
+        if ($this->plane() === ConsolePlane::Environment) {
+            return null;
+        }
+
+        return $this->ownsIdentityProviders() ? 'members' : 'directory.members';
     }
 
     /** @throws AuthorizationException */

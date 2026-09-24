@@ -18,17 +18,18 @@ use Cbox\Id\Whitelabel\Http\Controllers\BrandingController;
  */
 ConsoleRoutes::page(
     feature: 'whitelabel',
-    uri: '/settings/branding',
+    uri: '/branding',
     component: [BrandingController::class, 'index'],
     name: 'whitelabel.branding',
-    environmentUri: '/branding',
 );
+
+// One URL on both consoles — the environment console always said `/branding`.
+ConsoleRoutes::moved('/settings/branding', '/branding');
 
 ConsoleRoutes::action(
     feature: 'whitelabel',
     verb: 'post',
-    uri: '/settings/branding',
+    uri: '/branding',
     action: [BrandingController::class, 'save'],
     name: 'whitelabel.branding.save',
-    environmentUri: '/branding',
 );

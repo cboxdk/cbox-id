@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Platform\ApiKeys\ApiKeyPresence;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\ConsoleCurrentContext;
+use App\Platform\CurrentUser;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Console\Kit\Contracts\CurrentContext;
 use Cbox\Console\Kit\Contracts\NavRegistry;
@@ -26,7 +28,7 @@ use Illuminate\Support\ServiceProvider;
  * on `order` alone, so two areas sharing a number resolve by provider boot order — the
  * rail silently reorders itself when a module is enabled, disabled, or the config cache
  * is rebuilt. The console shipped two such ties (Logs/Security at 60, Settings/
- * Connectors at 70). Reserved: 10 Overview · 15 Identity platform · 20 People · 30
+ * Connectors at 70). Reserved: 10 Overview · 15 Workspace · 20 People · 30
  * Sign-in · 40 Access control · 50 Developers · 60 Connectors · 70 Logs · 80 Settings ·
  * 90 My account · 100 Platform · 110 Insights · 120 Administration.
  */
@@ -41,6 +43,9 @@ final class ConsoleServiceProvider extends ServiceProvider
         // because it is filled during provider boot and read by both rails and the
         // parity health check for the rest of the process's life.
         $this->app->singleton(ConsolePages::class);
+
+        // The API key pages' rail gates, answered once per request (see ApiKeyPresence).
+        $this->app->scoped(ApiKeyPresence::class);
     }
 
     public function boot(): void
@@ -59,42 +64,42 @@ final class ConsoleServiceProvider extends ServiceProvider
         $nav->area('overview', 'Overview', 'dashboard', 10)
             ->page('dashboard', 'Overview', order: 10)
             ->page('usage', 'Usage', feature: 'organization.usage', order: 20)
-            ->page('approvals', 'Agent approvals', order: 30);
+            // NAMED FOR WHAT IT DOES HERE. Both consoles had an "Agent approvals" page and
+            // they are not the same page: this one is where the signed-in person approves
+            // or denies a request to act as THEM; the environment console's lists every
+            // pending request in the environment so an administrator can deny abuse.
+            ->page('approvals', 'Approve agent requests', order: 30);
 
-        // What an organization has BECAUSE IT OWNS IDENTITY PROVIDERS — the projects it
-        // runs, the environments under them, the keys and domains those need, and the bill
-        // for the lot. This was a console of its own, on its own prefix, behind its own
-        // sign-in; it is an area, and it appears for whoever the features below admit.
+        // THE WORKSPACE — the customer's own Cbox account: the projects it runs, the
+        // environments under them, the team that administers them, the keys and domains
+        // those need, and the bill for the lot. It was labelled "Identity platform", with
+        // "Administrators" and "Account settings" inside it, which gave one thing three
+        // names on one rail. See docs/core-concepts/workspaces-and-organizations.md.
         //
         // Gated page-by-page rather than as a whole area, so the rail says the same thing
         // an attempted click would: a member who may read billing and nothing else sees
         // Billing alone, and an organization that owns no IdP at all — every organization
-        // on every host except the root's own accounts — has no page here, so the area
+        // on every host except the root's own workspaces — has no page here, so the area
         // vanishes by the same rule that already drops an area a module left empty.
-        $nav->area('identity-platform', 'Identity platform', 'layers', 15)
+        //
+        // The area KEY stays `identity-platform`: it is the socket the billing module
+        // plugs into, and a key is not something a person reads.
+        $nav->area('identity-platform', 'Workspace', 'briefcase', 15)
             ->page('projects', 'Projects', feature: 'organization.projects', order: 10)
-            // ADMINISTRATORS, not "Members". Two areas carried a page labelled "Members"
-            // pointing at two different components, which is how they came to share a
-            // route without anyone noticing. A label is a promise: this one is the people
-            // who ADMINISTER the organization, and the page's own heading says so.
-            ->page('members', 'Administrators', feature: 'organization.members', order: 20)
-            ->page('api-keys', 'API keys', feature: 'organization.manage', order: 30)
-            ->page('environment-keys', 'Environment keys', feature: 'organization.environments', order: 40)
+            // TEAM — the people who administer the workspace. Not "Members", which is the
+            // People page of every organization, and not "Administrators", which a Viewer on
+            // the list is not.
+            ->page('members', 'Team', feature: 'organization.members', order: 20)
+            // One page, the key type as a tab: this environment's management keys first,
+            // the workspace's own API keys second. Gated on the first tab's capability,
+            // which every role that may see the second also holds.
+            ->page('keys', 'Keys', feature: 'organization.environments', order: 30)
             ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
             // 70 is the BILLING module's, added by its own provider — see modules/billing.
             // Left as a gap rather than closed up: the orders in this area are unique
             // across modules by contract, and renumbering to fill it would collide with a
             // module the host cannot see.
-            // ACCOUNT, not "Organization". The word does two jobs in this platform — in
-            // the platform root it names a CUSTOMER, inside a tenant's environment it
-            // names one of that customer's end-user teams — and both meanings appear in
-            // this one console. A customer reading "Organizations" on the environment
-            // rail and "Organization settings" here reasonably concludes they are the
-            // same thing one level apart, which is the single biggest comprehension
-            // obstacle in the product. The row is still an `organizations` row; only the
-            // word a person reads changes, and it changes at the altitude where the
-            // meaning is "the customer".
-            ->page('organization-settings', 'Account settings', feature: 'organization.manage', order: 80);
+            ->page('organization-settings', 'Workspace settings', feature: 'organization.manage', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → People, "Authentication" → Sign-in, etc.
@@ -110,23 +115,35 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Roles are made OF permissions, so a plane that offers one and hides the
             // other asks an administrator to assign a thing they cannot inspect. It was
             // environment-plane-only — the same component, reachable from one console.
-            ->page('permissions', 'Permissions', order: 30);
+            ->page('permissions', 'Permissions', order: 30)
+            // Every API key the organization's people hold for its apps. Only where an app
+            // offers keys here, or somebody already holds one: on every other organization
+            // it would be an empty page about a feature nobody turned on.
+            ->page('directory.api-keys', 'Member API keys', feature: 'organization.api-keys', order: 40);
 
         // "Sync users in" / "Sync users out" — the two SCIM directions are a pair, and
         // are only comprehensible as one. "User sync" beside "Outbound sync" gave no
         // clue which way either moved people.
-        $nav->area('authentication', 'Sign-in', 'connections', 30)
+        //
+        // SIGN-IN RULES LIVE HERE NOW, not under Settings. They are the password, MFA and
+        // session policy — a sign-in question — and on a workspace's own console they are
+        // half of the only sign-in administration it has (the other half is single
+        // sign-on for its team), so the two have to be one area to be found together.
+        $nav->area('authentication', 'Sign-in', 'fingerprint', 30)
             ->page('connections', 'Single sign-on', order: 10)
             ->page('social-providers', 'Social sign-in', order: 20)
+            ->page('auth-policy', 'Sign-in rules', order: 25)
             ->page('directories', 'Sync users in', order: 30)
             ->page('provisioning', 'Sync users out', order: 40);
 
-        $nav->area('governance', 'Access control', 'shield', 40)
+        $nav->area('governance', 'Access control', 'scale', 40)
             ->page('governance', 'Access reviews', order: 10)
             ->page('sod-policies', 'Role conflicts', order: 20);
 
-        $nav->area('developers', 'Developers', 'clients', 50)
-            ->page('clients', 'Apps & API keys', order: 10)
+        $nav->area('developers', 'Developers', 'code', 50)
+            // "Apps", not "Apps & API keys": the page registers apps, and keys have a page
+            // of their own. The ampersand promised a second thing the page did not hold.
+            ->page('clients', 'Apps', order: 10)
             // Frontend keys and Legacy login are on the environment plane only: both are
             // owned by the environment with no organization column, so listing them here
             // would put every organization's administrator in charge of every other
@@ -146,18 +163,18 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         $nav->area('settings', 'Settings', 'settings', 80)
             ->page('settings', 'Settings', order: 10)
-            // Between Settings and Appearance, which is where the environment rail has
-            // always put it — the two rails read in the same order on purpose.
-            ->page('auth-policy', 'Sign-in rules', order: 15)
             ->page('appearance', 'Appearance', order: 20);
 
         // Every user's own security — shown to members and admins alike (the app
         // layout gates the admin-only areas above by role, this one is universal).
-        $nav->area('account', 'My account', 'key', 90)
+        $nav->area('account', 'My account', 'user', 90)
             ->page('account', 'Security', order: 10)
             // Beside it, because "change my password" and "sign that laptop out" are the
             // two halves of the same worry and people arrive looking for either.
-            ->page('account.activity', 'Sessions & activity', order: 20);
+            ->page('account.activity', 'Sessions & activity', order: 20)
+            // Keys for the APIs of the apps built on this environment — present only where
+            // one offers them, or the person already holds a key (see HolderApiKeys).
+            ->page('account.api-keys', 'API keys', feature: 'account.api-keys', order: 30);
 
         $this->platformAreas($nav);
     }
@@ -196,8 +213,10 @@ final class ConsoleServiceProvider extends ServiceProvider
         // `layers` too: side by side they are one glyph appearing twice in a control whose
         // whole job is to be told apart at a glance. Insights takes `chart` and
         // Administration `lock`, both unused by the areas above.
+        // WORKSPACES, not "Customers": the word the workspace's own console uses for itself,
+        // so an operator and the person on the phone to them say the same word.
         $nav->area('platform', 'Platform', 'rocket', 100)
-            ->page('platform.customers', 'Customers', feature: 'platform.operator', order: 10)
+            ->page('platform.customers', 'Workspaces', feature: 'platform.operator', order: 10)
             ->page('platform.environments', 'Environments', feature: 'platform.operator', order: 20)
             ->page('platform.organizations', 'Organizations', feature: 'platform.operator', order: 30);
 
@@ -263,5 +282,25 @@ final class ConsoleServiceProvider extends ServiceProvider
         // area a member can see. THE SAME QUESTION THE PAGE ASKS, deliberately: the page
         // is the authorization and this only decides whether the rail offers a link to it.
         $features->register('organization.usage', static fn (): bool => app(ConsoleScope::class)->mayAdminister());
+        // The two API key pages. The rail only decides whether to offer a link — each page
+        // authorizes its own requests — so these ask about presence, in one statement per
+        // request between them ({@see ApiKeyPresence}), on the organization the person is
+        // in. The organization console's page only: an environment administrator (no
+        // signed-in subject) reads the same list on each organization's own page.
+        $features->register('account.api-keys', static function (): bool {
+            $me = app(CurrentUser::class);
+            $organizationId = $me->check() ? $me->organizationId() : null;
+
+            return $organizationId !== null
+                && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthHolderPage();
+        });
+        $features->register('organization.api-keys', static function (): bool {
+            $me = app(CurrentUser::class);
+            $organizationId = $me->check() ? $me->organizationId() : null;
+
+            return $organizationId !== null
+                && app(ConsoleScope::class)->mayAdminister()
+                && app(ApiKeyPresence::class)->for($organizationId, $me->id())->worthAdminPage();
+        });
     }
 }

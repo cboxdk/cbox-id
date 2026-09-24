@@ -82,6 +82,18 @@ declare module '@inertiajs/core' {
              */
             revealedSecret?: string;
             /**
+             * An app just copied into another environment of the project: where it went,
+             * and its new credentials there — the secret shown exactly once, for the same
+             * reason as {@see revealedSecret}.
+             */
+            copiedApp?: {
+                environment: string;
+                name: string;
+                issuer: string;
+                clientId: string;
+                secret: string | null;
+            };
+            /**
              * A single-use Admin Portal URL, revealed once.
              *
              * The link admits its holder to a tenant's SSO setup with NO ACCOUNT AT ALL,

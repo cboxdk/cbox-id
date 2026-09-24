@@ -14,7 +14,7 @@ use Inertia\Response;
 /**
  * ONE USAGE PAGE FOR BOTH PLANES.
  *
- * The environment plane had its own — `environment.analytics` — over the SAME counters, and
+ * The environment plane had its own — `environment.analytics`, now `environment.usage` — over the SAME counters, and
  * it was the primitive version of this one: raw `auth.*` metric keys with no label table,
  * no time window, no series. So the same numbers were called "Usage" on one plane and
  * "Analytics" on the other, and only one of them was legible.
@@ -47,7 +47,7 @@ final readonly class UsageController extends ConsoleController
         'auth.invitation_accepted' => 'Invitations accepted',
         'auth.role_assigned' => 'Roles assigned',
         'auth.service_account' => 'Service accounts',
-        'auth.ciba' => 'Agent approvals',
+        'auth.ciba' => 'Agent requests approved',
         'auth.domain_verified' => 'Domains verified',
         'auth.governance_campaign' => 'Access reviews',
         'auth.scim_sync' => 'SCIM syncs',

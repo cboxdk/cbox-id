@@ -1,5 +1,5 @@
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader } from '@/ui';
 
 interface Tile {
@@ -17,12 +17,14 @@ type Props = PageProps<{
     mfaRate: number;
     /** True when no analytics data source is configured or reachable. */
     unavailable: boolean;
+    help: HelpContent;
 }>;
 
-export default function SignInActivity({ window: days, tiles, mfaRate, unavailable }: Props) {
+export default function SignInActivity({ window: days, tiles, mfaRate, unavailable, help }: Props) {
     return (
         <div className="space-y-6">
             <PageHeader
+                help={help}
                 description={`Authentication activity over the last ${days} days, from the platform's event stream.`}
             />
 

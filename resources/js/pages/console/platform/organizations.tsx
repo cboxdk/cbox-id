@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
     Dialog,
@@ -43,6 +43,7 @@ type Props = PageProps<{
     search: string;
     types: { value: string; label: string }[];
     storeHref: string;
+    help: HelpContent;
 }>;
 
 /*
@@ -68,6 +69,7 @@ export default function Organizations({
     search,
     types,
     storeHref,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
@@ -92,7 +94,8 @@ export default function Organizations({
     return (
         <>
             <PageHeader
-                description="Every tenant in the target environment — the management tree of resellers, customers and sub-units."
+                help={help}
+                description="Every organization in the target environment — the management tree of resellers, the organizations they manage, and sub-units."
                 actions={
                     <Button
                         variant="primary"
@@ -139,20 +142,20 @@ export default function Organizations({
                         <EmptyState
                             icon="search"
                             title={`No organizations match “${search}”`}
-                            description="Try part of the tenant's name, or its slug."
+                            description="Try part of the organization's name, or its slug."
                         />
                     ) : (
                         <EmptyState
                             icon="layers"
                             title="No organizations in this environment"
-                            description="A tenant is where users, sign-in methods and roles live. Create one above, or bootstrap the plane with its first organization and admin from the Environments screen."
+                            description="An organization is where users, sign-in methods and roles live. Create one above, or bootstrap the environment with its first organization and admin from the Environments screen."
                         />
                     )}
                 </div>
             ) : (
                 <div className="cbx-panel overflow-hidden mt-8">
                     <div className="overflow-x-auto">
-                        <Table caption="Tenants in the targeted environment, as the management tree.">
+                        <Table caption="Organizations in the targeted environment, as the management tree.">
                             <thead>
                                 <tr>
                                     <Th>Organization</Th>
@@ -279,7 +282,7 @@ export default function Organizations({
                     confirming === null
                         ? ''
                         : confirming.active
-                          ? `Its ${plural(confirming.members, 'member')} can no longer sign in to this tenant, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.`
+                          ? `Its ${plural(confirming.members, 'member')} can no longer sign in to this organization, and any app relying on it stops authenticating them. Sub-organizations are not suspended with it. You can reactivate it here.`
                           : 'Its members can sign in again immediately.'
                 }
                 footer={

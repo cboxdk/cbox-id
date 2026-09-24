@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Console;
 
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use App\Platform\EnvironmentKeyScopes;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,7 +34,11 @@ final class IssueEnvironmentKeyRequest extends FormRequest
             'environment' => ['required', 'string'],
             'name' => ['required', 'string', 'max:120'],
             'scopes' => ['required', 'array', 'min:1'],
-            'scopes.*' => [Rule::in(EnvironmentApiScope::all())],
+            // The OFFERED scopes, not every case of the enum: a scope no route requires
+            // is one the form does not show, and a key carrying it would be a promise
+            // the API cannot keep.
+            'scopes.*' => [Rule::in(EnvironmentKeyScopes::offeredValues())],
+            ...KeyExpiry::rules(),
         ];
     }
 
@@ -45,6 +50,7 @@ final class IssueEnvironmentKeyRequest extends FormRequest
         return [
             'scopes.required' => 'Choose at least one scope — a key with none can do nothing.',
             'scopes.min' => 'Choose at least one scope — a key with none can do nothing.',
+            ...KeyExpiry::messages(),
         ];
     }
 
@@ -67,5 +73,11 @@ final class IssueEnvironmentKeyRequest extends FormRequest
             (array) $this->input('scopes', []),
             'is_string',
         )));
+    }
+
+    /** When the key stops working, or null for a key that does not expire. */
+    public function expiresAt(): ?CarbonImmutable
+    {
+        return KeyExpiry::expiresAt($this);
     }
 }

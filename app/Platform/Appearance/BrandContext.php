@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Appearance;
 
 use App\Http\Props\Shared\BrandProps;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
@@ -38,6 +39,8 @@ final class BrandContext
 
     private bool $environmentResolved = false;
 
+    private bool $door = false;
+
     private ?Environment $environment = null;
 
     /**
@@ -49,6 +52,21 @@ final class BrandContext
     public function brand(?Organization $organization): void
     {
         $this->organization = $organization;
+    }
+
+    /**
+     * This request renders a sign-in DOOR — sign-in, sign-up, the organization picker,
+     * an invitation, a magic link, a password reset.
+     *
+     * On a customer's environment a door with no organization pinned is painted in the
+     * ENVIRONMENT's brand: its name and logo, beside the colours the root view already
+     * emits. Without this the vendor's end users met Cbox's own name and marketing on
+     * the vendor's sign-up page. Only doors: the consoles on that host are Cbox's surface,
+     * and their tab titles stay ours.
+     */
+    public function atTheDoor(): void
+    {
+        $this->door = true;
     }
 
     public function organization(): ?Organization
@@ -81,10 +99,24 @@ final class BrandContext
         return $appearance !== null ? AppearanceCss::render($appearance) : null;
     }
 
-    /** The name to put in `<title>` and on the sign-in card, or null for the platform's own. */
+    /**
+     * The name to put in `<title>` and on the sign-in card, or null for the platform's own:
+     * the pinned organization's, else — at a door on a customer's environment — the
+     * environment's, which is the name its Appearance page previews the sign-in under.
+     */
     public function name(): ?string
     {
         $name = $this->organization?->name;
+
+        if (is_string($name) && $name !== '') {
+            return $name;
+        }
+
+        if (! $this->door || ! app(PlaneResolver::class)->onCustomerEnvironment()) {
+            return null;
+        }
+
+        $name = $this->environment()?->name;
 
         return is_string($name) && $name !== '' ? $name : null;
     }

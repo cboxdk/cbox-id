@@ -16,6 +16,257 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### laravel-id 1.19: ten migrations, and a queue worker for back-channel logout
+
+`cboxdk/laravel-id` is now `^1.19`. Run `php artisan migrate`: ten additive migrations
+(APIs and their scopes, `oauth_client_secrets` backfilled from `oauth_clients.secret_hash`,
+customer API keys, back-channel logout, staff roles, support sessions). No existing row
+changes meaning. Read the package's
+[1.19 upgrade notes](https://github.com/cboxdk/laravel-id/blob/main/UPGRADING.md#1190).
+
+**Run a queue worker.** Back-channel logout tokens are delivered by a queued job; with no
+worker, nothing is sent. An app registers for them with a `backchannel_logout_uri`; until
+one does, nothing changes for it.
+
+What changes for people using this deployment:
+
+- **App lifecycle entries are renamed.** The activity log records `app.created`,
+  `app.updated` (with a from/to of each changed field), `app.secret_rotated` and
+  `app.deleted`, written by the framework. The console's own `client.created`,
+  `client.updated`, `client.secret_rotated` and `client.deleted` are no longer written.
+  Existing `client.*` entries stay. A saved alert or export that filters on `client.`
+  should filter on `app.` too. Changing an app's manifest URL now shows up as
+  `app.updated`.
+- **Ownership goes only to an active member.** Transfer ownership refuses someone who is
+  suspended or has not accepted their invitation yet.
+- **Leaving is logged once.** A member leaving shows up as `organization.member_removed`
+  with `reason: left`, attributed to them. The separate `organization.member_left` entry is
+  gone.
+- **Deleting an organization from the environment console** logs
+  `organization.archived` (it logged `organization.deleted`) and now sends the
+  `organization.deleted` webhook.
+- **Closing an organization signs its members out of its apps.** Every member's refresh
+  tokens in that organization are revoked, and apps registered for back-channel logout are
+  told. Before, those tokens kept refreshing.
+- **An administrator's "Revoke all sessions" revokes refresh tokens too**, so apps can no
+  longer mint new access tokens for that person afterwards.
+- **Webhook pickers list the framework's catalogue.** `user.password_reset`,
+  `user.email_verified`, `user.mfa_enrolled` and `user.passkey_registered` are gone:
+  nothing ever delivered them. The legacy `organization.member_*` and
+  `organization.invitation_*` names are no longer offered for new endpoints. Use
+  `membership.*` and `invitation.*` instead. An existing endpoint keeps everything it
+  subscribes to, and its edit form still lists those events.
+- **Tenant admins cannot give out staff-only roles.** A role an app declares with
+  `"tenant_assignable": false` is not listed and not accepted on the People page,
+  in invitations or in directory group mappings. Only the environment console grants it.
+  No role is staff-only until an app says so. The People page now also lists the
+  environment's shared roles, which it always accepted.
+
+### Environment management API: new scopes on the Keys page, and a slug that is optional
+
+- The Keys page now offers `members:*`, `invitations:*`, `roles:*`, `apps:*`, `apis:*`,
+  `api_keys:*` and `support:write`: each has an endpoint now. Existing keys keep exactly
+  the scopes they have; give a key a new scope by minting a new one.
+- `POST /v1/organizations` no longer requires `slug`. Left out, it is derived from the
+  name and made unique. A client that retries creates should keep sending one.
+- `Organization.status` can be `deleted` (what `DELETE /v1/organizations/{id}` leaves).
+  A generated client with the old two-value enum needs regenerating.
+- Audit entries a management key causes now read `actor_type: service` with the key's
+  id, where they used to read `system` with no actor. A saved filter on
+  `actor_type = system` for provisioning will miss them.
+
+### Workspace API: a team invitation is answered like the Team page answers it
+
+`POST /api/v1/organization/members` now goes through the same service as Workspace ›
+Team. For a client of the workspace API:
+
+- When the mail server refuses the invitation, the answer is `503` with
+  `error: mail_failed` and **nothing is created**. It used to be `201` with a live
+  invitation nobody received. Retry on `503`.
+- Somebody already on the team is still `422 email_taken`; the message now reads "That
+  person is already on this list."
+- New: `GET /api/v1/organization/invitations`, `POST …/invitations/{id}/resend` (at most
+  once a minute per address, `429 too_soon`) and `DELETE …/invitations/{id}`.
+- The spec's role enums now list `admin`, `developer`, `member` and `viewer`, which is
+  what the API has accepted all along (`billing` was never accepted). Regenerate a client
+  built from the old spec.
+
+### Sign-up on tenant environments follows a new environment switch (off)
+
+On the SaaS shape, sign-up on a customer's environment is now decided by that
+environment's **Self-service sign-up** switch (environment console › Sign-in rules), not
+by `CBOX_ID_SIGNUP_MODE`. The switch is off for every existing environment. Two things
+change for an environment that leaves it off:
+
+- The sign-in page no longer shows "Create an account". The link pointed at `/signup`,
+  which 404'd on tenant hosts anyway.
+- A magic link is only sent to an address that already has an account. Before, it was
+  sent to any address (the deployment mode defaulted to `open`) and created the account
+  on first use. **If an environment relied on magic links to onboard new people, turn its
+  switch on.**
+
+`CBOX_ID_SIGNUP_MODE=closed` still closes every environment. `invite_only` now only
+affects the platform root. Nothing changes on a single-tenant install or on the platform
+root.
+
+### Apps can bind a sign-in to an organization
+
+Nothing to do. An authorization without the new parameters is bound to the session's
+organization, as before. `prompt=none` combined with another prompt value is now refused
+with `invalid_request` (OIDC Core §3.1.2.1); before, the other value was ignored.
+
+### App scopes moved to their own tab; rotation takes a grace period
+
+For forks and scripts that drive the console's routes directly:
+
+- `PATCH /apps/{client}` (`clients.update`, `environment.clients.update`) edits the name,
+  redirect URIs and sign-out URIs only. `scopes` and `customScopes` sent to it are
+  ignored — send them to `PUT /apps/{client}/scopes` (`clients.scopes.update`). The app
+  page's props no longer carry `client.scopes` / `client.customScopes`; the Scopes tab
+  carries `stored`.
+- `POST /apps/{client}/rotate` accepts `grace` (seconds: 0, 3600, 86400 or 604800, only
+  those within `CBOX_ID_CLIENT_SECRET_MAX_ROTATION_GRACE`). Without it a rotation is
+  immediate, as before. After a step-up it returns to the Secrets tab.
+- Nothing to migrate: APIs, secrets and the new settings live in laravel-id 1.19's tables.
+
+### Staff roles, staff reviews and support access
+
+Nothing to migrate: the tables are laravel-id 1.19's.
+
+- **The user page's "Staff roles" offers app roles too.** Any role no organization owns
+  can be granted everywhere; an app's own role then reaches only that app. The page's
+  checkboxes are now a list with **Take back** and a picker. A refused grant is reported
+  under `staffRole`, naming the rule and the organization.
+- **Granting or taking back a staff role revokes the person's refresh tokens in every
+  organization**, so apps get the new roles on their next refresh. Nobody is signed out.
+- **Support access needs a first-party app the environment owns, with a web redirect
+  URI.** Mark your own apps first-party (`first_party`) and leave them unowned by any
+  organization to offer them. `CBOX_ID_SUPPORT_SESSION_MAX_TTL` (seconds, default and
+  maximum 3600) caps a session. An app that keeps its own session must let a support
+  session start a fresh sign-in, and should show a banner when a token carries `act`.
+- **`/oauth/authorize` answers an administrator's support session before anything else.**
+  A browser that started a support session for an app gets a code for it the next time
+  that app signs in, for as long as the session is open and the administrator is still
+  signed in to the console.
+
+### Console pages have one URL each; old GET URLs answer 301
+
+Every console page now has one path, the same on both consoles; the environment
+console's is that path under `/admin`. Old **GET** URLs answer `301 Moved Permanently`
+and keep their query string, so bookmarks, runbooks and links in support replies keep
+working. **Writes (POST, PATCH, PUT, DELETE) moved too and are not redirected**, because
+a 301 turns a POST into a GET. If a script posts to a console form, point it at the new
+path.
+
+Organization and workspace console (detail and `new` paths follow, e.g.
+`/clients/{id}` → `/apps/{id}`):
+
+| Old | New |
+|---|---|
+| `/clients` | `/apps` |
+| `/connections` | `/single-sign-on` |
+| `/social-providers` | `/social-sign-in` |
+| `/directories` | `/sync-in` |
+| `/provisioning` | `/sync-out` |
+| `/governance` | `/access-reviews` |
+| `/sod-policies` | `/role-conflicts` |
+| `/hooks` | `/inline-hooks` |
+| `/vault` | `/token-vault` |
+| `/members` | `/team` |
+| `/api-keys` | `/keys/workspace` |
+| `/environment-keys` | `/keys` |
+| `/organization-settings` | `/workspace-settings` |
+| `/analytics` | `/sign-in-activity` |
+| `/sign-in/devices` | `/trusted-devices` |
+| `/settings/branding` | `/branding` |
+
+Environment console:
+
+| Old | New |
+|---|---|
+| `/admin/applications` | `/admin/apps` |
+| `/admin/login-methods` | `/admin/saml-apps` |
+| `/admin/directories` | `/admin/sync-in` |
+| `/admin/outbound-sync` | `/admin/sync-out` |
+| `/admin/conflict-rules` | `/admin/role-conflicts` |
+| `/admin/event-hooks` | `/admin/inline-hooks` |
+| `/admin/stored-tokens` | `/admin/token-vault` |
+| `/admin/frontend-keys` | `/admin/keys/frontend` |
+| `/admin/analytics` | `/admin/usage` |
+
+Unchanged, and already the same on both consoles: `/webhooks`, `/audit`,
+`/log-streaming`, `/roles`, `/permissions`, `/settings`, `/sign-in-rules`, `/appearance`,
+`/usage`, `/access-reviews`, `/single-sign-on`, `/social-sign-in`, `/approvals`,
+`/projects`, `/environment-domains`, `/billing`.
+
+### Renamed routes, for forks and plugins that call `route()`
+
+Route **names** are unchanged except the merged key pages and one misnamed page. Code
+that builds URLs with `route()` or Wayfinder from these names throws
+`RouteNotFoundException` until it is updated:
+
+| Old name | New name |
+|---|---|
+| `api-keys`, `api-keys.store`, `api-keys.destroy` | `keys.workspace`, `keys.workspace.store`, `keys.workspace.destroy` |
+| `environment-keys`, `environment-keys.store`, `environment-keys.destroy` | `keys`, `keys.store`, `keys.destroy` |
+| `environment.frontend-keys`, `.store`, `.origins`, `.destroy` | `environment.keys.frontend`, `.store`, `.origins`, `.destroy` |
+| `environment.analytics` | `environment.usage` |
+| (new) | `environment.keys`, `environment.keys.store`, `environment.keys.destroy` |
+
+### A plugin that adds a page to the Workspace area must pass its label and icon
+
+The area's key is still `identity-platform`; only its label and icon changed, to
+**Workspace** and `briefcase`. console-kit's `area()` applies the label and icon it is
+given, so a plugin that still passes the old ones renames the host's area for the whole
+console. Register the way the billing module does:
+
+```php
+Console::nav()->area('identity-platform', 'Workspace', 'briefcase', 15)
+    ->page('your-page', 'Your page', order: 60);
+```
+
+### A workspace console no longer lists the end-user administration pages
+
+At the platform root of a multi-tenant deployment, a workspace's console now shows only
+Workspace, Team sign-in, Logs › Activity log and My account. Roles, permissions, apps,
+webhooks, inline hooks, token vault, connectors, access reviews and the other end-user
+pages are **hidden from the rail, not removed**: they answer at their URLs as before,
+with a notice that the page manages the workspace's own record in Cbox. Nothing to
+migrate. If you documented those pages for your workspace's team, point them at the
+environment console instead, where the product's users and apps live. Operators,
+single-tenant installs and every other organization keep the full console.
+
+### New environment keys can no longer carry `directories:read` / `directories:write`
+
+The console's environment-key form offered both scopes, and no route in `routes/api.php`
+requires either — a key carrying them could do nothing more than one without. The form no
+longer offers them, and `POST /keys` (was `/environment-keys`) now refuses them with a validation error
+on `scopes.N`. **Existing keys are untouched**: a key that already carries a directory scope
+keeps it, and the list shows it. Nothing to do unless a script posts to the console form
+with one of them; drop it from the request.
+### Mailed links take one more click
+
+Invitation, sign-in, email-confirmation and Admin Portal setup links now open a page with
+a button; the button spends the link (`POST` to the same path). Nothing to migrate —
+links already in inboxes keep working and simply land on that page. If you script against
+these URLs (end-to-end tests, a support tool that opens them), send a `POST` to the same
+path instead of a `GET`. New route names: `invitation.accept.store`, `magic.redeem.store`,
+`verification.verify.store`, `portal.enter.store`.
+
+### Run the migration for invitation return addresses
+
+`2026_09_24_000100_create_invitation_contexts_table` adds `invitation_contexts`. It is
+additive; invitations sent before it simply have no app context.
+
+### Owner is no longer a choice in the organization role pickers
+
+`App\Platform\OrgRoles::assignable()` is `[Admin, Member]`. A request that posts
+`role=owner` to an invite, add-member or change-role endpoint is refused with
+"Choose one of: Admin, Member." Use the transfer endpoints instead
+(`directory.members.transfer-ownership`, `environment.organizations.members.transfer-ownership`).
+Organizations that already have several owners keep them; **Make owner** on the
+environment console reduces them to one.
+
 ### Everyone is signed out on deploy
 
 There were three session stores for what is one human, and two of them are gone.

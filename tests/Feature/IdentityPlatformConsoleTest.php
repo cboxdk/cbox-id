@@ -203,8 +203,8 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
     signInAsMember($ownerSubjectId);
     app(Sudo::class)->confirm();
 
-    $this->from(route('api-keys'))
-        ->post(route('api-keys.store'), ['name' => 'CI deploy', 'role' => 'developer'])
+    $this->from(route('keys.workspace'))
+        ->post(route('keys.workspace.store'), ['name' => 'CI deploy', 'role' => 'developer'])
         ->assertSessionHasNoErrors()
         // ONCE, and on the flash channel: props are written into the history entry, so a
         // full-authority credential there is readable by pressing Back.
@@ -217,7 +217,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 
     // AND NOT AGAIN. The next render of the page carries no key at all — the flash is
     // one-shot, which is the whole reason it is the channel this uses.
-    $this->get(route('api-keys'))->assertOk()->assertInertiaFlashMissing('freshKey');
+    $this->get(route('keys.workspace'))->assertOk()->assertInertiaFlashMissing('freshKey');
 });
 
 it('redirects a non-manager away from API keys', function (): void {
@@ -225,7 +225,7 @@ it('redirects a non-manager away from API keys', function (): void {
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
 
     signInAsMember($devSubjectId);
-    $this->get(route('api-keys'))
+    $this->get(route('keys.workspace'))
         ->assertRedirect(route('projects'));
 });
 
@@ -386,11 +386,11 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
     signInAsMember($viewerSubjectId);
     $this->get(route('members'))
         ->assertOk()
-        // "Administrators" since the People area's tenant directory and this page stopped
+        // "Team" (it was "Administrators") since the People area's directory and this page stopped
         // sharing both a route and a label. This assertion is only confirming the page
         // rendered at all — the property under test is the pair below it: a Viewer reads
         // the roster and is offered no way to change it.
-        ->assertSee('Administrators')
+        ->assertSee('Team')
         ->assertSee($viewer->email ?? 'viewer@acme.example')
         ->assertDontSee('Invite a teammate');
 });
@@ -544,8 +544,9 @@ it('gives the whole area to an account owner', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    // Seven since Activity was retired — see the redirect in routes/web.php.
-    expect(identityPlatformPages())->toHaveCount(7);
+    // Seven since Activity was retired — see the redirect in routes/web.php — and six since
+    // the two key pages became the two tabs of Keys.
+    expect(identityPlatformPages())->toHaveCount(6);
 });
 
 it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
@@ -670,13 +671,13 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
 })->with([
     // Everything. Ownership itself is guarded per-action, not by hiding pages.
     'owner' => [MembershipRole::Owner, [
-        'projects', 'members', 'api-keys', 'environment-keys',
+        'projects', 'members', 'keys',
         'environment-domains', 'billing', 'organization-settings',
     ]],
 
     // An admin is an owner minus the ownership transfer, which is not a page.
     'admin' => [MembershipRole::Admin, [
-        'projects', 'members', 'api-keys', 'environment-keys',
+        'projects', 'members', 'keys',
         'environment-domains', 'billing', 'organization-settings',
     ]],
 
@@ -686,7 +687,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // billing. `MembershipRole` has no read predicate at all, so a naive translation hands
     // both back.
     'developer' => [MembershipRole::Developer, [
-        'projects', 'environment-keys', 'environment-domains',
+        'projects', 'keys', 'environment-domains',
     ]],
 
     // NO BILLING ROW, and its absence is the finding.
@@ -817,7 +818,7 @@ it('refuses to remove a customer\'s member from the environment roster', functio
     // only thing that says it.
     test()->from(route('directory.members'))
         ->delete(route('directory.members.remove', $targetSubjectId))
-        ->assertSessionHasErrors(['member' => 'This organization is a customer of this platform. Manage its members under Identity platform → Members.']);
+        ->assertSessionHasErrors(['member' => 'This organization is a Cbox workspace. Its team is managed under Workspace › Team.']);
 
     // …and the membership is still there, which is the outcome that matters: removing it
     // alone would take somebody off the roster of the customer they belong to, from a page

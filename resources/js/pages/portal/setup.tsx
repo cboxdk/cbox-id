@@ -71,7 +71,7 @@ export default function PortalSetup({
             <PageHeader
                 eyebrow={null}
                 title={`Set up enterprise sign-in${organizationName === null ? '' : ` · ${organizationName}`}`}
-                description="You were invited to configure single sign-on for this organization. Nothing else on the account is accessible from here."
+                description="You were invited to configure single sign-on for this organization. Nothing else in the organization is accessible from here."
             />
 
             {showSso && (

@@ -71,13 +71,13 @@ enum ConsoleArea: string
         return match ($this) {
             self::Overview => 'dashboard',
             self::Directory => 'members',
-            self::Authentication => 'connections',
-            self::Governance => 'shield',
-            self::Developers => 'clients',
-            self::Connectors => 'connections',
+            self::Authentication => 'fingerprint',
+            self::Governance => 'scale',
+            self::Developers => 'code',
+            self::Connectors => 'puzzle',
             self::Logs => 'audit',
             self::Settings => 'settings',
-            self::Account => 'key',
+            self::Account => 'user',
         };
     }
 
@@ -135,13 +135,13 @@ enum ConsoleArea: string
         return match ($this) {
             self::Overview => 'dashboard',
             self::Directory => 'members',
-            self::Authentication => 'connections',
-            self::Governance => 'shield-check',
-            self::Developers => 'clients',
-            self::Connectors => 'connections',
+            self::Authentication => 'fingerprint',
+            self::Governance => 'scale',
+            self::Developers => 'code',
+            self::Connectors => 'puzzle',
             self::Logs => 'audit',
             self::Settings => 'settings',
-            self::Account => 'key',
+            self::Account => 'user',
         };
     }
 

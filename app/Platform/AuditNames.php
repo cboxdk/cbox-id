@@ -8,6 +8,8 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Platform\Models\EnvironmentApiKey;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,6 +31,7 @@ final readonly class AuditNames
     public function __construct(
         private Subjects $subjects,
         private Organizations $organizations,
+        private PlatformRoot $platformRoot,
     ) {}
 
     /**
@@ -48,7 +51,8 @@ final readonly class AuditNames
 
         foreach ($rows as $entry) {
             // An actor id is a subject id whenever the actor is a person; a service
-            // actor's id is a client_id, which has its own (human) name.
+            // actor's id is a client_id, which has its own (human) name — or the id of the
+            // environment API key that acted through the management API.
             $actorId = $entry->actor_id;
             if (is_string($actorId) && $actorId !== '') {
                 match ($entry->actor_type->value) {
@@ -71,11 +75,34 @@ final readonly class AuditNames
             };
         }
 
+        $people = $this->subjectNames($userIds);
+
         return [
-            ...$this->subjectNames($userIds),
+            ...$people,
+            ...$this->administratorNames(array_diff($userIds, array_keys($people))),
             ...$this->organizationNames($orgIds),
             ...$this->clientNames($clientIds),
         ];
+    }
+
+    /**
+     * Names for the people this environment does not know: its ADMINISTRATORS, who are
+     * subjects of the platform root. A support session is recorded on the organization's
+     * trail with the administrator as its actor — "who acted as your member" is the
+     * question that trail exists to answer, and a bare id does not answer it.
+     *
+     * @param  array<int, string>  $ids
+     * @return array<string, string>
+     */
+    private function administratorNames(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $names = $this->platformRoot->run(fn (): array => $this->subjectNames($ids));
+
+        return is_array($names) ? $names : [];
     }
 
     /**
@@ -130,6 +157,18 @@ final readonly class AuditNames
             ->whereIn('client_id', $ids)
             ->pluck('name', 'client_id')
             ->all();
+
+        $unresolved = array_values(array_diff($ids, array_keys($names)));
+
+        if ($unresolved === []) {
+            return $names;
+        }
+
+        // A management-API key, by the name it was given — in this environment only, which
+        // is the one whose trail is being read.
+        foreach (EnvironmentApiKey::query()->whereIn('id', $unresolved)->get(['id', 'name']) as $key) {
+            $names[$key->id] = 'Management key "'.$key->name.'"';
+        }
 
         return $names;
     }

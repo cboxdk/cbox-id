@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueFrontendKeyRequest;
 use App\Http\Requests\Console\SaveFrontendKeyOriginsRequest;
+use App\Platform\Console\KeyTabs;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\Exceptions\UnusableOrigin;
@@ -30,11 +33,13 @@ use Inertia\Response;
  */
 final readonly class FrontendKeyController extends ConsoleController
 {
-    public function index(): Response
+    public function index(KeyTabs $tabs): Response
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/frontend-keys', 'Frontend keys', [
+        return $this->page('console/keys/frontend', 'Keys', [
+            'help' => HelpProps::for(HelpTopic::Keys),
+            'tabs' => $tabs->for(KeyTabs::FRONTEND),
             'keys' => PublishableKey::query()
                 ->with('origins')
                 ->orderByDesc('created_at')
@@ -49,8 +54,8 @@ final readonly class FrontendKeyController extends ConsoleController
                     'origins' => $key->origins->pluck('origin')->all(),
                     'active' => $key->isActive(),
                     'urls' => [
-                        'origins' => $this->url('frontend-keys.origins', $key->id),
-                        'revoke' => $this->url('frontend-keys.destroy', $key->id),
+                        'origins' => $this->url('keys.frontend.origins', $key->id),
+                        'revoke' => $this->url('keys.frontend.destroy', $key->id),
                     ],
                 ])
                 ->all(),
@@ -58,7 +63,7 @@ final readonly class FrontendKeyController extends ConsoleController
                 'value' => $mode->value,
                 'label' => ucfirst($mode->value),
             ], KeyMode::cases()),
-            'storeHref' => $this->url('frontend-keys.store'),
+            'storeHref' => $this->url('keys.frontend.store'),
         ]);
     }
 

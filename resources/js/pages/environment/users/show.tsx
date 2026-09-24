@@ -1,9 +1,10 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
+    Help,
     Button,
     Checkbox,
     ConfirmDelete,
@@ -15,15 +16,19 @@ import {
     Panel,
     Pill,
     type PillTone,
+    type RoleOption,
+    roleSelectOptions,
     Select,
+    type StaffRoleOption,
+    StaffRolePicker,
+    staffRoleScope,
+    type SupportSessionRow,
+    SupportSessions,
+    AccessRoleHint,
+    type AccessRoleOption,
 } from '@/ui';
 
-interface AccessRole {
-    id: string;
-    name: string;
-    /** The app it is scoped to, or null when it applies across all of them. */
-    app: string | null;
-}
+type AccessRole = AccessRoleOption;
 
 interface MembershipRow {
     organizationId: string;
@@ -46,6 +51,17 @@ interface SessionRow {
     revokeHref: string;
 }
 
+interface SupportProps {
+    /** Only the apps a support session can reach: first-party, owned by this environment. */
+    apps: { value: string; label: string }[];
+    /** Only the organizations they are an active member of. */
+    organizations: { value: string; label: string }[];
+    maxMinutes: number;
+    sessions: SupportSessionRow[];
+    help: HelpContent;
+    startHref: string;
+}
+
 type Props = PageProps<{
     user: {
         id: string;
@@ -60,10 +76,15 @@ type Props = PageProps<{
     joinableOrganizations: { value: string; label: string }[];
     joiningOrganization: string;
     joiningAccessRoles: AccessRole[];
-    everywhereRoles: AccessRole[];
-    heldEverywhere: string[];
+    staffRoles: StaffRoleOption[];
+    heldStaffRoles: string[];
+    staffHref: string;
+    support: SupportProps;
     sessions: SessionRow[];
-    assignableRoles: { value: string; label: string }[];
+    /** What a new membership may be given — never Owner. */
+    assignableRoles: RoleOption[];
+    /** The same plus Owner, disabled: an owner's row names what it holds. */
+    membershipRoles: RoleOption[];
     indexHref: string;
     urls: {
         update: string;
@@ -95,10 +116,13 @@ export default function UserDetail({
     joinableOrganizations,
     joiningOrganization,
     joiningAccessRoles,
-    everywhereRoles,
-    heldEverywhere,
+    staffRoles,
+    heldStaffRoles,
+    staffHref,
+    support,
     sessions,
     assignableRoles,
+    membershipRoles,
     indexHref,
     urls,
 }: Props) {
@@ -145,11 +169,19 @@ export default function UserDetail({
                 joinableOrganizations={joinableOrganizations}
                 joiningOrganization={joiningOrganization}
                 joiningAccessRoles={joiningAccessRoles}
-                everywhereRoles={everywhereRoles}
-                heldEverywhere={heldEverywhere}
                 assignableRoles={assignableRoles}
+                membershipRoles={membershipRoles}
                 urls={urls}
             />
+
+            <StaffRolesPanel
+                roles={staffRoles}
+                held={heldStaffRoles}
+                staffHref={staffHref}
+                href={urls.environmentRole}
+            />
+
+            <SupportAccess support={support} label={label} active={user.status === 'active'} />
 
             <Impersonation memberships={memberships} href={urls.impersonate} />
         </div>
@@ -658,9 +690,8 @@ function Organizations({
     joinableOrganizations,
     joiningOrganization,
     joiningAccessRoles,
-    everywhereRoles,
-    heldEverywhere,
     assignableRoles,
+    membershipRoles,
     urls,
 }: {
     user: Props['user'];
@@ -668,9 +699,8 @@ function Organizations({
     joinableOrganizations: { value: string; label: string }[];
     joiningOrganization: string;
     joiningAccessRoles: AccessRole[];
-    everywhereRoles: AccessRole[];
-    heldEverywhere: string[];
-    assignableRoles: { value: string; label: string }[];
+    assignableRoles: RoleOption[];
+    membershipRoles: RoleOption[];
     urls: Props['urls'];
 }) {
     const [managing, setManaging] = useState<string | null>(null);
@@ -681,8 +711,9 @@ function Organizations({
             title="Organizations"
             description={
                 <>
-                    <b>Org access</b> is the user's administration level; <b>access roles</b> are
-                    what they can do inside that org's apps.
+                    Each organization gives them one <b>built-in role</b> — what they may administer
+                    there — and any number of <b>app and custom roles</b>, which is what they can do
+                    inside its apps.
                 </>
             }
         >
@@ -692,7 +723,7 @@ function Organizations({
                         <EmptyState
                             icon="layers"
                             title="Not a member of any organization"
-                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them a role that applies everywhere in this environment."
+                            description="Add them to one below to grant access inside it — or, if your apps have no tenancy of their own, give them a staff role, which applies everywhere in this environment."
                         />
                     ) : (
                         memberships.map((membership) => (
@@ -711,7 +742,7 @@ function Organizations({
                                     </Link>
 
                                     <Select
-                                        aria-label={`Org access in ${membership.organizationName}`}
+                                        aria-label={`Built-in role in ${membership.organizationName}`}
                                         value={membership.role}
                                         onValueChange={(role) =>
                                             router.patch(
@@ -720,7 +751,7 @@ function Organizations({
                                                 { preserveScroll: true },
                                             )
                                         }
-                                        options={assignableRoles}
+                                        options={roleSelectOptions(membershipRoles)}
                                     />
 
                                     <Button
@@ -735,7 +766,7 @@ function Organizations({
 
                                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                        Access roles:
+                                        Roles:
                                     </span>
 
                                     {membership.accessRoleIds.length === 0 ? (
@@ -789,7 +820,7 @@ function Organizations({
                                                     )
                                                 }
                                                 label={role.name}
-                                                hint={role.app ?? 'All apps'}
+                                                hint={<AccessRoleHint role={role} />}
                                             />
                                         ))}
                                     </div>
@@ -798,42 +829,6 @@ function Organizations({
                         ))
                     )}
                 </div>
-
-                {/*
-                    GRANTS THAT NAME NO ORGANIZATION. Every grant above is scoped to one
-                    tenant, which cannot describe a support agent acting across all of
-                    them, somebody who has joined none, or an app with no tenancy of its own
-                    to hang a grant on. Those people used to get a token with no roles and
-                    no permissions, and there was no way to give them any.
-                */}
-                {everywhereRoles.length > 0 && (
-                    <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
-                        <p className="text-sm font-medium">Roles everywhere in this environment</p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            Applied in <b>every</b> organization, and to this person even when they
-                            belong to none. Only roles you defined for the whole environment can be
-                            granted this way — one organization's own role is their policy, not
-                            everyone's.
-                        </p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            {everywhereRoles.map((role) => (
-                                <Checkbox
-                                    key={role.id}
-                                    checked={heldEverywhere.includes(role.id)}
-                                    onCheckedChange={(granted) =>
-                                        router.post(
-                                            urls.environmentRole,
-                                            { role: role.id, granted },
-                                            { preserveScroll: true },
-                                        )
-                                    }
-                                    label={role.name}
-                                    hint={role.app ?? 'All apps'}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 <AddToOrganization
                     joinable={joinableOrganizations}
@@ -864,6 +859,140 @@ function Organizations({
 }
 
 /**
+ * STAFF ROLES — grants that name no organization.
+ *
+ * Every grant above is scoped to one organization, which cannot describe a support agent
+ * acting across all of them, somebody who has joined none, or an app with no tenancy of
+ * its own to hang a grant on. An app's own role granted here reaches only that app's
+ * tokens; a role for all apps reaches every one.
+ */
+function StaffRolesPanel({
+    roles,
+    held,
+    staffHref,
+    href,
+}: {
+    roles: StaffRoleOption[];
+    held: string[];
+    staffHref: string;
+    href: string;
+}) {
+    const [role, setRole] = useState('');
+    const [takingBack, setTakingBack] = useState<StaffRoleOption | null>(null);
+    const { errors } = usePage().props;
+    const holding = roles.filter((candidate) => held.includes(candidate.id));
+    const offered = roles.filter((candidate) => !held.includes(candidate.id));
+
+    return (
+        <Panel
+            title="Staff roles"
+            description={
+                <>
+                    Roles held across the whole environment — in every organization, and even when
+                    they belong to none. Organizations never see these.{' '}
+                    <Link
+                        href={staffHref}
+                        className="underline underline-offset-2"
+                        style={{ color: 'var(--accent-strong)' }}
+                    >
+                        Everyone with a staff role
+                    </Link>
+                </>
+            }
+        >
+            <div className="space-y-3">
+                {holding.length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--faint)' }}>
+                        No staff roles.
+                    </p>
+                ) : (
+                    <ul className="space-y-2">
+                        {holding.map((staffRole) => (
+                            <li
+                                key={staffRole.id}
+                                className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                                style={{ borderColor: 'var(--border)' }}
+                            >
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-medium">
+                                        {staffRole.name}
+                                    </span>
+                                    <span
+                                        className="block truncate text-xs"
+                                        style={{ color: 'var(--faint)' }}
+                                    >
+                                        {staffRoleScope(staffRole)}
+                                    </span>
+                                </span>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    className="shrink-0"
+                                    onClick={() => setTakingBack(staffRole)}
+                                >
+                                    Take back
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                {offered.length > 0 && (
+                    <form
+                        className="grid gap-2 sm:grid-cols-[1fr_auto] items-start"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+
+                            if (role === '') {
+                                return;
+                            }
+
+                            router.post(
+                                href,
+                                { role, granted: true },
+                                { preserveScroll: true, onSuccess: () => setRole('') },
+                            );
+                        }}
+                    >
+                        <Field label="Grant a staff role" error={errors.staffRole}>
+                            <StaffRolePicker roles={offered} value={role} onValueChange={setRole} />
+                        </Field>
+                        <Button
+                            type="submit"
+                            className="shrink-0 sm:self-end"
+                            disabled={role === ''}
+                        >
+                            Grant
+                        </Button>
+                    </form>
+                )}
+            </div>
+
+            <ConfirmDelete
+                open={takingBack !== null}
+                onOpenChange={(open) => !open && setTakingBack(null)}
+                name={takingBack?.name ?? ''}
+                title={`Take back the staff role “${takingBack?.name ?? ''}”?`}
+                actionLabel="Take back"
+                consequence="They lose this role in every organization at once. Apps receive the change the next time they refresh this person's tokens; nobody is signed out."
+                onConfirm={() => {
+                    const staffRole = takingBack;
+                    setTakingBack(null);
+
+                    if (staffRole !== null) {
+                        router.post(
+                            href,
+                            { role: staffRole.id, granted: false },
+                            { preserveScroll: true },
+                        );
+                    }
+                }}
+            />
+        </Panel>
+    );
+}
+
+/**
  * The picker, and the roles of whichever organization it names.
  *
  * The role list follows the selection through a PARTIAL RELOAD rather than the page
@@ -881,7 +1010,7 @@ function AddToOrganization({
     joinable: { value: string; label: string }[];
     joining: string;
     accessRoles: AccessRole[];
-    assignableRoles: { value: string; label: string }[];
+    assignableRoles: RoleOption[];
     href: string;
 }) {
     const form = useForm({
@@ -924,11 +1053,11 @@ function AddToOrganization({
                     />
                 </Field>
 
-                <Field label="Org access" error={form.errors.role}>
+                <Field label="Built-in role" error={form.errors.role}>
                     <Select
                         value={form.data.role}
                         onValueChange={(role) => form.setData('role', role)}
-                        options={assignableRoles}
+                        options={roleSelectOptions(assignableRoles)}
                     />
                 </Field>
 
@@ -945,7 +1074,7 @@ function AddToOrganization({
             {form.data.organization !== '' && accessRoles.length > 0 && (
                 <div>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        Access roles — granted immediately (optional)
+                        App and custom roles — granted immediately (optional)
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         {accessRoles.map((role) => (
@@ -961,13 +1090,135 @@ function AddToOrganization({
                                     )
                                 }
                                 label={role.name}
-                                hint={role.app ?? 'All apps'}
+                                hint={<AccessRoleHint role={role} />}
                             />
                         ))}
                     </div>
                 </div>
             )}
         </form>
+    );
+}
+
+/**
+ * "SIGN IN TO <APP> AS <USER>" — support access.
+ *
+ * Starting one sends this browser to the app, which starts its own sign-in and receives
+ * tokens that name you as the one really there. Only apps the environment owns and trusts
+ * are offered, only organizations the person is an active member of, and never longer
+ * than the configured maximum; the server asks all three again.
+ */
+function SupportAccess({
+    support,
+    label,
+    active,
+}: {
+    support: SupportProps;
+    label: string;
+    active: boolean;
+}) {
+    const durations = [15, 30, 60, support.maxMinutes]
+        .filter(
+            (minutes, index, all) =>
+                minutes <= support.maxMinutes && all.indexOf(minutes) === index,
+        )
+        .sort((a, b) => a - b);
+
+    const form = useForm({
+        app: support.apps[0]?.value ?? '',
+        organization: support.organizations[0]?.value ?? '',
+        reason: '',
+        minutes: String(Math.min(30, support.maxMinutes)),
+    });
+
+    const appName = support.apps.find((app) => app.value === form.data.app)?.label ?? 'an app';
+
+    const unavailable =
+        support.apps.length === 0
+            ? 'No app can be entered this way yet. Support access reaches only first-party apps this environment owns that sign people in with a redirect.'
+            : !active
+              ? 'This person cannot sign in, so nobody can sign in as them either.'
+              : support.organizations.length === 0
+                ? 'They are not an active member of any organization, and a support session always acts inside one.'
+                : null;
+
+    return (
+        <Panel
+            title={
+                <span className="inline-flex items-center gap-1.5">
+                    Support access <Help help={support.help} />
+                </span>
+            }
+            description={`Sign in to one of your apps as ${label} to see what they see. The app is told it is you, and the organization's activity log records who, when and why.`}
+        >
+            <div className="space-y-4">
+                <SupportSessions sessions={support.sessions} lead="organization" />
+
+                {unavailable !== null ? (
+                    <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                        {unavailable}
+                    </p>
+                ) : (
+                    <form
+                        className="grid gap-3 sm:grid-cols-2 items-start"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            form.post(support.startHref, { preserveScroll: true });
+                        }}
+                    >
+                        <Field label="App" error={form.errors.app}>
+                            <Select
+                                value={form.data.app}
+                                onValueChange={(app) => form.setData('app', app)}
+                                options={support.apps}
+                            />
+                        </Field>
+
+                        <Field label="Organization" error={form.errors.organization}>
+                            <Select
+                                value={form.data.organization}
+                                onValueChange={(organization) =>
+                                    form.setData('organization', organization)
+                                }
+                                options={support.organizations}
+                            />
+                        </Field>
+
+                        <Field
+                            label="Reason"
+                            hint="The organization sees this on its activity log."
+                            error={form.errors.reason}
+                        >
+                            <Input
+                                name="reason"
+                                maxLength={500}
+                                required
+                                placeholder="Ticket 4411: invoice totals look wrong"
+                                value={form.data.reason}
+                                onChange={(event) => form.setData('reason', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="For" error={form.errors.minutes}>
+                            <Select
+                                value={form.data.minutes}
+                                onValueChange={(minutes) => form.setData('minutes', minutes)}
+                                options={durations.map((minutes) => ({
+                                    value: String(minutes),
+                                    label: minutes === 60 ? '1 hour' : `${minutes} minutes`,
+                                }))}
+                            />
+                        </Field>
+
+                        <div className="sm:col-span-2">
+                            <Button type="submit" variant="primary" loading={form.processing}>
+                                Sign in to {appName} as {label}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+            </div>
+        </Panel>
     );
 }
 
@@ -996,7 +1247,8 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
             <Panel title="Support impersonation">
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     This user owns or administers an organization, and those cannot be impersonated
-                    — stepping into one would hand durable control of a tenant to whoever did it.
+                    — stepping into one would hand durable control of an organization to whoever did
+                    it.
                 </p>
             </Panel>
         );
