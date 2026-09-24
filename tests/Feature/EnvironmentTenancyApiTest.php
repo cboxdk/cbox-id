@@ -620,9 +620,10 @@ it('registers, changes and deletes an API, with its scopes as a complete set', f
         ->assertJsonPath('data.scopes', [['key' => 'returns:read', 'description' => 'Read returns', 'tenant_requestable' => true]]);
 
     // One entry per change, in the console's shape (ApisConsoleTest compares the two doors).
-    expect(auditFor('api.updated')?->context['changes'] ?? null)->toBe(['name' => ['from' => 'Tax API', 'to' => 'Tax']])
+    // toEqual, not toBe: MySQL's JSON column stores an object's keys in its own order.
+    expect(auditFor('api.updated')?->context['changes'] ?? null)->toEqual(['name' => ['from' => 'Tax API', 'to' => 'Tax']])
         ->and(auditFor('api.scope_removed')?->context['scope'] ?? null)->toBe('returns:write')
-        ->and(auditFor('api.scope_defined')?->context['from'] ?? null)->toBe(['description' => null, 'tenant_requestable' => true])
+        ->and(auditFor('api.scope_defined')?->context['from'] ?? null)->toEqual(['description' => null, 'tenant_requestable' => true])
         ->and(auditFor('api.created')?->actor_id)->toBe($row->id)
         ->and(auditFor('api.created')?->target_id)->toBe('https://api.tax.example');
 
