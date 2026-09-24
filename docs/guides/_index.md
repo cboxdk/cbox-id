@@ -31,6 +31,7 @@ console explains itself in two or three sentences; when that is not enough, the
 ## Keeping it running
 
 - [Keys](keys.md) — management, workspace and frontend keys, and who can see which.
+- [APIs](apis.md) — the services your apps call, and which app may be given which of their scopes.
 - [Sync users out](sync-users-out.md) — push your people into your other SaaS products.
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Inline hooks](inline-hooks.md) — have a say while it happens.

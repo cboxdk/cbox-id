@@ -24,6 +24,7 @@ use App\Http\Controllers\Console\ApiKeyController;
 use App\Http\Controllers\Console\AppearanceController;
 use App\Http\Controllers\Console\AuditController;
 use App\Http\Controllers\Console\AuthPolicyController;
+use App\Http\Controllers\Console\ApiController;
 use App\Http\Controllers\Console\ClientController;
 use App\Http\Controllers\Console\ConnectionController;
 use App\Http\Controllers\Console\DashboardController;
@@ -1186,6 +1187,21 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/apps/{client}/sync', [ClientController::class, 'sync'])->name('environment.clients.sync');
         Route::post('/apps/{client}/rotate', [ClientController::class, 'rotate'])->name('environment.clients.rotate');
         Route::delete('/apps/{client}', [ClientController::class, 'destroy'])->name('environment.clients.destroy');
+
+        // APIs — the resource servers tokens are minted for, and the scopes each owns.
+        // THIS CONSOLE ONLY in this version: an API identifier and a scope key are first
+        // come per environment, so letting an organization's administrator register them
+        // would let one organization squat the audience or scopes another meant to use.
+        // An API an organization owns is registered here and assigned to it.
+        Route::get('/apis', [ApiController::class, 'index'])->name('environment.apis');
+        Route::get('/apis/new', [ApiController::class, 'create'])->name('environment.apis.create');
+        Route::post('/apis', [ApiController::class, 'store'])->name('environment.apis.store');
+        Route::get('/apis/{api}', [ApiController::class, 'show'])->name('environment.apis.show');
+        Route::patch('/apis/{api}', [ApiController::class, 'update'])->name('environment.apis.update');
+        Route::post('/apis/{api}/scopes', [ApiController::class, 'storeScope'])->name('environment.apis.scopes.store');
+        Route::patch('/apis/{api}/scopes/{scope}', [ApiController::class, 'updateScope'])->name('environment.apis.scopes.update');
+        Route::delete('/apis/{api}/scopes/{scope}', [ApiController::class, 'destroyScope'])->name('environment.apis.scopes.destroy');
+        Route::delete('/apis/{api}', [ApiController::class, 'destroy'])->name('environment.apis.destroy');
 
         // Webhooks — routable list → create → detail, on the merged component. The URLs
         // are unchanged so existing links and bookmarks still resolve; the route names
