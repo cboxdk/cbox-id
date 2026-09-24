@@ -8,6 +8,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\OpenAccessReviewRequest;
 use App\Http\Requests\Console\ReviewAccessItemRequest;
+use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Governance\Contracts\AccessReviews;
@@ -41,6 +42,13 @@ use Inertia\Response;
  * check compared against itself, passing for every caller. It is the ACTING organization
  * that has to bound both the lookup and the write, which is what {@see self::writeOrganizationId()}
  * is for.
+ *
+ * STAFF REVIEWS are the one exception, and only on the environment console: a campaign
+ * with no organization reviews every environment-wide (staff) grant, and a decision on it
+ * takes the grant back in every organization at once. The organization console never
+ * reaches one — its queries are bound to the organization in the WHERE clause, and a null
+ * organization is never equal to anything — so a tenant's reviewer can neither see nor
+ * revoke the vendor's staff grants.
  */
 final readonly class AccessReviewController extends ConsoleController
 {
@@ -58,11 +66,7 @@ final readonly class AccessReviewController extends ConsoleController
          * environment scope still bounds it, and an organization member can never reach
          * that branch because their organization is implicit.
          */
-        $organizationId = $this->scope->organizationId();
-
-        $query = CertificationCampaign::query()
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
-            ->orderByDesc('created_at');
+        $query = $this->fenced(CertificationCampaign::query())->orderByDesc('created_at');
 
         $term = trim($request->string('q')->toString());
 
@@ -87,6 +91,8 @@ final readonly class AccessReviewController extends ConsoleController
                     && $campaign->due_at !== null
                     && $campaign->due_at->isPast(),
                 'open' => $campaign->status === CampaignStatus::Open,
+                // A review of staff roles rather than of one organization's access.
+                'staff' => $campaign->organization_id === null,
                 'href' => $this->url('governance.show', $campaign->id),
             ])->all(),
             'search' => $term,
@@ -94,15 +100,22 @@ final readonly class AccessReviewController extends ConsoleController
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $this->scope->assertMayAdminister();
+
+        $staff = $this->reviewsStaff();
 
         return $this->page('console/access-reviews/create', 'New access review', [
             // Not an entitlement problem and not an empty environment: an environment
             // administrator who has chosen no organization has nothing to snapshot, and
             // saying so before the form is filled in is kinder than refusing it after.
             'organizationChosen' => $this->scope->organizationId() !== null,
+            'organizationName' => $this->scope->organizationName(),
+            // The environment console can also review staff roles, which belong to no
+            // organization. The Staff page links here with `?review=staff`.
+            'canReviewStaff' => $staff,
+            'covers' => $staff && $request->string('review')->toString() === 'staff' ? 'staff' : 'organization',
             'indexHref' => $this->url('governance'),
             'storeHref' => $this->url('governance.store'),
         ]);
@@ -120,7 +133,14 @@ final readonly class AccessReviewController extends ConsoleController
          */
         $organizationId = $this->scope->organizationId();
 
-        if ($organizationId === null) {
+        // STAFF ROLES: the environment's own review, with no organization. Only on the
+        // environment console — the organization console has no such choice, and a posted
+        // `covers=staff` there is refused rather than quietly read as its own organization.
+        if ($request->coversStaff()) {
+            abort_unless($this->reviewsStaff(), 403);
+
+            $organizationId = null;
+        } elseif ($organizationId === null) {
             return back()->withInput()->withErrors([
                 'name' => 'Choose an organization in the console header — a review snapshots one organization\'s access.',
             ]);
@@ -166,6 +186,7 @@ final readonly class AccessReviewController extends ConsoleController
                 'id' => $model->id,
                 'name' => $model->name,
                 'open' => $open,
+                'staff' => $model->organization_id === null,
             ],
             'items' => array_map(fn (CertificationItem $item): array => [
                 'id' => $item->id,
@@ -174,7 +195,11 @@ final readonly class AccessReviewController extends ConsoleController
                 // ULID and asks somebody to certify it.
                 'subject' => $people[$item->subject_id] ?? null,
                 'subjectId' => $item->subject_id,
-                'kind' => ucfirst($item->access_type->value),
+                'kind' => match ($item->access_type) {
+                    AccessKind::Role => 'Role',
+                    AccessKind::Membership => 'Membership',
+                    AccessKind::EnvironmentRole => 'Staff role',
+                },
                 'access' => $roles[$item->access_ref] ?? $item->access_ref,
                 'decision' => $item->decision->value,
                 // A revoke that could not be applied at close, and why. Silence here would
@@ -203,9 +228,9 @@ final readonly class AccessReviewController extends ConsoleController
 
         // Resolved so a forged campaign id cannot reach an item through this route, even
         // though the contract also fences the item on the organization below.
-        $this->visible($campaign);
+        $model = $this->visible($campaign);
 
-        $organizationId = $this->writeOrganizationId();
+        $organizationId = $this->writeOrganizationId($model);
         $reviewer = $this->scope->actorId();
 
         $request->certifies()
@@ -231,7 +256,7 @@ final readonly class AccessReviewController extends ConsoleController
             return back();
         }
 
-        $reviews->close($model->id, $this->writeOrganizationId());
+        $reviews->close($model->id, $this->writeOrganizationId($model));
 
         return back()->with('status', 'Access review closed — revoked access was applied.');
     }
@@ -245,16 +270,45 @@ final readonly class AccessReviewController extends ConsoleController
      */
     private function visible(string $campaign): CertificationCampaign
     {
-        $organizationId = $this->scope->organizationId();
-
-        $model = CertificationCampaign::query()
-            ->whereKey($campaign)
-            ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId))
-            ->first();
+        $model = $this->fenced(CertificationCampaign::query())->whereKey($campaign)->first();
 
         abort_if($model === null, 404);
 
         return $model;
+    }
+
+    /**
+     * The campaigns this console may see, bound in the WHERE clause.
+     *
+     * The organization console: its own organization's, and nothing else — `organization_id
+     * = ?` never matches a staff review, whose organization is null. The environment
+     * console: the chosen organization's plus the staff reviews, which belong to the
+     * environment rather than to any organization; with none chosen, everything.
+     *
+     * @param  Builder<CertificationCampaign>  $query
+     * @return Builder<CertificationCampaign>
+     */
+    private function fenced(Builder $query): Builder
+    {
+        $organizationId = $this->scope->organizationId();
+
+        if ($organizationId === null) {
+            return $query;
+        }
+
+        if (! $this->reviewsStaff()) {
+            return $query->where('organization_id', $organizationId);
+        }
+
+        return $query->where(fn (Builder $q): Builder => $q
+            ->where('organization_id', $organizationId)
+            ->orWhereNull('organization_id'));
+    }
+
+    /** Whether this console may review staff roles: the environment console only. */
+    private function reviewsStaff(): bool
+    {
+        return $this->scope->plane() === ConsolePlane::Environment;
     }
 
     /**
@@ -270,8 +324,18 @@ final readonly class AccessReviewController extends ConsoleController
      * No new burden: opening a review already requires a chosen organization, so a
      * campaign that exists was named against one.
      */
-    private function writeOrganizationId(): string
+    private function writeOrganizationId(CertificationCampaign $campaign): ?string
     {
+        /*
+         * A STAFF REVIEW is written as the environment's (null), and only from the
+         * environment console — the console is what authorizes the null, never the
+         * campaign. The organization console cannot have resolved a staff review in the
+         * first place ({@see fenced()}); the plane check is the second statement of it.
+         */
+        if ($campaign->organization_id === null && $this->reviewsStaff()) {
+            return null;
+        }
+
         return $this->scope->requireOrganizationId();
     }
 
@@ -324,7 +388,7 @@ final readonly class AccessReviewController extends ConsoleController
         $roleIds = [];
 
         foreach ($items as $item) {
-            if ($item->access_type === AccessKind::Role && $item->access_ref !== '') {
+            if (in_array($item->access_type, [AccessKind::Role, AccessKind::EnvironmentRole], true) && $item->access_ref !== '') {
                 $roleIds[$item->access_ref] = true;
             }
         }

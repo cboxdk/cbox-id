@@ -2,16 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps, Pagination as PaginationState } from '@/types';
-import {
-    Badge,
-    Button,
-    ConfirmDelete,
-    EmptyState,
-    Icon,
-    Pagination,
-    Panel,
-    Pill,
-} from '@/ui';
+import { Badge, Button, ConfirmDelete, EmptyState, Icon, Pagination, Panel, Pill } from '@/ui';
 
 interface ReviewItem {
     id: string;
@@ -28,7 +19,7 @@ interface ReviewItem {
 }
 
 type Props = PageProps<{
-    review: { id: string; name: string; open: boolean };
+    review: { id: string; name: string; open: boolean; staff: boolean };
     items: ReviewItem[];
     pagination: PaginationState;
     indexHref: string;
@@ -64,6 +55,7 @@ export default function AccessReviewDetail({
                     <Pill tone={review.open ? 'warning' : 'success'}>
                         {review.open ? 'Open' : 'Closed'}
                     </Pill>
+                    {review.staff && <Badge tone="info">Staff roles</Badge>}
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
                     {review.id}
@@ -74,7 +66,9 @@ export default function AccessReviewDetail({
                 title="Items"
                 description={
                     review.open
-                        ? 'Certify what is still needed, revoke what is not. Nothing takes effect until the review is closed.'
+                        ? review.staff
+                            ? 'Certify what is still needed, revoke what is not. Nothing takes effect until the review is closed; a revoked staff role then goes in every organization at once.'
+                            : 'Certify what is still needed, revoke what is not. Nothing takes effect until the review is closed.'
                         : 'This review is closed. Its revokes have been applied.'
                 }
                 action={
@@ -95,7 +89,11 @@ export default function AccessReviewDetail({
                     <EmptyState
                         icon="roles"
                         title="No access in scope"
-                        description="This organization has no direct role or membership grants to certify."
+                        description={
+                            review.staff
+                                ? 'Nobody held a staff role when this review was opened.'
+                                : 'This organization has no direct role or membership grants to certify.'
+                        }
                     />
                 ) : (
                     <div>
