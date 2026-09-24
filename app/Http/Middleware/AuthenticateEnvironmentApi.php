@@ -49,7 +49,12 @@ final class AuthenticateEnvironmentApi
 
         $this->context->set($key);
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            // The key authenticated THIS request and nothing after it (see clear()).
+            $this->context->clear();
+        }
     }
 
     private function deny(string $error, string $message, int $status): Response

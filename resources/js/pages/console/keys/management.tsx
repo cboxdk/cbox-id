@@ -102,7 +102,7 @@ export default function ManagementKeys({
         <>
             <PageHeader
                 help={help}
-                description="Keys for an environment's management API — create organizations and users in one environment from your own backend. Each key carries explicit scopes."
+                description="Keys for an environment's management API — run one environment's organizations, members, invitations, roles and apps from your own backend. Each key carries explicit scopes."
                 actions={
                     <Button asChild size="sm" className="shrink-0">
                         <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noreferrer">

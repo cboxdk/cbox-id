@@ -16,6 +16,19 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Environment management API: new scopes on the Keys page, and a slug that is optional
+
+- The Keys page now offers `members:*`, `invitations:*`, `roles:*`, `apps:*`, `apis:*`,
+  `api_keys:*` and `support:write`: each has an endpoint now. Existing keys keep exactly
+  the scopes they have; give a key a new scope by minting a new one.
+- `POST /v1/organizations` no longer requires `slug`. Left out, it is derived from the
+  name and made unique. A client that retries creates should keep sending one.
+- `Organization.status` can be `deleted` (what `DELETE /v1/organizations/{id}` leaves).
+  A generated client with the old two-value enum needs regenerating.
+- Audit entries a management key causes now read `actor_type: service` with the key's
+  id, where they used to read `system` with no actor. A saved filter on
+  `actor_type = system` for provisioning will miss them.
+
 ### laravel-id 1.19: ten migrations, and a queue worker for back-channel logout
 
 `cboxdk/laravel-id` is now `^1.19`. Run `php artisan migrate`: ten additive migrations
