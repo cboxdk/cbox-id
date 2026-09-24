@@ -16,6 +16,31 @@ package changes that need action here rather than in a client.
 
 ## Unreleased
 
+### Run the queue manager — without it, webhooks and back-channel logout are never sent
+
+**Operators MUST run `php artisan queue:autoscale`, exactly one per host, as a long-lived
+process.** It is the queue worker now: it starts, sizes and stops the `queue:work`
+processes itself. Until it runs, every queued job — webhook deliveries, back-channel logout
+tokens, app manifest syncs, Postal delivery reports, queued mail — sits in the queue and is
+never delivered. Nothing else errors.
+
+- **Laravel Cloud:** add a background process (Custom worker) running
+  `php artisan queue:autoscale`, 1 process. No deploy-command change: Cloud replaces the
+  instance on deploy and the manager drains on SIGTERM. Do not also add a Cloud queue
+  worker. Keep `QUEUE_CONNECTION=redis` and `CACHE_STORE=redis`.
+- **Self-hosted:** run it under systemd or Supervisor (a unit is in
+  `docs/operations/queue-workers.md`) and keep `php artisan queue:restart` in the deploy
+  script; the manager honours it. Remove any `queue:work` program you ran before — two
+  supervisors fight over the same jobs.
+- **Migrations:** `php artisan migrate` creates the queue monitor's four
+  `queue_monitor_*` tables.
+- **Alerting:** `/health/ready` now also turns red when no manager is running or a queue
+  is behind its 30 s pickup SLA. Alert on it; keep load-balancer routing on `/up`, or a
+  stopped background process takes the web tier out of rotation.
+- **Jobs already queued** since the worker went missing are processed as soon as the
+  manager starts. Back-channel logout tokens are minted at delivery, so late ones are still
+  valid, but relying parties hear about old sign-outs late.
+
 ### laravel-id 1.19: ten migrations, and a queue worker for back-channel logout
 
 `cboxdk/laravel-id` is now `^1.19`. Run `php artisan migrate`: ten additive migrations

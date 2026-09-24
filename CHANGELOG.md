@@ -10,6 +10,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
+- **The queue monitor is operator-only, on the platform root, and stores no job payloads.**
+  `cboxdk/laravel-queue-monitor` would serve its dashboard at `/queue-monitor` on every
+  host (customer domains included) behind an `APP_ENV` check, and keep each job's raw
+  serialized payload for replay. It lives at `/platform/queues/monitor` behind
+  `plane:operator`, the operator gate and its own authorization callback; its REST API is
+  off. Payload storage is off in config and blanked on every write, so a job that asks to
+  keep its payload does not get to.
+
 - **The steps after `/oauth/authorize` answered for whatever `client_id` the browser
   added.** On the platform root, `plane:first-party` admits our own first-party app and
   nothing else, and it read the client from `client_id`. The consent screen, approve/deny
@@ -125,6 +133,21 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Queue workers that run, and a signal when they do not.** Production had no queue worker:
+  webhooks, back-channel logout, app manifest syncs and Postal delivery reports were
+  queued and never sent, and every health check stayed green. `php artisan
+  queue:autoscale` (`cboxdk/laravel-queue-autoscale` ^4.3) is now the worker supervisor,
+  configured in `config/queue-autoscale.php` for a 512 MB instance: one worker group per
+  queue connection covering every queue the app dispatches to (derived from the same
+  settings the dispatchers read), at least one worker always, at most two, a 30 s pickup
+  SLA, a 75 s job timeout below Redis's `retry_after`, and the failure fuse on.
+  `/health/ready` gains a `queue_workers` check that is red when no manager has reported in
+  for 140 s or a queue's oldest job has waited past its SLA; `cbox-id:doctor` reports the
+  same, plus missing `ext-pcntl`/`ext-posix`. See `docs/operations/queue-workers.md`.
+- **Platform › Insights › Queues** shows whether the queue manager is running and how far
+  behind each queue is, and opens the job monitor (`cboxdk/laravel-queue-monitor` ^1.11).
+  Monitor history is pruned daily to 7 days / 100,000 rows; stuck `processing` rows are
+  closed every 15 minutes.
 - **The environment management API runs a whole tenancy, not just orgs and users.** An
   app's backend could create an organization and a user and nothing else: no owner, no
   members, no invitations, no roles. New endpoints, each behind its own scope (and each
@@ -307,6 +330,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **Requires `cboxdk/laravel-queue-autoscale` ^4.3** (was ^3.0, never started) and
+  `cboxdk/laravel-queue-metrics` ^3.4. `cbox.yaml` and `docker-compose.yml` run
+  `queue:autoscale` as the queue process.
 - **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
 - **Inviting onto a workspace's team is one service for the console and the workspace
   API** (`TeamInvitations`). `POST /api/v1/organization/members` used to mail the
