@@ -33,9 +33,6 @@ use Cbox\Id\Federation\Exceptions\DomainAlreadyClaimed;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
-use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
-use Cbox\Id\Kernel\Audit\Enums\ActorType;
-use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
@@ -274,32 +271,19 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
     /**
      * Soft-delete the tenant: status → Deleted, which takes it out of every list AND
      * refuses its members at the request pipeline, the device flow and the consent screen,
-     * exactly as a suspension does. It used to do only the first half.
+     * exactly as a suspension does.
      *
-     * The audit entry is written here rather than by a service: the {@see Organizations}
-     * contract has suspend and reactivate but no delete verb, and a status change that
-     * revokes everyone's access must be on the record even when no service owns it.
+     * {@see Organizations::archive()}, the framework's verb for it — the same one suspend
+     * and reactivate above use. This wrote the status onto the model and recorded its own
+     * `organization.deleted` entry, which skipped what only the service does: forgetting
+     * the organization's cached environment resolution, and announcing it to webhook
+     * subscribers as `organization.deleted` (and the legacy `organization.archived`).
      */
-    public function destroy(Request $request, string $organization, AuditLog $audit): RedirectResponse
+    public function destroy(string $organization, Organizations $organizations): RedirectResponse
     {
         $this->assertEnvironmentAdmin();
 
-        $model = $this->resolve($organization);
-        $previous = $model->status;
-
-        $model->status = OrganizationStatus::Deleted;
-        $model->save();
-
-        $audit->record(new AuditEvent(
-            action: 'organization.deleted',
-            actorType: ActorType::OrganizationMember,
-            actorId: $this->actorId(),
-            organizationId: $model->id,
-            targetType: 'organization',
-            targetId: $model->id,
-            context: ['from' => $previous->value, 'to' => OrganizationStatus::Deleted->value],
-            ip: $request->ip(),
-        ));
+        $organizations->archive($this->resolve($organization)->id, $this->actorId());
 
         return to_route('environment.organizations')->with('status', 'Organization deleted.');
     }

@@ -19,6 +19,15 @@ final class MembershipRefused extends RuntimeException
         return new self(MembershipRefusalReason::NotAMember, 'That person is not a member of this organization.');
     }
 
+    /** An invitation not yet accepted, or a suspended member: ownership needs somebody who can act on it. */
+    public static function notActive(): self
+    {
+        return new self(
+            MembershipRefusalReason::NotActive,
+            'That person has not accepted their invitation yet, or is suspended. Only an active member can become the owner.',
+        );
+    }
+
     public static function alreadyOwner(): self
     {
         return new self(MembershipRefusalReason::AlreadyOwner, 'That person already owns this organization.');

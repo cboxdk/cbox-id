@@ -9,10 +9,12 @@ use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -61,7 +63,28 @@ it('transfers ownership: the new owner is promoted and the old one stays on as a
 
     expect(ownersOf($org->id))->toBe([$danaId])
         ->and(app(Memberships::class)->of($org->id, $ownerId)?->role)->toBe(MembershipRole::Admin)
-        ->and(AuditEntry::query()->where('action', 'organization.ownership_transferred')->where('scope', $org->id)->exists())->toBeTrue();
+        // Once: the framework's transfer records it, and the console no longer adds its own.
+        ->and(AuditEntry::query()->where('action', 'organization.ownership_transferred')->where('scope', $org->id)->count())->toBe(1);
+});
+
+it('will not hand the organization to a member who is suspended', function (): void {
+    [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+    $danaId = colleague($org->id, MembershipRole::Member, 'dana@acme.test');
+    app(TenantContext::class)->withoutScope(fn () => Membership::query()
+        ->where('organization_id', $org->id)
+        ->where('user_id', $danaId)
+        ->update(['status' => MembershipStatus::Suspended->value]));
+
+    $reason = null;
+
+    try {
+        app(MembershipLifecycle::class)->transferOwnership($org->id, $danaId, $ownerId, $ownerId);
+    } catch (MembershipRefused $e) {
+        $reason = $e->reason;
+    }
+
+    expect($reason)->toBe(MembershipRefusalReason::NotActive)
+        ->and(ownersOf($org->id))->toBe([$ownerId]);
 });
 
 it('lets only the owner transfer ownership', function (): void {
@@ -112,9 +135,16 @@ it('lets a member leave, and signs them out when it was their only organization'
         ->assertRedirect(route('login'))
         ->assertSessionHas('status', 'You left Acme. You are not a member of any other organization here, so you have been signed out.');
 
+    // One entry, the framework's: a removal the member made themselves, attributed to them.
+    // The console wrote a second `organization.member_left` beside it until the framework's
+    // leave() existed.
+    $entry = AuditEntry::query()->where('action', 'organization.member_removed')->where('scope', $org->id)->sole();
+
     expect(app(Memberships::class)->of($org->id, $meId))->toBeNull()
         ->and(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse()
-        ->and(AuditEntry::query()->where('action', 'organization.member_left')->where('scope', $org->id)->exists())->toBeTrue();
+        ->and($entry->context['reason'] ?? null)->toBe('left')
+        ->and($entry->actor_id)->toBe($meId)
+        ->and(AuditEntry::query()->where('action', 'organization.member_left')->exists())->toBeFalse();
 });
 
 it('moves a leaver to their next organization when they have one', function (): void {

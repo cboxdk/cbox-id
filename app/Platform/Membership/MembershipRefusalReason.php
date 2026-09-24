@@ -14,6 +14,7 @@ namespace App\Platform\Membership;
 enum MembershipRefusalReason: string
 {
     case NotAMember = 'not_a_member';
+    case NotActive = 'not_active';
     case AlreadyOwner = 'already_owner';
     case NotTheOwner = 'not_the_owner';
     case LastOwner = 'last_owner';

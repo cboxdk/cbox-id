@@ -165,14 +165,15 @@ it('records deleting an organization on that tenant’s audit trail', function (
     expect(Organization::query()->whereKey($org->id)->value('status'))->toBe(OrganizationStatus::Deleted);
 
     // A state change that revokes everyone's access is on the record, on the org's own
-    // chain — the Organizations contract has no delete verb to do it for us.
+    // chain, once — written by the framework's archive(), which the console now calls
+    // instead of writing the status and its own entry.
     $entry = AuditEntry::query()
         ->where('scope', $org->id)
-        ->where('action', 'organization.deleted')
-        ->first();
+        ->where('action', 'organization.archived')
+        ->sole();
 
-    expect($entry)->not->toBeNull()
-        ->and($entry->target_id)->toBe($org->id)
+    expect($entry->target_id)->toBe($org->id)
         ->and($entry->actor_id)->toBe($provisioned->owner->id)
-        ->and($entry->context['to'] ?? null)->toBe('deleted');
+        ->and($entry->context['status'] ?? null)->toBe('deleted')
+        ->and(AuditEntry::query()->where('scope', $org->id)->where('action', 'organization.deleted')->exists())->toBeFalse();
 });

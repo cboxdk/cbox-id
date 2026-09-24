@@ -10,8 +10,10 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\OwnershipTransferRefusal;
 use Cbox\Id\Organization\Exceptions\LastOwner;
-use Cbox\Id\Organization\Models\Membership;
+use Cbox\Id\Organization\Exceptions\NotOrganizationOwner;
+use Cbox\Id\Organization\Exceptions\OwnershipTransferRefused;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\PlatformRoot;
@@ -22,15 +24,22 @@ use Illuminate\Support\Facades\DB;
  * handing it over, leaving it, and closing it.
  *
  * ONE OWNER, MOVED BY TRANSFER. The framework's rule is that ownership is transferred, never
- * assigned ({@see MembershipRole::assignable()}), and the customer console always honoured
- * it; the People page did not, and offered "Owner" in its role picker. That picker no longer
- * offers it, and this is the verb that replaced it: the new owner is promoted FIRST and the
- * old one demoted second, inside one transaction, so the organization has two owners for an
- * instant and never none — {@see Memberships} refuses to demote the last owner, so the other
- * order would be refused outright.
+ * assigned ({@see MembershipRole::assignable()}), and the People page no longer offers
+ * "Owner" in its role picker; this is the verb that replaced it.
  *
- * Built on the framework's own membership and organization services, so every change still
- * emits and audits through them; the app adds only the rules they do not state.
+ * THE FRAMEWORK OWNS THE VERBS NOW. {@see Memberships::transferOwnership()},
+ * {@see Memberships::leave()} and {@see Organizations::archiveAsOwner()} lock the rows they
+ * decide on, bind the organization in their WHERE clauses and write their own audit entries
+ * and webhook events. This class used to do each by hand — two `changeRole()` calls, a
+ * `remove()`, an operator's `archive()` — and wrote a second audit entry for each. What is
+ * left here is only what the framework does not state:
+ *
+ * - the sentence a person is shown ({@see MembershipRefused}), mapped from the framework's
+ *   typed refusal;
+ * - an ENVIRONMENT ADMINISTRATOR re-assigning ownership from outside the organization,
+ *   where there is no outgoing owner to name (the framework's transfer is owner-to-member);
+ * - closing an organization only when its name is typed, and never one that owns
+ *   identity-provider products.
  */
 final readonly class MembershipLifecycle
 {
@@ -45,10 +54,12 @@ final readonly class MembershipLifecycle
     /**
      * Make `$toUserId` the owner.
      *
-     * `$fromUserId` is the owner handing over, who stays on as an admin. Null when an
-     * environment administrator re-assigns ownership from outside the organization — then
-     * EVERY current owner steps down to admin, which is also what tidies an organization
-     * that collected several owners before this rule existed.
+     * `$fromUserId` is the owner handing over, who stays on as an admin — the framework's
+     * {@see Memberships::transferOwnership()}, which audits it as the owner's act. Null when
+     * an environment administrator re-assigns ownership from outside the organization —
+     * then EVERY current owner steps down to admin, which is also what tidies an
+     * organization that collected several owners before this rule existed, and gives one
+     * this console created with no owner its first.
      *
      * @throws MembershipRefused
      */
@@ -56,39 +67,61 @@ final readonly class MembershipLifecycle
     {
         $target = $this->memberships->of($organizationId, $toUserId) ?? throw MembershipRefused::notAMember();
 
-        if ($fromUserId !== null && $this->memberships->of($organizationId, $fromUserId)?->role !== MembershipRole::Owner) {
-            throw MembershipRefused::notTheOwner();
+        if ($fromUserId !== null) {
+            try {
+                $this->memberships->transferOwnership($organizationId, $fromUserId, $toUserId);
+            } catch (OwnershipTransferRefused $refused) {
+                throw match ($refused->reason) {
+                    OwnershipTransferRefusal::NotOwner => MembershipRefused::notTheOwner(),
+                    OwnershipTransferRefusal::TargetNotMember => MembershipRefused::notAMember(),
+                    OwnershipTransferRefusal::TargetNotActive => MembershipRefused::notActive(),
+                    OwnershipTransferRefusal::SameMember => MembershipRefused::alreadyOwner(),
+                };
+            }
+
+            return;
         }
 
-        $outgoing = $fromUserId !== null
-            ? [$fromUserId]
-            : $this->memberships->forOrganization($organizationId)
-                ->filter(fn (Membership $m): bool => $m->role === MembershipRole::Owner && $m->user_id !== $toUserId)
-                ->pluck('user_id')
-                ->values()
-                ->all();
+        // The same rule the framework's transfer holds to: an invitation nobody accepted,
+        // or a suspended member, cannot be handed an organization.
+        if ($this->memberships->activeRole($organizationId, $toUserId) === null) {
+            throw MembershipRefused::notActive();
+        }
+
+        $outgoing = array_values(array_filter(
+            $this->memberships->owners($organizationId),
+            static fn (string $userId): bool => $userId !== $toUserId,
+        ));
 
         if ($target->role === MembershipRole::Owner && $outgoing === []) {
             throw MembershipRefused::alreadyOwner();
         }
 
+        // Promote first, then demote: {@see Memberships::changeRole()} refuses to demote
+        // the last owner, so the other order would be refused outright.
         DB::transaction(function () use ($organizationId, $toUserId, $outgoing): void {
             $this->memberships->changeRole($organizationId, $toUserId, MembershipRole::Owner);
 
             foreach ($outgoing as $userId) {
-                if (is_string($userId) && $userId !== $toUserId) {
-                    $this->memberships->changeRole($organizationId, $userId, MembershipRole::Admin);
-                }
+                $this->memberships->changeRole($organizationId, $userId, MembershipRole::Admin);
             }
         });
 
-        $this->record('organization.ownership_transferred', $organizationId, $actorId, 'user', $toUserId, [
-            'from' => array_values(array_filter($outgoing, 'is_string')),
-        ]);
+        $this->audit->record(new AuditEvent(
+            action: 'organization.ownership_transferred',
+            actorType: ActorType::OrganizationMember,
+            actorId: $actorId,
+            organizationId: $organizationId,
+            targetType: 'user',
+            targetId: $toUserId,
+            context: ['from' => $outgoing, 'to_user_id' => $toUserId],
+        ));
     }
 
     /**
-     * Leave an organization of one's own accord.
+     * Leave an organization of one's own accord — {@see Memberships::leave()}, which drops
+     * the person's grants with the membership and audits `organization.member_removed`
+     * with `reason: left`, attributed to them.
      *
      * Refused for the last owner, with the way out named: an organization with no owner has
      * nobody who can hand it over or close it, so the owner transfers first or deletes it.
@@ -97,25 +130,26 @@ final readonly class MembershipLifecycle
      */
     public function leave(string $organizationId, string $userId): void
     {
+        // The framework's leave is idempotent — right for a retried API call, wrong for a
+        // button that should say why nothing happened.
         if ($this->memberships->of($organizationId, $userId) === null) {
             throw MembershipRefused::notAMember();
         }
 
         try {
-            $this->memberships->remove($organizationId, $userId);
+            $this->memberships->leave($organizationId, $userId);
         } catch (LastOwner) {
             throw MembershipRefused::lastOwner();
         }
-
-        $this->record('organization.member_left', $organizationId, $userId, 'user', $userId);
     }
 
     /**
      * Close an organization — its OWNER's decision, confirmed by typing its name.
      *
-     * Archived rather than erased ({@see Organizations::archive()}): the rows stay for the
-     * audit trail and any regulatory hold, and every member loses access at once, exactly as
-     * when an environment administrator deletes it.
+     * Archived rather than erased ({@see Organizations::archiveAsOwner()}): the rows stay for
+     * the audit trail and any regulatory hold, and every member loses access at once. The
+     * framework re-checks the active owner membership under a row lock, so a transfer
+     * racing this cannot close an organization its sender no longer owns.
      *
      * An organization that owns identity-provider PRODUCTS is a customer of this platform,
      * with projects, environments and a bill hanging off it; closing one of those is not a
@@ -127,7 +161,8 @@ final readonly class MembershipLifecycle
     {
         $organization = $this->organizations->find($organizationId) ?? throw MembershipRefused::notAMember();
 
-        if ($this->memberships->of($organizationId, $ownerId)?->role !== MembershipRole::Owner) {
+        // Asked before the name, so a non-owner is told the rule rather than a typo.
+        if ($this->memberships->activeRole($organizationId, $ownerId) !== MembershipRole::Owner) {
             throw MembershipRefused::notTheOwner();
         }
 
@@ -143,22 +178,10 @@ final readonly class MembershipLifecycle
             throw MembershipRefused::ownsProducts();
         }
 
-        return $this->organizations->archive($organizationId, $ownerId);
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function record(string $action, string $organizationId, ?string $actorId, string $targetType, string $targetId, array $context = []): void
-    {
-        $this->audit->record(new AuditEvent(
-            action: $action,
-            actorType: ActorType::User,
-            actorId: $actorId,
-            organizationId: $organizationId,
-            targetType: $targetType,
-            targetId: $targetId,
-            context: $context,
-        ));
+        try {
+            return $this->organizations->archiveAsOwner($organizationId, $ownerId);
+        } catch (NotOrganizationOwner) {
+            throw MembershipRefused::notTheOwner();
+        }
     }
 }
