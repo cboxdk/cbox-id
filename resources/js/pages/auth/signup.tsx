@@ -9,13 +9,15 @@ import { register } from '@routes/signup';
 type Props = PageProps<{
     /** On the platform root this mints the signer's OWN identity platform. */
     createsIdp: boolean;
+    /** The app an authorization is waiting to return to, when signing up for one. */
+    forApp: string | null;
     /** Empty when Turnstile is not configured, and then nothing is ever fetched from it. */
     turnstileSiteKey: string;
     /** Stamped by the server: a timestamp the client invents measures nothing. */
     renderedAt: number;
 }>;
 
-export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Props) {
+export default function Signup({ createsIdp, forApp, turnstileSiteKey, renderedAt }: Props) {
     // Set once the risk scorer has asked THIS submission to be challenged, and gone
     // again on the next page. The overwhelming majority never see a CAPTCHA at all.
     const challenged = usePage().flash.challenged === true;
@@ -37,12 +39,18 @@ export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Pro
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {createsIdp ? 'Create your workspace' : 'Create your organization'}
+                {createsIdp
+                    ? 'Create your workspace'
+                    : forApp !== null
+                      ? 'Create your account'
+                      : 'Create your organization'}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {createsIdp
                     ? 'A workspace for your company, and your own hosted identity provider — SSO, users and sign-in you fully control, live in a minute.'
-                    : 'Set up Cbox ID for your team in under a minute.'}
+                    : forApp !== null
+                      ? `Sign up for ${forApp}. You will be the owner of your team, and can invite people once you are in.`
+                      : 'Set up Cbox ID for your team in under a minute.'}
             </p>
 
             <form
@@ -70,7 +78,13 @@ export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Pro
                 </div>
 
                 <Field
-                    label={createsIdp ? 'Workspace name' : 'Organization name'}
+                    label={
+                        createsIdp
+                            ? 'Workspace name'
+                            : forApp !== null
+                              ? 'Team or company name'
+                              : 'Organization name'
+                    }
                     error={form.errors.organization}
                 >
                     <Input
@@ -144,7 +158,11 @@ export default function Signup({ createsIdp, turnstileSiteKey, renderedAt }: Pro
                     className="w-full"
                     loading={form.processing}
                 >
-                    {createsIdp ? 'Create workspace' : 'Create organization'}
+                    {createsIdp
+                        ? 'Create workspace'
+                        : forApp !== null
+                          ? 'Create account and continue'
+                          : 'Create organization'}
                 </Button>
             </form>
 

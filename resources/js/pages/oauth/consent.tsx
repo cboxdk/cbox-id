@@ -13,6 +13,8 @@ type Props = PageProps<{
     error?: string;
     client?: { name: string; owner: string };
     me?: { name: string; email: string | null; initial: string };
+    /** The organization the app will see this person in, when there is one. */
+    organization?: string | null;
     scopes?: ScopeRow[];
     redirectHost?: string | null;
     approveHref?: string;
@@ -30,6 +32,7 @@ export default function Consent({
     error,
     client,
     me,
+    organization,
     scopes = NO_SCOPES,
     redirectHost,
     approveHref,
@@ -43,6 +46,7 @@ export default function Consent({
         <Authorize
             client={client}
             me={me}
+            organization={organization ?? null}
             scopes={scopes}
             redirectHost={redirectHost ?? null}
             approveHref={approveHref ?? ''}
@@ -80,6 +84,7 @@ function Failure({ message }: { message: string }) {
 function Authorize({
     client,
     me,
+    organization,
     scopes,
     redirectHost,
     approveHref,
@@ -87,6 +92,7 @@ function Authorize({
 }: {
     client: NonNullable<Props['client']>;
     me: NonNullable<Props['me']>;
+    organization: string | null;
     scopes: ScopeRow[];
     redirectHost: string | null;
     approveHref: string;
@@ -146,6 +152,15 @@ function Authorize({
                     <p className="text-xs truncate" style={{ color: 'var(--muted-foreground)' }}>
                         {me.email}
                     </p>
+                    {/*
+                        WHICH ORGANIZATION. The app's tokens carry this organization's roles,
+                        so somebody in several is agreeing to something different in each.
+                    */}
+                    {organization !== null && (
+                        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--muted)' }}>
+                            In <b>{organization}</b>
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -192,8 +207,8 @@ function Authorize({
 
             {redirectHost !== null && (
                 <p className="mt-6 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    You&rsquo;ll be redirected to <span className="mono">{redirectHost}</span>{' '}
-                    after authorizing.
+                    You&rsquo;ll be redirected to <span className="mono">{redirectHost}</span> after
+                    authorizing.
                 </p>
             )}
         </div>

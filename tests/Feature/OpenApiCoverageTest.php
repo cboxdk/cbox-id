@@ -131,6 +131,15 @@ function undocumentedByDesign(): array
          */
         'POST /oauth/authorize/{authorization}/approve',
         'POST /oauth/authorize/{authorization}/deny',
+        // The hosted organization steps and the consent screen they lead back to — pages
+        // of that same screen, for the same reason: a relying party asks for them with
+        // `prompt=select_organization` / `create_organization` on /oauth/authorize and
+        // never calls them itself.
+        'GET /oauth/authorize/{authorization}',
+        'GET /oauth/authorize/{authorization}/organization',
+        'POST /oauth/authorize/{authorization}/organization',
+        'GET /oauth/authorize/{authorization}/organization/new',
+        'POST /oauth/authorize/{authorization}/organization/new',
         'POST /oauth/backchannel_authentication',
         'POST /oauth/decisions',
         'POST /oauth/device_authorization',

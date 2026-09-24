@@ -13,9 +13,11 @@ use Symfony\Component\HttpFoundation\Response;
  * Which SURFACES exist on this host, enforced with a 404 — the wrong plane on a host does
  * not merely refuse, it is absent:
  *
- *  - `plane:account` — the ACCOUNT/buyer plane (cboxid.com): sign up / manage the
- *    account, its environments, billing and keys. Served ONLY on the platform-root
- *    (is_default) host.
+ *  - `plane:signup` — `/signup`. On the platform root (cboxid.com) it is "buy an identity
+ *    platform"; on a tenant host it is that environment's own self-service sign-up, open
+ *    only while the environment's switch is on (SignupPolicy decides that, not this gate).
+ *    It was `plane:account` — root only — which is why every tenant's sign-in page linked
+ *    to a 404. `account` had no other route left, so the name went with it.
  *  - `plane:console` — the sign-in door and the subject console behind it. Served on
  *    EVERY host this deployment answers on, the platform root included: the root is a
  *    tenant whose subjects sign in and administer their organizations exactly as any
@@ -58,7 +60,7 @@ final class EnforcePlane
      *
      * @var list<string>
      */
-    private const PLANES = ['account', 'console', 'issuer', 'first-party', 'keys', 'environment', 'operator'];
+    private const PLANES = ['signup', 'console', 'issuer', 'first-party', 'keys', 'environment', 'operator'];
 
     /**
      * Where a client identifier is found on the endpoints carrying `plane:first-party`.
@@ -91,7 +93,11 @@ final class EnforcePlane
         }
 
         $allowed = match ($plane) {
-            'account' => $this->planes->onAccountPlane(),
+            // Signup: the platform root's "buy an identity platform", and on a tenant
+            // environment the vendor's own self-service sign-up. The page is served on both;
+            // whether a tenant's is OPEN is the environment's switch, which SignupPolicy
+            // reads — a host question here, a setting question there.
+            'signup' => $this->planes->servesSignup(),
             // A HOST question — the only one of the four that has to be, because
             // SetEnvironment answers an unmapped name with the platform root, so the
             // CONTEXT cannot tell `cboxid.com` from `anything.invalid`. Serving a sign-in

@@ -19,5 +19,6 @@ For the fast path, see the top-level [Quickstart](../quickstart.md). For product
 hardening, see [Deployment](../operations/deployment.md).
 - [Integrate your app](integrate-your-app.md) — where a `client_id` comes from: register an application, copy its credentials, point an SDK at them.
 - [Run your tenancy from your backend](management-api.md) — the environment management API: teams with owners, members, invitations with your app's roles, staff roles, apps, APIs and support sessions.
+- [Organizations in your app](organizations-in-your-app.md) — ask for an organization, let people pick, switch or create one, and let strangers sign themselves up.
 - [Sign in from a CLI](sign-in-from-a-cli.md) — the device grant, for a terminal, a CI job or anything without a browser of its own.
 - [Let your customers create API keys](let-your-customers-create-api-keys.md) — keys for your own app's API, created on a hosted page and verified with your app's credentials.

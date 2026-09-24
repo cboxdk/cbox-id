@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Http\ApiRateLimiters;
+use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
+use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Listeners\SuppressSandboxMail;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Console\ConsoleScope;
@@ -13,6 +15,8 @@ use App\Platform\Health\ConsoleParityHealthCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\OrganizationApiContext;
 use Cbox\Dns\Dns;
+use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
+use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
@@ -62,6 +66,11 @@ class AppServiceProvider extends ServiceProvider
         // organization per request, and a singleton would carry one administrator's
         // choice into the next request on a long-lived worker.
         $this->app->scoped(ConsoleScope::class);
+
+        // Discovery, plus what THIS application's `/oauth/authorize` does with `prompt`.
+        // Bound over the framework's controllers so its routes keep their middleware.
+        $this->app->bind(DiscoveryController::class, OpenIdConfigurationController::class);
+        $this->app->bind(AuthorizationServerMetadataController::class, AppAuthorizationServerMetadataController::class);
     }
 
     /**

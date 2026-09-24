@@ -111,6 +111,19 @@ final class PlaneResolver
     }
 
     /**
+     * Whether this host serves the signup pages: the account plane (the root's "create your
+     * identity platform"), or a tenant environment (its own end users signing up).
+     *
+     * Only the ROUTE question. Whether a tenant environment's signup is open is its own
+     * setting, answered by {@see SignupPolicy} — so with the setting off the page explains
+     * that sign-up is by invitation instead of 404ing under a sign-in page that linked to it.
+     */
+    public function servesSignup(): bool
+    {
+        return $this->onAccountPlane() || $this->onTenantEnvironment();
+    }
+
+    /**
      * Whether this host answers AS AN IDENTITY PROVIDER — OIDC discovery and JWKS, the
      * RFC 8414 / RFC 9728 metadata, every `/oauth/*` endpoint, the SAML IdP bindings, SCIM.
      *

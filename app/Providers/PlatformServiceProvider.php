@@ -20,6 +20,8 @@ use App\Platform\Install\EnvFile;
 use App\Platform\Install\FileSetupTokens;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\OrganizationInvitationService;
+use App\Platform\OAuth\AuthorizationOrganizationService;
+use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OpenEntitlements;
 use App\Platform\PlatformSignedInSession;
 use App\Platform\PlatformSignedInSubject;
@@ -174,6 +176,11 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->scoped(OrganizationInvitations::class, OrganizationInvitationService::class);
         $this->app->scoped(StaffRoles::class, ConsoleStaffRoles::class);
         $this->app->scoped(SupportAccess::class, ConsoleSupportAccess::class);
+
+        // Which organizations an authorization may be bound to — the `organization`
+        // parameter, the hosted picker and the hosted create step all ask this one
+        // service. Scoped for the same reason: it reads the request's environment.
+        $this->app->scoped(AuthorizationOrganizations::class, AuthorizationOrganizationService::class);
 
         // The setup token lives on the LOCAL disk explicitly, not on the default one: a
         // deployment that points `FILESYSTEM_DISK` at S3 would otherwise publish its

@@ -7,13 +7,20 @@ namespace App\Http\Controllers\Console;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
+use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\CurrentEnvironment;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\OrganizationActivity;
+use App\Platform\SelfServiceSignup;
+use App\Platform\SignupPolicy;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -110,7 +117,53 @@ final readonly class AuthPolicyController extends ConsoleController
             // Both writes, resolved by the server: one controller serves two route names.
             'saveHref' => $this->url('auth-policy.update'),
             'inheritHref' => $this->url('auth-policy.inherit'),
+            'selfServiceSignup' => $onEnvironmentPlane ? $this->selfServiceProps() : null,
         ]);
+    }
+
+    /**
+     * `PUT /admin/sign-in-rules/self-service-signup` — the environment's own "let people
+     * sign themselves up" switch ({@see SelfServiceSignup}).
+     *
+     * Environment plane only. It decides who may create an account in the whole
+     * environment — every organization in it included — so an organization administrator
+     * has no say in it, and its arrival from the other plane is refused rather than
+     * quietly applied to the environment anyway.
+     */
+    public function selfServiceSignup(
+        SaveSelfServiceSignupRequest $request,
+        SelfServiceSignup $selfService,
+        OrganizationActivity $activity,
+    ): RedirectResponse {
+        $this->scope->assertMayAdministerEnvironment();
+
+        $environment = $this->currentEnvironment();
+
+        abort_if($environment === null, 404);
+
+        // Where the change is recorded: the workspace whose membership opened this
+        // console, as every other environment-plane write records it. Resolved before the
+        // write, so there is no path that changes the door and then has nowhere to say so.
+        $auditScope = app(EnvironmentAdminAuth::class)->membership()?->organization_id;
+
+        abort_unless(is_string($auditScope) && $auditScope !== '', 403);
+
+        $enabled = $request->enabled();
+
+        if ($selfService->set($environment, $enabled)) {
+            $activity->record(
+                $auditScope,
+                $enabled ? 'environment.self_service_signup_enabled' : 'environment.self_service_signup_disabled',
+                $this->scope->actorId(),
+                targetType: 'environment',
+                targetId: $environment->id,
+                request: $request,
+            );
+        }
+
+        return back()->with('status', $enabled
+            ? 'Self-service sign-up is on. People can create an account and their own organization.'
+            : 'Self-service sign-up is off. People join by invitation.');
     }
 
     public function update(SaveAuthPolicyRequest $request, AuthPolicies $policies): RedirectResponse
@@ -275,6 +328,36 @@ final readonly class AuthPolicyController extends ConsoleController
         $environment = app(CurrentEnvironment::class)->get();
 
         return $environment === null ? 'this environment' : $environment->name;
+    }
+
+    /**
+     * The switch as the page draws it.
+     *
+     * `decidedHere` is false on a single-tenant install, where sign-up follows the
+     * deployment's `CBOX_ID_SIGNUP_MODE` and the switch would change nothing — so the page
+     * says what does decide it instead of drawing a control that is not connected to
+     * anything.
+     *
+     * @return array{decidedHere: bool, enabled: bool, open: bool, mode: string, href: string}
+     */
+    private function selfServiceProps(): array
+    {
+        $policy = app(SignupPolicy::class);
+
+        return [
+            'decidedHere' => $policy->decidedByEnvironment(),
+            'enabled' => SelfServiceSignup::enabledFor($this->currentEnvironment()),
+            'open' => $policy->isOpen(),
+            'mode' => $policy->mode(),
+            'href' => $this->url('auth-policy.self-service-signup'),
+        ];
+    }
+
+    private function currentEnvironment(): ?Environment
+    {
+        $key = app(EnvironmentContext::class)->current()?->environmentKey();
+
+        return $key === null ? null : Environment::query()->find($key);
     }
 
     private function onEnvironmentPlane(): bool
