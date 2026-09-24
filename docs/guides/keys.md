@@ -23,10 +23,13 @@ App credentials (a client ID and secret) are not here. They belong to the app an
 
 ## Management keys
 
-A management key (`cbid_env_…`) lets your own backend create and manage organizations
-and users in **one environment**. It carries explicit **scopes** rather than a role, and
-read never implies write. The form opens with read-only scopes ticked; you opt in to each
-write scope yourself, and the form marks which scopes write.
+A management key (`cbid_env_…`) lets your own backend run the tenancy of **one
+environment**: organizations and their owners, users, members, invitations, roles, apps,
+APIs, your customers' API keys and support sessions. It carries explicit **scopes** rather
+than a role, and read never implies write. The form opens with read-only scopes ticked;
+you opt in to each write scope yourself, and the form marks which scopes write. The form
+offers a scope only when an endpoint uses it. What each endpoint does is in
+[Run your tenancy from your backend](../getting-started/management-api.md).
 
 You can create one from either console:
 
@@ -107,6 +110,8 @@ Creating and revoking management and workspace keys is recorded on the
 
 ## Related
 
+- [Run your tenancy from your backend](../getting-started/management-api.md): what a
+  management key can do, endpoint by endpoint.
 - [Apps](apps-and-api-keys.md): client IDs and secrets for apps that sign people in.
 - [Workspaces & organizations](../core-concepts/workspaces-and-organizations.md): which
   console you are in.

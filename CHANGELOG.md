@@ -90,6 +90,33 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **The environment management API runs a whole tenancy, not just orgs and users.** An
+  app's backend could create an organization and a user and nothing else: no owner, no
+  members, no invitations, no roles. New endpoints, each behind its own scope (and each
+  scope now offered on the Keys page, which lists a scope only once a route needs it):
+  `POST /v1/organizations` with `owner_user_id` and `parent_id` (and an optional slug),
+  `PATCH` (through `Organizations::update()`, so `organization.updated` fires) and `DELETE`
+  (archive); members (`GET|POST`, `PATCH|DELETE …/members/{userId}`) and
+  `transfer-ownership`; invitations with roles, `client_id`, `return_to` and
+  `inviter_name`, re-send and withdraw, through the same `OrganizationInvitations` service
+  as the consoles; a member's roles in one organization (`GET`, `PUT|DELETE
+  …/roles/{roleId}`); `GET /v1/roles`; staff grants everywhere
+  (`/v1/users/{id}/environment-roles/{roleId}`); apps (list, register from a blueprint or
+  a short form, export a blueprint); APIs (CRUD); customers' API keys per organization and
+  revoke; and `POST /v1/support-sessions`. A role can be named by your manifest `key` with
+  `client_id`. The key acts with the environment's authority, so it may grant a staff role
+  inside one organization; the tenant plane still cannot, and an invitation from the API
+  refuses one rather than dropping it. Documented in `environment.yaml` and
+  [Run your tenancy from your backend](docs/getting-started/management-api.md).
+- **What a management key does is recorded as the key's act.** The framework services
+  behind the API wrote most entries with no actor, so an organization provisioned by a
+  vendor's backend looked like it made itself. While a key is on the request, an entry
+  with no actor (or with the key's id) is `actor_type: service` with the key's id, every
+  entry carries `context.environment_api_key`, and the activity log names the key.
+- **`POST /oauth/api-keys/verify` is in the OpenAPI document**, under its own server (it
+  is served at the host's root). The spec gates read a path item's `servers`, so its
+  response is checked against the schema like every `/api/v1` one.
+
 - **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
   approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated
   logout without a verifiable `id_token_hint` ends this browser's session and tells its

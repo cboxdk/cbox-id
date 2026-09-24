@@ -179,7 +179,7 @@ enum HelpTopic: string
 
             self::Team => 'Everyone who administers this workspace, the built-in role each one holds (Owner, Admin, Developer, Member or Viewer) and which environments they can reach. Invite people by email, and give each person only the environments their job needs.',
 
-            self::Keys => 'The keys your own code presents to Cbox ID, one tab per kind. A management key lets your backend create organizations and users in one environment, a workspace key calls the workspace API with a built-in role, and a frontend key goes into a browser app and works only from the origins you allow. Management and workspace keys are shown once, so copy them when you create them, and revoke one the moment it leaks.',
+            self::Keys => 'The keys your own code presents to Cbox ID, one tab per kind. A management key lets your backend run one environment\'s organizations, members, invitations, roles and apps, a workspace key calls the workspace API with a built-in role, and a frontend key goes into a browser app and works only from the origins you allow. Management and workspace keys are shown once, so copy them when you create them, and revoke one the moment it leaks.',
 
             self::EnvironmentDomains => 'Serves an environment\'s identity endpoints on a domain you own, such as login.example.com, instead of ours. You prove the domain is yours with a DNS TXT record; set one up when your people should only ever see your own address while they sign in.',
 
