@@ -213,8 +213,25 @@ it('draws no staff-only role on the environment console\'s invite form, and does
     expect($invite)->toContain('Approver')
         ->and($invite)->not->toContain('Vendor support');
 
+    // Offered on the add-member form, and marked for what it is — in the Staff page's words.
     $page->assertSee('Vendor support')
+        ->assertSee('Staff-only')
+        ->assertSee('this organization\'s admins can\'t see or grant it')
         ->screenshot(filename: 'environment-organization-staff-roles');
+
+    // Never tagged onto an ordinary role.
+    $approver = (string) $page->script('Array.from(document.querySelectorAll(".cbx-check-label")).find((l) => l.textContent === "Approver")?.parentElement?.innerText');
+
+    expect($approver)->not->toContain('Staff-only');
+
+    visit('/admin/organizations/'.$org->id)->inDarkMode()
+        ->assertSee('Staff-only')
+        ->screenshot(filename: 'environment-organization-staff-roles-dark');
+
+    visit('/admin/organizations/'.$org->id)->resize(375, 812)
+        ->assertSee('Staff-only')
+        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+        ->screenshot(filename: 'environment-organization-staff-roles-mobile');
 })->group('a11y');
 
 it('draws the same invite form for a customer\'s administrators', function (): void {

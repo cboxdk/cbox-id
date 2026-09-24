@@ -11,6 +11,7 @@
  */
 export { type AppApiKey, AppApiKeyList } from './AppApiKeyList';
 export { Avatar } from './Avatar';
+export { AccessRoleHint, type AccessRoleOption } from './AccessRoleHint';
 export { Badge, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { Checkbox } from './Checkbox';

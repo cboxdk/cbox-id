@@ -608,6 +608,10 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
                 // Grouped org-wide vs per-app, because "what a person can do" reads
                 // differently depending on which apps it reaches.
                 'app' => $role->client_id === null ? null : ($appNames[$role->client_id] ?? $role->client_id),
+                // A staff role the environment may grant inside one organization; tagged so
+                // it is not mistaken for one of the organization's own. Tenant surfaces
+                // never list it (OrgAccessRoles::tenantAssignable()).
+                'staffOnly' => $role->tenant_assignable === false,
             ];
         }
 

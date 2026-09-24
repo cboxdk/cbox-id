@@ -32,14 +32,11 @@ import {
     Select,
     type SupportSessionRow,
     SupportSessions,
+    AccessRoleHint,
+    type AccessRoleOption,
 } from '@/ui';
 
-interface AccessRole {
-    id: string;
-    name: string;
-    /** The app it is scoped to, or null when it applies across all of them. */
-    app: string | null;
-}
+type AccessRole = AccessRoleOption;
 
 interface Member {
     userId: string;
@@ -511,7 +508,9 @@ function Members({
                                                                     )
                                                                 }
                                                                 label={role.name}
-                                                                hint={role.app ?? 'All apps'}
+                                                                hint={
+                                                                    <AccessRoleHint role={role} />
+                                                                }
                                                             />
                                                         ))}
                                                     </div>
@@ -682,7 +681,7 @@ function AccessRolePicker({
                             )
                         }
                         label={role.name}
-                        hint={role.app ?? 'All apps'}
+                        hint={<AccessRoleHint role={role} />}
                     />
                 ))}
             </div>

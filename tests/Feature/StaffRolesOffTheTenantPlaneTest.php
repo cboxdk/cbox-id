@@ -167,6 +167,28 @@ it('offers the environment console\'s invite form only the roles a tenant could 
         ->and($invitable)->toContain($shared->id);
 });
 
+it('marks a staff role as staff-only wherever the environment console offers one', function (): void {
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Customer', slug: 'customer-staff-tag'));
+    $staff = staffRole();
+    $shared = app(Roles::class)->define(null, 'Approver');
+    $user = app(Subjects::class)->create('grace@customer.test', 'Grace');
+    app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
+
+    $tags = fn (array $roles): array => collect($roles)->pluck('staffOnly', 'id')->all();
+
+    // The organization's page: its add-member picker and every member's roles.
+    $page = test()->get(route('environment.organizations.show', $org->id))->assertOk();
+    expect($tags((array) $page->inertiaProps('accessRoles')))->toMatchArray([$staff->id => true, $shared->id => false]);
+
+    // A user's page: each membership's roles, and the add-to-organization picker.
+    $page = test()->get(route('environment.users.show', ['user' => $user->id, 'org' => $org->id]))->assertOk();
+    expect($tags((array) $page->inertiaProps('memberships.0.accessRoles')))->toMatchArray([$staff->id => true, $shared->id => false]);
+
+    // The tenant plane never lists it at all (the People page test above), so there is
+    // nothing there to tag.
+});
+
 it('does not offer a staff role for a directory group, and refuses it in words when posted', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $directory = app(Directories::class)->register($org->id, 'Okta')->directory;
