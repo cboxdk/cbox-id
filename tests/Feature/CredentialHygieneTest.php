@@ -17,9 +17,11 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Inertia\Support\SessionKey;
@@ -154,30 +156,41 @@ it('does not offer a scope no route requires — reserved, or catalogued ahead o
         ->pluck('value')
         ->all();
 
-    expect($offered)->toBe(['organizations:read', 'organizations:write', 'users:read', 'users:write']);
+    // Every scope the framework offers now has an endpoint here — and nothing reserved.
+    expect($offered)->toBe(EnvironmentApiScope::offerableValues())
+        ->and($offered)->not->toContain('directories:read')
+        ->and($offered)->not->toContain('directories:write');
 
     // And not accepted either: an option the form hides is still POSTable.
     issueEnvironmentKey($environmentId, ['name' => 'Directory sync', 'scopes' => ['directories:write']])
         ->assertSessionHasErrors('scopes.0');
 
     expect(environmentKeyNamed($environmentId, 'Directory sync'))->toBeNull();
-
-    // The framework catalogues `members:read` and friends before this app serves them.
-    issueEnvironmentKey($environmentId, ['name' => 'Roster', 'scopes' => ['members:read']])
-        ->assertSessionHasErrors('scopes.0');
 });
 
-it('offers a scope the release a route requires it, with no second list to edit', function (): void {
+it('offers a scope exactly while a route requires it, with no second list to edit', function (): void {
     ['environmentId' => $environmentId] = aKeyManager();
 
-    Route::get('/v1/_probe-members', fn () => 'ok')->middleware('env.api:members:read');
-    app('router')->getRoutes()->refreshNameLookups();
+    // The release without its support-session endpoint: the scope it needed goes with it.
+    $kept = new RouteCollection;
+
+    foreach (Route::getRoutes()->getRoutes() as $route) {
+        if (! in_array('env.api:support:write', $route->middleware(), true)) {
+            $kept->add($route);
+        }
+    }
+
+    Route::setRoutes($kept);
 
     $offered = collect((array) $this->get(route('keys'))->assertOk()->inertiaProps('scopes'))
         ->pluck('value')
         ->all();
 
-    expect($offered)->toBe(['organizations:read', 'organizations:write', 'users:read', 'users:write', 'members:read']);
+    expect($offered)->not->toContain('support:write')
+        ->and($offered)->toContain('members:read');
+
+    issueEnvironmentKey($environmentId, ['name' => 'Support', 'scopes' => ['support:write']])
+        ->assertSessionHasErrors('scopes.0');
 
     issueEnvironmentKey($environmentId, ['name' => 'Roster', 'scopes' => ['members:read']])
         ->assertSessionHasNoErrors();
