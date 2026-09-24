@@ -40,7 +40,7 @@ final class ApiController extends Controller
         [$limit, $after] = $this->cursor($request);
 
         return $this->page(
-            $this->pageOf(Api::query(), $limit, $after)->get(),
+            $this->pageOf(Api::query()->with('scopes'), $limit, $after)->get(),
             $limit,
             ApiResource::from(...),
         );

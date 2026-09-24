@@ -25,7 +25,8 @@ final class ApiResource
             'name' => $api->name,
             'organization_id' => $api->organization_id,
             'client_id' => $api->client_id,
-            'scopes' => $api->scopes()->orderBy('key')->get()->map(fn (ApiScope $scope): array => [
+            // The relation orders by key; a list eager-loads it, so a page is two queries.
+            'scopes' => $api->scopes->map(fn (ApiScope $scope): array => [
                 'key' => $scope->key,
                 'description' => $scope->description,
                 'tenant_requestable' => $scope->tenant_requestable,
