@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Invitations\Exceptions;
 
 use App\Platform\Invitations\Enums\InvitationRefusalReason;
+use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use RuntimeException;
@@ -63,6 +64,16 @@ final class InvitationRefused extends RuntimeException
             InvitationRefusalReason::RoleNotOffered,
             OrgRoles::message().' Ownership is handed over with "Transfer ownership", never by invitation.',
         );
+    }
+
+    /**
+     * An access role this organization does not offer — staff-only, another organization's,
+     * or no role at all. Refused rather than dropped: an invitation sent without the role
+     * the administrator ticked is one they believe carries it.
+     */
+    public static function accessRoleNotOffered(): self
+    {
+        return new self(InvitationRefusalReason::AccessRoleNotOffered, OrgAccessRoles::NOT_OFFERED);
     }
 
     public static function accessRoleConflict(string $message): self

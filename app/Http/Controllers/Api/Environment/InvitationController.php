@@ -182,6 +182,7 @@ final class InvitationController extends Controller
             InvitationRefusalReason::TooSoon => 429,
             InvitationRefusalReason::MailFailed => 503,
             InvitationRefusalReason::RoleNotOffered,
+            InvitationRefusalReason::AccessRoleNotOffered,
             InvitationRefusalReason::ReturnWithoutApp,
             InvitationRefusalReason::UnknownApp,
             InvitationRefusalReason::ReturnToMalformed,

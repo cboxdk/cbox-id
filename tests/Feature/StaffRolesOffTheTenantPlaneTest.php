@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\InvitationRoleGrant;
 use App\Platform\GrantAccessRole;
+use App\Platform\OrgAccessRoles;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Exceptions\RoleNotTenantAssignable;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
@@ -16,8 +17,10 @@ use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Invitation;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,10 +79,28 @@ it('refuses a staff role posted to the People page by id', function (): void {
     app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
     $staff = staffRole();
 
-    // The picker never drew it; the id is still POSTable.
-    setDirectoryAccessRole($member->id, $staff->id, true)->assertRedirect(route('directory.members'));
+    // The picker never drew it; the id is still POSTable — and the answer is a refusal
+    // the page shows, not a redirect that reads as done.
+    setDirectoryAccessRole($member->id, $staff->id, true)
+        ->assertRedirect(route('directory.members'))
+        ->assertSessionHasErrors(['role' => OrgAccessRoles::NOT_OFFERED]);
 
     expect(holds($org->id, $member->id, $staff->id))->toBeFalse();
+
+    // The People page reads that error bag into its alert.
+    test()->get(route('directory.members'))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('errors.role', OrgAccessRoles::NOT_OFFERED));
+})->group('security');
+
+it('answers a staff role and a role that does not exist with the same sentence', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $member = app(Subjects::class)->create('dana@acme.test', 'Dana');
+    app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
+
+    // Telling the two apart would let a tenant administrator map the vendor's staff roles
+    // one id at a time; the framework keeps the difference in its exception, for the logs.
+    setDirectoryAccessRole($member->id, staffRole()->id, true)->assertSessionHasErrors(['role' => OrgAccessRoles::NOT_OFFERED]);
+    setDirectoryAccessRole($member->id, 'no-such-role', true)->assertSessionHasErrors(['role' => OrgAccessRoles::NOT_OFFERED]);
 })->group('security');
 
 it('refuses a staff role at the grant itself, with the framework\'s reason', function (): void {
@@ -119,11 +140,37 @@ it('does not park a staff role on an invitation, from either console', function 
     $staff = staffRole();
     $own = app(Roles::class)->define($org->id, 'Editor');
 
-    inviteToDirectory(['accessRoles' => [$staff->id, $own->id]])->assertSessionHasNoErrors();
+    // Refused, not filtered: an invitation sent without the role the administrator asked
+    // for, under "Invitation sent", is one they believe carries it.
+    inviteToDirectory(['accessRoles' => [$staff->id, $own->id]])
+        ->assertSessionHasErrors(['accessRoles' => OrgAccessRoles::NOT_OFFERED])
+        ->assertSessionMissing('status');
 
-    $parked = InvitationRoleGrant::query()->where('organization_id', $org->id)->pluck('role_id')->all();
+    expect(InvitationRoleGrant::query()->where('organization_id', $org->id)->exists())->toBeFalse()
+        ->and(Invitation::query()->where('organization_id', $org->id)->exists())->toBeFalse();
+    Mail::assertNothingSent();
 
-    expect($parked)->toBe([$own->id]);
+    // The same invitation without it goes, carrying exactly what was asked.
+    inviteToDirectory(['accessRoles' => [$own->id]])->assertSessionHasNoErrors();
+
+    expect(InvitationRoleGrant::query()->where('organization_id', $org->id)->pluck('role_id')->all())->toBe([$own->id]);
+})->group('security');
+
+it('refuses a staff role on an invitation from the environment console too', function (): void {
+    Mail::fake();
+    crudSetup();
+    $org = app(Organizations::class)->create(new NewOrganization(name: 'Customer', slug: 'customer-invite-staff'));
+    $staff = staffRole();
+
+    test()->from(route('environment.organizations.show', $org->id))
+        ->post(route('environment.organizations.invitations.store', $org->id), [
+            'email' => 'newbie@customer.test',
+            'role' => 'member',
+            'accessRoles' => [$staff->id],
+        ])
+        ->assertSessionHasErrors(['accessRoles' => OrgAccessRoles::NOT_OFFERED]);
+
+    expect(Invitation::query()->where('organization_id', $org->id)->exists())->toBeFalse();
 })->group('security');
 
 it('withholds a parked role that became staff-only before the invitation was accepted', function (): void {

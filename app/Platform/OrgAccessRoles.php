@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Exceptions\RoleNotTenantAssignable;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -34,6 +35,18 @@ use Illuminate\Support\Facades\DB;
  */
 final class OrgAccessRoles
 {
+    /**
+     * What a tenant surface says when a posted role id is not one it offers.
+     *
+     * ONE sentence for a staff-only role, another organization's role and an id that
+     * matches nothing. The framework keeps those apart only in its exception class
+     * ({@see RoleNotTenantAssignable}), for the logs: told "that one is staff-only", a
+     * tenant administrator could probe the vendor's role catalog one id at a time. What
+     * they must be told is that the write did not happen — a redirect that says nothing
+     * reads as success.
+     */
+    public const NOT_OFFERED = 'That access role is not offered in this organization. Choose one from the list.';
+
     public function __construct(private readonly Roles $roles) {}
 
     /**

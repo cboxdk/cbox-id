@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\InvitationMail;
 use App\Models\InvitationRoleGrant;
 use App\Platform\CurrentUser;
+use App\Platform\OrgAccessRoles;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Models\User as Subject;
 use Cbox\Id\Identity\NeverBreachedCheck;
@@ -300,14 +301,25 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
         ->and($offered)->toContain($roles['editor']['id'], $roles['viewer']['id'])
         ->and($offered)->not->toContain($roles['support']['id']);
 
-    // Posted anyway, by id: the staff role is not parked on the invitation.
-    test()->from(route('directory.members'))->post(route('directory.members.invite'), [
+    $invite = fn (array $accessRoles): TestResponse => test()->from(route('directory.members'))->post(route('directory.members.invite'), [
         'email' => 'bo@nordic-survey.test',
         'role' => 'member',
-        'accessRoles' => [$roles['editor']['id'], $roles['support']['id']],
+        'accessRoles' => $accessRoles,
         'client_id' => $clientId,
         'return_to' => CHAIN_APP_ORIGIN.'/welcome?team=hansen',
-    ])->assertSessionHasNoErrors()->assertSessionHas('status', 'Invitation sent to bo@nordic-survey.test.');
+    ]);
+
+    // Posted anyway, by id: the staff role is refused — out loud, against the field the
+    // form draws, and nothing is sent.
+    $invite([$roles['editor']['id'], $roles['support']['id']])
+        ->assertSessionHasErrors(['accessRoles' => OrgAccessRoles::NOT_OFFERED])
+        ->assertSessionMissing('status');
+
+    expect(Invitation::query()->where('email', 'bo@nordic-survey.test')->exists())->toBeFalse();
+
+    $invite([$roles['editor']['id']])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status', 'Invitation sent to bo@nordic-survey.test.');
 
     $invitation = Invitation::query()->where('email', 'bo@nordic-survey.test')->sole();
 
@@ -512,12 +524,14 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
     // request, carries nothing — it was only ever as strong as its holder.
     chainBrowser('anna');
 
-    // (The staff role cannot be handed to him from here either, posted by id: he still
-    // holds exactly the one role his invitation carried.)
+    // (The staff role cannot be handed to him from here either, posted by id — refused
+    // with the page's own sentence, and he still holds exactly the one role his
+    // invitation carried.)
     test()->from(route('directory.members'))->post(route('directory.members.access', $bo->id), [
         'role' => $roles['support']['id'],
         'granted' => true,
-    ])->assertRedirect(route('directory.members'));
+    ])->assertRedirect(route('directory.members'))
+        ->assertSessionHasErrors(['role' => OrgAccessRoles::NOT_OFFERED]);
 
     $backend()->getJson("/api/v1/organizations/{$hansen->id}/members/{$bo->id}/roles")
         ->assertOk()

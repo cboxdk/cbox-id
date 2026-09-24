@@ -16,6 +16,7 @@ enum InvitationRefusalReason: string
 {
     case AlreadyMember = 'already_member';
     case RoleNotOffered = 'role_not_offered';
+    case AccessRoleNotOffered = 'access_role_not_offered';
     case AccessRoleConflict = 'access_role_conflict';
     case ReturnWithoutApp = 'return_without_app';
     case UnknownApp = 'unknown_app';
@@ -31,7 +32,7 @@ enum InvitationRefusalReason: string
         return match ($this) {
             self::AlreadyMember, self::MailFailed => 'email',
             self::RoleNotOffered => 'role',
-            self::AccessRoleConflict => 'accessRoles',
+            self::AccessRoleNotOffered, self::AccessRoleConflict => 'accessRoles',
             self::ReturnWithoutApp, self::UnknownApp => 'client_id',
             self::ReturnToMalformed, self::ReturnToNotRegistered => 'return_to',
             self::NotPending, self::TooSoon => 'invitation',

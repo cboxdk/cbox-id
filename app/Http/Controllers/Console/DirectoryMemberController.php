@@ -249,8 +249,14 @@ final readonly class DirectoryMemberController extends ConsoleController
          * excludes another organization's private-app roles. The framework's role service is
          * the backstop; this pair is the gate.
          */
-        if ($memberships->of($organizationId, $member) === null || ! $catalog->isTenantAssignable($organizationId, $roleId)) {
-            return back();
+        if ($memberships->of($organizationId, $member) === null) {
+            return back()->withErrors(['member' => 'That person is not a member of this organization.']);
+        }
+
+        // Said, not swallowed: a bare redirect back reads as "done", and the page then
+        // shows the old state as though the change had been undone behind their back.
+        if (! $catalog->isTenantAssignable($organizationId, $roleId)) {
+            return back()->withErrors(['role' => OrgAccessRoles::NOT_OFFERED]);
         }
 
         if (! $request->boolean('granted')) {

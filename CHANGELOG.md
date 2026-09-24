@@ -408,6 +408,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **A staff-only role posted to an organization's People page was refused in silence.**
+  Granting it by id redirected back with nothing said, and an invitation carrying it was
+  sent — "Invitation sent" — without it. Both now refuse the whole request with "That
+  access role is not offered in this organization", shown on the page (against the invite
+  form's access roles, or in the People page's alert). The same sentence answers another
+  organization's role and an id that matches nothing, so the refusal does not map the
+  vendor's staff roles. The environment API's invitation endpoint reports it as
+  `access_role_not_offered` (422).
 - The "Publish its own manifest" scope described itself with a literal `&amp;`.
 
 - **My account and Switch user in the environment console bounced to the environment's

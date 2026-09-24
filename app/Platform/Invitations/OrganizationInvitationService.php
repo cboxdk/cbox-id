@@ -95,10 +95,10 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             throw InvitationRefused::alreadyMember();
         }
 
-        // Claims until checked: only roles genuinely assignable HERE survive, and the SET is
+        // Claims until checked: every role must be genuinely assignable HERE, and the SET is
         // checked for segregation of duties now, where there is a form to report into —
         // by acceptance time the only place left to refuse is a redirect.
-        $roleIds = $this->assignableSubset($organizationId, $invitation->accessRoleIds);
+        $roleIds = $this->offeredOrRefuse($organizationId, $invitation->accessRoleIds);
         $conflict = $this->sod->refuseSet($organizationId, $roleIds);
 
         if ($conflict !== null) {
@@ -474,11 +474,21 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
     }
 
     /**
+     * The requested roles, each one checked against what this organization offers.
+     *
+     * REFUSED, NOT FILTERED. Dropping the roles that did not qualify sent the invitation
+     * anyway and said "Invitation sent" — so a crafted id was refused in silence, and the
+     * administrator was told the invitation carried what they asked for when it did not.
+     *
      * @param  list<string>  $roleIds
      * @return list<string>
+     *
+     * @throws InvitationRefused
      */
-    private function assignableSubset(string $organizationId, array $roleIds): array
+    private function offeredOrRefuse(string $organizationId, array $roleIds): array
     {
+        $roleIds = array_values(array_unique($roleIds));
+
         if ($roleIds === []) {
             return [];
         }
@@ -489,7 +499,11 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
         // they have joined.
         $assignable = array_filter($this->catalog->tenantAssignable($organizationId)->pluck('id')->all(), 'is_string');
 
-        return array_values(array_unique(array_intersect($roleIds, $assignable)));
+        if (array_diff($roleIds, $assignable) !== []) {
+            throw InvitationRefused::accessRoleNotOffered();
+        }
+
+        return $roleIds;
     }
 
     /**
