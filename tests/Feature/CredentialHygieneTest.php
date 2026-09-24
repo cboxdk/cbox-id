@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\Console\ClientLifecycleAudit;
 use App\Platform\OrganizationActivity;
 use App\Platform\Sudo;
 use Carbon\CarbonImmutable;
@@ -12,7 +11,7 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
-use Cbox\Id\OAuthServer\ValueObjects\ClientSecret;
+use Cbox\Id\OAuthServer\Support\ClientAudit;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -22,6 +21,7 @@ use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
 use Inertia\Support\SessionKey;
 
 /*
@@ -147,7 +147,7 @@ it('shows each environment scope by its label with its key beside it', function 
     ]);
 });
 
-it('does not offer the reserved directory scopes no route requires', function (): void {
+it('does not offer a scope no route requires — reserved, or catalogued ahead of its endpoint', function (): void {
     ['environmentId' => $environmentId] = aKeyManager();
 
     $offered = collect((array) $this->get(route('keys'))->assertOk()->inertiaProps('scopes'))
@@ -161,6 +161,26 @@ it('does not offer the reserved directory scopes no route requires', function ()
         ->assertSessionHasErrors('scopes.0');
 
     expect(environmentKeyNamed($environmentId, 'Directory sync'))->toBeNull();
+
+    // The framework catalogues `members:read` and friends before this app serves them.
+    issueEnvironmentKey($environmentId, ['name' => 'Roster', 'scopes' => ['members:read']])
+        ->assertSessionHasErrors('scopes.0');
+});
+
+it('offers a scope the release a route requires it, with no second list to edit', function (): void {
+    ['environmentId' => $environmentId] = aKeyManager();
+
+    Route::get('/v1/_probe-members', fn () => 'ok')->middleware('env.api:members:read');
+    app('router')->getRoutes()->refreshNameLookups();
+
+    $offered = collect((array) $this->get(route('keys'))->assertOk()->inertiaProps('scopes'))
+        ->pluck('value')
+        ->all();
+
+    expect($offered)->toBe(['organizations:read', 'organizations:write', 'users:read', 'users:write', 'members:read']);
+
+    issueEnvironmentKey($environmentId, ['name' => 'Roster', 'scopes' => ['members:read']])
+        ->assertSessionHasNoErrors();
 });
 
 /*
@@ -329,7 +349,8 @@ it('records renaming the account on the account log, with the name it had', func
 })->group('security');
 
 /**
- * Every console-recorded entry for one app, oldest first.
+ * Every entry for one app, oldest first — the framework's registry writes them now, so
+ * this is also the proof that the console does not write a second copy of any.
  *
  * @return Collection<int, AuditEntry>
  */
@@ -372,25 +393,53 @@ it('records an app being registered, edited, rotated and deleted on its organiza
 
     $entries = appLifecycle($client->client_id);
 
+    // Exactly one entry per act. The console wrote its own `client.*` copy of each of
+    // these until the framework's registry began recording them; both at once is two
+    // lines for one change on the page an administrator reads after an incident.
     expect($entries->pluck('action')->all())->toBe([
-        ClientLifecycleAudit::CREATED,
-        ClientLifecycleAudit::UPDATED,
-        ClientLifecycleAudit::SECRET_ROTATED,
-        ClientLifecycleAudit::DELETED,
+        ClientAudit::CREATED,
+        ClientAudit::UPDATED,
+        ClientAudit::SECRET_ROTATED,
+        ClientAudit::DELETED,
     ]);
 
     foreach ($entries as $entry) {
         // On the owning organization's chain, which is what the activity page filters by,
-        // attributed to the tenant administrator who acted, and marked as the console's so
-        // the framework's own entries can be told apart once it writes them.
+        // and attributed to the tenant administrator who acted — the registry records the
+        // system when a caller does not say who asked.
         expect($entry->organization_id)->toBe($org->id)
             ->and($entry->actor_type)->toBe(ActorType::User)
-            ->and($entry->actor_id)->toBe($ownerId)
-            ->and($entry->context['recorded_by'] ?? null)->toBe('console');
+            ->and($entry->actor_id)->toBe($ownerId);
     }
 
-    expect($entries[1]->context['changed'] ?? null)->toBe(['name']);
+    expect(array_keys((array) ($entries[1]->context['changes'] ?? [])))->toBe(['name']);
 })->group('security');
+
+it('records clearing an app\'s manifest URL as one edit of that app', function (): void {
+    [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+
+    // Where an app's roles come from decides what its tokens carry; the console wrote the
+    // column directly and the change left no line at all.
+    $client = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Billing',
+        type: ClientType::Confidential,
+        redirectUris: ['https://billing.acme.test/callback'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+        organizationId: $org->id,
+        manifestUrl: 'https://billing.acme.test/.well-known/cbox-id.json',
+    ))->client;
+
+    $this->from(route('clients.show', $client->id))
+        ->put(route('clients.manifest', $client->id), ['manifestUrl' => ''])
+        ->assertSessionHasNoErrors();
+
+    $edit = appLifecycle($client->client_id)->where('action', ClientAudit::UPDATED)->sole();
+
+    expect($client->fresh()?->manifest_url)->toBeNull()
+        ->and(array_keys((array) ($edit->context['changes'] ?? [])))->toBe(['manifest_url'])
+        ->and($edit->actor_id)->toBe($ownerId);
+});
 
 it('records an environment administrator acting on an environment-owned app on the system trail', function (): void {
     crudSetup();
@@ -408,10 +457,10 @@ it('records an environment administrator acting on an environment-owned app on t
         ->post(route('environment.clients.rotate', $client->id))
         ->assertSessionHasNoErrors();
 
-    $entry = appLifecycle($client->client_id)->sole();
+    // Registered above by the registry itself, with no actor: that entry is the system's.
+    $entry = appLifecycle($client->client_id)->where('action', ClientAudit::SECRET_ROTATED)->sole();
 
-    expect($entry->action)->toBe(ClientLifecycleAudit::SECRET_ROTATED)
-        ->and($entry->organization_id)->toBeNull()
+    expect($entry->organization_id)->toBeNull()
         ->and($entry->actor_type)->toBe(ActorType::OrganizationMember);
 })->group('security');
 
@@ -419,14 +468,16 @@ it('rotates a secret through the framework\'s own definition of one', function (
     [, $org] = actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
 
-    $client = app(ClientRegistry::class)->register(new NewClient(
+    $registered = app(ClientRegistry::class)->register(new NewClient(
         name: 'Portal',
         type: ClientType::Confidential,
         redirectUris: ['https://portal.acme.test/callback'],
         grantTypes: ['authorization_code'],
         scopes: ['openid'],
         organizationId: $org->id,
-    ))->client;
+    ));
+    $client = $registered->client;
+    $original = (string) $registered->secret;
 
     $this->from(route('clients.show', $client->id))->post(route('clients.rotate', $client->id))
         ->assertSessionHasNoErrors()
@@ -435,10 +486,15 @@ it('rotates a secret through the framework\'s own definition of one', function (
     $flash = session()->get(SessionKey::FLASH_DATA, []);
     $secret = is_array($flash) ? ($flash['revealedSecret'] ?? null) : null;
 
+    $registry = app(ClientRegistry::class);
+    $fresh = $client->fresh() ?? $client;
+
     expect($secret)->toBeString()->toStartWith('csec_')
-        ->and($client->fresh()?->secret_hash)->toBe(ClientSecret::hash((string) $secret))
-        // The registry verifies with the same definition, which is the point of using it.
-        ->and(app(ClientRegistry::class)->verifySecret($client->fresh() ?? $client, (string) $secret))->toBeTrue();
+        ->and($registry->verifySecret($fresh, (string) $secret))->toBeTrue()
+        // A cut-over until the page offers an overlap: the old secret is gone at once, and
+        // the client holds exactly one.
+        ->and($registry->verifySecret($fresh, $original))->toBeFalse()
+        ->and($registry->secrets($fresh))->toHaveCount(1);
 });
 
 /*

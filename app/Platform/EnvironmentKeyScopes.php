@@ -5,31 +5,23 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use Illuminate\Support\Facades\Route as Router;
 
 /**
  * The environment API scopes this deployment OFFERS on a new key.
  *
- * Narrower than the enum, and the gap is the point. `directories:read` and
- * `directories:write` are reserved by the framework and required by no route in
- * `routes/api.php` — so the form ticked a box that granted nothing, and a reader
- * reasonably concluded the key could manage directories over the API. A reserved scope
- * appears here the release its routes do.
- *
- * Exclusion rather than an allow-list, so a scope the framework adds for a route this app
- * serves is offered without a second edit here; a reserved one is named below with the
- * reason it is held back.
+ * The framework's {@see EnvironmentApiScope::offerable()} — which already holds back the
+ * reserved `directories:*` scopes — narrowed once more, to the scopes some route in
+ * `routes/api.php` actually requires (`env.api:<scope>`). The framework catalogues a scope
+ * before every host serves an endpoint for it, and a box that grants nothing is one an
+ * administrator ticks to no effect, then reasonably concludes the key can do something
+ * over the API that it cannot. So a scope appears on the form the moment a route asks for
+ * it, and not before — with no second list here to keep in step.
  */
 final class EnvironmentKeyScopes
 {
-    /**
-     * Reserved by the framework, required by no route.
-     *
-     * @var list<EnvironmentApiScope>
-     */
-    private const array RESERVED = [
-        EnvironmentApiScope::DirectoriesRead,
-        EnvironmentApiScope::DirectoriesWrite,
-    ];
+    /** The middleware alias that names a route's required scope as its parameter. */
+    private const string MIDDLEWARE = 'env.api:';
 
     /**
      * In the enum's order, which pairs each resource's read with its write — the pair a
@@ -40,15 +32,12 @@ final class EnvironmentKeyScopes
      */
     public static function offered(): array
     {
-        $offered = [];
+        $required = self::requiredByARoute();
 
-        foreach (EnvironmentApiScope::cases() as $scope) {
-            if (! in_array($scope, self::RESERVED, true)) {
-                $offered[] = $scope;
-            }
-        }
-
-        return $offered;
+        return array_values(array_filter(
+            EnvironmentApiScope::offerable(),
+            static fn (EnvironmentApiScope $scope): bool => isset($required[$scope->value]),
+        ));
     }
 
     /**
@@ -62,6 +51,26 @@ final class EnvironmentKeyScopes
     /** True for anything that is not `:read` — a key carrying it can change data. */
     public static function writes(EnvironmentApiScope $scope): bool
     {
-        return ! str_ends_with($scope->value, ':read');
+        return $scope->writes();
+    }
+
+    /**
+     * Every scope some registered route requires, as a set.
+     *
+     * @return array<string, true>
+     */
+    private static function requiredByARoute(): array
+    {
+        $required = [];
+
+        foreach (Router::getRoutes()->getRoutes() as $route) {
+            foreach ($route->middleware() as $middleware) {
+                if (str_starts_with($middleware, self::MIDDLEWARE)) {
+                    $required[substr($middleware, strlen(self::MIDDLEWARE))] = true;
+                }
+            }
+        }
+
+        return $required;
     }
 }

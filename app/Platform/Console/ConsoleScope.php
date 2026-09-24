@@ -11,7 +11,9 @@ use App\Platform\EnvironmentSudo;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -493,6 +495,28 @@ class ConsoleScope
     public function actorId(): string
     {
         return $this->environmentAdmin->subjectId() ?? $this->subject->id();
+    }
+
+    /**
+     * Who is acting, in the shape a framework service that audits its own writes takes
+     * ({@see ClientRegistry} and friends).
+     *
+     * By the plane they act from: on the organization plane a tenant's own administrator,
+     * who is a user of this environment; on the environment plane one of the customer's
+     * people, acting above every organization in it. The difference is what an auditor
+     * needs to resolve the id against. Nobody acting is the system, never an empty id.
+     */
+    public function auditActor(): AuditActor
+    {
+        $actorId = $this->actorId();
+
+        if ($actorId === '') {
+            return AuditActor::system();
+        }
+
+        return $this->plane() === ConsolePlane::Organization
+            ? AuditActor::user($actorId)
+            : AuditActor::organizationMember($actorId);
     }
 
     /**
