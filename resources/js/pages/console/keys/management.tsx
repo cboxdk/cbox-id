@@ -1,7 +1,7 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
     Button,
@@ -52,6 +52,7 @@ type Props = PageProps<{
     lifetimes: KeyLifetimeOption[];
     defaultScopes: string[];
     storeHref: string;
+    help: HelpContent;
 }>;
 
 export default function ManagementKeys({
@@ -64,6 +65,7 @@ export default function ManagementKeys({
     lifetimes,
     defaultScopes,
     storeHref,
+    help,
 }: Props) {
     // Shown once: only a hash is stored, and props are written into the browser's history
     // entry, so the plaintext rides the flash channel and nowhere else. The SAME key the
@@ -99,6 +101,7 @@ export default function ManagementKeys({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Keys for an environment's management API — create organizations and users in one environment from your own backend. Each key carries explicit scopes."
                 actions={
                     <Button asChild size="sm" className="shrink-0">

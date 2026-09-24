@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, EmptyState, Field, Icon, Input, PageHeader, Panel, Pill } from '@/ui';
 
 interface OrganizationResult {
@@ -29,9 +29,10 @@ type Props = PageProps<{
     ready: boolean;
     organizations: OrganizationResult[];
     users: UserResult[];
+    help: HelpContent;
 }>;
 
-export default function PlatformSearch({ term, ready, organizations, users }: Props) {
+export default function PlatformSearch({ term, ready, organizations, users, help }: Props) {
     const [query, setQuery] = useState(term);
 
     useEffect(() => {
@@ -54,7 +55,10 @@ export default function PlatformSearch({ term, ready, organizations, users }: Pr
 
     return (
         <>
-            <PageHeader description="Find an organization or a user across every environment — not only the one the console is pointed at." />
+            <PageHeader
+                help={help}
+                description="Find an organization or a user across every environment — not only the one the console is pointed at."
+            />
 
             {/*
                 The results arrive without a page load, so nothing else here tells a

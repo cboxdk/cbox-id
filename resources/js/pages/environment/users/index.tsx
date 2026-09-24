@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, SimplePagination as SimplePaginationState } from '@/types';
+import type { HelpContent, PageProps, SimplePagination as SimplePaginationState } from '@/types';
 import {
     Button,
     EmptyState,
@@ -27,6 +27,7 @@ type Props = PageProps<{
     pagination: SimplePaginationState;
     search: string;
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -53,7 +54,7 @@ function statusTone(status: string): PillTone {
     return status === 'locked' ? 'destructive' : 'success';
 }
 
-export default function UsersIndex({ users, pagination, search, createHref }: Props) {
+export default function UsersIndex({ users, pagination, search, createHref, help }: Props) {
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -75,6 +76,7 @@ export default function UsersIndex({ users, pagination, search, createHref }: Pr
     return (
         <>
             <PageHeader
+                help={help}
                 description="Every end-user identity in this environment."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">

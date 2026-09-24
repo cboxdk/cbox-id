@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\OpenAccessReviewRequest;
 use App\Http\Requests\Console\ReviewAccessItemRequest;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Enums\AccessKind;
@@ -71,6 +73,7 @@ final readonly class AccessReviewController extends ConsoleController
         $campaigns = $query->get();
 
         return $this->page('console/access-reviews/index', 'Access reviews', [
+            'help' => HelpProps::for(HelpTopic::AccessReviews),
             'reviews' => $campaigns->map(fn (CertificationCampaign $campaign): array => [
                 'id' => $campaign->id,
                 'name' => $campaign->name,

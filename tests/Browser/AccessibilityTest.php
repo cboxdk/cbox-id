@@ -478,7 +478,7 @@ it('has no accessibility issues on the ported platform console pages', function 
  */
 dataset('platform pages', [
     'environments' => ['/platform', 'Environments'],
-    'customers' => ['/platform/customers', 'Customers'],
+    'customers' => ['/platform/customers', 'Workspaces'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
     'customer' => ['/platform/customers/first', 'Acme'],
@@ -592,7 +592,7 @@ it('confirms before it suspends a tenant, and says who the operator is', functio
     // navigating by control and to this test alike.
     $page->click('button[aria-label="Suspend Tenant A11y"]')
         ->assertSee('Suspend Tenant A11y?')
-        ->assertSee('can no longer sign in to this tenant')
+        ->assertSee('can no longer sign in to this organization')
         ->assertSee('You can reactivate it here')
         ->assertNoJavaScriptErrors();
 })->group('a11y');

@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import { Badge, Button, ConfirmDelete, EmptyState, Icon, PageHeader, Pagination } from '@/ui';
 
 interface ApprovalRow {
@@ -16,14 +16,18 @@ interface ApprovalRow {
 type Props = PageProps<{
     requests: ApprovalRow[];
     pagination: PaginationState;
+    help: HelpContent;
 }>;
 
-export default function AgentApprovals({ requests, pagination }: Props) {
+export default function AgentApprovals({ requests, pagination, help }: Props) {
     const [denying, setDenying] = useState<ApprovalRow | null>(null);
 
     return (
         <>
-            <PageHeader description="Requests from agents asking to act on a user's behalf. Each user approves their own. Deny one from here only if it looks like abuse — the denial is recorded in the activity log." />
+            <PageHeader
+                help={help}
+                description="Requests from agents asking to act on a user's behalf. Each user approves their own. Deny one from here only if it looks like abuse — the denial is recorded in the activity log."
+            />
 
             <div className="mt-6 space-y-4">
                 {requests.length === 0 ? (

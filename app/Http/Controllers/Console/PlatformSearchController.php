@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
@@ -46,6 +48,7 @@ final readonly class PlatformSearchController extends ConsoleController
 
         if (mb_strlen($term) < self::MIN_TERM) {
             return $this->page('console/platform/search', 'Search', [
+                'help' => HelpProps::for(HelpTopic::PlatformSearch),
                 'term' => $term,
                 'ready' => false,
                 'organizations' => [],
@@ -140,6 +143,7 @@ final readonly class PlatformSearchController extends ConsoleController
         });
 
         return $this->page('console/platform/search', 'Search', [
+            'help' => HelpProps::for(HelpTopic::PlatformSearch),
             'term' => $term,
             'ready' => true,
             'organizations' => $results['organizations'],

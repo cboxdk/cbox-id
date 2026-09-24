@@ -1,5 +1,5 @@
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Pill, Table, Td, TdMono, Th } from '@/ui';
 
 interface RiskEvent {
@@ -15,9 +15,10 @@ type Props = PageProps<{
     events: RiskEvent[];
     /** True on the environment plane with no organization chosen — the whole feed. */
     wholeEnvironment: boolean;
+    help: HelpContent;
 }>;
 
-export default function RiskEvents({ events, wholeEnvironment }: Props) {
+export default function RiskEvents({ events, wholeEnvironment, help }: Props) {
     const scope = wholeEnvironment
         ? ', across this environment'
         : ", for this organization's members";
@@ -25,6 +26,7 @@ export default function RiskEvents({ events, wholeEnvironment }: Props) {
     return (
         <div className="space-y-6">
             <PageHeader
+                help={help}
                 description={`Sign-ins and requests the platform scored as suspicious enough to flag${scope}. Newest first.`}
             />
 

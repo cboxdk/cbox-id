@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\AssignUserOrganizationRequest;
@@ -18,6 +19,7 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\LikeTerm;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
+use App\Platform\Help\HelpTopic;
 use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrganizationAccess;
@@ -106,6 +108,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         $page = $query->simplePaginate(self::PER_PAGE)->withQueryString();
 
         return $this->page('environment/users/index', 'Users', [
+            'help' => HelpProps::for(HelpTopic::Users),
             'users' => array_map(static fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,

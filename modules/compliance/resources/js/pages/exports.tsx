@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, EmptyState, Field, Icon, Input, PageHeader, Table, Td, TdMono, Th } from '@/ui';
 
 interface Run {
@@ -21,6 +21,7 @@ type Props = PageProps<{
     subjectId: string;
     subjectEntryCount: number | null;
     downloadHref: string;
+    help: HelpContent;
 }>;
 
 export default function Exports({
@@ -30,6 +31,7 @@ export default function Exports({
     subjectId,
     subjectEntryCount,
     downloadHref,
+    help,
 }: Props) {
     const [subject, setSubject] = useState(subjectId);
     const [building, setBuilding] = useState(false);
@@ -54,7 +56,10 @@ export default function Exports({
 
     return (
         <div className="space-y-6">
-            <PageHeader description="Ship the audit trail to your SIEM or cold archive, and run data-subject exports." />
+            <PageHeader
+                help={help}
+                description="Ship the audit trail to your SIEM or cold archive, and run data-subject exports."
+            />
 
             {/*
                 NO BUTTONS HERE. Both jobs act on EVERY chain in the environment — an export

@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
     Dialog,
@@ -43,6 +43,7 @@ type Props = PageProps<{
     search: string;
     types: { value: string; label: string }[];
     storeHref: string;
+    help: HelpContent;
 }>;
 
 /*
@@ -68,6 +69,7 @@ export default function Organizations({
     search,
     types,
     storeHref,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
@@ -92,6 +94,7 @@ export default function Organizations({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Every organization in the target environment — the management tree of resellers, the organizations they manage, and sub-units."
                 actions={
                     <Button

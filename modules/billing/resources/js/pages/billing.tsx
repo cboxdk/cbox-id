@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Panel, Stat } from '@/ui';
 
 interface ProjectRow {
@@ -18,12 +18,13 @@ type Props = PageProps<{
         connections: number;
         signIns: number;
     };
+    help: HelpContent;
 }>;
 
-export default function Billing({ projects, usage }: Props) {
+export default function Billing({ projects, usage, help }: Props) {
     return (
         <>
-            <PageHeader description="Plans are per project; usage rolls up across every environment this organization owns." />
+            <PageHeader help={help} description="Plans are per project; usage rolls up across every environment this organization owns." />
 
             {/* The billing anchor is the PROJECT — one customer can own several products. */}
             <Panel title="Projects" flush className="mt-6">

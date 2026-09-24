@@ -1,7 +1,7 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
     Button,
@@ -39,9 +39,10 @@ type Props = PageProps<{
     keys: ApiKey[];
     roles: { value: string; label: string }[];
     lifetimes: KeyLifetimeOption[];
+    help: HelpContent;
 }>;
 
-export default function WorkspaceKeys({ tabs, keys, roles, lifetimes }: Props) {
+export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Props) {
     // On the flash channel: a full-authority credential in a history entry is readable by
     // pressing Back, long after the page that showed it has gone.
     const freshKey = usePage().flash.freshKey;
@@ -58,6 +59,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes }: Props) {
     return (
         <>
             <PageHeader
+                help={help}
                 description="The workspace's own keys, for the workspace API — list projects and environments, create environments, list and invite your team. Each key carries a built-in role."
                 actions={
                     <Button asChild size="sm">
@@ -144,7 +146,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes }: Props) {
 
                 <Panel
                     title="New key"
-                    description="The key inherits the role you choose and can do only what that role allows."
+                    description="The key holds the built-in role you choose and can do only what that role allows."
                 >
                     <form
                         className="space-y-4"

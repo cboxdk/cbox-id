@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
     Button,
     CopyButton,
@@ -29,6 +29,7 @@ type Props = PageProps<{
     search: string;
     idp: { entityId: string; metadataUrl: string; ssoUrl: string };
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -53,6 +54,7 @@ export default function ServiceProviders({
     search,
     idp,
     createHref,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -75,6 +77,7 @@ export default function ServiceProviders({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Applications that trust this environment as their SAML identity provider. To let people sign in with an account they already have elsewhere, use Sign-in → Single sign-on."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">

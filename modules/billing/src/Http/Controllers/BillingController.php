@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Id\Billing\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Kernel\Usage\Enums\UsageMetric;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
@@ -85,6 +87,7 @@ final readonly class BillingController extends ConsoleController
         $monthStart = now()->startOfMonth()->format('Y-m-d');
 
         return $this->page('billing::billing', 'Billing', [
+            'help' => HelpProps::for(HelpTopic::Billing),
             'projects' => $projectRows,
             'usage' => [
                 'organizations' => $environmentIds->isEmpty() ? 0 : DB::table('organizations')

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteMemberRequest;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
 use App\Mail\OrganizationInviteMail;
+use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\MailLinks;
 use App\Platform\Membership\MembershipLifecycle;
@@ -123,6 +125,7 @@ final readonly class MemberController extends ConsoleController
         $environmentCount = $organizationId === null ? 0 : $this->environmentQuery($organizationId)->count();
 
         return $this->page('console/members', 'Team', [
+            'help' => HelpProps::for(HelpTopic::Team),
             'members' => collect($roster->items())->map(function (Membership $membership) use ($people, $accessByUser, $actorId, $canManage): array {
                 $person = $people[$membership->user_id] ?? null;
                 $isSelf = $membership->user_id === $actorId;

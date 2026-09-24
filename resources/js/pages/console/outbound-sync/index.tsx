@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import { Badge, Button, EmptyState, Icon, Input, PageHeader, Pagination, Pill } from '@/ui';
 
 interface ConnectionRow {
@@ -20,6 +20,7 @@ type Props = PageProps<{
     pagination: PaginationState;
     search: string;
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -43,6 +44,7 @@ export default function OutboundSyncIndex({
     pagination,
     search,
     createHref,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -65,6 +67,7 @@ export default function OutboundSyncIndex({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Push your people into the apps that need their own copy — a SCIM endpoint receives every join, change and departure as it happens."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">

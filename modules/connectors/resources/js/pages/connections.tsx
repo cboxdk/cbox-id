@@ -1,5 +1,5 @@
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Pill, type PillTone, Table, Td, Th } from '@/ui';
 
 interface ConnectionRow {
@@ -14,6 +14,7 @@ type Props = PageProps<{
     connections: ConnectionRow[];
     /** True when an environment administrator has not chosen an organization to act on. */
     wholeEnvironment: boolean;
+    help: HelpContent;
 }>;
 
 function healthTone(health: string): PillTone {
@@ -24,7 +25,7 @@ function healthTone(health: string): PillTone {
     return health === 'degraded' ? 'warning' : 'neutral';
 }
 
-export default function Connections({ connections, wholeEnvironment }: Props) {
+export default function Connections({ connections, wholeEnvironment, help }: Props) {
     // The copy moves WITH the scoping. A page that says "for this organization" while
     // listing the whole environment teaches a reader to distrust scoping they cannot see.
     const scope = wholeEnvironment ? 'in this environment' : 'for this organization';
@@ -32,6 +33,7 @@ export default function Connections({ connections, wholeEnvironment }: Props) {
     return (
         <div className="space-y-6">
             <PageHeader
+                help={help}
                 description={`Every live connector ${scope}, across outbound SCIM, webhooks and SSO federation.`}
             />
 

@@ -127,13 +127,13 @@ it('claims a page detail route without claiming its prefix siblings', function (
  * you are. It resolved from the organization console's plugin registry only, so on all
  * 41 account, environment and operator pages it answered null and the eyebrow simply did
  * not render — the orientation feature looked half-built because on three planes out of
- * four it was. Both sources are asked now, which is what lets an Identity platform page
+ * four it was. Both sources are asked now, which is what lets a Workspace page
  * (registry) and an environment page (this class) each be placed by the same call.
  */
 it('knows where every page in every plane sits', function (): void {
     $location = app(ConsoleLocation::class);
 
-    expect($location->areaLabel('billing'))->toBe('Identity platform')
+    expect($location->areaLabel('billing'))->toBe('Workspace')
         ->and($location->areaLabel('account'))->toBe('My account')
         ->and($location->areaLabel('environment.connections'))->toBe('Sign-in')
         ->and($location->areaLabel('environment.users.show'))->toBe('People')

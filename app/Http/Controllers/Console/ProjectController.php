@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameProjectRequest;
 use App\Http\Requests\Console\StoreEnvironmentRequest;
 use App\Http\Requests\Console\StoreProjectRequest;
 use App\Platform\CurrentUser;
+use App\Platform\Help\HelpTopic;
 use App\Platform\MemberEmailVerification;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -121,6 +123,7 @@ final readonly class ProjectController extends ConsoleController
         }
 
         return $this->page('console/projects/index', 'Projects', [
+            'help' => HelpProps::for(HelpTopic::Projects),
             'projects' => $rows,
             'canManage' => $this->mayManage($members),
             'createHref' => route('projects.create'),

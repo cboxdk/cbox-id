@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Console\EnvironmentKeyRowProps;
 use App\Http\Props\Console\EnvironmentScopeProps;
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
@@ -13,6 +14,7 @@ use App\Platform\Console\KeyTabs;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyScopes;
+use App\Platform\Help\HelpTopic;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -84,6 +86,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         $now = CarbonImmutable::now();
 
         return $this->page('console/keys/management', 'Keys', [
+            'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
             // The environment console mints for the environment it stands on; a picker with
             // one entry would only suggest there was a choice.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\ReturnAppProps;
@@ -15,6 +16,7 @@ use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\GrantAccessRole;
+use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\AppReturnTargets;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
@@ -90,6 +92,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
         return $this->page('environment/organizations/index', 'Organizations', [
+            'help' => HelpProps::for(HelpTopic::Organizations),
             'organizations' => array_map(static fn (Organization $organization): array => [
                 'id' => $organization->id,
                 'name' => $organization->name,

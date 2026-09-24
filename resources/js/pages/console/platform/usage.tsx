@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, EmptyState, Icon, PageHeader, Panel, Pill, Table, Td, TdMono, Th } from '@/ui';
 
 interface PlaneRow {
@@ -32,9 +32,10 @@ type Props = PageProps<{
     };
     breakdown: PlaneRow[];
     topOrganizations: TopOrganization[];
+    help: HelpContent;
 }>;
 
-export default function PlatformUsage({ totals, breakdown, topOrganizations }: Props) {
+export default function PlatformUsage({ totals, breakdown, topOrganizations, help }: Props) {
     const tiles: [string, number][] = [
         ['Environments', totals.environments],
         ['Organizations', totals.organizations],
@@ -47,7 +48,10 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations }: P
 
     return (
         <>
-            <PageHeader description="Platform-wide usage across every environment — not only the one the console is pointed at." />
+            <PageHeader
+                help={help}
+                description="Platform-wide usage across every environment — not only the one the console is pointed at."
+            />
 
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5 mt-8">
                 {tiles.map(([label, value]) => (

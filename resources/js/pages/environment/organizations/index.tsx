@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import { Button, EmptyState, Icon, Input, PageHeader, Pagination, Pill } from '@/ui';
 
 interface OrganizationRow {
@@ -17,6 +17,7 @@ type Props = PageProps<{
     pagination: PaginationState;
     search: string;
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -49,6 +50,7 @@ export default function OrganizationsIndex({
     pagination,
     search,
     createHref,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
 
@@ -71,6 +73,7 @@ export default function OrganizationsIndex({
     return (
         <>
             <PageHeader
+                help={help}
                 description="The teams using your product. Each is a company or group with its own users, roles and single sign-on."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">

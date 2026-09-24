@@ -133,7 +133,7 @@ it('deletes the app once the name is typed exactly', function (): void {
         ->click('.cbx-dialog button:has-text("Delete")');
 
     // Landed back on the list, and the row is gone.
-    $page->assertSee('Apps & API keys')
+    $page->assertSee('Every app that signs people in through Cbox ID')
         ->assertDontSee('Billing Worker')
         ->assertNoJavaScriptErrors();
 

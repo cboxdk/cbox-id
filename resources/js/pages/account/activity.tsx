@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, ConfirmDelete, Dialog, EmptyState, PageHeader, Panel, Pill } from '@/ui';
 
 interface SessionRow {
@@ -40,16 +40,26 @@ type Props = PageProps<{
     applications: ApplicationRow[];
     activity: ActivityRow[];
     revokeOthersHref: string;
+    help: HelpContent;
 }>;
 
-export default function Activity({ sessions, applications, activity, revokeOthersHref }: Props) {
+export default function Activity({
+    sessions,
+    applications,
+    activity,
+    revokeOthersHref,
+    help,
+}: Props) {
     const [signingOut, setSigningOut] = useState<SessionRow | null>(null);
     const [signingOutOthers, setSigningOutOthers] = useState(false);
     const [withdrawing, setWithdrawing] = useState<ApplicationRow | null>(null);
 
     return (
         <>
-            <PageHeader description="Where you are signed in, what can act as you, and what has happened to your account. If you see something you do not recognise, sign it out and change your password." />
+            <PageHeader
+                help={help}
+                description="Where you are signed in, what can act as you, and what has happened to your account. If you see something you do not recognise, sign it out and change your password."
+            />
 
             <Panel
                 title="Where you are signed in"

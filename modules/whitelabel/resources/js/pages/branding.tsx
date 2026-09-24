@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Badge, Button, Field, Input, PageHeader, Panel, Textarea } from '@/ui';
 
 type Props = PageProps<{
@@ -15,6 +15,7 @@ type Props = PageProps<{
     /** True when this page is editing the environment default every organization inherits. */
     environmentDefault: boolean;
     saveHref: string;
+    help: HelpContent;
 }>;
 
 export default function Branding({
@@ -27,6 +28,7 @@ export default function Branding({
     faviconUrl,
     environmentDefault,
     saveHref,
+    help,
 }: Props) {
     const form = useForm<{
         palette: Record<string, string>;
@@ -54,6 +56,7 @@ export default function Branding({
     return (
         <div className="space-y-6">
             <PageHeader
+                help={help}
                 description={
                     environmentDefault
                         ? 'Theme the console and hosted sign-in for this whole environment — palette, logo, app name and email sender. Every organization inherits this unless it sets its own; choose an organization above to brand just that one.'

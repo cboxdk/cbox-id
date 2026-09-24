@@ -1,17 +1,17 @@
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, Field, Input, PageHeader, Panel } from '@/ui';
 import { update } from '@actions/App/Http/Controllers/Console/AccountSettingsController';
 
-type Props = PageProps<{ name: string }>;
+type Props = PageProps<{ name: string; help: HelpContent }>;
 
-export default function AccountSettings({ name }: Props) {
+export default function AccountSettings({ name, help }: Props) {
     const form = useForm({ name });
 
     return (
         <>
-            <PageHeader description="The name of the workspace these identity providers are billed and administered under." />
+            <PageHeader help={help} description="The name of the workspace these identity providers are billed and administered under." />
 
             <form
                 className="mt-6"

@@ -1,17 +1,21 @@
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, Icon, type IconName, PageHeader, Stat } from '@/ui';
 
 type Props = PageProps<{
     stats: { label: string; icon: IconName; count: number; href: string }[];
     quickActions: { label: string; href: string }[];
+    help: HelpContent;
 }>;
 
-export default function EnvironmentHome({ stats, quickActions }: Props) {
+export default function EnvironmentHome({ stats, quickActions, help }: Props) {
     return (
         <>
-            <PageHeader description="Everything in this environment — organizations, users, and sign-in." />
+            <PageHeader
+                help={help}
+                description="Everything in this environment — organizations, users, and sign-in."
+            />
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {stats.map((stat) => (

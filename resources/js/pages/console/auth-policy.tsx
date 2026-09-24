@@ -1,7 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
     Badge,
     Button,
@@ -52,6 +52,7 @@ type Props = PageProps<{
     organizationsPagination: PaginationState | null;
     saveHref: string;
     inheritHref: string;
+    help: HelpContent;
 }>;
 
 export default function AuthPolicyPage({
@@ -68,6 +69,7 @@ export default function AuthPolicyPage({
     organizationsPagination,
     saveHref,
     inheritHref,
+    help,
 }: Props) {
     const form = useForm<Policy>(policy);
     const [confirming, setConfirming] = useState<'lockout' | 'inherit' | null>(null);
@@ -93,6 +95,7 @@ export default function AuthPolicyPage({
     return (
         <div className="space-y-6">
             <PageHeader
+                help={help}
                 description={
                     onEnvironmentPlane
                         ? 'The baseline every organization in this environment inherits. An organization can ask for stricter rules — never looser.'

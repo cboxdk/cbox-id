@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, EmptyState, Icon, Input, PageHeader, Pill } from '@/ui';
 
 interface ReviewRow {
@@ -19,6 +19,7 @@ type Props = PageProps<{
     reviews: ReviewRow[];
     search: string;
     createHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string): string {
@@ -27,7 +28,7 @@ function listHref(search: string): string {
         : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
 }
 
-export default function AccessReviewsIndex({ reviews, search, createHref }: Props) {
+export default function AccessReviewsIndex({ reviews, search, createHref, help }: Props) {
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -49,6 +50,7 @@ export default function AccessReviewsIndex({ reviews, search, createHref }: Prop
     return (
         <>
             <PageHeader
+                help={help}
                 description="Periodically certify who holds which role and membership. Revoked access is applied when the review closes."
                 actions={
                     <Button asChild variant="primary" className="shrink-0">

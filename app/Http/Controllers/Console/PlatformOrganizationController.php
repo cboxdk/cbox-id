@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateTenantOrganizationRequest;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Help\HelpTopic;
 use Carbon\CarbonInterface;
 use Cbox\Id\AuditQuery\Contracts\AuditReader;
 use Cbox\Id\AuditQuery\ValueObjects\AuditQueryFilter;
@@ -101,6 +103,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 ->groupBy('organization_id')->pluck('c', 'organization_id');
 
         return $this->page('console/platform/organizations', 'Organizations', [
+            'help' => HelpProps::for(HelpTopic::PlatformOrganizations),
             'organizations' => $this->tree($organizations, $memberCounts),
             // The flat list the two parent selectors are built from.
             'all' => $organizations->map(static fn (Organization $o): array => [

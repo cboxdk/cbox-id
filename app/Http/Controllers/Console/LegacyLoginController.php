@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\ProbeLegacyLoginRequest;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentSudo;
+use App\Platform\Help\HelpTopic;
 use App\Platform\Migration\LegacyLoginApprovals;
 use App\Platform\Migration\LegacyLoginProbe;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -41,6 +43,7 @@ final readonly class LegacyLoginController extends ConsoleController
         $declaration = $approvals->current();
 
         return $this->page('console/legacy-login', 'Legacy login', [
+            'help' => HelpProps::for(HelpTopic::LegacyLogin),
             'declaration' => $declaration === null ? null : [
                 'url' => $declaration->url,
                 'approved' => $declaration->isApproved(),

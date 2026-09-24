@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Cbox\Id\Compliance\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Help\HelpTopic;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Compliance\Dsr\SubjectDataExport;
 use Cbox\Id\Compliance\Models\AuditExportRun;
@@ -64,6 +66,7 @@ final readonly class ExportsController extends ConsoleController
             : app(SubjectDataExport::class)->countFor($subjectId, $organizationId);
 
         return $this->page('compliance::exports', 'Exports & retention', [
+            'help' => HelpProps::for(HelpTopic::DataExports),
             'showsRuns' => $showsRuns,
             'runs' => $runs->map(static fn (AuditExportRun $run): array => [
                 'id' => $run->id,

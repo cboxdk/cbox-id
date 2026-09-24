@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Console\ApiKeyRowProps;
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
 use App\Platform\Console\KeyTabs;
 use App\Platform\Enums\KeyLifetime;
+use App\Platform\Help\HelpTopic;
 use App\Platform\OrganizationActivity;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
@@ -49,6 +51,7 @@ final readonly class ApiKeyController extends ConsoleController
         $now = CarbonImmutable::now();
 
         return $this->page('console/keys/workspace', 'Keys', [
+            'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::WORKSPACE),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
                 ->map(fn (OrganizationApiKey $key): ApiKeyRowProps => ApiKeyRowProps::from(

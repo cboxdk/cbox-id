@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateOperatorRequest;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Exceptions\CannotSuspendLastOperator;
 use Cbox\Id\Platform\Models\PlatformOperator;
@@ -51,6 +53,7 @@ final readonly class OperatorRosterController extends ConsoleController
         $currentId = $this->scope->operator()?->id;
 
         return $this->page('console/platform/operators', 'Operators', [
+            'help' => HelpProps::for(HelpTopic::Operators),
             'operators' => $operators->map(fn (PlatformOperator $operator): array => [
                 'id' => $operator->id,
                 'name' => $operator->name,

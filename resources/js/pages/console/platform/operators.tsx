@@ -1,7 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Button, Dialog, Field, Icon, Input, PageHeader, Pill } from '@/ui';
 
 interface Operator {
@@ -18,6 +18,7 @@ type Props = PageProps<{
     operators: Operator[];
     search: string;
     storeHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string): string {
@@ -26,7 +27,7 @@ function listHref(search: string): string {
         : `${window.location.pathname}?q=${encodeURIComponent(search)}`;
 }
 
-export default function Operators({ operators, search, storeHref }: Props) {
+export default function Operators({ operators, search, storeHref, help }: Props) {
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
     const [confirming, setConfirming] = useState<Operator | null>(null);
@@ -50,6 +51,7 @@ export default function Operators({ operators, search, storeHref }: Props) {
     return (
         <>
             <PageHeader
+                help={help}
                 description="Platform operators administer environments across the whole install."
                 actions={
                     <Button variant="primary" onClick={() => setCreating((open) => !open)}>

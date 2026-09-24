@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreateCustomerRequest;
 use App\Mail\PasswordResetMail;
 use App\Platform\Console\LikeTerm;
+use App\Platform\Help\HelpTopic;
 use App\Platform\MailLinks;
 use App\Platform\OperatorEnvironment;
 use Carbon\CarbonInterface;
@@ -151,6 +153,7 @@ final readonly class PlatformCustomerController extends ConsoleController
         });
 
         return $this->page('console/platform/customers', 'Workspaces', [
+            'help' => HelpProps::for(HelpTopic::Workspaces),
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
             'search' => $term,

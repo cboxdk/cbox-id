@@ -1,7 +1,7 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
     ConfirmDelete,
@@ -24,6 +24,7 @@ type Props = PageProps<{
         declaredBy: string | null;
     } | null;
     urls: { probe: string; approve: string; revoke: string };
+    help: HelpContent;
 }>;
 
 /** The host, which is the fact being agreed to — and typing it is reading it. */
@@ -35,13 +36,13 @@ function hostOf(url: string): string {
     }
 }
 
-export default function LegacyLogin({ declaration, urls }: Props) {
+export default function LegacyLogin({ declaration, urls, help }: Props) {
     const [deciding, setDeciding] = useState(false);
 
     if (declaration === null) {
         return (
             <>
-                <PageHeader description="Where sign-ins go for people who have not moved to Cbox ID yet." />
+                <PageHeader help={help} description="Where sign-ins go for people who have not moved to Cbox ID yet." />
 
                 <div className="card mt-8">
                     <EmptyState
@@ -56,7 +57,7 @@ export default function LegacyLogin({ declaration, urls }: Props) {
 
     return (
         <>
-            <PageHeader description="Where sign-ins go for people who have not moved to Cbox ID yet." />
+            <PageHeader help={help} description="Where sign-ins go for people who have not moved to Cbox ID yet." />
 
             <div className="mt-6 space-y-6" style={{ maxWidth: '40rem' }}>
                 <Panel

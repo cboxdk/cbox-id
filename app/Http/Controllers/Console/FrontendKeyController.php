@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueFrontendKeyRequest;
 use App\Http\Requests\Console\SaveFrontendKeyOriginsRequest;
 use App\Platform\Console\KeyTabs;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\Exceptions\UnusableOrigin;
@@ -36,6 +38,7 @@ final readonly class FrontendKeyController extends ConsoleController
         $this->scope->assertMayAdministerEnvironment();
 
         return $this->page('console/keys/frontend', 'Keys', [
+            'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::FRONTEND),
             'keys' => PublishableKey::query()
                 ->with('origins')

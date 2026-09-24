@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\AttributeMappings;
 use App\Http\Requests\Console\SaveServiceProviderRequest;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
@@ -50,6 +52,7 @@ final readonly class ServiceProviderController extends ConsoleController
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
         return $this->page('environment/sso-providers/index', 'SAML applications', [
+            'help' => HelpProps::for(HelpTopic::SamlApplications),
             'providers' => array_map(static fn (ServiceProvider $provider): array => [
                 'id' => $provider->id,
                 'entityId' => $provider->entity_id,

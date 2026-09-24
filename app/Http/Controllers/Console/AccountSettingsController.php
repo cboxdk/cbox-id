@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameOrganizationRequest;
+use App\Platform\Help\HelpTopic;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
@@ -31,6 +33,7 @@ final readonly class AccountSettingsController extends ConsoleController
         }
 
         return $this->page('console/account-settings', 'Workspace settings', [
+            'help' => HelpProps::for(HelpTopic::WorkspaceSettings),
             'name' => $organization->name,
         ]);
     }

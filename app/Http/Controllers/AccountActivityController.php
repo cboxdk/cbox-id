@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Platform\CurrentUser;
 use App\Platform\DeviceLabel;
+use App\Platform\Help\HelpTopic;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
@@ -94,6 +96,7 @@ final readonly class AccountActivityController extends PageController
             ->get();
 
         return $this->page('account/activity', 'Sessions & activity', [
+            'help' => HelpProps::for(HelpTopic::SessionsAndActivity),
             'sessions' => $sessions->map(function (Session $session) use ($currentId): array {
                 $label = DeviceLabel::for($session->user_agent);
                 $isCurrent = $session->id === $currentId;

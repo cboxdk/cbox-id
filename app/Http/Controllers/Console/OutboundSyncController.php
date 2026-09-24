@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\RegisterOutboundSyncRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Help\HelpTopic;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
@@ -69,6 +71,7 @@ final readonly class OutboundSyncController extends ConsoleController
         $owners = $this->organizationNames($page->getCollection()->pluck('organization_id')->all());
 
         return $this->page('console/outbound-sync/index', 'Sync users out', [
+            'help' => HelpProps::for(HelpTopic::SyncUsersOut),
             'connections' => array_map(fn (ProvisioningConnection $connection): array => [
                 'id' => $connection->id,
                 'name' => $connection->name,

@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, Pagination as PaginationState } from '@/types';
+import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
     Avatar,
     Badge,
@@ -65,6 +65,7 @@ type Props = PageProps<{
     isOwner: boolean;
     assignableRoles: RoleOption[];
     editor: Editor | null;
+    help: HelpContent;
 }>;
 
 /** Which confirmation is open, and about whom. */
@@ -87,12 +88,16 @@ export default function Members({
     isOwner,
     assignableRoles,
     editor,
+    help,
 }: Props) {
     const [pending, setPending] = useState<Pending>(null);
 
     return (
         <>
-            <PageHeader description="The people who run this workspace, their built-in role, and which environments they reach." />
+            <PageHeader
+                help={help}
+                description="The people who run this workspace, their built-in role, and which environments they reach."
+            />
 
             <div
                 className="mt-6 rounded-xl border overflow-hidden"

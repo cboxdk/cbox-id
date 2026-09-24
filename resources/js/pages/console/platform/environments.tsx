@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, SimplePagination as SimplePaginationState } from '@/types';
+import type { HelpContent, PageProps, SimplePagination as SimplePaginationState } from '@/types';
 import {
     Button,
     Dialog,
@@ -48,6 +48,7 @@ type Props = PageProps<{
     storeHref: string;
     targetHref: string;
     customersHref: string;
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -74,6 +75,7 @@ export default function Environments({
     storeHref,
     targetHref,
     customersHref,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
@@ -99,6 +101,7 @@ export default function Environments({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Every environment on this install, and who owns it. Create one, point the console at it, and bootstrap it with an admin."
                 actions={
                     <Button variant="primary" onClick={() => setCreating((open) => !open)}>

@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, SimplePagination as SimplePaginationState } from '@/types';
+import type { HelpContent, PageProps, SimplePagination as SimplePaginationState } from '@/types';
 import {
     Button,
     Dialog,
@@ -38,6 +38,7 @@ type Props = PageProps<{
     storeHref: string;
     environmentsHref: string;
     environmentLimits: number[];
+    help: HelpContent;
 }>;
 
 function listHref(search: string, page?: number): string {
@@ -67,6 +68,7 @@ export default function Customers({
     storeHref,
     environmentsHref,
     environmentLimits,
+    help,
 }: Props) {
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
@@ -91,6 +93,7 @@ export default function Customers({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Every workspace on this install. Open one to walk its products and environments; suspending it signs out its members and stops every environment it owns from serving auth."
                 actions={
                     <Button

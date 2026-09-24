@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateLogStreamRequest;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Contracts\LogStreams;
 use Cbox\LaravelSiem\Enums\AuthScheme;
@@ -75,6 +77,7 @@ final readonly class LogStreamController extends ConsoleController
         $streams = $query->get();
 
         return $this->page('console/log-streams/index', 'Log streaming', [
+            'help' => HelpProps::for(HelpTopic::LogStreaming),
             'streams' => $streams->map(fn (AuditStream $stream): array => [
                 'id' => $stream->id,
                 'name' => $stream->name,

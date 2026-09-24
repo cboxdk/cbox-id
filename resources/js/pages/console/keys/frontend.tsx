@@ -1,7 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
     Button,
@@ -36,15 +36,17 @@ type Props = PageProps<{
     keys: KeyRow[];
     modes: { value: string; label: string }[];
     storeHref: string;
+    help: HelpContent;
 }>;
 
-export default function FrontendKeys({ tabs, keys, modes, storeHref }: Props) {
+export default function FrontendKeys({ tabs, keys, modes, storeHref, help }: Props) {
     const [creating, setCreating] = useState(false);
     const [revoking, setRevoking] = useState<KeyRow | null>(null);
 
     return (
         <>
             <PageHeader
+                help={help}
                 description="Keys your browser-side app presents to the Frontend API. They ship in a JavaScript bundle — the allow-list of origins is the control, not the key."
                 actions={
                     !creating ? (

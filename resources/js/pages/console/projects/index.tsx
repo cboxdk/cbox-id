@@ -1,7 +1,7 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps } from '@/types';
+import type { HelpContent, PageProps } from '@/types';
 import { Badge, Button, Field, Icon, Input, PageHeader, Select } from '@/ui';
 import {
     resendVerification,
@@ -34,6 +34,7 @@ type Props = PageProps<{
     awaitingVerification: boolean;
     verificationEmail: string;
     verificationSender: string;
+    help: HelpContent;
 }>;
 
 export default function Projects({
@@ -43,6 +44,7 @@ export default function Projects({
     awaitingVerification,
     verificationEmail,
     verificationSender,
+    help,
 }: Props) {
     // The answer to the resend click, on the flash channel: it belongs to that click and
     // to this render, and it is emphatically not the console's generic success toast.
@@ -54,6 +56,7 @@ export default function Projects({
     return (
         <>
             <PageHeader
+                help={help}
                 description="Each project is a separate IdP product — its own environments, sign-in, and plan."
                 actions={
                     canManage ? (
@@ -246,7 +249,12 @@ function ProjectCard({
                                     redirect to another host, which is a navigation and not
                                     a page this client can mount.
                                 */}
-                                <a href={environment.openHref}>Open</a>
+                                <a
+                                    href={environment.openHref}
+                                    aria-label={`Open the ${environment.name} console`}
+                                >
+                                    Open console
+                                </a>
                             </Button>
                         </li>
                     ))

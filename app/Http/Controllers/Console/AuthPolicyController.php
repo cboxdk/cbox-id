@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\CurrentEnvironment;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
@@ -65,6 +67,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $override = $onEnvironmentPlane ? null : $policies->overrideFor($this->organizationId());
 
         return $this->page('console/auth-policy', 'Sign-in rules', [
+            'help' => HelpProps::for(HelpTopic::SignInRules),
             'onEnvironmentPlane' => $onEnvironmentPlane,
             'policy' => self::toProps($edited),
             'baseline' => self::toProps($baseline),

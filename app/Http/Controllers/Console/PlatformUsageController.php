@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Identity\Models\Session;
@@ -118,7 +120,10 @@ final readonly class PlatformUsageController extends ConsoleController
             ];
         });
 
-        return $this->page('console/platform/usage', 'Usage', $data);
+        return $this->page('console/platform/usage', 'Usage', [
+            'help' => HelpProps::for(HelpTopic::PlatformUsage),
+            ...$data,
+        ]);
     }
 
     /**

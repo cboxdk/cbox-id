@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Cbox\Id\Connectors\Http\Controllers;
 
 use App\Http\Controllers\Console\ConsoleController;
+use App\Http\Props\Shared\HelpProps;
+use App\Platform\Help\HelpTopic;
 use Cbox\Id\Connectors\Catalog\ConnectorCatalog;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Inertia\Response;
@@ -57,6 +59,9 @@ final readonly class CatalogController extends ConsoleController
             ];
         }
 
-        return $this->page('connectors::catalog', 'Catalog', ['types' => $types]);
+        return $this->page('connectors::catalog', 'Catalog', [
+            'help' => HelpProps::for(HelpTopic::Connectors),
+            'types' => $types,
+        ]);
     }
 }
