@@ -130,6 +130,14 @@ function undocumentedByDesign(): array
          */
         'POST /oauth/authorize/{authorization}/approve',
         'POST /oauth/authorize/{authorization}/deny',
+        /*
+         * Customer API key verification (laravel-id 1.19). Not an RFC surface — a Cbox
+         * contract an app calls with its own client credentials — so it is debt like the
+         * rest of this block rather than exempt: the spec files are `/api/v1`-prefixed and
+         * cannot hold an `/oauth` path. Its request and response are described in the
+         * framework's docs until the hosted API-key pages give it a contract here.
+         */
+        'POST /oauth/api-keys/verify',
         'POST /oauth/backchannel_authentication',
         'POST /oauth/decisions',
         'POST /oauth/device_authorization',
