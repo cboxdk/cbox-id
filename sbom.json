@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:ac257b16-8e41-4fdc-a79d-68fc5199f371",
+    "serialNumber": "urn:uuid:edbc87ac-ab76-4bda-a75f-c75e3598849d",
     "version": 1,
     "metadata": {
         "tools": [
@@ -85,6 +85,22 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-audit-chain@v0.1.0",
+            "group": "cboxdk",
+            "name": "laravel-audit-chain",
+            "version": "v0.1.0",
+            "purl": "pkg:composer/cboxdk/laravel-audit-chain@v0.1.0",
+            "description": "Cbox Audit Chain: a tamper-evident, hash-chained audit trail for Laravel, with signed checkpoints and external anchoring.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.1",
             "group": "cboxdk",
             "name": "laravel-console-kit",
@@ -133,11 +149,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.19.3",
+            "bom-ref": "pkg:composer/cboxdk/laravel-id@v1.20.0",
             "group": "cboxdk",
             "name": "laravel-id",
-            "version": "v1.19.3",
-            "purl": "pkg:composer/cboxdk/laravel-id@v1.19.3",
+            "version": "v1.20.0",
+            "purl": "pkg:composer/cboxdk/laravel-id@v1.20.0",
             "description": "cboxdk/laravel-id: a Laravel-native auth and identity framework. AuthN, SSO/SAML, SCIM, OAuth/OIDC provider, RBAC, billing-fed entitlements, tamper-evident audit.",
             "licenses": [
                 {
@@ -1121,11 +1137,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/spomky-labs/cbor-php@3.3.0",
+            "bom-ref": "pkg:composer/spomky-labs/cbor-php@3.4.2",
             "group": "spomky-labs",
             "name": "cbor-php",
-            "version": "3.3.0",
-            "purl": "pkg:composer/spomky-labs/cbor-php@3.3.0",
+            "version": "3.4.2",
+            "purl": "pkg:composer/spomky-labs/cbor-php@3.4.2",
             "description": "CBOR Encoder/Decoder for PHP",
             "licenses": [
                 {
@@ -1415,6 +1431,22 @@
             "version": "v1.37.0",
             "purl": "pkg:composer/symfony/polyfill-php80@v1.37.0",
             "description": "Symfony polyfill backporting some PHP 8.0+ features to lower PHP versions",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/symfony/polyfill-php81@v1.38.1",
+            "group": "symfony",
+            "name": "polyfill-php81",
+            "version": "v1.38.1",
+            "purl": "pkg:composer/symfony/polyfill-php81@v1.38.1",
+            "description": "Symfony polyfill backporting some PHP 8.1+ features to lower PHP versions",
             "licenses": [
                 {
                     "license": {
