@@ -21,6 +21,8 @@ use App\Platform\Membership\MembershipRefused;
 use App\Platform\OrganizationActivity;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
+use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
+use Cbox\Id\Kernel\Tenancy\GenericTenant;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\MembershipStatus;
@@ -442,12 +444,13 @@ final readonly class MemberController extends ConsoleController
     /**
      * The named membership WITHIN this organization, or 404.
      *
-     * THROUGH THE CONTRACT, not a raw query, and that is not a style preference.
+     * INSIDE THE ORGANIZATION'S TENANT SCOPE, and that is not a style preference.
      * `memberships` is TENANT-owned as well as environment-owned and the tenant scope is
      * deny-by-default — a bare `Membership::query()` in a console request has no tenant in
      * context and matches NOTHING, so every action here would 404 on a row that is right
-     * there on the page. `forOrganization()` runs inside the organization's tenant scope,
-     * so the fence is the call itself rather than a predicate a later caller could forget.
+     * there on the page. The query runs inside the organization's tenant scope, exactly as
+     * `Memberships::forOrganization()` does, so the fence is the scope rather than a
+     * predicate a later caller could forget.
      *
      * 404, not 403 — consistent with the rest of the console. A member of somebody else's
      * organization is not a permission this person lacks; it is a row they have no
@@ -455,9 +458,13 @@ final readonly class MemberController extends ConsoleController
      */
     private function resolve(string $memberId, string $organizationId): Membership
     {
+        // ONE ROW, inside the same tenant scope `forOrganization()` opens, rather than the
+        // whole roster hydrated to pick one out of it in PHP.
         $target = app(PlatformRoot::class)->run(
-            fn (): ?Membership => app(Memberships::class)->forOrganization($organizationId)
-                ->firstWhere('id', $memberId),
+            fn (): ?Membership => app(TenantContext::class)->runAs(
+                GenericTenant::of($organizationId),
+                fn (): ?Membership => Membership::query()->whereKey($memberId)->first(),
+            ),
         );
 
         abort_if($target === null, 404);

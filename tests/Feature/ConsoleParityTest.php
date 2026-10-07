@@ -2385,9 +2385,11 @@ it('refuses another organization\'s domain to an organization admin', function (
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso-domains'));
     $foreign = app(DomainVerification::class)->add($other->id, 'foreign.example');
 
-    $this->post(route('connections.domains.verify', $foreign->id))->assertForbidden();
-    $this->post(route('connections.domains.capture', $foreign->id))->assertForbidden();
-    $this->delete(route('connections.domains.destroy', $foreign->id))->assertForbidden();
+    // Not found rather than forbidden: the organization is a predicate in the lookup, so a
+    // foreign id is not a row this request can see at all.
+    $this->post(route('connections.domains.verify', $foreign->id))->assertNotFound();
+    $this->post(route('connections.domains.capture', $foreign->id))->assertNotFound();
+    $this->delete(route('connections.domains.destroy', $foreign->id))->assertNotFound();
 
     expect(VerifiedDomain::query()->whereKey($foreign->id)->exists())->toBeTrue();
 })->group('security');

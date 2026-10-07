@@ -211,7 +211,7 @@ final readonly class ConnectionController extends ConsoleController
     public function verifyDomain(string $domain, DomainVerification $domains): RedirectResponse
     {
         $this->guardEntitled();
-        $this->ownedDomain($domain, $domains);
+        $this->ownedDomain($domain);
 
         return $domains->verify($domain)
             ? back()->with('status', 'Domain verified.')
@@ -222,7 +222,7 @@ final readonly class ConnectionController extends ConsoleController
     public function toggleCapture(string $domain, DomainVerification $domains): RedirectResponse
     {
         $this->guardEntitled();
-        $record = $this->ownedDomain($domain, $domains);
+        $record = $this->ownedDomain($domain);
 
         // Capture only makes sense once control of the domain is proven.
         abort_unless($record->isVerified(), 403);
@@ -237,7 +237,7 @@ final readonly class ConnectionController extends ConsoleController
     public function removeDomain(string $domain, DomainVerification $domains): RedirectResponse
     {
         $this->guardEntitled();
-        $this->ownedDomain($domain, $domains);
+        $this->ownedDomain($domain);
 
         $domains->remove($domain);
 
@@ -650,22 +650,23 @@ final readonly class ConnectionController extends ConsoleController
     }
 
     /**
-     * A domain the ACTING organization owns, or refuse.
+     * A domain the ACTING organization owns, or 404.
      *
-     * The contract is already organization-scoped, but resolving THROUGH it means a
-     * foreign id simply never matches. `requireOrganizationId()` rather than the nullable
-     * reader, because an environment administrator who has chosen nothing must not
-     * thereby be handed every domain in the environment by id.
+     * The organization is a predicate IN the query, so a foreign id simply never matches
+     * — the same fence `DomainVerification::forOrganization()` draws, without loading
+     * every domain the organization has to find one. `requireOrganizationId()` rather
+     * than the nullable reader, because an environment administrator who has chosen
+     * nothing must not thereby be handed every domain in the environment by id.
+     *
+     * 404, not the 403 it used to be: another organization's domain is not a permission
+     * this person lacks, it is a row they have no business learning exists.
      */
-    private function ownedDomain(string $id, DomainVerification $domains): VerifiedDomain
+    private function ownedDomain(string $id): VerifiedDomain
     {
-        foreach ($domains->forOrganization($this->scope->requireOrganizationId()) as $domain) {
-            if ($domain->id === $id) {
-                return $domain;
-            }
-        }
-
-        abort(403);
+        return VerifiedDomain::query()
+            ->where('organization_id', $this->scope->requireOrganizationId())
+            ->whereKey($id)
+            ->firstOrFail();
     }
 
     /**

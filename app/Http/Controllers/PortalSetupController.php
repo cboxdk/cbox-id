@@ -119,7 +119,7 @@ final readonly class PortalSetupController extends PageController
 
     public function verifyDomain(string $domain, DomainVerification $domains): RedirectResponse
     {
-        $this->ownedDomain($domain, $domains);
+        $this->ownedDomain($domain);
 
         /*
          * TWO OUTCOMES, SAID DIFFERENTLY. A single message with the severity applied to the
@@ -134,7 +134,7 @@ final readonly class PortalSetupController extends PageController
 
     public function removeDomain(string $domain, DomainVerification $domains): RedirectResponse
     {
-        $this->ownedDomain($domain, $domains);
+        $this->ownedDomain($domain);
 
         $domains->remove($domain);
 
@@ -242,19 +242,16 @@ final readonly class PortalSetupController extends PageController
      * The domain named by an action, refused unless the bound organization owns it.
      *
      * Deny-by-default rather than "look it up and act on it": the id comes from the page,
-     * which is to say from a third party's browser.
+     * which is to say from a third party's browser. The bound organization is a predicate
+     * in the query, so another organization's domain is not a row this session can see —
+     * a 404, like the console's own lookup — and nothing is loaded beyond the one row.
      */
-    private function ownedDomain(string $id, DomainVerification $domains): VerifiedDomain
+    private function ownedDomain(string $id): VerifiedDomain
     {
-        $organizationId = $this->boundTo(PortalFeature::Sso);
-
-        foreach ($domains->forOrganization($organizationId) as $domain) {
-            if ($domain->id === $id) {
-                return $domain;
-            }
-        }
-
-        abort(403);
+        return VerifiedDomain::query()
+            ->where('organization_id', $this->boundTo(PortalFeature::Sso))
+            ->whereKey($id)
+            ->firstOrFail();
     }
 
     /**
