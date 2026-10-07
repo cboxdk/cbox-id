@@ -1424,7 +1424,7 @@ paths:
       tags:
         - 'Log streams'
       summary: 'Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.'
-      description: 'Requires scope `log_streams:write`. Danger: write.'
+      description: 'Requires scope `log_streams:write`. Danger: critical.'
       operationId: log_streams_update
       x-action: log_streams.update
       parameters:

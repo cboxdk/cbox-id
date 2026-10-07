@@ -22,15 +22,15 @@ use Cbox\LaravelSiem\Contracts\LogStreams;
  *
  * Disabling stops deliveries and KEEPS the pending rows, which is the difference between
  * pausing a feed and losing part of an audit trail. It is also exactly what someone covering
- * their tracks would do first, which is why it is never silent: the entry lands on the
- * trail, and in every stream still running. Asked for the state it is already in, it
- * changes nothing and records nothing.
+ * their tracks would do first — so it is CRITICAL, where approval policies look, and never
+ * silent: the entry lands on the trail, and in every stream still running. Asked for the
+ * state it is already in, it changes nothing and records nothing.
  */
 #[AsAction(
     name: 'log_streams.update',
     summary: 'Disable (enabled: false) or resume (enabled: true) an audit log stream. Disabled, entries are kept and delivered on resume.',
     scope: 'log_streams:write',
-    danger: Danger::Write,
+    danger: Danger::Critical,
     schema: 'LogStream',
     tag: 'Log streams',
     rest: ['PATCH', '/log-streams/{id}'],

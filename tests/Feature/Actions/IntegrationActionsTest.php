@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\Danger;
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\CurrentUser;
@@ -391,6 +393,10 @@ it('disables, resumes and deletes a stream, each on the trail', function (): voi
         ->and(integrationTrail('log_stream.enabled'))->toHaveCount(1)
         ->and(integrationTrail('log_stream.deleted'))->toHaveCount(1)
         ->and(AuditStream::query()->whereKey($id)->exists())->toBeFalse();
+});
+
+it('treats switching a stream off as critical: it is how a trail goes dark', function (): void {
+    expect(app(ActionRegistry::class)->named('log_streams.update')->danger)->toBe(Danger::Critical);
 });
 
 it('refuses a stream to a private address, and needs log_streams:write', function (): void {
